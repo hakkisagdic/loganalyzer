@@ -10,20 +10,24 @@ FortiExtender…) **kapsam dışı**: her birinin OCSF sınıfı farklı ve `map
 dallanamıyor. F1'in hedefi motoru doğrulamak; kataloğun tamamı F2'nin editörüyle
 gelecek.
 
-## Zaman damgası — dikkat
+## Zaman damgası
 
-FortiOS aynı olayın zamanını üç ayrı biçimde yazıyor ve **üçü de motorda
-doğrudan kullanılamıyor**:
+FortiOS aynı olayın zamanını üç ayrı biçimde yazıyor:
 
-| Alan | Gerçek değer | Durum |
+| Alan | Gerçek değer | Kullanım |
 | --- | --- | --- |
-| `date=` + `time=` | `2020-04-23` + `12:17:48` | İki AYRI alan. `date` adımı tek alan okuyor ve alan birleştirme yok. Geçici çözüm: grok yakalaması `date=` ile `time=` arasındaki metni de içine alıyor, biçim dizesi `"yyyy-MM-dd 'time='HH:mm:ss"` onu sabit metin olarak tüketiyor. |
-| `tz="-0500"` | Sayısal UTC ofseti | `TimeZoneResolver` yalnızca IANA adı çözüyor. `timezone_field: tz` yazılsaydı **sessizce** `default_timezone`'a düşerdi. Bilerek yazılmadı. |
-| `eventtime=1557513467369913239` | Epoch **nanosaniye** (7.x) veya saniye (6.x) | Motorda `UNIX` ve `UNIX_MS` var, `UNIX_NS` yok. Nanosaniye değeri `UNIX_MS` ile 51345 yılına düşer. Kullanılmıyor. |
+| `eventtime=1557513467369913239` | Epoch, **nanosaniye** (7.x) veya saniye (6.x) | **Kullanılan kaynak bu.** `UNIX_AUTO` ölçeği basamak sayısından çıkarıyor. Mutlak epoch olduğu için saat dilimi tahmini gerekmiyor. |
+| `date=` + `time=` | `2020-04-23` + `12:17:48` | Cihazın YEREL saati; hangi dilimde olduğunu satır söylemiyor. `fields` içinde duruyor, olay zamanı için kullanılmıyor. |
+| `tz="-0500"` | Sayısal UTC ofseti | `fields` içinde duruyor. `timezone_field` artık sayısal ofseti çözüyor, ama `eventtime` varken gerekmiyor. |
 
-Sonuç: olay zamanı `date`/`time` çiftinden, `default_timezone: Europe/Istanbul`
-varsayımıyla çözülüyor. Bazı FortiOS 7.4 satırlarında `date`/`time` **hiç yok**;
-o satırlar `_fortigate_no_local_time` etiketiyle `partial` kalıyor.
+Örneklerdeki 22 satırın **22'sinde** `eventtime` var (4'ü saniye, 18'i
+nanosaniye). Yazmayan bir satır gelirse `_fortigate_no_eventtime` etiketiyle
+`partial` kalır — sessizce yanlış zaman yazmak yerine görünür bir eksiklik.
+
+Bu bölüm eskiden üç maddelik bir "hiçbiri kullanılamıyor" listesiydi. `UNIX_NS`/
+`UNIX_AUTO` ve `timezone_field` ofset desteği geldikten sonra hem `date`/`time`
+birleştirme hilesi hem de `Europe/Istanbul` varsayımı kalktı. İki FortiOS 7.4
+satırı da `partial`den `ok`'a döndü.
 
 ## Ayırt edicilik
 

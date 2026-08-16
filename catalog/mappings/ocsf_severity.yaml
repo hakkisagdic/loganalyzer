@@ -9,10 +9,11 @@
 #   * cihazın bastığı seviye kelimesi — FortiGate `level="notice"`, MikroTik
 #     topic listesindeki `error`/`warning`/`info`.
 #
-# UYARI (T08 → T05/T07): `severity_num` kolonu OCSF görünümünde `severity_id`,
-# OTel görünümünde `SeverityNumber` olarak okunuyor (db/clickhouse/0003). Bu iki
-# ölçek aynı değil (OTel 1–24). Katalog OCSF ölçeğini yazıyor; OTel görünümünün
-# ayrı bir türetmeye ihtiyacı var.
+# Bu tablo OCSF ölçeğini yazar ve `severity_num` kolonunun tek gerçeğidir.
+# OTel görünümü (`SeverityNumber`, 1–24) aynı kolondan okuyordu ve ölçek
+# çevrimi yoktu — OCSF Critical (5) OTel'de DEBUG çıkıyordu. T05
+# `db/clickhouse/0004_fix_otel_severity_scale.sql` ile çevrimi ekledi; ham OCSF
+# değeri `bizigo.ocsf_severity_id` olarak yanında taşınıyor.
 
 # --- syslog severity rakamı ---
 "0": 6

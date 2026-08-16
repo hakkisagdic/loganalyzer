@@ -87,10 +87,11 @@ pipeline:
       on_failure: tag
       tag: _asa_no_timestamp
 
-  # `convert` adımı, listedeki alanların HİÇBİRİ yoksa başarısız sayılıyor.
-  # Çok şekilli bir parser'da bu tuzak: 733100 satırında port da bayt da yok.
-  # Bu yüzden liste, desteklenen HER gövde şeklinden en az bir alan içeriyor.
-  # (T08 raporu, motor eksiği #7.)
+  # Liste, desteklenen gövde şekillerinin tamamındaki sayısal alanları kapsıyor;
+  # bir mesaj kodunun taşımadığı alan basitçe atlanıyor. (Eskiden `convert`
+  # listedeki alanların HİÇBİRİ yoksa satırı düşürüyordu — 733100 satırında ne
+  # port ne bayt olduğu için doğru ayrışmış satır `failed` oluyordu. T05 bunu
+  # kapattı; liste artık dolgu değil, gerçek dönüşüm ihtiyacı.)
   - convert:
       fields:
         src_port: int

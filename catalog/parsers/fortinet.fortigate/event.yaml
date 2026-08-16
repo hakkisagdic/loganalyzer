@@ -36,21 +36,18 @@ pipeline:
   #    ön filtreyi hiç görmez. Aynı şekilde gömülü `tests` bloğu da parser'ı
   #    doğrudan çağırıyor. Ayırt ediciliği boru hattının kendisine koymazsak
   #    FortiGate'in HER satırı buradan `ok` dönerdi.
-  #    (T08 raporu, motor eksiği #4.)
+  #    (T08 raporu #4 — `match` semantiği; F2'ye ertelendi.)
   - grok:
       field: message
       patterns:
         - 'logdesc="(?<logdesc>Admin login successful|Admin login failed|Authentication success|Authentication failure|Authentication logon)"'
 
-  # Gerçek cihazlarda görülen üç zarf değişkeni:
-  #   * `<185>` / `<185> ` — PRI'den sonra boşluk OLABİLİYOR
-  #   * `date=`/`time=` çifti bazı FortiOS 7.4 satırlarında HİÇ YOK; satır
-  #     doğrudan `eventtime=` ile başlıyor
-  #   * zarf hiç olmayabiliyor (dosyadan okunan log)
+  # Zarf: PRI olabilir, PRI'den sonra boşluk olabilir, zarf hiç olmayabilir
+  # (dosyadan okunan log).
   - grok:
       field: message
       patterns:
-        - '^(?:<%{NONNEGINT:syslog_pri:int}> ?)?(?<kv_body>(?:date=(?<log_datetime>%{YEAR}-%{MONTHNUM2}-%{MONTHDAY} time=%{TIME}) )?%{GREEDYDATA})$'
+        - '^(?:<%{NONNEGINT:syslog_pri:int}> ?)?(?<kv_body>%{GREEDYDATA})$'
 
   - kv:
       field: kv_body
@@ -58,17 +55,18 @@ pipeline:
       assign: "="
       quoted: true
 
-  # `date=`/`time=` yoksa olay zamanı çözülemiyor ve satır `partial` oluyor.
-  # Geriye kalan tek zaman kaynağı `eventtime` — ama o NANOSANİYE epoch ve
-  # motorun `UNIX`/`UNIX_MS` belirteçleri onu 51345 yılına taşıyor.
-  # (T08 raporu, motor eksiği #3.) `partial`, sessizce yanlış tarihten iyidir:
-  # T07'nin normalizer'ı bu durumda alım zamanına düşüyor.
+  # Olay zamanı `eventtime`'dan: MUTLAK epoch, saat dilimi tahmini gerekmiyor.
+  # Ölçek FortiOS sürümüne göre değişiyor (6.x saniye, 7.x nanosaniye);
+  # `UNIX_AUTO` basamak sayısından çıkarıyor.
+  #
+  # Bu parser'ın örneklerindeki iki FortiOS 7.4 satırında `date=`/`time=` çifti
+  # HİÇ YOK — satır doğrudan `eventtime=` ile başlıyor. Eskiden o iki satır
+  # `partial` kalıyordu; `UNIX_AUTO` ile artık `ok`.
   - date:
-      field: log_datetime
-      formats: ["yyyy-MM-dd 'time='HH:mm:ss"]
-      default_timezone: Europe/Istanbul
+      field: eventtime
+      formats: ["UNIX_AUTO"]
       on_failure: tag
-      tag: _fortigate_no_local_time
+      tag: _fortigate_no_eventtime
 
   - drop:
       fields: [kv_body]
@@ -109,14 +107,16 @@ tests:
       ocsf.class_uid: 3002
       ocsf.activity_id: 1
       otel.network.protocol.name: "ssh"
-      "@timestamp": "2019-05-13T11:20:54.0000000+03:00"
+      "@timestamp": "2019-05-13T18:20:54.5870000+00:00"
 
   - name: başarısız yönetici oturumu — date/time alanı olmayan FortiOS satırı
     input: '<185>eventtime=1702257752722386015 tz="+0100" logid="0100032002" type="event" subtype="system" level="alert" vd="root" logdesc="Admin login failed" sn="0" user="philipp" ui="ssh(192.168.0.10)" method="ssh" srcip=192.168.0.10 dstip=10.123.26.241 action="login" status="failed" reason="ssh_key_invalid" msg="Administrator philipp login failed from ssh(192.168.0.10) because of invalid ssh key"'
     expect:
-      # Yerel zaman damgası yok → `partial`. Bilinçli: bkz. `date` adımı notu.
-      parse_status: partial
-      tags: ["_fortigate_no_local_time"]
+      # Bu satırda `date=`/`time=` HİÇ YOK. Eskiden bu yüzden `partial`di;
+      # `eventtime` nanosaniye olduğu için okunamıyordu. `UNIX_AUTO` ile artık
+      # tam ayrıştırılıyor ve zaman damgası cihazın kendi epoch'undan geliyor.
+      parse_status: ok
+      "@timestamp": "2023-12-11T01:22:32.7220000+00:00"
       core.user_name: "philipp"
       core.outcome: "failure"
       core.severity_num: 5
@@ -129,7 +129,7 @@ tests:
       core.host: "FW-INT_01_01"
       core.user_name: "name.lastname"
       core.outcome: "failure"
-      "@timestamp": "2024-02-26T11:10:55.0000000+03:00"
+      "@timestamp": "2024-02-26T10:10:55.5510000+00:00"
 
   - name: kullanıcı doğrulaması (subtype=user)
     input: 'date=2019-05-13 time=15:55:56 logid="0102043008" type="event" subtype="user" level="notice" vd="root" eventtime=1557788156913809277 logdesc="Authentication success" srcip=10.1.100.11 dstip=172.16.200.55 policyid=1 interface="port10" user="bob" group="local-group1" authproto="TELNET(10.1.100.11)" action="authentication" status="success" reason="N/A" msg="User bob succeeded in authentication"'
@@ -143,7 +143,7 @@ tests:
   - name: kapanmamış tırnaklı kullanıcı adı — kv tokenizer'ı bozmuyor
     input: '<185>eventtime=1702329825833960934 tz="+0100" logid="0100032002" type="event" subtype="system" level="alert" vd="root" logdesc="Admin login failed" sn="0" user="${exploit_user_name" ui="ssh(192.168.0.10)" method="ssh" srcip=192.168.0.10 dstip=10.123.26.240 action="login" status="failed" reason="passwd_invalid" msg="Administrator ${exploit_user_name login failed from ssh(192.168.0.10) because of invalid password"'
     expect:
-      parse_status: partial
+      parse_status: ok
       # `${` ile başlayan kullanıcı adı tırnak dengesini bozmuyor; kv tokenizer
       # değeri olduğu gibi taşıyor ve şablon motoru `{{ }}` dışındaki hiçbir
       # şeyi genişletmiyor. Enjeksiyon denemesi veri olarak kalıyor.

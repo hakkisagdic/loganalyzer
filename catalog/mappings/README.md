@@ -32,11 +32,10 @@ başlangıç setidir.
 `auth_outcome` ve `http_status_outcome` **T08**'de eklendi; `ocsf_network_activity`
 gerçek FortiGate ve Cisco ASA çıktısında görülen eylem sözcükleriyle genişletildi.
 
-İki uyarı, ikisi de T08'in gerçek vendor logunda çarptığı duvar:
+Bir uyarı: **aralık araması yok.** `http_status_outcome` her durum kodunu tek
+tek listeliyor; motor "400–599 arası" diyemiyor. Listede olmayan bir kod gelirse
+`outcome` boş kalıyor — yanlış değer yazmaktan iyi.
 
-* **Aralık araması yok.** `http_status_outcome` her durum kodunu tek tek
-  listeliyor; motor "400–599 arası" diyemiyor.
-* **`severity_num` iki farklı ölçeğe besleniyor.** `db/clickhouse/0003` bu kolonu
-  OCSF görünümünde `severity_id` (0–6), OTel görünümünde `SeverityNumber` (1–24)
-  olarak okuyor. Katalog OCSF ölçeğini yazıyor; OTel görünümünün ayrı bir
-  türetmeye ihtiyacı var.
+`severity_num`'un OCSF (0–6) ve OTel (1–24) ölçekleri arasındaki çelişki
+kapandı: katalog OCSF yazıyor, `db/clickhouse/0004_fix_otel_severity_scale.sql`
+OTel görünümünde çevrimi yapıyor.
