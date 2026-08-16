@@ -1,0 +1,135 @@
+apiVersion: bizigo.dev/v1
+kind: Parser
+metadata:
+  id: mikrotik.routeros.firewall
+  version: 1.0.0
+  vendor: MikroTik
+  product: RouterOS
+  license: Apache-2.0
+  description: >
+    RouterOS `firewall` topic'i — uzak syslog'a çıkan paket kaydı. RouterOS
+    kuralın SONUCUNU (accept/drop) yazmaz; yalnızca `log` işaretli bir kuralın
+    eşleştiğini bildirir. Bu yüzden `core.action` doldurulmuyor (bkz. NOT).
+  specificity: 80
+
+match:
+  transport: [syslog, otlp]
+  # `firewall,info` RouterOS'un topic listesi biçimi: virgülle bitişik yazım
+  # başka hiçbir vendor'da yok. `firewall` tek başına çok genel olurdu.
+  contains: ["firewall,info", "firewall,warning", "firewall,error"]
+
+pipeline:
+  # Zarf: isteğe bağlı <PRI>, RFC3164 ya da RFC5424 zaman damgası, host, topic
+  # listesi, gövde. `log_topics_extra` `system,error,critical` gibi üç öğeli
+  # listelerin kuyruğunu yutuyor.
+  - grok:
+      field: message
+      patterns:
+        - '^(?:<%{NONNEGINT:syslog_pri:int}>)?(?:%{SYSLOGTIMESTAMP:log_timestamp}|%{TIMESTAMP_ISO8601:log_timestamp}) %{SYSLOGHOST:device_host} %{WORD:log_facility},%{WORD:log_level}(?<log_topics_extra>\S*) %{GREEDYDATA:event_message}$'
+
+  # Gövde. Gerçek cihazlarda görülen üç değişken:
+  #   * kural öneki (`R2 forward:`) — kullanıcının yazdığı serbest metin
+  #   * `out:` değeri boşluk içerebilir (`ether1_Spectrum WAN`)
+  #   * ICMP'de port yok; NAT satırında `, NAT ...` fazladan geliyor
+  - grok:
+      field: event_message
+      patterns:
+        - '^(?:(?<fw_prefix>\S+) )?%{WORD:fw_chain}: in:%{DATA:in_interface} out:%{DATA:out_interface}, (?:connection-state:%{NOTSPACE:connection_state},? ?)?(?:src-mac %{MAC:src_mac}, )?proto %{WORD:proto_token}(?: \((?<proto_flags>[^)]*)\))?, %{IP:src_ip}(?::%{INT:src_port:int})?->%{IP:dst_ip}(?::%{INT:dst_port:int})?(?:, NAT %{DATA:nat_detail})?, len %{INT:packet_len:int}$'
+
+  - date:
+      field: log_timestamp
+      # SYSLOG önce: ISO8601 yolu `DateTimeOffset.TryParse` kullanıyor ve
+      # "Oct 19 14:18:28"i de yutardı — sırayı değiştirmek yılı bozar.
+      formats: ["SYSLOG", "ISO8601"]
+      default_timezone: Europe/Istanbul
+
+  - drop:
+      fields: [log_topics_extra, event_message]
+
+map:
+  core:
+    vendor: MikroTik
+    product: RouterOS
+    host: "{{ device_host }}"
+    src_ip: "{{ src_ip }}"
+    dst_ip: "{{ dst_ip }}"
+    src_port: "{{ src_port }}"
+    dst_port: "{{ dst_port }}"
+    proto: { from: proto_token, table: ip_proto_name }
+    severity_num: { from: log_level, table: ocsf_severity, default: 0 }
+    # NOT: `action` bilinçli olarak BOŞ. RouterOS firewall kaydı kuralın
+    # verdiğini içermiyor; `accept` ya da `drop` yazmak uydurma olurdu.
+
+  ocsf:
+    class_uid: 4001
+    # 6 = Traffic. Kural sonucu bilinmediği için Open/Close/Deny seçilemiyor.
+    activity_id: 6
+
+  otel:
+    "network.transport": { from: proto_token, table: ip_proto_name }
+    "source.address": "{{ src_ip }}"
+    "source.port": "{{ src_port }}"
+    "source.mac": "{{ src_mac }}"
+    "destination.address": "{{ dst_ip }}"
+    "destination.port": "{{ dst_port }}"
+    "network.packets": 1
+    "network.bytes": "{{ packet_len }}"
+    "observer.ingress.interface.name": "{{ in_interface }}"
+    "observer.egress.interface.name": "{{ out_interface }}"
+
+tests:
+  - name: NAT'lı forward satırı — PRI'li RFC3164 zarfı
+    input: '<132>Oct 19 14:18:28 192.168.85.1 firewall,info forward: in:ether1 out:bridge, src-mac 00:b2:4e:33:f2:19, proto UDP, 203.0.113.7:53722->192.168.85.12:62181, NAT 203.0.113.7:53722 ->(203.0.113.7:51233->192.168.85.12:62181), len 78'
+    expect:
+      parse_status: ok
+      core.host: "192.168.85.1"
+      core.src_ip: "203.0.113.7"
+      core.dst_ip: "192.168.85.12"
+      core.src_port: 53722
+      core.dst_port: 62181
+      core.proto: "udp"
+      core.severity_num: 1
+      ocsf.class_uid: 4001
+      ocsf.activity_id: 6
+      fields.fw_chain: "forward"
+      fields.packet_len: 78
+
+  - name: kural önekli ve boşluklu arayüz adlı satır
+    input: 'Apr  2 19:37:45 172.16.16.5 firewall,info R2 forward: in:bridge_vlan20 out:ether1-gateway, src-mac 98:52:b1:79:31:94, proto TCP (SYN), 172.31.20.200:33976->198.51.100.46:443, len 60'
+    expect:
+      parse_status: ok
+      fields.fw_prefix: "R2"
+      fields.proto_flags: "SYN"
+      core.proto: "tcp"
+      core.dst_port: 443
+
+  - name: boşluk içeren çıkış arayüzü
+    input: 'Mar 19 15:52:33 gw.example.net firewall,info forward: in:bridge1 out:ether1_Spectrum WAN, src-mac 2c:0e:3d:39:2b:23, proto TCP (SYN), 10.0.0.91:45572->198.51.100.101:443, len 60'
+    expect:
+      parse_status: ok
+      fields.out_interface: "ether1_Spectrum WAN"
+      core.src_ip: "10.0.0.91"
+
+  - name: RFC5424 zaman damgalı zarf
+    input: '2022-04-12T02:51:20.118406-06:00 officeswitch.lan firewall,info input: in:ether1 out:(none), src-mac 00:21:29:6d:82:07, proto UDP, 10.1.101.1:520->10.1.101.255:520, len 452'
+    expect:
+      parse_status: ok
+      core.host: "officeswitch.lan"
+      fields.out_interface: "(none)"
+      "@timestamp": "2022-04-12T02:51:20.1184060-06:00"
+
+  # --- negatif testler ---
+  - name: negatif — RouterOS system topic'i bu parser'a düşmemeli
+    input: 'Feb 15 11:29:03 gw.local system,error,critical login failure for user admin from 192.168.33.2 via web'
+    expect:
+      parse_status: failed
+
+  - name: negatif — Cisco ASA satırı
+    input: 'Oct 10 2018 12:34:56 fw-01 CiscoASA[999]: %ASA-4-106023: Deny tcp src outside:198.51.100.254/80 dst inside:172.31.98.44/8277 by access-group "inbound" [0x0, 0x0]'
+    expect:
+      parse_status: failed
+
+  - name: negatif — FortiGate kv satırı
+    input: '<189>date=2020-04-23 time=01:16:08 devname="fw-01" logid="0000000013" type="traffic" srcip=10.10.10.10 dstip=198.51.100.13 action="deny"'
+    expect:
+      parse_status: failed

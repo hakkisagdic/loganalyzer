@@ -1,0 +1,114 @@
+apiVersion: bizigo.dev/v1
+kind: Parser
+metadata:
+  id: nginx.access.json
+  version: 1.0.0
+  vendor: NGINX
+  product: nginx
+  license: Apache-2.0
+  description: >
+    nginx JSON access log (log_format ... escape=json). Motorun `json` adımını
+    doğrulayan parser: tek satır = tek JSON nesnesi, sonra `request` alanı grok
+    ile metot/yol/sürüme ayrılıyor.
+  # Combined'dan yüksek: JSON satırı combined grok'una zaten uymaz, ama aday
+  # sırasında JSON'u önce denemek bir grok denemesini tamamen atlatıyor.
+  specificity: 60
+
+match:
+  transport: [file, otlp, syslog]
+  # `"remote_user"` nginx'in $remote_user değişkeninin JSON'daki adı; combined
+  # metninde geçmez, ASA/FortiGate/RouterOS satırlarında hiç yok.
+  contains: ['"remote_user"']
+
+pipeline:
+  - json: { field: message }
+
+  # `request` ham HTTP istek satırıdır: "GET /downloads/product_1 HTTP/1.1".
+  # `json` adımı onu bölmez; bölme işi grok'ta.
+  - grok:
+      field: request
+      patterns:
+        - '^%{WORD:http_method} %{NOTSPACE:url_path} HTTP/%{NUMBER:http_version}$'
+
+  - date:
+      field: time
+      formats: ["dd/MMM/yyyy:HH:mm:ss zzz"]
+      default_timezone: UTC
+
+  - convert:
+      fields:
+        response: int
+        bytes: long
+
+map:
+  core:
+    vendor: NGINX
+    product: nginx
+    src_ip: "{{ remote_ip }}"
+    proto: tcp
+    action: "{{ http_method }}"
+    outcome: { from: response, table: http_status_outcome }
+    # nginx kimliksiz istekte "-" yazar; olduğu gibi taşınıyor, `-` bir
+    # kullanıcı adı değil ama uydurma bir boş değer de değil.
+    user_name: "{{ remote_user }}"
+    severity_num: 1
+
+  ocsf:
+    class_uid: 4002
+    activity_id: { from: http_method, table: ocsf_http_activity, default: 99 }
+
+  otel:
+    "http.request.method": "{{ http_method }}"
+    "http.response.status_code": "{{ response }}"
+    "http.response.body.size": "{{ bytes }}"
+    "url.path": "{{ url_path }}"
+    "user_agent.original": "{{ agent }}"
+    "network.protocol.name": http
+    "network.protocol.version": "{{ http_version }}"
+
+tests:
+  - name: 200 GET — tam alan kümesi
+    input: '{"time": "17/May/2015:08:05:34 +0000", "remote_ip": "198.51.100.5", "remote_user": "-", "request": "GET /downloads/product_1 HTTP/1.1", "response": 200, "bytes": 490, "referrer": "-", "agent": "Debian APT-HTTP/1.3 (0.8.10.3)"}'
+    expect:
+      parse_status: ok
+      core.src_ip: "198.51.100.5"
+      core.action: "GET"
+      core.outcome: "success"
+      core.proto: "tcp"
+      ocsf.class_uid: 4002
+      ocsf.activity_id: 3
+      otel.url.path: "/downloads/product_1"
+      fields.response: 200
+      fields.bytes: 490
+      "@timestamp": "2015-05-17T08:05:34.0000000+00:00"
+
+  - name: 403 HEAD — başarısız sonuç ve HEAD metodu
+    input: '{"time": "17/May/2015:14:05:07 +0000", "remote_ip": "203.0.113.182", "remote_user": "-", "request": "HEAD /downloads/product_2 HTTP/1.1", "response": 403, "bytes": 0, "referrer": "-", "agent": "Wget/1.13.4 (linux-gnu)"}'
+    expect:
+      parse_status: ok
+      core.action: "HEAD"
+      core.outcome: "failure"
+      ocsf.activity_id: 4
+
+  - name: 304 — koşullu GET başarı sayılıyor
+    input: '{"time": "17/May/2015:08:05:32 +0000", "remote_ip": "203.0.113.3", "remote_user": "-", "request": "GET /downloads/product_1 HTTP/1.1", "response": 304, "bytes": 0, "referrer": "-", "agent": "Debian APT-HTTP/1.3 (0.8.16~exp12ubuntu10.21)"}'
+    expect:
+      parse_status: ok
+      core.outcome: "success"
+      fields.bytes: 0
+
+  # --- negatif testler: başka vendor'ın satırı buraya DÜŞMEMELİ ---
+  - name: negatif — combined satırı JSON değil
+    input: '198.51.100.13 - - [25/Oct/2016:14:49:33 +0200] "GET / HTTP/1.1" 200 612 "-" "Mozilla/5.0"'
+    expect:
+      parse_status: failed
+
+  - name: negatif — FortiGate kv satırı
+    input: 'date=2020-04-23 time=01:16:08 devname="fw-01" logid="0000000013" type="traffic" srcip=10.10.10.10 action="deny"'
+    expect:
+      parse_status: failed
+
+  - name: negatif — Cisco ASA satırı
+    input: 'Oct 10 2018 12:34:56 fw-01 CiscoASA[999]: %ASA-6-302014: Teardown TCP connection 11749 for outside:198.51.100.242/80 to inside:172.31.98.44/1758 duration 0:01:07 bytes 38110 TCP Reset-I'
+    expect:
+      parse_status: failed

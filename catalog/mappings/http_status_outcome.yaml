@@ -1,0 +1,43 @@
+# HTTP durum kodu → `core.outcome`.
+#
+# `outcome` OCSF görünümünde `status` olarak okunuyor. OCSF status sözlüğü
+# Success/Failure ayrımı yapar; katalog küçük harfli `success`/`failure` yazıyor
+# (T07'nin EventNormalizer testlerindeki yazım).
+#
+# Kod ARALIĞI değil TEK TEK kod eşleniyor: motor sayısal aralık araması
+# tanımıyor (bkz. T08 raporu). 1xx/2xx/3xx başarı, 4xx/5xx başarısız sayılıyor;
+# 304 bilinçli olarak başarı — koşullu GET'in normal sonucu.
+
+"100": success
+"101": success
+"200": success
+"201": success
+"202": success
+"204": success
+"206": success
+"301": success
+"302": success
+"303": success
+"304": success
+"307": success
+"308": success
+
+"400": failure
+"401": failure
+"403": failure
+"404": failure
+"405": failure
+"406": failure
+"408": failure
+"409": failure
+"410": failure
+"413": failure
+"414": failure
+"429": failure
+"444": failure
+"499": failure
+"500": failure
+"501": failure
+"502": failure
+"503": failure
+"504": failure

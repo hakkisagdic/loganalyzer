@@ -1,0 +1,41 @@
+# IANA protokol numarası → `core.proto` metni.
+#
+# Gerekçe: `proto` kolonu OCSF görünümünde `connection_info_protocol_name`,
+# OTel görünümünde `network.transport` olarak okunuyor — ikisi de METİN bekler.
+# FortiGate ise `proto=6` yazar, Cisco ASA `tcp` yazar. Katalogda tek biçim
+# tutmak için numarayı burada isme çeviriyoruz.
+#
+# Arama ordinal: cihaz `6` bastıysa anahtar "6"dır.
+
+"1": icmp
+"2": igmp
+"6": tcp
+"17": udp
+"41": ipv6
+"47": gre
+"50": esp
+"51": ah
+"58": ipv6-icmp
+"89": ospf
+"103": pim
+"112": vrrp
+"132": sctp
+
+# Protokolü isimle basan cihazlar (MikroTik `proto TCP`, Cisco ASA `tcp`).
+# Kolon adı LowCardinality(String); tek biçim tutmak için hepsi küçük harfe
+# burada iniyor — `ToLowerInvariant()` çağrısı kodda değil, tablo satırında.
+TCP: tcp
+UDP: udp
+ICMP: icmp
+IPSEC-ESP: esp
+IPSEC-AH: ah
+GRE: gre
+OSPF: ospf
+tcp: tcp
+udp: udp
+icmp: icmp
+esp: esp
+ah: ah
+gre: gre
+ospf: ospf
+sctp: sctp

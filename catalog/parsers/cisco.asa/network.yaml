@@ -1,0 +1,270 @@
+apiVersion: bizigo.dev/v1
+kind: Parser
+metadata:
+  id: cisco.asa.network
+  version: 1.0.0
+  vendor: Cisco
+  product: ASA
+  license: Apache-2.0
+  description: >
+    Cisco ASA'nın bağlantı ve erişim listesi mesajları. Formatın en zor hâli:
+    ortak bir zarf (`%ASA-<severity>-<code>:`) ve ardından her mesaj kodunun
+    KENDİ serbest metni. Ayrıştırma iki kademeli — önce zarf, sonra koda göre
+    ayrı bir grok pattern'i.
+
+    Desteklenen kodlar: 106001, 106023, 106100, 302013, 302014, 302015, 302016,
+    302020, 302021, 305011, 305012, 710001–710006, 733100.
+
+    Gövde pattern'leri Logstash `firewalls` setinden VERİ olarak geliyor
+    (catalog/patterns/legacy/firewalls); yalnızca 305011/305012 için kendi
+    tanımımız var, çünkü üst setteki pattern `duration` kuyruğunu göremiyor ve
+    çevrilmiş portu boş bırakıyor.
+  specificity: 85
+
+match:
+  transport: [syslog, otlp]
+  # ASA mesaj etiketi. `%ASA-` başka hiçbir vendor'da geçmiyor; FTD ve FWSM
+  # aynı gövdeyi farklı etiketle basar, onlar ayrı parser'ın konusu.
+  contains: ["%ASA-"]
+
+# Parser'a özel pattern tanımları — üst kütüphane dosyasına dokunmadan
+# eksiğini kapatmanın yolu (F1 §3).
+pattern_definitions:
+  # ÜST SETİN ReDoS'u. Logstash'in `CISCO_REASON` tanımı son alternatif olarak
+  # `(?:%{WORD}\s*)*` yazıyor — iç içe sınırsız niceleyici, yani `(a+)+` ailesi.
+  # `bizigo parser lint` bunu GROK001 HATASI olarak yakalıyor ve CI'yi kırıyor;
+  # pattern kütüphanesi veri olarak sürümlendiği için (catalog/patterns/README)
+  # dosyaya dokunmuyoruz, burada geçersiz kılıyoruz.
+  #
+  # Serbest metin alternatifi tek bir karakter sınıfına indirildi: aynı işi
+  # yapıyor, geri izleme patlaması yok. Tire de eklendi — 302014 satırlarının
+  # kuyruğundaki "TCP Reset-I" üst tanımla zaten yakalanamıyordu.
+  CISCO_REASON: 'Duplicate TCP SYN|Failed to locate egress interface|Invalid transport field|No matching connection|DNS Response|DNS Query|[A-Za-z0-9_ -]*'
+
+  # 305011/305012 — üst setteki `CISCOFW305011` sondaki `duration` kuyruğunu
+  # görmüyor ve çevrilmiş portu `%{DATA}` ile bitirdiği için hep boş bırakıyor.
+  ASA_XLATE: '%{CISCO_ACTION:action} %{CISCO_XLATE_TYPE:xlate_type} %{WORD:protocol} translation from %{DATA:src_interface}:%{IP:src_ip}(?:/%{INT:src_port})?(?:\(%{DATA:src_fwuser}\))? to %{DATA:src_xlated_interface}:%{IP:src_xlated_ip}(?:/%{INT:src_xlated_port})?(?: duration %{TIME:duration})?$'
+
+pipeline:
+  # 1) Zarf. Gerçekte görülen üç şekil:
+  #      <165>Jan 11 2023 13:34:06: %ASA-5-111007: ...       (host yok)
+  #      Oct 10 2018 12:34:56 localhost CiscoASA[999]: %ASA-...  (host + program)
+  #      May  5 17:51:17 dev01: %ASA-4-106023: ...            (yıl yok)
+  #      <166>10.1.1.1 %ASA-6-302020: ...                     (zaman damgası yok)
+  #    Son şekil ayrı bir pattern; zaman damgası olmadığı için `date` adımı
+  #    başarısız olacak ve satır `partial` kalacak.
+  - grok:
+      field: message
+      patterns:
+        - '^(?:<%{NONNEGINT:syslog_pri:int}>)?%{CISCOTIMESTAMP:log_timestamp}(?: %{SYSLOGHOST:device_host})?(?: %{PROG:program}(?:\[%{POSINT:program_pid:int}\])?)? ?: %(?<device_tag>[A-Z0-9]+)-%{NONNEGINT:severity_digit}-%{NONNEGINT:message_code}: %{GREEDYDATA:event_message}$'
+        - '^(?:<%{NONNEGINT:syslog_pri:int}>)?%{SYSLOGHOST:device_host} %(?<device_tag>[A-Z0-9]+)-%{NONNEGINT:severity_digit}-%{NONNEGINT:message_code}: %{GREEDYDATA:event_message}$'
+
+  # 2) Koda göre gövde. Sıra önemli: ilk eşleşen kazanıyor, bu yüzden dar
+  #    pattern'ler geniş olanlardan önce.
+  #
+  #    Pattern'ler `$` ile SONLANDIRILMIYOR. Sebebi gerçek çıktıda: 302014
+  #    satırının kuyruğunda "TCP Reset-I" var ve üst setteki `CISCO_REASON`
+  #    tirenin ötesini göremiyor. `$` koysaydık kod düzgün ayrıştığı hâlde satır
+  #    düşerdi.
+  - grok:
+      field: event_message
+      patterns:
+        - '^%{CISCOFW302013_302014_302015_302016}'
+        - '^%{CISCOFW302020_302021}'
+        - '^%{ASA_XLATE}'
+        - '^%{CISCOFW106023}'
+        - '^%{CISCOFW106100}'
+        - '^%{CISCOFW106001}'
+        - '^%{CISCOFW710001_710002_710003_710005_710006}'
+        - '^%{CISCOFW733100}'
+
+  - date:
+      field: log_timestamp
+      # Yıllı biçimler önce; ASA yılı yazmadığında `SYSLOG` belirteci devreye
+      # giriyor ve yılı bugünden çıkarıyor.
+      formats: ["MMM d yyyy HH:mm:ss", "MMM  d yyyy HH:mm:ss", "SYSLOG"]
+      default_timezone: Europe/Istanbul
+      on_failure: tag
+      tag: _asa_no_timestamp
+
+  # `convert` adımı, listedeki alanların HİÇBİRİ yoksa başarısız sayılıyor.
+  # Çok şekilli bir parser'da bu tuzak: 733100 satırında port da bayt da yok.
+  # Bu yüzden liste, desteklenen HER gövde şeklinden en az bir alan içeriyor.
+  # (T08 raporu, motor eksiği #7.)
+  - convert:
+      fields:
+        src_port: int
+        dst_port: int
+        src_xlated_port: int
+        icmp_code: int
+        bytes: long
+        connection_id: long
+        hit_count: long
+        drop_total_count: long
+
+map:
+  core:
+    vendor: Cisco
+    product: ASA
+    host: "{{ device_host }}"
+    src_ip: "{{ src_ip }}"
+    dst_ip: "{{ dst_ip }}"
+    src_port: "{{ src_port }}"
+    dst_port: "{{ dst_port }}"
+    proto: { from: protocol, table: ip_proto_name }
+    action: "{{ action }}"
+    user_name: "{{ src_fwuser }}"
+    severity_num: { from: severity_digit, table: ocsf_severity, default: 0 }
+
+  ocsf:
+    class_uid: 4001
+    activity_id: { from: action, table: ocsf_network_activity, default: 99 }
+
+  otel:
+    "network.transport": { from: protocol, table: ip_proto_name }
+    "source.address": "{{ src_ip }}"
+    "source.port": "{{ src_port }}"
+    "destination.address": "{{ dst_ip }}"
+    "destination.port": "{{ dst_port }}"
+    "network.bytes": "{{ bytes }}"
+    "observer.ingress.interface.name": "{{ src_interface }}"
+    "observer.egress.interface.name": "{{ dst_interface }}"
+    "event.code": "{{ message_code }}"
+
+tests:
+  - name: 302013 — Built outbound TCP connection (host + program adlı zarf)
+    input: 'Oct 10 2018 12:34:56 localhost CiscoASA[999]: %ASA-6-302013: Built outbound TCP connection 11757 for outside:192.168.205.104/80 (192.168.205.104/80) to inside:172.31.98.44/1772 (172.31.98.44/1772)'
+    expect:
+      parse_status: ok
+      core.host: "localhost"
+      core.src_ip: "192.168.205.104"
+      core.dst_ip: "172.31.98.44"
+      core.src_port: 80
+      core.dst_port: 1772
+      core.proto: "tcp"
+      core.action: "Built"
+      core.severity_num: 1
+      ocsf.class_uid: 4001
+      ocsf.activity_id: 1
+      fields.message_code: 302013
+      fields.connection_id: 11757
+      "@timestamp": "2018-10-10T12:34:56.0000000+03:00"
+
+  - name: 302014 — Teardown, süre ve bayt kuyruğuyla
+    input: 'Oct 10 2018 12:34:56 localhost CiscoASA[999]: %ASA-6-302014: Teardown TCP connection 11749 for outside:192.168.211.242/80 to inside:172.31.98.44/1758 duration 0:01:07 bytes 38110 TCP Reset-I'
+    expect:
+      parse_status: ok
+      core.action: "Teardown"
+      ocsf.activity_id: 2
+      fields.bytes: 38110
+      fields.duration: "0:01:07"
+      fields.message_code: 302014
+
+  - name: 302016 — Teardown UDP, yılsız zarf
+    input: 'May  5 18:40:50 dev01: %ASA-2-302016: Teardown UDP connection 1671727 for intfacename:10.10.10.10/161 to net:192.168.2.2/53356 duration 0:02:04 bytes 64585'
+    expect:
+      parse_status: ok
+      core.host: "dev01"
+      core.proto: "udp"
+      core.src_port: 161
+      core.dst_port: 53356
+      core.severity_num: 5
+      fields.message_code: 302016
+
+  - name: 106023 — access-group ile deny
+    input: 'Oct 10 2018 12:34:56 localhost CiscoASA[999]: %ASA-4-106023: Deny tcp src outside:192.168.19.254/80 dst inside:172.31.98.44/8277 by access-group "inbound" [0x0, 0x0]'
+    expect:
+      parse_status: ok
+      core.action: "Deny"
+      core.src_ip: "192.168.19.254"
+      core.dst_ip: "172.31.98.44"
+      ocsf.activity_id: 5
+      core.severity_num: 3
+      fields.policy_id: "inbound"
+      fields.message_code: 106023
+
+  - name: 106100 — access-list permitted, hit-cnt kuyruğu
+    input: 'May  5 19:02:26 dev01: %ASA-6-106100: access-list fw111_out permitted tcp ptaaac/192.168.2.2(62157) -> fw111/10.10.10.10(3452) hit-cnt 1 first hit [0x38ff326b, 0x00000000]'
+    expect:
+      parse_status: ok
+      core.action: "permitted"
+      core.src_ip: "192.168.2.2"
+      core.dst_ip: "10.10.10.10"
+      core.dst_port: 3452
+      ocsf.activity_id: 6
+      fields.hit_count: 1
+      fields.message_code: 106100
+
+  - name: 305012 — Teardown xlate, süre kuyruğu (parser'a özel pattern)
+    input: 'Oct 10 2018 12:34:56 localhost CiscoASA[999]: %ASA-6-305012: Teardown dynamic TCP translation from inside:172.31.98.44/1454 to outside:192.168.98.44/8267 duration 0:00:30'
+    expect:
+      parse_status: ok
+      core.action: "Teardown"
+      core.src_ip: "172.31.98.44"
+      core.src_port: 1454
+      fields.xlate_type: "dynamic"
+      fields.src_xlated_ip: "192.168.98.44"
+      fields.src_xlated_port: "8267"
+      fields.duration: "0:00:30"
+      fields.message_code: 305012
+
+  - name: 106001 — Inbound connection denied
+    input: 'May  5 18:40:50 dev01: %ASA-2-106001: Inbound TCP connection denied from 192.168.2.2/43803 to 10.10.10.10/14322 flags SYN  on interface out111'
+    expect:
+      parse_status: ok
+      core.action: "denied"
+      core.src_ip: "192.168.2.2"
+      core.dst_port: 14322
+      ocsf.activity_id: 5
+      fields.direction: "Inbound"
+      fields.message_code: 106001
+
+  - name: 710005 — UDP request discarded
+    input: 'May  5 19:02:26 dev01: %ASA-7-710005: UDP request discarded from 10.10.10.10/1985 to net:192.168.2.2/1985'
+    expect:
+      parse_status: ok
+      core.action: "discarded"
+      core.proto: "udp"
+      ocsf.activity_id: 5
+      fields.message_code: 710005
+
+  - name: 733100 — hız aşımı, IP'siz gövde
+    input: 'May  5 19:02:25 dev01: %ASA-4-733100: [192.168.2.2] drop rate-1 exceeded. Current burst rate is 0 per second, max configured rate is -4; Current average rate is 7 per second, max configured rate is -4; Cumulative total count is 9063'
+    expect:
+      parse_status: ok
+      fields.drop_type: "192.168.2.2"
+      fields.drop_total_count: "9063"
+      fields.message_code: 733100
+
+  - name: 302020 — zaman damgası olmayan zarf, IPv6 adresler
+    input: '<166>10.1.1.1 %ASA-6-302020: Built outbound ICMP connection for faddr 2001:db8:85a3::8a2e:370:7334/0 gaddr ::ffff:10.10.4.4/0 laddr ::ffff:10.10.10.4/0 type 3 code 0 Internal-Data0/0:RX[29]'
+    expect:
+      # Zaman damgası yok → `date` adımı etiketleyip devam ediyor.
+      parse_status: partial
+      tags: ["_asa_no_timestamp"]
+      core.host: "10.1.1.1"
+      core.dst_ip: "2001:db8:85a3::8a2e:370:7334"
+      core.src_ip: "::ffff:10.10.10.4"
+      core.action: "Built"
+      fields.message_code: 302020
+
+  # --- negatif testler ---
+  - name: negatif — ASA kimlik doğrulama satırı bu parser'a düşmemeli
+    input: 'Apr 27 02:03:03 dev01: %ASA-6-611101: User authentication succeeded: IP address: 10.10.0.87, Uname: admin'
+    expect:
+      parse_status: failed
+
+  - name: negatif — FortiGate traffic satırı
+    input: '<189>date=2020-04-23 time=01:16:08 devname="fw-01" logid="0000000013" type="traffic" srcip=10.10.10.10 srcport=60899 dstip=198.51.100.13 dstport=161 proto=17 action="deny"'
+    expect:
+      parse_status: failed
+
+  - name: negatif — MikroTik firewall satırı
+    input: 'Jan  2 01:01:58 10.1.101.254 firewall,info input: in:ether1 out:(none), src-mac 00:21:29:6d:82:07, proto UDP, 10.1.101.1:520->10.1.101.255:520, len 452'
+    expect:
+      parse_status: failed
+
+  - name: negatif — nginx combined satırı
+    input: '198.51.100.13 - - [25/Oct/2016:14:49:33 +0200] "GET / HTTP/1.1" 200 612 "-" "Mozilla/5.0"'
+    expect:
+      parse_status: failed

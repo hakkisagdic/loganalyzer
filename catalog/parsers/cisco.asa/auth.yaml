@@ -1,0 +1,166 @@
+apiVersion: bizigo.dev/v1
+kind: Parser
+metadata:
+  id: cisco.asa.auth
+  version: 1.0.0
+  vendor: Cisco
+  product: ASA
+  license: Apache-2.0
+  description: >
+    Cisco ASA'nın kimlik doğrulama mesajları: yönetim oturumu (605004/605005),
+    kullanıcı doğrulama (611101/611102/611103) ve AAA sunucu sonucu
+    (113004/113005).
+
+    Ağ mesajlarından AYRI parser: OCSF sınıfı farklı (3002 Authentication) ve
+    `map` bloğu satır içeriğine göre dallanamıyor. Katalog kuralı bu yüzden
+    "her OCSF sınıfı ailesi için bir parser" oldu.
+  # Ağ parser'ından yüksek: gövde pattern'leri çok daha dar, önce denenmeli.
+  specificity: 95
+
+match:
+  transport: [syslog, otlp]
+  # Mesaj kodunun tamamı literal olarak veriliyor: `%ASA-` tek başına ağ
+  # parser'ının satırlarını da aday yapardı ve ön filtre işlevini yitirirdi.
+  contains:
+    - "%ASA-6-605004"
+    - "%ASA-6-605005"
+    - "%ASA-6-611101"
+    - "%ASA-6-611102"
+    - "%ASA-5-611103"
+    - "%ASA-6-113004"
+    - "%ASA-6-113005"
+
+pipeline:
+  - grok:
+      field: message
+      patterns:
+        - '^(?:<%{NONNEGINT:syslog_pri:int}>)?%{CISCOTIMESTAMP:log_timestamp}(?: %{SYSLOGHOST:device_host})?(?: %{PROG:program}(?:\[%{POSINT:program_pid:int}\])?)? ?: %(?<device_tag>[A-Z0-9]+)-%{NONNEGINT:severity_digit}-%{NONNEGINT:message_code}: %{GREEDYDATA:event_message}$'
+        - '^(?:<%{NONNEGINT:syslog_pri:int}>)?%{SYSLOGHOST:device_host} %(?<device_tag>[A-Z0-9]+)-%{NONNEGINT:severity_digit}-%{NONNEGINT:message_code}: %{GREEDYDATA:event_message}$'
+
+  # Eylem ve sonuç sözcükleri cihazın kendi metninden geliyor; adlandırılmış
+  # grup literalin etrafına konuyor. `map` içinde koşul olmadan tabloya sorulan
+  # değerler böyle üretiliyor.
+  - grok:
+      field: event_message
+      patterns:
+        - '^(?<auth_action>Login) (?<auth_result>permitted|denied) from %{IP:src_ip}/%{INT:src_port:int} to %{DATA:dst_interface}:%{IP:dst_ip}/%{NOTSPACE:service_name} for user "%{DATA:user_name}"$'
+        - '^User (?<auth_action>authentication) (?<auth_result>succeeded|failed): IP address: %{IP:src_ip}, Uname: %{NOTSPACE:user_name}$'
+        - '^User (?<auth_action>logged out): Uname: %{NOTSPACE:user_name}$'
+        - '^AAA user (?<auth_action>authentication) (?<auth_result>Rejected): reason = %{DATA:reason}: server = %{IP:aaa_server} ?: user = %{DATA:user_name}: user IP = %{IP:src_ip}$'
+        - '^AAA user (?<auth_action>authentication) (?<auth_result>Successful|Rejected): server = %{IP:aaa_server} ?, User = %{NOTSPACE:user_name}$'
+
+  - date:
+      field: log_timestamp
+      formats: ["MMM d yyyy HH:mm:ss", "MMM  d yyyy HH:mm:ss", "SYSLOG"]
+      default_timezone: Europe/Istanbul
+      on_failure: tag
+      tag: _asa_no_timestamp
+
+map:
+  core:
+    vendor: Cisco
+    product: ASA
+    host: "{{ device_host }}"
+    src_ip: "{{ src_ip }}"
+    dst_ip: "{{ dst_ip }}"
+    src_port: "{{ src_port }}"
+    user_name: "{{ user_name }}"
+    action: "{{ auth_action }}"
+    outcome: { from: auth_result, table: auth_outcome }
+    severity_num: { from: severity_digit, table: ocsf_severity, default: 0 }
+
+  ocsf:
+    class_uid: 3002
+    activity_id: { from: auth_action, table: ocsf_authentication_activity, default: 0 }
+
+  otel:
+    "source.address": "{{ src_ip }}"
+    "destination.address": "{{ dst_ip }}"
+    "user.name": "{{ user_name }}"
+    "event.outcome": { from: auth_result, table: auth_outcome }
+    "event.code": "{{ message_code }}"
+    "network.protocol.name": "{{ service_name }}"
+
+tests:
+  - name: 605005 — yönetim oturumu izin verildi
+    input: 'Apr 27 02:03:03 dev01: %ASA-6-605005: Login permitted from 10.10.0.87/6651 to FCD-FS-LAN:10.10.1.254/ssh for user "admin"'
+    expect:
+      parse_status: ok
+      core.host: "dev01"
+      core.user_name: "admin"
+      core.src_ip: "10.10.0.87"
+      core.src_port: 6651
+      core.dst_ip: "10.10.1.254"
+      core.action: "Login"
+      core.outcome: "success"
+      ocsf.class_uid: 3002
+      ocsf.activity_id: 1
+      fields.service_name: "ssh"
+      fields.message_code: 605005
+
+  - name: 605004 — yönetim oturumu reddedildi, cihazın maskelediği kullanıcı adı
+    input: 'Apr 27 02:03:03 dev01: %ASA-6-605004: Login denied from 10.10.1.212/51923 to FCD-FS-LAN:10.10.1.254/https for user "*****"'
+    expect:
+      parse_status: ok
+      core.outcome: "failure"
+      core.user_name: "*****"
+      fields.message_code: 605004
+
+  - name: 611101 — kullanıcı doğrulaması başarılı
+    input: 'Apr 27 02:03:03 dev01: %ASA-6-611101: User authentication succeeded: IP address: 10.10.0.87, Uname: admin'
+    expect:
+      parse_status: ok
+      core.action: "authentication"
+      core.outcome: "success"
+      core.user_name: "admin"
+      ocsf.activity_id: 1
+
+  - name: 611102 — kullanıcı doğrulaması başarısız
+    input: 'Apr 27 02:03:03 dev01: %ASA-6-611102: User authentication failed: IP address: 10.10.0.87, Uname: admin'
+    expect:
+      parse_status: ok
+      core.outcome: "failure"
+      fields.message_code: 611102
+
+  - name: 611103 — oturum kapatma, yıllı zarf ve host yok
+    input: '<165>Jun 21 2024 09:07:00: %ASA-5-611103: User logged out: Uname: USER_NAME'
+    expect:
+      parse_status: ok
+      core.user_name: "USER_NAME"
+      core.action: "logged out"
+      ocsf.activity_id: 2
+      core.severity_num: 1
+      "@timestamp": "2024-06-21T09:07:00.0000000+03:00"
+
+  - name: 113004 — AAA sunucusu başarılı
+    input: 'May  5 19:02:25 dev01: %ASA-6-113004: AAA user authentication Successful: server = 203.0.113.144 , User = alice'
+    expect:
+      parse_status: ok
+      core.user_name: "alice"
+      core.outcome: "success"
+      fields.aaa_server: "203.0.113.144"
+
+  - name: 113005 — AAA sunucusu reddetti, sebep alanı iki nokta içeriyor
+    input: 'May  5 19:02:25 dev01: %ASA-6-113005: AAA user authentication Rejected: reason = AAA failure: server = 203.0.113.144 : user = alice: user IP = 172.31.98.44'
+    expect:
+      parse_status: ok
+      core.user_name: "alice"
+      core.src_ip: "172.31.98.44"
+      core.outcome: "failure"
+      fields.reason: "AAA failure"
+
+  # --- negatif testler ---
+  - name: negatif — ASA ağ satırı bu parser'a düşmemeli
+    input: 'Oct 10 2018 12:34:56 localhost CiscoASA[999]: %ASA-6-302013: Built outbound TCP connection 11757 for outside:192.168.205.104/80 (192.168.205.104/80) to inside:172.31.98.44/1772 (172.31.98.44/1772)'
+    expect:
+      parse_status: failed
+
+  - name: negatif — FortiGate yönetici oturumu satırı
+    input: 'date=2019-05-13 time=11:20:54 logid="0100032001" type="event" subtype="system" level="information" logdesc="Admin login successful" user="admin" method="ssh" srcip=172.16.200.254 action="login" status="success"'
+    expect:
+      parse_status: failed
+
+  - name: negatif — MikroTik oturum açma satırı
+    input: 'Sep 15 09:54:33 gw.example.net system,info,account user admin logged in from 10.1.101.212 via winbox'
+    expect:
+      parse_status: failed

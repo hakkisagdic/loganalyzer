@@ -1,0 +1,163 @@
+apiVersion: bizigo.dev/v1
+kind: Parser
+metadata:
+  id: fortinet.fortigate.event
+  version: 1.0.0
+  vendor: Fortinet
+  product: FortiGate
+  license: Apache-2.0
+  description: >
+    FortiOS `type="event"` kimlik doğrulama satırları: yönetici oturum açma
+    (`Admin login successful/failed`) ve kullanıcı doğrulaması
+    (`Authentication success/logon`).
+
+    Kapsam bilinçli olarak DAR. `type="event"` altında onlarca farklı olay
+    ailesi var (SD-WAN, FortiSwitch, IPsec, REST API...) ve bunların OCSF
+    sınıfları birbirinden farklı. `map` bloğu satır içeriğine göre dallanamadığı
+    için (F1 §3: koşul/döngü yok) hepsini tek parser'da toplamak class_uid'i
+    yanlış yazmak olurdu. Kalan aileler F2'nin editörüyle gelecek.
+  # Traffic parser'ından yüksek: `logdesc` literalleri çok daha dar.
+  specificity: 90
+
+match:
+  transport: [syslog, otlp]
+  # FortiOS'un kendi `logdesc` sabitleri. Bunlar sürümler arası değişmiyor ve
+  # tek başlarına hem vendor'ı hem olay ailesini belirliyor.
+  contains:
+    - 'logdesc="Admin login successful"'
+    - 'logdesc="Admin login failed"'
+    - 'logdesc="Authentication success"'
+    - 'logdesc="Authentication failure"'
+    - 'logdesc="Authentication logon"'
+
+pipeline:
+  # 0) KAPI ADIMI. `match.contains` yalnızca dispatcher'ın 2. kademesinde
+  #    çalışıyor: envantere bağlı bir kaynak (kademe 1) doğrudan buraya gelir ve
+  #    ön filtreyi hiç görmez. Aynı şekilde gömülü `tests` bloğu da parser'ı
+  #    doğrudan çağırıyor. Ayırt ediciliği boru hattının kendisine koymazsak
+  #    FortiGate'in HER satırı buradan `ok` dönerdi.
+  #    (T08 raporu, motor eksiği #4.)
+  - grok:
+      field: message
+      patterns:
+        - 'logdesc="(?<logdesc>Admin login successful|Admin login failed|Authentication success|Authentication failure|Authentication logon)"'
+
+  # Gerçek cihazlarda görülen üç zarf değişkeni:
+  #   * `<185>` / `<185> ` — PRI'den sonra boşluk OLABİLİYOR
+  #   * `date=`/`time=` çifti bazı FortiOS 7.4 satırlarında HİÇ YOK; satır
+  #     doğrudan `eventtime=` ile başlıyor
+  #   * zarf hiç olmayabiliyor (dosyadan okunan log)
+  - grok:
+      field: message
+      patterns:
+        - '^(?:<%{NONNEGINT:syslog_pri:int}> ?)?(?<kv_body>(?:date=(?<log_datetime>%{YEAR}-%{MONTHNUM2}-%{MONTHDAY} time=%{TIME}) )?%{GREEDYDATA})$'
+
+  - kv:
+      field: kv_body
+      separator: " "
+      assign: "="
+      quoted: true
+
+  # `date=`/`time=` yoksa olay zamanı çözülemiyor ve satır `partial` oluyor.
+  # Geriye kalan tek zaman kaynağı `eventtime` — ama o NANOSANİYE epoch ve
+  # motorun `UNIX`/`UNIX_MS` belirteçleri onu 51345 yılına taşıyor.
+  # (T08 raporu, motor eksiği #3.) `partial`, sessizce yanlış tarihten iyidir:
+  # T07'nin normalizer'ı bu durumda alım zamanına düşüyor.
+  - date:
+      field: log_datetime
+      formats: ["yyyy-MM-dd 'time='HH:mm:ss"]
+      default_timezone: Europe/Istanbul
+      on_failure: tag
+      tag: _fortigate_no_local_time
+
+  - drop:
+      fields: [kv_body]
+
+map:
+  core:
+    vendor: Fortinet
+    product: FortiGate
+    host: "{{ devname }}"
+    src_ip: "{{ srcip }}"
+    dst_ip: "{{ dstip }}"
+    user_name: "{{ user }}"
+    action: "{{ action }}"
+    outcome: { from: status, table: auth_outcome }
+    severity_num: { from: level, table: ocsf_severity, default: 0 }
+
+  ocsf:
+    class_uid: 3002
+    activity_id: { from: action, table: ocsf_authentication_activity, default: 0 }
+
+  otel:
+    "source.address": "{{ srcip }}"
+    "destination.address": "{{ dstip }}"
+    "user.name": "{{ user }}"
+    "event.outcome": { from: status, table: auth_outcome }
+    "network.protocol.name": "{{ method }}"
+
+tests:
+  - name: başarılı yönetici oturumu (ssh)
+    input: 'date=2019-05-13 time=11:20:54 logid="0100032001" type="event" subtype="system" level="information" vd="vdom1" eventtime=1557771654587081441 logdesc="Admin login successful" sn="1557771654" user="admin" ui="ssh(172.16.200.254)" method="ssh" srcip=172.16.200.254 dstip=172.16.200.2 action="login" status="success" reason="none" profile="super_admin" msg="Administrator admin logged in successfully from ssh(172.16.200.254)"'
+    expect:
+      parse_status: ok
+      core.user_name: "admin"
+      core.src_ip: "172.16.200.254"
+      core.action: "login"
+      core.outcome: "success"
+      core.severity_num: 1
+      ocsf.class_uid: 3002
+      ocsf.activity_id: 1
+      otel.network.protocol.name: "ssh"
+      "@timestamp": "2019-05-13T11:20:54.0000000+03:00"
+
+  - name: başarısız yönetici oturumu — date/time alanı olmayan FortiOS satırı
+    input: '<185>eventtime=1702257752722386015 tz="+0100" logid="0100032002" type="event" subtype="system" level="alert" vd="root" logdesc="Admin login failed" sn="0" user="philipp" ui="ssh(192.168.0.10)" method="ssh" srcip=192.168.0.10 dstip=10.123.26.241 action="login" status="failed" reason="ssh_key_invalid" msg="Administrator philipp login failed from ssh(192.168.0.10) because of invalid ssh key"'
+    expect:
+      # Yerel zaman damgası yok → `partial`. Bilinçli: bkz. `date` adımı notu.
+      parse_status: partial
+      tags: ["_fortigate_no_local_time"]
+      core.user_name: "philipp"
+      core.outcome: "failure"
+      core.severity_num: 5
+      ocsf.activity_id: 1
+
+  - name: PRI'den sonra boşluk olan varyant
+    input: '<185> date=2024-02-26 time=11:10:55 devname="FW-INT_01_01" devid="FG1K5DKKKKKK" eventtime=1708942255551034463 tz="+0100" logid="0100032002" type="event" subtype="system" level="alert" vd="Int" logdesc="Admin login failed" sn="0" user="name.lastname" ui="https(192.168.1.1)" method="https" srcip=192.168.1.1 dstip=10.10.10.10 action="login" status="failed" reason="passwd_invalid" msg="Administrator name.lastname login failed from https(192.168.1.1) because of invalid password"'
+    expect:
+      parse_status: ok
+      core.host: "FW-INT_01_01"
+      core.user_name: "name.lastname"
+      core.outcome: "failure"
+      "@timestamp": "2024-02-26T11:10:55.0000000+03:00"
+
+  - name: kullanıcı doğrulaması (subtype=user)
+    input: 'date=2019-05-13 time=15:55:56 logid="0102043008" type="event" subtype="user" level="notice" vd="root" eventtime=1557788156913809277 logdesc="Authentication success" srcip=10.1.100.11 dstip=172.16.200.55 policyid=1 interface="port10" user="bob" group="local-group1" authproto="TELNET(10.1.100.11)" action="authentication" status="success" reason="N/A" msg="User bob succeeded in authentication"'
+    expect:
+      parse_status: ok
+      core.user_name: "bob"
+      core.action: "authentication"
+      core.outcome: "success"
+      ocsf.activity_id: 1
+
+  - name: kapanmamış tırnaklı kullanıcı adı — kv tokenizer'ı bozmuyor
+    input: '<185>eventtime=1702329825833960934 tz="+0100" logid="0100032002" type="event" subtype="system" level="alert" vd="root" logdesc="Admin login failed" sn="0" user="${exploit_user_name" ui="ssh(192.168.0.10)" method="ssh" srcip=192.168.0.10 dstip=10.123.26.240 action="login" status="failed" reason="passwd_invalid" msg="Administrator ${exploit_user_name login failed from ssh(192.168.0.10) because of invalid password"'
+    expect:
+      parse_status: partial
+      # `${` ile başlayan kullanıcı adı tırnak dengesini bozmuyor; kv tokenizer
+      # değeri olduğu gibi taşıyor ve şablon motoru `{{ }}` dışındaki hiçbir
+      # şeyi genişletmiyor. Enjeksiyon denemesi veri olarak kalıyor.
+      core.user_name: '${exploit_user_name'
+      core.action: "login"
+      core.outcome: "failure"
+
+  # --- negatif testler ---
+  - name: negatif — FortiGate traffic satırı bu parser'a düşmemeli
+    input: 'date=2019-05-10 time=11:37:47 logid="0000000013" type="traffic" subtype="forward" level="notice" vd="vdom1" srcip=10.1.100.11 srcport=58012 dstip=203.0.113.142 dstport=80 proto=6 action="close"'
+    expect:
+      parse_status: failed
+
+  - name: negatif — MikroTik oturum açma satırı
+    input: 'Sep 15 09:54:33 gw.example.net system,info,account user admin logged in from 10.1.101.212 via winbox'
+    expect:
+      parse_status: failed

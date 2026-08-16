@@ -1,0 +1,32 @@
+# OCSF Authentication (class_uid 3002) — activity_id
+#
+# Kaynak: OCSF şeması, Authentication sınıfı.
+#   0 Unknown · 1 Logon · 2 Logoff · 3 Authentication Ticket
+#   4 Service Ticket Request · 5 Service Ticket Renew · 6 Preauth · 99 Other
+#
+# Anahtar, cihazın bastığı eylem sözcüğüdür. FortiGate `action="login"` yazar,
+# MikroTik mesaj gövdesinde "logged in" der, Cisco ASA mesaj koduyla ayrışır —
+# parser hangi sözcüğü çıkarırsa çıkarsın burada tek bir sözlüğe düşüyor.
+
+login: 1
+Login: 1
+logon: 1
+# FortiGate `action=` değerleri (T08, gerçek cihaz çıktısı)
+authentication: 1
+auth-logon: 1
+auth-logoff: 2
+ssl-login-fail: 1
+logged_in: 1
+authenticate: 1
+auth: 1
+
+logout: 2
+Logout: 2
+logoff: 2
+logged_out: 2
+
+# MikroTik RouterOS gövdesindeki fiil öbekleri. "login failure" da bir oturum
+# açma denemesidir (activity 1); başarısızlık `core.outcome`'da duruyor.
+"logged in": 1
+"login failure": 1
+"logged out": 2

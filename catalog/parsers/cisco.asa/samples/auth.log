@@ -1,0 +1,7 @@
+Apr 27 02:03:03 dev01: %ASA-6-605005: Login permitted from 10.10.0.87/6651 to FCD-FS-LAN:10.10.1.254/ssh for user "admin"
+Apr 27 02:03:03 dev01: %ASA-6-611101: User authentication succeeded: IP address: 10.10.0.87, Uname: admin
+Apr 27 02:03:03 dev01: %ASA-6-611102: User authentication failed: IP address: 10.10.0.87, Uname: admin
+May  5 19:02:25 dev01: %ASA-6-113004: AAA user authentication Successful: server = 203.0.113.144 , User = alice
+May  5 19:02:25 dev01: %ASA-6-113005: AAA user authentication Rejected: reason = AAA failure: server = 203.0.113.144 : user = alice: user IP = 172.31.98.44
+<165>Jun 21 2024 09:07:00: %ASA-5-611103: User logged out: Uname: USER_NAME
+Apr 27 02:03:03 dev01: %ASA-6-605004: Login denied from 10.10.1.212/51923 to FCD-FS-LAN:10.10.1.254/https for user "*****"

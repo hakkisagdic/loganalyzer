@@ -1,0 +1,23 @@
+# Kimlik doğrulama sonucu → `core.outcome`.
+#
+# `outcome` OCSF görünümünde `status` olarak okunuyor. Anahtar, cihazın kendi
+# sözcüğüdür — çevirmiyoruz, ekliyoruz. Ordinal arama, her yazım ayrı satır.
+
+# Fortinet: status="success" / status="failed" / status="logon"
+success: success
+failure: failure
+logon: success
+
+# Cisco ASA: "User authentication succeeded" / "AAA user authentication Rejected"
+succeeded: success
+Successful: success
+permitted: success
+Rejected: failure
+failed: failure
+Failed: failure
+denied: failure
+
+# MikroTik RouterOS: mesaj gövdesindeki fiil öbeği
+"logged in": success
+"logged out": success
+"login failure": failure
