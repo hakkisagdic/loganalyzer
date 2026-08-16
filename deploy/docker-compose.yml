@@ -183,7 +183,12 @@ services:
 
   sidecar:
     build:
-      context: ../sidecar
+      # Context repo kökü: imaja iki ayrı dizinden dosya giriyor — `sidecar/`
+      # (uygulama) ve `catalog/masks/` (maskeleme sözlüğü). Maskeleri sidecar'ın
+      # içine kopyalamak "tek kaynak" kuralını bozardı: .NET tarafı aynı dosyayı
+      # okuyor ve ikisi ayrışırsa `template_id` sessizce yanlış olur.
+      context: ..
+      dockerfile: sidecar/Dockerfile
     environment:
       REDIS_URL: redis://redis:6379/0
     ports:
