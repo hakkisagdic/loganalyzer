@@ -1,0 +1,7 @@
+2022-04-12T02:51:22.573113-06:00 officeswitch.lan system,error,critical login failure for user admin from 192.0.2.88 via ssh
+Feb 15 11:29:03 gw.local system,error,critical login failure for user admin from 192.168.33.2 via web
+Feb 15 11:57:42 gw.local system,error,critical login failure for user from 2001:470:1:c84::24 via ssh
+<134>Dec 10 10:40:06 gw.example.net system,error,critical login failure for user root from 10.0.0.1 via telnet
+Sep 15 09:54:33 gw.example.net system,info,account user admin logged in from 10.1.101.212 via winbox
+Sep 15 12:42:14 gw.example.net system,info,account user admin logged in from 10.1.101.212 via telnet
+Sep 15 12:42:55 gw.example.net system,info,account user admin logged out from 10.1.101.212 via telnet

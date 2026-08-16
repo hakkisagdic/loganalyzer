@@ -1,0 +1,118 @@
+apiVersion: bizigo.dev/v1
+kind: Parser
+metadata:
+  id: mikrotik.routeros.system
+  version: 1.0.0
+  vendor: MikroTik
+  product: RouterOS
+  license: Apache-2.0
+  description: >
+    RouterOS `system` topic'inin kimlik doğrulama satırları: yönetim arayüzüne
+    (ssh/telnet/web/winbox) başarılı ve başarısız oturum açmalar.
+  specificity: 80
+
+match:
+  transport: [syslog, otlp]
+  contains: ["system,error,critical", "system,info,account"]
+
+pipeline:
+  - grok:
+      field: message
+      patterns:
+        - '^(?:<%{NONNEGINT:syslog_pri:int}>)?(?:%{SYSLOGTIMESTAMP:log_timestamp}|%{TIMESTAMP_ISO8601:log_timestamp}) %{SYSLOGHOST:device_host} %{WORD:log_facility},%{WORD:log_level}(?<log_topics_extra>\S*) %{GREEDYDATA:event_message}$'
+
+  # Eylem sözcüğü cihazın kendi metninden geliyor: `login failure` ve
+  # `logged in` / `logged out` satırda LİTERAL olarak yazıyor, biz yalnızca
+  # adlandırılmış grubu onun etrafına koyuyoruz. Böylece `map` içinde koşul
+  # olmadan hem eylem hem sonuç tabloya sorulabiliyor.
+  #
+  # Kullanıcı adı isteğe bağlı: RouterOS boş kullanıcı adıyla yapılan denemede
+  # "login failure for user from <ip>" yazar.
+  - grok:
+      field: event_message
+      patterns:
+        - '^(?<auth_action>login failure) for user (?:%{USERNAME:user_name} )?from %{IP:src_ip} via %{NOTSPACE:service_name}$'
+        - '^user %{USERNAME:user_name} (?<auth_action>logged in|logged out) from %{IP:src_ip} via %{NOTSPACE:service_name}$'
+
+  - date:
+      field: log_timestamp
+      formats: ["SYSLOG", "ISO8601"]
+      default_timezone: Europe/Istanbul
+
+  - drop:
+      fields: [log_topics_extra, event_message]
+
+map:
+  core:
+    vendor: MikroTik
+    product: RouterOS
+    host: "{{ device_host }}"
+    src_ip: "{{ src_ip }}"
+    user_name: "{{ user_name }}"
+    action: "{{ auth_action }}"
+    outcome: { from: auth_action, table: auth_outcome }
+    severity_num: { from: log_level, table: ocsf_severity, default: 0 }
+
+  ocsf:
+    class_uid: 3002
+    activity_id: { from: auth_action, table: ocsf_authentication_activity, default: 0 }
+
+  otel:
+    "source.address": "{{ src_ip }}"
+    "user.name": "{{ user_name }}"
+    "network.protocol.name": "{{ service_name }}"
+    "event.outcome": { from: auth_action, table: auth_outcome }
+
+tests:
+  - name: başarısız ssh oturum açma — RFC5424 zaman damgası
+    input: '2022-04-12T02:51:22.573113-06:00 officeswitch.lan system,error,critical login failure for user admin from 192.0.2.88 via ssh'
+    expect:
+      parse_status: ok
+      core.host: "officeswitch.lan"
+      core.user_name: "admin"
+      core.src_ip: "192.0.2.88"
+      core.action: "login failure"
+      core.outcome: "failure"
+      core.severity_num: 4
+      ocsf.class_uid: 3002
+      ocsf.activity_id: 1
+      fields.service_name: "ssh"
+
+  - name: kullanıcı adı olmayan başarısız deneme, IPv6 kaynak
+    input: 'Feb 15 11:57:42 gw.local system,error,critical login failure for user from 2001:470:1:c84::24 via ssh'
+    expect:
+      parse_status: ok
+      core.src_ip: "2001:470:1:c84::24"
+      core.outcome: "failure"
+      core.action: "login failure"
+      # NOT: burada asıl doğrulanmak istenen `core.user_name`'in HİÇ atanmamış
+      # olması. `expect` bloğu "alan yok" beklentisini ifade edemiyor — düz
+      # `null` skaleri "null" metnine dönüyor (T08 raporu, motor eksiği #6).
+
+  - name: başarılı winbox oturumu
+    input: 'Sep 15 09:54:33 gw.example.net system,info,account user admin logged in from 10.1.101.212 via winbox'
+    expect:
+      parse_status: ok
+      core.user_name: "admin"
+      core.action: "logged in"
+      core.outcome: "success"
+      core.severity_num: 1
+      ocsf.activity_id: 1
+
+  - name: oturum kapatma
+    input: 'Sep 15 12:42:55 gw.example.net system,info,account user admin logged out from 10.1.101.212 via telnet'
+    expect:
+      parse_status: ok
+      core.action: "logged out"
+      ocsf.activity_id: 2
+
+  # --- negatif testler ---
+  - name: negatif — RouterOS firewall satırı bu parser'a düşmemeli
+    input: 'Jan  2 01:01:58 10.1.101.254 firewall,info input: in:ether1 out:(none), src-mac 00:21:29:6d:82:07, proto UDP, 10.1.101.1:520->10.1.101.255:520, len 452'
+    expect:
+      parse_status: failed
+
+  - name: negatif — Cisco ASA oturum açma satırı
+    input: 'Apr 27 02:03:03 fw-01: %ASA-6-611101: User authentication succeeded: IP address: 10.10.0.87, Uname: admin'
+    expect:
+      parse_status: failed

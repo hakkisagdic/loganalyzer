@@ -34,6 +34,30 @@ testCommand.SetAction(parse => ParserCommandHandlers.Test(
     parse.GetValue(filesArgument) ?? [],
     Toolbox(parse.GetValue(patternsOption), parse.GetValue(mappingsOption))));
 
+var catalogArgument = new Argument<DirectoryInfo>("dizin")
+{
+    Description = "Parser kataloğu dizini.",
+    DefaultValueFactory = _ => new DirectoryInfo(Path.Combine("catalog", "parsers")),
+};
+
+var allowedFailedOption = new Option<double>("--allow-failed")
+{
+    Description = "İzin verilen failed satır yüzdesi (varsayılan 0).",
+    DefaultValueFactory = _ => 0,
+};
+
+var coverageCommand = new Command(
+    "coverage",
+    "Altın örnek dosyalarını dispatcher'dan geçirir; ok/partial/failed oranını raporlar.");
+coverageCommand.Arguments.Add(catalogArgument);
+coverageCommand.Options.Add(allowedFailedOption);
+coverageCommand.Options.Add(patternsOption);
+coverageCommand.Options.Add(mappingsOption);
+coverageCommand.SetAction(parse => ParserCommandHandlers.Coverage(
+    parse.GetValue(catalogArgument)!,
+    parse.GetValue(allowedFailedOption),
+    Toolbox(parse.GetValue(patternsOption), parse.GetValue(mappingsOption))));
+
 var fileArgument = new Argument<FileInfo>("dosya") { Description = "Parser YAML dosyası." };
 var inputOption = new Option<string?>("--input", "-i") { Description = "Denenecek tek satır." };
 var inputFileOption = new Option<FileInfo?>("--input-file") { Description = "Satır satır denenecek dosya." };
@@ -57,6 +81,7 @@ var parserCommand = new Command("parser", "Parser plugin'leriyle çalışır.");
 parserCommand.Subcommands.Add(lintCommand);
 parserCommand.Subcommands.Add(testCommand);
 parserCommand.Subcommands.Add(tryCommand);
+parserCommand.Subcommands.Add(coverageCommand);
 
 var directoryArgument = new Argument<string>("dizin")
 {

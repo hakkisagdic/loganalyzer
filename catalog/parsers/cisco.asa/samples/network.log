@@ -1,0 +1,20 @@
+Oct 10 2018 12:34:56 localhost CiscoASA[999]: %ASA-6-302013: Built outbound TCP connection 11757 for outside:192.168.205.104/80 (192.168.205.104/80) to inside:172.31.98.44/1772 (172.31.98.44/1772)
+May  5 18:29:32 dev01: %ASA-6-302013: Built outbound TCP connection 1588662 for intfacename:192.168.2.2/80 (203.0.113.144/80) to net:10.10.10.10/54839 (203.0.113.144/54839)
+Oct 10 2018 12:34:56 localhost CiscoASA[999]: %ASA-6-302014: Teardown TCP connection 11749 for outside:192.168.211.242/80 to inside:172.31.98.44/1758 duration 0:01:07 bytes 38110 TCP Reset-I
+May  5 18:29:32 dev01: %ASA-6-302014: Teardown TCP connection 2960892904 for out111:10.10.10.10/443 to fw111:192.168.2.2/55225 duration 0:00:00 bytes 0 TCP Reset-I
+Oct 10 2018 12:34:56 localhost CiscoASA[999]: %ASA-6-302015: Built outbound UDP connection 11758 for outside:192.168.80.32/53 (192.168.80.32/53) to inside:172.31.98.44/56132 (172.31.98.44/56132)
+May  5 18:40:50 dev01: %ASA-2-302015: Built outbound UDP connection 1743372 for intfacename:10.10.10.10/161 (203.0.113.144/161) to net:192.168.2.2/22638 (203.0.113.144/22638)
+Oct 10 2018 12:34:56 localhost CiscoASA[999]: %ASA-6-302016: Teardown UDP connection 11758 for outside:192.168.80.32/53 to inside:172.31.98.44/56132 duration 0:00:00 bytes 148
+May  5 18:40:50 dev01: %ASA-2-302016: Teardown UDP connection 1671727 for intfacename:10.10.10.10/161 to net:192.168.2.2/53356 duration 0:02:04 bytes 64585
+Oct 10 2018 12:34:56 localhost CiscoASA[999]: %ASA-6-305011: Built dynamic TCP translation from inside:172.31.98.44/1772 to outside:192.168.98.44/8256
+May  5 18:40:50 dev01: %ASA-6-305011: Built dynamic TCP translation from fw111:10.10.10.10/57006 to out111:192.168.2.2/57006
+Oct 10 2018 12:34:56 localhost CiscoASA[999]: %ASA-6-305012: Teardown dynamic TCP translation from inside:172.31.98.44/1454 to outside:192.168.98.44/8267 duration 0:00:30
+May  5 18:29:32 dev01: %ASA-6-305012: Teardown dynamic UDP translation from fw111:10.10.10.10/54230 to out111:192.168.2.2/54230 duration 0:00:00
+Oct 10 2018 12:34:56 localhost CiscoASA[999]: %ASA-4-106023: Deny tcp src outside:192.168.19.254/80 dst inside:172.31.98.44/8277 by access-group "inbound" [0x0, 0x0]
+May  5 18:40:50 dev01: %ASA-4-106023: Deny tcp src fw111:10.10.10.10/64388 dst out111:192.168.2.2/443 by access-group "out1111_access_out" [0x47e21ef4, 0x47e21ef4]
+May  5 19:02:26 dev01: %ASA-6-106100: access-list fw111_out permitted tcp ptaaac/192.168.2.2(62157) -> fw111/10.10.10.10(3452) hit-cnt 1 first hit [0x38ff326b, 0x00000000]
+May  5 18:40:50 dev01: %ASA-2-106001: Inbound TCP connection denied from 192.168.2.2/43803 to 10.10.10.10/14322 flags SYN  on interface out111
+May  5 19:02:26 dev01: %ASA-7-710005: UDP request discarded from 10.10.10.10/1985 to net:192.168.2.2/1985
+May  5 19:02:25 dev01: %ASA-4-733100: [192.168.2.2] drop rate-1 exceeded. Current burst rate is 0 per second, max configured rate is -4; Current average rate is 7 per second, max configured rate is -4; Cumulative total count is 9063
+<166>10.1.1.1 %ASA-6-302020: Built outbound ICMP connection for faddr 2001:db8:85a3::8a2e:370:7334/0 gaddr ::ffff:10.10.4.4/0 laddr ::ffff:10.10.10.4/0 type 3 code 0 Internal-Data0/0:RX[29]
+May  5 18:29:32 dev01: %ASA-6-302020: Built inbound ICMP connection for faddr 10.10.10.10/0 gaddr 203.0.113.144/0 laddr 10.192.46.90/0

@@ -35,3 +35,35 @@ rst: 3
 timeout: 4
 fail: 4
 failed: 4
+
+# FortiGate'in `action=` değerleri (T08, gerçek cihaz çıktısı):
+#   server-rst / client-rst  → bağlantıyı karşı taraf resetledi
+#   dropped                  → UTM profili düşürdü
+#   passthrough / start      → UTM profili geçirdi / oturum başladı
+#   dns                      → DNS profili tarafından işlendi, engellenmedi
+server-rst: 3
+client-rst: 3
+dropped: 5
+passthrough: 6
+start: 1
+dns: 6
+negotiate: 1
+tunnel-stats: 6
+tunnel-up: 1
+tunnel-down: 2
+
+# Cisco ASA'nın serbest metin içindeki eylem sözcükleri (CISCO_ACTION pattern'i).
+# ASA fiili büyük harfle başlatır ve aynı fiilin küçük harfli hâlini de basar.
+Built: 1
+built: 1
+Teardown: 2
+Deny: 5
+Denied: 5
+denied: 5
+Permitted: 6
+permitted: 6
+Dropping: 5
+discarded: 5
+est-allowed: 6
+created: 1
+deleted: 2

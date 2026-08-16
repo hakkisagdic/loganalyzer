@@ -106,6 +106,54 @@ internal static class ParserCommandHandlers
         return exitCode;
     }
 
+    /// <summary>
+    /// Altın örnek dosyalarının kapsam raporu (T08). `test` komutundan farkı,
+    /// satırların dispatcher'dan geçmesi: ön filtre ve "ilk `ok` kazanır" kuralı
+    /// da ölçülüyor, dolayısıyla bir vendor'ın satırının başka bir parser'a
+    /// düşmesi burada görünür.
+    /// </summary>
+    public static int Coverage(DirectoryInfo directory, double allowedFailedPercent, ParserToolbox toolbox)
+    {
+        var report = SampleCoverage.Run(directory.FullName, toolbox.Compiler);
+
+        if (report.Files.Count == 0)
+        {
+            Console.Error.WriteLine($"hata   '{directory.FullName}' altında örnek dosyası yok " +
+                $"({SampleCoverage.SamplesDirectoryName}/*.log bekleniyor).");
+            return 2;
+        }
+
+        var root = directory.FullName;
+
+        foreach (var file in report.Files)
+        {
+            var name = Path.GetRelativePath(root, file.Path);
+
+            Console.WriteLine(string.Create(CultureInfo.InvariantCulture,
+                $"{name,-52} {file.Total,5} satır   ok {file.OkPercent,6:F1}%   " +
+                $"partial {file.PartialPercent,6:F1}%   failed {file.FailedPercent,6:F1}%"));
+
+            foreach (var (parser, count) in file.ByParser.OrderByDescending(static pair => pair.Value)
+                         .ThenBy(static pair => pair.Key, StringComparer.Ordinal))
+            {
+                Console.WriteLine($"      → {parser,-40} {count,5}");
+            }
+        }
+
+        Console.WriteLine(string.Create(CultureInfo.InvariantCulture,
+            $"toplam: {report.Total} satır — ok {report.Ok}, partial {report.Partial}, " +
+            $"failed {report.Failed} ({report.FailedPercent:F1}%)"));
+
+        if (report.FailedPercent > allowedFailedPercent)
+        {
+            Console.Error.WriteLine(string.Create(CultureInfo.InvariantCulture,
+                $"hata   failed oranı {report.FailedPercent:F1}%, izin verilen üst sınır {allowedFailedPercent:F1}%."));
+            return 1;
+        }
+
+        return 0;
+    }
+
     public static int Try(FileInfo file, string? input, FileInfo? inputFile, bool asJson, ParserToolbox toolbox)
     {
         var compiled = toolbox.Compiler.CompileFile(file.FullName);

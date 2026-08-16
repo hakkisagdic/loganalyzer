@@ -1,0 +1,28 @@
+# OCSF HTTP Activity (class_uid 4002) — activity_id
+#
+# Kaynak: OCSF şeması, HTTP Activity sınıfı.
+#   0 Unknown · 1 Connect · 2 Delete · 3 Get · 4 Head · 5 Options
+#   6 Post · 7 Put · 8 Trace · 9 Patch · 99 Other
+#
+# Anahtar HTTP metodudur. HTTP metotları protokolde büyük harflidir; küçük harfli
+# yazımlar yalnızca ters vekil sunucuların normalize ettiği loglar için var.
+
+CONNECT: 1
+DELETE: 2
+GET: 3
+HEAD: 4
+OPTIONS: 5
+POST: 6
+PUT: 7
+TRACE: 8
+PATCH: 9
+
+connect: 1
+delete: 2
+get: 3
+head: 4
+options: 5
+post: 6
+put: 7
+trace: 8
+patch: 9
