@@ -198,6 +198,40 @@ public sealed class OcsfOtelViewTests(DevStackFixture stack) : IAsyncLifetime
 
     [Fact]
     [Trait("Category", "Integration")]
+    public async Task Severity_OCSF_olceginden_OTel_olcegine_ceviriliyor()
+    {
+        // Aynı kolon iki farklı ölçekle okunuyordu (T08 geri beslemesi, madde 9):
+        // OCSF Critical (5) OTel'de DEBUG anlamına geliyordu. Sessiz sınıftan bir
+        // hata — sorgu çalışıyor, sayı dönüyor, yalnızca anlamı yanlış.
+        var ts = new DateTimeOffset(2026, 8, 16, 12, 30, 0, TimeSpan.Zero);
+        await _writer.WriteEventsAsync(
+            [Sample(ts) with { SeverityNum = 5 }],
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("5", await ScalarAsync("SELECT severity_id FROM events_ocsf LIMIT 1"));
+        Assert.Equal("19", await ScalarAsync("SELECT SeverityNumber FROM events_otel LIMIT 1"));
+
+        // Eşlemenin kaybettiği ayrıntı geri kazanılabilmeli: Critical ve High
+        // aynı ERROR bandına düşüyor.
+        Assert.Equal(
+            "5",
+            await ScalarAsync("SELECT `bizigo.ocsf_severity_id` FROM events_otel LIMIT 1"));
+    }
+
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task Bilinmeyen_severity_OTel_de_de_bilinmeyen_kaliyor()
+    {
+        // "Belirtilmemiş" ile "düşük" aynı şey değil; 0 → 0.
+        await _writer.WriteEventsAsync(
+            [Sample(new DateTimeOffset(2026, 8, 16, 12, 30, 0, TimeSpan.Zero)) with { SeverityNum = 0 }],
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("0", await ScalarAsync("SELECT SeverityNumber FROM events_otel LIMIT 1"));
+    }
+
+    [Fact]
+    [Trait("Category", "Integration")]
     public async Task Gorunumler_owner_group_kolonunu_tasiyor()
     {
         await _writer.WriteEventsAsync(
