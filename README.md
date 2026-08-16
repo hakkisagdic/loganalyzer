@@ -5,7 +5,7 @@ logları birincil alan; agentic katmanla proaktif araştırma ve kök neden anal
 
 **Durum:** F1 (boru hattı) — T01 iskelet, T02 depolama/kapsam, T03 ingest boru hattı,
 T04 ham arşiv, T05 parser motoru, T06 dispatcher, T07 normalizasyon, T08 vendor
-kataloğu, T09 kimlik ve T12 sidecar tamamlandı; sırada T10 (API uçları) ve
+kataloğu, T09 kimlik, T10 API uçları ve T12 sidecar tamamlandı; sırada
 T11 (replay) var.
 
 Planlama belgeleri Traycer epic'inde:
