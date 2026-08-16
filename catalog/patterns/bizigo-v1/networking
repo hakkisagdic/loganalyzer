@@ -1,0 +1,36 @@
+# bizigo-v1 — legacy setinin üzerine binen kaplama. Bkz. README.md.
+#
+# Buradaki her tanım, legacy'deki aynı adlı pattern'in lookaround'suz
+# karşılığıdır ve `RegexOptions.NonBacktracking` ile derlenir.
+
+# IPV4
+#
+# legacy: (?<![0-9])(?:OKTET[.]OKTET[.]OKTET[.]OKTET)(?![0-9])
+#
+# Sınırlar `\b` ile kuruldu. `\b` rakam komşuluğunu lookaround ile aynı şekilde
+# engelliyor (`1.2.3.45` içinde `1.2.3.4` yakalanmıyor), ek olarak harf
+# komşuluğunu da engelliyor. Daha katı; yanlış pozitif üretemez.
+IPV4 \b(?:(?:[0-1]?[0-9]{1,2}|2[0-4][0-9]|25[0-5])[.](?:[0-1]?[0-9]{1,2}|2[0-4][0-9]|25[0-5])[.](?:[0-1]?[0-9]{1,2}|2[0-4][0-9]|25[0-5])[.](?:[0-1]?[0-9]{1,2}|2[0-4][0-9]|25[0-5]))\b
+
+# YEAR
+#
+# legacy: (?>\d\d){1,2}
+#
+# Atomik grup burada ispatlanabilir biçimde ETKİSİZ: `\d\d` sabit uzunlukta ve
+# içinde hiçbir seçim yok, dolayısıyla geri izlenecek bir şey yok. `{1,2}`
+# niceleyicisi zaten grubun dışında ve iki biçimde de geri izliyor. Yani
+# `(?>...)` → `(?:...)` davranışı değiştirmiyor, yalnızca NonBacktracking'in
+# desteklemediği tek yapıyı kaldırıyor.
+YEAR (?:\d\d){1,2}
+
+# TIME
+#
+# legacy: (?!<[0-9])%{HOUR}:%{MINUTE}(?::%{SECOND})(?![0-9])
+#
+# Baştaki `(?!<[0-9])` upstream'de yazım hatası — "`<` ve ardından rakam
+# gelmesin" diyor, niyeti `(?<![0-9])`. Etkisiz olduğu için `\b` ile
+# değiştirmek davranışı değiştirmiyor, yalnızca niyeti doğru ifade ediyor.
+#
+# Sondaki `\b`, `12:34:567` içinde `12:34:56` yakalanmasını legacy ile aynı
+# şekilde engelliyor.
+TIME \b%{HOUR}:%{MINUTE}(?::%{SECOND})\b

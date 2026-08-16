@@ -15,6 +15,9 @@ public static class RepositoryLayout
 
     public static string EcsPatternDirectory => Path.Combine(PatternDirectory, "ecs-v1");
 
+    /// <summary>Lookaround'suz kaplama — tam set değil, <c>legacy</c> üstüne biner.</summary>
+    public static string BizigoV1PatternDirectory => Path.Combine(PatternDirectory, "bizigo-v1");
+
     public static string CatalogParserDirectory => Path.Combine(Root, "catalog", "parsers");
 
     /// <summary>Maskeleme sözlüğü — sidecar ile paylaşılan tek kaynak (K14).</summary>
