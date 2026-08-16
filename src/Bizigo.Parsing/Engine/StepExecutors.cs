@@ -343,16 +343,96 @@ internal sealed class CompiledDateStep(DateStep definition) : ICompiledStep
         return false;
     }
 
+    /// <summary>
+    /// Saat dilimi: <c>timezone_field</c> → <c>default_timezone</c> → UTC.
+    ///
+    /// <para>
+    /// <b>Varsayılana düşmek meşru, sessizce düşmek değil.</b> Alan dolu ama
+    /// çözülemiyorsa etiket bırakılıyor: aksi halde <c>timezone_field</c> yazan
+    /// bir parser saatlerce kaymış damga üretir ve <c>parse_status</c> <c>ok</c>
+    /// kalır (T08 geri beslemesi, madde 1). Etiket sorguda görünür ve
+    /// envanterdeki yanlış değeri düzeltilebilir kılar.
+    /// </para>
+    /// </summary>
     private TimeZoneInfo ResolveZone(ParseContext context)
     {
-        if (definition.TimezoneField is { } field &&
-            context.TryGetString(field, out var value) &&
-            TimeZoneResolver.Resolve(value) is { } fromField)
+        if (definition.TimezoneField is { } field)
         {
-            return fromField;
+            if (context.TryGetString(field, out var value) && value.Length > 0)
+            {
+                if (TimeZoneResolver.Resolve(value) is { } fromField)
+                {
+                    return fromField;
+                }
+
+                context.AddTag("_tz_unresolved");
+            }
+            else
+            {
+                context.AddTag("_tz_missing");
+            }
         }
 
         return TimeZoneResolver.Resolve(definition.DefaultTimezone) ?? TimeZoneInfo.Utc;
+    }
+
+    /// <summary>
+    /// Unix damgasını verilen bölene göre milisaniyeye indirip çevirir.
+    /// Taşan değer <b>reddediliyor</b>: yıl 51345'e giden bir damga yazmaktansa
+    /// adımın başarısız olması ve satırın etiketlenmesi yeğdir.
+    /// </summary>
+    private static bool TryFromUnixScaled(string raw, long divisorToMillis, out DateTimeOffset value)
+    {
+        value = default;
+
+        if (!long.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var ticks))
+        {
+            return false;
+        }
+
+        return TryFromUnixMillis(ticks / divisorToMillis, out value);
+    }
+
+    /// <summary>
+    /// Ölçeği basamak sayısından çıkarır: saniye 10, milisaniye 13, mikrosaniye
+    /// 16, nanosaniye 19 basamak (bugünün epoch aralığında). İşaret ve boşluk
+    /// temizlendikten sonra bakılıyor.
+    /// </summary>
+    private static bool TryFromUnixAuto(string raw, out DateTimeOffset value)
+    {
+        value = default;
+
+        var text = raw.Trim();
+        if (!long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number))
+        {
+            return false;
+        }
+
+        var digits = text.TrimStart('+', '-').Length;
+
+        var millis = digits switch
+        {
+            <= 11 => number * 1_000L,          // saniye
+            <= 14 => number,                   // milisaniye
+            <= 17 => number / 1_000L,          // mikrosaniye
+            _ => number / 1_000_000L,          // nanosaniye
+        };
+
+        return TryFromUnixMillis(millis, out value);
+    }
+
+    private static bool TryFromUnixMillis(long millis, out DateTimeOffset value)
+    {
+        value = default;
+
+        if (millis < DateTimeOffset.MinValue.ToUnixTimeMilliseconds()
+            || millis > DateTimeOffset.MaxValue.ToUnixTimeMilliseconds())
+        {
+            return false;
+        }
+
+        value = DateTimeOffset.FromUnixTimeMilliseconds(millis);
+        return true;
     }
 
     private static bool TryParse(string raw, string format, TimeZoneInfo zone, out DateTimeOffset value)
@@ -361,23 +441,31 @@ internal sealed class CompiledDateStep(DateStep definition) : ICompiledStep
 
         switch (format)
         {
+            // Aralık kontrolü ŞART: `FromUnixTimeMilliseconds` taşan değerde
+            // istisna atıyor ve bu, ayrıştırma yolunda yakalanmamış bir hataya
+            // dönüşüyordu — yanlış tarihten de kötüsü.
             case "UNIX":
-                if (long.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var seconds))
-                {
-                    value = DateTimeOffset.FromUnixTimeSeconds(seconds);
-                    return true;
-                }
-
-                return false;
+                return long.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var seconds)
+                    && seconds is > -62_135_596_800L and < 253_402_300_800L
+                    && TryFromUnixMillis(seconds * 1_000L, out value);
 
             case "UNIX_MS":
-                if (long.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var millis))
-                {
-                    value = DateTimeOffset.FromUnixTimeMilliseconds(millis);
-                    return true;
-                }
+                return long.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var millis)
+                    && TryFromUnixMillis(millis, out value);
 
-                return false;
+            case "UNIX_US":
+                return TryFromUnixScaled(raw, 1_000L, out value);
+
+            // FortiOS 7.x `eventtime` alanını nanosaniye yazıyor.
+            case "UNIX_NS":
+                return TryFromUnixScaled(raw, 1_000_000L, out value);
+
+            // Aynı vendor'ın iki sürümü aynı alanı iki ölçekte yazabiliyor
+            // (FortiOS 6.x saniye, 7.x nanosaniye), o yüzden sabit belirteç
+            // yetmiyor. Basamak sayısı ölçeği belirliyor (T08 geri beslemesi,
+            // madde 2).
+            case "UNIX_AUTO":
+                return TryFromUnixAuto(raw, out value);
 
             case "ISO8601":
                 return DateTimeOffset.TryParse(
@@ -477,12 +565,12 @@ internal sealed class CompiledConvertStep(ConvertStep definition) : ICompiledSte
             context.Fields[field] = GrokValueConverter.Convert(text, type);
         }
 
-        if (missing.Count == definition.Fields.Count && definition.Fields.Count > 0)
-        {
-            failureReason = "dönüştürülecek alanların hiçbiri yok: " + string.Join(", ", missing);
-            return false;
-        }
-
+        // Dönüştürülecek alan bulunmaması BAŞARISIZLIK DEĞİL (T08 geri beslemesi,
+        // madde 6). Aynı parser'ın kapsadığı mesaj kodlarının hepsi aynı alanları
+        // taşımıyor: ASA'nın 733100 satırında ne port var ne bayt, ama satır
+        // tamamen doğru ayrıştırılmış durumda. Eskiden bu satır `failed` oluyordu
+        // ve `on_failure: continue` de doğru cevap değildi — o da eksik bir şey
+        // yokken satırı `partial` gösterirdi.
         failureReason = string.Empty;
         return true;
     }
