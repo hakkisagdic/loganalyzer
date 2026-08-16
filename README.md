@@ -160,9 +160,8 @@ export DOTNET_ROOT="$HOME/.dotnet"
 
 ## Lisans
 
-[MIT](LICENSE).
-
-`catalog/patterns/` altındaki grok setleri
+[MIT](LICENSE). Yeniden dağıtılan üçüncü taraf malzeme
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) içinde: `catalog/patterns/`
+altındaki grok setleri
 [logstash-patterns-core](https://github.com/logstash-plugins/logstash-patterns-core)
-v4.3.4'ten olduğu gibi alınmıştır ve **Apache-2.0** lisanslıdır
-(`catalog/patterns/LICENSE`).
+v4.3.4'ten olduğu gibi alınmıştır ve **Apache-2.0** lisanslıdır.
