@@ -26,6 +26,7 @@ public static class RawServiceCollectionExtensions
         services.AddSingleton<RawArchiveUploader>();
         services.AddSingleton<RawArchiveScrubber>();
         services.AddSingleton<RawReader>();
+        services.AddSingleton<RawEventLocator>();
 
         // T07 gerçek eşleme deposunu kaydedince bu düşer.
         services.TryAddSingleton<IRawRefSink, NullRawRefSink>();

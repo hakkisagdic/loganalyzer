@@ -10,6 +10,8 @@ using Bizigo.Ingest.Wal;
 using Bizigo.Query;
 using Bizigo.Storage.ClickHouse;
 using Bizigo.Storage.Raw;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +43,32 @@ builder.Services.AddBizigoAuthentication(builder.Configuration);
 
 builder.Services.AddHealthChecks();
 
+// OpenAPI: F2'nin istemci kodu bu şemadan doğacak (T10).
+builder.Services.AddOpenApi();
+
+// Hız sınırı (risk #6, gürültülü komşu). Tek bir kullanıcının ağır sorgusu
+// ClickHouse'u ve dolayısıyla herkesi yavaşlatabiliyor; sınır KULLANICI BAŞINA,
+// çünkü küresel bir sınır kalabalık bir ekibi tek kişilik bir ekiple aynı
+// kefeye koyardı.
+builder.Services.AddRateLimiter(limiter =>
+{
+    limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    limiter.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+    {
+        var subject = context.User.FindFirst(BizigoClaims.Subject)?.Value
+            ?? context.Connection.RemoteIpAddress?.ToString()
+            ?? "anonymous";
+
+        return RateLimitPartition.GetConcurrencyLimiter(subject, _ => new ConcurrencyLimiterOptions
+        {
+            PermitLimit = 4,
+            QueueLimit = 8,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+        });
+    });
+});
+
 var app = builder.Build();
 
 // Ayağa kalkarken iki şema da hazır olmalı.
@@ -58,9 +86,23 @@ app.UseAuthorization();
 // bu, eşleme tablosu boşken "her şeyi gör"e düşmekten iyidir (K17).
 await app.Services.GetRequiredService<AccessScopeResolver>().RefreshAsync();
 
+app.UseRateLimiter();
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+}
+
 app.MapHealthChecks("/healthz");
 app.MapAuth();
 app.MapOtlpLogs();
+
+// Sorgu ve yazma yüzeyi (T10). Hepsi IScopedQuery'den geçiyor; mimari test
+// API'nin somut okuyuculara erişmesini zaten yasaklıyor.
+app.MapEvents();
+app.MapSources();
+app.MapChanges();
+app.MapPipelineHealth();
 
 // Ingest sayaçları: "boru hattı akıyor mu" sorusunun tek bakışta cevabı.
 // `declared_encoding_mismatches` sıfırdan büyükse envanterdeki `encoding` yanlış.
@@ -144,7 +186,7 @@ app.MapGet("/", () => Results.Ok(new
 {
     service = "bizigo-loganalyzer",
     phase = "F1",
-    status = "T08 · T12",
+    status = "T10",
 }));
 
 await app.RunAsync();

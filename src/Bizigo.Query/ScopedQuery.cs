@@ -14,11 +14,72 @@ namespace Bizigo.Query;
 public sealed class ScopedQuery(
     EventReader events,
     ChangeEventReader changes,
+    EventWriter writer,
+    ControlPlaneDbContext controlPlane,
     IAuditSink audit) : IScopedQuery
 {
+    public async Task<IReadOnlyList<SourceSummary>> SearchSourcesAsync(
+        AccessScope scope,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+
+        var watch = Stopwatch.StartNew();
+
+        // Filtre bellekte: envanter onlarca satır, SQL'e kapsam çevirmek burada
+        // kazanç değil karmaşıklık olurdu. Önemli olan filtrenin BU sınıfta
+        // olması — uç katmanında değil.
+        var all = await controlPlane.Sources.AsNoTracking().ToListAsync(cancellationToken);
+
+        var visible = all
+            .Where(s => scope.Allows(s.OwnerGroup))
+            .OrderBy(s => s.SourceId, StringComparer.Ordinal)
+            .Select(s => new SourceSummary(
+                s.SourceId, s.OwnerGroup, s.PeerAddress, s.Hostname,
+                s.Vendor, s.Product, s.ParserId, s.Encoding, s.SourceClass,
+                s.Enabled, !string.IsNullOrWhiteSpace(s.ParserId)))
+            .ToArray();
+
+        await _audit.RecordAsync(new AuditRecord(
+            scope.Subject, "sources.search", "sources",
+            Describe(scope, ScopePredicate.From(scope)), string.Empty,
+            visible.Length, (int)watch.ElapsedMilliseconds, true), cancellationToken);
+
+        return visible;
+    }
+
     private readonly EventReader _events = events ?? throw new ArgumentNullException(nameof(events));
     private readonly ChangeEventReader _changes = changes ?? throw new ArgumentNullException(nameof(changes));
+    private readonly EventWriter _writer = writer ?? throw new ArgumentNullException(nameof(writer));
     private readonly IAuditSink _audit = audit ?? throw new ArgumentNullException(nameof(audit));
+
+    public async Task WriteChangeAsync(
+        ChangeEvent change,
+        AccessScope scope,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        ArgumentNullException.ThrowIfNull(scope);
+
+        if (!scope.Allows(change.OwnerGroup))
+        {
+            await _audit.RecordAsync(new AuditRecord(
+                scope.Subject, "changes.write", "change_events",
+                Describe(scope, ScopePredicate.From(scope)), change.OwnerGroup,
+                0, 0, false), cancellationToken);
+
+            throw new UnauthorizedAccessException(
+                $"'{change.OwnerGroup}' grubuna yazma yetkisi yok.");
+        }
+
+        var watch = Stopwatch.StartNew();
+        await _writer.WriteChangeEventsAsync([change], cancellationToken);
+
+        await _audit.RecordAsync(new AuditRecord(
+            scope.Subject, "changes.write", "change_events",
+            Describe(scope, ScopePredicate.From(scope)), change.ChangeKind,
+            1, (int)watch.ElapsedMilliseconds, true), cancellationToken);
+    }
 
     public async Task<EventPage> SearchEventsAsync(
         EventQuery query,
