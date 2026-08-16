@@ -11,13 +11,21 @@ namespace Bizigo.Normalization;
 /// <param name="Source">Envanterden çözülen kimlik ve kapsam.</param>
 /// <param name="Parsed">Dispatcher'ın seçtiği parser'ın çıktısı.</param>
 /// <param name="Tier">Hangi dispatcher kademesinden geldiği.</param>
+/// <param name="TemplateId">
+/// Drain3 şablon kimliği (T12) — <b>bilinmiyorsa boş</b>, ki olağan durum bu.
+/// Sidecar sıcak yolda olmadığı için değer sidecar'a sorularak değil, daha önce
+/// öğrenilmiş imza önbelleğinden geliyor (<c>Bizigo.Ingest.Discovery</c>).
+/// Boş olması bir hata değil: F3'ün "ilk görülen imza" korelasyonu zaten
+/// yalnızca etiketlenebilmiş olaylar üzerinde çalışıyor.
+/// </param>
 public sealed record ParsedEvent(
     RawRecord Raw,
     string Decoded,
     string EncodingName,
     ResolvedSource Source,
     ParseResult Parsed,
-    DispatchTier Tier);
+    DispatchTier Tier,
+    string TemplateId = "");
 
 /// <summary>
 /// Ayrıştırılmış olayların çıkışı.

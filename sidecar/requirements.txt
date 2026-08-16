@@ -1,10 +1,38 @@
-# T01: iskelet. Gerçek bağımlılıklar T12'de.
+# ============================================================================
+# Analiz sidecar'ı bağımlılıkları (T12 / K14)
 #
-# ÖNEMLİ (K14): drain3 PyPI sürümü 0.9.11 (Tem 2022) ve repodan geride.
-# T12'de `logpai/Drain3` git SHA'sına sabitlenecek:
-#   drain3 @ git+https://github.com/logpai/Drain3@<SHA>
-# `pip install drain3` KULLANILMAZ.
+# ⚠️ drain3: `pip install drain3` KULLANILMAZ.
+#    PyPI'daki son sürüm 0.9.11 ve Tem 2022 tarihli. Depo IBM/Drain3'ten
+#    logpai/Drain3'e taşındı; orada Şub 2025'e kadar typing ve modern Python
+#    düzeltmeleri var ve bunların hiçbiri PyPI'ya yayımlanmadı.
+#    Bu yüzden **git SHA'sına** sabitleniyor:
+#
+#      0fb6d6e1828838fa05c8f6fa5cda878e02ea79c7  —  2025-02-04, master HEAD
+#
+#    Upstream durgun (risk #3): düzeltme beklenmiyor. Kod küçük (~28 KB) ve
+#    MIT; gerekirse fork edilir. Sidecar'ın sıcak yolda olmaması bu riski
+#    kabul edilebilir kılan asıl şey.
+# ============================================================================
+
+drain3 @ git+https://github.com/logpai/Drain3@0fb6d6e1828838fa05c8f6fa5cda878e02ea79c7
+
+# drain3'ün kendi bağımlılıkları — dolaylı gelseler de sabitleniyor.
+jsonpickle==4.1.2
+cachetools==7.1.7
 
 fastapi==0.121.2
 uvicorn[standard]==0.42.0
+pydantic==2.13.4
+
+# Redis persistence (K14: dosya değil).
 redis==6.4.0
+
+# Maskeleme sözlüğü (catalog/masks/bizigo-masks.yaml).
+PyYAML==6.0.3
+
+# Sigma derlemesi — yalnızca /v1/sigma/compile. Sıcak yolda değil (F3 build-time).
+# ⚠️ pysigma-backend-clickhouse SigmaHQ'nun resmî backend'i DEĞİL; üçüncü taraf
+#    ve genç bir paket. Sürüm sabit, import tembel: yüklenemezse yalnızca
+#    /v1/sigma/compile 503 döner, mining etkilenmez (sigma_compile.py).
+pySigma==1.5.0
+pysigma-backend-clickhouse==1.1.1

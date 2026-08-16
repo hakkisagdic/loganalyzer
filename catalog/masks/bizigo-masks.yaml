@@ -1,0 +1,118 @@
+# ============================================================================
+# Maskeleme sözlüğü — TEK KAYNAK (K14 "maskeleme sinerjisi", F1 §9)
+#
+# Bu dosya iki tarafça birden okunur:
+#
+#   1. Python sidecar  → Drain3 `MaskingInstruction` listesi (template mining)
+#   2. .NET            → `MaskCatalog` (Bizigo.Parsing.Grok)
+#                        · ayrıştırılamayan satırın imzasını üretir
+#                        · mask adı → grok pattern adı köprüsü (F4 grok taslağı)
+#
+# İki taraf da AYNI dosyayı okuduğu için mined template içindeki `<IPV4>`
+# doğrudan `%{IPV4:...}` grok taslağına dönüşebiliyor. Bu köprü olmasaydı
+# format keşfi senaryosu (F4) "şu satır şuna benziyor" demekten öteye
+# gidemezdi.
+#
+# ⚠️ KURALLAR
+#
+# · `name` bir **grok pattern adı olmak zorunda** (catalog/patterns/legacy).
+#   `MaskCatalogTests` bunu zorluyor; olmayan ada izin verilmiyor.
+# · `regex` hem Python `re` hem .NET `Regex` tarafından **aynı** biçimde
+#   yorumlanmalı. Ortak alt küme: `\b`, `\d`, `\w`, sabit genişlikli
+#   lookaround, `(?:...)`. Oniguruma/POSIX yapıları (`\h`, `[[:alnum:]]`,
+#   atomik grup `(?>...)`) KULLANILMAZ — grok dosyalarındaki karşılıkları
+#   burada elle sadeleştirilmiştir.
+# · Sıra **anlamlıdır**: maskeler yukarıdan aşağıya sırayla uygulanır.
+#   Özel olan önce gelir (UUID, MAC → IPV6 → IPV4 → NUMBER).
+# · `golden` bölümü iki dilin aynı çıktıyı ürettiğinin kanıtı. Hem
+#   `sidecar/tests/test_masks.py` hem `MaskCatalogTests` aynı satırları
+#   koşuyor. Bir regex iki motorda ayrışırsa CI'da görünür — sessizce
+#   sürüklenemez.
+# ============================================================================
+
+version: 1
+
+# Drain3 varsayılanlarıyla aynı; .NET tarafı da bunu okuyor.
+mask_prefix: "<"
+mask_suffix: ">"
+
+masks:
+  - name: TIMESTAMP_ISO8601
+    regex: "\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:[.,]\\d{1,9})?(?:Z|[+-]\\d{2}:?\\d{2})?"
+    note: "Tarih/saat en önce maskelenir; içindeki sayılar NUMBER'a yem olmasın."
+
+  - name: UUID
+    regex: "\\b[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\\b"
+
+  - name: MAC
+    regex: "\\b(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}\\b"
+    note: "IPV6'dan önce: iki nokta üst üsteli biçim ikisine de benziyor."
+
+  - name: IPV6
+    regex: "(?<![\\w:.])(?:(?:[0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{1,4}:){1,7}:(?:[0-9A-Fa-f]{1,4}:){0,6}[0-9A-Fa-f]{1,4}|(?:[0-9A-Fa-f]{1,4}:){1,7}:|::(?:[0-9A-Fa-f]{1,4}:){0,6}[0-9A-Fa-f]{1,4})(?![\\w:.])"
+    note: >
+      Grok'un IPV6'sı devasa bir alternasyon; burada kasıtlı olarak daha dar.
+      Ya sekiz tam grup ya da `::` sıkıştırması aranıyor — aksi halde
+      `10:11:12` gibi saat parçaları IPv6 sanılıyordu. Sondaki
+      `(?![\w:.])` kısmi eşleşmeyi engelliyor: onsuz `fe80::1c2d:...`
+      iki ayrı maskeye bölünüyordu.
+
+  - name: URI
+    regex: "\\b[A-Za-z][A-Za-z0-9+.-]*://[^\\s\"<>]+"
+    note: "Yollardan ve hostname'den önce: şema içindeki her şeyi tek parça tutar."
+
+  - name: EMAILADDRESS
+    regex: "\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b"
+    note: "HOSTNAME'den önce, yoksa alan adı kısmı ayrı maskeleniyor."
+
+  - name: IPV4
+    regex: "(?<![\\w.])(?:\\d{1,3}\\.){3}\\d{1,3}(?![\\w.])"
+
+  - name: WINPATH
+    regex: "\\b[A-Za-z]:\\\\(?:[^\\\\/:*?\"<>|\\r\\n ]+\\\\?)+"
+
+  - name: UNIXPATH
+    regex: "(?:/[\\w.%!$@:,+~-]+){2,}/?"
+    note: >
+      En az iki bileşen isteniyor. Tek bileşen (`/var`) çok sık yanlış
+      eşleşiyor ve şablonu bilgiden yoksun bırakıyor.
+
+  - name: HOSTNAME
+    regex: "\\b(?:[0-9A-Za-z](?:[0-9A-Za-z-]{0,61}[0-9A-Za-z])?\\.)+[A-Za-z]{2,}\\b"
+    note: "En az bir nokta ve harfle biten bir son etiket — `foo.1` maskelenmez."
+
+  - name: BASE16NUM
+    regex: "(?<![\\w.])0[xX][0-9A-Fa-f]+(?![\\w.])"
+
+  - name: NUMBER
+    regex: "(?<![\\w.])[+-]?\\d+(?:\\.\\d+)?(?![\\w.])"
+    note: >
+      En sonda ve sınır koşullu: `eth0`, `sda1`, `v2` gibi tokenlar
+      maskelenmemeli — onlar şablonun bilgi taşıyan parçası.
+
+# ---------------------------------------------------------------------------
+# Çapraz dil doğrulaması. Python ve .NET aynı girdiye aynı çıktıyı vermek
+# zorunda; ayrışırsa .NET'in ürettiği imza ile Drain3'ün kümesi birbirini
+# tutmaz ve `template_id` sessizce yanlış olur.
+# ---------------------------------------------------------------------------
+golden:
+  - input: "2026-08-16T09:41:02.123Z sshd[4123]: Failed password for admin from 10.1.2.3 port 51234 ssh2"
+    masked: "<TIMESTAMP_ISO8601> sshd[<NUMBER>]: Failed password for admin from <IPV4> port <NUMBER> ssh2"
+
+  - input: "%ASA-6-302013: Built outbound TCP connection 8241 for outside:93.184.216.34/443 (93.184.216.34/443)"
+    masked: "%ASA-<NUMBER>-<NUMBER>: Built outbound TCP connection <NUMBER> for outside:<IPV4>/<NUMBER> (<IPV4>/<NUMBER>)"
+
+  - input: "interface eth0 link down, peer 00:1b:44:11:3a:b7 unreachable"
+    masked: "interface eth0 link down, peer <MAC> unreachable"
+
+  - input: "GET https://api.example.com/v1/orders?id=42 returned 503 in 1.75 ms"
+    masked: "GET <URI> returned <NUMBER> in <NUMBER> ms"
+
+  - input: "job 6f9619ff-8b86-d011-b42d-00cf4fc964ff wrote /var/log/bizigo/ingest.log (0x1FE bytes)"
+    masked: "job <UUID> wrote <UNIXPATH> (<BASE16NUM> bytes)"
+
+  - input: "alert from mail.corp.example.org for user ops@corp.example.org"
+    masked: "alert from <HOSTNAME> for user <EMAILADDRESS>"
+
+  - input: "neighbor fe80::1c2d:3e4f:5a6b:7c8d state ESTABLISHED"
+    masked: "neighbor <IPV6> state ESTABLISHED"

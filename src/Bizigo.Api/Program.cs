@@ -1,9 +1,11 @@
 using Bizigo.Api;
 using Bizigo.ControlPlane;
 using Bizigo.Ingest;
+using Bizigo.Ingest.Discovery;
 using Bizigo.Ingest.Pipeline;
 using Bizigo.Parsing;
 using Bizigo.Parsing.Dispatch;
+using Bizigo.Parsing.Grok;
 using Bizigo.Ingest.Wal;
 using Bizigo.Query;
 using Bizigo.Storage.ClickHouse;
@@ -67,6 +69,65 @@ app.MapGet("/internal/ingest/stats", (IngestStats stats, WriteAheadLog wal) => R
         recovery = wal.Recovery,
     },
 }));
+
+// Keşif yolu (T12). Devre kesici **görünür olmak zorunda** (F1 §9): sidecar
+// sıcak yolda olmadığı için arızası hiçbir alarmı tetiklemez; tek belirti
+// `template_id`'nin sessizce boş kalmasıdır.
+app.MapGet("/internal/discovery/stats", (
+    SidecarOptions options,
+    DiscoveryStats stats,
+    IServiceProvider services) =>
+{
+    var breaker = services.GetService<SidecarCircuitBreaker>();
+    var cache = services.GetService<TemplateCache>();
+    var masks = services.GetService<MaskCatalog>();
+
+    return Results.Ok(new
+    {
+        enabled = options.Enabled,
+        base_url = options.BaseUrl,
+        api_version = options.ApiVersion,
+        timeout_seconds = options.Timeout.TotalSeconds,
+        queue_capacity = options.QueueCapacity,
+        sample_rate = options.SampleRate,
+        circuit = new
+        {
+            state = breaker?.State.ToString() ?? "Disabled",
+            opened_count = breaker?.OpenedCount ?? 0,
+            break_minutes = options.BreakDuration.TotalMinutes,
+            failure_threshold = options.FailureThreshold,
+            last_error = breaker?.LastError,
+        },
+        masks = new
+        {
+            version = masks?.Version ?? 0,
+            count = masks?.Masks.Count ?? 0,
+            source = masks?.SourcePath,
+        },
+        queue = new
+        {
+            enqueued = stats.Enqueued,
+            dropped_queue_full = stats.DroppedQueueFull,
+            dropped_circuit_open = stats.DroppedCircuitOpen,
+        },
+        sidecar = new
+        {
+            requests = stats.Requests,
+            failures = stats.RequestFailures,
+            timeouts = stats.Timeouts,
+            mined_messages = stats.MinedMessages,
+            new_templates = stats.NewTemplates,
+        },
+        templates = new
+        {
+            cache_size = cache?.Count ?? 0,
+            cache_hits = stats.CacheHits,
+            cache_misses = stats.CacheMisses,
+            // Sıfırdan büyükse .NET ile Python maskeleri ayrışmış demektir.
+            signature_drift = stats.SignatureDrift,
+        },
+    });
+});
 
 app.MapGet("/", () => Results.Ok(new
 {

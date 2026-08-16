@@ -1,5 +1,6 @@
 using Bizigo.Contracts;
 using Bizigo.ControlPlane;
+using Bizigo.Ingest.Discovery;
 using Bizigo.Normalization;
 using Bizigo.Parsing.Dispatch;
 using Bizigo.Parsing.Engine;
@@ -27,6 +28,7 @@ public sealed class ParsingSink(
     SourceDirectory sources,
     DispatchStats stats,
     IParsedEventSink downstream,
+    ITemplateAnnotator templates,
     ILogger<ParsingSink> logger) : IIngestSink
 {
     public async ValueTask HandleAsync(
@@ -57,13 +59,23 @@ public sealed class ParsingSink(
                     source.SourceId);
             }
 
+            // Keşif katmanı (T12). Sidecar'a burada **gidilmiyor**: yalnızca
+            // daha önce öğrenilmiş imzalar önbellekten okunuyor, bilinmeyen
+            // imza sınırlı kuyruğa atılıyor. Kuyruk doluysa ya da sidecar ölüyse
+            // dönen değer boş — boru hattı hiçbir şey beklemez.
+            var templateId = templates.Annotate(
+                source.SourceClass,
+                record.Decoded.Body,
+                result.Result.Status == ParseStatus.Failed);
+
             parsed.Add(new ParsedEvent(
                 record.Raw with { OwnerGroup = source.OwnerGroup, SourceId = source.SourceId },
                 record.Decoded.Body,
                 record.Decoded.Name,
                 source,
                 result.Result,
-                result.Tier));
+                result.Tier,
+                templateId));
         }
 
         await downstream.HandleAsync(parsed, cancellationToken);
