@@ -15,15 +15,30 @@ extensions:
     create_directory: true
 
 receivers:
+  # `encoding: nop` ZORUNLU (F1 §2.4). Varsayılan `utf-8` ile collector gövdeyi
+  # burada çözer ve geçersiz baytları U+FFFD ile DEĞİŞTİRİR — windows-1254 bir
+  # FortiGate satırı bize ulaşmadan geri dönülemez biçimde bozulur. `nop` ile
+  # gövde ham bayt dizisi olarak (OTLP `bytes_value`) gelir; kodlama tespiti
+  # ve replay ancak o zaman anlamlı.
   syslog/tcp:
     tcp:
       listen_address: "0.0.0.0:5140"
+      encoding: nop
+      add_attributes: true      # net.peer.* — kaynak kimliği T06'da buradan çözülüyor
     protocol: none
+    # Taşımayı tahmin etmek yerine söylüyoruz: `net.transport` semconv'u sürümle
+    # değişiyor, bu öznitelik bizim sözleşmemiz.
+    attributes:
+      bizigo.transport: syslog-tcp
 
   syslog/udp:
     udp:
       listen_address: "0.0.0.0:5141"
+      encoding: nop
+      add_attributes: true
     protocol: none
+    attributes:
+      bizigo.transport: syslog-udp
 
   otlp:
     protocols:

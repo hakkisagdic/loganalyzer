@@ -3,8 +3,8 @@
 Plugin tabanlı, çok formatlı ve çok dilli log analiz platformu. Ağ/altyapı cihazı
 logları birincil alan; agentic katmanla proaktif araştırma ve kök neden analizi.
 
-**Durum:** F1 (boru hattı) — T01 iskelet, T02 depolama/kapsam ve T05 parser motoru
-tamamlandı; T03'ten devam ediliyor.
+**Durum:** F1 (boru hattı) — T01 iskelet, T02 depolama/kapsam, T05 parser motoru ve
+T03 ingest boru hattı tamamlandı; T04'ten devam ediliyor.
 
 Planlama belgeleri Traycer epic'inde:
 `mimari-kararlar` · `f1-teknik-plan` · `rca-raporu-ozelligi` · `tickets/`
@@ -74,6 +74,18 @@ derlemeyi kırar. `ToLowerInvariant()` / `StringComparison.Ordinal` kullanın.
 edildikten sonra verilir. RustFS 1.0-rc olduğu için dayanıklılık sınırı bilinçli
 olarak WAL'da: object storage veri kaybederse en kötü senaryo "eski arşivin bir
 kısmı", "yeni veri" değil. Manifest (`raw_manifest`) nesne kaybını görünür kılar.
+
+**Collector'da `encoding: nop` zorunlu.** syslog receiver'ın `encoding` varsayılanı
+`utf-8` ve geçersiz baytları **U+FFFD ile değiştiriyor** — yani `protocol: none`
+tek başına ham sadakati korumuyor. `nop` olmadan windows-1254 bir FortiGate satırı
+daha bize ulaşmadan bozulur ve düzeltilecek bir orijinal kalmaz. Gövde bize OTLP
+`bytes_value` olarak gelir; kodlama tespiti bizim tarafımızda yapılır (BOM →
+bildirilen → UTF-8 doğrulaması → kaynağın yedek kod sayfası → latin1) ve sonuç
+NFC normalize edilir.
+
+**WAL yükü ile arşiv satırı aynı formattır.** Tek NDJSON codec'i
+(`RawRecordCodec`): yükleyici dönüştürmez, kopyalar. `owner_group`/`source_id`
+WAL aşamasında boş yazılır — alanın varlığı formatın parçası, değeri değil.
 
 **ClickHouse şeması elle yazılmış SQL.** `db/clickhouse/NNNN_ad.sql`, sırayla
 uygulanır, `schema_migrations` izler. **Uygulanmış bir dosya değiştirilirse göç hata

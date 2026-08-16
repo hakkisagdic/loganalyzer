@@ -22,6 +22,23 @@
     <PackageVersion Include="EFCore.NamingConventions" Version="10.0.1" />
   </ItemGroup>
 
+  <ItemGroup Label="Ingest">
+    <!-- OTLP çözücü: yalnızca mesaj sınıfları üretilir (GrpcServices=None), gRPC yok. -->
+    <PackageVersion Include="Google.Protobuf" Version="3.35.1" />
+    <PackageVersion Include="Grpc.Tools" Version="2.83.0" />
+    <!-- WAL segment CRC'si. -->
+    <PackageVersion Include="System.IO.Hashing" Version="10.0.11" />
+    <!--
+      System.Text.Encoding.CodePages PAKETİ YOK: net10.0'da çatının içinde geliyor
+      (NU1510). `CodePagesEncodingProvider` yine de elle kaydedilmek zorunda —
+      kayıt edilmezse windows-1254 çalışma anında patlar (F1 §2.4).
+    -->
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+  </ItemGroup>
+
   <ItemGroup Label="Parser motoru">
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
     <PackageVersion Include="System.CommandLine" Version="2.0.11" />

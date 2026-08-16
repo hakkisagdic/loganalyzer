@@ -1,4 +1,8 @@
+using Bizigo.Api;
 using Bizigo.ControlPlane;
+using Bizigo.Ingest;
+using Bizigo.Ingest.Pipeline;
+using Bizigo.Ingest.Wal;
 using Bizigo.Query;
 using Bizigo.Storage.ClickHouse;
 
@@ -18,6 +22,9 @@ builder.Services.AddControlPlane(postgres);
 // yalnızca IScopedQuery (K17). Mimari test bunu zorluyor.
 builder.Services.AddBizigoDataPlane(clickHouseOptions);
 
+// Ingest: OTLP çözücü + WAL + boru hattı (T03).
+builder.Services.AddBizigoIngest(builder.Configuration);
+
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
@@ -31,11 +38,32 @@ app.Logger.LogInformation(
     "ClickHouse göçleri: {Applied} uygulandı, {Existing} zaten vardı.", applied, existing);
 
 app.MapHealthChecks("/healthz");
+app.MapOtlpLogs();
+
+// Ingest sayaçları: "boru hattı akıyor mu" sorusunun tek bakışta cevabı.
+// `declared_encoding_mismatches` sıfırdan büyükse envanterdeki `encoding` yanlış.
+app.MapGet("/internal/ingest/stats", (IngestStats stats, WriteAheadLog wal) => Results.Ok(new
+{
+    accepted_batches = stats.AcceptedBatches,
+    accepted_records = stats.AcceptedRecords,
+    processed_records = stats.ProcessedRecords,
+    rejected_full = stats.RejectedFull,
+    rejected_invalid = stats.RejectedInvalid,
+    non_utf8_records = stats.NonUtf8Records,
+    declared_encoding_mismatches = stats.DeclaredEncodingMismatches,
+    wal = new
+    {
+        total_bytes = wal.TotalBytes,
+        is_full = wal.IsFull,
+        recovery = wal.Recovery,
+    },
+}));
+
 app.MapGet("/", () => Results.Ok(new
 {
     service = "bizigo-loganalyzer",
     phase = "F1",
-    status = "T02",
+    status = "T03",
 }));
 
 await app.RunAsync();

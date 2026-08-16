@@ -18,6 +18,20 @@ translated inside the grok compiler, so upgrading to a newer upstream release
 stays a plain file copy. See
 [`catalog/patterns/README.md`](catalog/patterns/README.md).
 
+## src/Bizigo.Ingest/Otlp/proto/
+
+Protocol Buffer definitions copied verbatim from
+[open-telemetry/opentelemetry-proto](https://github.com/open-telemetry/opentelemetry-proto),
+version **v1.9.0**.
+
+- **License:** Apache License, Version 2.0
+- **Upstream:** https://github.com/open-telemetry/opentelemetry-proto/blob/v1.9.0/LICENSE
+
+Only the message types reachable from `ExportLogsServiceRequest` are vendored.
+C# classes are generated at build time (`Grpc.Tools`, `GrpcServices="None"`) and
+are not committed; the `.proto` files are the single source. Upgrading is a plain
+file copy.
+
 ## NuGet packages
 
 Runtime and build-time dependencies are declared in
