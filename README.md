@@ -153,6 +153,16 @@ upstream'den yeniden kopyalanır. Oniguruma/POSIX söz dizimi farkları derleyic
 çevrilir (`\h`, `[[:alnum:]]`, `X?*`). Aynı şekilde `catalog/mappings/` altındaki
 eşleme tabloları YAML'dır; bilinmeyen tablo **derleme zamanında** hata verir.
 
+**`bizigo-v1` kaplaması varsayılan olarak devrede.** Logstash'in `IPV4` ve `TIME`
+tanımları lookaround taşıyor ve ağ logunda IP geçmeyen pattern neredeyse yok —
+sonuç olarak kataloğun 21 ifadesi doğrusal motorda derlenemeyip geri izlemeye
+düşüyordu, yani "önce `NonBacktracking` dene" kademesi pratikte hiç çalışmıyordu.
+`catalog/patterns/bizigo-v1/` bir **kaplama**, tam set değil: `legacy` üstüne
+biniyor ve yalnızca adlandırılmış pattern'leri değiştiriyor, böylece `legacy` ile
+`ecs-v1` upstream'in birebir kopyası kalıp `cp -R` ile yükseltilebiliyor.
+Sınırlar `\b` ile kuruldu — yerine geçtiği lookaround'dan **daha katı**, yani
+kaçırabilir ama uyduramaz. GROK003 uyarısı 21'den 2'ye indi.
+
 **Grok için hazır kütüphane kullanılmıyor.** Parser YAML'ı kurum içinden geliyor ve
 dikkatsiz tek pattern ingest'i durdurabilir. Derleme önce
 `RegexOptions.NonBacktracking` ile denenir — girdi uzunluğunda doğrusal, felç

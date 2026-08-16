@@ -11,8 +11,15 @@ public sealed class ParsingOptions
 {
     public const string SectionName = "Parsing";
 
-    /// <summary>Grok pattern setlerinin kökü (Logstash kopyası — veri, kod değil).</summary>
-    public string PatternDirectory { get; set; } = "catalog/patterns";
+    /// <summary>Taban grok seti (Logstash kopyası — veri, kod değil).</summary>
+    public string PatternDirectory { get; set; } = "catalog/patterns/legacy";
+
+    /// <summary>
+    /// Taban setin üstüne binen lookaround'suz kaplama. Boş bırakılırsa yalnızca
+    /// taban set kullanılır — o durumda pattern'lerin çoğu doğrusal motorda
+    /// derlenemez ve geri izlemeye düşer.
+    /// </summary>
+    public string PatternOverlayDirectory { get; set; } = "catalog/patterns/bizigo-v1";
 
     /// <summary>YAML parser plugin'lerinin kökü.</summary>
     public string ParserDirectory { get; set; } = "catalog/parsers";
@@ -38,7 +45,8 @@ public static class ParsingServiceCollectionExtensions
         services.AddSingleton<GrokCompiler>(sp =>
         {
             var options = sp.GetRequiredService<IOptions<ParsingOptions>>().Value;
-            return new GrokCompiler(GrokPatternLibrary.LoadFromDirectory(options.PatternDirectory));
+            return new GrokCompiler(GrokPatternLibrary.LoadWithOverlay(
+                options.PatternDirectory, options.PatternOverlayDirectory));
         });
 
         services.AddSingleton<MappingTableCatalog>(sp =>

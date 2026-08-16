@@ -90,6 +90,34 @@ public sealed class GrokPatternLibrary
         return new GrokPatternLibrary(map);
     }
 
+    /// <summary>
+    /// Taban seti yükler, üstüne kaplamayı bindirir (<c>bizigo-v1</c>).
+    ///
+    /// <para>
+    /// Kaplama tam bir set değil: yalnızca lookaround taşıyan pattern'lerin
+    /// lookaround'suz karşılıklarını içeriyor. Taban seti kopyalamak yerine
+    /// bindirmek bilinçli — <c>legacy</c> ve <c>ecs-v1</c> upstream'in birebir
+    /// kopyası kalıyor ve <c>cp -R</c> ile yükseltilebiliyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Kaplama dizini yoksa taban set aynen dönüyor: kaplamanın <b>yokluğu</b>
+    /// bir hata değil, yalnızca doğrusal motorun daha az devreye girmesi demek.
+    /// </para>
+    /// </summary>
+    public static GrokPatternLibrary LoadWithOverlay(string baseDirectory, string? overlayDirectory)
+    {
+        var library = LoadFromDirectory(baseDirectory);
+
+        if (string.IsNullOrWhiteSpace(overlayDirectory) || !Directory.Exists(overlayDirectory))
+        {
+            return library;
+        }
+
+        var overlay = LoadFromDirectory(overlayDirectory);
+        return library.With(overlay._patterns);
+    }
+
     /// <summary>Bu kütüphanenin üstüne ek tanımlar bindirir (parser'ın kendi <c>pattern_definitions</c>'ı).</summary>
     public GrokPatternLibrary With(IEnumerable<KeyValuePair<string, string>>? overrides)
     {

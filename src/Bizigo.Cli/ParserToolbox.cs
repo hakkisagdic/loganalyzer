@@ -28,7 +28,9 @@ internal sealed class ParserToolbox
         var patterns = patternDirectory ?? DefaultPatternDirectory();
         var mappings = mappingDirectory ?? DefaultMappingDirectory();
 
-        var library = GrokPatternLibrary.LoadFromDirectory(patterns);
+        // Kaplama varsayılan olarak devrede: `bizigo-v1` olmadan kataloğun
+        // pattern'lerinin çoğu doğrusal motorda derlenemiyor.
+        var library = GrokPatternLibrary.LoadWithOverlay(patterns, DefaultOverlayDirectory());
         var compiler = new ParserCompiler(
             new GrokCompiler(library),
             MappingTableCatalog.LoadFromDirectory(mappings));
@@ -39,6 +41,25 @@ internal sealed class ParserToolbox
     private static string DefaultPatternDirectory() =>
         Environment.GetEnvironmentVariable("BIZIGO_PATTERNS")
         ?? Locate(Path.Combine("catalog", "patterns", "legacy"));
+
+    private static string? DefaultOverlayDirectory()
+    {
+        var configured = Environment.GetEnvironmentVariable("BIZIGO_PATTERN_OVERLAY");
+        if (!string.IsNullOrWhiteSpace(configured))
+        {
+            return configured;
+        }
+
+        try
+        {
+            return Locate(Path.Combine("catalog", "patterns", "bizigo-v1"));
+        }
+        catch (DirectoryNotFoundException)
+        {
+            // Kaplamanın yokluğu hata değil; taban setle devam edilir.
+            return null;
+        }
+    }
 
     private static string DefaultMappingDirectory() =>
         Environment.GetEnvironmentVariable("BIZIGO_MAPPINGS")
