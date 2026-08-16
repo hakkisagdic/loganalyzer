@@ -1,3 +1,4 @@
+using Bizigo.Normalization;
 using Bizigo.Storage.ClickHouse;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -27,6 +28,13 @@ public static class QueryServiceCollectionExtensions
         services.AddSingleton<EventWriter>();
         services.AddSingleton<EventReader>();
         services.AddSingleton<ChangeEventReader>();
+
+        // Yazma yolu (T07): normalizasyon + toplu yazım. Ingest katmanı bunları
+        // görmüyor, yalnızca IParsedEventSink sözleşmesini biliyor.
+        services.AddSingleton<EventNormalizer>();
+        services.AddSingleton<ClickHouseEventSink>();
+        services.AddSingleton<IParsedEventSink>(sp => sp.GetRequiredService<ClickHouseEventSink>());
+        services.AddHostedService<EventSinkFlushService>();
 
         services.AddScoped<IAuditSink, ControlPlaneAuditSink>();
         services.AddScoped<IScopedQuery, ScopedQuery>();

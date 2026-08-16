@@ -121,6 +121,46 @@ public sealed class DevStackFixture : IAsyncLifetime
         });
     }
 
+    /// <summary>
+    /// Tek değerlik sorgu, ClickHouse HTTP arayüzünden.
+    ///
+    /// <para>
+    /// Sürücü tipleri kullanılmıyor çünkü <c>ClickHouseContext.CreateConnection</c>
+    /// bilinçli olarak <c>internal</c>: ham sürücü erişimi yalnızca
+    /// <c>Bizigo.Storage.ClickHouse</c> içinde olabilir (K17 mimari testi). Test
+    /// iskelesinin o kuralı delmesi, kuralı anlamsız kılardı.
+    /// </para>
+    /// </summary>
+    public async Task<string> QueryScalarAsync(
+        string connectionString,
+        string sql,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+
+        var database = connectionString
+            .Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Select(part => part.Split('=', 2))
+            .Where(kv => kv.Length == 2 && kv[0].Trim().Equals("Database", StringComparison.OrdinalIgnoreCase))
+            .Select(kv => kv[1].Trim())
+            .FirstOrDefault() ?? "bizigo";
+
+        using var http = new HttpClient { BaseAddress = new Uri(ClickHouseHttpUrl) };
+        http.DefaultRequestHeaders.Add("X-ClickHouse-User", "bizigo");
+        http.DefaultRequestHeaders.Add("X-ClickHouse-Key", "bizigo");
+        http.DefaultRequestHeaders.Add("X-ClickHouse-Database", database);
+
+        using var response = await http.PostAsync((Uri?)null, new StringContent(sql), cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException($"ClickHouse '{sql}' reddetti: {body}");
+        }
+
+        return body.TrimEnd('\n');
+    }
+
     private string ConnectionStringFor(string database) => string.Create(
         CultureInfo.InvariantCulture,
         $"Host={_clickHouse.Hostname};Port={_clickHouse.GetMappedPublicPort(8123)};" +

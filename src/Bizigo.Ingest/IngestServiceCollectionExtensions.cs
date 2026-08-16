@@ -2,6 +2,7 @@ using Bizigo.Ingest.Otlp;
 using Bizigo.Ingest.Pipeline;
 using Bizigo.Ingest.Text;
 using Bizigo.Ingest.Wal;
+using Bizigo.Normalization;
 using Bizigo.Storage.Raw;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,6 +44,8 @@ public static class IngestServiceCollectionExtensions
 
         // Parse adımı (T06). `PassthroughSink` kıyaslama için duruyor ama
         // varsayılan artık gerçek dispatcher.
+        // Varsayılan sayaç yalnızca ingest tek başına barındırıldığında devreye
+        // girer; API bileşiminde ClickHouse yazıcısı (T07) önce kaydediliyor.
         services.TryAddSingleton<IParsedEventSink, CountingParsedEventSink>();
         services.TryAddSingleton<IIngestSink, ParsingSink>();
 

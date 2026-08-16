@@ -2,10 +2,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Bizigo.Contracts\Bizigo.Contracts.csproj" />
+    <ProjectReference Include="..\Bizigo.Normalization\Bizigo.Normalization.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="ClickHouse.Driver" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
   </ItemGroup>
 
   <PropertyGroup>

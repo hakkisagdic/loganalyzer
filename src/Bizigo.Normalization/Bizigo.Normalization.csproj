@@ -3,6 +3,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Bizigo.Contracts\Bizigo.Contracts.csproj" />
     <ProjectReference Include="..\Bizigo.Parsing\Bizigo.Parsing.csproj" />
+    <ProjectReference Include="..\Bizigo.ControlPlane\Bizigo.ControlPlane.csproj" />
+    <!-- Yalnızca RawObjectKey.Prefix için: raw_ref ön eki anahtar biçimiyle
+         aynı yerden gelmeli, iki yerde tanımlanıp sürüklenmemeli. -->
+    <ProjectReference Include="..\Bizigo.Storage.Raw\Bizigo.Storage.Raw.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

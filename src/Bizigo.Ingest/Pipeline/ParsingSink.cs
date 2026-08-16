@@ -1,43 +1,11 @@
 using Bizigo.Contracts;
 using Bizigo.ControlPlane;
+using Bizigo.Normalization;
 using Bizigo.Parsing.Dispatch;
 using Bizigo.Parsing.Engine;
 using Microsoft.Extensions.Logging;
 
 namespace Bizigo.Ingest.Pipeline;
-
-/// <param name="Raw">Orijinal baytlarıyla ham kayıt.</param>
-/// <param name="Source">Envanterden çözülen kimlik ve kapsam.</param>
-/// <param name="Parsed">Dispatcher'ın seçtiği parser'ın çıktısı.</param>
-/// <param name="Tier">Hangi kademeden geldiği.</param>
-public sealed record ParsedEvent(
-    RawRecord Raw,
-    ResolvedSource Source,
-    ParseResult Parsed,
-    DispatchTier Tier);
-
-/// <summary>
-/// Ayrıştırılmış olayların çıkışı. T07 normalizasyonu ve ClickHouse yazımını
-/// buraya takacak; T06'da varsayılan uygulama yalnızca sayıyor.
-/// </summary>
-public interface IParsedEventSink
-{
-    ValueTask HandleAsync(IReadOnlyList<ParsedEvent> batch, CancellationToken cancellationToken);
-}
-
-public sealed class CountingParsedEventSink : IParsedEventSink
-{
-    private long _count;
-
-    public long Count => Interlocked.Read(ref _count);
-
-    public ValueTask HandleAsync(IReadOnlyList<ParsedEvent> batch, CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(batch);
-        Interlocked.Add(ref _count, batch.Count);
-        return ValueTask.CompletedTask;
-    }
-}
 
 /// <summary>
 /// Boru hattının parse adımı (F1 §4.2, §8). T03'teki geçişin yerini alıyor.
@@ -91,6 +59,8 @@ public sealed class ParsingSink(
 
             parsed.Add(new ParsedEvent(
                 record.Raw with { OwnerGroup = source.OwnerGroup, SourceId = source.SourceId },
+                record.Decoded.Body,
+                record.Decoded.Name,
                 source,
                 result.Result,
                 result.Tier));

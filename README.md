@@ -4,7 +4,8 @@ Plugin tabanlı, çok formatlı ve çok dilli log analiz platformu. Ağ/altyapı
 logları birincil alan; agentic katmanla proaktif araştırma ve kök neden analizi.
 
 **Durum:** F1 (boru hattı) — T01 iskelet, T02 depolama/kapsam, T03 ingest boru hattı,
-T04 ham arşiv, T05 parser motoru ve T06 dispatcher tamamlandı; T07'den devam ediliyor.
+T04 ham arşiv, T05 parser motoru, T06 dispatcher ve T07 normalizasyon tamamlandı;
+T08'den devam ediliyor.
 
 Planlama belgeleri Traycer epic'inde:
 `mimari-kararlar` · `f1-teknik-plan` · `rca-raporu-ozelligi` · `tickets/`
@@ -111,6 +112,20 @@ ikisi de ham arşivde durur.
 başında alınır, yani yeniden yükleme tam o sırada olsa bile satır tek bir tutarlı
 katalogla işlenir. Tüm dosyalar bozuksa katalog **değiştirilmez** — hatalı bir
 dağıtım çalışan boru hattını parser'sız bırakamaz.
+
+**Yazılan tek gerçek `core`; OCSF ve OTel türetiliyor.** İki şemayı da materyalize
+etmek depolamayı ~2 katına, mapping bakımını iki katına çıkarırdı. Türetme
+ClickHouse görünümlerinde (`events_ocsf`, `events_otel`) — API katmanında değil,
+çünkü F3'te Sigma kuralları ClickHouse SQL'ine derleniyor ve OCSF alan adlarına
+vuruyor; SQL konuşan her araç aynı şekli görmeli. Kolona yazılan tek OCSF alanı
+`ocsf_class_uid` ve `ocsf_activity_id`; gerisi `attrs` içinde `ocsf.`/`otel.`
+önekiyle durur, yani yeni bir alan eklemek şema göçü değil YAML değişikliğidir.
+
+**`raw_ref` bayt konumu değil arşiv ön eki taşır.** Ingest boru hattı ile arşiv
+yükleyici bilinçli olarak bağımsız çalıştığı için olay satırı yazılırken nesne
+henüz yoktur ve offset bilinemez. Ön ek (`raw/{owner_group}/{yyyy}/{MM}/{dd}/{HH}/{source_class}/`)
+yazma anında hesaplanabilir ve manifest sorgusunun anahtarıyla örtüşür; tek gerçek
+kaynak arşivin kendisi kalır. Bedeli, tek kaydı okumak için nesnenin açılması.
 
 **Ham arşiv RustFS'in veri kaybetmesini varsayarak kuruldu.** Sıra: yükle → geri
 oku → sha256 karşılaştır → manifest'e `verified_at` yaz → segmenti 48 saat sonra
