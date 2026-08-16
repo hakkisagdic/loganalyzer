@@ -4,8 +4,9 @@ Plugin tabanlı, çok formatlı ve çok dilli log analiz platformu. Ağ/altyapı
 logları birincil alan; agentic katmanla proaktif araştırma ve kök neden analizi.
 
 **Durum:** F1 (boru hattı) — T01 iskelet, T02 depolama/kapsam, T03 ingest boru hattı,
-T04 ham arşiv, T05 parser motoru, T06 dispatcher ve T07 normalizasyon tamamlandı;
-T08'den devam ediliyor.
+T04 ham arşiv, T05 parser motoru, T06 dispatcher, T07 normalizasyon, T08 vendor
+kataloğu ve T12 sidecar tamamlandı; sırada T09 (kimlik), T10 (API uçları) ve
+T11 (replay) var.
 
 Planlama belgeleri Traycer epic'inde:
 `mimari-kararlar` · `f1-teknik-plan` · `rca-raporu-ozelligi` · `tickets/`

@@ -133,7 +133,7 @@ app.MapGet("/", () => Results.Ok(new
 {
     service = "bizigo-loganalyzer",
     phase = "F1",
-    status = "T03",
+    status = "T08 · T12",
 }));
 
 await app.RunAsync();
