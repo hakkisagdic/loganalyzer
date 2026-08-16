@@ -12,7 +12,19 @@ public static class ControlPlaneServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
-        services.AddDbContext<ControlPlaneDbContext>(options => Configure(options, connectionString));
+        // İki kayıt bir arada: istek başına scoped DbContext (uçlar) ve singleton
+        // fabrika (arka plan işleri — yükleyici, scrub). `optionsLifetime` açıkça
+        // singleton olmak ZORUNDA: varsayılan scoped kalırsa singleton fabrika onu
+        // tüketemez ve konteyner doğrulaması açılışta patlar.
+        services.AddDbContext<ControlPlaneDbContext>(
+            options => Configure(options, connectionString),
+            optionsLifetime: ServiceLifetime.Singleton);
+
+        services.AddDbContextFactory<ControlPlaneDbContext>(
+            options => Configure(options, connectionString),
+            lifetime: ServiceLifetime.Singleton);
+
+        services.AddSingleton<SourceDirectory>();
 
         return services;
     }

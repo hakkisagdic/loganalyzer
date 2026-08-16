@@ -5,6 +5,7 @@ using Bizigo.Ingest.Pipeline;
 using Bizigo.Ingest.Wal;
 using Bizigo.Query;
 using Bizigo.Storage.ClickHouse;
+using Bizigo.Storage.Raw;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +25,9 @@ builder.Services.AddBizigoDataPlane(clickHouseOptions);
 
 // Ingest: OTLP çözücü + WAL + boru hattı (T03).
 builder.Services.AddBizigoIngest(builder.Configuration);
+
+// Ham arşiv: yükleyici, manifest, scrub (T04).
+builder.Services.AddBizigoRawArchive(builder.Configuration);
 
 builder.Services.AddHealthChecks();
 

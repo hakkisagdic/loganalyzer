@@ -147,6 +147,18 @@ public sealed class RawManifestEntity
 
     public int EventCount { get; set; }
 
+    /// <summary>
+    /// Nesnenin geldiği WAL segmenti.
+    ///
+    /// <para>
+    /// İki iş görüyor: yeniden başlatmadan sonra "bu segment zaten yüklendi mi"
+    /// sorusunun cevabı (yoksa segmentler mükerrer yüklenir), ve koruma #3'ün
+    /// dayanağı — nesne kaybolursa hangi yerel segmentten geri yükleneceği.
+    /// </para>
+    /// </summary>
+    [MaxLength(512)]
+    public string WalSegment { get; set; } = string.Empty;
+
     public DateTimeOffset TsFrom { get; set; }
 
     public DateTimeOffset TsTo { get; set; }

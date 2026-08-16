@@ -3,8 +3,8 @@
 Plugin tabanlı, çok formatlı ve çok dilli log analiz platformu. Ağ/altyapı cihazı
 logları birincil alan; agentic katmanla proaktif araştırma ve kök neden analizi.
 
-**Durum:** F1 (boru hattı) — T01 iskelet, T02 depolama/kapsam, T05 parser motoru ve
-T03 ingest boru hattı tamamlandı; T04'ten devam ediliyor.
+**Durum:** F1 (boru hattı) — T01 iskelet, T02 depolama/kapsam, T03 ingest boru hattı,
+T04 ham arşiv ve T05 parser motoru tamamlandı; T06'dan devam ediliyor.
 
 Planlama belgeleri Traycer epic'inde:
 `mimari-kararlar` · `f1-teknik-plan` · `rca-raporu-ozelligi` · `tickets/`
@@ -98,6 +98,13 @@ kendisi bir karar belgesi.
 
 **Kontrol düzlemi Postgres, veri düzlemi ClickHouse.** Değişken operasyonel durum
 (envanter, katalog, manifest, audit) ClickHouse'a yazılmaz.
+
+**Ham arşiv RustFS'in veri kaybetmesini varsayarak kuruldu.** Sıra: yükle → geri
+oku → sha256 karşılaştır → manifest'e `verified_at` yaz → segmenti 48 saat sonra
+sil. **Doğrulanmamış segment asla silinmez.** Periyodik scrub örneklenmiş
+nesneleri indirip manifest'e karşı doğrular; kayıp nesne replay gününde değil
+olduğu gün görünür. Depoya yalnızca S3 API üzerinden konuşulur — RustFS'e özel
+tek çağrı yok, kaçış planının bedeli bir config satırı.
 
 **Grok kütüphanesi ve eşleme tabloları veridir, kod değil.**
 `catalog/patterns/` Logstash setinin birebir kopyası; **elle düzenlenmez**,

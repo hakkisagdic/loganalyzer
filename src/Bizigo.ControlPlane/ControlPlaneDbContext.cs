@@ -46,6 +46,8 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
             e.HasIndex(x => new { x.OwnerGroup, x.TsFrom });
             e.HasIndex(x => x.State);
             e.HasIndex(x => x.VerifiedAt);
+            // "Bu segment yüklendi mi" ve "saklama süresi doldu mu" sorgusu.
+            e.HasIndex(x => x.WalSegment);
         });
 
         modelBuilder.Entity<AuditLogEntity>(e =>

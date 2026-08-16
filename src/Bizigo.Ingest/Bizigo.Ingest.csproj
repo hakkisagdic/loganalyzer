@@ -2,6 +2,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Bizigo.Contracts\Bizigo.Contracts.csproj" />
+    <!-- Yön: ingest → arşiv. Arşiv katmanı WAL'ın biçimini bilmez. -->
+    <ProjectReference Include="..\Bizigo.Storage.Raw\Bizigo.Storage.Raw.csproj" />
   </ItemGroup>
 
   <ItemGroup>

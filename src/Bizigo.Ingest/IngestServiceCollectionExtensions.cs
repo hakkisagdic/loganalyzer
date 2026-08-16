@@ -2,6 +2,7 @@ using Bizigo.Ingest.Otlp;
 using Bizigo.Ingest.Pipeline;
 using Bizigo.Ingest.Text;
 using Bizigo.Ingest.Wal;
+using Bizigo.Storage.Raw;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -36,6 +37,9 @@ public static class IngestServiceCollectionExtensions
         services.AddSingleton<IngestChannel>();
         services.AddSingleton<WriteAheadLog>();
         services.AddSingleton<IngestGateway>();
+
+        // Arşiv yükleyicisinin WAL'a bakışı (T04).
+        services.AddSingleton<IRawSegmentSource, WalSegmentSource>();
 
         // T06 kendi sink'ini kaydedince bu düşer.
         services.TryAddSingleton<IIngestSink, PassthroughSink>();

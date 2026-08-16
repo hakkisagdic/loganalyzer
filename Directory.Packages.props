@@ -13,6 +13,11 @@
   <ItemGroup Label="Depolama">
     <PackageVersion Include="ClickHouse.Driver" Version="1.3.0" />
     <PackageVersion Include="AWSSDK.S3" Version="4.0.102.1" />
+    <!--
+      Saf yönetilen zstd portu. Yerel kütüphane bağlamayan sürüm bilinçli tercih:
+      konteyner imajına ek .so girmiyor ve arm64/x64 ayrımı yok.
+    -->
+    <PackageVersion Include="ZstdSharp.Port" Version="0.8.8" />
   </ItemGroup>
 
   <ItemGroup Label="Kontrol düzlemi">

@@ -35,6 +35,13 @@ public sealed record AccessScope
     /// <summary>Sorgunun hiç satır döndüremeyeceği durum.</summary>
     public bool IsEmpty => !IsUnrestricted && OwnerGroups.Count == 0;
 
+    /// <summary>
+    /// Tek bir grup bu kapsamda mı. Ham nesne okumasında (T04) kullanılır:
+    /// grup nesne anahtarının içinde durduğu için indirmeden önce karar verilir.
+    /// </summary>
+    public bool Allows(string ownerGroup) =>
+        IsUnrestricted || OwnerGroups.Contains(ownerGroup);
+
     /// <summary>Sistem içi işler (replay yazımı, scrub) için tam kapsam.</summary>
     public static AccessScope System(string subject) => new()
     {
