@@ -133,9 +133,21 @@ services:
   # Toplama — OTel Collector (K1, K24)
   # syslog receiver `protocol: none`: çerçeveleme collector'da, ayrıştırma bizde.
   # --------------------------------------------------------------------------
+  # RustFS ile aynı sorun: collector 10001:10001 ile koşuyor, adlandırılmış birim
+  # root'a ait oluşuyor. `create_directory` bu yüzden izin alamıyor ve konteyner
+  # açılışta ölüyor.
+  otel-init:
+    image: alpine:3.22
+    command: ["sh", "-c", "mkdir -p /var/lib/otelcol/queue && chown -R 10001:10001 /var/lib/otelcol"]
+    volumes:
+      - otel_queue:/var/lib/otelcol
+    restart: "no"
+
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.158.0
     command: ["--config=/etc/otel/collector.yaml"]
+    depends_on:
+      otel-init: { condition: service_completed_successfully }
     environment:
       BIZIGO_ENDPOINT: ${BIZIGO_ENDPOINT:-http://host.docker.internal:5080}
     ports:

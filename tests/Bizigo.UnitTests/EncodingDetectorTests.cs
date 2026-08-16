@@ -10,9 +10,9 @@ namespace Bizigo.UnitTests;
 /// </summary>
 public sealed class EncodingDetectorTests
 {
+    // Kod sayfaları TestModuleInitializer'da kaydediliyor — sınıf başına yapılırsa
+    // başka testler sıraya bağlı olarak geçer.
     private readonly EncodingDetector _detector = new();
-
-    static EncodingDetectorTests() => EncodingDetector.RegisterCodePages();
 
     [Fact]
     public void Utf8_gecerli_metin_utf8_olarak_cozuluyor()
