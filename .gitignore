@@ -22,10 +22,14 @@ venv/
 .ruff_cache/
 
 # Yerel çalışma verisi — asla commitlenmez
+#
+# DİKKAT: burada geniş desen kullanmayın. `**/wal/` kuralı, macOS'un büyük/küçük
+# harf duyarsız dosya sistemi yüzünden `src/Bizigo.Ingest/Wal/` KAYNAK dizinini
+# de yuttu; yerelde derlendiği için de fark edilmedi, CI'da patladı.
 /data/
 /deploy/.env
-**/wal/
-**/*.wal
+/.bizigo/
+*.wal
 
 # macOS
 .DS_Store
