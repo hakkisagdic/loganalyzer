@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Testcontainers" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Testcontainers.ClickHouse" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Bizigo.Contracts\Bizigo.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Parsing\Bizigo.Parsing.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Normalization\Bizigo.Normalization.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.ControlPlane\Bizigo.ControlPlane.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Query\Bizigo.Query.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Ingest\Bizigo.Ingest.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Storage.Raw\Bizigo.Storage.Raw.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Storage.ClickHouse\Bizigo.Storage.ClickHouse.csproj" />
+  </ItemGroup>
+
+</Project>

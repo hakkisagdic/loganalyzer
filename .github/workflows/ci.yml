@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    name: Derle ve birim testleri
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      # TreatWarningsAsErrors açık — uyarı çıkarsa burada durur.
+      # Kültür kuralları (CA1304/1305/1307/1310/1311/1862) .editorconfig'de `error`:
+      # ToLower() yazan bir satır bu adımı kırar. Bkz. F1 §2.4 (Türkçe I/ı tuzağı).
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Birim testleri
+        run: >
+          dotnet test tests/Bizigo.UnitTests
+          --no-build --configuration Release
+          --logger "trx;LogFileName=unit.trx"
+          --results-directory TestResults
+
+      # Katalog kalite kapısı (T05). `lint` şema + ReDoS taraması yapar, `test`
+      # her parser'ın gömülü `tests` bloğunu koşturur. Testsiz parser zaten
+      # şema düzeyinde reddedilir; bu adım kataloğun bütününü doğrular.
+      - name: Parser kataloğu — lint
+        run: >
+          dotnet run --project src/Bizigo.Cli --no-build --configuration Release --
+          parser lint catalog/parsers
+
+      - name: Parser kataloğu — testler
+        run: >
+          dotnet run --project src/Bizigo.Cli --no-build --configuration Release --
+          parser test catalog/parsers
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-test-results
+          path: TestResults/
+
+  integration:
+    name: Entegrasyon testleri (Testcontainers)
+    runs-on: ubuntu-latest
+    # ClickHouse + Postgres + RustFS container'ları ayağa kalkıyor.
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Entegrasyon testleri
+        run: >
+          dotnet test tests/Bizigo.IntegrationTests
+          --no-build --configuration Release
+          --logger "trx;LogFileName=integration.trx"
+          --results-directory TestResults
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: integration-test-results
+          path: TestResults/
+
+  compose:
+    name: Geliştirme ortamı doğrulaması
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Compose yapılandırması geçerli mi
+        working-directory: deploy
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
+
+      - name: Yığın ayağa kalkıyor mu
+        working-directory: deploy
+        run: |
+          docker compose up -d --build --wait --wait-timeout 600
+          docker compose ps
+
+      - name: Sağlıksız servis var mı
+        if: always()
+        working-directory: deploy
+        run: |
+          unhealthy=$(docker compose ps --format json \
+            | python3 -c "import sys,json;[print(json.loads(l)['Service']) for l in sys.stdin if l.strip() and 'healthy' not in json.loads(l).get('Health','') and json.loads(l).get('Health')]" || true)
+          if [ -n "$unhealthy" ]; then
+            echo "sağlıksız: $unhealthy"
+            docker compose logs --tail 100
+            exit 1
+          fi
+          echo "tüm servisler sağlıklı"
+
+      - name: Temizlik
+        if: always()
+        working-directory: deploy
+        run: docker compose down -v

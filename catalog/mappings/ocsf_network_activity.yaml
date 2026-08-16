@@ -1,0 +1,37 @@
+# OCSF Network Activity (class_uid 4001) — activity_id
+#
+# Kaynak: OCSF şeması, Network Activity sınıfı.
+#   0 Unknown · 1 Open · 2 Close · 3 Reset · 4 Fail · 5 Refuse · 6 Traffic · 99 Other
+#
+# Anahtar, cihazın bastığı `action` değeridir ve ORDINAL karşılaştırılır.
+# Vendor'lar aynı anlamı farklı yazar; her yazımı ayrı satır olarak eklemek,
+# büyük/küçük harf normalizasyonuna güvenmekten güvenlidir (F1 §2.4).
+
+accept: 6
+ACCEPT: 6
+allow: 6
+ALLOW: 6
+permit: 6
+PERMIT: 6
+
+deny: 5
+DENY: 5
+drop: 5
+DROP: 5
+block: 5
+BLOCK: 5
+blocked: 5
+reject: 5
+
+close: 2
+CLOSE: 2
+closed: 2
+teardown: 2
+
+reset: 3
+RESET: 3
+rst: 3
+
+timeout: 4
+fail: 4
+failed: 4

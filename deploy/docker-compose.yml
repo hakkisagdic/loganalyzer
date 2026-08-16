@@ -1,0 +1,185 @@
+# bizigo-loganalyzer — F1 geliştirme ortamı
+#
+# Kullanım:  cd deploy && cp .env.example .env && docker compose up -d
+#
+# SÜRÜM SABİTLEME ZORUNLU (K25 riski): hiçbir imajda `latest` kullanılmaz.
+# RustFS 1.0-rc; beta/rc serisinde sürüm takibi yapılmaz, bilinçli yükseltilir.
+
+name: bizigo
+
+services:
+
+  # --------------------------------------------------------------------------
+  # Veri düzlemi — ClickHouse (K1: yazmıyoruz, kullanıyoruz)
+  # 26.2+ gerekiyor: full-text `text` index GA. Bkz. F1 §6.1.
+  # --------------------------------------------------------------------------
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.7
+    environment:
+      CLICKHOUSE_DB: bizigo
+      CLICKHOUSE_USER: ${CH_USER:-bizigo}
+      CLICKHOUSE_PASSWORD: ${CH_PASSWORD:-bizigo}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+    ports:
+      - "${CH_HTTP_PORT:-8123}:8123"
+      - "${CH_NATIVE_PORT:-9010}:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  # --------------------------------------------------------------------------
+  # Kontrol düzlemi — PostgreSQL (K23)
+  # İki veritabanı: `bizigo` (envanter/katalog/audit) ve `keycloak`.
+  # --------------------------------------------------------------------------
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${PG_USER:-bizigo}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-bizigo}
+      POSTGRES_DB: bizigo
+    ports:
+      - "${PG_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/01-keycloak-db.sql:/docker-entrypoint-initdb.d/01-keycloak-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-bizigo} -d bizigo"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  # --------------------------------------------------------------------------
+  # Ham arşiv — RustFS, S3 API (K25)
+  # Tek düğüm: dağıtık mod upstream'de "under testing".
+  # Uygulama YALNIZCA S3 API konuşur — RustFS'e özel çağrı yok (F1 §7.0).
+  # --------------------------------------------------------------------------
+  # RustFS konteyneri 10001:10001 kullanıcısıyla koşuyor; adlandırılmış birim root'a
+  # ait oluşturuluyor ve sunucu "Permission denied (os error 13)" ile ölüyor.
+  # Upstream'in kendi compose'unda da aynı yardımcı var.
+  rustfs-init:
+    image: alpine:3.22
+    command: ["sh", "-c", "mkdir -p /data/rustfs0 && chown -R 10001:10001 /data/rustfs0"]
+    volumes:
+      - rustfs_data:/data/rustfs0
+    restart: "no"
+
+  rustfs:
+    image: rustfs/rustfs:1.0.0-rc.1
+    security_opt:
+      - "no-new-privileges:true"
+    depends_on:
+      rustfs-init: { condition: service_completed_successfully }
+    environment:
+      RUSTFS_VOLUMES: /data/rustfs0
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-bizigoadmin}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:-bizigoadmin}
+      RUSTFS_OBS_LOGGER_LEVEL: warn
+      # Tek düğüm/tek disk topolojisi için gerekli — yalnızca geliştirme ortamında.
+      RUSTFS_UNSAFE_BYPASS_DISK_CHECK: "true"
+    ports:
+      - "${S3_PORT:-9000}:9000"
+      - "${S3_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - rustfs_data:/data/rustfs0
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 40
+      start_period: 15s
+
+  # --------------------------------------------------------------------------
+  # Kimlik — Keycloak (K26)
+  # `start-dev` KULLANILMAZ: bellek içi H2, her restart'ta veri gider.
+  # --------------------------------------------------------------------------
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.1
+    command: ["start", "--optimized", "--import-realm", "--http-enabled=true", "--hostname-strict=false"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${PG_USER:-bizigo}
+      KC_DB_PASSWORD: ${PG_PASSWORD:-bizigo}
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD:-admin}
+    ports:
+      - "${KC_PORT:-8180}:8080"
+    volumes:
+      - ./keycloak/realm-bizigo.json:/opt/keycloak/data/import/realm-bizigo.json:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      # Keycloak imajında curl yok; yönetim portundaki health uçları JVM ile yoklanır.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '\"UP\"' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 40
+      start_period: 40s
+
+  # --------------------------------------------------------------------------
+  # Toplama — OTel Collector (K1, K24)
+  # syslog receiver `protocol: none`: çerçeveleme collector'da, ayrıştırma bizde.
+  # --------------------------------------------------------------------------
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.158.0
+    command: ["--config=/etc/otel/collector.yaml"]
+    environment:
+      BIZIGO_ENDPOINT: ${BIZIGO_ENDPOINT:-http://host.docker.internal:5080}
+    ports:
+      - "${SYSLOG_TCP_PORT:-5140}:5140"
+      - "${SYSLOG_UDP_PORT:-5141}:5141/udp"
+      - "${OTLP_HTTP_PORT:-4318}:4318"
+    volumes:
+      - ./otel/collector.yaml:/etc/otel/collector.yaml:ro
+      - otel_queue:/var/lib/otelcol
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # --------------------------------------------------------------------------
+  # Analiz sidecar'ı — Drain3 + pySigma (K14). SICAK YOLDA DEĞİL.
+  # T01'de iskelet; gerçek içerik T12'de.
+  # --------------------------------------------------------------------------
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--save", "60", "1", "--appendonly", "no"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  sidecar:
+    build:
+      context: ../sidecar
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "${SIDECAR_PORT:-8099}:8000"
+    depends_on:
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/healthz')\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+volumes:
+  clickhouse_data:
+  postgres_data:
+  rustfs_data:
+  redis_data:
+  otel_queue:

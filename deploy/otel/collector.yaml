@@ -1,0 +1,72 @@
+# OTel Collector — F1 §2.1, §2.2 (K24)
+#
+# İki taşıyıcı karar burada:
+#   1. syslog receiver `protocol: none` — çerçeveleme ve PRI collector'da kalır,
+#      GÖVDE OLDUĞU GİBİ gelir. RFC modunda orijinal satır geri alınamıyor ve bu
+#      ham arşiv + replay hedefiyle çelişiyor. Ayrıştırmanın tamamı .NET tarafında.
+#   2. file_storage kalıcı kuyruk — backpressure zincirinin dayanağı. .NET servisi
+#      503 dönerse collector yeniden dener; kendi kuyruğumuzu yazmıyoruz (K5).
+
+extensions:
+  file_storage/queue:
+    directory: /var/lib/otelcol/queue
+    timeout: 10s
+
+receivers:
+  syslog/tcp:
+    tcp:
+      listen_address: "0.0.0.0:5140"
+    protocol: none
+
+  syslog/udp:
+    udp:
+      listen_address: "0.0.0.0:5141"
+    protocol: none
+
+  otlp:
+    protocols:
+      http:
+        endpoint: "0.0.0.0:4318"
+
+processors:
+  batch:
+    send_batch_size: 2000
+    send_batch_max_size: 4000
+    timeout: 2s
+
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 15
+
+exporters:
+  otlphttp/bizigo:
+    endpoint: ${env:BIZIGO_ENDPOINT}
+    encoding: proto
+    # T09'da eklenecek: auth: { authenticator: oauth2client }
+    tls:
+      insecure: true
+    sending_queue:
+      enabled: true
+      storage: file_storage/queue
+      num_consumers: 4
+      queue_size: 10000
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 30s
+      max_elapsed_time: 0     # süresiz yeniden dene — veri kaybetmektense birikt
+
+  debug:
+    verbosity: basic
+
+service:
+  extensions: [file_storage/queue]
+  pipelines:
+    logs:
+      receivers: [syslog/tcp, syslog/udp, otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/bizigo]
+  telemetry:
+    logs:
+      level: warn

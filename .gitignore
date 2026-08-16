@@ -1,0 +1,35 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+artifacts/
+TestResults/
+*.trx
+coverage*
+
+# Rider / VS Code
+.idea/
+.vscode/
+
+# Python sidecar
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Yerel çalışma verisi — asla commitlenmez
+/data/
+/deploy/.env
+**/wal/
+**/*.wal
+
+# macOS
+.DS_Store
+
+# iCloud sync duplikatları (bkz. CLAUDE.md)
+* 2.*
+*\ 2/

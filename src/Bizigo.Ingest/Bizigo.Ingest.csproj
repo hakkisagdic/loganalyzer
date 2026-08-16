@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bizigo.Contracts\Bizigo.Contracts.csproj" />
+    <ProjectReference Include="..\Bizigo.Parsing\Bizigo.Parsing.csproj" />
+    <ProjectReference Include="..\Bizigo.Normalization\Bizigo.Normalization.csproj" />
+    <ProjectReference Include="..\Bizigo.Storage.Raw\Bizigo.Storage.Raw.csproj" />
+    <ProjectReference Include="..\Bizigo.Storage.ClickHouse\Bizigo.Storage.ClickHouse.csproj" />
+    <ProjectReference Include="..\Bizigo.ControlPlane\Bizigo.ControlPlane.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+  </PropertyGroup>
+
+</Project>

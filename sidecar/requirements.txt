@@ -1,0 +1,10 @@
+# T01: iskelet. Gerçek bağımlılıklar T12'de.
+#
+# ÖNEMLİ (K14): drain3 PyPI sürümü 0.9.11 (Tem 2022) ve repodan geride.
+# T12'de `logpai/Drain3` git SHA'sına sabitlenecek:
+#   drain3 @ git+https://github.com/logpai/Drain3@<SHA>
+# `pip install drain3` KULLANILMAZ.
+
+fastapi==0.121.2
+uvicorn[standard]==0.42.0
+redis==6.4.0

@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bizigo.Query\Bizigo.Query.csproj" />
+    <ProjectReference Include="..\Bizigo.Ingest\Bizigo.Ingest.csproj" />
+    <ProjectReference Include="..\Bizigo.Parsing\Bizigo.Parsing.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>bizigo</AssemblyName>
+    <RootNamespace>Bizigo.Cli</RootNamespace>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="NetArchTest.Rules" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Bizigo.Contracts\Bizigo.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Parsing\Bizigo.Parsing.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Normalization\Bizigo.Normalization.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.ControlPlane\Bizigo.ControlPlane.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Query\Bizigo.Query.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Ingest\Bizigo.Ingest.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Storage.Raw\Bizigo.Storage.Raw.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Storage.ClickHouse\Bizigo.Storage.ClickHouse.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Api\Bizigo.Api.csproj" />
+
+    <!--
+      CliSmokeTests derlenmiş `bizigo` ikilisini koşturuyor. Referans yalnızca
+      derleme sırası için; derlemeye bağlanmıyor (ReferenceOutputAssembly=false).
+      Olmazsa `dotnet test tests/Bizigo.UnitTests` tek başına koştuğunda CLI
+      derlenmemiş olur ve testler sessizce atlanır.
+    -->
+    <ProjectReference Include="..\..\src\Bizigo.Cli\Bizigo.Cli.csproj"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,52 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+trim_trailing_whitespace = true
+
+[*.{yml,yaml,json,md}]
+indent_size = 2
+
+[*.cs]
+indent_size = 4
+
+# ---------------------------------------------------------------------------
+# Türkçe kültür tuzağı — T01 kabul kriteri.
+#
+# tr-TR kültüründe ToLower() "I" harfini "ı" yapar; "INTERFACE" gibi kelimeler
+# aramada sessizce eşleşmez hale gelir. Bu, kültür duyarlı karşılaştırmanın en
+# sık yakalanmayan hatası ve bu üründe log aramasını bozar.
+# Bkz. F1 teknik plan §2.4.
+#
+# Bu kurallar UYARI DEĞİL HATA. ToLowerInvariant()/StringComparison.Ordinal
+# kullanılmalı.
+# ---------------------------------------------------------------------------
+
+# CA1304: CultureInfo belirtin
+dotnet_diagnostic.CA1304.severity = error
+# CA1305: IFormatProvider belirtin
+dotnet_diagnostic.CA1305.severity = error
+# CA1307: Netlik için StringComparison belirtin
+dotnet_diagnostic.CA1307.severity = error
+# CA1310: Doğruluk için StringComparison belirtin (StartsWith/EndsWith/IndexOf)
+dotnet_diagnostic.CA1310.severity = error
+# CA1311: Kültür belirtin veya değişmez (invariant) sürümü kullanın
+dotnet_diagnostic.CA1311.severity = error
+# CA1862: Büyük/küçük harf duyarsız karşılaştırmada ToLower/ToUpper yerine StringComparison
+dotnet_diagnostic.CA1862.severity = error
+# CA1863: CompositeFormat kullanın
+dotnet_diagnostic.CA1863.severity = suggestion
+
+# ---------------------------------------------------------------------------
+# Gürültü azaltma — bu üründe değer üretmeyen kurallar
+# ---------------------------------------------------------------------------
+dotnet_diagnostic.CA1848.severity = none   # LoggerMessage delegeleri (sıcak yol dışında zorunlu değil)
+dotnet_diagnostic.CA2007.severity = none   # ConfigureAwait — ASP.NET Core'da gereksiz
+dotnet_diagnostic.CA1062.severity = none   # public arg null kontrolü — nullable ile kapsanıyor
+
+[tests/**/*.cs]
+dotnet_diagnostic.CA1707.severity = none   # test adlarında alt çizgi serbest
+dotnet_diagnostic.CA1861.severity = none   # test verisinde sabit dizi serbest

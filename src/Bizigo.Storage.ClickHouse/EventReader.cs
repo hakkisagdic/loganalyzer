@@ -1,0 +1,459 @@
+using System.Globalization;
+using System.Net;
+using System.Text;
+using Bizigo.Contracts;
+using ClickHouse.Driver.ADO;
+using ClickHouse.Driver.Utility;
+
+namespace Bizigo.Storage.ClickHouse;
+
+/// <summary>
+/// <c>events</c> okuma yolu. <b>Her</b> metot bir <see cref="ScopePredicate"/>
+/// istiyor — kapsamsız okuma yazmak imza değiştirmeyi gerektirir (K17).
+/// </summary>
+public sealed class EventReader(ClickHouseContext context)
+{
+    private readonly ClickHouseContext _context = context
+        ?? throw new ArgumentNullException(nameof(context));
+
+    private ClickHouseOptions _options => _context.Options;
+
+    /// <summary>
+    /// Filtrelenebilir alanların <b>izin listesi</b>. Kolon adı SQL'de
+    /// parametreleştirilemediği için tek savunma bu liste. Listede olmayan alan
+    /// istisna fırlatır — sessizce yok sayılmaz, yoksa kullanıcı filtresinin
+    /// uygulandığını sanır.
+    /// </summary>
+    private static readonly Dictionary<string, string> FilterableColumns = new(StringComparer.Ordinal)
+    {
+        ["source_id"] = "String",
+        ["host"] = "String",
+        ["vendor"] = "String",
+        ["product"] = "String",
+        ["parser_id"] = "String",
+        ["parser_version"] = "String",
+        ["template_id"] = "String",
+        ["proto"] = "String",
+        ["action"] = "String",
+        ["outcome"] = "String",
+        ["user_name"] = "String",
+        ["owner_group"] = "String",
+        ["severity_num"] = "UInt8",
+        ["src_port"] = "UInt16",
+        ["dst_port"] = "UInt16",
+        ["ocsf_class_uid"] = "UInt32",
+        ["ocsf_activity_id"] = "UInt16",
+        ["src_ip"] = "String",
+        ["dst_ip"] = "String",
+    };
+
+    private const string SelectColumns = """
+        ts, ingested_at, event_id, owner_group, source_id, host, vendor, product,
+        parser_id, parser_version, toUInt8(parse_status) AS parse_status_num, parse_generation,
+        encoding_detected, template_id, severity_num, ocsf_class_uid, ocsf_activity_id,
+        toString(src_ip) AS src_ip_s, toString(dst_ip) AS dst_ip_s, src_port, dst_port,
+        proto, action, outcome, user_name,
+        mapKeys(attrs) AS attr_keys, mapValues(attrs) AS attr_values,
+        body, raw_ref
+        """;
+
+    public async Task<EventPage> SearchAsync(
+        EventQuery query,
+        ScopePredicate scope,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        // Kapsam boşsa sunucuya hiç gitmiyoruz. Aynı sonucu "WHERE 0" da verirdi
+        // ama boş kapsamda sorgu maliyeti ödemenin anlamı yok.
+        if (scope.DeniesEverything)
+        {
+            return new EventPage([], null, false);
+        }
+
+        var limit = Math.Clamp(query.Limit, 1, _options.MaxRowsPerQuery);
+        var builder = new QueryBuilder(scope);
+        builder.AddTimeRange(query.From, query.To);
+        builder.AddScope();
+        builder.AddInList("source_id", query.SourceIds);
+        builder.AddOwnerGroupNarrowing(query.OwnerGroups);
+        builder.AddParseStatuses(query.ParseStatuses);
+        builder.AddFullText(query.FullText);
+
+        foreach (var filter in query.Filters)
+        {
+            builder.AddFieldFilter(filter, FilterableColumns);
+        }
+
+        builder.AddKeyset(query.After, query.Ascending);
+
+        var order = query.Ascending ? "ASC" : "DESC";
+        var sql = $"""
+            SELECT {SelectColumns}
+            FROM {_options.EventsTable}
+            WHERE {builder.Where}
+            ORDER BY ts {order}, event_id {order}
+            LIMIT {limit + 1}
+            """;
+
+        await using var connection = _context.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.CommandTimeout = _options.QueryTimeoutSeconds;
+        builder.Apply(command);
+
+        var results = new List<LogEvent>(limit + 1);
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
+        {
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                results.Add(Map(reader));
+            }
+        }
+
+        var hasMore = results.Count > limit;
+        if (hasMore)
+        {
+            results.RemoveAt(results.Count - 1);
+        }
+
+        var next = hasMore && results.Count > 0
+            ? new EventCursor(results[^1].Timestamp, results[^1].EventId)
+            : null;
+
+        return new EventPage(results, next, hasMore);
+    }
+
+    public async Task<LogEvent?> GetByIdAsync(
+        Guid eventId,
+        ScopePredicate scope,
+        CancellationToken cancellationToken = default)
+    {
+        if (scope.DeniesEverything)
+        {
+            return null;
+        }
+
+        var builder = new QueryBuilder(scope);
+        builder.AddScope();
+        builder.AddRaw("event_id = {event_id:UUID}", "event_id", eventId);
+
+        await using var connection = _context.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT {SelectColumns} FROM {_options.EventsTable} WHERE {builder.Where} LIMIT 1";
+        command.CommandTimeout = _options.QueryTimeoutSeconds;
+        builder.Apply(command);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? Map(reader) : null;
+    }
+
+    public async Task<long> CountAsync(
+        EventQuery query,
+        ScopePredicate scope,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        if (scope.DeniesEverything)
+        {
+            return 0;
+        }
+
+        var builder = new QueryBuilder(scope);
+        builder.AddTimeRange(query.From, query.To);
+        builder.AddScope();
+        builder.AddInList("source_id", query.SourceIds);
+        builder.AddOwnerGroupNarrowing(query.OwnerGroups);
+        builder.AddParseStatuses(query.ParseStatuses);
+        builder.AddFullText(query.FullText);
+
+        foreach (var filter in query.Filters)
+        {
+            builder.AddFieldFilter(filter, FilterableColumns);
+        }
+
+        await using var connection = _context.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT count() FROM {_options.EventsTable} WHERE {builder.Where}";
+        command.CommandTimeout = _options.QueryTimeoutSeconds;
+        builder.Apply(command);
+
+        var scalar = await command.ExecuteScalarAsync(cancellationToken);
+        return Convert.ToInt64(scalar, CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>
+    /// Kapsam dışında kaç eşleşme olduğunu <b>sayar</b> — içeriği döndürmez.
+    /// RCA raporundaki "kapsamınız dışında N ilişkili olay var" satırının kaynağı
+    /// (RCA özelliği §3.2). Bilgi sızdırmadan yanlış güveni engelliyor.
+    /// </summary>
+    public async Task<long> CountOutOfScopeAsync(
+        EventQuery query,
+        ScopePredicate scope,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        if (scope.IsUnrestricted)
+        {
+            return 0;
+        }
+
+        var builder = new QueryBuilder(scope);
+        builder.AddTimeRange(query.From, query.To);
+        builder.AddNegatedScope();
+        builder.AddFullText(query.FullText);
+
+        await using var connection = _context.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT count() FROM {_options.EventsTable} WHERE {builder.Where}";
+        command.CommandTimeout = _options.QueryTimeoutSeconds;
+        builder.Apply(command);
+
+        var scalar = await command.ExecuteScalarAsync(cancellationToken);
+        return Convert.ToInt64(scalar, CultureInfo.InvariantCulture);
+    }
+
+    private static LogEvent Map(System.Data.Common.DbDataReader reader)
+    {
+        var keys = (string[])reader["attr_keys"];
+        var values = (string[])reader["attr_values"];
+        var attrs = new Dictionary<string, string>(keys.Length, StringComparer.Ordinal);
+        for (var i = 0; i < keys.Length && i < values.Length; i++)
+        {
+            attrs[keys[i]] = values[i];
+        }
+
+        return new LogEvent
+        {
+            Timestamp = new DateTimeOffset(DateTime.SpecifyKind((DateTime)reader["ts"], DateTimeKind.Utc)),
+            IngestedAt = new DateTimeOffset(DateTime.SpecifyKind((DateTime)reader["ingested_at"], DateTimeKind.Utc)),
+            EventId = (Guid)reader["event_id"],
+            OwnerGroup = (string)reader["owner_group"],
+            SourceId = (string)reader["source_id"],
+            Host = (string)reader["host"],
+            Vendor = (string)reader["vendor"],
+            Product = (string)reader["product"],
+            ParserId = (string)reader["parser_id"],
+            ParserVersion = (string)reader["parser_version"],
+            ParseStatus = (ParseStatus)Convert.ToByte(reader["parse_status_num"], CultureInfo.InvariantCulture),
+            ParseGeneration = Convert.ToUInt32(reader["parse_generation"], CultureInfo.InvariantCulture),
+            EncodingDetected = (string)reader["encoding_detected"],
+            TemplateId = (string)reader["template_id"],
+            SeverityNum = Convert.ToByte(reader["severity_num"], CultureInfo.InvariantCulture),
+            OcsfClassUid = Convert.ToUInt32(reader["ocsf_class_uid"], CultureInfo.InvariantCulture),
+            OcsfActivityId = Convert.ToUInt16(reader["ocsf_activity_id"], CultureInfo.InvariantCulture),
+            SrcIp = IPAddress.Parse((string)reader["src_ip_s"]),
+            DstIp = IPAddress.Parse((string)reader["dst_ip_s"]),
+            SrcPort = Convert.ToUInt16(reader["src_port"], CultureInfo.InvariantCulture),
+            DstPort = Convert.ToUInt16(reader["dst_port"], CultureInfo.InvariantCulture),
+            Proto = (string)reader["proto"],
+            Action = (string)reader["action"],
+            Outcome = (string)reader["outcome"],
+            UserName = (string)reader["user_name"],
+            Attrs = attrs,
+            Body = (string)reader["body"],
+            RawRef = (string)reader["raw_ref"],
+        };
+    }
+
+    /// <summary>
+    /// WHERE parçalarını ve parametreleri biriktirir. Kolon adları izin listesinden,
+    /// değerler <b>daima</b> parametre — string birleştirmeyle değer gömülmüyor.
+    /// </summary>
+    private sealed class QueryBuilder(ScopePredicate scope)
+    {
+        private readonly List<string> _conditions = [];
+        private readonly Dictionary<string, object> _parameters = new(StringComparer.Ordinal);
+        private int _counter;
+
+        public string Where => _conditions.Count == 0 ? "1" : string.Join(" AND ", _conditions);
+
+        public void AddScope()
+        {
+            _conditions.Add(scope.ToSqlFragment());
+            if (scope.HasParameter)
+            {
+                _parameters["scope_groups"] = scope.ParameterValue;
+            }
+        }
+
+        public void AddNegatedScope()
+        {
+            if (scope.DeniesEverything)
+            {
+                _conditions.Add("1");
+                return;
+            }
+
+            _conditions.Add("NOT (" + scope.ToSqlFragment() + ")");
+            if (scope.HasParameter)
+            {
+                _parameters["scope_groups"] = scope.ParameterValue;
+            }
+        }
+
+        public void AddTimeRange(DateTimeOffset from, DateTimeOffset to)
+        {
+            _conditions.Add("ts >= {ts_from:DateTime64(3)} AND ts < {ts_to:DateTime64(3)}");
+            _parameters["ts_from"] = from.UtcDateTime;
+            _parameters["ts_to"] = to.UtcDateTime;
+        }
+
+        public void AddRaw(string condition, string parameterName, object value)
+        {
+            _conditions.Add(condition);
+            _parameters[parameterName] = value;
+        }
+
+        public void AddInList(string column, IReadOnlyList<string> values)
+        {
+            if (values.Count == 0)
+            {
+                return;
+            }
+
+            var name = Next(column);
+            _conditions.Add($"{column} IN ({{{name}:Array(String)}})");
+            _parameters[name] = values.ToArray();
+        }
+
+        /// <summary>
+        /// Kullanıcının istediği grup daraltması. <see cref="ScopePredicate.From"/>
+        /// zaten kesişimi almış olabilir; bu ek koşul yalnızca daraltmayı uygular ve
+        /// kapsamı <b>genişletemez</b> çünkü scope koşulu ayrıca AND'leniyor.
+        /// </summary>
+        public void AddOwnerGroupNarrowing(IReadOnlyList<string> groups) => AddInList("owner_group", groups);
+
+        public void AddParseStatuses(IReadOnlyList<ParseStatus> statuses)
+        {
+            if (statuses.Count == 0)
+            {
+                return;
+            }
+
+            var name = Next("parse_status");
+            _conditions.Add($"toUInt8(parse_status) IN ({{{name}:Array(UInt8)}})");
+            _parameters[name] = statuses.Select(s => (byte)s).ToArray();
+        }
+
+        /// <summary>
+        /// Tam metin. <c>sparseGrams</c> indeksi alt dizi aramasını hızlandırıyor.
+        ///
+        /// ⚠️ Büyük/küçük harf DUYARLI. İndekste <c>preprocessor = lowerUTF8()</c>
+        /// kullanılmadı çünkü lowerUTF8 Türkçe İ/ı'da bayt uzunluğu değiştiği için
+        /// hatalı sonuç verebiliyor ve skip index'te bu <b>yanlış negatif</b> demek.
+        /// Duyarsız arama kararı ölçümle verilecek (F1 §15 kalem 4).
+        /// </summary>
+        public void AddFullText(string? text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return;
+            }
+
+            var name = Next("ft");
+            _conditions.Add($"positionUTF8(body, {{{name}:String}}) > 0");
+            _parameters[name] = text;
+        }
+
+        public void AddFieldFilter(FieldFilter filter, IReadOnlyDictionary<string, string> allowed)
+        {
+            ArgumentNullException.ThrowIfNull(filter);
+
+            if (!allowed.TryGetValue(filter.Field, out var clickHouseType))
+            {
+                throw new ArgumentException(
+                    $"'{filter.Field}' filtrelenebilir alan değil. İzin verilenler: " +
+                    string.Join(", ", allowed.Keys.Order(StringComparer.Ordinal)),
+                    nameof(filter));
+            }
+
+            if (filter.Values.Count == 0)
+            {
+                throw new ArgumentException($"'{filter.Field}' filtresi değersiz.", nameof(filter));
+            }
+
+            // IP kolonları String olarak filtreleniyor; toString(...) ile karşılaştırılır.
+            var column = filter.Field is "src_ip" or "dst_ip" ? $"toString({filter.Field})" : filter.Field;
+            var name = Next(filter.Field);
+
+            switch (filter.Operator)
+            {
+                case FilterOperator.Equals:
+                    _conditions.Add($"{column} = {{{name}:{clickHouseType}}}");
+                    _parameters[name] = filter.Values[0];
+                    break;
+                case FilterOperator.NotEquals:
+                    _conditions.Add($"{column} != {{{name}:{clickHouseType}}}");
+                    _parameters[name] = filter.Values[0];
+                    break;
+                case FilterOperator.In:
+                    _conditions.Add($"{column} IN ({{{name}:Array({clickHouseType})}})");
+                    _parameters[name] = filter.Values.ToArray();
+                    break;
+                case FilterOperator.GreaterThan:
+                    _conditions.Add($"{column} > {{{name}:{clickHouseType}}}");
+                    _parameters[name] = filter.Values[0];
+                    break;
+                case FilterOperator.LessThan:
+                    _conditions.Add($"{column} < {{{name}:{clickHouseType}}}");
+                    _parameters[name] = filter.Values[0];
+                    break;
+                case FilterOperator.Contains:
+                    _conditions.Add($"positionUTF8({column}, {{{name}:String}}) > 0");
+                    _parameters[name] = filter.Values[0];
+                    break;
+                case FilterOperator.StartsWith:
+                    _conditions.Add($"startsWith({column}, {{{name}:String}})");
+                    _parameters[name] = filter.Values[0];
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(filter), filter.Operator, "Bilinmeyen operatör.");
+            }
+        }
+
+        public void AddKeyset(EventCursor? cursor, bool ascending)
+        {
+            if (cursor is null)
+            {
+                return;
+            }
+
+            // (ts, event_id) demeti üzerinde keyset — offset derin sayfalarda çöker.
+            var op = ascending ? ">" : "<";
+            _conditions.Add(
+                $"(ts, event_id) {op} ({{cursor_ts:DateTime64(3)}}, {{cursor_id:UUID}})");
+            _parameters["cursor_ts"] = cursor.Timestamp.UtcDateTime;
+            _parameters["cursor_id"] = cursor.EventId;
+        }
+
+        public void Apply(ClickHouseCommand command)
+        {
+            foreach (var (key, value) in _parameters)
+            {
+                command.AddParameter(key, value);
+            }
+        }
+
+        private string Next(string prefix)
+        {
+            var sanitized = new StringBuilder(prefix.Length);
+            foreach (var c in prefix)
+            {
+                sanitized.Append(char.IsAsciiLetterOrDigit(c) ? c : '_');
+            }
+
+            return string.Create(CultureInfo.InvariantCulture, $"p_{sanitized}_{_counter++}");
+        }
+    }
+}

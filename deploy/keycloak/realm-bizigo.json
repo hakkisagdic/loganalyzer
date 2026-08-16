@@ -1,0 +1,33 @@
+{
+  "_comment": "T01 — minimum geçerli realm. Gruplar, claim mapper'ları, servis hesabı ve client ayarları T09'da (kimlik ticket'ı) dolduruluyor. Realm-as-code: bu dosya elle admin konsolundan değiştirilmez.",
+  "realm": "bizigo",
+  "enabled": true,
+  "displayName": "Bizigo Log Analyzer",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 3600,
+  "roles": {
+    "realm": [
+      { "name": "reader",  "description": "Yalnızca sorgular" },
+      { "name": "analyst", "description": "Sorgular + kaydedilmiş sorgu/senaryo taslağı" },
+      { "name": "author",  "description": "Parser ve senaryo yayınlar" },
+      { "name": "admin",   "description": "Envanter, grup eşlemesi, sistem ayarları" },
+      { "name": "ingest",  "description": "Yalnızca /v1/logs yazar — okuma yetkisi yok" }
+    ]
+  },
+  "groups": [
+    {
+      "name": "network",
+      "subGroups": [
+        { "name": "core" },
+        { "name": "edge" }
+      ]
+    },
+    { "name": "platform" }
+  ],
+  "clients": [],
+  "users": []
+}
