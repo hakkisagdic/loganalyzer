@@ -17,6 +17,9 @@ public static class RepositoryLayout
 
     public static string CatalogParserDirectory => Path.Combine(Root, "catalog", "parsers");
 
+    /// <summary>Maskeleme sözlüğü — sidecar ile paylaşılan tek kaynak (K14).</summary>
+    public static string MaskFile => Path.Combine(Root, "catalog", "masks", "bizigo-masks.yaml");
+
     private static string FindRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

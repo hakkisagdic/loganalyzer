@@ -1,8 +1,10 @@
+using Bizigo.Ingest.Discovery;
 using Bizigo.Ingest.Otlp;
 using Bizigo.Ingest.Pipeline;
 using Bizigo.Ingest.Text;
 using Bizigo.Ingest.Wal;
 using Bizigo.Normalization;
+using Bizigo.Parsing.Grok;
 using Bizigo.Storage.Raw;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,6 +53,54 @@ public static class IngestServiceCollectionExtensions
 
         services.AddHostedService<IngestPipeline>();
         services.AddHostedService<CatalogRefreshService>();
+
+        services.AddBizigoDiscovery(configuration);
+
+        return services;
+    }
+
+    /// <summary>
+    /// Python sidecar keşif yolu (T12 / K14).
+    ///
+    /// <para>
+    /// <b>Sıcak yolda değil.</b> Kapalıyken (<c>Sidecar:Enabled=false</c>) geriye
+    /// yalnızca <see cref="NullTemplateAnnotator"/> kalıyor; ne HTTP istemcisi ne
+    /// arka plan işçisi kuruluyor. Ayarı kapatmak ile sidecar'ı öldürmek arasında
+    /// ingest açısından hiçbir fark olmaması bilinçli.
+    /// </para>
+    /// </summary>
+    public static IServiceCollection AddBizigoDiscovery(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var options = new SidecarOptions();
+        configuration.GetSection(SidecarOptions.SectionName).Bind(options);
+
+        services.AddSingleton(options);
+        services.AddSingleton<DiscoveryStats>();
+
+        if (!options.Enabled)
+        {
+            services.TryAddSingleton<ITemplateAnnotator, NullTemplateAnnotator>();
+            return services;
+        }
+
+        // Maskeleme sözlüğü grok kütüphanesiyle aynı statüde: **veri**. Bulunamazsa
+        // sessizce devam etmek, keşfin neden hiç çalışmadığını günlerce gizler.
+        services.AddSingleton(_ => MaskCatalog.LoadFromFile(options.MaskFile));
+
+        services.AddSingleton(new TemplateCache(options.TemplateCacheCapacity));
+        services.AddSingleton<DiscoveryQueue>();
+        services.AddSingleton<SidecarClient>(_ => new SidecarClient(options));
+        services.AddSingleton(sp => new SidecarCircuitBreaker(
+            options,
+            sp.GetRequiredService<TimeProvider>()));
+
+        services.TryAddSingleton<ITemplateAnnotator, DiscoveryAnnotator>();
+        services.AddHostedService<DiscoveryWorker>();
 
         return services;
     }
