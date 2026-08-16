@@ -15,30 +15,47 @@ extensions:
     create_directory: true
 
 receivers:
-  # `encoding: nop` ZORUNLU (F1 §2.4). Varsayılan `utf-8` ile collector gövdeyi
-  # burada çözer ve geçersiz baytları U+FFFD ile DEĞİŞTİRİR — windows-1254 bir
-  # FortiGate satırı bize ulaşmadan geri dönülemez biçimde bozulur. `nop` ile
-  # gövde ham bayt dizisi olarak (OTLP `bytes_value`) gelir; kodlama tespiti
-  # ve replay ancak o zaman anlamlı.
+  # KODLAMA — ham sadakatin bağlı olduğu ayar (F1 §2.4).
+  #
+  # Varsayılan `utf-8` geçersiz baytları U+FFFD ile DEĞİŞTİRİR: windows-1254 bir
+  # FortiGate satırı bize ulaşmadan geri dönülemez biçimde bozulur.
+  #
+  # `nop` ilk akla gelen çözümdü ama bu receiver'da ÇALIŞMIYOR:
+  #   - UDP: girdinin varsayılan `line_end_pattern` değeri var, `nop` ile birlikte
+  #     "line_end_pattern should not be set when using nop encoding" hatası veriyor.
+  #   - TCP: `nop` seçilirse bölücü NoSplitFunc'a düşüyor ve syslog ÇERÇEVELEMESİ
+  #     kayboluyor — TCP akışının tamamı tek bir kayda dönüşüyor. Sessiz ve çok
+  #     daha kötü bir hata. (Framing ancak `enable_octet_counting` ile korunur,
+  #     onu da cihazların çoğu göndermiyor.)
+  #
+  # `iso-8859-1` her iki sorunu da çözüyor: 0x00-0xFF baytları U+0000-U+00FF kod
+  # noktalarına BİREBİR ve TERSİNİR eşleniyor, satır bölme çalışmaya devam ediyor
+  # ve telde geçerli UTF-8 taşınıyor. Orijinal baytlar bizde
+  # `Encoding.Latin1.GetBytes(body)` ile aynen geri alınıyor.
+  #
+  # `utf-8-raw` da bayt geçirgen ama gövde protobuf `string_value` alanına
+  # geçersiz UTF-8 olarak yazılırdı; .NET tarafında çözümleme U+FFFD üretir.
   syslog/tcp:
     tcp:
       listen_address: "0.0.0.0:5140"
-      encoding: nop
+      encoding: iso-8859-1
       add_attributes: true      # net.peer.* — kaynak kimliği T06'da buradan çözülüyor
     protocol: none
-    # Taşımayı tahmin etmek yerine söylüyoruz: `net.transport` semconv'u sürümle
-    # değişiyor, bu öznitelik bizim sözleşmemiz.
+    # Taşımayı ve tel kodlamasını tahmin etmek yerine söylüyoruz: semconv sürümle
+    # değişiyor, bu öznitelikler bizim sözleşmemiz.
     attributes:
       bizigo.transport: syslog-tcp
+      bizigo.wire_encoding: iso-8859-1
 
   syslog/udp:
     udp:
       listen_address: "0.0.0.0:5141"
-      encoding: nop
+      encoding: iso-8859-1
       add_attributes: true
     protocol: none
     attributes:
       bizigo.transport: syslog-udp
+      bizigo.wire_encoding: iso-8859-1
 
   otlp:
     protocols:
@@ -57,7 +74,7 @@ processors:
     spike_limit_percentage: 15
 
 exporters:
-  otlphttp/bizigo:
+  otlp_http/bizigo:
     endpoint: ${env:BIZIGO_ENDPOINT}
     encoding: proto
     # T09'da eklenecek: auth: { authenticator: oauth2client }
@@ -83,7 +100,7 @@ service:
     logs:
       receivers: [syslog/tcp, syslog/udp, otlp]
       processors: [memory_limiter, batch]
-      exporters: [otlphttp/bizigo]
+      exporters: [otlp_http/bizigo]
   telemetry:
     logs:
       level: warn

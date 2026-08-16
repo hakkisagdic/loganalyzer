@@ -116,29 +116,70 @@ public sealed class OtlpLogsDecoder
             TransportPeer = ResolvePeer(attributes),
             EncodingDeclared = attributes.GetValueOrDefault("bizigo.encoding", string.Empty),
             SeverityNumber = (byte)Math.Clamp((int)logRecord.SeverityNumber, 0, byte.MaxValue),
-            Body = ExtractBody(logRecord.Body),
+            Body = ExtractBody(logRecord.Body, attributes.GetValueOrDefault("bizigo.wire_encoding")),
             Attributes = attributes,
         };
     }
 
     /// <summary>
-    /// Gövdeyi bayt olarak alır.
+    /// Gövde string olarak geldiyse baytları hangi kodlamayla geri kazanacağımız.
     ///
     /// <para>
-    /// <c>bytes_value</c> beklenen yoldur: collector'da <c>encoding: nop</c> ile
-    /// ham bayt akışı korunur. <c>string_value</c> gelirse baytlar collector'da
-    /// zaten çözülmüştür — windows-1254 bir satır orada U+FFFD'ye dönmüş olabilir
-    /// ve <b>geri alınamaz</b>. Bu durumda yapılacak tek şey yapılandırmayı
-    /// düzeltmektir; burada yeniden kodlamak kaybı gizlemekten başka işe yaramaz.
+    /// syslog yolunda collector <c>iso-8859-1</c> ile çözüyor: bayt ↔ kod noktası
+    /// eşlemesi birebir ve tersinir, yani <c>Latin1.GetBytes</c> orijinal bayt
+    /// dizisini <b>aynen</b> geri veriyor. UTF-8 ile geri kodlamak burada
+    /// 0x80–0xFF aralığındaki her baytı iki bayta çevirip veriyi bozardı —
+    /// sessizce, çünkü sonuç yine geçerli bir dizi olurdu.
     /// </para>
     /// </summary>
-    private static ReadOnlyMemory<byte> ExtractBody(AnyValue? body) => body?.ValueCase switch
+    private static Encoding ResolveWireEncoding(string? name) =>
+        string.IsNullOrEmpty(name) ? Encoding.UTF8 : LookupOrUtf8(name);
+
+    private static Encoding LookupOrUtf8(string name)
     {
-        AnyValue.ValueOneofCase.BytesValue => body.BytesValue.ToByteArray(),
-        AnyValue.ValueOneofCase.StringValue => Encoding.UTF8.GetBytes(body.StringValue),
-        AnyValue.ValueOneofCase.None or null => ReadOnlyMemory<byte>.Empty,
-        _ => Encoding.UTF8.GetBytes(Format(body)),
-    };
+        try
+        {
+            return Encoding.GetEncoding(name);
+        }
+        catch (ArgumentException)
+        {
+            // Bilinmeyen ad ingest'i durdurmaz; UTF-8 varsayımına dönülür.
+            return Encoding.UTF8;
+        }
+    }
+
+    /// <summary>
+    /// Gövdeyi orijinal baytlarıyla alır.
+    ///
+    /// <para>
+    /// İki geçerli yol var. <c>bytes_value</c> doğrudan bayt taşır. syslog
+    /// yolunda ise gövde <c>string_value</c> olarak gelir ve baytlar
+    /// <c>bizigo.wire_encoding</c> ile geri kazanılır — collector'ın
+    /// <c>iso-8859-1</c> çözümlemesi tersinir olduğu için bu kayıpsızdır.
+    /// </para>
+    ///
+    /// <para>
+    /// Tel kodlaması bildirilmemişse UTF-8 varsayılır. O durumda collector
+    /// gövdeyi <c>utf-8</c> ile çözmüş olabilir ve geçersiz baytlar orada
+    /// U+FFFD'ye dönmüştür — <b>geri alınamaz</b>. Yapılacak şey yapılandırmayı
+    /// düzeltmektir; burada telafi etmeye çalışmak kaybı gizler.
+    /// </para>
+    /// </summary>
+    private static ReadOnlyMemory<byte> ExtractBody(AnyValue? body, string? wireEncoding)
+    {
+        if (body is null)
+        {
+            return ReadOnlyMemory<byte>.Empty;
+        }
+
+        return body.ValueCase switch
+        {
+            AnyValue.ValueOneofCase.BytesValue => body.BytesValue.ToByteArray(),
+            AnyValue.ValueOneofCase.StringValue => ResolveWireEncoding(wireEncoding).GetBytes(body.StringValue),
+            AnyValue.ValueOneofCase.None => ReadOnlyMemory<byte>.Empty,
+            _ => Encoding.UTF8.GetBytes(Format(body)),
+        };
+    }
 
     private static string ResolveSourceKey(IReadOnlyDictionary<string, string> attributes)
     {

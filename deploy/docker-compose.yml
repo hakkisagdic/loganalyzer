@@ -103,10 +103,16 @@ services:
   # --------------------------------------------------------------------------
   # Kimlik — Keycloak (K26)
   # `start-dev` KULLANILMAZ: bellek içi H2, her restart'ta veri gider.
+  #
+  # `--optimized` de KULLANILMAZ: imaj önceden `kc.sh build` ile hazırlanmadıysa
+  # Keycloak "The '--optimized' flag was used for first ever server start" deyip
+  # exit 2 ile ölüyor. Optimize imaj için kendi Dockerfile'ımız gerekir; asıl
+  # kazanç (Postgres + kalıcı veri) `--optimized` olmadan da elde ediliyor,
+  # bedeli yalnızca açılışta birkaç saniyelik augmentation.
   # --------------------------------------------------------------------------
   keycloak:
     image: quay.io/keycloak/keycloak:26.7.1
-    command: ["start", "--optimized", "--import-realm", "--http-enabled=true", "--hostname-strict=false"]
+    command: ["start", "--import-realm", "--http-enabled=true", "--hostname-strict=false"]
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak

@@ -75,13 +75,16 @@ edildikten sonra verilir. RustFS 1.0-rc olduğu için dayanıklılık sınırı 
 olarak WAL'da: object storage veri kaybederse en kötü senaryo "eski arşivin bir
 kısmı", "yeni veri" değil. Manifest (`raw_manifest`) nesne kaybını görünür kılar.
 
-**Collector'da `encoding: nop` zorunlu.** syslog receiver'ın `encoding` varsayılanı
-`utf-8` ve geçersiz baytları **U+FFFD ile değiştiriyor** — yani `protocol: none`
-tek başına ham sadakati korumuyor. `nop` olmadan windows-1254 bir FortiGate satırı
-daha bize ulaşmadan bozulur ve düzeltilecek bir orijinal kalmaz. Gövde bize OTLP
-`bytes_value` olarak gelir; kodlama tespiti bizim tarafımızda yapılır (BOM →
-bildirilen → UTF-8 doğrulaması → kaynağın yedek kod sayfası → latin1) ve sonuç
-NFC normalize edilir.
+**Collector'da `encoding: iso-8859-1`.** syslog receiver'ın varsayılanı `utf-8` ve
+geçersiz baytları **U+FFFD ile değiştiriyor** — `protocol: none` tek başına ham
+sadakati korumuyor. `nop` denendi ve **çalışmıyor**: UDP'de varsayılan
+`line_end_pattern` yüzünden hata veriyor, TCP'de ise syslog çerçevelemesini yok
+edip tüm akışı tek kayda çeviriyor (çökme yok — sessizce bozuk veri).
+`iso-8859-1` bayt ↔ kod noktası eşlemesini birebir ve tersinir yapar; satır bölme
+korunur ve baytlar bizde `Latin1.GetBytes` ile aynen geri alınır. Tel kodlaması
+`bizigo.wire_encoding` özniteliğiyle açıkça bildirilir. Kodlama tespiti bizim
+tarafımızda (BOM → bildirilen → UTF-8 doğrulaması → kaynağın yedek kod sayfası →
+latin1), sonuç NFC normalize edilir.
 
 **WAL yükü ile arşiv satırı aynı formattır.** Tek NDJSON codec'i
 (`RawRecordCodec`): yükleyici dönüştürmez, kopyalar. `owner_group`/`source_id`

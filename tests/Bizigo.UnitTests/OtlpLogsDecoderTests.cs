@@ -60,6 +60,45 @@ public sealed class OtlpLogsDecoderTests
     }
 
     [Fact]
+    public void Latin1_telinde_string_govde_orijinal_baytlara_geri_donuyor()
+    {
+        // syslog yolunun gerçek hali: collector iso-8859-1 ile çözüyor, gövde
+        // string olarak geliyor, baytlar bizde birebir geri kazanılıyor.
+        var raw = Encoding.GetEncoding("windows-1254").GetBytes("işlem başarısız");
+        var asLatin1 = Encoding.Latin1.GetString(raw);
+
+        var json = JsonRequest(new
+        {
+            body = new { stringValue = asLatin1 },
+            attributes = new[]
+            {
+                Attribute("bizigo.wire_encoding", new { stringValue = "iso-8859-1" }),
+            },
+        });
+
+        var records = _decoder.Decode(json, OtlpLogsDecoder.JsonContentType, Now);
+
+        Assert.Equal(raw, records[0].Body.ToArray());
+    }
+
+    [Fact]
+    public void Bilinmeyen_tel_kodlamasi_ingesti_durdurmuyor()
+    {
+        var json = JsonRequest(new
+        {
+            body = new { stringValue = "veri" },
+            attributes = new[]
+            {
+                Attribute("bizigo.wire_encoding", new { stringValue = "boyle-bir-kodlama-yok" }),
+            },
+        });
+
+        var records = _decoder.Decode(json, OtlpLogsDecoder.JsonContentType, Now);
+
+        Assert.Equal("veri", Encoding.UTF8.GetString(records[0].Body.Span));
+    }
+
+    [Fact]
     public void String_govde_utf8_bayta_ceviriliyor()
     {
         var json = JsonRequest(new
