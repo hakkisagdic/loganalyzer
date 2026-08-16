@@ -41,6 +41,35 @@ pattern_definitions:
   # kuyruğundaki "TCP Reset-I" üst tanımla zaten yakalanamıyordu.
   CISCO_REASON: 'Duplicate TCP SYN|Failed to locate egress interface|Invalid transport field|No matching connection|DNS Response|DNS Query|[A-Za-z0-9_ -]*'
 
+  # ASA_IP — `%{IP}`'nin bu parser'a özel, daha dar karşılığı.
+  #
+  # Upstream `IP` `%{IPV6}|%{IPV4}`'e açılıyor ve `IPV6` her `::` konumunu ayrı
+  # ayrı sayan devasa bir alternasyon. 302013 ve 302020 gövdeleri üç-dört adres
+  # referansı taşıdığı için NonBacktracking otomatı düğüm bütçesini (10000)
+  # aşıyordu: ÖLÇÜLDÜ, 16060 ve 11695. Pattern geri izlemeli motora düşüyor ve
+  # 50 ms zaman aşımına tabi kalıyordu — kataloğun kalan tek zaman aşımı
+  # maruziyeti buydu.
+  #
+  # Ölçülen alternatifler: `%{IP}` yerine `(?:%{IPV4}|%{IPV6})` yazmak (yani
+  # yalnızca sırayı değiştirmek) HİÇBİR ŞEY değiştirmiyor — aynı dil, aynı
+  # otomat. Yalnızca IPv4'e inmek bütçeye sokuyor ama ASA gerçekten IPv6
+  # basıyor (302020 örnek satırında `2001:db8:...` ve `::ffff:10.10.4.4` var),
+  # yani davranış kaybı olurdu. İşe yarayan tek yol IPv6 tarafını daraltmak.
+  #
+  # Daraltmanın doğruluğu `CiscoAsaAddressPatternTests` içinde upstream `%{IP}`
+  # kâhin alınarak sabitlendi: tam yazım, sıkıştırılmış, baştan/sondan
+  # sıkıştırılmış ve IPv4-eşlenmiş biçimlerin hepsi aynı sonucu veriyor.
+  #
+  # `::ffff:` alternatifi önce geliyor: sonra gelseydi genel sıkıştırma kuralı
+  # `::ffff:10` kadarını yiyip IPv4 kuyruğunu dışarıda bırakabilirdi.
+  ASA_IP: '(?:%{IPV4}|::ffff:%{IPV4}|(?:[0-9A-Fa-f]{1,4}:){1,7}(?::|(?::[0-9A-Fa-f]{1,4}){1,7}|[0-9A-Fa-f]{1,4})|::(?:[0-9A-Fa-f]{1,4}:){0,6}[0-9A-Fa-f]{1,4}|::)'
+
+  # Üst setteki iki gövde, `%{IP}` yerine `%{ASA_IP}` ile. Gövdenin geri kalanı
+  # upstream ile birebir aynı — yalnızca adres referansları değişti.
+  CISCOFW302013_302014_302015_302016: '%{CISCO_ACTION:action}(?: %{CISCO_DIRECTION:direction})? %{WORD:protocol} connection %{INT:connection_id} for %{DATA:src_interface}:%{ASA_IP:src_ip}/%{INT:src_port}( \(%{ASA_IP:src_mapped_ip}/%{INT:src_mapped_port}\))?(\(%{DATA:src_fwuser}\))? to %{DATA:dst_interface}:%{ASA_IP:dst_ip}/%{INT:dst_port}( \(%{ASA_IP:dst_mapped_ip}/%{INT:dst_mapped_port}\))?(\(%{DATA:dst_fwuser}\))?( duration %{TIME:duration} bytes %{INT:bytes})?(?: %{CISCO_REASON:reason})?( \(%{DATA:user}\))?'
+
+  CISCOFW302020_302021: '%{CISCO_ACTION:action}(?: %{CISCO_DIRECTION:direction})? %{WORD:protocol} connection for faddr %{ASA_IP:dst_ip}/%{INT:icmp_seq_num}(?:\(%{DATA:fwuser}\))? gaddr %{ASA_IP:src_xlated_ip}/%{INT:icmp_code_xlated} laddr %{ASA_IP:src_ip}/%{INT:icmp_code}( \(%{DATA:user}\))?'
+
   # 305011/305012 — üst setteki `CISCOFW305011` sondaki `duration` kuyruğunu
   # görmüyor ve çevrilmiş portu `%{DATA}` ile bitirdiği için hep boş bırakıyor.
   ASA_XLATE: '%{CISCO_ACTION:action} %{CISCO_XLATE_TYPE:xlate_type} %{WORD:protocol} translation from %{DATA:src_interface}:%{IP:src_ip}(?:/%{INT:src_port})?(?:\(%{DATA:src_fwuser}\))? to %{DATA:src_xlated_interface}:%{IP:src_xlated_ip}(?:/%{INT:src_xlated_port})?(?: duration %{TIME:duration})?$'
