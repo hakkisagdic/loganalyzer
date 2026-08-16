@@ -47,7 +47,9 @@ services:
     ports:
       - "${PG_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # postgres:18+ veriyi /var/lib/postgresql altında SÜRÜME ÖZEL alt dizinde tutuyor.
+      # Eski /var/lib/postgresql/data bağlaması imajın kendisi tarafından reddediliyor.
+      - postgres_data:/var/lib/postgresql
       - ./postgres/01-keycloak-db.sql:/docker-entrypoint-initdb.d/01-keycloak-db.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-bizigo} -d bizigo"]

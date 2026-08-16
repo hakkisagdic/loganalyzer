@@ -22,7 +22,10 @@ public sealed class DevStackSmokeTests(DevStackFixture stack)
 
         try
         {
-            using var context = stack.CreateClickHouseContext();
+            // İzole veritabanı: `schema_migrations` paylaşılırsa başka testlerin
+            // kayıtları buradaki "hiç göç yok" beklentisini kırar.
+            using var context = await stack.CreateIsolatedClickHouseContextAsync(
+                TestContext.Current.CancellationToken);
             var migrator = new ClickHouseMigrator(context);
 
             var result = await migrator.MigrateAsync(emptyDir, TestContext.Current.CancellationToken);
@@ -59,7 +62,8 @@ public sealed class DevStackSmokeTests(DevStackFixture stack)
                 """,
                 TestContext.Current.CancellationToken);
 
-            using var context = stack.CreateClickHouseContext();
+            using var context = await stack.CreateIsolatedClickHouseContextAsync(
+                TestContext.Current.CancellationToken);
             var migrator = new ClickHouseMigrator(context);
 
             var first = await migrator.MigrateAsync(dir, TestContext.Current.CancellationToken);
@@ -91,7 +95,8 @@ public sealed class DevStackSmokeTests(DevStackFixture stack)
                 "CREATE TABLE IF NOT EXISTS drift_a (id UInt32) ENGINE = MergeTree ORDER BY id;",
                 TestContext.Current.CancellationToken);
 
-            using var context = stack.CreateClickHouseContext();
+            using var context = await stack.CreateIsolatedClickHouseContextAsync(
+                TestContext.Current.CancellationToken);
             var migrator = new ClickHouseMigrator(context);
             await migrator.MigrateAsync(dir, TestContext.Current.CancellationToken);
 

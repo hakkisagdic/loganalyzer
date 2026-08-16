@@ -54,6 +54,8 @@ public sealed class DevStackFixture : IAsyncLifetime
 
     public string ClickHouseConnectionString { get; private set; } = string.Empty;
 
+    public string ClickHouseHttpUrl { get; private set; } = string.Empty;
+
     public string PostgresConnectionString => _postgres.GetConnectionString();
 
     public string S3ServiceUrl { get; private set; } = string.Empty;
@@ -65,10 +67,11 @@ public sealed class DevStackFixture : IAsyncLifetime
             _postgres.StartAsync(),
             _rustFs.StartAsync());
 
-        ClickHouseConnectionString = string.Create(
+        ClickHouseHttpUrl = string.Create(
             CultureInfo.InvariantCulture,
-            $"Host={_clickHouse.Hostname};Port={_clickHouse.GetMappedPublicPort(8123)};" +
-            $"Database=bizigo;Username=bizigo;Password=bizigo");
+            $"http://{_clickHouse.Hostname}:{_clickHouse.GetMappedPublicPort(8123)}");
+
+        ClickHouseConnectionString = ConnectionStringFor("bizigo");
 
         S3ServiceUrl = string.Create(
             CultureInfo.InvariantCulture,
@@ -97,6 +100,52 @@ public sealed class DevStackFixture : IAsyncLifetime
 
     public ClickHouseContext CreateClickHouseContext() =>
         new(new ClickHouseOptions { ConnectionString = ClickHouseConnectionString });
+
+    /// <summary>
+    /// Kendi veritabanına sahip bağlam.
+    ///
+    /// <c>schema_migrations</c> veritabanı genelinde <b>tek</b> tablo: paylaşılan
+    /// veritabanında göç testleri birbirinin kaydını görür ve "hiç göç uygulanmamış"
+    /// gibi mutlak beklentiler çalışma sırasına göre kırılır. Göç davranışını
+    /// sınayan her test kendi veritabanını ister.
+    /// </summary>
+    public async Task<ClickHouseContext> CreateIsolatedClickHouseContextAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var database = "test_" + Guid.NewGuid().ToString("N");
+        await ExecuteAsync($"CREATE DATABASE \"{database}\"", cancellationToken);
+
+        return new ClickHouseContext(new ClickHouseOptions
+        {
+            ConnectionString = ConnectionStringFor(database),
+        });
+    }
+
+    private string ConnectionStringFor(string database) => string.Create(
+        CultureInfo.InvariantCulture,
+        $"Host={_clickHouse.Hostname};Port={_clickHouse.GetMappedPublicPort(8123)};" +
+        $"Database={database};Username=bizigo;Password=bizigo");
+
+    /// <summary>
+    /// ClickHouse HTTP arayüzü üzerinden tek ifade. Sürücü tipleri yerine HTTP
+    /// kullanılıyor: bu yardımcı yalnızca test iskelesi, ürün kodunun bağlantı
+    /// yönetimiyle karışmaması gerekiyor.
+    /// </summary>
+    private async Task ExecuteAsync(string sql, CancellationToken cancellationToken)
+    {
+        using var http = new HttpClient { BaseAddress = new Uri(ClickHouseHttpUrl) };
+        http.DefaultRequestHeaders.Add("X-ClickHouse-User", "bizigo");
+        http.DefaultRequestHeaders.Add("X-ClickHouse-Key", "bizigo");
+
+        using var response = await http.PostAsync(
+            (Uri?)null, new StringContent(sql), cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new InvalidOperationException($"ClickHouse '{sql}' reddetti: {body}");
+        }
+    }
 
     public async ValueTask DisposeAsync()
     {

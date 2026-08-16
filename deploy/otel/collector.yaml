@@ -11,6 +11,8 @@ extensions:
   file_storage/queue:
     directory: /var/lib/otelcol/queue
     timeout: 10s
+    # Birim boş bağlanıyor; alt dizin yoksa collector "directory must exist" ile ölür.
+    create_directory: true
 
 receivers:
   syslog/tcp:
