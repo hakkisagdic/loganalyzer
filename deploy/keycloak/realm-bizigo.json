@@ -1,5 +1,6 @@
 {
-  "_comment": "T01 — minimum geçerli realm. Gruplar, claim mapper'ları, servis hesabı ve client ayarları T09'da (kimlik ticket'ı) dolduruluyor. Realm-as-code: bu dosya elle admin konsolundan değiştirilmez.",
+  "_comment": "REALM-AS-CODE (K26, F1 §10.1). Bu dosya elle admin konsolundan değiştirilmez — konsolda yapılan değişiklik bir sonraki --import-realm ile kaybolur. Buradaki asıl değer claim mapper'ları: hangi claim'lere ihtiyaç duyduğumuz belgeye değil DOSYAYA yazılmış durumda. Olmasaydı grup claim eşlemesi herkesin makinesinde farklı davranırdı ve sebebi günlerce bulunamazdı.",
+
   "realm": "bizigo",
   "enabled": true,
   "displayName": "Bizigo Log Analyzer",
@@ -9,6 +10,7 @@
   "duplicateEmailsAllowed": false,
   "accessTokenLifespan": 900,
   "ssoSessionIdleTimeout": 3600,
+
   "roles": {
     "realm": [
       { "name": "reader",  "description": "Yalnızca sorgular" },
@@ -18,6 +20,7 @@
       { "name": "ingest",  "description": "Yalnızca /v1/logs yazar — okuma yetkisi yok" }
     ]
   },
+
   "groups": [
     {
       "name": "network",
@@ -28,6 +31,136 @@
     },
     { "name": "platform" }
   ],
-  "clients": [],
-  "users": []
+
+  "clientScopes": [
+    {
+      "name": "bizigo-claims",
+      "description": "Ürünün beklediği dört claim (F1 §10.1.1). Dar tutulması bilinçli: Entra ID'ye geçiş kodda değişiklik gerektirmesin.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "roles-flat",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "_comment": "Keycloak realm rollerini varsayılan olarak realm_access.roles içine gömer. Düz `roles` claim'ine çekiyoruz ki claim sözleşmesi IdP'ye özel bir yoldan bağımsız kalsın.",
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "groups-full-path",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "_comment": "full.path=true BİLİNÇLİ: kapatılırsa iç içe gruplarda ad çakışması olur (network/core ile platform/core ayırt edilemez). Bedeli, claim'in başında eğik çizgi olması (/network/core) — AccessScopeResolver bunu normalize ediyor.",
+            "full.path": "true",
+            "claim.name": "groups",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+
+  "defaultDefaultClientScopes": [
+    "profile",
+    "email",
+    "roles",
+    "bizigo-claims"
+  ],
+
+  "clients": [
+    {
+      "_comment": "BFF client'ı (F1 §10.1.2). publicClient=false ve standardFlow=true: authorization code + PKCE, gizli anahtar sunucuda. Token TARAYICIDA SAKLANMIYOR — BFF cookie veriyor.",
+      "clientId": "bizigo-ui",
+      "name": "Bizigo UI (BFF)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "bizigo-ui-dev-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "redirectUris": [
+        "http://localhost:5080/signin-oidc",
+        "http://localhost:3000/signin-oidc"
+      ],
+      "postLogoutRedirectUris": [
+        "http://localhost:5080/*",
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": ["http://localhost:5080", "http://localhost:3000"],
+      "defaultClientScopes": ["profile", "email", "roles", "bizigo-claims"]
+    },
+    {
+      "_comment": "Collector servis hesabı (F1 §10.1.2). Rolü YALNIZCA ingest: kimlik sızarsa veri yazılabilir, OKUNAMAZ. Rol ayrımının tek sebebi bu. Collector tarafında oauth2clientauthextension token'ı kendi alıp yeniliyor.",
+      "clientId": "bizigo-collector",
+      "name": "OTel Collector",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "bizigo-collector-dev-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": ["roles", "bizigo-claims"]
+    }
+  ],
+
+  "users": [
+    {
+      "_comment": "Servis hesabının rolü. Keycloak servis hesabı kullanıcısını `service-account-<clientId>` adıyla oluşturuyor; rolü burada bağlanıyor.",
+      "username": "service-account-bizigo-collector",
+      "enabled": true,
+      "serviceAccountClientId": "bizigo-collector",
+      "realmRoles": ["ingest"]
+    },
+    {
+      "_comment": "Geliştirme kullanıcıları. Kapsam ayrımının GERÇEK gruplarla gösterilebilmesi için iki farklı grupta iki kullanıcı var — tek kullanıcıyla kapsam filtresinin çalıştığı gösterilemez.",
+      "username": "analyst.core",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "analyst.core@example.local",
+      "firstName": "Ayşe",
+      "lastName": "Çekirdek",
+      "credentials": [{ "type": "password", "value": "analyst", "temporary": false }],
+      "realmRoles": ["analyst"],
+      "groups": ["/network/core"]
+    },
+    {
+      "username": "analyst.edge",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "analyst.edge@example.local",
+      "firstName": "Barış",
+      "lastName": "Kenar",
+      "credentials": [{ "type": "password", "value": "analyst", "temporary": false }],
+      "realmRoles": ["analyst"],
+      "groups": ["/network/edge"]
+    },
+    {
+      "username": "admin.bizigo",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "admin@example.local",
+      "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
+      "realmRoles": ["admin"]
+    }
+  ]
 }

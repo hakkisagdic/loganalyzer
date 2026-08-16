@@ -5,7 +5,7 @@ logları birincil alan; agentic katmanla proaktif araştırma ve kök neden anal
 
 **Durum:** F1 (boru hattı) — T01 iskelet, T02 depolama/kapsam, T03 ingest boru hattı,
 T04 ham arşiv, T05 parser motoru, T06 dispatcher, T07 normalizasyon, T08 vendor
-kataloğu ve T12 sidecar tamamlandı; sırada T09 (kimlik), T10 (API uçları) ve
+kataloğu, T09 kimlik ve T12 sidecar tamamlandı; sırada T10 (API uçları) ve
 T11 (replay) var.
 
 Planlama belgeleri Traycer epic'inde:
@@ -127,6 +127,18 @@ yükleyici bilinçli olarak bağımsız çalıştığı için olay satırı yaz�
 henüz yoktur ve offset bilinemez. Ön ek (`raw/{owner_group}/{yyyy}/{MM}/{dd}/{HH}/{source_class}/`)
 yazma anında hesaplanabilir ve manifest sorgusunun anahtarıyla örtüşür; tek gerçek
 kaynak arşivin kendisi kalır. Bedeli, tek kaydı okumak için nesnenin açılması.
+
+**Kimlik Keycloak'ta, kapsam bizde.** Ürünün IdP'den beklediği tek şey dört claim
+(`sub`, `preferred_username`, `roles`, `groups`) — dar tutulması bilinçli: Entra
+ID'ye geçiş IdP tarafında mapper ayarı demek, kodda değişiklik değil. Grup claim'i
+doğrudan `owner_group` sayılmıyor; `idp_group_mapping` üzerinden çevriliyor, yoksa
+bir ekibin kapsamını değiştirmek için IdP'ye dokunmak gerekirdi. Keycloak grup
+adlarını tam yol ve baştan eğik çizgiyle basıyor (`/network/core`) — `full.path`
+açık bırakıldı çünkü kapatmak iç içe gruplarda ad çakışması üretirdi.
+
+**Collector `/v1/logs`'a anonim vurmuyor.** Keycloak servis hesabı,
+`client_credentials`, rolü **yalnızca `ingest`** — kimlik sızarsa veri yazılabilir,
+okunamaz. Rol ayrımının tek sebebi bu.
 
 **Ham arşiv RustFS'in veri kaybetmesini varsayarak kuruldu.** Sıra: yükle → geri
 oku → sha256 karşılaştır → manifest'e `verified_at` yaz → segmenti 48 saat sonra

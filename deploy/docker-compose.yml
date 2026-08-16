@@ -154,8 +154,12 @@ services:
     command: ["--config=/etc/otel/collector.yaml"]
     depends_on:
       otel-init: { condition: service_completed_successfully }
+      # Keycloak hazır olmadan token alınamaz; collector açılışta ölmesin.
+      keycloak: { condition: service_healthy }
     environment:
       BIZIGO_ENDPOINT: ${BIZIGO_ENDPOINT:-http://host.docker.internal:5080}
+      COLLECTOR_CLIENT_SECRET: ${COLLECTOR_CLIENT_SECRET:-bizigo-collector-dev-secret}
+      KEYCLOAK_TOKEN_URL: ${KEYCLOAK_TOKEN_URL:-http://keycloak:8080/realms/bizigo/protocol/openid-connect/token}
     ports:
       - "${SYSLOG_TCP_PORT:-5140}:5140"
       - "${SYSLOG_UDP_PORT:-5141}:5141/udp"

@@ -16,7 +16,11 @@ public static class LogsEndpoint
 
         routes.MapPost("/v1/logs", HandleAsync)
             .WithName("OtlpLogs")
-            .Accepts<byte[]>(OtlpContentTypes.Protobuf, OtlpContentTypes.Json);
+            .Accepts<byte[]>(OtlpContentTypes.Protobuf, OtlpContentTypes.Json)
+            // T09: uç artık anonim değil. Collector servis hesabıyla geliyor ve
+            // rolü YALNIZCA `ingest` — kimlik sızarsa veri yazılabilir, OKUNAMAZ.
+            // Rol ayrımının tek sebebi bu (F1 §10.1.2).
+            .RequireAuthorization(BizigoAuthPolicies.Ingest);
 
         return routes;
     }

@@ -8,6 +8,18 @@
 #      503 dönerse collector yeniden dener; kendi kuyruğumuzu yazmıyoruz (K5).
 
 extensions:
+  # Collector `/v1/logs`'a ANONİM vurmuyor (F1 §10.1.2). Keycloak servis hesabı,
+  # client_credentials akışı, token'ı uzantı kendi alıp süresi dolunca yeniliyor.
+  #
+  # Servis hesabının rolü YALNIZCA `ingest`: kimlik sızarsa veri yazılabilir,
+  # OKUNAMAZ. Rol ayrımının tek sebebi bu.
+  oauth2client:
+    client_id: bizigo-collector
+    client_secret: ${env:COLLECTOR_CLIENT_SECRET}
+    token_url: ${env:KEYCLOAK_TOKEN_URL}
+    tls:
+      insecure: true
+
   file_storage/queue:
     directory: /var/lib/otelcol/queue
     timeout: 10s
@@ -77,7 +89,8 @@ exporters:
   otlp_http/bizigo:
     endpoint: ${env:BIZIGO_ENDPOINT}
     encoding: proto
-    # T09'da eklenecek: auth: { authenticator: oauth2client }
+    auth:
+      authenticator: oauth2client
     tls:
       insecure: true
     sending_queue:
@@ -95,7 +108,7 @@ exporters:
     verbosity: basic
 
 service:
-  extensions: [file_storage/queue]
+  extensions: [file_storage/queue, oauth2client]
   pipelines:
     logs:
       receivers: [syslog/tcp, syslog/udp, otlp]

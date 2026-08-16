@@ -36,6 +36,9 @@ builder.Services.AddBizigoIngest(builder.Configuration);
 // Ham arşiv: yükleyici, manifest, scrub (T04).
 builder.Services.AddBizigoRawArchive(builder.Configuration);
 
+// Kimlik ve yetkilendirme (T09).
+builder.Services.AddBizigoAuthentication(builder.Configuration);
+
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
@@ -48,7 +51,15 @@ var (applied, existing) = await app.Services.MigrateDataPlaneAsync();
 app.Logger.LogInformation(
     "ClickHouse göçleri: {Applied} uygulandı, {Existing} zaten vardı.", applied, existing);
 
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Grup → owner_group eşlemesini belleğe al. Boş kalırsa kimse veri göremez;
+// bu, eşleme tablosu boşken "her şeyi gör"e düşmekten iyidir (K17).
+await app.Services.GetRequiredService<AccessScopeResolver>().RefreshAsync();
+
 app.MapHealthChecks("/healthz");
+app.MapAuth();
 app.MapOtlpLogs();
 
 // Ingest sayaçları: "boru hattı akıyor mu" sorusunun tek bakışta cevabı.
