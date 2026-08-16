@@ -73,10 +73,24 @@ public sealed class GrokCompiler
 
         try
         {
+            // ZAMAN AŞIMI YOK — bilinçli. `NonBacktracking` girdi uzunluğunda
+            // doğrusal zaman garantisi veriyor, yani felç (catastrophic
+            // backtracking) imkânsız ve korunacak bir şey kalmıyor. Buraya
+            // `matchTimeout` konursa ölçülen tek şey DUVAR SAATİ olur: makine
+            // swap'teyken işlem zaman dilimi alamaz, 50 ms dolar ve sağlıklı bir
+            // pattern zaman aşımına uğrar.
+            //
+            // Bunun bedeli sadece cılız test değil: sonuç `parse_status=failed`
+            // oluyor, yani "motor meşguldü" ile "bu satır bu parser'a uymuyor"
+            // ayırt edilemiyor — satır keşif kuyruğuna düşüyor ve sağlıklı parser
+            // karantinaya girebiliyor. (T08 raporu #10.)
+            //
+            // Satır uzunluğu collector'da sınırlı (max_log_size), dolayısıyla
+            // doğrusal tarama sınırsız süremez.
             var linear = new Regex(
                 source,
                 RegexOptions.NonBacktracking | RegexOptions.CultureInvariant,
-                _options.MatchTimeout);
+                Regex.InfiniteMatchTimeout);
 
             return new CompiledGrok(expression, source, linear, captures, isLinearTime: true, fallbackReason: null);
         }
