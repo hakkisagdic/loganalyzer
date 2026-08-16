@@ -23,22 +23,17 @@ pipeline:
   # 0) KAPI ADIMI — `match.contains` dispatcher'ın yalnızca 2. kademesinde
   #    çalışıyor; envantere bağlı kaynak (kademe 1) ön filtreyi hiç görmüyor.
   #    Ayırt ediciliğin boru hattında da olması gerekiyor.
-  #    (T08 raporu, motor eksiği #4.)
+  #    (T08 raporu #4 — `match` semantiği; F2'ye ertelendi.)
   - grok:
       field: message
       patterns:
         - 'type="(?<log_type>traffic|utm)"'
 
-  # 1) Zarfı soy, zaman damgasını TEK alanda topla.
-  #
-  # FortiGate tarihi `date=` ve saati `time=` diye AYRI iki anahtarda yazar.
-  # `date` adımı tek bir `field` alır ve motorda alan birleştirme yok; bu yüzden
-  # ikisinin arasındaki `time=` metnini de yakalamaya dahil edip biçim dizesinde
-  # sabit metin olarak tüketiyoruz. (T08 raporu, motor eksiği #1.)
+  # 1) Zarfı soy. PRI'den sonra boşluk olan gerçek varyant da karşılanıyor.
   - grok:
       field: message
       patterns:
-        - '^(?:<%{NONNEGINT:syslog_pri:int}>)?(?<kv_body>date=(?<log_datetime>%{YEAR}-%{MONTHNUM2}-%{MONTHDAY} time=%{TIME}) %{GREEDYDATA})$'
+        - '^(?:<%{NONNEGINT:syslog_pri:int}> ?)?(?<kv_body>%{GREEDYDATA})$'
 
   # 2) Anahtar=değer gövdesi. `quoted: true` şart: FortiGate
   #    `msg="URL belongs to a denied category in policy"` yazıyor.
@@ -48,13 +43,21 @@ pipeline:
       assign: "="
       quoted: true
 
+  # Olay zamanı `eventtime`'dan geliyor: MUTLAK epoch, dolayısıyla saat dilimi
+  # tahminine hiç ihtiyaç yok. Alanın ölçeği FortiOS sürümüne göre değişiyor
+  # (6.x saniye, 7.x nanosaniye) — `UNIX_AUTO` basamak sayısından çıkarıyor.
+  #
+  # Bu adım eskiden `date=`/`time=` çiftini birleştiren bir grok hilesiydi ve
+  # saat dilimini `Europe/Istanbul` diye VARSAYIYORDU. `UNIX_NS`/`UNIX_AUTO`
+  # eklendikten sonra ikisi de gereksiz kaldı; cihazın yazdığı `date`/`time`/`tz`
+  # alanları kv adımıyla `fields` içinde duruyor, kaybolmuyorlar.
   - date:
-      field: log_datetime
-      formats: ["yyyy-MM-dd 'time='HH:mm:ss"]
-      # `tz="-0500"` alanı BİLE BİLE kullanılmıyor: motor saat dilimini IANA
-      # adıyla çözüyor, sayısal ofseti tanımıyor ve sessizce buraya düşerdi.
-      # (T08 raporu, motor eksiği #2.)
-      default_timezone: Europe/Istanbul
+      field: eventtime
+      formats: ["UNIX_AUTO"]
+      # `eventtime` yazmayan bir FortiOS satırı gelirse sessizce yanlış zaman
+      # yerine görünür bir `partial` istiyoruz.
+      on_failure: tag
+      tag: _fortigate_no_eventtime
 
   - convert:
       fields:
@@ -118,7 +121,10 @@ tests:
       ocsf.activity_id: 2
       fields.sentbyte: 1188
       fields.policyid: 1
-      "@timestamp": "2019-05-10T11:37:47.0000000+03:00"
+      # `eventtime` nanosaniye epoch → UTC. Satırdaki `date`/`time` (11:37:47)
+      # cihazın YEREL saati; hangi dilimde olduğunu log söylemiyor. Mutlak
+      # kaynağı kullanmak, dilimi varsaymaktan doğru.
+      "@timestamp": "2019-05-10T18:37:47.3690000+00:00"
 
   - name: syslog PRI ve devname'li deny satırı
     input: '<189>date=2020-04-23 time=01:16:08 devname="testswitch1" devid="somerouterid" logid="0000000013" type="traffic" subtype="forward" level="notice" vd="OPERATIONAL" eventtime=1592961368 srcip=10.10.10.10 srcport=60899 srcintf="srcintfname" srcintfrole="lan" dstip=198.51.100.13 dstport=161 dstintf="dstintfname" dstintfrole="lan" sessionid=155313 proto=17 action="deny" policyid=0 policytype="policy" service="SNMP" trandisp="noop" duration=0 sentbyte=0 rcvdbyte=0 sentpkt=0 appcat="unscanned" crscore=30 craction=131072 crlevel="high"'

@@ -87,7 +87,8 @@ tests:
       core.action: "login failure"
       # NOT: burada asıl doğrulanmak istenen `core.user_name`'in HİÇ atanmamış
       # olması. `expect` bloğu "alan yok" beklentisini ifade edemiyor — düz
-      # `null` skaleri "null" metnine dönüyor (T08 raporu, motor eksiği #6).
+      # `null` skaleri "null" metnine dönüyor.
+      # (T08 raporu #6 — `expect` null desteği; F2'ye ertelendi.)
 
   - name: başarılı winbox oturumu
     input: 'Sep 15 09:54:33 gw.example.net system,info,account user admin logged in from 10.1.101.212 via winbox'
