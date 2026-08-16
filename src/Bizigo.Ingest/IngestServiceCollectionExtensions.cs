@@ -41,10 +41,13 @@ public static class IngestServiceCollectionExtensions
         // Arşiv yükleyicisinin WAL'a bakışı (T04).
         services.AddSingleton<IRawSegmentSource, WalSegmentSource>();
 
-        // T06 kendi sink'ini kaydedince bu düşer.
-        services.TryAddSingleton<IIngestSink, PassthroughSink>();
+        // Parse adımı (T06). `PassthroughSink` kıyaslama için duruyor ama
+        // varsayılan artık gerçek dispatcher.
+        services.TryAddSingleton<IParsedEventSink, CountingParsedEventSink>();
+        services.TryAddSingleton<IIngestSink, ParsingSink>();
 
         services.AddHostedService<IngestPipeline>();
+        services.AddHostedService<CatalogRefreshService>();
 
         return services;
     }

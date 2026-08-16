@@ -4,7 +4,7 @@ Plugin tabanlı, çok formatlı ve çok dilli log analiz platformu. Ağ/altyapı
 logları birincil alan; agentic katmanla proaktif araştırma ve kök neden analizi.
 
 **Durum:** F1 (boru hattı) — T01 iskelet, T02 depolama/kapsam, T03 ingest boru hattı,
-T04 ham arşiv ve T05 parser motoru tamamlandı; T06'dan devam ediliyor.
+T04 ham arşiv, T05 parser motoru ve T06 dispatcher tamamlandı; T07'den devam ediliyor.
 
 Planlama belgeleri Traycer epic'inde:
 `mimari-kararlar` · `f1-teknik-plan` · `rca-raporu-ozelligi` · `tickets/`
@@ -98,6 +98,19 @@ kendisi bir karar belgesi.
 
 **Kontrol düzlemi Postgres, veri düzlemi ClickHouse.** Değişken operasyonel durum
 (envanter, katalog, manifest, audit) ClickHouse'a yazılmaz.
+
+**Dispatcher'ın kademe sırası performans için değil doğruluk için.** Envanter bağı
+(`source_id → parser_id`) hem en hızlı hem en güvenilir yol: cihazın ne gönderdiğini
+tahmin etmek yerine biliyoruz. Literal ön filtre (tek Aho-Corasick otomatı, satır
+başına tek tarama) yalnızca envanteri eksik kaynaklar için güvenlik ağı — üretimde
+`bound_ratio`'nun düşmesi bir arıza belirtisidir, normal çalışma değil. Hiçbir satır
+reddedilmez: eşleşmeyen kaynak `_unassigned`'a, eşleşmeyen satır `failed`'a düşer ve
+ikisi de ham arşivde durur.
+
+**Parser kataloğu sıcak yeniden yükleniyor ve değişim atomik.** Anlık görüntü satırın
+başında alınır, yani yeniden yükleme tam o sırada olsa bile satır tek bir tutarlı
+katalogla işlenir. Tüm dosyalar bozuksa katalog **değiştirilmez** — hatalı bir
+dağıtım çalışan boru hattını parser'sız bırakamaz.
 
 **Ham arşiv RustFS'in veri kaybetmesini varsayarak kuruldu.** Sıra: yükle → geri
 oku → sha256 karşılaştır → manifest'e `verified_at` yaz → segmenti 48 saat sonra

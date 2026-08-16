@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\Bizigo.Contracts\Bizigo.Contracts.csproj" />
@@ -6,6 +6,11 @@
 
   <ItemGroup>
     <PackageReference Include="YamlDotNet" />
+    <!-- Yalnızca soyutlamalar: motor bir barındırıcıya bağlanmaz, DI'ye kaydedilir. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
   </ItemGroup>
 
 </Project>

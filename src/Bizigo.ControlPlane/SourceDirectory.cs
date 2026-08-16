@@ -7,12 +7,14 @@ namespace Bizigo.ControlPlane;
 /// <param name="OwnerGroup">Kapsam grubu; eşleşme yoksa <see cref="OwnerGroups.Unassigned"/>.</param>
 /// <param name="SourceClass">Nesne anahtarındaki sınıf bileşeni.</param>
 /// <param name="Encoding">Kaynağın bildirilen kodlaması (<c>auto</c> ise tespit eder).</param>
+/// <param name="ParserId">Envanterdeki parser bağı — dispatcher kademe 1 (F1 §4.2).</param>
 /// <param name="IsKnown">Envanterde bulundu mu — sağlık uyarısının ölçüsü.</param>
 public sealed record ResolvedSource(
     string SourceId,
     string OwnerGroup,
     string SourceClass,
     string Encoding,
+    string? ParserId,
     bool IsKnown);
 
 /// <summary>
@@ -59,6 +61,7 @@ public sealed class SourceDirectory(IDbContextFactory<ControlPlaneDbContext> fac
                 source.OwnerGroup,
                 source.SourceClass,
                 source.Encoding,
+                source.ParserId,
                 IsKnown: true);
 
             if (!string.IsNullOrWhiteSpace(source.PeerAddress))
@@ -101,6 +104,7 @@ public sealed class SourceDirectory(IDbContextFactory<ControlPlaneDbContext> fac
             OwnerGroups.Unassigned,
             "default",
             "auto",
+            ParserId: null,
             IsKnown: false);
     }
 }

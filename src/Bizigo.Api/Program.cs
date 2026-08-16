@@ -2,6 +2,8 @@ using Bizigo.Api;
 using Bizigo.ControlPlane;
 using Bizigo.Ingest;
 using Bizigo.Ingest.Pipeline;
+using Bizigo.Parsing;
+using Bizigo.Parsing.Dispatch;
 using Bizigo.Ingest.Wal;
 using Bizigo.Query;
 using Bizigo.Storage.ClickHouse;
@@ -22,6 +24,9 @@ builder.Services.AddControlPlane(postgres);
 // Veri düzleminin tamamı tek satırda. API katmanı somut okuyucuları hiç görmüyor —
 // yalnızca IScopedQuery (K17). Mimari test bunu zorluyor.
 builder.Services.AddBizigoDataPlane(clickHouseOptions);
+
+// Parser motoru, katalog ve dispatcher (T05, T06).
+builder.Services.AddBizigoParsing(builder.Configuration);
 
 // Ingest: OTLP çözücü + WAL + boru hattı (T03).
 builder.Services.AddBizigoIngest(builder.Configuration);
