@@ -81,7 +81,6 @@ public sealed class S3RawObjectStore : IRawObjectStore, IDisposable
                 Key = key,
                 InputStream = stream,
                 ContentType = "application/zstd",
-                DisablePayloadSigning = true,
             },
             cancellationToken);
     }

@@ -127,9 +127,42 @@ public sealed class RawObjectKeyTests
     [InlineData("raw")]
     [InlineData("baska/network-core/2026/08/14/09/x/y.ndjson.zst")]
     [InlineData("/network-core/2026")]
+    [InlineData("raw/g/2026/08/16/12/abc.ndjson.zst")]           // segment eksik
+    [InlineData("raw/g/yyyy/08/16/12/firewall/abc.ndjson.zst")]  // tarih sayı değil
     public void Beklenmeyen_bicimde_grup_tahmin_edilmez(string key)
     {
         // "Bilinmiyor" reddedilir. Tahmin, kapsam ayrımını delerdi.
         Assert.Null(RawObjectKey.ReadOwnerGroup(key));
+    }
+
+    [Theory]
+    [InlineData("network/core")]
+    [InlineData("tr/ankara/network")]
+    public void Egik_cizgili_grup_adi_tam_okunuyor(string ownerGroup)
+    {
+        // Keycloak grup adlarını TAM YOL olarak basıyor, yani owner_group tek bir
+        // yol segmenti değil. Anahtarı baştan ayrıştırmak "network/core"u
+        // "network" olarak okur ve kapsam kontrolü sessizce yanlış grupla çalışırdı.
+        var key = new RawObjectKey(
+            ownerGroup,
+            new DateTimeOffset(2026, 8, 14, 9, 30, 0, TimeSpan.Zero),
+            "fortigate",
+            "01J8XK");
+
+        Assert.Equal(ownerGroup, RawObjectKey.ReadOwnerGroup(key.Value));
+    }
+
+    [Fact]
+    public void Bastaki_egik_cizgi_bos_segment_uretmiyor()
+    {
+        // Keycloak grup yolunu "/network/core" biçiminde veriyor.
+        var key = new RawObjectKey(
+            "/network/core",
+            new DateTimeOffset(2026, 8, 14, 9, 30, 0, TimeSpan.Zero),
+            "fortigate",
+            "01J8XK");
+
+        Assert.Equal("raw/network/core/2026/08/14/09/fortigate/01J8XK.ndjson.zst", key.Value);
+        Assert.Equal("network/core", RawObjectKey.ReadOwnerGroup(key.Value));
     }
 }
