@@ -18,9 +18,16 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-dotnet@v5
-        with:
-          global-json-file: global.json
+      # `actions/setup-dotnet` yerine resmî kurulum betiği — BİLİNÇLİ.
+      # Action'ın kendisi `codeload.github.com`'dan iniyor ve GitHub orayı
+      # sınırlandırdığında iş KURULUMDA ölüyor: tek test koşmadan, kırmızı bir CI
+      # ve tamamen ilgisiz bir hata mesajıyla. Tek oturumda üç kez oldu (429/503).
+      # Betik Microsoft CDN'inden iniyor, codeload'a hiç uğramıyor.
+      - name: .NET SDK kur
+        run: |
+          curl -fsSL --retry 5 --retry-all-errors https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"
+          echo "$HOME/.dotnet" >> "$GITHUB_PATH"
 
       - name: Restore
         run: dotnet restore
@@ -65,9 +72,16 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-dotnet@v5
-        with:
-          global-json-file: global.json
+      # `actions/setup-dotnet` yerine resmî kurulum betiği — BİLİNÇLİ.
+      # Action'ın kendisi `codeload.github.com`'dan iniyor ve GitHub orayı
+      # sınırlandırdığında iş KURULUMDA ölüyor: tek test koşmadan, kırmızı bir CI
+      # ve tamamen ilgisiz bir hata mesajıyla. Tek oturumda üç kez oldu (429/503).
+      # Betik Microsoft CDN'inden iniyor, codeload'a hiç uğramıyor.
+      - name: .NET SDK kur
+        run: |
+          curl -fsSL --retry 5 --retry-all-errors https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"
+          echo "$HOME/.dotnet" >> "$GITHUB_PATH"
 
       - name: Restore
         run: dotnet restore
