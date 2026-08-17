@@ -39,6 +39,13 @@ public sealed class MaskCatalog
     /// Maskeler ayrıştırılamamış, yani <b>güvenilmeyen</b> metin üzerinde
     /// koşuyor. Grok tarafındaki kademeli zaman aşımıyla aynı gerekçe
     /// (F1 §4.1): tek bir kötü satır işçiyi kilitleyemez.
+    ///
+    /// <para>
+    /// Yalnızca <b>geri izlemeye düşen</b> maskeler için geçerli.
+    /// <c>NonBacktracking</c> ile derlenenlerde zaman aşımı yok — orada doğrusal
+    /// zaman garantisi var, korunacak bir şey kalmıyor ve konulursa ölçülen tek
+    /// şey duvar saati olur. <see cref="GrokCompiler"/> ile aynı gerekçe.
+    /// </para>
     /// </summary>
     public static readonly TimeSpan MatchTimeout = TimeSpan.FromMilliseconds(250);
 
@@ -120,24 +127,83 @@ public sealed class MaskCatalog
 
             // Sıra anlamlı: sözlükteki sıra uygulama sırası. Sözlüğü alfabetik
             // sıralamak cazip ama şablonu bozar (özel olan önce gelmeli).
-            masks.Add(new MaskDefinition(
-                entry.Name,
-                entry.Regex,
-                new Regex(entry.Regex, RegexOptions.Compiled | RegexOptions.CultureInvariant, MatchTimeout)));
+            masks.Add(new MaskDefinition(entry.Name, entry.Regex, Compile(entry.Regex, path)));
         }
 
         var golden = (document.Golden ?? [])
             .Select(static g => new MaskSample(g.Input ?? string.Empty, g.Masked ?? string.Empty))
             .ToArray();
 
-        return new MaskCatalog(
+        var catalog = new MaskCatalog(
             document.Version,
             document.MaskPrefix ?? "<",
             document.MaskSuffix ?? ">",
             [.. masks],
             golden,
             path);
+
+        catalog.Warmup();
+        return catalog;
     }
+
+    /// <summary>
+    /// Önce doğrusal motor, olmazsa geri izleme + zaman aşımı —
+    /// <see cref="GrokCompiler"/> ile aynı kalıp.
+    ///
+    /// <para>
+    /// Sözlüğün lookaround kullanan maskeleri (<c>IPV4</c>, <c>IPV6</c>,
+    /// <c>BASE16NUM</c>, <c>NUMBER</c>) <c>NonBacktracking</c>'i desteklemiyor ve
+    /// burada T08'in <c>\b</c> ikamesi <b>uygulanamaz</b>: sınırlar <c>.</c>
+    /// karakterini de kapsıyor, <c>\b</c> ise onu geçiriyor — yani ikame daha
+    /// geçirgen olurdu. Üstelik maskeler Python sidecar ile birebir aynı çıktıyı
+    /// vermek zorunda (K14), dolayısıyla tek taraflı yeniden yazılamazlar.
+    /// Onlar geri izlemede kalıyor; geri kalanlar zaman aşımından kurtuluyor.
+    /// </para>
+    /// </summary>
+    private static Regex Compile(string pattern, string path)
+    {
+        try
+        {
+            return new Regex(
+                pattern,
+                RegexOptions.NonBacktracking | RegexOptions.CultureInvariant,
+                Regex.InfiniteMatchTimeout);
+        }
+        catch (NotSupportedException)
+        {
+            // Lookaround / geri referans / atomik grup.
+            return new Regex(pattern, RegexOptions.Compiled | RegexOptions.CultureInvariant, MatchTimeout);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new InvalidOperationException($"{path}: '{pattern}' geçersiz düzenli ifade: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Her maskeyi bir kez koşturur. Amacı sonuç değil, <b>kurulum maliyetini
+    /// yüklemeye kaydırmak</b>.
+    ///
+    /// <para>
+    /// İki motor da işini tembel yapıyor: <c>NonBacktracking</c> otomatı ilk
+    /// eşleşmede kuruyor, <c>Compiled</c> kodu ilk eşleşmede üretiyor. O maliyet
+    /// ödenmezse ilk gerçek log satırı hem yavaş oluyor hem de geri izlemeli
+    /// maskelerin <see cref="MatchTimeout"/> bütçesini paylaşıyor —
+    /// <see cref="Signature"/> boş dönüyor ve olay sessizce etiketsiz kalıyor.
+    /// Bu gerçek bir gözlem: kaplama sonrası ilk test koşumu tam olarak böyle
+    /// düştü, ikincisi geçti.
+    /// </para>
+    /// </summary>
+    private void Warmup()
+    {
+        // Her maskenin kendi motorunu dokunduracak kadar çeşitli, kısa bir satır.
+        Signature("ısınma 10.0.0.1 2001:db8::1 0xff 42 a@b.co /tmp/x "
+            + "6f9619ff-8b86-d011-b42d-00cf4fc964ff 00:1b:44:11:3a:b7 http://h/p");
+    }
+
+    /// <summary>Geri izlemeye düşen — yani zaman aşımına tabi — maskelerin adları.</summary>
+    public IReadOnlyList<string> BacktrackingMasks =>
+        [.. _masks.Where(static m => (m.Regex.Options & RegexOptions.NonBacktracking) == 0).Select(static m => m.Name)];
 
     /// <summary>
     /// Satırın maskelenmiş imzası — Drain3'ün <c>LogMasker.mask</c>'ı ile aynı

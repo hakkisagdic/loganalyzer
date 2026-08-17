@@ -31,6 +31,31 @@ public sealed class MaskCatalogTests
         }
     }
 
+    /// <summary>
+    /// Zaman aşımına <b>hangi</b> maskelerin tabi olduğu yazılı — sınır ima değil,
+    /// görünür olsun diye.
+    ///
+    /// <para>
+    /// Geri izlemeye düşen maske <c>MatchTimeout</c> ödüyor, o da duvar saatini
+    /// ölçüyor; yüklü makinede zaman aşımı <see cref="MaskCatalog.Signature"/>'ı
+    /// <b>boş</b> döndürüyor ve olay sessizce etiketsiz kalıyor. Liste büyürse
+    /// bu maruziyet de büyür, dolayısıyla büyümesi bilinçli bir karar olmalı.
+    /// </para>
+    ///
+    /// <para>
+    /// Dördü de lookaround taşıyor ve sınırları <c>.</c> karakterini kapsadığı
+    /// için <c>\b</c> ile değiştirilemiyorlar (<c>\b</c> daha geçirgen olurdu).
+    /// Ayrıca Python tarafıyla birebir aynı kalmak zorundalar.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Zaman_asimina_tabi_maskeler_yazili()
+    {
+        Assert.Equal(
+            ["IPV6", "IPV4", "BASE16NUM", "NUMBER"],
+            Catalog.BacktrackingMasks);
+    }
+
     [Fact]
     public void Sozluk_yukleniyor()
     {

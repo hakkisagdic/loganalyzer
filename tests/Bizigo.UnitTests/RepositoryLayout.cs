@@ -1,3 +1,5 @@
+using Bizigo.Parsing.Grok;
+
 namespace Bizigo.UnitTests;
 
 /// <summary>
@@ -22,6 +24,28 @@ public static class RepositoryLayout
 
     /// <summary>Maskeleme sözlüğü — sidecar ile paylaşılan tek kaynak (K14).</summary>
     public static string MaskFile => Path.Combine(Root, "catalog", "masks", "bizigo-masks.yaml");
+
+    /// <summary>
+    /// <b>Üretimin</b> pattern kütüphanesi: <c>legacy</c> üstüne <c>bizigo-v1</c>
+    /// kaplaması — <c>ParserToolbox.Create</c> ile aynı kurulum.
+    ///
+    /// <para>
+    /// Kataloğu sınayan testler bunu kullanmak zorunda. <c>legacy</c>'yi tek
+    /// başına yüklemek, sevk edilmeyen bir yapılandırmayı sınamak demek: kaplama
+    /// olmadan katalog pattern'lerinin çoğu geri izlemeli motorda derleniyor ve
+    /// oradaki <c>MatchTimeout</c> duvar saatini ölçtüğü için yüklü makinede
+    /// sağlıklı bir pattern zaman aşımına uğrayıp örneği <c>failed</c> yapıyor.
+    /// Kararsızlığın kaynağı buydu.
+    /// </para>
+    ///
+    /// <para>
+    /// Kaplamayı <b>kâhinle karşılaştıran</b> testler (<c>BizigoV1PatternTests</c>,
+    /// <c>CiscoAsaAddressPatternTests</c>, <c>NginxNumberPatternTests</c>) bilerek
+    /// <c>legacy</c>'yi ayrıca yüklüyor — upstream davranışı onların ölçüm tabanı.
+    /// </para>
+    /// </summary>
+    public static GrokPatternLibrary DefaultLibrary { get; } =
+        GrokPatternLibrary.LoadWithOverlay(LegacyPatternDirectory, BizigoV1PatternDirectory);
 
     private static string FindRoot()
     {

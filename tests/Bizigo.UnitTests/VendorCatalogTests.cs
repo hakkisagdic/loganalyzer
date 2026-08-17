@@ -19,8 +19,10 @@ namespace Bizigo.UnitTests;
 /// </summary>
 public sealed class VendorCatalogTests
 {
-    private static readonly GrokPatternLibrary Library =
-        GrokPatternLibrary.LoadFromDirectory(RepositoryLayout.LegacyPatternDirectory);
+    // Üretimin kurulumu (legacy + bizigo-v1). Kaplamasız yüklemek kataloğun
+    // pattern'lerini geri izlemeli motora düşürüyordu ve oradaki duvar saati
+    // yüklü makinede sağlıklı satırları `failed` yapıyordu.
+    private static readonly GrokPatternLibrary Library = RepositoryLayout.DefaultLibrary;
 
     private static readonly MappingTableCatalog Tables =
         MappingTableCatalog.LoadFromDirectory(Path.Combine(RepositoryLayout.Root, "catalog", "mappings"));
@@ -56,6 +58,35 @@ public sealed class VendorCatalogTests
 
         Assert.NotEmpty(report.Tests);
         Assert.True(report.Passed, Describe(report));
+    }
+
+    /// <summary>
+    /// Kataloğun <b>tamamı doğrusal motorda</b> derleniyor — üretimin kütüphanesiyle
+    /// sıfır GROK003.
+    ///
+    /// <para>
+    /// Bu değişmez şimdiye kadar yalnızca CI'daki <c>bizigo parser lint</c> adımında
+    /// tutuluyordu, ve tutulmadığında sessizce bozuluyor: geri izlemeye düşen bir
+    /// pattern <c>MatchTimeout</c> ödüyor, o da <b>duvar saatini</b> ölçüyor.
+    /// Yüklü makinede sağlıklı bir satır zaman aşımına uğrayıp <c>failed</c>
+    /// oluyor — yani "motor meşguldü" ile "bu satır uymuyor" ayırt edilemiyor.
+    /// Testin kendisi de bu yüzden kararsızdı.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(ParserFiles))]
+    public void Katalogdaki_parser_geri_izlemeye_dusmuyor(string relativePath)
+    {
+        var path = Path.Combine(RepositoryLayout.CatalogParserDirectory, relativePath);
+        var report = ParserLinter.LintFile(path, NewCompiler());
+
+        var fallbacks = report.RedosFindings.Where(static f => f.Code == "GROK003").ToArray();
+
+        Assert.True(
+            fallbacks.Length == 0,
+            $"{relativePath}: {fallbacks.Length} ifade geri izlemeli motorda derlendi." +
+            Environment.NewLine +
+            string.Join(Environment.NewLine, fallbacks.Select(static f => $"  {f.Message} → {f.Fragment}")));
     }
 
     private static string Describe(ParserTestReport report) => string.Join(

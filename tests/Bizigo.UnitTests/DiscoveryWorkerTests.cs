@@ -83,6 +83,21 @@ public sealed class DiscoveryWorkerTests
             time);
     }
 
+    /// <summary>Etiketlemenin sıcak yol maliyeti — dönen imza her zaman boş olmalı.</summary>
+    private static TimeSpan Measure(Harness harness, int events)
+    {
+        var clock = Stopwatch.StartNew();
+        for (var index = 0; index < events; index++)
+        {
+            Assert.Equal(
+                string.Empty,
+                harness.Annotator.Annotate("firewall", $"deny tcp 10.0.0.{index % 255}", parseFailed: true));
+        }
+
+        clock.Stop();
+        return clock.Elapsed;
+    }
+
     private static async Task WaitUntilAsync(Func<bool> condition, string because)
     {
         var deadline = Stopwatch.StartNew();
@@ -102,27 +117,32 @@ public sealed class DiscoveryWorkerTests
     [Fact]
     public async Task Sidecar_olduyse_etiketleme_bloklamiyor_ve_isci_yasiyor()
     {
+        const int Events = 20_000;
+
+        // Taban: işçisi hiç başlatılmamış bir koşum — yani sidecar etkileşimi
+        // sıfır. Ölçüyü buna göreli yapmak şart, çünkü mutlak bir duvar saati
+        // bütçesi makinenin o anki hızını ölçer: yüklü bir makinede sağlıklı kod
+        // bütçeyi aşar, hızlı bir makinede sızmış bir ağ çağrısı bütçeye sığar.
+        // İkisi de yanlış cevap. (T12'nin canlı ölçümü de tabanı bu yüzden
+        // önce alıyor.)
+        var idle = Build((_, _) => throw new HttpRequestException("Connection refused"));
+        var baseline = Measure(idle, Events);
+
         var harness = Build((_, _) => throw new HttpRequestException("Connection refused"));
         using var cts = new CancellationTokenSource();
         await harness.Worker.StartAsync(cts.Token);
 
         try
         {
-            var elapsed = Stopwatch.StartNew();
-            for (var index = 0; index < 20_000; index++)
-            {
-                Assert.Equal(
-                    string.Empty,
-                    harness.Annotator.Annotate("firewall", $"deny tcp 10.0.0.{index % 255}", parseFailed: true));
-            }
+            var elapsed = Measure(harness, Events);
 
-            elapsed.Stop();
-
-            // 20 bin olay, sidecar tamamen ölü. Sıcak yolda bir tek ağ çağrısı
-            // olsaydı bu süre dakikalara çıkardı.
+            // Sıcak yolda tek bir ağ çağrısı bile olsaydı fark kat kat değil,
+            // mertebe olurdu: 20 bin bağlantı denemesi taban maliyetin yanında
+            // ölçülemez. 8× tolerans yükün gürültüsüne yer bırakıyor.
             Assert.True(
-                elapsed.Elapsed < TimeSpan.FromSeconds(5),
-                $"Etiketleme sidecar ölüyken {elapsed.Elapsed.TotalSeconds:0.0} sn sürdü — sıcak yola sızmış.");
+                elapsed < baseline * 8 + TimeSpan.FromSeconds(1),
+                $"Etiketleme sidecar ölüyken {elapsed.TotalSeconds:0.00} sn sürdü, " +
+                $"sidecar'sız taban {baseline.TotalSeconds:0.00} sn — sıcak yola sızmış.");
 
             await WaitUntilAsync(
                 () => harness.Breaker.State == CircuitState.Open,
