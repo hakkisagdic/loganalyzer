@@ -32,28 +32,77 @@ public sealed class MaskCatalogTests
     }
 
     /// <summary>
-    /// Zaman aşımına <b>hangi</b> maskelerin tabi olduğu yazılı — sınır ima değil,
-    /// görünür olsun diye.
-    ///
-    /// <para>
-    /// Geri izlemeye düşen maske <c>MatchTimeout</c> ödüyor, o da duvar saatini
-    /// ölçüyor; yüklü makinede zaman aşımı <see cref="MaskCatalog.Signature"/>'ı
-    /// <b>boş</b> döndürüyor ve olay sessizce etiketsiz kalıyor. Liste büyürse
-    /// bu maruziyet de büyür, dolayısıyla büyümesi bilinçli bir karar olmalı.
-    /// </para>
-    ///
-    /// <para>
-    /// Dördü de lookaround taşıyor ve sınırları <c>.</c> karakterini kapsadığı
-    /// için <c>\b</c> ile değiştirilemiyorlar (<c>\b</c> daha geçirgen olurdu).
-    /// Ayrıca Python tarafıyla birebir aynı kalmak zorundalar.
-    /// </para>
+    /// Geri izlemeli motorda derlenen maskeler yazılı. Dördü de lookaround
+    /// taşıyor ve sınırları <c>.</c> karakterini kapsadığı için <c>\b</c> ile
+    /// değiştirilemiyorlar (<c>\b</c> daha geçirgen olurdu); ayrıca Python
+    /// tarafıyla birebir aynı kalmak zorundalar.
     /// </summary>
     [Fact]
-    public void Zaman_asimina_tabi_maskeler_yazili()
+    public void Geri_izlemeli_maskeler_yazili()
     {
         Assert.Equal(
             ["IPV6", "IPV4", "BASE16NUM", "NUMBER"],
             Catalog.BacktrackingMasks);
+    }
+
+    /// <summary>
+    /// <b>Uzunluk sınırının dayandığı varsayım:</b> geri izlemeli maskelerde
+    /// sınırsız niceleyici, başka bir sınırsız niceleyicinin içinde geçmiyor.
+    ///
+    /// <para>
+    /// Zaman aşımı yerine uzunluk sınırı koymak ancak maliyetin girdi
+    /// uzunluğunda polinom olmasıyla doğru. <c>(a+)+</c> gibi bir yapı üstel
+    /// maliyet üretir ve 16 KB'lık sınır hiçbir şey korumaz.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Yalnızca <see cref="MaskCatalog.BacktrackingMasks"/> sınanıyor.</b>
+    /// Diğerleri <c>NonBacktracking</c> ile derleniyor ve motorun kendisi
+    /// doğrusal zaman garantisi veriyor — orada sözdizimi kontrolü gereksiz.
+    /// Nitekim <c>WINPATH</c> ve <c>UNIXPATH</c> iç içe niceleyici taşıyor ama
+    /// ikisi de doğrusal motorda.
+    /// </para>
+    ///
+    /// <para>
+    /// Sınırlı niceleyici (<c>{3}</c>, <c>{1,7}</c>, <c>?</c>) sorun değil:
+    /// bölünme sayısını sabit bir üstle çarpar, mertebesini değiştirmez. Aranan
+    /// yalnızca <c>)+</c>, <c>)*</c> ve <c>){n,}</c>.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Geri_izlemeli_maskelerde_sinirsiz_ic_ice_niceleyici_yok()
+    {
+        var backtracking = Catalog.BacktrackingMasks.ToHashSet(StringComparer.Ordinal);
+
+        var offenders = Catalog.Masks
+            .Where(m => backtracking.Contains(m.Name))
+            .Where(static m => System.Text.RegularExpressions.Regex.IsMatch(
+                m.Pattern, @"\)(?:[*+]|\{\d+,\})"))
+            .Select(static m => $"{m.Name}: {m.Pattern}")
+            .ToArray();
+
+        Assert.True(
+            offenders.Length == 0,
+            "Geri izlemeli bir maskede sınırsız iç içe niceleyici var — uzunluk sınırı artık yetmez:"
+            + Environment.NewLine + string.Join(Environment.NewLine, offenders));
+    }
+
+    /// <summary>
+    /// Sınırı aşan satır maskelenmiyor <b>ve bu görünür oluyor</b>. Sessizlik,
+    /// kaldırılan zaman aşımının en kötü yanıydı; sayaç onu geri getirmemek için.
+    /// </summary>
+    [Fact]
+    public void Cok_uzun_satir_sayilarak_atlaniyor()
+    {
+        var catalog = MaskCatalog.LoadFromFile(RepositoryLayout.MaskFile);
+        var before = catalog.SkippedTooLong;
+
+        Assert.Equal(string.Empty, catalog.Signature(new string('x', MaskCatalog.MaxInputLength + 1)));
+        Assert.Equal(before + 1, catalog.SkippedTooLong);
+
+        // Sınırın tam üstünde olan satır normal işleniyor — sınır kapsayıcı.
+        Assert.NotEmpty(catalog.Signature(new string('x', MaskCatalog.MaxInputLength)));
+        Assert.Equal(before + 1, catalog.SkippedTooLong);
     }
 
     [Fact]

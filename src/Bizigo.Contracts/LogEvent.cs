@@ -20,6 +20,36 @@ public static class OwnerGroups
 }
 
 /// <summary>
+/// <see cref="LogEvent.TimeSource"/> değerleri — olayın zamanının nereden
+/// geldiği.
+///
+/// <para>
+/// Sıra aynı zamanda <b>güven sırası</b>: <see cref="Parsed"/> cihazın kendi
+/// yazdığı zaman, <see cref="Observed"/> collector'ın satırı gördüğü an,
+/// <see cref="Received"/> ise bizim aldığımız an. Aradaki fark ağ gecikmesi ve
+/// tampon süresi kadar — yani dakikalara çıkabilir.
+/// </para>
+/// </summary>
+public static class TimeSources
+{
+    /// <summary>Parser satırdan çözdü. Tek gerçekten güvenilir kaynak.</summary>
+    public const string Parsed = "parsed";
+
+    /// <summary>Collector'ın gözlem zamanı; satırda tarih yoktu.</summary>
+    public const string Observed = "observed";
+
+    /// <summary>Son çare: bizim aldığımız an.</summary>
+    public const string Received = "received";
+
+    /// <summary>
+    /// Kolon eklenmeden önce yazılmış satırlar. Geçmişi 'parsed' saymak onu
+    /// olduğundan güvenilir, 'received' saymak olmadığı kadar şüpheli
+    /// gösterirdi.
+    /// </summary>
+    public const string Unknown = "";
+}
+
+/// <summary>
 /// Normalize olay. Kolon karşılıkları <c>db/clickhouse/0001_events.sql</c>.
 /// OCSF ve OTel alanları burada <b>saklanmaz</b>, <c>core</c> + <c>Attrs</c>
 /// üzerinden türetilir (K8, F1 §5).
@@ -28,6 +58,18 @@ public sealed record LogEvent
 {
     public required Guid EventId { get; init; }
     public required DateTimeOffset Timestamp { get; init; }
+
+    /// <summary>
+    /// <see cref="Timestamp"/> hangi kaynaktan geldi — <see cref="TimeSources"/>.
+    ///
+    /// <para>
+    /// Bunu bilmeden "olay saat 14:03'te oldu" cümlesi kurulamıyor: değer
+    /// cihazın yazdığı zaman da olabilir, bizim aldığımız an da. RCA'nın
+    /// korelasyon penceresi buna bağlı.
+    /// </para>
+    /// </summary>
+    public string TimeSource { get; init; } = TimeSources.Unknown;
+
     public DateTimeOffset IngestedAt { get; init; } = DateTimeOffset.UtcNow;
 
     public required string OwnerGroup { get; init; }

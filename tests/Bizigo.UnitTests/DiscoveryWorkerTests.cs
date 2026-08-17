@@ -83,19 +83,18 @@ public sealed class DiscoveryWorkerTests
             time);
     }
 
-    /// <summary>Etiketlemenin sıcak yol maliyeti — dönen imza her zaman boş olmalı.</summary>
-    private static TimeSpan Measure(Harness harness, int events)
+    /// <summary>
+    /// Sıcak yolu <paramref name="events"/> kez koşturur. Dönen imza her zaman
+    /// boş olmalı — sidecar cevabı beklenmediğinin doğrudan kanıtı.
+    /// </summary>
+    private static void Measure(Harness harness, int events)
     {
-        var clock = Stopwatch.StartNew();
         for (var index = 0; index < events; index++)
         {
             Assert.Equal(
                 string.Empty,
                 harness.Annotator.Annotate("firewall", $"deny tcp 10.0.0.{index % 255}", parseFailed: true));
         }
-
-        clock.Stop();
-        return clock.Elapsed;
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition, string because)
@@ -119,30 +118,22 @@ public sealed class DiscoveryWorkerTests
     {
         const int Events = 20_000;
 
-        // Taban: işçisi hiç başlatılmamış bir koşum — yani sidecar etkileşimi
-        // sıfır. Ölçüyü buna göreli yapmak şart, çünkü mutlak bir duvar saati
-        // bütçesi makinenin o anki hızını ölçer: yüklü bir makinede sağlıklı kod
-        // bütçeyi aşar, hızlı bir makinede sızmış bir ağ çağrısı bütçeye sığar.
-        // İkisi de yanlış cevap. (T12'nin canlı ölçümü de tabanı bu yüzden
-        // önce alıyor.)
-        var idle = Build((_, _) => throw new HttpRequestException("Connection refused"));
-        var baseline = Measure(idle, Events);
-
         var harness = Build((_, _) => throw new HttpRequestException("Connection refused"));
         using var cts = new CancellationTokenSource();
         await harness.Worker.StartAsync(cts.Token);
 
         try
         {
-            var elapsed = Measure(harness, Events);
-
-            // Sıcak yolda tek bir ağ çağrısı bile olsaydı fark kat kat değil,
-            // mertebe olurdu: 20 bin bağlantı denemesi taban maliyetin yanında
-            // ölçülemez. 8× tolerans yükün gürültüsüne yer bırakıyor.
-            Assert.True(
-                elapsed < baseline * 8 + TimeSpan.FromSeconds(1),
-                $"Etiketleme sidecar ölüyken {elapsed.TotalSeconds:0.00} sn sürdü, " +
-                $"sidecar'sız taban {baseline.TotalSeconds:0.00} sn — sıcak yola sızmış.");
+            // Sıcak yolun sidecar'a hiç dokunmadığı, SÜRE ile değil DAVRANIŞ ile
+            // sınanıyor: 20 bin olayın hepsi boş imza döndürüyor, yani etiketleme
+            // hiçbir noktada cevabı beklemiyor.
+            //
+            // Buradaki throughput iddiasının ("sidecar ölüyken ingest yavaşlamıyor")
+            // yeri `SidecarLiveTests` — gerçek süreç, gerçek TCP, ve elle
+            // koşulan bir ÖLÇÜM. Duvar saatini birim paketine sokmak, ölçmek
+            // istediğimiz şeyi değil makinenin o anki hızını sınamak olurdu;
+            // F1'de aynı hata üç ayrı yerde çıktı.
+            Measure(harness, Events);
 
             await WaitUntilAsync(
                 () => harness.Breaker.State == CircuitState.Open,
@@ -153,7 +144,21 @@ public sealed class DiscoveryWorkerTests
 
             // Devre açıkken hiç denenmiyor: ölü sidecar'ın maliyeti sıfır.
             Assert.Equal(callsWhenOpen, Volatile.Read(ref harness.Handler.Calls));
-            Assert.True(harness.Stats.DroppedCircuitOpen > 0);
+
+            // Düşürme sayacını İŞÇİ artırıyor (enqueue değil): kuyruktan bir
+            // yığın alıp devreyi açık bulduğunda. Dolayısıyla devre açıldıktan
+            // sonra hem yeni olay üretilmeli hem de işçinin bir turu beklenmeli.
+            // Yukarıdaki 20 bin olayın bir kısmının devre açıkken işlenmesine
+            // güvenmek bir yarıştı: makine hızlandıkça, ya da geri adım devreyi
+            // geciktirdikçe döngü önce bitiyor.
+            for (var index = 0; index < 100; index++)
+            {
+                harness.Annotator.Annotate("firewall", $"deny udp 10.9.9.{index % 255}", parseFailed: true);
+            }
+
+            await WaitUntilAsync(
+                () => harness.Stats.DroppedCircuitOpen > 0,
+                "Devre açıkken alınan yığınlar düşürülmüyor.");
         }
         finally
         {

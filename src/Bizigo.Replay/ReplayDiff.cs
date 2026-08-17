@@ -105,6 +105,11 @@ public static class ReplayDiff
         Check("ocsf_class_uid", before.OcsfClassUid.ToString(CultureInfo.InvariantCulture), after.OcsfClassUid.ToString(CultureInfo.InvariantCulture));
         Check("ts", before.Timestamp.UtcDateTime.ToString("O", CultureInfo.InvariantCulture), after.Timestamp.UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
 
+        // `ingested_at`in aksine bu KARŞILAŞTIRILIYOR: replay'in en değerli
+        // kazançlarından biri, önce zamanı çözemeyen bir parser'ın düzeltilip
+        // `observed` → `parsed` geçişi yapması. Rapor bunu göstermeli.
+        Check("time_source", before.TimeSource, after.TimeSource);
+
         // `attrs` alan alan karşılaştırılıyor: tek bir "attrs değişti" satırı
         // hangi alanın etkilendiğini gizlerdi.
         foreach (var key in before.Attrs.Keys.Union(after.Attrs.Keys, StringComparer.Ordinal))

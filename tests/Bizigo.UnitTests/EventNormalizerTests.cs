@@ -29,12 +29,15 @@ public sealed class EventNormalizerTests
         IReadOnlyDictionary<string, object?>? fields = null,
         DateTimeOffset? parsedTimestamp = null,
         ResolvedSource? source = null,
-        ParseStatus status = ParseStatus.Ok)
+        ParseStatus status = ParseStatus.Ok,
+        DateTimeOffset? observedAt = null,
+        IReadOnlyList<string>? tags = null)
     {
         var raw = new RawRecord
         {
             EventId = Guid.CreateVersion7(Received),
             ReceivedAt = Received,
+            ObservedAt = observedAt,
             SourceKey = "10.1.2.3",
             Body = Encoding.UTF8.GetBytes("ham satır"),
         };
@@ -49,6 +52,7 @@ public sealed class EventNormalizerTests
             Ocsf = ocsf ?? new Dictionary<string, object?>(StringComparer.Ordinal),
             Otel = otel ?? new Dictionary<string, object?>(StringComparer.Ordinal),
             Timestamp = parsedTimestamp,
+            Tags = tags ?? [],
         };
 
         return new ParsedEvent(
@@ -170,15 +174,52 @@ public sealed class EventNormalizerTests
         Assert.False(result.Attrs.ContainsKey("bos"));
     }
 
+    /// <summary>
+    /// Üç kademeli zaman çözümü ve <b>her kademenin kendini bildirmesi</b>.
+    ///
+    /// <para>
+    /// Değerin kendisi kadar kaynağı da önemli: gözlem zamanına düşmüş bir
+    /// olayın gerçek zamanı dakikalarca önce olabilir ve RCA'nın korelasyon
+    /// penceresi bunu bilmeden kayar. Kolon olmadan aşağı akış "bu 14:03'te
+    /// oldu" ile "bunu 14:03'te gördük" arasını ayıramıyordu.
+    /// </para>
+    /// </summary>
     [Fact]
-    public void Zaman_oncelik_sirasi_parser_sonra_ingest()
+    public void Zaman_kademesi_ve_kaynagi_birlikte_cozuluyor()
     {
         var parsedTime = new DateTimeOffset(2026, 8, 15, 3, 0, 0, TimeSpan.Zero);
+        var observedTime = new DateTimeOffset(2026, 8, 15, 3, 5, 0, TimeSpan.Zero);
 
-        Assert.Equal(parsedTime, _normalizer.Normalize(Event(parsedTimestamp: parsedTime)).Timestamp);
+        var parsed = _normalizer.Normalize(Event(parsedTimestamp: parsedTime, observedAt: observedTime));
+        Assert.Equal(parsedTime, parsed.Timestamp);
+        Assert.Equal(TimeSources.Parsed, parsed.TimeSource);
 
-        // Parser damga çözemediyse satır zamansız kalmıyor: `ts` bölümleme anahtarı.
-        Assert.Equal(Received, _normalizer.Normalize(Event()).Timestamp);
+        // Parser çözemedi ama collector gördü.
+        var observed = _normalizer.Normalize(Event(observedAt: observedTime));
+        Assert.Equal(observedTime, observed.Timestamp);
+        Assert.Equal(TimeSources.Observed, observed.TimeSource);
+
+        // Hiçbiri yok: satır zamansız kalmıyor çünkü `ts` bölümleme anahtarı.
+        var received = _normalizer.Normalize(Event());
+        Assert.Equal(Received, received.Timestamp);
+        Assert.Equal(TimeSources.Received, received.TimeSource);
+    }
+
+    /// <summary>
+    /// Parser'ın etiketleri olayla birlikte iniyor. Yazılmazlarsa parser'ın satır
+    /// hakkında <b>söylediği</b> şey kayboluyor — <c>cisco.asa</c> tarih taşımayan
+    /// satırı <c>_asa_no_timestamp</c> ile işaretliyor ve o bilgi aşağı akışta
+    /// hiç yoktu.
+    /// </summary>
+    [Fact]
+    public void Parser_etiketleri_attrs_a_giriyor()
+    {
+        var result = _normalizer.Normalize(Event(tags: ["_asa_no_timestamp", "ipv6"]));
+
+        Assert.Equal("_asa_no_timestamp,ipv6", result.Attrs["bizigo.tags"]);
+
+        // Etiketsiz olay boş bir anahtar taşımıyor: her satıra bedel bindirmez.
+        Assert.False(_normalizer.Normalize(Event()).Attrs.ContainsKey("bizigo.tags"));
     }
 
     [Fact]

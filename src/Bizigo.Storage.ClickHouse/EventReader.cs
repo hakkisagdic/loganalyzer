@@ -38,6 +38,8 @@ public sealed class EventReader(ClickHouseContext context)
         ["outcome"] = "String",
         ["user_name"] = "String",
         ["owner_group"] = "String",
+        // RCA'nın sık sorusu: "yalnızca cihazın kendi zamanını taşıyan olaylar".
+        ["time_source"] = "String",
         ["severity_num"] = "UInt8",
         ["src_port"] = "UInt16",
         ["dst_port"] = "UInt16",
@@ -52,7 +54,7 @@ public sealed class EventReader(ClickHouseContext context)
     /// iki kopya, bir kolon eklendiği gün sessizce ayrışırdı.
     /// </summary>
     internal const string SelectColumns = """
-        ts, ingested_at, event_id, owner_group, source_id, host, vendor, product,
+        ts, ingested_at, time_source, event_id, owner_group, source_id, host, vendor, product,
         parser_id, parser_version, toUInt8(parse_status) AS parse_status_num, parse_generation,
         encoding_detected, template_id, severity_num, ocsf_class_uid, ocsf_activity_id,
         toString(src_ip) AS src_ip_s, toString(dst_ip) AS dst_ip_s, src_port, dst_port,
@@ -241,6 +243,7 @@ public sealed class EventReader(ClickHouseContext context)
         {
             Timestamp = new DateTimeOffset(DateTime.SpecifyKind((DateTime)reader["ts"], DateTimeKind.Utc)),
             IngestedAt = new DateTimeOffset(DateTime.SpecifyKind((DateTime)reader["ingested_at"], DateTimeKind.Utc)),
+            TimeSource = (string)reader["time_source"],
             EventId = (Guid)reader["event_id"],
             OwnerGroup = (string)reader["owner_group"],
             SourceId = (string)reader["source_id"],

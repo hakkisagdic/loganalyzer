@@ -18,7 +18,7 @@ public sealed class EventWriter(ClickHouseContext context)
 {
     private static readonly string[] EventColumns =
     [
-        "ts", "ingested_at", "event_id", "owner_group", "source_id", "host", "vendor", "product",
+        "ts", "ingested_at", "time_source", "event_id", "owner_group", "source_id", "host", "vendor", "product",
         "parser_id", "parser_version", "parse_status", "parse_generation", "encoding_detected",
         "template_id", "severity_num", "ocsf_class_uid", "ocsf_activity_id",
         "src_ip", "dst_ip", "src_port", "dst_port", "proto", "action", "outcome", "user_name",
@@ -95,6 +95,7 @@ public sealed class EventWriter(ClickHouseContext context)
     [
         e.Timestamp.UtcDateTime,
         e.IngestedAt.UtcDateTime,
+        e.TimeSource,
         e.EventId,
         e.OwnerGroup,
         e.SourceId,

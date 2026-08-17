@@ -36,20 +36,42 @@ public sealed record MaskDefinition(string Name, string Pattern, Regex Regex);
 public sealed class MaskCatalog
 {
     /// <summary>
-    /// Maskeler ayrıştırılamamış, yani <b>güvenilmeyen</b> metin üzerinde
-    /// koşuyor. Grok tarafındaki kademeli zaman aşımıyla aynı gerekçe
-    /// (F1 §4.1): tek bir kötü satır işçiyi kilitleyemez.
+    /// Maskeleme <b>güvenilmeyen</b> metin üzerinde koşuyor, o yüzden bir sınır
+    /// gerekiyor — ama sınır <b>uzunluk</b>, süre değil.
     ///
     /// <para>
-    /// Yalnızca <b>geri izlemeye düşen</b> maskeler için geçerli.
-    /// <c>NonBacktracking</c> ile derlenenlerde zaman aşımı yok — orada doğrusal
-    /// zaman garantisi var, korunacak bir şey kalmıyor ve konulursa ölçülen tek
-    /// şey duvar saati olur. <see cref="GrokCompiler"/> ile aynı gerekçe.
+    /// <b>Neden duvar saati değil:</b> zaman aşımı pattern'i değil makineyi
+    /// ölçer. Yüklü bir makinede sağlıklı bir maske bütçeyi aşar, hızlı bir
+    /// makinede tehlikeli bir maske bütçeye sığar; ikisi de yanlış cevap. Üstelik
+    /// bedeli sessiz: <see cref="Signature"/> boş dönüyor, olay etiketsiz kalıyor
+    /// ve keşif kuyruğuna hiç girmiyor. Aynı hata sınıfı F1'de üç ayrı yerde
+    /// çıktı (bkz. F1 kapanışı).
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Neden uzunluk yetiyor:</b> sözlükteki hiçbir maskede iç içe niceleyici
+    /// yok — hepsi sınırlı tekrar (<c>{1,4}</c>, <c>{0,6}</c>, <c>{1,3}</c>) ya da
+    /// tek düzey <c>+</c>. Felaket geri izleme (catastrophic backtracking) bu
+    /// yapılarla mümkün değil; maliyet girdi uzunluğunda <b>doğrusal</b>. Yani
+    /// korunması gereken tek şey dev bir satır, ve onu uzunluk deterministik
+    /// olarak durduruyor.
     /// </para>
     /// </summary>
-    public static readonly TimeSpan MatchTimeout = TimeSpan.FromMilliseconds(250);
+    public const int MaxInputLength = 16 * 1024;
 
     private readonly MaskDefinition[] _masks;
+    private long _skippedTooLong;
+
+    /// <summary>
+    /// Uzunluk sınırı yüzünden maskelenmeden geçen satır sayısı.
+    ///
+    /// <para>
+    /// Sıfırdan büyük olması bir arıza değil ama bir <b>bilgi</b>: o satırlar
+    /// <c>template_id</c> almıyor ve keşif kuyruğuna girmiyor. Sessizce olması,
+    /// zaman aşımının en kötü yanıydı; sayaç tam da onu geri getirmemek için var.
+    /// </para>
+    /// </summary>
+    public long SkippedTooLong => Interlocked.Read(ref _skippedTooLong);
 
     private MaskCatalog(
         int version,
@@ -147,8 +169,8 @@ public sealed class MaskCatalog
     }
 
     /// <summary>
-    /// Önce doğrusal motor, olmazsa geri izleme + zaman aşımı —
-    /// <see cref="GrokCompiler"/> ile aynı kalıp.
+    /// Önce doğrusal motor, olmazsa geri izleme — <see cref="GrokCompiler"/> ile
+    /// aynı kalıp, ama <b>hiçbirinde zaman aşımı yok</b>.
     ///
     /// <para>
     /// Sözlüğün lookaround kullanan maskeleri (<c>IPV4</c>, <c>IPV6</c>,
@@ -157,7 +179,12 @@ public sealed class MaskCatalog
     /// karakterini de kapsıyor, <c>\b</c> ise onu geçiriyor — yani ikame daha
     /// geçirgen olurdu. Üstelik maskeler Python sidecar ile birebir aynı çıktıyı
     /// vermek zorunda (K14), dolayısıyla tek taraflı yeniden yazılamazlar.
-    /// Onlar geri izlemede kalıyor; geri kalanlar zaman aşımından kurtuluyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Geri izlemede kalmaları sorun değil: koruma artık
+    /// <see cref="MaxInputLength"/>. Test bu ifadelerde iç içe niceleyici
+    /// olmadığını sabitliyor — o gün gelirse uzunluk sınırı yetmez.
     /// </para>
     /// </summary>
     private static Regex Compile(string pattern, string path)
@@ -172,7 +199,10 @@ public sealed class MaskCatalog
         catch (NotSupportedException)
         {
             // Lookaround / geri referans / atomik grup.
-            return new Regex(pattern, RegexOptions.Compiled | RegexOptions.CultureInvariant, MatchTimeout);
+            return new Regex(
+                pattern,
+                RegexOptions.Compiled | RegexOptions.CultureInvariant,
+                Regex.InfiniteMatchTimeout);
         }
         catch (ArgumentException ex)
         {
@@ -186,12 +216,10 @@ public sealed class MaskCatalog
     ///
     /// <para>
     /// İki motor da işini tembel yapıyor: <c>NonBacktracking</c> otomatı ilk
-    /// eşleşmede kuruyor, <c>Compiled</c> kodu ilk eşleşmede üretiyor. O maliyet
-    /// ödenmezse ilk gerçek log satırı hem yavaş oluyor hem de geri izlemeli
-    /// maskelerin <see cref="MatchTimeout"/> bütçesini paylaşıyor —
-    /// <see cref="Signature"/> boş dönüyor ve olay sessizce etiketsiz kalıyor.
-    /// Bu gerçek bir gözlem: kaplama sonrası ilk test koşumu tam olarak böyle
-    /// düştü, ikincisi geçti.
+    /// eşleşmede kuruyor, <c>Compiled</c> kodu ilk eşleşmede üretiyor. Ödenmezse
+    /// bu maliyet ilk gerçek log satırına biner. Zaman aşımı kaldırıldığı için
+    /// artık <b>sessiz bir hataya</b> dönüşmüyor — ama ilk satırın sebepsiz yere
+    /// yavaş olması yine istenmez.
     /// </para>
     /// </summary>
     private void Warmup()
@@ -201,7 +229,12 @@ public sealed class MaskCatalog
             + "6f9619ff-8b86-d011-b42d-00cf4fc964ff 00:1b:44:11:3a:b7 http://h/p");
     }
 
-    /// <summary>Geri izlemeye düşen — yani zaman aşımına tabi — maskelerin adları.</summary>
+    /// <summary>
+    /// Geri izlemeli motorda derlenen maskelerin adları. Zaman aşımı olmadığı
+    /// için bu artık bir maruziyet listesi değil, bir <b>envanter</b>: bu
+    /// ifadelerde iç içe niceleyici çıkarsa <see cref="MaxInputLength"/> koruması
+    /// yetmez ve karar yeniden verilmelidir.
+    /// </summary>
     public IReadOnlyList<string> BacktrackingMasks =>
         [.. _masks.Where(static m => (m.Regex.Options & RegexOptions.NonBacktracking) == 0).Select(static m => m.Name)];
 
@@ -214,18 +247,18 @@ public sealed class MaskCatalog
     {
         ArgumentNullException.ThrowIfNull(text);
 
+        if (text.Length > MaxInputLength)
+        {
+            // Dev bir satır maskelemeye değmez: şablon madenciliği zaten
+            // tekrarlayan yapıyı arıyor ve 16 KB'lık tekil bir gövde tekrarlayan
+            // bir şey değil. Satır kaybolmuyor — yalnızca `template_id` almıyor.
+            Interlocked.Increment(ref _skippedTooLong);
+            return string.Empty;
+        }
+
         foreach (var mask in _masks)
         {
-            try
-            {
-                text = mask.Regex.Replace(text, MaskPrefix + mask.Name + MaskSuffix);
-            }
-            catch (RegexMatchTimeoutException)
-            {
-                // İmza üretmek bir konfor; zaman aşımına uğrayan satır
-                // etiketsiz kalır ve keşif kuyruğuna da girmez.
-                return string.Empty;
-            }
+            text = mask.Regex.Replace(text, MaskPrefix + mask.Name + MaskSuffix);
         }
 
         return text;

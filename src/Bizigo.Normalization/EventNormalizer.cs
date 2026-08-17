@@ -32,11 +32,13 @@ public sealed class EventNormalizer(TimeProvider? timeProvider = null)
 
         var core = source.Parsed.Core;
         var attrs = BuildAttributes(source);
+        var (timestamp, timeSource) = ResolveTimestamp(source);
 
         return new LogEvent
         {
             EventId = source.Raw.EventId,
-            Timestamp = ResolveTimestamp(source),
+            Timestamp = timestamp,
+            TimeSource = timeSource,
             IngestedAt = _time.GetUtcNow(),
 
             OwnerGroup = source.Source.OwnerGroup,
@@ -114,8 +116,14 @@ public sealed class EventNormalizer(TimeProvider? timeProvider = null)
     /// ingest anı. Hiçbiri yoksa satır zamansız kalmaz; yanlış zamandansa
     /// "yaklaşık doğru" zaman daha kullanışlı ve <c>ts</c> bölümleme anahtarı.
     /// </summary>
-    private static DateTimeOffset ResolveTimestamp(ParsedEvent source) =>
-        source.Parsed.Timestamp ?? source.Raw.ObservedAt ?? source.Raw.ReceivedAt;
+    /// <summary>
+    /// Zaman damgası ve <b>nereden geldiği</b>. İkisi birlikte dönüyor çünkü
+    /// ayrı hesaplanırlarsa bir gün ayrışırlar ve ayrıştıkları fark edilmez.
+    /// </summary>
+    private static (DateTimeOffset Value, string Source) ResolveTimestamp(ParsedEvent source) =>
+        source.Parsed.Timestamp is { } parsed ? (parsed, TimeSources.Parsed)
+        : source.Raw.ObservedAt is { } observed ? (observed, TimeSources.Observed)
+        : (source.Raw.ReceivedAt, TimeSources.Received);
 
     private static Dictionary<string, string> BuildAttributes(ParsedEvent source)
     {
@@ -143,6 +151,19 @@ public sealed class EventNormalizer(TimeProvider? timeProvider = null)
         }
 
         attrs["bizigo.dispatch_tier"] = source.Tier.ToString();
+
+        // Parser'ın ürettiği etiketler. Bunlar yazılmazsa parser'ın satır
+        // hakkında SÖYLEDİĞİ şey kayboluyor: `cisco.asa` tarih taşımayan satırı
+        // `_asa_no_timestamp` ile işaretliyor ama etiket ClickHouse'a ulaşmadan
+        // düşüyordu, dolayısıyla aşağı akışta o bilgi hiç yoktu.
+        //
+        // Tek anahtarda birleştiriliyor, etiket başına anahtar açılmıyor:
+        // `mapKeys` bloom filtresi anahtar kümesi üzerinde ve her etiketi ayrı
+        // anahtar yapmak o indeksi seyreltirdi.
+        if (source.Parsed.Tags.Count > 0)
+        {
+            attrs["bizigo.tags"] = string.Join(',', source.Parsed.Tags);
+        }
 
         return attrs;
     }
