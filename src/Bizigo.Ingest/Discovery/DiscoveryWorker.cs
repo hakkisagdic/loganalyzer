@@ -4,6 +4,22 @@ using Microsoft.Extensions.Logging;
 
 namespace Bizigo.Ingest.Discovery;
 
+/// <summary>Bir <see cref="DiscoveryWorker.RunTurnAsync"/> turunun sonucu.</summary>
+public enum DiscoveryTurn
+{
+    /// <summary>Kuyrukta iş yoktu.</summary>
+    Idle,
+
+    /// <summary>Devre açıktı; yığın alındı ve düşürüldü.</summary>
+    CircuitOpen,
+
+    /// <summary>Sidecar cevapladı.</summary>
+    Processed,
+
+    /// <summary>İstek düştü — çağıran geri adım atmalı.</summary>
+    Failed,
+}
+
 /// <summary>
 /// Keşif kuyruğunu tüketen tek işçi (F1 §9).
 ///
@@ -27,8 +43,61 @@ public sealed class DiscoveryWorker(
     SidecarCircuitBreaker breaker,
     TemplateCache cache,
     DiscoveryStats stats,
-    ILogger<DiscoveryWorker> logger) : BackgroundService
+    ILogger<DiscoveryWorker> logger,
+    TimeProvider? timeProvider = null) : BackgroundService
 {
+    private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
+
+    /// <summary>
+    /// Geri adım ilerlemesi: ilk düşüşte 200 ms, sonra ikiye katlanarak 5 sn'de
+    /// duruyor. Saf fonksiyon — saate dokunmadan sınanabilsin diye ayrı.
+    /// </summary>
+    public static TimeSpan NextBackoff(TimeSpan previous) =>
+        previous == TimeSpan.Zero
+            ? TimeSpan.FromMilliseconds(200)
+            : TimeSpan.FromMilliseconds(Math.Min(previous.TotalMilliseconds * 2, 5_000));
+
+    /// <summary>
+    /// Döngünün <b>tek turu</b>: kuyruğu boşalt, devreyi kontrol et, sidecar'a git.
+    ///
+    /// <para>
+    /// <b>Neden public:</b> testin bu işi arka plan görevini başlatıp sonucu
+    /// yoklayarak sınaması gerekiyordu, ve yoklamanın duvar saati bütçesi ağır
+    /// yükte doluyordu — aynı commit yerelde 6,5 dakika, CI'da 14 saniye sürüyor.
+    /// Turu doğrudan çağırmak zamanlamayı denklemden çıkarıyor. Bu bir veri
+    /// kapısı değil, işin biriminin kendisi: <c>ExecuteAsync</c> de tam olarak
+    /// bunu çağırıyor, dolayısıyla test ile üretim aynı kodu koşuyor.
+    /// </para>
+    /// </summary>
+    public async Task<DiscoveryTurn> RunTurnAsync(CancellationToken cancellationToken = default)
+    {
+        var buffer = new List<DiscoveryItem>(options.BatchSize);
+
+        while (buffer.Count < options.BatchSize && queue.Reader.TryRead(out var item))
+        {
+            buffer.Add(item);
+        }
+
+        if (buffer.Count == 0)
+        {
+            return DiscoveryTurn.Idle;
+        }
+
+        if (!breaker.TryAcquire())
+        {
+            for (var index = 0; index < buffer.Count; index++)
+            {
+                stats.DropCircuitOpen();
+            }
+
+            return DiscoveryTurn.CircuitOpen;
+        }
+
+        return await ProcessAsync(buffer, cancellationToken).ConfigureAwait(false)
+            ? DiscoveryTurn.Failed
+            : DiscoveryTurn.Processed;
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (!options.Enabled)
@@ -43,7 +112,6 @@ public sealed class DiscoveryWorker(
             options.QueueCapacity,
             options.Timeout);
 
-        var buffer = new List<DiscoveryItem>(options.BatchSize);
         var backoff = TimeSpan.Zero;
 
         while (!stoppingToken.IsCancellationRequested)
@@ -55,28 +123,7 @@ public sealed class DiscoveryWorker(
                     return;
                 }
 
-                buffer.Clear();
-                while (buffer.Count < options.BatchSize && queue.Reader.TryRead(out var item))
-                {
-                    buffer.Add(item);
-                }
-
-                if (buffer.Count == 0)
-                {
-                    continue;
-                }
-
-                if (!breaker.TryAcquire())
-                {
-                    for (var index = 0; index < buffer.Count; index++)
-                    {
-                        stats.DropCircuitOpen();
-                    }
-
-                    continue;
-                }
-
-                var failed = await ProcessAsync(buffer, stoppingToken).ConfigureAwait(false);
+                var turn = await RunTurnAsync(stoppingToken).ConfigureAwait(false);
 
                 // Devre açılana kadarki pencerede geri adım **şart**. Ölü bir
                 // sidecar'da bağlantı reddi mikrosaniyede dönüyor, yani işçi
@@ -84,13 +131,10 @@ public sealed class DiscoveryWorker(
                 // yapıyor. Canlı ölçümde bunun bedeli görüldü: sidecar ölüyken
                 // ingest'in etiketleme yolu 2,7× yavaşladı — sebep etiketleme
                 // değil, bu döngünün çaldığı CPU'ydu.
-                if (failed)
+                if (turn == DiscoveryTurn.Failed)
                 {
-                    backoff = backoff == TimeSpan.Zero
-                        ? TimeSpan.FromMilliseconds(200)
-                        : TimeSpan.FromMilliseconds(Math.Min(backoff.TotalMilliseconds * 2, 5_000));
-
-                    await Task.Delay(backoff, stoppingToken).ConfigureAwait(false);
+                    backoff = NextBackoff(backoff);
+                    await Task.Delay(backoff, _time, stoppingToken).ConfigureAwait(false);
                 }
                 else
                 {

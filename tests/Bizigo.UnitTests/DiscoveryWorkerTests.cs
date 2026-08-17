@@ -119,51 +119,64 @@ public sealed class DiscoveryWorkerTests
         const int Events = 20_000;
 
         var harness = Build((_, _) => throw new HttpRequestException("Connection refused"));
-        using var cts = new CancellationTokenSource();
-        await harness.Worker.StartAsync(cts.Token);
 
-        try
+        // Sıcak yolun sidecar'a hiç dokunmadığı, SÜRE ile değil DAVRANIŞ ile
+        // sınanıyor: 20 bin olayın hepsi boş imza döndürüyor, yani etiketleme
+        // hiçbir noktada cevabı beklemiyor.
+        //
+        // Throughput iddiasının ("sidecar ölüyken ingest yavaşlamıyor") yeri
+        // `SidecarLiveTests` — gerçek süreç, gerçek TCP, elle koşulan bir ÖLÇÜM.
+        // Duvar saatini birim paketine sokmak, ölçmek istediğimiz şeyi değil
+        // makinenin o anki hızını sınamak olurdu.
+        Measure(harness, Events);
+
+        // Turlar TEK TEK çağrılıyor: arka plan görevi başlatıp sonucu yoklamak
+        // yerine. Yoklamanın bütçesi ağır yükte doluyordu ve her koşumda başka
+        // bir test düşüyordu — aynı commit yerelde 6,5 dakika, CI'da 14 saniye.
+        // Burada zamanlama denklemde yok.
+        Assert.Equal(DiscoveryTurn.Failed, await harness.Worker.RunTurnAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(DiscoveryTurn.Failed, await harness.Worker.RunTurnAsync(TestContext.Current.CancellationToken));
+
+        // İki düşüş = `FailureThreshold`. Devre artık açık.
+        Assert.Equal(CircuitState.Open, harness.Breaker.State);
+
+        var callsWhenOpen = Volatile.Read(ref harness.Handler.Calls);
+
+        // Devre açıkken yığın alınıyor ama denenmiyor: ölü sidecar'ın maliyeti sıfır.
+        Assert.Equal(DiscoveryTurn.CircuitOpen, await harness.Worker.RunTurnAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(callsWhenOpen, Volatile.Read(ref harness.Handler.Calls));
+        Assert.True(harness.Stats.DroppedCircuitOpen > 0);
+    }
+
+    /// <summary>
+    /// Geri adım ilerlemesi — saf fonksiyon, saate hiç dokunmadan.
+    ///
+    /// <para>
+    /// Üst sınır önemli: sınırsız ikiye katlama, sidecar geri geldiğinde işçinin
+    /// dakikalarca uyuyor olması demek olurdu.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Geri_adim_ikiye_katlanip_bes_saniyede_duruyor()
+    {
+        var backoff = DiscoveryWorker.NextBackoff(TimeSpan.Zero);
+        Assert.Equal(TimeSpan.FromMilliseconds(200), backoff);
+
+        foreach (var expected in new[] { 400, 800, 1600, 3200, 5000, 5000 })
         {
-            // Sıcak yolun sidecar'a hiç dokunmadığı, SÜRE ile değil DAVRANIŞ ile
-            // sınanıyor: 20 bin olayın hepsi boş imza döndürüyor, yani etiketleme
-            // hiçbir noktada cevabı beklemiyor.
-            //
-            // Buradaki throughput iddiasının ("sidecar ölüyken ingest yavaşlamıyor")
-            // yeri `SidecarLiveTests` — gerçek süreç, gerçek TCP, ve elle
-            // koşulan bir ÖLÇÜM. Duvar saatini birim paketine sokmak, ölçmek
-            // istediğimiz şeyi değil makinenin o anki hızını sınamak olurdu;
-            // F1'de aynı hata üç ayrı yerde çıktı.
-            Measure(harness, Events);
-
-            await WaitUntilAsync(
-                () => harness.Breaker.State == CircuitState.Open,
-                "Devre kesici açılmadı.");
-
-            var callsWhenOpen = Volatile.Read(ref harness.Handler.Calls);
-            await Task.Delay(200, TestContext.Current.CancellationToken);
-
-            // Devre açıkken hiç denenmiyor: ölü sidecar'ın maliyeti sıfır.
-            Assert.Equal(callsWhenOpen, Volatile.Read(ref harness.Handler.Calls));
-
-            // Düşürme sayacını İŞÇİ artırıyor (enqueue değil): kuyruktan bir
-            // yığın alıp devreyi açık bulduğunda. Dolayısıyla devre açıldıktan
-            // sonra hem yeni olay üretilmeli hem de işçinin bir turu beklenmeli.
-            // Yukarıdaki 20 bin olayın bir kısmının devre açıkken işlenmesine
-            // güvenmek bir yarıştı: makine hızlandıkça, ya da geri adım devreyi
-            // geciktirdikçe döngü önce bitiyor.
-            for (var index = 0; index < 100; index++)
-            {
-                harness.Annotator.Annotate("firewall", $"deny udp 10.9.9.{index % 255}", parseFailed: true);
-            }
-
-            await WaitUntilAsync(
-                () => harness.Stats.DroppedCircuitOpen > 0,
-                "Devre açıkken alınan yığınlar düşürülmüyor.");
+            backoff = DiscoveryWorker.NextBackoff(backoff);
+            Assert.Equal(TimeSpan.FromMilliseconds(expected), backoff);
         }
-        finally
-        {
-            await harness.Worker.StopAsync(CancellationToken.None);
-        }
+    }
+
+    /// <summary>Kuyruk boşken tur iş üretmiyor ve sidecar'a gitmiyor.</summary>
+    [Fact]
+    public async Task Bos_kuyrukta_tur_bos_donuyor()
+    {
+        var harness = Build((_, _) => throw new HttpRequestException("Connection refused"));
+
+        Assert.Equal(DiscoveryTurn.Idle, await harness.Worker.RunTurnAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(0, Volatile.Read(ref harness.Handler.Calls));
     }
 
     [Fact]
@@ -184,30 +197,20 @@ public sealed class DiscoveryWorkerTests
                 "application/json"),
         }));
 
-        using var cts = new CancellationTokenSource();
-        await harness.Worker.StartAsync(cts.Token);
+        harness.Annotator.Annotate("linux", Line, parseFailed: true);
 
-        try
-        {
-            harness.Annotator.Annotate("linux", Line, parseFailed: true);
+        Assert.Equal(DiscoveryTurn.Processed, await harness.Worker.RunTurnAsync(TestContext.Current.CancellationToken));
 
-            await WaitUntilAsync(() => harness.Cache.Count > 0, "Önbellek dolmadı.");
+        Assert.True(harness.Cache.TryGet(signature, out var templateId));
+        Assert.Equal("linux:5", templateId);
+        Assert.Equal(0, harness.Stats.SignatureDrift);
+        Assert.Equal(1, harness.Stats.NewTemplates);
 
-            Assert.True(harness.Cache.TryGet(signature, out var templateId));
-            Assert.Equal("linux:5", templateId);
-            Assert.Equal(0, harness.Stats.SignatureDrift);
-            Assert.Equal(1, harness.Stats.NewTemplates);
-
-            // Aynı imzalı ikinci satır artık sidecar'a hiç gitmiyor.
-            Assert.Equal(
-                "linux:5",
-                harness.Annotator.Annotate(
-                    "linux", "Failed password for admin from 172.16.0.1 port 22 ssh2", parseFailed: true));
-        }
-        finally
-        {
-            await harness.Worker.StopAsync(CancellationToken.None);
-        }
+        // Aynı imzalı ikinci satır artık sidecar'a hiç gitmiyor.
+        Assert.Equal(
+            "linux:5",
+            harness.Annotator.Annotate(
+                "linux", "Failed password for admin from 172.16.0.1 port 22 ssh2", parseFailed: true));
     }
 
     [Fact]
@@ -227,20 +230,12 @@ public sealed class DiscoveryWorkerTests
                 "application/json"),
         }));
 
-        using var cts = new CancellationTokenSource();
-        await harness.Worker.StartAsync(cts.Token);
+        harness.Annotator.Annotate("linux", "deny tcp 10.0.0.1 -> 10.0.0.2", parseFailed: true);
 
-        try
-        {
-            harness.Annotator.Annotate("linux", "deny tcp 10.0.0.1 -> 10.0.0.2", parseFailed: true);
+        Assert.Equal(DiscoveryTurn.Processed, await harness.Worker.RunTurnAsync(TestContext.Current.CancellationToken));
 
-            await WaitUntilAsync(() => harness.Stats.SignatureDrift > 0, "Sapma sayacı artmadı.");
-            Assert.Equal(0, harness.Cache.Count);
-        }
-        finally
-        {
-            await harness.Worker.StopAsync(CancellationToken.None);
-        }
+        Assert.True(harness.Stats.SignatureDrift > 0);
+        Assert.Equal(0, harness.Cache.Count);
     }
 
     [Fact]
@@ -254,17 +249,53 @@ public sealed class DiscoveryWorkerTests
                 "application/json"),
         }));
 
+        harness.Annotator.Annotate("linux", "deny tcp 10.0.0.1", parseFailed: true);
+
+        Assert.Equal(DiscoveryTurn.Failed, await harness.Worker.RunTurnAsync(TestContext.Current.CancellationToken));
+
+        // Tek istek yeter: eşik beklenmiyor. Uyuşmayan sürümle konuşmaya devam
+        // etmek, sessizce yanlış `template_id` yazmak demek olurdu.
+        Assert.Equal(CircuitState.Open, harness.Breaker.State);
+    }
+
+    /// <summary>
+    /// İşçi gerçekten <b>başlatıldığında</b> da aynı turu koşuyor.
+    ///
+    /// <para>
+    /// Diğer testler turu doğrudan çağırıyor; bu tek test kabloların bağlı
+    /// olduğunu sınıyor — <c>ExecuteAsync</c> kuyruğu bekleyip
+    /// <see cref="DiscoveryWorker.RunTurnAsync"/>'e devrediyor mu. Yoklama burada
+    /// kaçınılmaz ama tek yerde ve tek olayla.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Baslatilan_isci_kuyrugu_tuketiyor()
+    {
+        const string Line = "Failed password for admin from 10.1.2.3 port 51234 ssh2";
+        var signature = Masks.Signature(Line);
+
+        var harness = Build((_, _) => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                $$"""
+                  {"api_version":"v1","masks_version":1,"cluster_count":1,
+                   "results":[{"id":"0","template_id":"linux:9","template":"t",
+                               "is_new":true,"masked":{{System.Text.Json.JsonSerializer.Serialize(signature)}}}]}
+                  """,
+                Encoding.UTF8,
+                "application/json"),
+        }));
+
         using var cts = new CancellationTokenSource();
         await harness.Worker.StartAsync(cts.Token);
 
         try
         {
-            harness.Annotator.Annotate("linux", "deny tcp 10.0.0.1", parseFailed: true);
+            harness.Annotator.Annotate("linux", Line, parseFailed: true);
+            await WaitUntilAsync(() => harness.Cache.Count > 0, "Başlatılan işçi kuyruğu tüketmedi.");
 
-            // Tek istek yeter: eşik beklenmiyor.
-            await WaitUntilAsync(
-                () => harness.Breaker.State == CircuitState.Open,
-                "Sürüm uyuşmazlığında devre açılmadı.");
+            Assert.True(harness.Cache.TryGet(signature, out var templateId));
+            Assert.Equal("linux:9", templateId);
         }
         finally
         {
