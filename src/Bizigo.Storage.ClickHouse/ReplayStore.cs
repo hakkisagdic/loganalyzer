@@ -41,7 +41,7 @@ public sealed class ReplayStore(ClickHouseContext context)
         using var command = connection.CreateCommand();
         command.CommandText = $$"""
             SELECT toString(toYYYYMMDD(ts)) AS part, count() AS rows
-            FROM {{{_context.Options.EventsTable}}}
+            FROM {{_context.Options.EventsTable}}
             WHERE ts >= {from:DateTime64(3)} AND ts < {to:DateTime64(3)}
             GROUP BY part
             ORDER BY part

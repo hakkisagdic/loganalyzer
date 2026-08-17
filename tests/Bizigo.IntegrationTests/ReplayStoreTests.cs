@@ -93,10 +93,16 @@ public sealed class ReplayStoreTests(DevStackFixture stack) : IAsyncLifetime
 
         // `CREATE TABLE … AS` kullanılıyor: şema elle tekrarlanırsa bir kolon
         // eklendiği gün replay sessizce eksik yazar.
+        //
+        // `database = currentDatabase()` şart: `system.columns` sunucu geneli ve
+        // her test sınıfı kendi izole veritabanını açıyor, dolayısıyla filtresiz
+        // `count()` aynı adlı tabloyu her veritabanında bir kez sayar.
         var columns = await ScalarAsync(
-            "SELECT count() FROM system.columns WHERE table = 'events_replay_test'");
+            "SELECT count() FROM system.columns "
+            + "WHERE database = currentDatabase() AND table = 'events_replay_test'");
         var expected = await ScalarAsync(
-            "SELECT count() FROM system.columns WHERE table = 'events'");
+            "SELECT count() FROM system.columns "
+            + "WHERE database = currentDatabase() AND table = 'events'");
 
         Assert.Equal(expected, columns);
 
