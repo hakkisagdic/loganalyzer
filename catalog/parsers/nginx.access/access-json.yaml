@@ -20,6 +20,12 @@ match:
   # metninde geçmez, ASA/FortiGate/RouterOS satırlarında hiç yok.
   contains: ['"remote_user"']
 
+# Bkz. combined.yaml'daki aynı tanım: upstream `NUMBER` lookbehind + atomik grup
+# taşıyor ve paylaşılan sette düzeltilmesi davranışı geçirgen yönde bozuyor.
+# Daraltma bağlama özel: nginx HTTP sürümünü işaretsiz ondalık yazar.
+pattern_definitions:
+  NGINX_NUM: '(?:[0-9]+(?:\.[0-9]+)?)'
+
 pipeline:
   - json: { field: message }
 
@@ -28,7 +34,7 @@ pipeline:
   - grok:
       field: request
       patterns:
-        - '^%{WORD:http_method} %{NOTSPACE:url_path} HTTP/%{NUMBER:http_version}$'
+        - '^%{WORD:http_method} %{NOTSPACE:url_path} HTTP/%{NGINX_NUM:http_version}$'
 
   - date:
       field: time
