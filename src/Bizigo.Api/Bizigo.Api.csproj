@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Bizigo.Query\Bizigo.Query.csproj" />
     <ProjectReference Include="..\Bizigo.Ingest\Bizigo.Ingest.csproj" />
+    <ProjectReference Include="..\Bizigo.Replay\Bizigo.Replay.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -29,6 +29,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bizigo.UnitTests", "tests\B
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bizigo.IntegrationTests", "tests\Bizigo.IntegrationTests\Bizigo.IntegrationTests.csproj", "{3F51B744-0954-4350-9615-11186F31DCEA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bizigo.Replay", "src\Bizigo.Replay\Bizigo.Replay.csproj", "{1C154152-460B-4674-8F55-B6396D3F7F41}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -183,6 +185,18 @@ Global
 		{3F51B744-0954-4350-9615-11186F31DCEA}.Release|x64.Build.0 = Release|Any CPU
 		{3F51B744-0954-4350-9615-11186F31DCEA}.Release|x86.ActiveCfg = Release|Any CPU
 		{3F51B744-0954-4350-9615-11186F31DCEA}.Release|x86.Build.0 = Release|Any CPU
+		{1C154152-460B-4674-8F55-B6396D3F7F41}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C154152-460B-4674-8F55-B6396D3F7F41}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C154152-460B-4674-8F55-B6396D3F7F41}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1C154152-460B-4674-8F55-B6396D3F7F41}.Debug|x64.Build.0 = Debug|Any CPU
+		{1C154152-460B-4674-8F55-B6396D3F7F41}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1C154152-460B-4674-8F55-B6396D3F7F41}.Debug|x86.Build.0 = Debug|Any CPU
+		{1C154152-460B-4674-8F55-B6396D3F7F41}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C154152-460B-4674-8F55-B6396D3F7F41}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1C154152-460B-4674-8F55-B6396D3F7F41}.Release|x64.ActiveCfg = Release|Any CPU
+		{1C154152-460B-4674-8F55-B6396D3F7F41}.Release|x64.Build.0 = Release|Any CPU
+		{1C154152-460B-4674-8F55-B6396D3F7F41}.Release|x86.ActiveCfg = Release|Any CPU
+		{1C154152-460B-4674-8F55-B6396D3F7F41}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -200,5 +214,6 @@ Global
 		{47EC4E2B-5864-4CB3-BEA1-7FD31ADCBBC9} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{1998B653-9756-441C-B927-FE61C6FA7D5A} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{3F51B744-0954-4350-9615-11186F31DCEA} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{1C154152-460B-4674-8F55-B6396D3F7F41} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

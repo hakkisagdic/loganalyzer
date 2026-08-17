@@ -8,6 +8,7 @@ using Bizigo.Parsing.Dispatch;
 using Bizigo.Parsing.Grok;
 using Bizigo.Ingest.Wal;
 using Bizigo.Query;
+using Bizigo.Replay;
 using Bizigo.Storage.ClickHouse;
 using Bizigo.Storage.Raw;
 using System.Threading.RateLimiting;
@@ -37,6 +38,9 @@ builder.Services.AddBizigoIngest(builder.Configuration);
 
 // Ham arşiv: yükleyici, manifest, scrub (T04).
 builder.Services.AddBizigoRawArchive(builder.Configuration);
+
+// Replay: gölge tablo + bölüm değiştirme (T11).
+builder.Services.AddBizigoReplay();
 
 // Kimlik ve yetkilendirme (T09).
 builder.Services.AddBizigoAuthentication(builder.Configuration);
@@ -103,6 +107,7 @@ app.MapEvents();
 app.MapSources();
 app.MapChanges();
 app.MapPipelineHealth();
+app.MapReplay();
 
 // Ingest sayaçları: "boru hattı akıyor mu" sorusunun tek bakışta cevabı.
 // `declared_encoding_mismatches` sıfırdan büyükse envanterdeki `encoding` yanlış.
@@ -186,7 +191,7 @@ app.MapGet("/", () => Results.Ok(new
 {
     service = "bizigo-loganalyzer",
     phase = "F1",
-    status = "T10",
+    status = "F1 tamamlandı",
 }));
 
 await app.RunAsync();

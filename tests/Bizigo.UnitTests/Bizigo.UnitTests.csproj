@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\src\Bizigo.Storage.Raw\Bizigo.Storage.Raw.csproj" />
     <ProjectReference Include="..\..\src\Bizigo.Storage.ClickHouse\Bizigo.Storage.ClickHouse.csproj" />
     <ProjectReference Include="..\..\src\Bizigo.Api\Bizigo.Api.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Replay\Bizigo.Replay.csproj" />
 
     <!--
       CliSmokeTests derlenmiş `bizigo` ikilisini koşturuyor. Referans yalnızca

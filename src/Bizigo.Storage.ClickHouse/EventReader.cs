@@ -47,7 +47,11 @@ public sealed class EventReader(ClickHouseContext context)
         ["dst_ip"] = "String",
     };
 
-    private const string SelectColumns = """
+    /// <summary>
+    /// Okuma sütun listesi. <c>internal</c>: replay de aynı listeyi kullanıyor —
+    /// iki kopya, bir kolon eklendiği gün sessizce ayrışırdı.
+    /// </summary>
+    internal const string SelectColumns = """
         ts, ingested_at, event_id, owner_group, source_id, host, vendor, product,
         parser_id, parser_version, toUInt8(parse_status) AS parse_status_num, parse_generation,
         encoding_detected, template_id, severity_num, ocsf_class_uid, ocsf_activity_id,
@@ -223,7 +227,7 @@ public sealed class EventReader(ClickHouseContext context)
         return Convert.ToInt64(scalar, CultureInfo.InvariantCulture);
     }
 
-    private static LogEvent Map(System.Data.Common.DbDataReader reader)
+    internal static LogEvent Map(System.Data.Common.DbDataReader reader)
     {
         var keys = (string[])reader["attr_keys"];
         var values = (string[])reader["attr_values"];

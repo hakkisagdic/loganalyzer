@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Replay dört katmana birden dokunuyor: ham arşiv (oku), parser motoru
+    (yeniden ayrıştır), normalizasyon (olaya çevir) ve ClickHouse (gölge tablo).
+    Ayrı bir proje olmasının sebebi bağımlılık döngüsü: Storage.ClickHouse zaten
+    Normalization'a bakıyor, dolayısıyla Normalization'a ClickHouse eklenemezdi.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\Bizigo.Contracts\Bizigo.Contracts.csproj" />
+    <ProjectReference Include="..\Bizigo.ControlPlane\Bizigo.ControlPlane.csproj" />
+    <ProjectReference Include="..\Bizigo.Parsing\Bizigo.Parsing.csproj" />
+    <ProjectReference Include="..\Bizigo.Normalization\Bizigo.Normalization.csproj" />
+    <ProjectReference Include="..\Bizigo.Storage.Raw\Bizigo.Storage.Raw.csproj" />
+    <ProjectReference Include="..\Bizigo.Storage.ClickHouse\Bizigo.Storage.ClickHouse.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+</Project>
