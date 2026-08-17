@@ -25,6 +25,11 @@ public static class RepositoryLayout
     /// <summary>Maskeleme sözlüğü — sidecar ile paylaşılan tek kaynak (K14).</summary>
     public static string MaskFile => Path.Combine(Root, "catalog", "masks", "bizigo-masks.yaml");
 
+    /// <summary>Keycloak realm-as-code dosyası (K26).</summary>
+    public static string RealmFile => Path.Combine(Root, "deploy", "keycloak", "realm-bizigo.json");
+
+    public static string ComposeFile => Path.Combine(Root, "deploy", "docker-compose.yml");
+
     /// <summary>
     /// <b>Üretimin</b> pattern kütüphanesi: <c>legacy</c> üstüne <c>bizigo-v1</c>
     /// kaplaması — <c>ParserToolbox.Create</c> ile aynı kurulum.

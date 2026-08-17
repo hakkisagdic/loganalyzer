@@ -33,42 +33,22 @@ public static class LogsEndpoint
         CancellationToken cancellationToken)
     {
         var limit = options.Value.MaxRequestBytes;
+        var body = await ReadBodyAsync(request, limit, cancellationToken);
 
-        // Content-Length yalan söyleyebilir; okuma sınırı asıl koruma.
-        if (request.ContentLength > limit)
+        switch (body.Status)
         {
-            return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
-        }
+            case BodyStatus.TooLarge:
+                return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
 
-        using var buffer = new MemoryStream();
-
-        var encoding = request.Headers.ContentEncoding.ToString().Trim();
-        if (encoding.Length == 0 || encoding.Equals("identity", StringComparison.OrdinalIgnoreCase))
-        {
-            await request.Body.CopyToAsync(buffer, cancellationToken);
-        }
-        else if (encoding.Equals("gzip", StringComparison.OrdinalIgnoreCase))
-        {
-            // OTLP/HTTP dışa aktarıcısı **varsayılan olarak** gzip gönderiyor,
-            // yani bu dal istisna değil olağan yol. Açılmadığı sürece gövde
-            // protobuf gibi görünüp `InvalidProtocolBufferException` veriyor ve
-            // hata mesajı yükün sıkıştırılmış olduğunu hiç söylemiyor —
-            // uçtan uca ilk denemede tam olarak böyle kaybedildi.
-            await using var gzip = new GZipStream(request.Body, CompressionMode.Decompress);
-            await CopyBoundedAsync(gzip, buffer, limit, cancellationToken);
-        }
-        else
-        {
-            return Results.BadRequest(new { error = $"Desteklenmeyen Content-Encoding: '{encoding}'." });
-        }
-
-        if (buffer.Length > limit)
-        {
-            return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
+            case BodyStatus.UnsupportedEncoding:
+                return Results.BadRequest(new
+                {
+                    error = $"Desteklenmeyen Content-Encoding: '{body.Encoding}'.",
+                });
         }
 
         var result = await gateway.AcceptAsync(
-            buffer.GetBuffer().AsMemory(0, (int)buffer.Length),
+            body.Bytes,
             request.ContentType,
             cancellationToken);
 
@@ -81,11 +61,80 @@ public static class LogsEndpoint
         };
     }
 
+    public enum BodyStatus
+    {
+        Ok,
+        TooLarge,
+        UnsupportedEncoding,
+    }
+
+    /// <param name="Bytes">Açılmış gövde. <see cref="BodyStatus.Ok"/> dışında anlamsız.</param>
+    /// <param name="Encoding">Gelen <c>Content-Encoding</c>; hata mesajı için.</param>
+    public readonly record struct BodyRead(BodyStatus Status, ReadOnlyMemory<byte> Bytes, string Encoding);
+
     /// <summary>
-    /// Sınırı <b>açılmış</b> boyut üzerinden uygular. <c>Content-Length</c>
-    /// sıkıştırılmış boyutu söylüyor, dolayısıyla tek başına koruma değil: küçük
-    /// bir gzip gövdesi açıldığında gigabaytlara çıkabilir (zip bomb).
+    /// İstek gövdesini okur, gerekiyorsa <b>açar</b> ve sınırı açılmış boyut
+    /// üzerinden uygular.
+    ///
+    /// <para>
+    /// <b>gzip olağan yol, istisna değil:</b> OTLP/HTTP dışa aktarıcısı varsayılan
+    /// olarak sıkıştırıyor. Açılmadığında gövde protobuf sanılıp
+    /// <c>InvalidProtocolBufferException</c> veriyor ve hata mesajı sıkıştırmadan
+    /// hiç bahsetmiyor — uçtan uca ilk denemede veri tam olarak böyle kayboldu.
+    /// </para>
+    ///
+    /// <para>
+    /// Sınır <c>Content-Length</c>'e güvenmiyor: o sıkıştırılmış boyutu söylüyor
+    /// ve küçük bir gzip gövdesi açıldığında sınırsız büyüyebilir (zip bomb).
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Neden public:</b> uç davranışının bu parçası tek başına sınanabilir
+    /// olmalı; aksi halde ancak koşan bir yığınla test edilebilirdi ve zaten
+    /// öyle olduğu için gözden kaçmıştı.
+    /// </para>
     /// </summary>
+    public static async Task<BodyRead> ReadBodyAsync(
+        HttpRequest request,
+        long limit,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var encoding = request.Headers.ContentEncoding.ToString().Trim();
+
+        // Content-Length yalan söyleyebilir; okuma sınırı asıl koruma. Yine de
+        // apaçık büyük bir istekte gövdeyi hiç okumamak ucuz.
+        if (request.ContentLength > limit)
+        {
+            return new BodyRead(BodyStatus.TooLarge, default, encoding);
+        }
+
+        var identity = encoding.Length == 0
+            || encoding.Equals("identity", StringComparison.OrdinalIgnoreCase);
+
+        if (!identity && !encoding.Equals("gzip", StringComparison.OrdinalIgnoreCase))
+        {
+            return new BodyRead(BodyStatus.UnsupportedEncoding, default, encoding);
+        }
+
+        using var buffer = new MemoryStream();
+
+        if (identity)
+        {
+            await CopyBoundedAsync(request.Body, buffer, limit, cancellationToken);
+        }
+        else
+        {
+            await using var gzip = new GZipStream(request.Body, CompressionMode.Decompress);
+            await CopyBoundedAsync(gzip, buffer, limit, cancellationToken);
+        }
+
+        return buffer.Length > limit
+            ? new BodyRead(BodyStatus.TooLarge, default, encoding)
+            : new BodyRead(BodyStatus.Ok, buffer.ToArray(), encoding);
+    }
+
     private static async Task CopyBoundedAsync(
         Stream source,
         MemoryStream destination,
