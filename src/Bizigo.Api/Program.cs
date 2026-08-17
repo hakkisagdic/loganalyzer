@@ -108,6 +108,7 @@ app.MapSources();
 app.MapChanges();
 app.MapPipelineHealth();
 app.MapReplay();
+app.MapParsers();
 
 // Ingest sayaçları: "boru hattı akıyor mu" sorusunun tek bakışta cevabı.
 // `declared_encoding_mismatches` sıfırdan büyükse envanterdeki `encoding` yanlış.
