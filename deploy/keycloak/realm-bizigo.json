@@ -96,6 +96,31 @@
             "access.token.claim": "true",
             "introspection.token.claim": "true"
           }
+        },
+        {
+          "name": "subject",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "consentRequired": false,
+          "config": {
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
         }
       ]
     }
@@ -130,9 +155,6 @@
         "http://localhost:3000"
       ],
       "defaultClientScopes": [
-        "profile",
-        "email",
-        "roles",
         "bizigo-claims"
       ]
     },
@@ -147,7 +169,6 @@
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
       "defaultClientScopes": [
-        "roles",
         "bizigo-claims"
       ]
     }

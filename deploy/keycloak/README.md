@@ -15,10 +15,41 @@ günlerce bulunamazdı. (K26 · F1 §10.1)
 
 ## Claim sözleşmesi
 
+**Tamamı `bizigo-claims` scope'unda — ve bu bir zorunluluk.** Realm dosyasında
+`clientScopes` dizisi verildiği için Keycloak **yerleşik scope'ları hiç
+oluşturmuyor**: import sonrası realm'de yalnızca `bizigo-claims` ve
+`offline_access` bulunuyor. İstemcilerin `defaultClientScopes` listesinde
+`profile`/`email`/`roles` yazsa bile bunlar var olmadığı için sessizce düşüyor.
+
+Ölçülen sonucu şuydu: kullanıcı access token'ında **`sub` yoktu** (Keycloak 24+
+`sub`'ı `basic` scope'una taşıdı) ve hiçbir token'da `preferred_username`
+bulunmuyordu. `/auth/me` `subject: "unknown"`, `username: ""` döndürüyordu.
+Yetkilendirme rollerden yürüdüğü için çalışıyor görünüyordu; kırılan şey **denetim
+kimliğiydi** — "bu isteği kim yaptı" sorusunun cevabı yoktu.
+
+Yerleşik scope'ları dosyaya kopyalamak yerine ihtiyacımız olan claim'leri kendi
+scope'umuza yazıyoruz: Keycloak sürümleri arasında taşınabilir ve dosyanın var
+olma sebebiyle tutarlı — claim sözleşmesi burada, tek yerde.
+
 | Mapper | Neden |
 | --- | --- |
 | `roles` (realm rolleri) | Keycloak realm rollerini varsayılan olarak `realm_access.roles` içine gömüyor. Düz `roles` claim'ine çekiyoruz ki claim sözleşmesi IdP'ye özel bir yoldan bağımsız kalsın — yarın Entra ID'ye geçilirse uygulama tarafı değişmesin. |
 | `groups` (`full.path=true`) | **Bilinçli.** Kapatılırsa iç içe gruplarda ad çakışması olur: `network/core` ile `platform/core` ayırt edilemez. Bedeli, claim'in başında eğik çizgi olması (`/network/core`) — `AccessScopeResolver` bunu normalize ediyor. |
+| `subject` (`sub`) | `basic` scope'u olmadığı için elle. Denetim kimliği bundan okunuyor. |
+| `username` (`preferred_username`) | `profile` scope'u olmadığı için elle. |
+| `audience-bizigo-api` (`aud`) | Servis hesabı token'ında `aud` hiç yoktu ve API doğrulaması onu reddediyordu. Paylaşılan scope'ta olması, UI ile collector'ın **aynı** sözleşmeyi tek yerden almasını sağlıyor. |
+
+## Issuer sabit olmak zorunda
+
+`docker-compose.yml` içinde `KC_HOSTNAME` ayarlı. Olmazsa Keycloak issuer'ı isteğin
+geldiği host'tan türetiyor: collector ağ içinden `http://keycloak:8080/...` ile
+token alıyor, API `http://localhost:8180/...` bekliyor ve **her satır 401 ile
+düşüyor**. `--hostname-strict=false` ile birlikte Keycloak yine iki host'tan da
+cevap veriyor, yalnızca issuer sabit kalıyor.
+
+Realm'i yeniden import ederken (veritabanı silinerek) **imzalama anahtarları
+değişiyor**; collector'ın önbellekteki token'ı geçersiz kalır. Yeniden import
+sonrası `docker compose restart otel-collector` gerekiyor.
 
 ## İstemciler
 
