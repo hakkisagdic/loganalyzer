@@ -44,6 +44,7 @@ public sealed class DiscoveryWorker(
             options.Timeout);
 
         var buffer = new List<DiscoveryItem>(options.BatchSize);
+        var backoff = TimeSpan.Zero;
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -75,7 +76,26 @@ public sealed class DiscoveryWorker(
                     continue;
                 }
 
-                await ProcessAsync(buffer, stoppingToken).ConfigureAwait(false);
+                var failed = await ProcessAsync(buffer, stoppingToken).ConfigureAwait(false);
+
+                // Devre açılana kadarki pencerede geri adım **şart**. Ölü bir
+                // sidecar'da bağlantı reddi mikrosaniyede dönüyor, yani işçi
+                // kuyruğu sıkı döngüde tüketip ağ çağrısı üstüne ağ çağrısı
+                // yapıyor. Canlı ölçümde bunun bedeli görüldü: sidecar ölüyken
+                // ingest'in etiketleme yolu 2,7× yavaşladı — sebep etiketleme
+                // değil, bu döngünün çaldığı CPU'ydu.
+                if (failed)
+                {
+                    backoff = backoff == TimeSpan.Zero
+                        ? TimeSpan.FromMilliseconds(200)
+                        : TimeSpan.FromMilliseconds(Math.Min(backoff.TotalMilliseconds * 2, 5_000));
+
+                    await Task.Delay(backoff, stoppingToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    backoff = TimeSpan.Zero;
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -90,7 +110,8 @@ public sealed class DiscoveryWorker(
         }
     }
 
-    private async Task ProcessAsync(List<DiscoveryItem> buffer, CancellationToken cancellationToken)
+    /// <returns><c>true</c> ise istek düştü — çağıran geri adım atmalı.</returns>
+    private async Task<bool> ProcessAsync(List<DiscoveryItem> buffer, CancellationToken cancellationToken)
     {
         // Kaynak sınıfı başına ayrı miner: tek istekte tek anahtar.
         foreach (var group in buffer.GroupBy(static item => item.SourceClass, StringComparer.Ordinal))
@@ -110,7 +131,7 @@ public sealed class DiscoveryWorker(
                 breaker.TripOnVersionMismatch(outcome.Error ?? "sürüm uyuşmazlığı");
                 logger.LogError(
                     "Sidecar sözleşmesi uyuşmuyor, devre kesici açıldı: {Error}", outcome.Error);
-                return;
+                return true;
             }
 
             if (outcome.Response is null)
@@ -118,12 +139,14 @@ public sealed class DiscoveryWorker(
                 stats.RequestFailed(outcome.TimedOut);
                 breaker.RecordFailure(outcome.Error ?? "bilinmeyen hata");
                 logger.LogDebug("Sidecar isteği başarısız: {Error}", outcome.Error);
-                return;
+                return true;
             }
 
             breaker.RecordSuccess();
             Apply(items, outcome.Response);
         }
+
+        return false;
     }
 
     private void Apply(DiscoveryItem[] items, MineResponse response)

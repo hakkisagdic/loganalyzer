@@ -118,8 +118,19 @@ class MinerRegistry:
                 self._miners.move_to_end(source_key)
                 return handle
 
-            store = RedisStateStore(
-                self._client, f"{self._settings.redis_key_prefix}{source_key}"
+            # Redis yoksa persistence handler'ı **hiç bağlamıyoruz**.
+            #
+            # Drain3, handler `None` değilse her yeni kümede `save_state`
+            # çağırıyor ve `save_state` tüm ağacı `jsonpickle` ile
+            # seri hâle getiriyor. Handler'ı "yazmayan" bir nesneye bağlamak
+            # yetmiyor: maliyet yazmada değil, serileştirmede. Canlı ölçümde
+            # bunun bedeli görüldü — Redis'siz bir sidecar binlerce yeni şablon
+            # gördüğünde her satırda büyüyen ağacı yeniden serileştirdiği için
+            # kilitleniyordu. Kalıcılık yoksa serileştirme de yapılmamalı.
+            store = (
+                RedisStateStore(self._client, f"{self._settings.redis_key_prefix}{source_key}")
+                if self._client is not None
+                else None
             )
             miner = TemplateMiner(persistence_handler=store, config=self._build_config())
             handle = MinerHandle(source_key=source_key, miner=miner, lock=threading.Lock())
@@ -131,22 +142,27 @@ class MinerRegistry:
                 logger.info("Miner tahliye edildi (max_miners): %s", evicted_key)
                 # Tahliyeden önce son durumu yaz; yoksa son snapshot'tan bu yana
                 # öğrenilenler kaybolur.
-                try:
-                    with evicted.lock:
-                        evicted.miner.save_state("eviction")
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning("Tahliye edilen miner yazılamadı (%s): %s", evicted_key, exc)
+                self._save(evicted, "eviction")
 
             return handle
 
     def save_all(self) -> None:
         """Kapanışta çağrılır — son snapshot'tan sonrası kaybolmasın."""
         for handle in list(self._miners.values()):
-            try:
-                with handle.lock:
-                    handle.miner.save_state("shutdown")
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Kapanışta durum yazılamadı (%s): %s", handle.source_key, exc)
+            self._save(handle, "shutdown")
+
+    def _save(self, handle: MinerHandle, reason: str) -> None:
+        # Kalıcılık bağlı değilse yazacak bir yer de yok. Drain3'ün `save_state`'i
+        # bu durumda assert ile düşüyor; kontrolü burada yapmak, her tahliyede
+        # yakalanmış bir istisnayı loglamaktan temiz.
+        if handle.miner.persistence_handler is None:
+            return
+
+        try:
+            with handle.lock:
+                handle.miner.save_state(reason)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Miner durumu yazılamadı (%s, %s): %s", handle.source_key, reason, exc)
 
 
 def template_id_for(source_key: str, cluster_id: int) -> str:
