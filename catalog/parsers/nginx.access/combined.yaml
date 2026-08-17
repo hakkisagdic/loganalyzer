@@ -17,6 +17,23 @@ match:
   # kapanışıdır: combined/common formatlarda vardır, cihaz loglarında yoktur.
   contains: ['HTTP/1.1"', 'HTTP/1.0"', 'HTTP/2.0"']
 
+# nginx'in sayısal alanları için dar bir sayı pattern'i.
+#
+# Upstream `NUMBER` → `BASE10NUM`, o da `(?<![0-9.+-])(?>...)` yazıyor: hem
+# lookbehind hem atomik grup, ikisi de `NonBacktracking` tarafından
+# desteklenmiyor. Paylaşılan sette düzeltmek DENENDİ VE VAZGEÇİLDİ (T08 raporu):
+# atomik grup burada `YEAR`'daki gibi etkisiz değil — kaldırınca
+# `%{NUMBER}\.%{NUMBER}` bileşimi upstream'de hiç eşleşmezken eşleşir hale
+# geliyor, yani değişiklik DAHA GEÇİRGEN yönde. Lookbehind'ın da lookaround'suz
+# karşılığı yok: `\b` `-5`'i kırar, karakter tüketen bir öncül eşleşme
+# uzunluğunu kaydırır.
+#
+# Bu yüzden daraltma bağlama özel ve parser'a yerel. nginx bu alanlara yalnızca
+# işaretsiz ondalık yazıyor: durum kodu, bayt sayısı, `$request_time` ve HTTP
+# sürümü. İşaret ve baştan noktalı biçim (`-5`, `.5`) bu alanlarda hiç geçmiyor.
+pattern_definitions:
+  NGINX_NUM: '(?:[0-9]+(?:\.[0-9]+)?)'
+
 pipeline:
   # Tek pattern, üç varyant:
   #   * isteğe bağlı sanal sunucu öneki  (`$host` log_format'a eklenmişse)
@@ -25,7 +42,7 @@ pipeline:
   - grok:
       field: message
       patterns:
-        - '^(?:%{IPORHOST:http_vhost} )?%{IPORHOST:clientip} %{USER:ident} %{USER:auth} \[%{HTTPDATE:log_timestamp}\] "%{WORD:http_method} %{NOTSPACE:url_path} HTTP/%{NUMBER:http_version}" %{NUMBER:response:int} (?:%{NUMBER:bytes:long}|-)(?: %{NUMBER:request_time:float})? "%{DATA:referrer}" "%{DATA:agent}"$'
+        - '^(?:%{IPORHOST:http_vhost} )?%{IPORHOST:clientip} %{USER:ident} %{USER:auth} \[%{HTTPDATE:log_timestamp}\] "%{WORD:http_method} %{NOTSPACE:url_path} HTTP/%{NGINX_NUM:http_version}" %{NGINX_NUM:response:int} (?:%{NGINX_NUM:bytes:long}|-)(?: %{NGINX_NUM:request_time:float})? "%{DATA:referrer}" "%{DATA:agent}"$'
 
   - date:
       field: log_timestamp
