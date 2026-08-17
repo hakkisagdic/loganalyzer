@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO.Compression;
 using Bizigo.Ingest.Pipeline;
 using Microsoft.Extensions.Options;
 
@@ -40,7 +41,26 @@ public static class LogsEndpoint
         }
 
         using var buffer = new MemoryStream();
-        await request.Body.CopyToAsync(buffer, cancellationToken);
+
+        var encoding = request.Headers.ContentEncoding.ToString().Trim();
+        if (encoding.Length == 0 || encoding.Equals("identity", StringComparison.OrdinalIgnoreCase))
+        {
+            await request.Body.CopyToAsync(buffer, cancellationToken);
+        }
+        else if (encoding.Equals("gzip", StringComparison.OrdinalIgnoreCase))
+        {
+            // OTLP/HTTP dışa aktarıcısı **varsayılan olarak** gzip gönderiyor,
+            // yani bu dal istisna değil olağan yol. Açılmadığı sürece gövde
+            // protobuf gibi görünüp `InvalidProtocolBufferException` veriyor ve
+            // hata mesajı yükün sıkıştırılmış olduğunu hiç söylemiyor —
+            // uçtan uca ilk denemede tam olarak böyle kaybedildi.
+            await using var gzip = new GZipStream(request.Body, CompressionMode.Decompress);
+            await CopyBoundedAsync(gzip, buffer, limit, cancellationToken);
+        }
+        else
+        {
+            return Results.BadRequest(new { error = $"Desteklenmeyen Content-Encoding: '{encoding}'." });
+        }
 
         if (buffer.Length > limit)
         {
@@ -59,6 +79,31 @@ public static class LogsEndpoint
             IngestOutcome.Full => Throttled(request.HttpContext.Response, result),
             _ => Results.StatusCode(StatusCodes.Status500InternalServerError),
         };
+    }
+
+    /// <summary>
+    /// Sınırı <b>açılmış</b> boyut üzerinden uygular. <c>Content-Length</c>
+    /// sıkıştırılmış boyutu söylüyor, dolayısıyla tek başına koruma değil: küçük
+    /// bir gzip gövdesi açıldığında gigabaytlara çıkabilir (zip bomb).
+    /// </summary>
+    private static async Task CopyBoundedAsync(
+        Stream source,
+        MemoryStream destination,
+        long limit,
+        CancellationToken cancellationToken)
+    {
+        var chunk = new byte[81920];
+        int read;
+
+        while ((read = await source.ReadAsync(chunk, cancellationToken)) > 0)
+        {
+            destination.Write(chunk, 0, read);
+
+            if (destination.Length > limit)
+            {
+                return;
+            }
+        }
     }
 
     /// <summary>

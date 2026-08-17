@@ -93,6 +93,19 @@ public static class AuthenticationSetup
                 jwt.Audience = options.Audience;
                 jwt.RequireHttpsMetadata = options.RequireHttpsMetadata;
 
+                // Claim sözleşmesinin ÇALIŞMASI bu satıra bağlı. Varsayılan
+                // `true` iken handler gelen claim'leri Microsoft'un uzun URI
+                // şemasına çeviriyor: `sub` → `.../nameidentifier`, `roles` →
+                // görünmez oluyor. Aşağıdaki `RoleClaimType`/`NameClaimType`
+                // ayarları o durumda hiçbir şeye denk gelmiyor.
+                //
+                // Ölçülen hâli: collector'ın `roles: ["ingest"]` taşıyan
+                // token'ıyla `/v1/logs` 403 dönüyordu ve `/auth/me` `roles: []`
+                // gösteriyordu. `sub`'ın yine de bulunması yanıltıcıydı —
+                // `AccessScopeResolver` onu `ClaimTypes.NameIdentifier`
+                // yedeğinden okuyordu, yani eşleme zaten devredeydi.
+                jwt.MapInboundClaims = false;
+
                 jwt.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
@@ -135,6 +148,14 @@ public static class AuthenticationSetup
                 oidc.Scope.Add("openid");
                 oidc.Scope.Add("profile");
                 oidc.Scope.Add("email");
+
+                // JWT tarafındaki gerekçenin aynısı: eşleme açıkken `roles` ve
+                // `groups` uzun URI'lere çevriliyor ve aşağıdaki claim tipleri
+                // hiçbir şeye denk gelmiyor. Tarayıcı akışı bu oturumda uçtan
+                // uca koşulmadı, ama iki işleyicinin claim sözleşmesi aynı
+                // olmak zorunda — ayrışırlarsa kapsam, kullanıcının hangi yoldan
+                // girdiğine göre değişir.
+                oidc.MapInboundClaims = false;
 
                 oidc.TokenValidationParameters = new TokenValidationParameters
                 {

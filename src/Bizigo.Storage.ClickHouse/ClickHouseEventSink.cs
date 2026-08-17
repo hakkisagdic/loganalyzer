@@ -45,6 +45,7 @@ public sealed class ClickHouseEventSink : IParsedEventSink, IAsyncDisposable
 
     private long _written;
     private long _dropped;
+    private int _disposed;
 
     public ClickHouseEventSink(
         EventWriter writer,
@@ -139,11 +140,36 @@ public sealed class ClickHouseEventSink : IParsedEventSink, IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Kapanışta elde kalan satırlar yazılır; yoksa son 2 saniyelik veri
+    /// gereksiz yere replay işi olurdu.
+    ///
+    /// <para>
+    /// <b>Tekrar çağrılabilir ve atmaz — bilinçli.</b> Konteyner başlatılamadığında
+    /// DI kapsamı yine de atılıyor ve burası ikinci kez çalışabiliyor; atılmış
+    /// semaforda beklemek <see cref="ObjectDisposedException"/> fırlatıyordu ve o
+    /// istisna, açılışın <b>gerçek</b> hatasının yerine geçip süreci
+    /// düşürüyordu. Gözlenen hâli: "Maskeleme sözlüğü bulunamadı" mesajı log'da
+    /// duruyor ama süreç 134 ile ve tamamen ilgisiz bir yığın iziyle ölüyordu.
+    /// Kapanış yolu, açılış hatasını gizleyebilecek hiçbir şey yapmamalı.
+    /// </para>
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
-        // Kapanışta elde kalan satırlar yazılır; yoksa son 2 saniyelik veri
-        // gereksiz yere replay işi olurdu.
-        await FlushAsync(CancellationToken.None);
+        if (Interlocked.Exchange(ref _disposed, 1) == 1)
+        {
+            return;
+        }
+
+        try
+        {
+            await FlushAsync(CancellationToken.None);
+        }
+        catch (ObjectDisposedException)
+        {
+            // Kilit zaten atılmış; boşaltacak bir şey de yok.
+        }
+
         _lock.Dispose();
     }
 }

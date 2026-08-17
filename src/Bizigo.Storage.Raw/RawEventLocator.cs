@@ -60,12 +60,25 @@ public sealed class RawEventLocator(
 
         // Ön ek saat hassasiyetinde; olay o saatin nesnelerinden birinde.
         // `ts` aralığı ikinci bir daraltma: aynı saatte birden çok nesne olabilir.
+        //
+        // Aralık HASSASİYET PAYIYLA karşılaştırılıyor. Manifest zaman damgasını
+        // Postgres'te mikrosaniyeyle tutuyor, ClickHouse'daki `ts` ise
+        // `DateTime64(3)` — yani milisaniyeye kırpılmış. Payı olmayan bir
+        // karşılaştırma tek olaylı bir nesnede DAİMA ıskalıyor: `ts_from` ile
+        // `ts_to` aynı ve kırpılmış `ts` ikisinden de küçük kalıyor
+        // (14:48:02.904 < 14:48:02.904923). Büyük nesnelerde de sınırdaki
+        // olaylarda aynı şey oluyor, ama orada ancak ara sıra göründüğü için
+        // teşhisi çok daha zor olurdu.
+        var tolerance = TimeSpan.FromMilliseconds(1);
+        var from = logEvent.Timestamp - tolerance;
+        var to = logEvent.Timestamp + tolerance;
+
         var candidates = await db.RawManifest
             .AsNoTracking()
             .Where(m => m.ObjectKey.StartsWith(logEvent.RawRef)
                 && m.State != RawObjectState.Missing
-                && m.TsFrom <= logEvent.Timestamp
-                && m.TsTo >= logEvent.Timestamp)
+                && m.TsFrom <= to
+                && m.TsTo >= from)
             .OrderBy(m => m.TsFrom)
             .Take(MaxObjectsToScan)
             .Select(m => m.ObjectKey)
