@@ -57,6 +57,12 @@ public static class ParsingServiceCollectionExtensions
 
         services.AddSingleton<ParserCompiler>();
         services.AddSingleton<ParserCatalog>();
+
+        // Varsayılan kaynak yalnızca repodaki dosyalar. `AddBizigoAuthoring`
+        // bunu veritabanını da okuyan sürümle değiştiriyor (T18) — parser motoru
+        // tek başına (CLI, testler) taslaklardan habersiz çalışabilsin diye
+        // burada değiştirilebilir bırakıldı.
+        services.AddSingleton<IParserCatalogSource, DirectoryParserCatalogSource>();
         services.AddSingleton<DispatchStats>();
         services.AddSingleton<Dispatcher>();
 

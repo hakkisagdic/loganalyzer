@@ -35,4 +35,8 @@
                       ReferenceOutputAssembly="false" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Bizigo.Authoring\Bizigo.Authoring.csproj" />
+  </ItemGroup>
+
 </Project>

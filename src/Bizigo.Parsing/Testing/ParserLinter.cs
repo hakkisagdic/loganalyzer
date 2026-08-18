@@ -27,7 +27,23 @@ public static class ParserLinter
     {
         ArgumentNullException.ThrowIfNull(compiler);
 
-        var loaded = ParserYamlLoader.LoadFile(path);
+        return Inspect(ParserYamlLoader.LoadFile(path), path, compiler);
+    }
+
+    /// <summary>
+    /// Dosyaya yazılmamış YAML'ı denetler — parser editöründen gelen taslaklar
+    /// için (T18). Dosya yolundan geçen sürümle <b>aynı</b> kuralları koşuyor:
+    /// iki ayrı denetleyici, taslakta geçip yayında kalan bir parser demek olurdu.
+    /// </summary>
+    public static ParserLintReport Lint(string yaml, string label, ParserCompiler compiler)
+    {
+        ArgumentNullException.ThrowIfNull(compiler);
+
+        return Inspect(ParserYamlLoader.Load(yaml, label), label, compiler);
+    }
+
+    private static ParserLintReport Inspect(ParserLoadResult loaded, string path, ParserCompiler compiler)
+    {
         if (!loaded.Ok)
         {
             return new ParserLintReport(path, null, loaded.Errors, []);

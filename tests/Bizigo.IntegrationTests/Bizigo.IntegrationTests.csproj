@@ -26,4 +26,8 @@
     <ProjectReference Include="..\..\src\Bizigo.Replay\Bizigo.Replay.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Bizigo.Authoring\Bizigo.Authoring.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -23,8 +23,7 @@ namespace Bizigo.Ingest.Pipeline;
 /// </para>
 /// </summary>
 public sealed class CatalogRefreshService(
-    ParserCatalog catalog,
-    ParserCompiler compiler,
+    IParserCatalogSource source,
     SourceDirectory sources,
     IOptions<ParsingOptions> options,
     ILogger<CatalogRefreshService> logger,
@@ -73,11 +72,18 @@ public sealed class CatalogRefreshService(
 
         try
         {
-            var report = catalog.LoadFromDirectory(_options.ParserDirectory, compiler);
+            var report = await source.RefreshAsync(cancellationToken);
 
             foreach (var error in report.Errors)
             {
                 logger.LogError("Parser yüklenemedi: {Error}", error);
+            }
+
+            // Hata değil ama sessiz kalmaması gereken durumlar — bugünkü tek
+            // örneği yayınlanmış bir taslağın repodaki dosyayı gölgelemesi.
+            foreach (var note in report.Notes)
+            {
+                logger.LogWarning("Katalog: {Note}", note);
             }
 
             if (report.Loaded > 0)
