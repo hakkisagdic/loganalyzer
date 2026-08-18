@@ -1,0 +1,113 @@
+@import "./tokens.css";
+
+/* Taban katmanı. Jeton tanımlamıyor, yalnızca kullanıyor. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  /* Tarayıcının yazı tipi boyutu ayarını ezmiyoruz: rem tabanı 16px varsayılan. */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  color: var(--text-1);
+  background: var(--surface-2);
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  line-height: var(--leading-tight);
+  font-weight: var(--weight-bold);
+  /* Uzun bileşik başlıklar ve boşluksuz CJK dizileri kutuyu taşırmasın. */
+  overflow-wrap: break-word;
+}
+
+h1 {
+  font-size: var(--text-2xl);
+}
+h2 {
+  font-size: var(--text-xl);
+}
+h3 {
+  font-size: var(--text-lg);
+}
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/*
+ * Odak görünürlüğü tek yerden. `outline: none` yazan bir bileşen klavye
+ * kullanıcısını kör eder; T28'in erişilebilirlik denetimi buradan başlayacak.
+ */
+:focus-visible {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+  border-radius: var(--radius-sm);
+}
+
+/* Hareket duyarlılığı olan kullanıcı animasyon görmüyor. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Yalnızca ekran okuyucuya görünen metin. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Klavyeyle gezinen kullanıcı için içeriğe atlama bağlantısı. */
+.skip-link {
+  position: absolute;
+  inset-inline-start: var(--space-3);
+  inset-block-start: calc(-1 * var(--space-8));
+  z-index: 100;
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface-1);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-md);
+  transition: inset-block-start var(--motion-fast);
+}
+
+.skip-link:focus {
+  inset-block-start: var(--space-3);
+}

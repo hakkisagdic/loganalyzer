@@ -1,23 +1,22 @@
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using System.Text.Json.Serialization;
 using Bizigo.ControlPlane;
 
 namespace Bizigo.Api;
 
 /// <summary>
-/// BFF uçları (F1 §10.1.2).
+/// Kimlik yüzeyi — <b>tek uç</b>: <c>/auth/me</c> (K31).
 ///
 /// <para>
-/// Tarayıcı hiçbir zaman token görmüyor: <c>/auth/login</c> OIDC akışını
-/// başlatıyor, dönüşte oturum çerezi yazılıyor, token sunucuda kalıyor. React
-/// tarafı yalnızca <c>/auth/me</c> ile "kimim ve neyi görebilirim" diye soruyor.
+/// <c>/auth/login</c> ve <c>/auth/logout</c> buradan <b>kaldırıldı</b>. Tarayıcı
+/// akışının tamamı Next.js BFF'inde (<c>ui/src/lib/auth/</c>): OIDC yönlendirmesi,
+/// oturum çerezi, token yenileme ve çıkış orada. API artık kimseyi Keycloak'a
+/// yönlendirmiyor; her isteği <c>Authorization: Bearer</c> ile karşılıyor.
 /// </para>
 ///
 /// <para>
-/// <b>Ters vekil (YARP) henüz yok</b> — UI de yok. Vekil, UI geldiğinde bu
-/// şemanın üstüne eklenecek; kimlik tarafı şimdiden doğru kurulduğu için o adım
-/// yalnızca yönlendirme işi olacak.
+/// <c>/auth/me</c> kalıyor çünkü BFF'in kimlik sorgusu bu: kapsam çözümü
+/// (<c>AccessScopeResolver</c>) kontrol düzleminin eşleme tablosunda ve BFF'in
+/// onu kopyalaması, iki yerde ayrışabilen ikinci bir yorum demek olurdu.
 /// </para>
 /// </summary>
 public static class AuthEndpoints
@@ -25,14 +24,6 @@ public static class AuthEndpoints
     public static IEndpointRouteBuilder MapAuth(this IEndpointRouteBuilder routes)
     {
         ArgumentNullException.ThrowIfNull(routes);
-
-        routes.MapGet("/auth/login", (string? returnUrl) => Results.Challenge(
-            new AuthenticationProperties { RedirectUri = SafeReturn(returnUrl) },
-            [OpenIdConnectDefaults.AuthenticationScheme]));
-
-        routes.MapPost("/auth/logout", () => Results.SignOut(
-            new AuthenticationProperties { RedirectUri = "/" },
-            [CookieAuthenticationDefaults.AuthenticationScheme, OpenIdConnectDefaults.AuthenticationScheme]));
 
         // Kimliğin ve KAPSAMIN tek doğrulama noktası. UI'ın "hangi grupları
         // görebiliyorum" sorusunun cevabı buradan geliyor; claim'leri kendi
@@ -48,31 +39,41 @@ public static class AuthEndpoints
 
             var scope = user.Scope;
 
-            return Results.Ok(new
-            {
-                subject = scope.Subject,
-                username = principal.FindFirst(BizigoClaims.PreferredUsername)?.Value ?? string.Empty,
-                roles = principal.FindAll(BizigoClaims.Roles).Select(c => c.Value).ToArray(),
-                idp_groups = principal.FindAll(BizigoClaims.Groups).Select(c => c.Value).ToArray(),
-                owner_groups = scope.OwnerGroups.OrderBy(g => g, StringComparer.Ordinal).ToArray(),
-                unrestricted = scope.IsUnrestricted,
+            return Results.Ok(new AuthMeResponse(
+                Subject: scope.Subject,
+                Username: principal.FindFirst(BizigoClaims.PreferredUsername)?.Value ?? string.Empty,
+                Roles: [.. principal.FindAll(BizigoClaims.Roles).Select(c => c.Value)],
+                IdpGroups: [.. principal.FindAll(BizigoClaims.Groups).Select(c => c.Value)],
+                OwnerGroups: [.. scope.OwnerGroups.OrderBy(g => g, StringComparer.Ordinal)],
+                Unrestricted: scope.IsUnrestricted,
                 // Eşleme eksikse kullanıcı hiçbir veri göremez. Bunu sessiz
                 // bırakmak "sistem bozuk" ile "yetkiniz yok"u ayırt edilemez kılar.
-                sees_nothing = scope.IsEmpty,
-            });
-        });
+                SeesNothing: scope.IsEmpty));
+        })
+        .WithName("AuthMe")
+        .Produces<AuthMeResponse>()
+        .Produces(StatusCodes.Status401Unauthorized);
 
         return routes;
     }
-
-    /// <summary>
-    /// Açık yönlendirme (open redirect) koruması: yalnızca uygulama içi göreli
-    /// yollar kabul ediliyor.
-    /// </summary>
-    private static string SafeReturn(string? returnUrl) =>
-        !string.IsNullOrEmpty(returnUrl)
-        && returnUrl.StartsWith('/')
-        && !returnUrl.StartsWith("//", StringComparison.Ordinal)
-            ? returnUrl
-            : "/";
 }
+
+/// <summary>
+/// <c>/auth/me</c> gövdesi. Anonim nesne yerine adlandırılmış tip: OpenAPI
+/// belgesine şema olarak inmesi gerekiyor, yoksa T14'ün ürettiği TypeScript
+/// tarafında <c>unknown</c> kalıyor.
+///
+/// <para>
+/// <c>JsonPropertyName</c> nitelikleri <b>zorunlu</b>: alan adları F1'de yayına
+/// giren gövdenin birebir aynısı olmalı. Varsayılan camelCase politikası
+/// <c>idp_groups</c>'u <c>idpGroups</c> yapar ve sözleşmeyi sessizce kırar.
+/// </para>
+/// </summary>
+public sealed record AuthMeResponse(
+    [property: JsonPropertyName("subject")] string Subject,
+    [property: JsonPropertyName("username")] string Username,
+    [property: JsonPropertyName("roles")] string[] Roles,
+    [property: JsonPropertyName("idp_groups")] string[] IdpGroups,
+    [property: JsonPropertyName("owner_groups")] string[] OwnerGroups,
+    [property: JsonPropertyName("unrestricted")] bool Unrestricted,
+    [property: JsonPropertyName("sees_nothing")] bool SeesNothing);

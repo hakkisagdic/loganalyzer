@@ -98,6 +98,42 @@ public sealed class KeycloakRealmTests
     }
 
     /// <summary>
+    /// BFF'in dönüş adresi realm dosyasında <b>birebir</b> yazılı olmak zorunda
+    /// (K31).
+    ///
+    /// <para>
+    /// Next tarafındaki yol <c>ui/src/app/signin-oidc/route.ts</c>; Keycloak
+    /// listedekiyle tam eşleşmeyen bir <c>redirect_uri</c>'yi reddediyor ve
+    /// hatayı kendi sayfasında gösteriyor — uygulamaya hiç dönmüyor, yani
+    /// uygulama tarafında hiçbir log satırı çıkmıyor. İki dosyayı birbirine
+    /// bağlayan tek şey bu test.
+    /// </para>
+    ///
+    /// <para>Aynı gerekçe çıkış için: <c>post.logout.redirect.uris</c>
+    /// eşleşmezse Keycloak "Invalid redirect uri" gösteriyor ve kullanıcı çıkış
+    /// akışının ortasında kalıyor.</para>
+    /// </summary>
+    [Fact]
+    public void Bizigo_ui_next_donus_adresini_taniyor()
+    {
+        var ui = Clients.Single(c => c.GetProperty("clientId").GetString() == "bizigo-ui");
+
+        var redirects = ui.GetProperty("redirectUris")
+            .EnumerateArray()
+            .Select(u => u.GetString())
+            .ToArray();
+
+        Assert.Contains("http://localhost:3000/signin-oidc", redirects);
+
+        var postLogout = ui.GetProperty("attributes")
+            .GetProperty("post.logout.redirect.uris")
+            .GetString()!
+            .Split("##", StringSplitOptions.RemoveEmptyEntries);
+
+        Assert.Contains("http://localhost:3000/*", postLogout);
+    }
+
+    /// <summary>
     /// Realm dosyası <c>clientScopes</c> verdiği için Keycloak <b>yerleşik
     /// scope'ları hiç oluşturmuyor</b>. Var olmayan bir scope'a referans vermek
     /// hata üretmiyor — sessizce düşüyor ve token eksik claim'le çıkıyor.

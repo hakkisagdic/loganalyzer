@@ -1,0 +1,109 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100dvh;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  background: var(--surface-1);
+  border-block-end: 1px solid var(--border-1);
+}
+
+.brand {
+  font-weight: var(--weight-bold);
+  font-size: var(--text-md);
+  color: var(--text-1);
+  text-decoration: none;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  /* Uzun kullanıcı adları başlığı taşırmasın. */
+  max-inline-size: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.main {
+  flex: 1;
+  inline-size: 100%;
+  max-inline-size: var(--content-width);
+  margin-inline: auto;
+  padding: var(--space-6) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.definition {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.definitionTerm {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+}
+
+.definitionValue {
+  font-size: var(--text-sm);
+  color: var(--text-1);
+  overflow-wrap: anywhere;
+}
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.notice {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--warning);
+  background: var(--warning-soft);
+  color: var(--text-1);
+  font-size: var(--text-sm);
+}
+
+.loginPage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+  min-block-size: 100dvh;
+  padding: var(--space-5);
+  text-align: center;
+}
+
+.loginCard {
+  inline-size: 100%;
+  max-inline-size: 28rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  text-align: start;
+}

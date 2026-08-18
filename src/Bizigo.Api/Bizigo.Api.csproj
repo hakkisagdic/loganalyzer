@@ -8,14 +8,38 @@
   </ItemGroup>
 
   <PropertyGroup>
+    <!-- OpenAPI belgesi derleme zamanında dosyaya yazılıyor (T14). Varsayılan
+         KAPALI: her `dotnet build` bir yardımcı süreç başlatıp uygulamanın host
+         grafiğini kurar, bu da normal derlemeye saniyeler ekler. Üretim tek
+         yerden yapılıyor: `ui/scripts/generate-api-types.sh`. -->
+    <OpenApiGenerateDocuments Condition="'$(OpenApiGenerateDocuments)' == ''">false</OpenApiGenerateDocuments>
+    <OpenApiDocumentsDirectory>$(MSBuildThisFileDirectory)../../ui/openapi</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOptions>--file-name bizigo-api</OpenApiGenerateDocumentsOptions>
   </PropertyGroup>
 
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
+
+  <!--
+    Belge üretim aracı uygulamayı GERÇEKTEN çalıştırıyor ve uygulama, göreli
+    katalog yollarını (`catalog/...`, `db/clickhouse`) çözebilmek için çalışma
+    dizinini depo köküne alıyor (bkz. Program.cs). Aracın kendi dosya listesi
+    yolu ise göreli (`obj/...`) ve aynı süreçte, değişmiş çalışma dizininde
+    yazılmaya çalışılıyor — sonuç: belge üretiliyor ama adım DirectoryNotFound
+    ile düşüyor. Mutlak yola çevirmek ikisini birbirinden ayırıyor.
+  -->
+  <Target Name="BizigoMutlakOpenApiOnbellegi" BeforeTargets="GenerateOpenApiDocuments">
+    <PropertyGroup>
+      <_OpenApiDocumentsCache>$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '$(BaseIntermediateOutputPath)', '$(MSBuildProjectName).OpenApiFiles.cache'))</_OpenApiDocumentsCache>
+    </PropertyGroup>
+  </Target>
 
 </Project>

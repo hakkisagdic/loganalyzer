@@ -1,0 +1,885 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Bizigo.Api | v1",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/auth/me": {
+      "get": {
+        "tags": [
+          "Bizigo.Api"
+        ],
+        "operationId": "AuthMe",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthMeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/v1/logs": {
+      "post": {
+        "tags": [
+          "LogsEndpoint"
+        ],
+        "operationId": "OtlpLogs",
+        "requestBody": {
+          "content": {
+            "application/x-protobuf": {
+              "schema": {
+                "type": "string",
+                "format": "byte"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "string",
+                "format": "byte"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/health/pipeline": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "operationId": "PipelineHealth",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/replay": {
+      "post": {
+        "tags": [
+          "replay"
+        ],
+        "operationId": "Replay",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/parsers/{parserId}/rollback": {
+      "post": {
+        "tags": [
+          "parsers"
+        ],
+        "operationId": "RollbackParser",
+        "parameters": [
+          {
+            "name": "parserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/internal/ingest/stats": {
+      "get": {
+        "tags": [
+          "Bizigo.Api"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/internal/discovery/stats": {
+      "get": {
+        "tags": [
+          "Bizigo.Api"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/": {
+      "get": {
+        "tags": [
+          "Bizigo.Api"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/events/search": {
+      "post": {
+        "tags": [
+          "events"
+        ],
+        "operationId": "SearchEvents",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventSearchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/events/{id}": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "operationId": "GetEvent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/events/{id}/raw": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "operationId": "GetEventRaw",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/sources": {
+      "get": {
+        "tags": [
+          "sources"
+        ],
+        "operationId": "ListSources",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "sources"
+        ],
+        "operationId": "UpsertSource",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceUpsertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/sources/csv": {
+      "post": {
+        "tags": [
+          "sources"
+        ],
+        "operationId": "ImportSourcesCsv",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/changes": {
+      "get": {
+        "tags": [
+          "changes"
+        ],
+        "operationId": "SearchChanges",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "targetId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "changeKind",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "changes"
+        ],
+        "operationId": "WriteChange",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeWriteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/parsers": {
+      "get": {
+        "tags": [
+          "parsers"
+        ],
+        "operationId": "ListParsers",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/parsers/{id}": {
+      "get": {
+        "tags": [
+          "parsers"
+        ],
+        "operationId": "GetParser",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/parsers/try": {
+      "post": {
+        "tags": [
+          "parsers"
+        ],
+        "operationId": "TryParser",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParserTryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/parsers/drafts": {
+      "get": {
+        "tags": [
+          "parsers"
+        ],
+        "operationId": "ListParserDrafts",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "parsers"
+        ],
+        "operationId": "CreateParserDraft",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParserDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/parsers/drafts/{id}": {
+      "put": {
+        "tags": [
+          "parsers"
+        ],
+        "operationId": "UpdateParserDraft",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParserDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/parsers/drafts/{id}/submit": {
+      "post": {
+        "tags": [
+          "parsers"
+        ],
+        "operationId": "SubmitParserDraft",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/parsers/drafts/{id}/return": {
+      "post": {
+        "tags": [
+          "parsers"
+        ],
+        "operationId": "ReturnParserDraft",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/parsers/drafts/{id}/publish": {
+      "post": {
+        "tags": [
+          "parsers"
+        ],
+        "operationId": "PublishParserDraft",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AuthMeResponse": {
+        "required": [
+          "subject",
+          "username",
+          "roles",
+          "idp_groups",
+          "owner_groups",
+          "unrestricted",
+          "sees_nothing"
+        ],
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "idp_groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "owner_groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "unrestricted": {
+            "type": "boolean"
+          },
+          "sees_nothing": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ChangeWriteRequest": {
+        "required": [
+          "ownerGroup",
+          "targetKind",
+          "targetId",
+          "changeKind"
+        ],
+        "type": "object",
+        "properties": {
+          "ownerGroup": {
+            "type": "string"
+          },
+          "targetKind": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "changeKind": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "source": {
+            "type": "string"
+          },
+          "externalRef": {
+            "type": "string"
+          }
+        }
+      },
+      "EventSearchRequest": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "to": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "fullText": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldFilterRequest"
+            }
+          },
+          "ownerGroups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sourceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "parseStatuses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "afterTimestamp": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "afterEventId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "limit": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "ascending": {
+            "type": "boolean"
+          }
+        }
+      },
+      "FieldFilterRequest": {
+        "required": [
+          "field",
+          "op",
+          "values"
+        ],
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "op": {
+            "type": "string"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ParserDraftRequest": {
+        "required": [
+          "yaml"
+        ],
+        "type": "object",
+        "properties": {
+          "yaml": {
+            "type": "string"
+          }
+        }
+      },
+      "ParserTryRequest": {
+        "required": [
+          "line"
+        ],
+        "type": "object",
+        "properties": {
+          "line": {
+            "type": "string"
+          },
+          "parserId": {
+            "type": "string",
+            "default": ""
+          }
+        }
+      },
+      "ReplayRequest": {
+        "required": [
+          "from",
+          "to"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "parserId": {
+            "type": "string"
+          },
+          "parserVersion": {
+            "type": "string"
+          },
+          "ownerGroups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sourceIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "continueOnMissingObjects": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SourceUpsertRequest": {
+        "required": [
+          "sourceId",
+          "ownerGroup"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceId": {
+            "type": "string"
+          },
+          "ownerGroup": {
+            "type": "string"
+          },
+          "peerAddress": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "hostname": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "vendor": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "parserId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "encoding": {
+            "type": "string"
+          },
+          "sourceClass": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Bizigo.Api"
+    },
+    {
+      "name": "LogsEndpoint"
+    },
+    {
+      "name": "health"
+    },
+    {
+      "name": "replay"
+    },
+    {
+      "name": "parsers"
+    },
+    {
+      "name": "events"
+    },
+    {
+      "name": "sources"
+    },
+    {
+      "name": "changes"
+    }
+  ]
+}

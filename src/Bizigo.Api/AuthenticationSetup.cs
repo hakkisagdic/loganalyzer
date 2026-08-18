@@ -1,8 +1,9 @@
 using System.Security.Claims;
+using System.Text.Encodings.Web;
 using Bizigo.ControlPlane;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Bizigo.Api;
@@ -23,9 +24,9 @@ public sealed class AuthOptions
     /// <summary>Yerel geliştirmede Keycloak düz HTTP konuşuyor.</summary>
     public bool RequireHttpsMetadata { get; set; }
 
-    public string ClientId { get; set; } = "bizigo-ui";
-
-    public string ClientSecret { get; set; } = string.Empty;
+    // İstemci kimliği ve gizli anahtarı BURADA DEĞİL: K31 ile OIDC akışı Next.js
+    // BFF'ine taşındı. `bizigo-ui` gizli anahtarı yalnızca orada duruyor; API
+    // kimseyi Keycloak'a yönlendirmiyor, yalnızca gelen token'ı doğruluyor.
 }
 
 public static class BizigoAuthPolicies
@@ -39,20 +40,19 @@ public static class BizigoAuthPolicies
 public static class AuthenticationSetup
 {
     /// <summary>
-    /// İki şema bir arada (F1 §10.1.2):
-    ///
-    /// <list type="bullet">
-    /// <item><b>JWT Bearer</b> — makineler (collector) ve API istemcileri.
-    /// Keycloak'ın imzaladığı erişim token'ı doğrulanıyor; ürün kendi kullanıcı
-    /// tablosunu tutmuyor.</item>
-    /// <item><b>Cookie + OIDC</b> — tarayıcı. Authorization code + PKCE, token
-    /// <b>tarayıcıda saklanmıyor</b>; BFF deseninin bütün amacı bu.</item>
-    /// </list>
+    /// <b>Tek şema: JWT Bearer.</b> API saf kaynak sunucusu (K31).
     ///
     /// <para>
-    /// Varsayılan şema Bearer: kimliksiz bir API isteği 401 alıyor, giriş
-    /// sayfasına yönlendirilmiyor. Tarayıcı akışı yalnızca açıkça <c>/auth/login</c>
-    /// çağrıldığında devreye giriyor.
+    /// Cookie ve OIDC işleyicileri buradan <b>kaldırıldı</b>. Tarayıcı akışının
+    /// tamamı — authorization code + PKCE, oturum çerezi, token yenileme —
+    /// Next.js BFF'inde (<c>ui/</c>). API'ye gelen her istek, insan ya da makine,
+    /// <c>Authorization: Bearer</c> taşıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Gerekçe: iki yerde oturum yönetimi, kullanıcının hangi yoldan girdiğine
+    /// göre farklı davranan bir kapsam demekti. İki işleyicinin claim sözleşmesi
+    /// ayrışırsa aynı kişi tarayıcıdan ve token'la farklı veri görür.
     /// </para>
     /// </summary>
     public static IServiceCollection AddBizigoAuthentication(
@@ -75,8 +75,16 @@ public static class AuthenticationSetup
             // Kimlik kapalıyken bile kapsam KAPALI başlıyor: `AccessScope.Denied`.
             // "Kimlik yoksa her şeyi gör" varsayılanı bu üründe yapılabilecek en
             // pahalı hata olurdu (K17).
-            services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-                .AddCookie();
+            //
+            // Eskiden burada bir cookie işleyicisi vardı; tek işi varsayılan şema
+            // boş kalmasın diyeydi. Kaldırıldı — yerine kimliksiz kalan ve 401
+            // döndüren bir işleyici geldi, çünkü bu üründe artık hiçbir yerde
+            // cookie tabanlı kimlik yok (K31) ve "yerel geliştirmede duran"
+            // bir cookie işleyicisi o kuralı sessizce deler.
+            services
+                .AddAuthentication(AnonymousAuthenticationHandler.SchemeName)
+                .AddScheme<AuthenticationSchemeOptions, AnonymousAuthenticationHandler>(
+                    AnonymousAuthenticationHandler.SchemeName, _ => { });
             services.AddAuthorization();
             return services;
         }
@@ -119,54 +127,6 @@ public static class AuthenticationSetup
                     RoleClaimType = BizigoClaims.Roles,
                     NameClaimType = BizigoClaims.PreferredUsername,
                 };
-            })
-            .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, cookie =>
-            {
-                cookie.Cookie.HttpOnly = true;
-                cookie.Cookie.SameSite = SameSiteMode.Lax;
-                cookie.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-                cookie.SlidingExpiration = true;
-            })
-            .AddOpenIdConnect(OpenIdConnectDefaults.AuthenticationScheme, oidc =>
-            {
-                oidc.Authority = options.Authority;
-                oidc.ClientId = options.ClientId;
-                oidc.ClientSecret = options.ClientSecret;
-                oidc.RequireHttpsMetadata = options.RequireHttpsMetadata;
-
-                // Authorization code + PKCE. Implicit/hybrid akış YOK.
-                oidc.ResponseType = "code";
-                oidc.UsePkce = true;
-
-                // Token cookie'nin içinde sunucu tarafında kalıyor; tarayıcıya
-                // yalnızca oturum çerezi gidiyor.
-                oidc.SaveTokens = true;
-                oidc.GetClaimsFromUserInfoEndpoint = true;
-                oidc.SignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-
-                oidc.Scope.Clear();
-                oidc.Scope.Add("openid");
-                oidc.Scope.Add("profile");
-                oidc.Scope.Add("email");
-
-                // JWT tarafındaki gerekçenin aynısı: eşleme açıkken `roles` ve
-                // `groups` uzun URI'lere çevriliyor ve aşağıdaki claim tipleri
-                // hiçbir şeye denk gelmiyor. Tarayıcı akışı bu oturumda uçtan
-                // uca koşulmadı, ama iki işleyicinin claim sözleşmesi aynı
-                // olmak zorunda — ayrışırlarsa kapsam, kullanıcının hangi yoldan
-                // girdiğine göre değişir.
-                oidc.MapInboundClaims = false;
-
-                oidc.TokenValidationParameters = new TokenValidationParameters
-                {
-                    RoleClaimType = BizigoClaims.Roles,
-                    NameClaimType = BizigoClaims.PreferredUsername,
-                };
-
-                // `groups` için ayrı bir claim eşlemesi YOK: realm'deki mapper
-                // onu id_token'a da yazıyor (`id.token.claim: true`) ve OIDC
-                // işleyicisi id_token claim'lerini olduğu gibi taşıyor. Userinfo
-                // eşlemesi eklemek aynı claim'i ikinci kez üretirdi.
             });
 
         services.AddAuthorizationBuilder()
@@ -179,6 +139,29 @@ public static class AuthenticationSetup
 
         return services;
     }
+}
+
+/// <summary>
+/// <c>Auth:Enabled=false</c> iken devreye giren işleyici: <b>hiçbir zaman kimlik
+/// üretmiyor</b>, meydan okuma olarak düz 401 dönüyor.
+///
+/// <para>
+/// Varlık sebebi teknik: varsayılan bir şema kayıtlı olmazsa yetki isteyen bir
+/// uç 500 verir ("No authenticationScheme was specified"). Eskiden bu boşluğu
+/// bir cookie işleyicisi dolduruyordu; K31 sonrası üründe cookie tabanlı kimlik
+/// kalmadığı için yerine bu geldi. Yönlendirme yok — API hiçbir koşulda giriş
+/// sayfasına yollamıyor.
+/// </para>
+/// </summary>
+public sealed class AnonymousAuthenticationHandler(
+    IOptionsMonitor<AuthenticationSchemeOptions> options,
+    ILoggerFactory logger,
+    UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+{
+    public const string SchemeName = "BizigoAnonymous";
+
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync() =>
+        Task.FromResult(AuthenticateResult.NoResult());
 }
 
 /// <summary>İstekteki kimliğin kapsam karşılığı. Uçlar bunu görüyor, claim'leri değil.</summary>

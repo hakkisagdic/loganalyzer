@@ -55,11 +55,24 @@ sonrası `docker compose restart otel-collector` gerekiyor.
 
 | Client | Yapılandırma | Neden |
 | --- | --- | --- |
-| `bizigo-ui` | `publicClient=false`, `standardFlow=true` | BFF deseni (F1 §10.1.2): authorization code + PKCE, gizli anahtar sunucuda. Token **tarayıcıda saklanmıyor** — BFF cookie veriyor. `directAccessGrantsEnabled=false`, yani parola akışı yok. |
+| `bizigo-ui` | `publicClient=false`, `standardFlow=true` | BFF deseni: authorization code + PKCE, gizli anahtar sunucuda. Token **tarayıcıda saklanmıyor** — BFF cookie veriyor. `directAccessGrantsEnabled=false`, yani parola akışı yok. **BFF K31 ile Next.js'te** (`ui/`); gizli anahtar `ui/.env.local` içinde, `Bizigo.Api` artık onu hiç görmüyor. |
 | `bizigo-collector` | servis hesabı, rol **yalnızca** `ingest` | Kimlik sızarsa veri **yazılabilir, okunamaz**. Rol ayrımının tek sebebi bu. Collector tarafında `oauth2clientauthextension` token'ı kendi alıp yeniliyor. |
 
 Keycloak servis hesabı kullanıcısını `service-account-<clientId>` adıyla
 oluşturuyor; rolü realm dosyasında o ada bağlanıyor.
+
+> **Yalnızca `openid` kapsamı isteniyor.** `bizigo-ui` istemcisinin
+> `defaultClientScopes` listesinde tek bir giriş var: `bizigo-claims`. Yukarıda
+> anlatıldığı gibi yerleşik scope'lar realm'de hiç oluşmuyor, dolayısıyla
+> yetkilendirme isteğine `profile` ya da `email` eklemek `invalid_scope` ile
+> düşer. İhtiyacımız olan claim'lerin tamamı zaten `bizigo-claims` içinde.
+>
+> Dönüş adresi `redirectUris` içinde **birebir** yazılı:
+> `http://localhost:3000/signin-oidc`. Next tarafındaki yol
+> (`ui/src/app/signin-oidc/`) değişirse burası da değişmeli. Listedeki
+> `http://localhost:5080/signin-oidc` API'nin OIDC işleyicisinden kalma; K31
+> ile o işleyici kaldırıldı ama giriş, eski kurulumların bozulmaması için
+> bırakıldı.
 
 ## Geliştirme kullanıcıları
 

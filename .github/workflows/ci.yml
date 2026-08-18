@@ -64,6 +64,51 @@ jobs:
           name: unit-test-results
           path: TestResults/
 
+  ui:
+    name: Arayüz — tip kapısı, testler, derleme
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      # Tip kapısı OpenAPI belgesini `Bizigo.Api`'den üretiyor, yani burada da
+      # .NET gerekiyor. Kurulum gerekçesi diğer işlerdekiyle aynı.
+      - name: .NET SDK kur
+        run: |
+          curl -fsSL --retry 5 --retry-all-errors https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"
+          echo "$HOME/.dotnet" >> "$GITHUB_PATH"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Bağımlılıklar
+        working-directory: ui
+        run: npm ci
+
+      # KAPI: üretilen şema ve tipler depodakiyle birebir aynı değilse düşer.
+      # Aksi hâlde API'ye yeni bir uç eklenir, UI derlenmeye devam eder ve hata
+      # ancak çalışma zamanında çıkar (T14).
+      - name: OpenAPI tipleri güncel mi
+        working-directory: ui
+        run: npm run api:check
+
+      - name: Tip denetimi
+        working-directory: ui
+        run: npm run typecheck
+
+      # BFF deseninin kanıtı burada koşuyor: erişim token'ı tarayıcıya ulaşmıyor.
+      - name: Testler
+        working-directory: ui
+        run: npm test
+
+      - name: Derleme
+        working-directory: ui
+        run: npm run build
+
   integration:
     name: Entegrasyon testleri (Testcontainers)
     runs-on: ubuntu-latest

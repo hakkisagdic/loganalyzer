@@ -1,6 +1,6 @@
 using Bizigo.Api;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -21,24 +21,23 @@ namespace Bizigo.UnitTests;
 /// </para>
 ///
 /// <para>
-/// İki işleyici de sınanıyor: ayrışırlarsa kullanıcının kapsamı <b>hangi yoldan
-/// girdiğine</b> göre değişir — tarayıcıdan gelen ile token'la gelen aynı kişi
-/// farklı veri görür.
+/// <b>K31 sonrası:</b> OIDC işleyicisi API'den kaldırıldı, dolayısıyla "iki
+/// işleyici ayrışmasın" iddiası da kalktı — ayrışabilecek ikinci işleyici yok.
+/// Yerine daha güçlü bir iddia geldi: API'de <b>hiçbir</b> tarayıcı akışı
+/// işleyicisi kayıtlı olmamalı. JWT tarafındaki iddialar aynen duruyor.
 /// </para>
 /// </summary>
 public sealed class ClaimMappingTests
 {
-    private static ServiceProvider Build()
+    private static ServiceProvider Build(bool authEnabled = true)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Auth:Enabled"] = "true",
+                ["Auth:Enabled"] = authEnabled ? "true" : "false",
                 ["Auth:Authority"] = "http://localhost:8180/realms/bizigo",
                 ["Auth:Audience"] = "bizigo-api",
                 ["Auth:RequireHttpsMetadata"] = "false",
-                ["Auth:ClientId"] = "bizigo-ui",
-                ["Auth:ClientSecret"] = "secret",
             })
             .Build();
 
@@ -64,18 +63,6 @@ public sealed class ClaimMappingTests
         Assert.Equal("preferred_username", options.TokenValidationParameters.NameClaimType);
     }
 
-    [Fact]
-    public void Oidc_isleyicisi_ayni_sozlesmede()
-    {
-        using var provider = Build();
-        var options = provider.GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>()
-            .Get(OpenIdConnectDefaults.AuthenticationScheme);
-
-        Assert.False(options.MapInboundClaims);
-        Assert.Equal("roles", options.TokenValidationParameters.RoleClaimType);
-        Assert.Equal("preferred_username", options.TokenValidationParameters.NameClaimType);
-    }
-
     /// <summary>
     /// Issuer doğrulaması <b>açık</b> kalmalı. Kapatmak, collector'ın issuer
     /// uyuşmazlığında aldığı 401'i "çözmenin" en kolay ve en yanlış yolu olurdu:
@@ -93,5 +80,45 @@ public sealed class ClaimMappingTests
         Assert.True(options.TokenValidationParameters.ValidateAudience);
         Assert.True(options.TokenValidationParameters.ValidateIssuerSigningKey);
         Assert.True(options.TokenValidationParameters.ValidateLifetime);
+    }
+
+    /// <summary>
+    /// K31'in bekçisi: API'de tarayıcı oturumu diye bir şey yok.
+    ///
+    /// <para>
+    /// Bu test, "cookie işleyicisini geri koyayım, yerelde işime yarıyor"
+    /// hamlesini kırmızıya çevirir. Cookie ya da OIDC şeması kayıtlıysa API
+    /// ikinci bir kimlik yolu taşıyor demektir ve o yolun claim sözleşmesi
+    /// JWT'ninkinden ayrışabilir — F1'de ölçülen tam da bu risk.
+    /// </para>
+    ///
+    /// <para>
+    /// Kimlik <b>kapalıyken</b> de sınanıyor: eski kod o dalda bir cookie
+    /// işleyicisi kuruyordu, yani kural yalnızca üretim yapılandırmasında
+    /// geçerliydi.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Api_tarayici_oturumu_semasi_tasimiyor(bool authEnabled)
+    {
+        using var provider = Build(authEnabled);
+        var schemes = provider.GetRequiredService<IAuthenticationSchemeProvider>();
+
+        var registered = (await schemes.GetAllSchemesAsync())
+            .Select(s => s.Name)
+            .ToArray();
+
+        Assert.DoesNotContain("Cookies", registered);
+        Assert.DoesNotContain("OpenIdConnect", registered);
+
+        // Yalnızca beklenen şema kayıtlı olsun — yeni bir tarayıcı akışı
+        // eklendiğinde bu satır düşer.
+        var expected = authEnabled
+            ? JwtBearerDefaults.AuthenticationScheme
+            : AnonymousAuthenticationHandler.SchemeName;
+
+        Assert.Equal([expected], registered);
     }
 }

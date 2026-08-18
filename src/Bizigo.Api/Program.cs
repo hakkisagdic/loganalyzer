@@ -15,7 +15,9 @@ using Bizigo.Storage.Raw;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 
-var builder = WebApplication.CreateBuilder(args);
+// OpenAPI belge üretimi (T14) bu giriş noktasını gerçekten çalıştırıyor;
+// gerekçesi ve üç ayarı `DocumentGeneration` içinde.
+var builder = DocumentGeneration.CreateBuilder(args);
 
 var postgres = builder.Configuration.GetConnectionString("ControlPlane")
     ?? throw new InvalidOperationException("ConnectionStrings:ControlPlane tanımlı değil.");
@@ -79,20 +81,28 @@ builder.Services.AddRateLimiter(limiter =>
 
 var app = builder.Build();
 
-// Ayağa kalkarken iki şema da hazır olmalı.
-// Not: üretimde göç ayrı bir adım olacak; şimdilik açılışta.
-await app.Services.MigrateControlPlaneAsync();
+// Belge üretimi sırasında ortada Postgres de ClickHouse da yok; göç adımı
+// bağlantı hatasıyla düşer ve belge hiç üretilemez.
+if (!DocumentGeneration.IsActive)
+{
+    // Ayağa kalkarken iki şema da hazır olmalı.
+    // Not: üretimde göç ayrı bir adım olacak; şimdilik açılışta.
+    await app.Services.MigrateControlPlaneAsync();
 
-var (applied, existing) = await app.Services.MigrateDataPlaneAsync();
-app.Logger.LogInformation(
-    "ClickHouse göçleri: {Applied} uygulandı, {Existing} zaten vardı.", applied, existing);
+    var (applied, existing) = await app.Services.MigrateDataPlaneAsync();
+    app.Logger.LogInformation(
+        "ClickHouse göçleri: {Applied} uygulandı, {Existing} zaten vardı.", applied, existing);
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Grup → owner_group eşlemesini belleğe al. Boş kalırsa kimse veri göremez;
-// bu, eşleme tablosu boşken "her şeyi gör"e düşmekten iyidir (K17).
-await app.Services.GetRequiredService<AccessScopeResolver>().RefreshAsync();
+if (!DocumentGeneration.IsActive)
+{
+    // Grup → owner_group eşlemesini belleğe al. Boş kalırsa kimse veri göremez;
+    // bu, eşleme tablosu boşken "her şeyi gör"e düşmekten iyidir (K17).
+    await app.Services.GetRequiredService<AccessScopeResolver>().RefreshAsync();
+}
 
 app.UseRateLimiter();
 
@@ -196,8 +206,8 @@ app.MapGet("/internal/discovery/stats", (
 app.MapGet("/", () => Results.Ok(new
 {
     service = "bizigo-loganalyzer",
-    phase = "F1",
-    status = "F1 tamamlandı",
+    phase = "F2",
+    status = "F1 tamamlandı; F2 sürüyor",
 }));
 
 await app.RunAsync();

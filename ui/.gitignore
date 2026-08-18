@@ -1,0 +1,10 @@
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Yerel ortam. `.env.example` commitleniyor, bu dosya asla.
+.env
+.env.local
+.env*.local

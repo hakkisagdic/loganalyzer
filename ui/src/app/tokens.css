@@ -1,0 +1,209 @@
+/*
+ * Tasarım jetonları — T13'ün tasarım temeli, T28'in denetleyeceği taban.
+ *
+ * KURAL: bileşenler ham değer yazmıyor. Bir ekran `#1f2937` ya da `13px`
+ * yazdığı gün tutarlılık biter ve F2 sonunda toparlanmaz — bu yüzden temel
+ * ekranlardan ÖNCE kuruluyor.
+ *
+ * Renkler iki katmanlı: önce ham palet (`--gray-700`), sonra role bağlı
+ * anlamsal jeton (`--surface-2`). Ekranlar YALNIZCA anlamsal olanı kullanıyor;
+ * tema değiştiğinde değişen katman bu.
+ */
+
+:root {
+  /* --- Tipografi ölçeği (1.25 oranı, 16px taban) ------------------------ */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", "Noto Sans Arabic", "Noto Sans SC", sans-serif;
+  /*
+   * Tek aralıklı yığında CJK ve Arapça kapsayan bir yedek şart: log gövdeleri
+   * Türkçe, Arapça ve Çince geliyor (F1 arşivinde gerçek örnekleri var) ve
+   * kapsamayan bir yazı tipi kutucuk gösterir.
+   */
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas,
+    "Noto Sans Mono", "Noto Sans Mono CJK SC", monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5625rem;
+  --text-2xl: 1.953rem;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.55;
+  /*
+   * Gevşek satır aralığı çok dilli gövdeler için: Arapça ve Devanagari
+   * aksanları Latin metninden yüksek çıkıyor ve 1.4'te üst satıra değiyor.
+   */
+  --leading-loose: 1.75;
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-bold: 600;
+
+  /* --- Boşluk (4px adımlı) --------------------------------------------- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* --- Köşe yarıçapı ---------------------------------------------------- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 999px;
+
+  /* --- Ham palet -------------------------------------------------------- */
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-400: #94a3b8;
+  --gray-500: #64748b;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1e293b;
+  --gray-900: #0f172a;
+  --gray-950: #020617;
+
+  --blue-300: #93c5fd;
+  --blue-500: #3b82f6;
+  --blue-600: #2563eb;
+  --blue-700: #1d4ed8;
+
+  --red-500: #ef4444;
+  --red-600: #dc2626;
+
+  --amber-500: #f59e0b;
+
+  --green-500: #22c55e;
+  --green-600: #16a34a;
+
+  /* --- Hareket ---------------------------------------------------------- */
+  --motion-fast: 120ms ease-out;
+  --motion-normal: 200ms ease-out;
+
+  /* --- Odak halkası ----------------------------------------------------- */
+  --focus-width: 2px;
+  --focus-offset: 2px;
+
+  /* --- Ölçü ------------------------------------------------------------- */
+  --content-width: 88rem;
+  /* Okunabilirlik sınırı: 75 karakterden uzun satır göz taramasını bozuyor. */
+  --prose-width: 68ch;
+}
+
+/* --- Açık tema (varsayılan) --------------------------------------------- */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  --surface-1: #ffffff;
+  --surface-2: var(--gray-50);
+  --surface-3: var(--gray-100);
+
+  --text-1: var(--gray-900);
+  --text-2: var(--gray-600);
+  --text-3: var(--gray-500);
+
+  --border-1: var(--gray-200);
+  --border-2: var(--gray-300);
+
+  --accent: var(--blue-600);
+  --accent-strong: var(--blue-700);
+  --accent-on: #ffffff;
+  --accent-soft: #eff6ff;
+
+  --danger: var(--red-600);
+  --danger-soft: #fef2f2;
+  --warning: var(--amber-500);
+  --warning-soft: #fffbeb;
+  --success: var(--green-600);
+  --success-soft: #f0fdf4;
+
+  --shadow-1: 0 1px 2px rgb(15 23 42 / 6%), 0 1px 3px rgb(15 23 42 / 10%);
+  --shadow-2: 0 4px 6px -1px rgb(15 23 42 / 8%), 0 2px 4px -2px rgb(15 23 42 / 6%);
+
+  --skeleton: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 37%, var(--gray-100) 63%);
+}
+
+/* --- Koyu tema ----------------------------------------------------------
+ *
+ * Koyu temada gölge işe yaramıyor (koyu üstünde koyu görünmez); yükseklik
+ * YÜZEY TONUYLA anlatılıyor. Bunu bilmeyen bir ekran koyu temada tamamen düz
+ * görünür.
+ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --surface-1: var(--gray-950);
+  --surface-2: var(--gray-900);
+  --surface-3: var(--gray-800);
+
+  --text-1: var(--gray-100);
+  --text-2: var(--gray-400);
+  --text-3: var(--gray-500);
+
+  --border-1: var(--gray-800);
+  --border-2: var(--gray-700);
+
+  --accent: var(--blue-500);
+  --accent-strong: var(--blue-300);
+  --accent-on: var(--gray-950);
+  --accent-soft: #172554;
+
+  --danger: var(--red-500);
+  --danger-soft: #2b0f0f;
+  --warning: var(--amber-500);
+  --warning-soft: #2a1c02;
+  --success: var(--green-500);
+  --success-soft: #052e16;
+
+  --shadow-1: none;
+  --shadow-2: none;
+
+  --skeleton: linear-gradient(90deg, var(--gray-800) 25%, var(--gray-700) 37%, var(--gray-800) 63%);
+}
+
+/*
+ * Kullanıcı seçim yapmadığında işletim sisteminin tercihi geçerli.
+ * `[data-theme]` yalnızca AÇIK bir seçim varken yazılıyor, yani bu blok onu
+ * ezmiyor.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+
+    --surface-1: var(--gray-950);
+    --surface-2: var(--gray-900);
+    --surface-3: var(--gray-800);
+
+    --text-1: var(--gray-100);
+    --text-2: var(--gray-400);
+    --text-3: var(--gray-500);
+
+    --border-1: var(--gray-800);
+    --border-2: var(--gray-700);
+
+    --accent: var(--blue-500);
+    --accent-strong: var(--blue-300);
+    --accent-on: var(--gray-950);
+    --accent-soft: #172554;
+
+    --danger: var(--red-500);
+    --danger-soft: #2b0f0f;
+    --warning: var(--amber-500);
+    --warning-soft: #2a1c02;
+    --success: var(--green-500);
+    --success-soft: #052e16;
+
+    --shadow-1: none;
+    --shadow-2: none;
+
+    --skeleton: linear-gradient(90deg, var(--gray-800) 25%, var(--gray-700) 37%, var(--gray-800) 63%);
+  }
+}

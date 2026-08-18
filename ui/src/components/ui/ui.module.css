@@ -1,0 +1,318 @@
+/*
+ * Ortak bileşenlerin biçimleri. Tek dosyada, çünkü hepsi aynı jeton kümesini
+ * kullanıyor ve bileşen başına ayrı dosya buradaki ilişkiyi görünmez kılardı.
+ *
+ * Bu dosyada ham renk ya da ham ölçü YOK — hepsi `tokens.css`'ten.
+ */
+
+/* --- Düğme --------------------------------------------------------------- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  /* Dokunmatik hedef alt sınırı: 44px (WCAG 2.5.8). */
+  min-block-size: 2.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+  white-space: nowrap;
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.buttonPrimary {
+  background: var(--accent);
+  color: var(--accent-on);
+}
+
+.buttonPrimary:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+.buttonSecondary {
+  background: var(--surface-1);
+  color: var(--text-1);
+  border-color: var(--border-2);
+}
+
+.buttonSecondary:hover:not(:disabled) {
+  background: var(--surface-3);
+}
+
+.buttonGhost {
+  background: transparent;
+  color: var(--text-2);
+}
+
+.buttonGhost:hover:not(:disabled) {
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+
+.buttonDanger {
+  background: var(--danger);
+  color: #ffffff;
+}
+
+/* --- Kart ---------------------------------------------------------------- */
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+}
+
+.cardPadded {
+  padding: var(--space-5);
+}
+
+/* --- Tablo ---------------------------------------------------------------
+ *
+ * ÇOK DİLLİ GÖVDELER BU ÜRÜNDE ÖZEL RİSK (F2 planı). Log gövdeleri Türkçe,
+ * Arapça ve Çince geliyor. İngilizceyle düzgün görünen bir tablo:
+ *   - 500 karakterlik Arapça satırda hücreyi taşırıyor,
+ *   - boşluksuz CJK metninde satır sonu bulamıyor,
+ *   - sağdan sola metni yanlış hizalıyor.
+ * Aşağıdaki üç kural bu yüzden bileşenin içinde, ekranın insafına bırakılmadan.
+ */
+
+.tableWrap {
+  inline-size: 100%;
+  overflow-x: auto;
+  /* Kaydırılabilir bölge klavyeyle de gezilebilmeli. */
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-1);
+  background: var(--surface-1);
+}
+
+.table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+  /* `fixed` olmadan tek uzun hücre bütün sütun genişliklerini eziyor. */
+  table-layout: fixed;
+}
+
+.table caption {
+  text-align: start;
+  padding: var(--space-3) var(--space-4);
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.table th,
+.table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: start;
+  vertical-align: top;
+  border-block-end: 1px solid var(--border-1);
+  /* Kelime arası olmayan metin (CJK) ve çok uzun jetonlar burada kırılıyor. */
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: var(--leading-loose);
+}
+
+.table th {
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-weight: var(--weight-medium);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+}
+
+.table tbody tr:last-child td {
+  border-block-end: none;
+}
+
+.table tbody tr:hover {
+  background: var(--surface-2);
+}
+
+/** Log gövdesi hücresi: tek aralıklı, satır sayısı sınırlı. */
+.cellBody {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  /*
+   * Dört satırdan sonrası kesiliyor. Kesmemek, tek bir 8 KB'lık satırın bütün
+   * tabloyu ekrandan sürmesi demek — F1 arşivinde o boyutta gövdeler var.
+   */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cellNumeric {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+/* --- Durum blokları (boş · hata · yükleniyor) ---------------------------- */
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-7) var(--space-5);
+  text-align: center;
+  color: var(--text-2);
+}
+
+.stateTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text-1);
+}
+
+.stateBody {
+  max-inline-size: var(--prose-width);
+  font-size: var(--text-sm);
+}
+
+.stateError {
+  border: 1px solid var(--danger);
+  background: var(--danger-soft);
+  border-radius: var(--radius-lg);
+}
+
+.stateErrorTitle {
+  color: var(--danger);
+}
+
+/** Hata ipucu: F1'in `{ error, hint }` gövdesindeki `hint` buraya düşüyor. */
+.stateHint {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  max-inline-size: var(--prose-width);
+}
+
+/* --- Yükleniyor ---------------------------------------------------------- */
+
+.skeleton {
+  background: var(--skeleton);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+  block-size: 1rem;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+.skeletonRows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+/* --- Form alanı ---------------------------------------------------------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.fieldLabel {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-1);
+}
+
+.fieldControl {
+  padding: var(--space-2) var(--space-3);
+  min-block-size: 2.75rem;
+  background: var(--surface-1);
+  color: var(--text-1);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-md);
+}
+
+.fieldControl:disabled {
+  background: var(--surface-3);
+  color: var(--text-3);
+}
+
+.fieldHint {
+  font-size: var(--text-xs);
+  color: var(--text-2);
+}
+
+.fieldError {
+  font-size: var(--text-xs);
+  color: var(--danger);
+}
+
+.fieldInvalid {
+  border-color: var(--danger);
+}
+
+/* --- Rozet --------------------------------------------------------------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  /*
+   * Rozetler yalnızca renkle anlam taşımıyor — metni de var. Renk körü bir
+   * kullanıcı için tek ayırt edici renkse bilgi kaybolur (WCAG 1.4.1).
+   */
+  border: 1px solid transparent;
+}
+
+.badgeNeutral {
+  background: var(--surface-3);
+  color: var(--text-2);
+  border-color: var(--border-1);
+}
+
+.badgeAccent {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  border-color: var(--accent);
+}
+
+.badgeSuccess {
+  background: var(--success-soft);
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.badgeWarning {
+  background: var(--warning-soft);
+  color: var(--warning);
+  border-color: var(--warning);
+}
+
+.badgeDanger {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: var(--danger);
+}

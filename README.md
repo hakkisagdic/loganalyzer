@@ -3,10 +3,12 @@
 Plugin tabanlı, çok formatlı ve çok dilli log analiz platformu. Ağ/altyapı cihazı
 logları birincil alan; agentic katmanla proaktif araştırma ve kök neden analizi.
 
-**Durum:** F1 (boru hattı) — T01 iskelet, T02 depolama/kapsam, T03 ingest boru hattı,
-T04 ham arşiv, T05 parser motoru, T06 dispatcher, T07 normalizasyon, T08 vendor
-kataloğu, T09 kimlik, T10 API uçları, T11 replay ve T12 sidecar tamamlandı —
-**F1 kapandı**.
+**Durum:** F1 (boru hattı) kapandı — T01 iskelet, T02 depolama/kapsam, T03 ingest
+boru hattı, T04 ham arşiv, T05 parser motoru, T06 dispatcher, T07 normalizasyon,
+T08 vendor kataloğu, T09 kimlik, T10 API uçları, T11 replay ve T12 sidecar.
+
+**F2 (görünürlük) sürüyor:** T13 Next.js iskeleti ve BFF, T14 OpenAPI tip
+üretimi, T18 parser yayın akışı.
 
 Planlama belgeleri Traycer epic'inde:
 `mimari-kararlar` · `f1-teknik-plan` · `rca-raporu-ozelligi` · `tickets/`
@@ -28,7 +30,14 @@ dotnet test tests/Bizigo.IntegrationTests     # Testcontainers ile ayrı contain
 
 # 3. API'yi çalıştır (göçleri açılışta uygular)
 dotnet run --project src/Bizigo.Api
+
+# 4. Arayüzü çalıştır (ayrı terminal)
+cd ui && cp .env.example .env.local && npm install && npm run dev
 ```
+
+`Bizigo.Api` gibi arayüz de **compose'un dışında**, doğrudan makinede koşuyor:
+sıcak yeniden yükleme geliştirme döngüsünü hızlandırıyor ve API zaten aynı
+şekilde çalışıyor.
 
 | Servis | Adres | Not |
 | --- | --- | --- |
@@ -38,6 +47,7 @@ dotnet run --project src/Bizigo.Api
 | Keycloak | http://localhost:8180 | `admin` / `admin`, realm `bizigo` |
 | OTel Collector | syslog TCP :5140, UDP :5141, OTLP :4318 | |
 | Sidecar | http://localhost:8099 | Drain3 + pySigma (T12) |
+| Arayüz (Next.js) | http://localhost:3000 | BFF burada; tarayıcı API'ye doğrudan konuşmuyor |
 
 ## Mimarinin özeti
 
@@ -186,8 +196,15 @@ src/
   Bizigo.Storage.Raw/          object storage (S3 API), manifest, replay okuyucu
   Bizigo.ControlPlane/         EF Core, envanter, katalog, audit
   Bizigo.Query/                IScopedQuery — kapsam zorlamasının tek kapısı
-  Bizigo.Api/                  ASP.NET Core, OIDC, uçlar
+  Bizigo.Api/                  ASP.NET Core, JWT bearer, uçlar — cookie/OIDC YOK (K31)
   Bizigo.Cli/
+ui/                            Next.js: arayüz + BFF (OIDC, oturum, API vekili)
+  src/app/api/auth/            giriş ve çıkış
+  src/app/signin-oidc/         OIDC dönüş ucu — yol realm dosyasında sabit
+  src/app/api/bff/[...path]/   Bizigo.Api'ye açılan tek kapı
+  src/lib/auth/                keşif, PKCE, oturum deposu, yenileme
+  src/lib/api/                 üretilen tipler + tiplenmiş istemci
+  src/app/tokens.css           tasarım jetonları — ekranlar ham değer yazmıyor
 sidecar/                       Python: drain3 + pysigma
 catalog/patterns/              Logstash grok setleri — VERİ, elle düzenlenmez
 catalog/mappings/              eşleme tabloları (ocsf_network_activity vb.)
@@ -207,6 +224,27 @@ dotnet ef migrations add <Ad> \
 dotnet run --project src/Bizigo.Cli -- schema migrate db/clickhouse
 cd deploy && docker compose logs -f <servis>
 ```
+
+### Arayüz
+
+```bash
+cd ui
+npm run dev            # http://localhost:3000
+npm test               # BFF testleri — token tarayıcıya ulaşmıyor kanıtı
+npm run typecheck
+npm run api:generate   # OpenAPI belgesi + TypeScript tipleri (T14)
+npm run api:check      # CI kapısı: üretilenler depodakiyle aynı mı
+```
+
+**Kimlik akışı Next'te (K31).** Tarayıcıya yalnızca oturum çerezi gidiyor; erişim
+ve yenileme token'ları Next sunucusunun belleğindeki oturum deposunda duruyor ve
+API'ye sunucudan sunucuya `Authorization: Bearer` ile taşınıyor. `Bizigo.Api`
+saf kaynak sunucusu: cookie ve OIDC işleyicisi taşımıyor.
+
+⚠️ Oturum deposu **bellek içi**: Next sunucusu yeniden başlarsa herkes yeniden
+giriş yapıyor ve birden çok kopya çalıştırılırsa oturumlar kopyalar arasında
+paylaşılmıyor. `SessionStore` arayüzü paylaşılan bir depo (Redis) eklenebilsin
+diye ayrıldı; dağıtım çok kopyaya çıkmadan önce doldurulmalı.
 
 ### Parser CLI
 
