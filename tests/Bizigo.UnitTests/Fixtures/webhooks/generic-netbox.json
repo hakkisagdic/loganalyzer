@@ -1,0 +1,19 @@
+{
+  "event": "updated",
+  "timestamp": "2026-08-18T09:31:12.482Z",
+  "model": "device",
+  "username": "esra.yildiz",
+  "request_id": "7c1d0a3e-5b64-4a9f-8c22-19d0f4b7e6aa",
+  "data": {
+    "id": 4471,
+    "name": "sw-edge-07",
+    "device_type": { "manufacturer": "MikroTik", "model": "CRS326" },
+    "site": { "name": "İstanbul-DC1" },
+    "status": { "value": "active", "label": "Active" },
+    "url": "https://netbox.bizigo.example/dcim/devices/4471/"
+  },
+  "snapshots": {
+    "prechange": { "status": "staged" },
+    "postchange": { "status": "active" }
+  }
+}

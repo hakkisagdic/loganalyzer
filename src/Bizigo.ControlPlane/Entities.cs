@@ -183,6 +183,51 @@ public enum RawObjectState
 }
 
 /// <summary>
+/// Webhook teslimat kaydı — <b>idempotans anahtarının tek sahibi</b> (T24, K34).
+///
+/// <para>
+/// Neden ClickHouse değil de burası: <c>change_events</c> düz bir
+/// <c>MergeTree</c> ve tekillik garantisi vermiyor. "Bu teslimat daha önce
+/// geldi mi" sorusu bir <b>benzersizlik kısıtı</b> istiyor; onu veren tek yer
+/// Postgres. Ayrıca bu, değişken operasyonel durum — K23'e göre zaten kontrol
+/// düzleminin işi.
+/// </para>
+///
+/// <para>
+/// Sıra da önemli: satır <b>önce</b> yazılıyor (talep), sonra değişiklik olayı
+/// ClickHouse'a düşüyor. Ters sırada, iki eşzamanlı teslimat arasında yarış
+/// penceresi kalır ve ikisi de yazardı.
+/// </para>
+/// </summary>
+[Table("change_webhook_deliveries")]
+public sealed class ChangeWebhookDeliveryEntity
+{
+    /// <summary>
+    /// <c>{endpoint_id}:{teslimat kimliği}</c>. Sağlayıcı bir teslimat başlığı
+    /// veriyorsa (GitHub <c>X-GitHub-Delivery</c>, GitLab
+    /// <c>X-Gitlab-Event-UUID</c>) o kullanılıyor; yoksa gövdenin sha256'sı.
+    /// Uç kimliği önekte çünkü iki ayrı ucun aynı gövdeyi alması meşru.
+    /// </summary>
+    [Key]
+    [MaxLength(320)]
+    public required string DeliveryKey { get; set; }
+
+    [MaxLength(64)]
+    public required string EndpointId { get; set; }
+
+    [MaxLength(32)]
+    public required string Provider { get; set; }
+
+    [MaxLength(64)]
+    public required string OwnerGroup { get; set; }
+
+    /// <summary>Üretilen <c>change_events.change_id</c>. RCA'da kanıtın kaynağına geri bağ.</summary>
+    public Guid ChangeId { get; set; }
+
+    public DateTimeOffset ReceivedAt { get; set; } = DateTimeOffset.UtcNow;
+}
+
+/// <summary>
 /// Her sorgu buraya düşer: kim, hangi kapsam, hangi filtre, kaç satır (F1 §10.2).
 /// </summary>
 [Table("audit_log")]
