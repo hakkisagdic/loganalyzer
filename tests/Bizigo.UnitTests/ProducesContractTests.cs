@@ -1,4 +1,6 @@
+using Bizigo.Alerting;
 using Bizigo.Api;
+using Bizigo.Api.Webhooks;
 using Bizigo.Authoring;
 using Bizigo.ControlPlane;
 using Bizigo.Ingest.Discovery;
@@ -73,6 +75,29 @@ public sealed class ProducesContractTests
         ["POST /v1/parsers/drafts/{id}/return"] = "T18 — parser editörü",
         ["POST /v1/parsers/drafts/{id}/publish"] = "T18 — parser editörü",
         ["POST /v1/parsers/{parserId}/rollback"] = "T18 — parser editörü",
+
+        // T21/T22 uçları. Bunlar listeye kapı düzeltilirken girdi: kapı uçları
+        // ELLE yazılmış bir `Map*` listesinden topluyordu ve bu üç dosya o
+        // listede olmadığı için 16 uç kapıya hiç görünmüyordu — test yeşil
+        // yanıyordu ve yeşilliği hiçbir şey ifade etmiyordu.
+        ["GET /v1/alerts/rules"] = "T23 — alarm yönetim ekranı",
+        ["GET /v1/alerts/rules/{id}"] = "T23 — alarm yönetim ekranı",
+        ["POST /v1/alerts/rules"] = "T23 — alarm yönetim ekranı",
+        ["PUT /v1/alerts/rules/{id}"] = "T23 — alarm yönetim ekranı",
+        ["DELETE /v1/alerts/rules/{id}"] = "T23 — alarm yönetim ekranı",
+        ["GET /v1/alerts/triggers"] = "T23 — tetiklenme geçmişi",
+        ["GET /v1/alerts/stats"] = "T23 — alarm yönetim ekranı",
+        ["GET /v1/alerts/maintenance"] = "T23 — bakım penceresi yönetimi",
+        ["POST /v1/alerts/maintenance"] = "T23 — bakım penceresi yönetimi",
+        ["DELETE /v1/alerts/maintenance/{id}"] = "T23 — bakım penceresi yönetimi",
+        ["GET /v1/alerts/channels"] = "T23 — kanal ataması ve test gönderimi",
+        ["POST /v1/alerts/channels"] = "T23 — kanal ataması ve test gönderimi",
+        ["PUT /v1/alerts/channels/{id}"] = "T23 — kanal ataması ve test gönderimi",
+        ["DELETE /v1/alerts/channels/{id}"] = "T23 — kanal ataması ve test gönderimi",
+        ["POST /v1/alerts/channels/{id}/test"] = "T23 — kanal ataması ve test gönderimi",
+
+        ["POST /v1/changes/webhooks/{endpointId}"] =
+            "CI sistemlerinin çağırdığı alıcı; UI tüketicisi yok (`POST /v1/logs` ile aynı sınıf).",
     };
 
     /// <summary>
@@ -94,6 +119,14 @@ public sealed class ProducesContractTests
             typeof(ParserCatalog), typeof(DispatchStats), typeof(Dispatcher),
             typeof(IngestGateway), typeof(IngestStats), typeof(WriteAheadLog),
             typeof(DiscoveryStats), typeof(SidecarOptions),
+
+            // T21/T22/T24 uçlarının bağımlılıkları. Bunlar eklenmeden
+            // `MapAlerts`/`MapChangeWebhooks` parametre çıkarımında patlıyordu ve
+            // bu üç uç dosyası kapıya HİÇ görünmüyordu.
+            typeof(AlertRuleService), typeof(NotificationChannelService),
+            typeof(AlertingOptions), typeof(AlertingStats),
+            typeof(IChangeWebhookRegistry), typeof(ChangeWebhookOptions),
+            typeof(ChangeWebhookDeliveryLog),
         })
         {
             var captured = type;
@@ -101,6 +134,9 @@ public sealed class ProducesContractTests
                 throw new InvalidOperationException(
                     $"{captured.Name} bu testte çözülmemeli — yalnızca kayıt sınanıyor."));
         }
+
+        // Gerçek örnek: uçlar bunu kayıt anında çözüyor, sahte fırlatıcı patlar.
+        builder.Services.AddSingleton(TimeProvider.System);
 
         var app = builder.Build();
 
@@ -112,6 +148,9 @@ public sealed class ProducesContractTests
         app.MapReplay();
         app.MapParsers();
         app.MapParserAuthoring();
+        app.MapAlerts();
+        app.MapNotificationChannels();
+        app.MapChangeWebhooks();
 
         return [.. ((IEndpointRouteBuilder)app).DataSources
             .SelectMany(static source => source.Endpoints)
