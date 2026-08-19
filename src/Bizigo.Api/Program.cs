@@ -1,5 +1,5 @@
-using Bizigo.Api;
 using Bizigo.Alerting;
+using Bizigo.Api;
 using Bizigo.Api.Webhooks;
 using Bizigo.Authoring;
 using Bizigo.ControlPlane;
@@ -50,11 +50,11 @@ builder.Services.AddBizigoReplay();
 // Parser yazarlığı: taslak deposu ve yayın kapıları (T18).
 builder.Services.AddBizigoAuthoring();
 
-// Alarm motoru ve bildirim kanalları (T21, T22).
-builder.Services.AddBizigoAlerting(builder.Configuration);
-
 // Değişiklik webhook'ları: uç kaydı ve imza yapılandırması (T24, K34).
 builder.Services.AddChangeWebhooks(builder.Configuration);
+
+// Alarm motoru ve bildirim kanalları (T21, T22).
+builder.Services.AddBizigoAlerting(builder.Configuration);
 
 // Kimlik ve yetkilendirme (T09).
 builder.Services.AddBizigoAuthentication(builder.Configuration);
