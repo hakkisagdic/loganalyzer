@@ -331,7 +331,91 @@ public sealed class AlertingTests(DevStackFixture stack) : IAsyncLifetime
 
         await using (var db = await _factory.CreateDbContextAsync(Token))
         {
-            Assert.Single(await db.AlertTriggers.AsNoTracking().ToListAsync(Token));
+            var triggers = await db.AlertTriggers.AsNoTracking().ToListAsync(Token);
+
+            // Sayıya değil KİMLİĞE bakıyoruz. Sebebi bir ürün kararı:
+            // **sessizlik kuralı kaynak başına tetikleniyor, kural başına değil.**
+            //
+            // Karar, "on cihazın dokuzu susmuşsa mesele bir kuralın tetiklenmesi
+            // değil, hangi dokuz cihaz olduğu" cümlesinden çıkıyor ve tek başına
+            // durmuyor: `AlertTriggerEntity.SourceId` bunun için var, T22'nin
+            // göndericisi de tetiklenmeleri (kural, kanal) ikilisinde tek mesaja
+            // topluyor — yani kaynak başına tetiklenme kanalı boğmuyor. Kural
+            // başına tek tetiklenme üretseydik bildirim "bir şey sustu" derdi ve
+            // hangi cihaz olduğu kaybolurdu.
+            //
+            // Sayıya bakan bir bekçi bu yüzden yanlış soruyu soruyordu ve
+            // gerçekten de yanlış cevap verdi: saat 31 dakika ileri alındığında
+            // fixture'daki İKİ kaynak da 15 dakikalık eşiği geçmiş oluyor
+            // (fw-core-01 61 dk, fw-core-02 33 dk sessiz), yani `Assert.Single`
+            // motorun kusurunu değil testin dar varsayımını yakalamıştı.
+            Assert.NotEmpty(triggers);
+            Assert.Contains(triggers, t => t.SourceId == "fw-core-01");
+
+            // Asıl iddia geçiş: pencere kapanınca kural yeniden koşuyor.
+            Assert.Equal(
+                AlertRunState.Fired,
+                (await db.AlertRules.AsNoTracking().SingleAsync(Token)).LastRunState);
+        }
+    }
+
+    /// <summary>
+    /// Yukarıdaki kararın kendi bekçisi: <b>susan her kaynak ayrı bir tetiklenme
+    /// üretiyor</b>, hepsi tek kurala bağlı.
+    ///
+    /// <para>
+    /// Ayrı bir test, çünkü bakım penceresi testinin iddiası bu değil ve iki
+    /// iddiayı tek teste doldurmak, birinin bozulduğunda hangisinin bozulduğunu
+    /// belirsiz bırakır — az önce tam olarak bu oldu.
+    /// </para>
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task Sessizlik_kurali_susan_her_kaynak_icin_ayri_tetiklenme_uretiyor()
+    {
+        var time = new FakeTimeProvider(Now.AddMinutes(31));
+        var stats = new AlertingStats();
+        var options = new AlertingOptions();
+
+        await using (var db = await _factory.CreateDbContextAsync(Token))
+        {
+            db.AlertRules.Add(new AlertRuleEntity
+            {
+                Name = "çekirdek susuyor",
+                OwnerSubject = "analyst.core",
+                OwnerGroups = "net-core",
+                RuleType = AlertRuleType.Silence,
+                SilenceSeconds = 900,
+                IntervalSeconds = 60,
+            });
+
+            await db.SaveChangesAsync(Token);
+        }
+
+        var worker = new AlertSchedulerWorker(
+            options,
+            _factory,
+            _source,
+            new AlertEvaluator(options, stats, NullLogger<AlertEvaluator>.Instance, time),
+            stats,
+            NullLogger<AlertSchedulerWorker>.Instance,
+            time);
+
+        await worker.RunTurnAsync(Token);
+
+        await using (var db = await _factory.CreateDbContextAsync(Token))
+        {
+            var triggers = await db.AlertTriggers.AsNoTracking().ToListAsync(Token);
+
+            // İki net-core kaynağı da eşiği geçti; net-edge kapsam dışında.
+            Assert.Equal(2, triggers.Count);
+            Assert.Equal(
+                ["fw-core-01", "fw-core-02"],
+                triggers.Select(t => t.SourceId).Order(StringComparer.Ordinal));
+
+            // Hepsi TEK kurala bağlı: "kaynak başına tetiklenme" demek "kaynak
+            // başına kural" demek değil.
+            Assert.Single(triggers.Select(t => t.RuleId).Distinct());
         }
     }
 

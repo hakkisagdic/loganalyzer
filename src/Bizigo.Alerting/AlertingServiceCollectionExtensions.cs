@@ -37,6 +37,7 @@ public static class AlertingServiceCollectionExtensions
         services.AddSingleton<SecretProtector>();
         services.AddSingleton<AlertEvaluator>();
         services.AddSingleton<AlertRuleService>();
+        services.AddSingleton<AlertPreview>();
         services.AddSingleton<NotificationChannelService>();
         services.AddSingleton<IAlertQuerySource, ServiceScopeAlertQuerySource>();
 

@@ -230,6 +230,99 @@ public sealed class EventReader(ClickHouseContext context)
     }
 
     /// <summary>
+    /// Bir kova genişliği için en fazla kaç kova döneceği.
+    ///
+    /// <para>
+    /// Sınır hem sorgunun hem yanıtın maliyeti: 1 saniyelik kovayla 7 günlük bir
+    /// pencere 604.800 satır döndürürdü ve bunu isteyen ekran bir kaydırıcıyı
+    /// sürükleyen kullanıcı olurdu (K16).
+    /// </para>
+    /// </summary>
+    public const int MaxHistogramBuckets = 720;
+
+    /// <summary>
+    /// Zaman kovalarına bölünmüş sayım — alarm önizlemesinin tek sorgusu (T23).
+    ///
+    /// <para>
+    /// Eşik burada <b>uygulanmıyor</b>, bilerek: dönen histogram eşikten bağımsız
+    /// olduğu için kullanıcı eşiği değiştirdiğinde yeni bir sorgu gerekmiyor.
+    /// Aksi tasarımda kaydırıcıyı sürükleyen tek bir kullanıcı ClickHouse'a
+    /// saniyede onlarca sorgu atardı.
+    /// </para>
+    /// </summary>
+    public async Task<IReadOnlyList<HistogramBucket>> GetHistogramAsync(
+        EventHistogramQuery query,
+        ScopePredicate scope,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        if (scope.DeniesEverything)
+        {
+            return [];
+        }
+
+        var span = query.To - query.From;
+        if (span <= TimeSpan.Zero)
+        {
+            return [];
+        }
+
+        // Kova genişliği talep edilenden DAR olamaz, ama sınırı aşmamak için
+        // genişleyebilir: kullanıcıya "isteğin reddedildi" demek yerine daha kaba
+        // bir çözünürlük vermek, önizleme ekranında doğru davranış.
+        var minimum = (int)Math.Ceiling(span.TotalSeconds / MaxHistogramBuckets);
+        var bucket = Math.Max(Math.Max(query.BucketSeconds, 1), minimum);
+
+        var builder = new QueryBuilder(scope);
+        builder.AddTimeRange(query.From, query.To);
+        builder.AddScope();
+        builder.AddInList("source_id", query.SourceIds);
+        builder.AddOwnerGroupNarrowing(query.OwnerGroups);
+        builder.AddFullText(query.FullText);
+
+        foreach (var filter in query.Filters)
+        {
+            builder.AddFieldFilter(filter, FilterableColumns);
+        }
+
+        // `bucket` doğrudan SQL'e giriyor. Güvenli, çünkü bir `int` ve yukarıda
+        // sınırlandı — ClickHouse INTERVAL'ı parametre kabul etmiyor, dolayısıyla
+        // tek alternatif buydu ve değerin kullanıcı metni OLMAMASI şart.
+        var interval = bucket.ToString(CultureInfo.InvariantCulture);
+        var source = query.GroupBySource ? "source_id" : "''";
+
+        await using var connection = _context.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText = $"""
+            SELECT toStartOfInterval(ts, INTERVAL {interval} SECOND) AS bucket_start,
+                   {source} AS bucket_source,
+                   count() AS bucket_count
+            FROM {_options.EventsTable}
+            WHERE {builder.Where}
+            GROUP BY bucket_start, bucket_source
+            ORDER BY bucket_start
+            """;
+        command.CommandTimeout = _options.QueryTimeoutSeconds;
+        builder.Apply(command);
+
+        var rows = new List<HistogramBucket>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            rows.Add(new HistogramBucket(
+                new DateTimeOffset(DateTime.SpecifyKind((DateTime)reader["bucket_start"], DateTimeKind.Utc)),
+                (string)reader["bucket_source"],
+                Convert.ToInt64(reader["bucket_count"], CultureInfo.InvariantCulture)));
+        }
+
+        return rows;
+    }
+
+    /// <summary>
     /// Kaynak başına <b>son görülme</b> ve olay sayısı — <b>tek</b> sorguda, kaynak
     /// sayısından bağımsız (T21).
     ///

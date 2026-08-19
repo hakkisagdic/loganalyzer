@@ -83,6 +83,15 @@ public static class AlertEndpoints
             .RequireAuthorization(BizigoAuthPolicies.Author)
             .WithName("DeleteAlertRule");
 
+        // Önizleme kural YAZMIYOR, dolayısıyla `author` değil `read` yetiyor mu?
+        // Hayır: geçmiş veriye karşı toplu sorgu koşturuyor ve maliyeti kural
+        // yazmanınkiyle aynı sınıfta (K16). Yetkiyi kural yazma yetkisine
+        // bağlamak, ağır sorguyu ancak onu üretecek kişinin çalıştırabilmesi
+        // demek.
+        group.MapPost("/rules/preview", PreviewAsync)
+            .RequireAuthorization(BizigoAuthPolicies.Author)
+            .WithName("PreviewAlertRule");
+
         group.MapGet("/triggers", ListTriggersAsync)
             .RequireAuthorization(BizigoAuthPolicies.Read)
             .WithName("ListAlertTriggers");
@@ -227,6 +236,37 @@ public static class AlertEndpoints
 
         var names = visible.ToDictionary(r => r.Id, r => r.Name);
 
+        // "Gönderildi" ile "ulaştı" AYRI (T23 kabul kriteri). Teslim kayıtları
+        // tetiklenmeyle birlikte dönüyor, çünkü ayrı bir uçtan çekilseydi ekran
+        // ikisini yan yana göstermek için satır başına bir istek atardı — ve
+        // çoğu ekran bunu yapmayıp yalnızca "tetiklendi"yi gösterirdi.
+        var triggerIds = rows.Select(t => t.Id).ToArray();
+
+        var deliveries = triggerIds.Length == 0
+            ? []
+            : await (from delivery in db.NotificationDeliveries.AsNoTracking()
+                     join channel in db.NotificationChannels.AsNoTracking()
+                         on delivery.ChannelId equals channel.Id into joined
+                     from channel in joined.DefaultIfEmpty()
+                     where triggerIds.Contains(delivery.TriggerId)
+                     select new
+                     {
+                         delivery.TriggerId,
+                         delivery.ChannelId,
+                         delivery.State,
+                         delivery.Attempts,
+                         delivery.LastError,
+                         delivery.DeliveredAt,
+                         delivery.NextAttemptAt,
+                         // Kanal silinmiş olabilir: teslim kaydı duruyor ve
+                         // geçmişte o kanala gidildiği bilgisi kaybolmamalı.
+                         ChannelName = channel == null ? null : channel.Name,
+                         ChannelType = channel == null ? (NotificationChannelType?)null : channel.ChannelType,
+                     })
+                .ToListAsync(cancellationToken);
+
+        var byTrigger = deliveries.GroupBy(d => d.TriggerId).ToDictionary(g => g.Key, g => g.ToArray());
+
         return Results.Ok(new
         {
             count = rows.Count,
@@ -243,6 +283,83 @@ public static class AlertEndpoints
                 source_id = t.SourceId,
                 owner_group = t.OwnerGroup,
                 summary = t.Summary,
+                deliveries = (byTrigger.TryGetValue(t.Id, out var sent) ? sent : [])
+                    .Select(d => new
+                    {
+                        channel_id = d.ChannelId,
+                        channel_name = d.ChannelName ?? "(silinmiş kanal)",
+                        channel_type = d.ChannelType?.ToString().ToLowerInvariant(),
+                        state = d.State.ToString().ToLowerInvariant(),
+                        attempts = d.Attempts,
+                        delivered_at = d.DeliveredAt,
+                        next_attempt_at = d.State == DeliveryState.Pending ? d.NextAttemptAt : (DateTimeOffset?)null,
+
+                        // Redaksiyondan geçmiş hâli; gönderici gizli bilgiyi
+                        // buraya yazamıyor (T22 bekçisi).
+                        last_error = d.LastError,
+                    })
+                    .ToArray(),
+            }).ToArray(),
+        });
+    }
+
+    /// <summary>
+    /// Kural önizlemesi (T23'ün taşıyıcı maddesi).
+    ///
+    /// <para>
+    /// <b>Kaydedilmemiş bir kuralı</b> geçmiş veriye karşı koşturuyor: "bu kural
+    /// son 24 saatte kaç kez tetiklenirdi". K16'daki elli kişilik kurumda
+    /// gürültüyü kural üretime girmeden kesen tek mekanizma bu.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Yanıt eşikten bağımsız.</b> Kova serisi ve kaynak boşlukları dönüyor;
+    /// ekran eşiği değiştirdiğinde sayıyı aynı veriden yeniden hesaplıyor ve
+    /// <b>yeni sorgu atmıyor</b>. Aksi hâlde kaydırıcıyı sürükleyen tek bir
+    /// kullanıcı saniyede onlarca ağır sorgu üretir, yani önizleme önlemeye
+    /// çalıştığı sorunun kendisi olurdu.
+    /// </para>
+    /// </summary>
+    private static async Task<IResult> PreviewAsync(
+        AlertRuleRequest request,
+        int? lookbackSeconds,
+        AlertPreview preview,
+        ICurrentUser user,
+        TimeProvider time,
+        CancellationToken cancellationToken)
+    {
+        AlertRuleInput input;
+
+        try
+        {
+            input = ToInput(request);
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new { error = ex.Message });
+        }
+
+        var lookback = lookbackSeconds is > 0 ? TimeSpan.FromSeconds(lookbackSeconds.Value) : (TimeSpan?)null;
+
+        var result = await preview.RunAsync(
+            input, user.Scope, lookback, time.GetUtcNow(), cancellationToken);
+
+        return Results.Ok(new
+        {
+            rule_type = result.RuleType.ToString().ToLowerInvariant(),
+            from = result.From,
+            to = result.To,
+            bucket_seconds = result.BucketSeconds,
+            threshold = result.Threshold,
+            firing_count = result.FiringCount,
+            note = result.Note,
+            points = result.Points.Select(p => new { at = p.At, count = p.Count, value = p.Value }).ToArray(),
+            sources = result.Sources.Select(s => new
+            {
+                source_id = s.SourceId,
+                owner_group = s.OwnerGroup,
+                last_seen = s.LastSeen,
+                gaps_seconds = s.Gaps,
             }).ToArray(),
         });
     }

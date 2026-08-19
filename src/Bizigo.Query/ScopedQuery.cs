@@ -178,6 +178,27 @@ public sealed class ScopedQuery(
         return rows;
     }
 
+    public async Task<IReadOnlyList<HistogramBucket>> GetEventHistogramAsync(
+        EventHistogramQuery query,
+        AccessScope scope,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(scope);
+
+        var predicate = ScopePredicate.From(scope, query.OwnerGroups);
+        var watch = Stopwatch.StartNew();
+
+        var rows = await _events.GetHistogramAsync(query, predicate, cancellationToken);
+
+        await _audit.RecordAsync(new AuditRecord(
+            scope.Subject, "events.histogram", "events",
+            Describe(scope, predicate), $"{query.From:O}..{query.To:O} bucket={query.BucketSeconds}",
+            rows.Count, (int)watch.ElapsedMilliseconds, true), cancellationToken);
+
+        return rows;
+    }
+
     public Task<bool> CanReadRawObjectAsync(string objectKey, AccessScope scope, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(objectKey);
