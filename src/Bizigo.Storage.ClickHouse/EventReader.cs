@@ -158,6 +158,110 @@ public sealed class EventReader(ClickHouseContext context)
         return await reader.ReadAsync(cancellationToken) ? Map(reader) : null;
     }
 
+    /// <summary>
+    /// Görünüm adı → (tablo, kimlik kolonu). <b>İzin listesi</b>: görünüm adı
+    /// SQL'e gömüldüğü için çağırandan gelen bir dizgi asla buraya ulaşmıyor.
+    /// </summary>
+    private static readonly Dictionary<EventViewKind, (string Table, string IdColumn)> Views = new()
+    {
+        [EventViewKind.Ocsf] = ("events_ocsf", "uid"),
+        [EventViewKind.Otel] = ("events_otel", "LogRecordUID"),
+    };
+
+    /// <summary>
+    /// Bir olayın OCSF/OTel görünümündeki hâli.
+    ///
+    /// <para>
+    /// <c>SELECT *</c> bilinçli: kolon adları <b>görünümün kendisinden</b>
+    /// geliyor. Burada elle yazmak, eşlemenin ikinci bir kopyası olurdu ve
+    /// görünüme bir alan eklendiği gün sessizce ayrışırdı (K8).
+    /// </para>
+    ///
+    /// <para>
+    /// Kapsam filtresi görünümde değil burada: görünümler <c>owner_group</c>
+    /// kolonunu aynen taşıyor, zorlama K17'nin tek kapısında kalıyor.
+    /// </para>
+    /// </summary>
+    public async Task<IReadOnlyList<EventFieldView>> GetViewAsync(
+        Guid eventId,
+        EventViewKind view,
+        ScopePredicate scope,
+        CancellationToken cancellationToken = default)
+    {
+        if (scope.DeniesEverything)
+        {
+            return [];
+        }
+
+        if (!Views.TryGetValue(view, out var target))
+        {
+            throw new ArgumentOutOfRangeException(nameof(view), view, "Bilinmeyen görünüm.");
+        }
+
+        var builder = new QueryBuilder(scope);
+        builder.AddScope();
+        builder.AddRaw($"{target.IdColumn} = {{event_id:UUID}}", "event_id", eventId);
+
+        await using var connection = _context.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT * FROM {target.Table} WHERE {builder.Where} LIMIT 1";
+        command.CommandTimeout = _options.QueryTimeoutSeconds;
+        builder.Apply(command);
+
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return [];
+        }
+
+        var fields = new List<EventFieldView>(reader.FieldCount);
+        for (var i = 0; i < reader.FieldCount; i++)
+        {
+            fields.Add(new EventFieldView(reader.GetName(i), FormatViewValue(reader.GetValue(i))));
+        }
+
+        return fields;
+    }
+
+    /// <summary>
+    /// Görünüm değerini metne çeviriyor.
+    ///
+    /// <para>
+    /// <c>Convert.ToString</c> tek başına yetmiyor: harita kolonu tip adını,
+    /// IPv4-eşlemeli adres <c>::ffff:10.1.2.3</c> biçimini verirdi. İkisi de
+    /// ekranda okunamaz.
+    /// </para>
+    /// </summary>
+    internal static string FormatViewValue(object? value) => value switch
+    {
+        null or DBNull => string.Empty,
+        string s => s,
+        IPAddress ip => FormatAddress(ip),
+        DateTime dt => DateTime.SpecifyKind(dt, DateTimeKind.Utc)
+            .ToString("O", CultureInfo.InvariantCulture),
+        DateTimeOffset dto => dto.ToString("O", CultureInfo.InvariantCulture),
+        byte[] bytes => Convert.ToBase64String(bytes),
+        System.Collections.IDictionary map => string.Join(
+            ", ",
+            map.Keys.Cast<object>()
+                .Select(k => $"{k}={FormatViewValue(map[k])}")
+                .Order(StringComparer.Ordinal)),
+        System.Collections.IEnumerable list => string.Join(
+            ", ",
+            list.Cast<object?>().Select(FormatViewValue)),
+        _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty,
+    };
+
+    /// <summary>
+    /// IPv4 adresleri kolonda IPv6-eşlemeli duruyor; kullanıcı <c>10.1.2.3</c>
+    /// bekliyor, <c>::ffff:10.1.2.3</c> değil.
+    /// </summary>
+    internal static string FormatAddress(IPAddress address) =>
+        address.IsIPv4MappedToIPv6 ? address.MapToIPv4().ToString() : address.ToString();
+
     public async Task<long> CountAsync(
         EventQuery query,
         ScopePredicate scope,

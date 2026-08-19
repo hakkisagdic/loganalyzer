@@ -24,6 +24,29 @@
   flex: 1;
 }
 
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.navLink {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  text-decoration: none;
+  /* Dokunmatik hedef alt sınırı (WCAG 2.5.8). */
+  min-block-size: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.navLink:hover {
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+
 .identity {
   display: flex;
   align-items: center;

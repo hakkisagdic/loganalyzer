@@ -8,7 +8,8 @@ boru hattı, T04 ham arşiv, T05 parser motoru, T06 dispatcher, T07 normalizasyo
 T08 vendor kataloğu, T09 kimlik, T10 API uçları, T11 replay ve T12 sidecar.
 
 **F2 (görünürlük) sürüyor:** T13 Next.js iskeleti ve BFF, T14 OpenAPI tip
-üretimi, T18 parser yayın akışı.
+üretimi, T15 log arama ekranı, T16 olay detayı ve ham görünüm, T18 parser yayın
+akışı.
 
 Planlama belgeleri Traycer epic'inde:
 `mimari-kararlar` · `f1-teknik-plan` · `rca-raporu-ozelligi` · `tickets/`
@@ -202,8 +203,10 @@ ui/                            Next.js: arayüz + BFF (OIDC, oturum, API vekili)
   src/app/api/auth/            giriş ve çıkış
   src/app/signin-oidc/         OIDC dönüş ucu — yol realm dosyasında sabit
   src/app/api/bff/[...path]/   Bizigo.Api'ye açılan tek kapı
+  src/app/olaylar/             log arama (T15) ve olay detayı + ham baytlar (T16)
   src/lib/auth/                keşif, PKCE, oturum deposu, yenileme
-  src/lib/api/                 üretilen tipler + tiplenmiş istemci
+  src/lib/api/                 üretilen tipler + tarayıcı/sunucu istemcileri
+  src/lib/events/              arama ölçütleri, kısa sorgu kuralı, hex/kodlama
   src/app/tokens.css           tasarım jetonları — ekranlar ham değer yazmıyor
 sidecar/                       Python: drain3 + pysigma
 catalog/patterns/              Logstash grok setleri — VERİ, elle düzenlenmez

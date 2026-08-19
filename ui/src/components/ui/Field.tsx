@@ -1,6 +1,11 @@
 "use client";
 
-import { useId, type InputHTMLAttributes, type ReactNode } from "react";
+import {
+  useId,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
+} from "react";
 
 import styles from "./ui.module.css";
 
@@ -50,6 +55,67 @@ export function Field({ label, hint, error, className, ...rest }: FieldProps) {
       {error ? (
         <p className={styles.fieldError} id={errorId}>
           {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+export interface SelectOption {
+  readonly value: string;
+  readonly label: string;
+}
+
+export interface SelectFieldProps
+  extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "id" | "children"> {
+  readonly label: string;
+  readonly hint?: string;
+  readonly options: readonly SelectOption[];
+  /** Boş seçenek etiketi. Verilmezse alan zorunlu demektir. */
+  readonly emptyLabel?: string;
+}
+
+/**
+ * Etiketli açılır liste.
+ *
+ * <p>
+ * <c>Field</c> ile aynı kimlik/ipucu bağlama kuralları: <c>useId</c> ve
+ * <c>aria-describedby</c>. Ayrı bir bileşen olmasının sebebi yalnızca
+ * <c>&lt;select&gt;</c>'in çocuk alması.
+ * </p>
+ */
+export function SelectField({
+  label,
+  hint,
+  options,
+  emptyLabel,
+  className,
+  ...rest
+}: SelectFieldProps) {
+  const id = useId();
+  const hintId = `${id}-hint`;
+
+  return (
+    <div className={styles.field}>
+      <label className={styles.fieldLabel} htmlFor={id}>
+        {label}
+      </label>
+      <select
+        {...rest}
+        id={id}
+        className={[styles.fieldControl, className].filter(Boolean).join(" ")}
+        aria-describedby={hint ? hintId : undefined}
+      >
+        {emptyLabel === undefined ? null : <option value="">{emptyLabel}</option>}
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {hint ? (
+        <p className={styles.fieldHint} id={hintId}>
+          {hint}
         </p>
       ) : null}
     </div>

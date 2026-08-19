@@ -144,14 +144,12 @@
       "serviceAccountsEnabled": false,
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:5080/*##http://localhost:3000/*"
+        "post.logout.redirect.uris": "http://localhost:3000/*"
       },
       "redirectUris": [
-        "http://localhost:5080/signin-oidc",
         "http://localhost:3000/signin-oidc"
       ],
       "webOrigins": [
-        "http://localhost:5080",
         "http://localhost:3000"
       ],
       "defaultClientScopes": [

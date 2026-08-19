@@ -135,6 +135,67 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
         Assert.Null(found);
     }
 
+    /// <summary>
+    /// OCSF/OTel görünümleri de aynı kapıdan geçiyor (T16).
+    ///
+    /// <para>
+    /// Görünümler <c>events</c> tablosunun <b>şeklini</b> değiştiriyor, yetkisini
+    /// değil. Kapsam filtresi görünüme gömülmedi — gömülseydi kapsam iki yerde
+    /// tanımlanmış olurdu. Bu test o kararın bedelini ödeyip ödemediğimizi
+    /// ölçüyor: filtre gerçekten <see cref="IScopedQuery"/> tarafında uygulanıyor mu.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData(EventViewKind.Ocsf)]
+    [InlineData(EventViewKind.Otel)]
+    [Trait("Category", "Integration")]
+    public async Task Baska_grubun_olayi_gorunumden_de_okunamiyor(EventViewKind view)
+    {
+        var edge = (await _query.SearchEventsAsync(
+            AllEvents(),
+            AccessScope.System("admin"),
+            TestContext.Current.CancellationToken))
+            .Events.Single(e => e.OwnerGroup == "net-edge");
+
+        var fields = await _query.GetEventViewAsync(
+            edge.EventId, view, CoreOnly(), TestContext.Current.CancellationToken);
+
+        Assert.Empty(fields);
+    }
+
+    /// <summary>
+    /// Kendi olayının görünümü okunabiliyor ve alan adları <b>görünümden</b>
+    /// geliyor — API'de ikinci bir eşleme kopyası yok.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task Kendi_olayinin_OCSF_ve_OTel_gorunumu_okunabiliyor()
+    {
+        var core = (await _query.SearchEventsAsync(
+            AllEvents(), CoreOnly(), TestContext.Current.CancellationToken)).Events.Single();
+
+        var ocsf = await _query.GetEventViewAsync(
+            core.EventId, EventViewKind.Ocsf, CoreOnly(), TestContext.Current.CancellationToken);
+        var otel = await _query.GetEventViewAsync(
+            core.EventId, EventViewKind.Otel, CoreOnly(), TestContext.Current.CancellationToken);
+
+        // Adlar `db/clickhouse/0003_ocsf_otel_views.sql` içindeki görünümden
+        // doğuyor. Burada birkaçını sabitlemek, bir gün görünüm değişip ekranın
+        // sessizce boşalmasını engelliyor.
+        Assert.Contains(ocsf, f => f.Name == "class_uid");
+        Assert.Contains(ocsf, f => f.Name == "connection_info_protocol_name");
+        Assert.Contains(otel, f => f.Name == "host.name");
+        Assert.Contains(otel, f => f.Name == "SeverityNumber");
+
+        // `owner_group` iki görünümde de taşınıyor; kapsam filtresinin dayandığı
+        // kolon bu.
+        Assert.Contains(ocsf, f => f.Name == "owner_group" && f.Value == "net-core");
+        Assert.Contains(otel, f => f.Name == "owner_group" && f.Value == "net-core");
+
+        // Harita kolonu tip adı değil, okunabilir bir metin dönüyor.
+        Assert.Contains(ocsf, f => f.Name == "unmapped");
+    }
+
     [Fact]
     [Trait("Category", "Integration")]
     public async Task Kapsam_daraltmasi_kapsami_genisletemiyor()
