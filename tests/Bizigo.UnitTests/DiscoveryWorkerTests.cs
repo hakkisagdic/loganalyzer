@@ -57,7 +57,16 @@ public sealed class DiscoveryWorkerTests
             BatchSize = 32,
             FailureThreshold = 2,
             SampleRate = 0,
-            Timeout = TimeSpan.FromMilliseconds(200),
+
+            // Bu sınıfta zaman aşımı yolunu sınayan test YOK — o ölçüm
+            // `SidecarClientTests`'te, kendi kısa süresiyle duruyor. Buradaki
+            // saplama bellekte, anında cevap veriyor; dolayısıyla kısa bir süre
+            // davranışı değil makinenin o anki hızını sınar. 200 ms'ydi ve tam
+            // bunu yaptı: 20 bin olaylık test ThreadPool'u doyurduktan sonra
+            // sonraki testin isteği süreye takılıp `Failed` dönüyordu — tek
+            // başına koşunca hep geçiyordu. Aynı tuzağın bir başka yüzü 133.
+            // satırda yazılı.
+            Timeout = TimeSpan.FromSeconds(30),
         };
 
         var stats = new DiscoveryStats();
