@@ -20,6 +20,10 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
     public DbSet<AuditLogEntity> AuditLog => Set<AuditLogEntity>();
     public DbSet<ChangeWebhookDeliveryEntity> ChangeWebhookDeliveries => Set<ChangeWebhookDeliveryEntity>();
 
+    // Değişiklik connector'ları ve çalışma geçmişi (T25).
+    public DbSet<ChangeConnectorEntity> ChangeConnectors => Set<ChangeConnectorEntity>();
+    public DbSet<ChangeConnectorRunEntity> ChangeConnectorRuns => Set<ChangeConnectorRunEntity>();
+
     // Alarm motoru ve bildirim kanalları (T21, T22).
     public DbSet<AlertRuleEntity> AlertRules => Set<AlertRuleEntity>();
     public DbSet<AlertTriggerEntity> AlertTriggers => Set<AlertTriggerEntity>();
@@ -64,6 +68,24 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
             // Saklama temizliği ("30 günden eski teslimat kaydını sil") ve
             // "bu uçtan son ne geldi" sorusu bu indeksten geçiyor.
             e.HasIndex(x => new { x.EndpointId, x.ReceivedAt });
+        });
+
+        modelBuilder.Entity<ChangeConnectorEntity>(e =>
+        {
+            // Webhook yolu bu alandan çözülüyor; iki connector aynı slug'ı
+            // alırsa hangi grubun aldığı çağrıya göre değişirdi.
+            e.HasIndex(x => x.Slug).IsUnique();
+            e.HasIndex(x => x.OwnerGroup);
+
+            // Zamanlayıcının tek sorgusu: "vadesi gelmiş etkin connector'lar".
+            e.HasIndex(x => new { x.Enabled, x.NextRunAt });
+        });
+
+        modelBuilder.Entity<ChangeConnectorRunEntity>(e =>
+        {
+            // "Bu connector'ın son N koşusu" ve saklama temizliği.
+            e.HasIndex(x => new { x.ConnectorId, x.StartedAt });
+            e.HasIndex(x => x.StartedAt);
         });
 
         modelBuilder.Entity<AuditLogEntity>(e =>

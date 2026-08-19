@@ -167,7 +167,38 @@ public sealed class ChangeWebhookMappingTests
 
         // Teslimat kimliği başlıktan değil gövdeden türüyor — Notification
         // Plugin bir kimlik başlığı göndermiyor.
-        Assert.Equal("deploy-fw-config#842:COMPLETED", result.DeliveryId);
+        Assert.Equal("deploy-fw-config#842", result.DeliveryId);
+    }
+
+    [Fact]
+    public void Jenkins_finalized_fazi_da_esleniyor()
+    {
+        // İlk hâli yalnızca COMPLETED kabul ediyordu: yalnızca FINALIZED
+        // gönderecek şekilde yapılandırılmış bir Jenkins'ten hiçbir kayıt
+        // oluşmaz, hiçbir hata da görünmezdi. Sessiz başarısızlık.
+        var result = ChangeWebhookMapper.Map(
+            Endpoint(ChangeWebhookProviders.Jenkins),
+            Headers(),
+            Fixture("jenkins-finalized.json"),
+            Clock);
+
+        Assert.Equal(WebhookMapOutcome.Mapped, result.Outcome);
+        Assert.Equal("fw-core-01", result.Change!.TargetId);
+        Assert.Equal("FINALIZED", result.Change.Details["phase"]);
+    }
+
+    [Fact]
+    public void Jenkins_iki_bitis_fazi_ayni_teslimat_sayiliyor()
+    {
+        // Mükerrerlik faz üzerinden değil YAPI KİMLİĞİ üzerinden çözülüyor:
+        // aynı anahtar → ilk gelen kazanıyor, ikincisi idempotans kapısında
+        // duruyor. Faz anahtara girseydi her koşu iki satır yazardı.
+        var endpoint = Endpoint(ChangeWebhookProviders.Jenkins);
+
+        var completed = ChangeWebhookMapper.Map(endpoint, Headers(), Fixture("jenkins-completed.json"), Clock);
+        var finalized = ChangeWebhookMapper.Map(endpoint, Headers(), Fixture("jenkins-finalized.json"), Clock);
+
+        Assert.Equal(completed.DeliveryId, finalized.DeliveryId);
     }
 
     [Fact]

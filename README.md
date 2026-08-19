@@ -238,6 +238,38 @@ gerçek olayların gelmediğini fark etmiyor.
 gövdenin sha256'sı kullanılıyor. Talep **önce** yazılıyor, değişiklik olayı
 sonra — ters sırada iki eşzamanlı teslimatın ikisi de satır düşürürdü.
 
+**Webhook uçları artık ekrandan tanımlanıyor** (T25, K34). `change_connectors`
+tablosu kaynağın tipini, hedefini, zamanlamasını, sahip grubunu ve **şifreli**
+kimlik bilgisini tutuyor; alıcı bir isteği karşılarken önce bu tabloya, sonra
+`appsettings.json`'daki uçlara bakıyor. **Veritabanı kazanıyor** — tersi olsaydı
+ekrandan yapılan bir değişiklik unutulmuş bir yapılandırma satırı yüzünden
+sessizce etkisiz kalırdı.
+
+**Gizli bilgi anahtarı ürün geneli tek:** `Security__SecretKey` (base64, 32 bayt,
+AES-256-GCM). T22 bunu `Alerting:SecretKey` olarak kurmuştu; T25 connector
+kimlik bilgileri için aynı şeye ihtiyaç duyunca ortaklaştırıldı
+(`Bizigo.Contracts.Security`). İki anahtar, iki rotasyon hikâyesi ve altı ay
+sonra birinin döndürülüp diğerinin unutulması demekti. **Anahtar yoksa gizli
+bilgi kaydedilmiyor** — düz metne düşmek, "şifreli saklanıyor" iddiasını
+sessizce yalanlardı.
+
+**Hata mesajının temizliği runner'ın değil servisin işi.** Bir toplayıcıdan ya
+da bir istisnadan gelen her metin, veritabanına yazılmadan ve kullanıcıya
+gösterilmeden önce `SecretRedactor`'dan geçiyor. Gerekçe ölçüldü: sızıntının en
+sık gerçekleştiği yer bağlantı hatasının mesajı ve orada gizli bilgi çoğu zaman
+kimsenin yazmadığı bir yerden — kütüphanenin istisna metninden — geliyor.
+
+**Toplayıcısı olmayan connector tipi etkinleştirilemiyor.** Cihaz config
+toplayıcısı T26'da; o gelene kadar `DeviceConfig` connector'ı kaydedilebiliyor
+ama açılamıyor. Alternatif — zamanlayıcının her turda "bu tip için toplayıcı
+yok" diye hata yazması — çalışma geçmişini gerçek arızalarla sahtelerinin
+karıştığı bir yığına çevirirdi.
+
+**Saklama tek politika, iki tablo:** `change_webhook_deliveries` ve
+`change_connector_runs` 90 gün sonra siliniyor (`Changes:Connectors:Retention`).
+`change_events` bunun **dışında** — RCA'nın F3'te arayacağı geçmiş hiç
+silinmiyor.
+
 ## Proje düzeni
 
 ```

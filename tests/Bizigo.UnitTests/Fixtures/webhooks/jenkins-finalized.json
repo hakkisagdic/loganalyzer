@@ -1,0 +1,27 @@
+{
+  "name": "deploy-fw-config",
+  "display_name": "deploy-fw-config",
+  "url": "job/deploy-fw-config/",
+  "build": {
+    "full_url": "https://jenkins.bizigo.example/job/deploy-fw-config/842/",
+    "number": 842,
+    "queue_id": 3391,
+    "timestamp": 1786079687000,
+    "duration": 287412,
+    "phase": "FINALIZED",
+    "status": "SUCCESS",
+    "url": "job/deploy-fw-config/842/",
+    "scm": {
+      "url": "git@github.com:bizigo/network-config.git",
+      "branch": "origin/main",
+      "commit": "9b3f2c1a7d4e8f60b25c93a1de07f4c8b6a2e5d3"
+    },
+    "parameters": {
+      "TARGET": "fw-core-01",
+      "BUILD_USER_ID": "esra.yildiz",
+      "DRY_RUN": "false"
+    },
+    "log": "",
+    "artifacts": {}
+  }
+}

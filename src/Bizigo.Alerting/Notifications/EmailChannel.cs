@@ -1,3 +1,4 @@
+using Bizigo.Contracts.Security;
 using System.Net;
 using System.Net.Mail;
 using Bizigo.ControlPlane;
