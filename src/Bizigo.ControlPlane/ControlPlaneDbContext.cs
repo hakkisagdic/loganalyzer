@@ -18,6 +18,7 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
     public DbSet<ParserEntity> Parsers => Set<ParserEntity>();
     public DbSet<RawManifestEntity> RawManifest => Set<RawManifestEntity>();
     public DbSet<AuditLogEntity> AuditLog => Set<AuditLogEntity>();
+    public DbSet<ChangeWebhookDeliveryEntity> ChangeWebhookDeliveries => Set<ChangeWebhookDeliveryEntity>();
 
     // Alarm motoru ve bildirim kanalları (T21, T22).
     public DbSet<AlertRuleEntity> AlertRules => Set<AlertRuleEntity>();
@@ -56,6 +57,13 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
             e.HasIndex(x => x.VerifiedAt);
             // "Bu segment yüklendi mi" ve "saklama süresi doldu mu" sorgusu.
             e.HasIndex(x => x.WalSegment);
+        });
+
+        modelBuilder.Entity<ChangeWebhookDeliveryEntity>(e =>
+        {
+            // Saklama temizliği ("30 günden eski teslimat kaydını sil") ve
+            // "bu uçtan son ne geldi" sorusu bu indeksten geçiyor.
+            e.HasIndex(x => new { x.EndpointId, x.ReceivedAt });
         });
 
         modelBuilder.Entity<AuditLogEntity>(e =>

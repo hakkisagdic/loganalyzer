@@ -1,0 +1,23 @@
+{
+  "action": "in_progress",
+  "workflow_run": {
+    "id": 12103904188,
+    "name": "deploy-firewall-config",
+    "head_branch": "main",
+    "head_sha": "9b3f2c1a7d4e8f60b25c93a1de07f4c8b6a2e5d3",
+    "run_number": 184,
+    "event": "push",
+    "status": "in_progress",
+    "conclusion": null,
+    "html_url": "https://github.com/bizigo/network-config/actions/runs/12103904188",
+    "created_at": "2026-08-18T09:14:22Z",
+    "updated_at": "2026-08-18T09:14:35Z",
+    "actor": { "login": "esra-yildiz", "id": 4410233, "type": "User" }
+  },
+  "repository": {
+    "id": 715489581,
+    "name": "network-config",
+    "full_name": "bizigo/network-config"
+  },
+  "sender": { "login": "esra-yildiz", "id": 4410233, "type": "User" }
+}

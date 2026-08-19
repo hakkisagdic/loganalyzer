@@ -184,6 +184,60 @@ motorda koşan bir "iç içe niceleyici" bulgusu **bilgi**, geri izlemeli motord
 **Testsiz parser yayınlanamaz.** `tests` bloğu şema düzeyinde zorunlu; CI
 `catalog/parsers` altındaki her parser'ın gömülü testlerini koşturur.
 
+**Değişiklik webhook'unun kimliği bir imza, token değil** (T24). CI sistemleri
+OIDC akışı yürütmüyor; `POST /v1/changes/webhooks/{id}` bu yüzden anonim ama
+imza doğrulanmadan hiçbir kayıt oluşmuyor. Kapsam token'dan değil **ucun
+yapılandırmasından** geliyor: her uç tek bir `owner_group`'a bağlı ve
+`IScopedQuery.WriteChangeAsync` yalnızca ona yazmasına izin veriyor. Sistem
+kapsamı (sınırsız) bilerek kullanılmıyor — sızan tek bir anahtar her ekibin
+zaman çizelgesine olay düşürebilirdi.
+
+```jsonc
+"Changes": {
+  "Webhooks": {
+    "MaxBodyBytes": 1048576,
+    "Endpoints": [
+      {
+        "Id": "gh-network",              // POST /v1/changes/webhooks/gh-network
+        "Provider": "github",            // github | jenkins | gitlab | generic
+        "OwnerGroup": "network/core",    // bu ucun yazabildiği TEK grup
+        "Secret": "${WEBHOOK_SECRET}",   // zorunlu; anahtarsız uç açılışta patlar
+        "TargetKind": "Config",
+        "DefaultChangeKind": "deploy",
+        // Yalnızca "generic" için — bilinmeyen sağlayıcı JSON yollarıyla eşlenir.
+        "Mapping": {
+          "TargetId": "$.data.name",
+          "ChangeKind": "$.event",
+          "Actor": "$.username",
+          "Timestamp": "$.timestamp",
+          "DeliveryId": "$.request_id",
+          "Details": { "site": "$.data.site.name" }
+        }
+      }
+    ]
+  }
+}
+```
+
+| Sağlayıcı | İmza başlığı | Kaydedilen bildirim |
+| --- | --- | --- |
+| GitHub | `X-Hub-Signature-256` (HMAC-SHA256) | `workflow_run` (yalnızca `completed`), `deployment_status` (nihai durum), `push` |
+| GitLab | `X-Gitlab-Token` (düz jeton — sağlayıcı HMAC vermiyor) | `pipeline` ve `deployment` (yalnızca `success`/`failed`) |
+| Jenkins | `X-Bizigo-Signature` (HMAC-SHA256) | Notification Plugin, yalnızca `COMPLETED` fazı |
+| generic | `X-Bizigo-Signature` (HMAC-SHA256) | Yapılandırılan yollar |
+
+**Filtreler kasıtlı:** her sağlayıcı aynı işi birden çok kez bildiriyor
+(`in_progress`, `STARTED`, `running`). Hepsini kaydetmek `change_events`'i RCA
+kanıtı olmaktan çıkarıp CI gürültüsüne çevirirdi. Eşlenmeyen bildirim **202**
+alıyor, 4xx değil — GitHub 4xx gören webhook'u kırmızı işaretliyor ve kimse
+gerçek olayların gelmediğini fark etmiyor.
+
+**İdempotans Postgres'te**, ClickHouse'ta değil: `change_events` düz bir
+`MergeTree` ve tekillik garantisi vermiyor. `change_webhook_deliveries` tablosu
+`{uç}:{teslimat kimliği}` anahtarını benzersizlik kısıtıyla tutuyor; kimlik yoksa
+gövdenin sha256'sı kullanılıyor. Talep **önce** yazılıyor, değişiklik olayı
+sonra — ters sırada iki eşzamanlı teslimatın ikisi de satır düşürürdü.
+
 ## Proje düzeni
 
 ```

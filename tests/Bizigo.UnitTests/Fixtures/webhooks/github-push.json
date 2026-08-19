@@ -1,0 +1,39 @@
+{
+  "ref": "refs/heads/main",
+  "before": "1f0a4b7c2d9e5308a6b4c1f7e2d0938ab5c6d7e8",
+  "after": "9b3f2c1a7d4e8f60b25c93a1de07f4c8b6a2e5d3",
+  "created": false,
+  "deleted": false,
+  "forced": false,
+  "compare": "https://github.com/bizigo/network-config/compare/1f0a4b7c2d9e...9b3f2c1a7d4e",
+  "commits": [
+    {
+      "id": "9b3f2c1a7d4e8f60b25c93a1de07f4c8b6a2e5d3",
+      "message": "fw-core-01: dış ACL'e 10.20.0.0/16 eklendi\n\nDeğişiklik penceresi CHG-2291 kapsamında.",
+      "timestamp": "2026-08-18T09:14:02+03:00",
+      "url": "https://github.com/bizigo/network-config/commit/9b3f2c1a7d4e8f60b25c93a1de07f4c8b6a2e5d3",
+      "author": { "name": "Esra Yıldız", "email": "esra@bizigo.example", "username": "esra-yildiz" },
+      "added": [],
+      "removed": [],
+      "modified": ["devices/fw-core-01/acl-outside.cfg"]
+    }
+  ],
+  "head_commit": {
+    "id": "9b3f2c1a7d4e8f60b25c93a1de07f4c8b6a2e5d3",
+    "message": "fw-core-01: dış ACL'e 10.20.0.0/16 eklendi\n\nDeğişiklik penceresi CHG-2291 kapsamında.",
+    "timestamp": "2026-08-18T09:14:02+03:00",
+    "url": "https://github.com/bizigo/network-config/commit/9b3f2c1a7d4e8f60b25c93a1de07f4c8b6a2e5d3",
+    "author": { "name": "Esra Yıldız", "email": "esra@bizigo.example", "username": "esra-yildiz" },
+    "modified": ["devices/fw-core-01/acl-outside.cfg"]
+  },
+  "repository": {
+    "id": 715489581,
+    "name": "network-config",
+    "full_name": "bizigo/network-config",
+    "private": true,
+    "html_url": "https://github.com/bizigo/network-config",
+    "default_branch": "main"
+  },
+  "pusher": { "name": "esra-yildiz", "email": "esra@bizigo.example" },
+  "sender": { "login": "esra-yildiz", "id": 4410233, "type": "User" }
+}
