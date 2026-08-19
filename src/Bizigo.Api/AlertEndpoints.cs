@@ -1,4 +1,5 @@
 using Bizigo.Alerting;
+using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Microsoft.EntityFrameworkCore;
 
@@ -39,19 +40,17 @@ public sealed record MaintenanceWindowRequest(
     string Reason);
 
 /// <summary>
-/// Alarm kuralları, tetiklenme geçmişi ve bakım pencereleri (T21).
+/// Alarm kuralları, önizleme, tetiklenme geçmişi ve bakım pencereleri (T21, T23).
 ///
 /// <para>
-/// <b>Rol ayrımı:</b> okumak <c>read</c>, kural yazmak <c>author</c>. Kural
-/// yazmak, arka planda periyodik olarak koşan bir sorgu yaratmak demek — yani
-/// K16'nın "tek kötü kural" senaryosu tam olarak bu uçtan giriyor. Bunun
-/// <c>author</c> ile sınırlı olması, kural sayısını yönetilebilir tutan tek
-/// yapısal önlem; geri kalanı <c>AlertingOptions</c>'taki sınırlar.
+/// <b>Rol ayrımı:</b> okumak <c>read</c>, kural yazmak ve önizlemek
+/// <c>author</c>. Kural yazmak, arka planda periyodik koşan bir sorgu yaratmak
+/// demek — K16'nın "tek kötü kural" senaryosu tam olarak bu uçtan giriyor.
 /// </para>
 ///
 /// <para>
-/// <b>Kapsam kontrolü burada değil</b>, <see cref="AlertRuleService"/>'te.
-/// Uç yalnızca <c>AccessScope</c>'u geçiriyor: kapsam kararının uç başına
+/// <b>Kapsam kontrolü burada değil</b>, <see cref="AlertRuleService"/>'te. Uç
+/// yalnızca <c>AccessScope</c>'u geçiriyor: kapsam kararının uç başına
 /// tekrarlanması, K17'nin kaçındığı dağılmanın ta kendisi olurdu.
 /// </para>
 /// </summary>
@@ -65,52 +64,70 @@ public static class AlertEndpoints
 
         group.MapGet("/rules", ListRulesAsync)
             .RequireAuthorization(BizigoAuthPolicies.Read)
-            .WithName("ListAlertRules");
+            .WithName("ListAlertRules")
+            .Produces<AlertRuleListResponse>();
 
         group.MapGet("/rules/{id:guid}", GetRuleAsync)
             .RequireAuthorization(BizigoAuthPolicies.Read)
-            .WithName("GetAlertRule");
+            .WithName("GetAlertRule")
+            .Produces<AlertRuleDetailResponse>()
+            .Produces(StatusCodes.Status404NotFound);
 
         group.MapPost("/rules", CreateRuleAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("CreateAlertRule");
+            .WithName("CreateAlertRule")
+            .Produces<AlertRuleResponse>()
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
 
         group.MapPut("/rules/{id:guid}", UpdateRuleAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("UpdateAlertRule");
+            .WithName("UpdateAlertRule")
+            .Produces<AlertRuleResponse>()
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
 
         group.MapDelete("/rules/{id:guid}", DeleteRuleAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("DeleteAlertRule");
+            .WithName("DeleteAlertRule")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status404NotFound);
 
-        // Önizleme kural YAZMIYOR, dolayısıyla `author` değil `read` yetiyor mu?
-        // Hayır: geçmiş veriye karşı toplu sorgu koşturuyor ve maliyeti kural
-        // yazmanınkiyle aynı sınıfta (K16). Yetkiyi kural yazma yetkisine
-        // bağlamak, ağır sorguyu ancak onu üretecek kişinin çalıştırabilmesi
-        // demek.
+        // Önizleme kural YAZMIYOR — o hâlde neden `read` değil `author`?
+        // Çünkü geçmiş veriye karşı toplu sorgu koşturuyor ve maliyeti kural
+        // yazmanınkiyle aynı sınıfta (K16). Ağır sorguyu ancak onu üretecek
+        // kişinin çalıştırabilmesi doğru ayrım.
         group.MapPost("/rules/preview", PreviewAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("PreviewAlertRule");
+            .WithName("PreviewAlertRule")
+            .Produces<AlertPreviewResponse>()
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
 
         group.MapGet("/triggers", ListTriggersAsync)
             .RequireAuthorization(BizigoAuthPolicies.Read)
-            .WithName("ListAlertTriggers");
+            .WithName("ListAlertTriggers")
+            .Produces<AlertTriggerListResponse>()
+            .Produces(StatusCodes.Status404NotFound);
 
         group.MapGet("/maintenance", ListWindowsAsync)
             .RequireAuthorization(BizigoAuthPolicies.Read)
-            .WithName("ListMaintenanceWindows");
+            .WithName("ListMaintenanceWindows")
+            .Produces<MaintenanceWindowListResponse>();
 
         group.MapPost("/maintenance", CreateWindowAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("CreateMaintenanceWindow");
+            .WithName("CreateMaintenanceWindow")
+            .Produces<CreatedIdResponse>()
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
 
         group.MapDelete("/maintenance/{id:guid}", DeleteWindowAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("DeleteMaintenanceWindow");
+            .WithName("DeleteMaintenanceWindow")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status404NotFound);
 
         group.MapGet("/stats", (AlertingStats stats) => Results.Ok(Describe(stats.Snapshot())))
             .RequireAuthorization(BizigoAuthPolicies.Read)
-            .WithName("AlertingStats");
+            .WithName("AlertingStats")
+            .Produces<AlertingStatsResponse>();
 
         return routes;
     }
@@ -121,7 +138,7 @@ public static class AlertEndpoints
         CancellationToken cancellationToken)
     {
         var found = await rules.ListAsync(user.Scope, cancellationToken);
-        return Results.Ok(new { count = found.Count, rules = found.Select(Describe).ToArray() });
+        return Results.Ok(new AlertRuleListResponse(found.Count, [.. found.Select(Describe)]));
     }
 
     private static async Task<IResult> GetRuleAsync(
@@ -141,7 +158,7 @@ public static class AlertEndpoints
         // yazmak zorunda, yoksa ilk kaydetmede kanallar sessizce silinir.
         var channels = await rules.GetChannelIdsAsync(id, cancellationToken);
 
-        return Results.Ok(new { rule = Describe(rule), channel_ids = channels });
+        return Results.Ok(new AlertRuleDetailResponse(Describe(rule), [.. channels]));
     }
 
     private static Task<IResult> CreateRuleAsync(
@@ -174,14 +191,14 @@ public static class AlertEndpoints
         }
         catch (ArgumentException ex)
         {
-            return Results.BadRequest(new { error = ex.Message });
+            return Results.BadRequest(new ErrorResponse(ex.Message));
         }
 
         var result = await rules.SaveAsync(id, input, user.Scope, cancellationToken);
 
         return result.Ok
             ? Results.Ok(Describe(result.Rule!))
-            : Results.BadRequest(new { error = result.Error });
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> DeleteRuleAsync(
@@ -192,6 +209,59 @@ public static class AlertEndpoints
         await rules.DeleteAsync(id, user.Scope, cancellationToken)
             ? Results.NoContent()
             : Results.NotFound();
+
+    /// <summary>
+    /// Kural önizlemesi — T23'ün taşıyıcı maddesi.
+    ///
+    /// <para>
+    /// <b>Kaydedilmemiş</b> bir kuralı geçmiş veriye karşı koşturuyor: "bu kural
+    /// son 24 saatte kaç kez tetiklenirdi". K16'daki elli kişilik kurumda
+    /// gürültüyü kural üretime girmeden kesen tek mekanizma bu.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Yanıt eşikten bağımsız.</b> Ekran eşiği değiştirdiğinde sayıyı aynı
+    /// veriden yeniden hesaplıyor ve yeni istek atmıyor; aksi hâlde kaydırıcıyı
+    /// sürükleyen tek bir kullanıcı saniyede onlarca ağır sorgu üretir — yani
+    /// önizleme, önlemeye çalıştığı sorunun kendisi olurdu.
+    /// </para>
+    /// </summary>
+    private static async Task<IResult> PreviewAsync(
+        AlertRuleRequest request,
+        int? lookbackSeconds,
+        AlertPreview preview,
+        ICurrentUser user,
+        TimeProvider time,
+        CancellationToken cancellationToken)
+    {
+        AlertRuleInput input;
+
+        try
+        {
+            input = ToInput(request);
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(new ErrorResponse(ex.Message));
+        }
+
+        var lookback = lookbackSeconds is > 0 ? TimeSpan.FromSeconds(lookbackSeconds.Value) : (TimeSpan?)null;
+
+        var result = await preview.RunAsync(
+            input, user.Scope, lookback, time.GetUtcNow(), cancellationToken);
+
+        return Results.Ok(new AlertPreviewResponse(
+            result.RuleType.ToString().ToLowerInvariant(),
+            result.From,
+            result.To,
+            result.BucketSeconds,
+            result.Threshold,
+            result.FiringCount,
+            result.Note,
+            [.. result.Points.Select(p => new PreviewPointResponse(p.At, p.Count, p.Value))],
+            [.. result.Sources.Select(s => new PreviewSourceResponse(
+                s.SourceId, s.OwnerGroup, s.LastSeen, [.. s.Gaps]))]));
+    }
 
     /// <summary>
     /// Tetiklenme geçmişi.
@@ -222,7 +292,7 @@ public static class AlertEndpoints
 
         if (wanted.Length == 0)
         {
-            return Results.Ok(new { count = 0, triggers = Array.Empty<object>() });
+            return Results.Ok(new AlertTriggerListResponse(0, []));
         }
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
@@ -237,9 +307,9 @@ public static class AlertEndpoints
         var names = visible.ToDictionary(r => r.Id, r => r.Name);
 
         // "Gönderildi" ile "ulaştı" AYRI (T23 kabul kriteri). Teslim kayıtları
-        // tetiklenmeyle birlikte dönüyor, çünkü ayrı bir uçtan çekilseydi ekran
-        // ikisini yan yana göstermek için satır başına bir istek atardı — ve
-        // çoğu ekran bunu yapmayıp yalnızca "tetiklendi"yi gösterirdi.
+        // tetiklenmeyle birlikte dönüyor: ayrı bir uçtan çekilseydi ekran satır
+        // başına bir istek atardı ve çoğu ekran bunu yapmayıp yalnızca
+        // "tetiklendi"yi gösterirdi.
         var triggerIds = rows.Select(t => t.Id).ToArray();
 
         var deliveries = triggerIds.Length == 0
@@ -259,7 +329,7 @@ public static class AlertEndpoints
                          delivery.DeliveredAt,
                          delivery.NextAttemptAt,
                          // Kanal silinmiş olabilir: teslim kaydı duruyor ve
-                         // geçmişte o kanala gidildiği bilgisi kaybolmamalı.
+                         // geçmişte oraya gidildiği bilgisi kaybolmamalı.
                          ChannelName = channel == null ? null : channel.Name,
                          ChannelType = channel == null ? (NotificationChannelType?)null : channel.ChannelType,
                      })
@@ -267,101 +337,33 @@ public static class AlertEndpoints
 
         var byTrigger = deliveries.GroupBy(d => d.TriggerId).ToDictionary(g => g.Key, g => g.ToArray());
 
-        return Results.Ok(new
-        {
-            count = rows.Count,
-            triggers = rows.Select(t => new
-            {
-                id = t.Id,
-                rule_id = t.RuleId,
-                rule_name = names.TryGetValue(t.RuleId, out var name) ? name : string.Empty,
-                fired_at = t.FiredAt,
-                window_from = t.WindowFrom,
-                window_to = t.WindowTo,
-                value = t.Value,
-                threshold = t.Threshold,
-                source_id = t.SourceId,
-                owner_group = t.OwnerGroup,
-                summary = t.Summary,
-                deliveries = (byTrigger.TryGetValue(t.Id, out var sent) ? sent : [])
-                    .Select(d => new
-                    {
-                        channel_id = d.ChannelId,
-                        channel_name = d.ChannelName ?? "(silinmiş kanal)",
-                        channel_type = d.ChannelType?.ToString().ToLowerInvariant(),
-                        state = d.State.ToString().ToLowerInvariant(),
-                        attempts = d.Attempts,
-                        delivered_at = d.DeliveredAt,
-                        next_attempt_at = d.State == DeliveryState.Pending ? d.NextAttemptAt : (DateTimeOffset?)null,
+        var triggers = rows.Select(t => new AlertTriggerResponse(
+            t.Id,
+            t.RuleId,
+            names.TryGetValue(t.RuleId, out var name) ? name : string.Empty,
+            t.FiredAt,
+            t.WindowFrom,
+            t.WindowTo,
+            t.Value,
+            t.Threshold,
+            t.SourceId,
+            t.OwnerGroup,
+            t.Summary,
+            [.. (byTrigger.TryGetValue(t.Id, out var sent) ? sent : []).Select(d => new AlertDeliveryResponse(
+                d.ChannelId,
+                d.ChannelName ?? "(silinmiş kanal)",
+                d.ChannelType?.ToString().ToLowerInvariant(),
+                d.State.ToString().ToLowerInvariant(),
+                d.Attempts,
+                d.DeliveredAt,
+                d.State == DeliveryState.Pending ? d.NextAttemptAt : null,
 
-                        // Redaksiyondan geçmiş hâli; gönderici gizli bilgiyi
-                        // buraya yazamıyor (T22 bekçisi).
-                        last_error = d.LastError,
-                    })
-                    .ToArray(),
-            }).ToArray(),
-        });
-    }
+                // Redaksiyondan geçmiş hâli; gönderici gizli bilgiyi buraya
+                // yazamıyor (T22 bekçisi).
+                d.LastError))]))
+            .ToArray();
 
-    /// <summary>
-    /// Kural önizlemesi (T23'ün taşıyıcı maddesi).
-    ///
-    /// <para>
-    /// <b>Kaydedilmemiş bir kuralı</b> geçmiş veriye karşı koşturuyor: "bu kural
-    /// son 24 saatte kaç kez tetiklenirdi". K16'daki elli kişilik kurumda
-    /// gürültüyü kural üretime girmeden kesen tek mekanizma bu.
-    /// </para>
-    ///
-    /// <para>
-    /// <b>Yanıt eşikten bağımsız.</b> Kova serisi ve kaynak boşlukları dönüyor;
-    /// ekran eşiği değiştirdiğinde sayıyı aynı veriden yeniden hesaplıyor ve
-    /// <b>yeni sorgu atmıyor</b>. Aksi hâlde kaydırıcıyı sürükleyen tek bir
-    /// kullanıcı saniyede onlarca ağır sorgu üretir, yani önizleme önlemeye
-    /// çalıştığı sorunun kendisi olurdu.
-    /// </para>
-    /// </summary>
-    private static async Task<IResult> PreviewAsync(
-        AlertRuleRequest request,
-        int? lookbackSeconds,
-        AlertPreview preview,
-        ICurrentUser user,
-        TimeProvider time,
-        CancellationToken cancellationToken)
-    {
-        AlertRuleInput input;
-
-        try
-        {
-            input = ToInput(request);
-        }
-        catch (ArgumentException ex)
-        {
-            return Results.BadRequest(new { error = ex.Message });
-        }
-
-        var lookback = lookbackSeconds is > 0 ? TimeSpan.FromSeconds(lookbackSeconds.Value) : (TimeSpan?)null;
-
-        var result = await preview.RunAsync(
-            input, user.Scope, lookback, time.GetUtcNow(), cancellationToken);
-
-        return Results.Ok(new
-        {
-            rule_type = result.RuleType.ToString().ToLowerInvariant(),
-            from = result.From,
-            to = result.To,
-            bucket_seconds = result.BucketSeconds,
-            threshold = result.Threshold,
-            firing_count = result.FiringCount,
-            note = result.Note,
-            points = result.Points.Select(p => new { at = p.At, count = p.Count, value = p.Value }).ToArray(),
-            sources = result.Sources.Select(s => new
-            {
-                source_id = s.SourceId,
-                owner_group = s.OwnerGroup,
-                last_seen = s.LastSeen,
-                gaps_seconds = s.Gaps,
-            }).ToArray(),
-        });
+        return Results.Ok(new AlertTriggerListResponse(triggers.Length, triggers));
     }
 
     private static async Task<IResult> ListWindowsAsync(
@@ -378,19 +380,9 @@ public static class AlertEndpoints
 
         var scope = user.Scope;
 
-        return Results.Ok(new
-        {
-            windows = all.Where(w => scope.Allows(w.OwnerGroup)).Select(w => new
-            {
-                id = w.Id,
-                rule_id = w.RuleId,
-                owner_group = w.OwnerGroup,
-                starts_at = w.StartsAt,
-                ends_at = w.EndsAt,
-                reason = w.Reason,
-                created_by = w.CreatedBy,
-            }).ToArray(),
-        });
+        return Results.Ok(new MaintenanceWindowListResponse(
+            [.. all.Where(w => scope.Allows(w.OwnerGroup)).Select(w => new MaintenanceWindowResponse(
+                w.Id, w.RuleId, w.OwnerGroup, w.StartsAt, w.EndsAt, w.Reason, w.CreatedBy))]));
     }
 
     private static async Task<IResult> CreateWindowAsync(
@@ -402,12 +394,12 @@ public static class AlertEndpoints
     {
         if (!user.Scope.Allows(request.OwnerGroup))
         {
-            return Results.BadRequest(new { error = $"'{request.OwnerGroup}' grubu kapsamınızda değil." });
+            return Results.BadRequest(new ErrorResponse($"'{request.OwnerGroup}' grubu kapsamınızda değil."));
         }
 
         if (request.EndsAt <= request.StartsAt)
         {
-            return Results.BadRequest(new { error = "Pencerenin bitişi başlangıcından sonra olmalı." });
+            return Results.BadRequest(new ErrorResponse("Pencerenin bitişi başlangıcından sonra olmalı."));
         }
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
@@ -426,7 +418,7 @@ public static class AlertEndpoints
         db.MaintenanceWindows.Add(window);
         await db.SaveChangesAsync(cancellationToken);
 
-        return Results.Ok(new { id = window.Id });
+        return Results.Ok(new CreatedIdResponse(window.Id));
     }
 
     private static async Task<IResult> DeleteWindowAsync(
@@ -501,49 +493,84 @@ public static class AlertEndpoints
             $"Bilinmeyen karşılaştırma: '{value}'. Beklenen: gt, gte, lt, lte.", nameof(value)),
     };
 
-    private static object Describe(AlertRuleEntity rule) => new
+    /// <summary>
+    /// Operatörün kısa adı — istekte kabul edilenin <b>aynısı</b>.
+    ///
+    /// <para>
+    /// Yanıtta enum adını (<c>Equals</c>) döndürüp istekte kısa adı
+    /// (<c>eq</c>) beklemek, formun okuduğunu geri yazamaması demekti: kullanıcı
+    /// bir kuralı açıp kaydettiğinde filtresi sessizce reddedilirdi.
+    /// </para>
+    /// </summary>
+    internal static string ShortName(FilterOperator op) => op switch
     {
-        id = rule.Id,
-        name = rule.Name,
-        description = rule.Description,
-        rule_type = rule.RuleType.ToString().ToLowerInvariant(),
-        owner_groups = rule.OwnerGroups.Split(',', StringSplitOptions.RemoveEmptyEntries),
-        window_seconds = rule.WindowSeconds,
-        interval_seconds = rule.IntervalSeconds,
-        threshold = rule.Threshold,
-        comparison = rule.Comparison.ToString(),
-        silence_seconds = rule.SilenceSeconds,
-        repeat_interval_seconds = rule.RepeatIntervalSeconds,
-        enabled = rule.Enabled,
-        next_run_at = rule.NextRunAt,
-        last_run_at = rule.LastRunAt,
-        last_fired_at = rule.LastFiredAt,
-        last_run_state = rule.LastRunState.ToString(),
-        last_error = rule.LastError,
-        search = rule.SearchJson,
+        FilterOperator.Equals => "eq",
+        FilterOperator.NotEquals => "ne",
+        FilterOperator.In => "in",
+        FilterOperator.GreaterThan => "gt",
+        FilterOperator.LessThan => "lt",
+        FilterOperator.Contains => "contains",
+        FilterOperator.StartsWith => "startswith",
+        _ => throw new ArgumentOutOfRangeException(nameof(op), op, "Bilinmeyen operatör."),
     };
 
-    private static object Describe(AlertingSnapshot snapshot) => new
+    private static AlertRuleResponse Describe(AlertRuleEntity rule)
     {
-        turns = snapshot.Turns,
-        evaluated = snapshot.Evaluated,
-        fired = snapshot.Fired,
-        suppressed = snapshot.Suppressed,
+        // Arama YAPILANDIRILMIŞ dönüyor, ham JSON olarak değil: formun onu geri
+        // yazabilmesi gerekiyor ve JSON'u istemcide ayrıştırmak, şemadan üretilen
+        // tiplerin sağladığı güvenceyi tam da en kırılgan alanda kaybetmek olurdu.
+        var search = AlertSearchCodec.Deserialize(rule.SearchJson);
+
+        return new AlertRuleResponse(
+            rule.Id,
+            rule.Name,
+            rule.Description,
+            rule.RuleType.ToString().ToLowerInvariant(),
+            rule.OwnerGroups.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            rule.WindowSeconds,
+            rule.IntervalSeconds,
+            rule.Threshold,
+            ComparisonName(rule.Comparison),
+            rule.SilenceSeconds,
+            rule.RepeatIntervalSeconds,
+            rule.Enabled,
+            rule.NextRunAt,
+            rule.LastRunAt,
+            rule.LastFiredAt,
+            rule.LastRunState.ToString().ToLowerInvariant(),
+            rule.LastError,
+            new AlertSearchResponse(
+                search.FullText,
+                [.. search.Filters.Select(f => new FieldFilterResponse(f.Field, ShortName(f.Operator), [.. f.Values]))],
+                [.. search.SourceIds]));
+    }
+
+    /// <summary>Karşılaştırmanın kısa adı — istekte kabul edilenin aynısı.</summary>
+    internal static string ComparisonName(AlertComparison comparison) => comparison switch
+    {
+        AlertComparison.GreaterThan => "gt",
+        AlertComparison.GreaterThanOrEqual => "gte",
+        AlertComparison.LessThan => "lt",
+        AlertComparison.LessThanOrEqual => "lte",
+        _ => throw new ArgumentOutOfRangeException(nameof(comparison), comparison, "Bilinmeyen karşılaştırma."),
+    };
+
+    private static AlertingStatsResponse Describe(AlertingSnapshot snapshot) => new(
+        snapshot.Turns,
+        snapshot.Evaluated,
+        snapshot.Fired,
+        snapshot.Suppressed,
 
         // Sıfırdan büyükse motor BİLMEDİĞİ bir şeyi "sessiz" sanmış olabilir.
-        timed_out = snapshot.TimedOut,
-        failed = snapshot.Failed,
+        snapshot.TimedOut,
+        snapshot.Failed,
 
         // T21 kabul kriteri burada ölçülüyor: kural sayısı arttığında bu sayı
         // doğrusal ötesi büyümemeli.
-        scoped_queries = snapshot.ScopedQueries,
-
-        notifications = new
-        {
-            queued = snapshot.NotificationsQueued,
-            delivered = snapshot.NotificationsDelivered,
-            retried = snapshot.NotificationsRetried,
-            abandoned = snapshot.NotificationsAbandoned,
-        },
-    };
+        snapshot.ScopedQueries,
+        new AlertingNotificationStats(
+            snapshot.NotificationsQueued,
+            snapshot.NotificationsDelivered,
+            snapshot.NotificationsRetried,
+            snapshot.NotificationsAbandoned));
 }

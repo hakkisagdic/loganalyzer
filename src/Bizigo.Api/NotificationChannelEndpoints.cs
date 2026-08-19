@@ -56,11 +56,29 @@ public static class NotificationChannelEndpoints
             .RequireAuthorization(BizigoAuthPolicies.Admin)
             .WithTags("alerts");
 
-        group.MapGet("/", ListAsync).WithName("ListNotificationChannels");
-        group.MapPost("/", CreateAsync).WithName("CreateNotificationChannel");
-        group.MapPut("/{id:guid}", UpdateAsync).WithName("UpdateNotificationChannel");
-        group.MapDelete("/{id:guid}", DeleteAsync).WithName("DeleteNotificationChannel");
-        group.MapPost("/{id:guid}/test", TestAsync).WithName("TestNotificationChannel");
+        group.MapGet("/", ListAsync)
+            .WithName("ListNotificationChannels")
+            .Produces<NotificationChannelListResponse>();
+
+        group.MapPost("/", CreateAsync)
+            .WithName("CreateNotificationChannel")
+            .Produces<NotificationChannelResponse>()
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
+
+        group.MapPut("/{id:guid}", UpdateAsync)
+            .WithName("UpdateNotificationChannel")
+            .Produces<NotificationChannelResponse>()
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
+
+        group.MapDelete("/{id:guid}", DeleteAsync)
+            .WithName("DeleteNotificationChannel")
+            .Produces(StatusCodes.Status204NoContent)
+            .Produces(StatusCodes.Status404NotFound);
+
+        group.MapPost("/{id:guid}/test", TestAsync)
+            .WithName("TestNotificationChannel")
+            .Produces<ChannelTestResponse>()
+            .Produces<ChannelTestResponse>(StatusCodes.Status422UnprocessableEntity);
 
         return routes;
     }
@@ -71,7 +89,7 @@ public static class NotificationChannelEndpoints
         CancellationToken cancellationToken)
     {
         var channels = await service.ListAsync(user.Scope, cancellationToken);
-        return Results.Ok(new { count = channels.Count, channels = channels.Select(Describe).ToArray() });
+        return Results.Ok(new NotificationChannelListResponse(channels.Count, [.. channels.Select(Describe)]));
     }
 
     private static Task<IResult> CreateAsync(
@@ -104,7 +122,7 @@ public static class NotificationChannelEndpoints
         }
         catch (ArgumentException ex)
         {
-            return Results.BadRequest(new { error = ex.Message });
+            return Results.BadRequest(new ErrorResponse(ex.Message));
         }
 
         var result = await service.SaveAsync(
@@ -132,7 +150,7 @@ public static class NotificationChannelEndpoints
 
         return result.Ok
             ? Results.Ok(Describe(result.Channel!))
-            : Results.BadRequest(new { error = result.Error });
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> DeleteAsync(
@@ -156,7 +174,9 @@ public static class NotificationChannelEndpoints
 
         // Hata metni servis tarafında redaksiyondan geçti; burada bir daha
         // dokunulmuyor ki "redaksiyon nerede" sorusunun tek bir cevabı olsun.
-        return ok ? Results.Ok(new { ok = true }) : Results.UnprocessableEntity(new { ok = false, error });
+        return ok
+            ? Results.Ok(new ChannelTestResponse(true, string.Empty))
+            : Results.UnprocessableEntity(new ChannelTestResponse(false, error));
     }
 
     private static NotificationChannelType ParseType(string value) => value?.ToLowerInvariant() switch
@@ -174,30 +194,26 @@ public static class NotificationChannelEndpoints
     /// gizli bilgi girmesi <b>yapısal olarak</b> mümkün değil — gizli olan tek
     /// alan ayrı bir kolonda ve burada yalnızca "dolu mu" olarak görünüyor.
     /// </summary>
-    private static object Describe(NotificationChannelEntity channel)
+    private static NotificationChannelResponse Describe(NotificationChannelEntity channel)
     {
         var settings = ChannelSettings.Parse(channel.ConfigJson);
 
-        return new
-        {
-            id = channel.Id,
-            name = channel.Name,
-            channel_type = channel.ChannelType.ToString().ToLowerInvariant(),
-            owner_group = channel.OwnerGroup,
-            enabled = channel.Enabled,
-            secret_set = !string.IsNullOrEmpty(channel.SecretCipher),
-            settings = new
-            {
-                headers = settings.Headers,
-                host = settings.Host,
-                port = settings.Port,
-                from = settings.From,
-                to = settings.To,
-                user = settings.User,
-                use_start_tls = settings.UseStartTls,
-            },
-            created_at = channel.CreatedAt,
-            updated_at = channel.UpdatedAt,
-        };
+        return new NotificationChannelResponse(
+            channel.Id,
+            channel.Name,
+            channel.ChannelType.ToString().ToLowerInvariant(),
+            channel.OwnerGroup,
+            channel.Enabled,
+            !string.IsNullOrEmpty(channel.SecretCipher),
+            new ChannelSettingsResponse(
+                settings.Headers,
+                settings.Host,
+                settings.Port,
+                settings.From,
+                [.. settings.To],
+                settings.User,
+                settings.UseStartTls),
+            channel.CreatedAt,
+            channel.UpdatedAt);
     }
 }

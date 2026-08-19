@@ -587,6 +587,72 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AlertDeliveryResponse: {
+            /** Format: uuid */
+            channel_id: string;
+            channel_name: string;
+            channel_type: null | string;
+            state: string;
+            /** Format: int32 */
+            attempts: number | string;
+            /** Format: date-time */
+            delivered_at: null | string;
+            /** Format: date-time */
+            next_attempt_at: null | string;
+            last_error: string;
+        };
+        AlertingNotificationStats: {
+            /** Format: int64 */
+            queued: number | string;
+            /** Format: int64 */
+            delivered: number | string;
+            /** Format: int64 */
+            retried: number | string;
+            /** Format: int64 */
+            abandoned: number | string;
+        };
+        AlertingStatsResponse: {
+            /** Format: int64 */
+            turns: number | string;
+            /** Format: int64 */
+            evaluated: number | string;
+            /** Format: int64 */
+            fired: number | string;
+            /** Format: int64 */
+            suppressed: number | string;
+            /** Format: int64 */
+            timed_out: number | string;
+            /** Format: int64 */
+            failed: number | string;
+            /** Format: int64 */
+            scoped_queries: number | string;
+            notifications: components["schemas"]["AlertingNotificationStats"];
+        };
+        AlertPreviewResponse: {
+            rule_type: string;
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            /** Format: int32 */
+            bucket_seconds: number | string;
+            /** Format: double */
+            threshold: number | string;
+            /** Format: int32 */
+            firing_count: number | string;
+            note: string;
+            points: components["schemas"]["PreviewPointResponse"][];
+            sources: components["schemas"]["PreviewSourceResponse"][];
+        };
+        AlertRuleDetailResponse: {
+            rule: components["schemas"]["AlertRuleResponse"];
+            channel_ids: string[];
+        };
+        AlertRuleListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            rules: components["schemas"]["AlertRuleResponse"][];
+        };
         AlertRuleRequest: {
             name: string;
             description?: string;
@@ -608,6 +674,66 @@ export interface components {
             repeatIntervalSeconds?: number | string;
             enabled?: boolean;
             channelIds?: string[];
+        };
+        AlertRuleResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            description: string;
+            rule_type: string;
+            owner_groups: string[];
+            /** Format: int32 */
+            window_seconds: number | string;
+            /** Format: int32 */
+            interval_seconds: number | string;
+            /** Format: double */
+            threshold: number | string;
+            comparison: string;
+            /** Format: int32 */
+            silence_seconds: number | string;
+            /** Format: int32 */
+            repeat_interval_seconds: number | string;
+            enabled: boolean;
+            /** Format: date-time */
+            next_run_at: null | string;
+            /** Format: date-time */
+            last_run_at: null | string;
+            /** Format: date-time */
+            last_fired_at: null | string;
+            last_run_state: string;
+            last_error: string;
+            search: components["schemas"]["AlertSearchResponse"];
+        };
+        AlertSearchResponse: {
+            full_text: null | string;
+            filters: components["schemas"]["FieldFilterResponse"][];
+            source_ids: string[];
+        };
+        AlertTriggerListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            triggers: components["schemas"]["AlertTriggerResponse"][];
+        };
+        AlertTriggerResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            rule_id: string;
+            rule_name: string;
+            /** Format: date-time */
+            fired_at: string;
+            /** Format: date-time */
+            window_from: string;
+            /** Format: date-time */
+            window_to: string;
+            /** Format: double */
+            value: number | string;
+            /** Format: double */
+            threshold: number | string;
+            source_id: string;
+            owner_group: string;
+            summary: string;
+            deliveries: components["schemas"]["AlertDeliveryResponse"][];
         };
         AuthMeResponse: {
             subject: string;
@@ -633,6 +759,29 @@ export interface components {
             source?: string;
             externalRef?: string;
         };
+        ChannelSettingsResponse: {
+            headers: {
+                [key: string]: string;
+            };
+            host: string;
+            /** Format: int32 */
+            port: number | string;
+            from: string;
+            to: string[];
+            user: string;
+            use_start_tls: boolean;
+        };
+        ChannelTestResponse: {
+            ok: boolean;
+            error: string;
+        };
+        CreatedIdResponse: {
+            /** Format: uuid */
+            id: string;
+        };
+        ErrorResponse: {
+            error: string;
+        };
         EventSearchRequest: {
             /** Format: date-time */
             from?: null | string;
@@ -656,6 +805,14 @@ export interface components {
             op: string;
             values: string[];
         };
+        FieldFilterResponse: {
+            field: string;
+            op: string;
+            values: string[];
+        };
+        MaintenanceWindowListResponse: {
+            windows: components["schemas"]["MaintenanceWindowResponse"][];
+        };
         MaintenanceWindowRequest: {
             ownerGroup: string;
             /** Format: date-time */
@@ -665,6 +822,24 @@ export interface components {
             /** Format: uuid */
             ruleId: null | string;
             reason: string;
+        };
+        MaintenanceWindowResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            rule_id: null | string;
+            owner_group: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            reason: string;
+            created_by: string;
+        };
+        NotificationChannelListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            channels: components["schemas"]["NotificationChannelResponse"][];
         };
         NotificationChannelRequest: {
             name: string;
@@ -683,6 +858,20 @@ export interface components {
             user?: string;
             useStartTls?: boolean;
         };
+        NotificationChannelResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            channel_type: string;
+            owner_group: string;
+            enabled: boolean;
+            secret_set: boolean;
+            settings: components["schemas"]["ChannelSettingsResponse"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
         ParserDraftRequest: {
             yaml: string;
         };
@@ -690,6 +879,21 @@ export interface components {
             line: string;
             /** @default  */
             parserId: string;
+        };
+        PreviewPointResponse: {
+            /** Format: date-time */
+            at: string;
+            /** Format: int64 */
+            count: number | string;
+            /** Format: double */
+            value: number | string;
+        };
+        PreviewSourceResponse: {
+            source_id: string;
+            owner_group: string;
+            /** Format: date-time */
+            last_seen: null | string;
+            gaps_seconds: (number | string)[];
         };
         ReplayRequest: {
             /** Format: date-time */
@@ -1218,7 +1422,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AlertRuleListResponse"];
+                };
             };
         };
     };
@@ -1240,7 +1446,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AlertRuleResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -1257,6 +1474,15 @@ export interface operations {
         responses: {
             /** @description OK */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertRuleDetailResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1284,7 +1510,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AlertRuleResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -1299,8 +1536,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1328,7 +1572,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AlertPreviewResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -1346,6 +1601,15 @@ export interface operations {
         responses: {
             /** @description OK */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertTriggerListResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1367,7 +1631,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MaintenanceWindowListResponse"];
+                };
             };
         };
     };
@@ -1389,7 +1655,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CreatedIdResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -1404,8 +1681,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1427,7 +1711,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AlertingStatsResponse"];
+                };
             };
         };
     };
@@ -1445,7 +1731,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NotificationChannelListResponse"];
+                };
             };
         };
     };
@@ -1467,7 +1755,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NotificationChannelResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -1491,7 +1790,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["NotificationChannelResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -1506,8 +1816,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1531,7 +1848,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ChannelTestResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelTestResponse"];
+                };
             };
         };
     };

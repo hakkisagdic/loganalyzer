@@ -1,0 +1,198 @@
+/*
+  Alarm ekranlarının stilleri.
+
+  Hepsi T13'ün jetonlarından besleniyor — ham renk, ham boşluk ya da ham font
+  boyutu YOK. Bir ekranın kendi değerini yazması, F2 sonunda toparlanamayan
+  tutarsızlığın başladığı yer (T28 bunu denetleyecek).
+*/
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding-block-end: var(--space-3);
+  border-block-end: 1px solid var(--border-1);
+}
+
+.tabs a {
+  color: var(--text-2);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  padding: var(--space-1) 0;
+  border-block-end: 2px solid transparent;
+}
+
+.tabs a:hover {
+  color: var(--text-1);
+  border-block-end-color: var(--border-2);
+}
+
+.notice {
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-2);
+  border-inline-start: 3px solid var(--warning);
+  border-radius: var(--radius-md);
+  color: var(--text-1);
+  font-size: var(--text-sm);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.toolbar h1,
+.toolbar h2 {
+  margin: 0;
+  margin-inline-end: auto;
+}
+
+/* --- Kural formu --------------------------------------------------------- */
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-4);
+}
+
+.formRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-1);
+}
+
+.groupList,
+.channelList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.groupList label,
+.channelList label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-1);
+}
+
+/* --- Önizleme ------------------------------------------------------------ */
+
+.previewHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.previewCount {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-1);
+  /* Sayı değişirken sütun kaymasın: tablo rakamları sabit genişlikte. */
+  font-variant-numeric: tabular-nums;
+}
+
+.previewNote {
+  font-size: var(--text-xs);
+  color: var(--text-2);
+}
+
+/*
+  Çubuk grafiği.
+
+  SVG ya da grafik kütüphanesi yerine kutular: veri tek boyutlu (kova → değer)
+  ve eklenen her bağımlılık, T28'in erişilebilirlik denetiminde ayrıca
+  hesabı verilecek bir yüzey demek. Sayısal özet zaten tabloda; grafik
+  yardımcı, tek kaynak değil.
+*/
+.chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  block-size: 8rem;
+  padding: var(--space-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+.bar {
+  flex: 1 0 0.25rem;
+  min-inline-size: 0.25rem;
+  background: var(--border-2);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.barFiring {
+  background: var(--danger);
+}
+
+.chartEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  block-size: 8rem;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+  background: var(--surface-2);
+  border: 1px dashed var(--border-2);
+  border-radius: var(--radius-md);
+}
+
+/* --- Genel --------------------------------------------------------------- */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.inlineActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.muted {
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.deliveryList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.deliveryRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.deliveryError {
+  color: var(--danger);
+  /* Hata metni uzun olabiliyor; satır taşırmasın. */
+  overflow-wrap: anywhere;
+}

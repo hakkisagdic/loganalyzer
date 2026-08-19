@@ -26,6 +26,7 @@ internal sealed class FakeScopedQuery : IScopedQuery, IAlertQuerySource
     private int _countCalls;
     private int _activityCalls;
     private int _inventoryCalls;
+    private int _histogramCalls;
 
     public List<FakeEvent> Events { get; } = [];
 
@@ -37,8 +38,9 @@ internal sealed class FakeScopedQuery : IScopedQuery, IAlertQuerySource
     public int CountCalls => Volatile.Read(ref _countCalls);
     public int ActivityCalls => Volatile.Read(ref _activityCalls);
     public int InventoryCalls => Volatile.Read(ref _inventoryCalls);
+    public int HistogramCalls => Volatile.Read(ref _histogramCalls);
 
-    public int TotalCalls => CountCalls + ActivityCalls + InventoryCalls;
+    public int TotalCalls => CountCalls + ActivityCalls + InventoryCalls + HistogramCalls;
 
     public AlertQueryLease Lease() => new(this, null);
 
@@ -97,6 +99,49 @@ internal sealed class FakeScopedQuery : IScopedQuery, IAlertQuerySource
         ];
 
         return Task.FromResult(rows);
+    }
+
+    /// <summary>
+    /// Histogram sahtesi: gerçek sorgu gibi <b>yalnızca dolu kovaları</b>
+    /// döndürüyor.
+    ///
+    /// <para>
+    /// Boş kovaları da döndürseydi <c>AlertPreview.Densify</c>'ın varlık sebebi
+    /// testte hiç görünmezdi — ve o kod tam da SQL'in boş kova döndürmediği için
+    /// var.
+    /// </para>
+    /// </summary>
+    public Task<IReadOnlyList<HistogramBucket>> GetEventHistogramAsync(
+        EventHistogramQuery query,
+        AccessScope scope,
+        CancellationToken cancellationToken = default)
+    {
+        Interlocked.Increment(ref _histogramCalls);
+
+        var width = TimeSpan.FromSeconds(Math.Max(query.BucketSeconds, 1));
+
+        IReadOnlyList<HistogramBucket> rows =
+        [
+            .. Events
+                .Where(e => scope.Allows(e.OwnerGroup) && e.Ts >= query.From && e.Ts < query.To)
+                .Where(e => query.SourceIds.Count == 0
+                    || query.SourceIds.Contains(e.SourceId, StringComparer.Ordinal))
+                .GroupBy(e => (
+                    Start: Align(e.Ts, width),
+                    Source: query.GroupBySource ? e.SourceId : string.Empty))
+                .Select(g => new HistogramBucket(g.Key.Start, g.Key.Source, g.Count()))
+                .OrderBy(b => b.Start)
+        ];
+
+        return Task.FromResult(rows);
+    }
+
+    /// <summary>ClickHouse'un <c>toStartOfInterval</c>'ı gibi epoch'a hizalıyor.</summary>
+    private static DateTimeOffset Align(DateTimeOffset value, TimeSpan width)
+    {
+        var seconds = value.ToUnixTimeSeconds();
+        var size = (long)width.TotalSeconds;
+        return DateTimeOffset.FromUnixTimeSeconds(seconds - (seconds % size));
     }
 
     public Task<IReadOnlyList<SourceSummary>> SearchSourcesAsync(

@@ -252,7 +252,7 @@ public sealed class AlertPreview(IAlertQuerySource queries)
     /// atlamak, iki gerçek kovanın yan yana sayılması yani uydurma bir oran demek.
     /// </para>
     /// </summary>
-    internal static IReadOnlyList<(DateTimeOffset At, long Count)> Densify(
+    public static IReadOnlyList<(DateTimeOffset At, long Count)> Densify(
         IReadOnlyList<HistogramBucket> buckets,
         DateTimeOffset from,
         DateTimeOffset to,
@@ -309,7 +309,7 @@ public sealed class AlertPreview(IAlertQuerySource queries)
     }
 
     /// <summary>Eşik karşılaştırması — motorunkiyle aynı kapalı küme.</summary>
-    internal static int CountFirings(
+    public static int CountFirings(
         IReadOnlyList<PreviewPoint> points,
         double threshold,
         AlertComparison comparison) =>
@@ -332,7 +332,7 @@ public sealed class AlertPreview(IAlertQuerySource queries)
     /// eşiğin %10'u.
     /// </para>
     /// </summary>
-    internal static IReadOnlyList<double> Gaps(
+    public static IReadOnlyList<double> Gaps(
         IReadOnlyList<DateTimeOffset> stamps,
         DateTimeOffset from,
         DateTimeOffset to,
@@ -388,7 +388,7 @@ public sealed class AlertPreview(IAlertQuerySource queries)
     /// önizleyerek kapsamı dışındaki veriyi sayabilirdi.
     /// </para>
     /// </summary>
-    internal static AccessScope Intersect(IReadOnlyList<string> requested, AccessScope scope)
+    public static AccessScope Intersect(IReadOnlyList<string> requested, AccessScope scope)
     {
         ArgumentNullException.ThrowIfNull(requested);
         ArgumentNullException.ThrowIfNull(scope);
