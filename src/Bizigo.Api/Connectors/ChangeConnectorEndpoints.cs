@@ -21,6 +21,49 @@ public sealed record ConnectorRequest
     public bool Enabled { get; init; }
 }
 
+/// <param name="CredentialSet">
+/// Kimlik bilgisinin <b>varlığı</b>. Değeri, şifreli hâli ve uzunluğu bu
+/// sözleşmede bilerek YOK — şifreli metni döndürmek de sızıntıdır, anahtarı
+/// bir gün ele geçiren için offline çözülecek bir hedef bırakır.
+/// </param>
+/// <param name="Credential">Sabit maske. Uzunluk bile bilgi taşımıyor.</param>
+/// <param name="ReceivePath">
+/// Webhook connector'ının CI tarafına yazılacak adresi; diğer tiplerde
+/// <see langword="null"/>. Sunucudan geliyor çünkü ekranın kendi kurması, yol
+/// değiştiğinde iki yerde düzeltme demekti.
+/// </param>
+public sealed record ConnectorView(
+    Guid Id,
+    string Slug,
+    string Name,
+    string ConnectorType,
+    string OwnerGroup,
+    JsonElement Config,
+    bool CredentialSet,
+    string Credential,
+    int? IntervalSeconds,
+    bool Enabled,
+    DateTimeOffset? NextRunAt,
+    DateTimeOffset? LastRunAt,
+    string? LastRunState,
+    string LastError,
+    string? ReceivePath,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);
+
+public sealed record ConnectorListResponse(int Count, IReadOnlyList<ConnectorView> Connectors);
+
+public sealed record ConnectorTestResponse(bool Ok, string Message);
+
+public sealed record ConnectorRunView(
+    DateTimeOffset StartedAt,
+    DateTimeOffset FinishedAt,
+    string State,
+    int ChangesWritten,
+    string Error);
+
+public sealed record ConnectorRunListResponse(int Count, IReadOnlyList<ConnectorRunView> Runs);
+
 /// <summary>
 /// Connector yönetim uçları (T25, K34).
 ///
@@ -48,31 +91,40 @@ public static class ChangeConnectorEndpoints
 
         group.MapGet("/", ListAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("ListChangeConnectors");
+            .WithName("ListChangeConnectors")
+            .Produces<ConnectorListResponse>();
 
         group.MapGet("/{id:guid}", GetAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("GetChangeConnector");
+            .WithName("GetChangeConnector")
+            .Produces<ConnectorView>();
 
         group.MapPost("/", CreateAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("CreateChangeConnector");
+            .WithName("CreateChangeConnector")
+            .Produces<ConnectorView>(StatusCodes.Status201Created);
 
         group.MapPut("/{id:guid}", UpdateAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("UpdateChangeConnector");
+            .WithName("UpdateChangeConnector")
+            .Produces<ConnectorView>();
 
         group.MapDelete("/{id:guid}", DeleteAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("DeleteChangeConnector");
+            // 204: gövde YOK. Yanıt tipi bildirilmemesi bir eksiklik değil —
+            // uydurulmuş bir gövde tipi, olmayan bir sözleşme vaat ederdi.
+            .WithName("DeleteChangeConnector")
+            .Produces(StatusCodes.Status204NoContent);
 
         group.MapPost("/{id:guid}/test", TestAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("TestChangeConnector");
+            .WithName("TestChangeConnector")
+            .Produces<ConnectorTestResponse>();
 
         group.MapGet("/{id:guid}/runs", RunsAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("ListChangeConnectorRuns");
+            .WithName("ListChangeConnectorRuns")
+            .Produces<ConnectorRunListResponse>();
 
         return routes;
     }
@@ -84,7 +136,7 @@ public static class ChangeConnectorEndpoints
     {
         var rows = await service.ListAsync(user.Scope, cancellationToken);
 
-        return Results.Ok(new { count = rows.Count, connectors = rows.Select(Describe) });
+        return Results.Ok(new ConnectorListResponse(rows.Count, [.. rows.Select(Describe)]));
     }
 
     private static async Task<IResult> GetAsync(
@@ -175,7 +227,7 @@ public static class ChangeConnectorEndpoints
         // Başarısız test 200 dönüyor, 4xx değil: istek doğruydu, sonuç olumsuz.
         // 4xx, ekranın "istek gitmedi" ile "bağlanamadı"yı ayırt etmesini
         // zorlaştırırdı.
-        return Results.Ok(new { ok = result.Ok, message = result.Message });
+        return Results.Ok(new ConnectorTestResponse(result.Ok, result.Message));
     }
 
     private static async Task<IResult> RunsAsync(
@@ -187,46 +239,34 @@ public static class ChangeConnectorEndpoints
     {
         var runs = await service.RunsAsync(id, user.Scope, limit ?? 50, cancellationToken);
 
-        return Results.Ok(new
-        {
-            count = runs.Count,
-            runs = runs.Select(r => new
-            {
-                started_at = r.StartedAt,
-                finished_at = r.FinishedAt,
-                state = r.State.ToString(),
-                changes_written = r.ChangesWritten,
-                error = r.Error,
-            }),
-        });
+        return Results.Ok(new ConnectorRunListResponse(
+            runs.Count,
+            [.. runs.Select(r => new ConnectorRunView(
+                r.StartedAt, r.FinishedAt, r.State.ToString(), r.ChangesWritten, r.Error))]));
     }
 
     /// <summary>
     /// Yanıt şekli. <b>Kimlik bilgisi burada yok</b> — ne değeri, ne şifreli
     /// hâli, ne uzunluğu; yalnızca kayıtlı olup olmadığı.
     /// </summary>
-    private static object Describe(ChangeConnectorEntity connector) => new
-    {
-        id = connector.Id,
-        slug = connector.Slug,
-        name = connector.Name,
-        connector_type = connector.ConnectorType.ToString(),
-        owner_group = connector.OwnerGroup,
-        config = JsonDocument.Parse(connector.ConfigJson).RootElement,
-        credential_set = !string.IsNullOrEmpty(connector.CredentialCipher),
-        credential = ChangeConnectorService.CredentialMask,
-        interval_seconds = connector.IntervalSeconds,
-        enabled = connector.Enabled,
-        next_run_at = connector.NextRunAt,
-        last_run_at = connector.LastRunAt,
-        last_run_state = connector.LastRunState?.ToString(),
-        last_error = connector.LastError,
-        // Webhook connector'ının CI tarafına yazılacak adresi. Ekranın bunu
-        // kendi kurması, yol değiştiğinde iki yerde düzeltme demekti.
-        receive_path = connector.ConnectorType == ChangeConnectorType.Webhook
+    private static ConnectorView Describe(ChangeConnectorEntity connector) => new(
+        Id: connector.Id,
+        Slug: connector.Slug,
+        Name: connector.Name,
+        ConnectorType: connector.ConnectorType.ToString(),
+        OwnerGroup: connector.OwnerGroup,
+        Config: JsonDocument.Parse(connector.ConfigJson).RootElement,
+        CredentialSet: !string.IsNullOrEmpty(connector.CredentialCipher),
+        Credential: ChangeConnectorService.CredentialMask,
+        IntervalSeconds: connector.IntervalSeconds,
+        Enabled: connector.Enabled,
+        NextRunAt: connector.NextRunAt,
+        LastRunAt: connector.LastRunAt,
+        LastRunState: connector.LastRunState?.ToString(),
+        LastError: connector.LastError,
+        ReceivePath: connector.ConnectorType == ChangeConnectorType.Webhook
             ? $"/v1/changes/webhooks/{connector.Slug}"
             : null,
-        created_at = connector.CreatedAt,
-        updated_at = connector.UpdatedAt,
-    };
+        CreatedAt: connector.CreatedAt,
+        UpdatedAt: connector.UpdatedAt);
 }

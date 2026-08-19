@@ -1,4 +1,6 @@
 using Bizigo.Api;
+using Bizigo.Api.Connectors;
+using Bizigo.Api.Webhooks;
 using Bizigo.Authoring;
 using Bizigo.ControlPlane;
 using Bizigo.Ingest.Discovery;
@@ -59,8 +61,10 @@ public sealed class ProducesContractTests
         ["POST /v1/logs"] = "Collector'ın ingest ucu; UI tüketicisi yok (istemcide de dışlanmış).",
         ["POST /v1/sources"] = "T17 — kaynak envanteri ekranı",
         ["POST /v1/sources/csv"] = "T17 — kaynak envanteri ekranı",
-        ["GET /v1/changes"] = "T24 — değişiklik akışı formu",
-        ["POST /v1/changes"] = "T24 — değişiklik akışı formu",
+        ["POST /v1/changes/webhooks/{endpointId}"] =
+            "CI sistemlerinin çağırdığı imzalı alıcı; UI tüketicisi yok — POST /v1/logs ile aynı sınıf.",
+        ["DELETE /v1/changes/connectors/{id}"] =
+            "204, gövdesiz. Uydurulmuş bir yanıt tipi olmayan bir sözleşme vaat ederdi.",
         ["GET /v1/health/pipeline"] = "T20 — boru hattı sağlık ekranı",
         ["POST /v1/replay"] = "T19 — replay ekranı",
         ["GET /v1/parsers"] = "T18 — parser editörü",
@@ -94,6 +98,9 @@ public sealed class ProducesContractTests
             typeof(ParserCatalog), typeof(DispatchStats), typeof(Dispatcher),
             typeof(IngestGateway), typeof(IngestStats), typeof(WriteAheadLog),
             typeof(DiscoveryStats), typeof(SidecarOptions),
+            // T24 + T25
+            typeof(IChangeWebhookRegistry), typeof(ChangeWebhookOptions),
+            typeof(ChangeWebhookDeliveryLog), typeof(ChangeConnectorService),
         })
         {
             var captured = type;
@@ -108,6 +115,11 @@ public sealed class ProducesContractTests
         app.MapEvents();
         app.MapSources();
         app.MapChanges();
+        // Bu iki satırın eksikliği bekçiyi sessizce delerdi: kaydedilmeyen uç
+        // kapıya hiç görünmüyor ve test yeşil yanıyor. Yeşilliği bir şey ifade
+        // etmiyor.
+        app.MapChangeWebhooks();
+        app.MapChangeConnectors();
         app.MapPipelineHealth();
         app.MapReplay();
         app.MapParsers();
@@ -194,6 +206,65 @@ public sealed class ProducesContractTests
             covered.Length == 0,
             "Yanıt tipi kazanmış uç(lar) hâlâ izin listesinde: " + string.Join(", ", covered) +
             " — ProducesContractTests.Pending'den silin.");
+    }
+
+    /// <summary>
+    /// T24/T25'in tükettiği değişiklik uçları listeden <b>çıkmış</b> olmalı.
+    ///
+    /// <para>
+    /// Ayrıca imzalı alıcı listede <b>kalmalı</b>: onun muafiyeti geçici bir
+    /// boşluk değil kalıcı bir karar — CI sistemleri çağırıyor, ekran değil.
+    /// Ayrımı sabitlemezsek biri onu "eksik" sanıp kapatmaya çalışır.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Degisiklik_uclari_yanit_tipi_tasiyor()
+    {
+        var changes = V1Endpoints()
+            .Where(static pair => pair.Key.Contains("/v1/changes", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.NotEmpty(changes);
+
+        foreach (var (key, endpoint) in changes)
+        {
+            if (Pending.ContainsKey(key))
+            {
+                continue;
+            }
+
+            Assert.True(DeclaresResponseType(endpoint), $"{key} yanıt tipi bildirmiyor.");
+        }
+
+        Assert.Contains("POST /v1/changes/webhooks/{endpointId}", Pending.Keys);
+        Assert.DoesNotContain("GET /v1/changes", Pending.Keys);
+        Assert.DoesNotContain("POST /v1/changes", Pending.Keys);
+
+        // Uçların GERÇEKTEN kaydedildiğini sabitliyoruz. Bekçinin bulunmuş
+        // deliği tam olarak buydu: `Endpoints()` içindeki `Map*` listesine
+        // eklenmeyen bir uç kapıya hiç görünmüyor ve test yeşil yanıyor —
+        // yeşilliği hiçbir şey ifade etmiyor. Aşağıdaki liste, o listeden bir
+        // satır düşerse kırmızı yanıyor.
+        var keys = changes.Select(static pair => pair.Key).ToHashSet(StringComparer.Ordinal);
+
+        foreach (var expected in new[]
+        {
+            "GET /v1/changes",
+            "POST /v1/changes",
+            "POST /v1/changes/webhooks/{endpointId}",
+            "GET /v1/changes/connectors",
+            "POST /v1/changes/connectors",
+            "GET /v1/changes/connectors/{id}",
+            "PUT /v1/changes/connectors/{id}",
+            "DELETE /v1/changes/connectors/{id}",
+            "POST /v1/changes/connectors/{id}/test",
+            "GET /v1/changes/connectors/{id}/runs",
+        })
+        {
+            Assert.True(
+                keys.Contains(expected),
+                $"{expected} bekçiye hiç görünmüyor — Endpoints() içindeki Map* listesinde eksik.");
+        }
     }
 
     /// <summary>

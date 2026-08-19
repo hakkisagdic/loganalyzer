@@ -19,6 +19,15 @@ public sealed record ChangeWriteRequest
     public string ExternalRef { get; init; } = string.Empty;
 }
 
+/// <param name="Changes">
+/// Kapsam içindeki değişiklik olayları. Tip <see cref="ChangeEvent"/>'in
+/// kendisi: uç için ayrı bir DTO yazmak, aynı şekli iki yerde tutup
+/// ayrışmalarını beklemek olurdu.
+/// </param>
+public sealed record ChangeSearchResponse(int Count, IReadOnlyList<ChangeEvent> Changes);
+
+public sealed record ChangeWriteResponse(Guid ChangeId);
+
 /// <summary>
 /// Değişiklik olayı uçları (T10).
 ///
@@ -38,13 +47,18 @@ public static class ChangesEndpoints
 
         var group = routes.MapGroup("/v1/changes").WithTags("changes");
 
+        // Yanıt tipleri T24'ün değişiklik akışı ekranıyla birlikte geldi:
+        // tüketicisi olmadan yazılan bir tip, hangi alanların sözleşmeye
+        // girdiğini tahmin etmek olurdu (ProducesContractTests).
         group.MapGet("/", SearchAsync)
             .RequireAuthorization(BizigoAuthPolicies.Read)
-            .WithName("SearchChanges");
+            .WithName("SearchChanges")
+            .Produces<ChangeSearchResponse>();
 
         group.MapPost("/", WriteAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("WriteChange");
+            .WithName("WriteChange")
+            .Produces<ChangeWriteResponse>(StatusCodes.Status201Created);
 
         return routes;
     }
@@ -86,7 +100,7 @@ public static class ChangesEndpoints
             scope,
             cancellationToken);
 
-        return Results.Ok(new { count = changes.Count, changes });
+        return Results.Ok(new ChangeSearchResponse(changes.Count, changes));
     }
 
     private static async Task<IResult> WriteAsync(
@@ -138,6 +152,7 @@ public static class ChangesEndpoints
             return Results.Forbid();
         }
 
-        return Results.Created($"/v1/changes/{change.ChangeId}", new { change_id = change.ChangeId });
+        return Results.Created(
+            $"/v1/changes/{change.ChangeId}", new ChangeWriteResponse(change.ChangeId));
     }
 }

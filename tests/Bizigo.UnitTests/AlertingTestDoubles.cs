@@ -124,6 +124,20 @@ internal sealed class FakeScopedQuery : IScopedQuery, IAlertQuerySource
     public Task<bool> CanReadRawObjectAsync(string objectKey, AccessScope scope, CancellationToken cancellationToken = default) =>
         Task.FromResult(false);
 
+    /// <summary>
+    /// Alarm motoru olay görünümlerini hiç okumuyor; boş liste, kapsam dışı
+    /// olayın gerçek cevabıyla aynı (bilgi gizleme). Buradaki iddia yalnızca
+    /// "alarm tarafı bu yüzeye dokunmuyor" — görünümlerin gerçekten
+    /// <c>0003_ocsf_otel_views.sql</c>'den geldiği <c>ScopeNegativeTests</c>'te,
+    /// canlı şemaya karşı sınanıyor.
+    /// </summary>
+    public Task<IReadOnlyList<EventFieldView>> GetEventViewAsync(
+        Guid eventId,
+        EventViewKind view,
+        AccessScope scope,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<EventFieldView>>([]);
+
     public Task WriteChangeAsync(ChangeEvent change, AccessScope scope, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
 
