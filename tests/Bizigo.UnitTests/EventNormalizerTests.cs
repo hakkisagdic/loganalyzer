@@ -5,6 +5,7 @@ using Bizigo.ControlPlane;
 using Bizigo.Normalization;
 using Bizigo.Parsing.Dispatch;
 using Bizigo.Parsing.Engine;
+using Bizigo.Parsing.Schema;
 
 namespace Bizigo.UnitTests;
 
@@ -220,6 +221,59 @@ public sealed class EventNormalizerTests
 
         // Etiketsiz olay boş bir anahtar taşımıyor: her satıra bedel bindirmez.
         Assert.False(_normalizer.Normalize(Event()).Attrs.ContainsKey("bizigo.tags"));
+    }
+
+    /// <summary>
+    /// Parser'ın <b>şikâyetleri</b> de olayla birlikte iniyor (T16).
+    ///
+    /// <para>
+    /// <c>parse_status=partial</c> tek başına "bir şey eksik" diyor ama hangi
+    /// adımın neden takıldığını söylemiyor; o bilgi <c>ParseContext</c> içinde
+    /// vardı ve ClickHouse'a hiç ulaşmıyordu. Sebebi olmayan bir <c>partial</c>,
+    /// olay detayında cevaplanamayan bir soru bırakıyor — F1'in "sessiz bozulma"
+    /// sınıfından.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Cozumleme_sorunlari_attrs_a_giriyor()
+    {
+        var withIssues = Event(status: ParseStatus.Partial) with { };
+        var parsed = withIssues.Parsed with
+        {
+            Issues = [new ParseIssue("date", "alan 'log_timestamp' yok")],
+        };
+
+        var result = _normalizer.Normalize(withIssues with { Parsed = parsed });
+
+        Assert.Equal("date: alan 'log_timestamp' yok", result.Attrs["bizigo.parse_issues"]);
+
+        // Sorunsuz olay boş bir anahtar taşımıyor — bu satırların çoğunluğu.
+        Assert.False(_normalizer.Normalize(Event()).Attrs.ContainsKey("bizigo.parse_issues"));
+    }
+
+    /// <summary>
+    /// Birden fazla sorun tek anahtarda birleşiyor: <c>mapKeys</c> bloom filtresi
+    /// anahtar kümesi üzerinde ve adım başına anahtar açmak o indeksi seyreltirdi
+    /// (etiketlerdeki gerekçenin aynısı).
+    /// </summary>
+    [Fact]
+    public void Birden_fazla_sorun_tek_anahtarda_birlesiyor()
+    {
+        var source = Event(status: ParseStatus.Partial);
+        var parsed = source.Parsed with
+        {
+            Issues =
+            [
+                new ParseIssue("grok", "desen uymadı"),
+                new ParseIssue("date", "biçim çözülemedi"),
+            ],
+        };
+
+        var result = _normalizer.Normalize(source with { Parsed = parsed });
+
+        Assert.Equal(
+            "grok: desen uymadı | date: biçim çözülemedi",
+            result.Attrs["bizigo.parse_issues"]);
     }
 
     [Fact]

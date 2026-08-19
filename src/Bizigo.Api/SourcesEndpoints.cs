@@ -39,7 +39,10 @@ public static class SourcesEndpoints
 
         group.MapGet("/", ListAsync)
             .RequireAuthorization(BizigoAuthPolicies.Read)
-            .WithName("ListSources");
+            .WithName("ListSources")
+            // Tüketicisi T15'in kaynak filtresi. Yazma uçları hâlâ tipsiz;
+            // onların tüketicisi T17 (bkz. ProducesContractTests).
+            .Produces<SourceListResponse>();
 
         group.MapPost("/", UpsertAsync)
             .RequireAuthorization(BizigoAuthPolicies.Admin)
@@ -72,7 +75,9 @@ public static class SourcesEndpoints
         // uygulamak zorlamayı ikinci bir yere koymak olurdu (K17).
         var visible = await query.SearchSourcesAsync(scope, cancellationToken);
 
-        return Results.Ok(new { count = visible.Count, sources = visible });
+        return Results.Ok(new SourceListResponse(
+            visible.Count,
+            [.. visible.Select(SourceResponse.From)]));
     }
 
     private static async Task<IResult> UpsertAsync(

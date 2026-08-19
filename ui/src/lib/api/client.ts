@@ -1,5 +1,14 @@
-import { toApiError, TransportError } from "./errors";
-import type { paths } from "./schema";
+import { toApiError } from "./errors";
+import {
+  asTransportError,
+  buildRelativeUrl,
+  readBody,
+  type HttpMethod,
+  type JsonResponse,
+  type Operation,
+  type PathsWith,
+  type RequestOptions,
+} from "./paths";
 
 /**
  * `Bizigo.Api` istemcisi — **ince** ve **üretilen tiplerden** beslenen.
@@ -14,143 +23,22 @@ import type { paths } from "./schema";
  * <p>
  * Tarayıcı <c>Bizigo.Api</c>'ye doğrudan konuşmuyor. Bütün istekler
  * <c>/api/bff/…</c> vekilinden geçiyor; oradaki oturum çerezi sunucuda
- * <c>Authorization: Bearer</c>'a çevriliyor.
+ * <c>Authorization: Bearer</c>'a çevriliyor. Sunucu bileşenlerinin karşılığı
+ * <c>server.ts</c> — o vekile hiç uğramıyor.
  * </p>
  */
 
-/**
- * `/v1/logs` istemciden **dışarıda**.
- *
- * <p>Şemada var ama UI'ın işi değil — collector'ın ingest ucu. Tip düzeyinde
- * dışlamak, bir ekranın yanlışlıkla oraya yazmasını derleme zamanında
- * engelliyor.</p>
- */
-export type ExcludedPath = "/v1/logs";
-
-type HttpMethod = "get" | "post" | "put" | "delete" | "patch";
-
-type AvailablePaths = Exclude<keyof paths, ExcludedPath>;
-
-/** Verilen yöntemi destekleyen yollar. */
-export type PathsWith<TMethod extends HttpMethod> = {
-  [P in AvailablePaths]: paths[P] extends { [K in TMethod]: infer TOperation }
-    ? TOperation extends undefined
-      ? never
-      : P
-    : never;
-}[AvailablePaths];
-
-type Operation<P extends AvailablePaths, TMethod extends HttpMethod> = paths[P] extends {
-  [K in TMethod]: infer TOperation;
-}
-  ? TOperation
-  : never;
-
-type JsonBody<TOperation> = TOperation extends {
-  requestBody?: { content: { "application/json": infer TBody } };
-}
-  ? TBody
-  : never;
-
-/**
- * 200 yanıtının gövde tipi.
- *
- * <p>Ucun uç tanımında <c>Produces&lt;T&gt;</c> yoksa şemada gövde tipi de yok
- * ve burası <c>unknown</c> kalıyor. Bu bilinçli: uydurulmuş bir tip, olmayan
- * bir güvence verirdi. Bir ekran belirli bir ucun gövdesine ihtiyaç duyduğunda
- * çözüm API tarafına <c>Produces&lt;T&gt;</c> eklemek — burada elle tip yazmak
- * değil.</p>
- */
-type JsonResponse<TOperation> = TOperation extends {
-  responses: { 200: { content: { "application/json": infer TResult } } };
-}
-  ? TResult
-  : unknown;
-
-type PathParams<TOperation> = TOperation extends { parameters: { path: infer TPath } }
-  ? TPath extends Record<string, unknown>
-    ? TPath
-    : never
-  : never;
-
-type QueryParams<TOperation> = TOperation extends { parameters: { query?: infer TQuery } }
-  ? TQuery extends Record<string, unknown>
-    ? TQuery
-    : never
-  : never;
-
-export interface RequestOptions<TOperation> {
-  readonly path?: PathParams<TOperation>;
-  readonly query?: QueryParams<TOperation>;
-  readonly body?: JsonBody<TOperation>;
-  readonly signal?: AbortSignal;
-}
+export type { ExcludedPath, PathsWith, RequestOptions } from "./paths";
 
 /** Vekilin kökü. Mutlak API adresi burada bilinçli olarak YOK. */
 const PROXY_PREFIX = "/api/bff";
-
-function buildUrl(
-  template: string,
-  pathParams: Record<string, unknown> | undefined,
-  query: Record<string, unknown> | undefined,
-): string {
-  const filled = template.replace(/\{([^}]+)\}/g, (_, name: string) => {
-    const value = pathParams?.[name];
-
-    if (value === undefined || value === null) {
-      throw new TypeError(`Yol parametresi eksik: ${name}`);
-    }
-
-    return encodeURIComponent(String(value));
-  });
-
-  const search = new URLSearchParams();
-
-  for (const [key, value] of Object.entries(query ?? {})) {
-    if (value === undefined || value === null) {
-      continue;
-    }
-
-    if (Array.isArray(value)) {
-      // ASP.NET aynı adı tekrarlayan parametreleri diziye topluyor.
-      for (const item of value) {
-        search.append(key, String(item));
-      }
-      continue;
-    }
-
-    search.set(key, String(value));
-  }
-
-  const suffix = search.size > 0 ? `?${search.toString()}` : "";
-  return `${PROXY_PREFIX}${filled}${suffix}`;
-}
-
-async function readBody(response: Response): Promise<unknown> {
-  if (response.status === 204 || response.headers.get("content-length") === "0") {
-    return undefined;
-  }
-
-  const text = await response.text();
-
-  if (text.length === 0) {
-    return undefined;
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch {
-    // JSON bekleyip HTML alıyorsak arada bir vekil ya da hata sayfası var.
-    return { error: "Sunucudan beklenmeyen bir yanıt geldi.", hint: text.slice(0, 200) };
-  }
-}
 
 export async function request<TMethod extends HttpMethod, P extends PathsWith<TMethod>>(
   method: TMethod,
   path: P,
   options: RequestOptions<Operation<P, TMethod>> = {},
 ): Promise<JsonResponse<Operation<P, TMethod>>> {
-  const url = buildUrl(
+  const url = PROXY_PREFIX + buildRelativeUrl(
     path as string,
     options.path as Record<string, unknown> | undefined,
     options.query as Record<string, unknown> | undefined,
@@ -173,7 +61,7 @@ export async function request<TMethod extends HttpMethod, P extends PathsWith<TM
       cache: "no-store",
     });
   } catch (cause) {
-    throw new TransportError("Sunucuya ulaşılamadı.", { cause });
+    throw asTransportError(cause);
   }
 
   const body = await readBody(response);
@@ -200,3 +88,21 @@ export const api = {
 
 /** `/auth/me` gövdesi — BFF'in ve ekranların kimlik/kapsam kaynağı. */
 export type AuthMe = JsonResponse<Operation<"/auth/me", "get">>;
+
+/** `POST /v1/events/search` gövdeleri — arama ekranının sözleşmesi (T15). */
+export type EventSearchBody = NonNullable<
+  RequestOptions<Operation<"/v1/events/search", "post">>["body"]
+>;
+export type EventSearchResult = JsonResponse<Operation<"/v1/events/search", "post">>;
+export type EventSummary = EventSearchResult["events"][number];
+
+/** `GET /v1/events/{id}` — olay detayı (T16). */
+export type EventDetail = JsonResponse<Operation<"/v1/events/{id}", "get">>;
+export type EventFieldView = EventDetail["ocsf"][number];
+
+/** `GET /v1/events/{id}/raw` — ham baytlar (T16). */
+export type EventRaw = JsonResponse<Operation<"/v1/events/{id}/raw", "get">>;
+
+/** `GET /v1/sources` — arama ekranının kaynak filtresi (T15). */
+export type SourceList = JsonResponse<Operation<"/v1/sources", "get">>;
+export type SourceItem = SourceList["sources"][number];

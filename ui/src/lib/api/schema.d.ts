@@ -435,23 +435,103 @@ export interface components {
             source?: string;
             externalRef?: string;
         };
+        EventCursorResponse: {
+            /** Format: date-time */
+            after_timestamp: string;
+            /** Format: uuid */
+            after_event_id: string;
+        };
+        EventDetailResponse: {
+            event: components["schemas"]["EventResponse"];
+            ocsf: components["schemas"]["EventFieldResponse"][];
+            otel: components["schemas"]["EventFieldResponse"][];
+        };
+        EventFieldResponse: {
+            name: string;
+            value: string;
+        };
+        EventRawResponse: {
+            /** Format: uuid */
+            event_id: string;
+            object_key: string;
+            /** Format: int32 */
+            objects_scanned: number | string;
+            /** Format: date-time */
+            received_at: string;
+            source_key: string;
+            transport: components["schemas"]["EventRawTransport"];
+            encoding_declared: string;
+            encoding_detected: string;
+            raw_b64: string;
+        };
+        EventRawTransport: {
+            proto: string;
+            peer: string;
+        };
+        EventResponse: {
+            /** Format: uuid */
+            event_id: string;
+            /** Format: date-time */
+            ts: string;
+            time_source: string;
+            /** Format: date-time */
+            ingested_at: string;
+            owner_group: string;
+            source_id: string;
+            host: string;
+            vendor: string;
+            product: string;
+            parser_id: string;
+            parser_version: string;
+            parse_status: string;
+            /** Format: uint32 */
+            parse_generation: number | string;
+            encoding_detected: string;
+            template_id: string;
+            /** Format: uint8 */
+            severity_num: number | string;
+            /** Format: uint32 */
+            ocsf_class_uid: number | string;
+            /** Format: uint16 */
+            ocsf_activity_id: number | string;
+            src_ip: string;
+            dst_ip: string;
+            /** Format: uint16 */
+            src_port: number | string;
+            /** Format: uint16 */
+            dst_port: number | string;
+            proto: string;
+            action: string;
+            outcome: string;
+            user_name: string;
+            attrs: {
+                [key: string]: string;
+            };
+            body: string;
+            raw_ref: string;
+        };
         EventSearchRequest: {
             /** Format: date-time */
             from?: null | string;
             /** Format: date-time */
             to?: null | string;
-            fullText?: null | string;
+            full_text?: null | string;
             filters?: components["schemas"]["FieldFilterRequest"][];
-            ownerGroups?: string[];
-            sourceIds?: string[];
-            parseStatuses?: string[];
+            owner_groups?: string[];
+            source_ids?: string[];
+            parse_statuses?: string[];
             /** Format: date-time */
-            afterTimestamp?: null | string;
+            after_timestamp?: null | string;
             /** Format: uuid */
-            afterEventId?: null | string;
+            after_event_id?: null | string;
             /** Format: int32 */
             limit?: number | string;
             ascending?: boolean;
+        };
+        EventSearchResponse: {
+            events: components["schemas"]["EventResponse"][];
+            next: null | components["schemas"]["EventCursorResponse"];
+            has_more: boolean;
         };
         FieldFilterRequest: {
             field: string;
@@ -477,6 +557,24 @@ export interface components {
             sourceIds?: string[];
             dryRun?: boolean;
             continueOnMissingObjects?: boolean;
+        };
+        SourceListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            sources: components["schemas"]["SourceResponse"][];
+        };
+        SourceResponse: {
+            source_id: string;
+            owner_group: string;
+            peer_address: null | string;
+            hostname: null | string;
+            vendor: string;
+            product: string;
+            parser_id: null | string;
+            encoding: string;
+            source_class: string;
+            enabled: boolean;
+            is_known_to_dispatcher: boolean;
         };
         SourceUpsertRequest: {
             sourceId: string;
@@ -627,7 +725,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["EventSearchResponse"];
+                };
             };
         };
     };
@@ -644,6 +744,15 @@ export interface operations {
         responses: {
             /** @description OK */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventDetailResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -667,6 +776,15 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "application/json": components["schemas"]["EventRawResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
             };
         };
@@ -685,7 +803,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["SourceListResponse"];
+                };
             };
         };
     };
