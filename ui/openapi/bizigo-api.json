@@ -194,7 +194,14 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSearchResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -218,7 +225,17 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -242,7 +259,17 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventRawResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -255,7 +282,14 @@
         "operationId": "ListSources",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceListResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -1914,6 +1948,287 @@
           }
         }
       },
+      "EventCursorResponse": {
+        "required": [
+          "after_timestamp",
+          "after_event_id"
+        ],
+        "type": "object",
+        "properties": {
+          "after_timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "after_event_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "EventDetailResponse": {
+        "required": [
+          "event",
+          "ocsf",
+          "otel"
+        ],
+        "type": "object",
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/EventResponse"
+          },
+          "ocsf": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventFieldResponse"
+            }
+          },
+          "otel": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventFieldResponse"
+            }
+          }
+        }
+      },
+      "EventFieldResponse": {
+        "required": [
+          "name",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "EventRawResponse": {
+        "required": [
+          "event_id",
+          "object_key",
+          "objects_scanned",
+          "received_at",
+          "source_key",
+          "transport",
+          "encoding_declared",
+          "encoding_detected",
+          "raw_b64"
+        ],
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "object_key": {
+            "type": "string"
+          },
+          "objects_scanned": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "received_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "source_key": {
+            "type": "string"
+          },
+          "transport": {
+            "$ref": "#/components/schemas/EventRawTransport"
+          },
+          "encoding_declared": {
+            "type": "string"
+          },
+          "encoding_detected": {
+            "type": "string"
+          },
+          "raw_b64": {
+            "type": "string"
+          }
+        }
+      },
+      "EventRawTransport": {
+        "required": [
+          "proto",
+          "peer"
+        ],
+        "type": "object",
+        "properties": {
+          "proto": {
+            "type": "string"
+          },
+          "peer": {
+            "type": "string"
+          }
+        }
+      },
+      "EventResponse": {
+        "required": [
+          "event_id",
+          "ts",
+          "time_source",
+          "ingested_at",
+          "owner_group",
+          "source_id",
+          "host",
+          "vendor",
+          "product",
+          "parser_id",
+          "parser_version",
+          "parse_status",
+          "parse_generation",
+          "encoding_detected",
+          "template_id",
+          "severity_num",
+          "ocsf_class_uid",
+          "ocsf_activity_id",
+          "src_ip",
+          "dst_ip",
+          "src_port",
+          "dst_port",
+          "proto",
+          "action",
+          "outcome",
+          "user_name",
+          "attrs",
+          "body",
+          "raw_ref"
+        ],
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ts": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "time_source": {
+            "type": "string"
+          },
+          "ingested_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "owner_group": {
+            "type": "string"
+          },
+          "source_id": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "vendor": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "parser_id": {
+            "type": "string"
+          },
+          "parser_version": {
+            "type": "string"
+          },
+          "parse_status": {
+            "type": "string"
+          },
+          "parse_generation": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "uint32"
+          },
+          "encoding_detected": {
+            "type": "string"
+          },
+          "template_id": {
+            "type": "string"
+          },
+          "severity_num": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "uint8"
+          },
+          "ocsf_class_uid": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "uint32"
+          },
+          "ocsf_activity_id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "uint16"
+          },
+          "src_ip": {
+            "type": "string"
+          },
+          "dst_ip": {
+            "type": "string"
+          },
+          "src_port": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "uint16"
+          },
+          "dst_port": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "uint16"
+          },
+          "proto": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "user_name": {
+            "type": "string"
+          },
+          "attrs": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "body": {
+            "type": "string"
+          },
+          "raw_ref": {
+            "type": "string"
+          }
+        }
+      },
       "EventSearchRequest": {
         "type": "object",
         "properties": {
@@ -1931,7 +2246,7 @@
             ],
             "format": "date-time"
           },
-          "fullText": {
+          "full_text": {
             "type": [
               "null",
               "string"
@@ -1943,32 +2258,32 @@
               "$ref": "#/components/schemas/FieldFilterRequest"
             }
           },
-          "ownerGroups": {
+          "owner_groups": {
             "type": "array",
             "items": {
               "type": "string"
             }
           },
-          "sourceIds": {
+          "source_ids": {
             "type": "array",
             "items": {
               "type": "string"
             }
           },
-          "parseStatuses": {
+          "parse_statuses": {
             "type": "array",
             "items": {
               "type": "string"
             }
           },
-          "afterTimestamp": {
+          "after_timestamp": {
             "type": [
               "null",
               "string"
             ],
             "format": "date-time"
           },
-          "afterEventId": {
+          "after_event_id": {
             "type": [
               "null",
               "string"
@@ -1984,6 +2299,35 @@
             "format": "int32"
           },
           "ascending": {
+            "type": "boolean"
+          }
+        }
+      },
+      "EventSearchResponse": {
+        "required": [
+          "events",
+          "next",
+          "has_more"
+        ],
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EventResponse"
+            }
+          },
+          "next": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EventCursorResponse"
+              }
+            ]
+          },
+          "has_more": {
             "type": "boolean"
           }
         }
@@ -2378,6 +2722,89 @@
             "type": "boolean"
           },
           "continueOnMissingObjects": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SourceListResponse": {
+        "required": [
+          "count",
+          "sources"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceResponse"
+            }
+          }
+        }
+      },
+      "SourceResponse": {
+        "required": [
+          "source_id",
+          "owner_group",
+          "peer_address",
+          "hostname",
+          "vendor",
+          "product",
+          "parser_id",
+          "encoding",
+          "source_class",
+          "enabled",
+          "is_known_to_dispatcher"
+        ],
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "owner_group": {
+            "type": "string"
+          },
+          "peer_address": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "hostname": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "vendor": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "parser_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "encoding": {
+            "type": "string"
+          },
+          "source_class": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "is_known_to_dispatcher": {
             "type": "boolean"
           }
         }
