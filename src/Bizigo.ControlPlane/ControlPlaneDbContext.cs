@@ -19,6 +19,14 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
     public DbSet<RawManifestEntity> RawManifest => Set<RawManifestEntity>();
     public DbSet<AuditLogEntity> AuditLog => Set<AuditLogEntity>();
 
+    // Alarm motoru ve bildirim kanalları (T21, T22).
+    public DbSet<AlertRuleEntity> AlertRules => Set<AlertRuleEntity>();
+    public DbSet<AlertTriggerEntity> AlertTriggers => Set<AlertTriggerEntity>();
+    public DbSet<MaintenanceWindowEntity> MaintenanceWindows => Set<MaintenanceWindowEntity>();
+    public DbSet<NotificationChannelEntity> NotificationChannels => Set<NotificationChannelEntity>();
+    public DbSet<AlertRuleChannelEntity> AlertRuleChannels => Set<AlertRuleChannelEntity>();
+    public DbSet<NotificationDeliveryEntity> NotificationDeliveries => Set<NotificationDeliveryEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -54,6 +62,45 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
         {
             e.HasIndex(x => x.At);
             e.HasIndex(x => new { x.Subject, x.At });
+        });
+
+        modelBuilder.Entity<AlertRuleEntity>(e =>
+        {
+            // Zamanlayıcının tek sorgusu: "vadesi gelmiş etkin kurallar".
+            // Kural sayısı arttığında bu sorgunun maliyeti sabit kalmalı (K16).
+            e.HasIndex(x => new { x.Enabled, x.NextRunAt });
+        });
+
+        modelBuilder.Entity<AlertTriggerEntity>(e =>
+        {
+            e.HasIndex(x => new { x.RuleId, x.FiredAt });
+            e.HasIndex(x => x.FiredAt);
+        });
+
+        modelBuilder.Entity<MaintenanceWindowEntity>(e =>
+        {
+            // "Şu anda açık pencere var mı" sorgusu.
+            e.HasIndex(x => new { x.OwnerGroup, x.StartsAt, x.EndsAt });
+            e.HasIndex(x => x.RuleId);
+        });
+
+        modelBuilder.Entity<NotificationChannelEntity>(e =>
+        {
+            e.HasIndex(x => x.OwnerGroup);
+            e.HasIndex(x => new { x.Name, x.OwnerGroup }).IsUnique();
+        });
+
+        modelBuilder.Entity<AlertRuleChannelEntity>(e =>
+        {
+            e.HasKey(x => new { x.RuleId, x.ChannelId });
+            e.HasIndex(x => x.ChannelId);
+        });
+
+        modelBuilder.Entity<NotificationDeliveryEntity>(e =>
+        {
+            // Gönderici turunun tek sorgusu: "vadesi gelmiş bekleyen teslimler".
+            e.HasIndex(x => new { x.State, x.NextAttemptAt });
+            e.HasIndex(x => x.TriggerId);
         });
     }
 }

@@ -196,6 +196,7 @@ src/
   Bizigo.Storage.Raw/          object storage (S3 API), manifest, replay okuyucu
   Bizigo.ControlPlane/         EF Core, envanter, katalog, audit
   Bizigo.Query/                IScopedQuery — kapsam zorlamasının tek kapısı
+  Bizigo.Alerting/             eşik · oran · sessizlik + Slack/Teams/e-posta/webhook
   Bizigo.Api/                  ASP.NET Core, JWT bearer, uçlar — cookie/OIDC YOK (K31)
   Bizigo.Cli/
 ui/                            Next.js: arayüz + BFF (OIDC, oturum, API vekili)

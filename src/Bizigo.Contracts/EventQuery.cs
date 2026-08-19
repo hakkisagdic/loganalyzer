@@ -51,6 +51,37 @@ public sealed record EventQuery
 
 public sealed record EventPage(IReadOnlyList<LogEvent> Events, EventCursor? Next, bool HasMore);
 
+/// <summary>
+/// Kaynak etkinliği sorgusunun penceresi (T21).
+///
+/// <para>
+/// Ayrı bir tip, <see cref="EventQuery"/>'nin kısıtlanmış hâli değil: burada
+/// tam metin, filtre ve sayfalama <b>yok</b>. Bu sorgunun tek işi kaynak başına
+/// tek satır üretmek ve maliyeti kural sayısından bağımsız tutmak; alan filtresi
+/// eklenebilseydi K16'nın uyardığı "tek kötü kural" buradan da girerdi.
+/// </para>
+/// </summary>
+public sealed record SourceActivityWindow
+{
+    public required DateTimeOffset From { get; init; }
+    public required DateTimeOffset To { get; init; }
+
+    /// <summary>Boşsa kapsamdaki tüm kaynaklar.</summary>
+    public IReadOnlyList<string> SourceIds { get; init; } = [];
+
+    /// <summary>Kapsam <b>daraltması</b>; kapsamı genişletemez.</summary>
+    public IReadOnlyList<string> OwnerGroups { get; init; } = [];
+}
+
+/// <param name="LastEventAt">Olayın kendi zamanı — cihazın saati olabilir.</param>
+/// <param name="LastIngestedAt">Bizim aldığımız an. "Susuyor mu" sorusunun cevabı bu.</param>
+public sealed record SourceActivityRow(
+    string OwnerGroup,
+    string SourceId,
+    DateTimeOffset LastEventAt,
+    DateTimeOffset LastIngestedAt,
+    long EventCount);
+
 public sealed record ChangeQuery
 {
     public required DateTimeOffset From { get; init; }

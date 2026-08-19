@@ -52,6 +52,15 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
   </ItemGroup>
 
+  <ItemGroup Label="Alarm ve bildirim">
+    <!--
+      Kanal göndericileri IHttpClientFactory üzerinden gidiyor: her gönderimde
+      yeni HttpClient kurmak soket tükenmesi demek ve alarm yolu tam da en kötü
+      anda, olay sağanağında yoğunlaşıyor.
+    -->
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.11" />
+  </ItemGroup>
+
   <ItemGroup Label="Parser motoru">
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
     <PackageVersion Include="System.CommandLine" Version="2.0.11" />
@@ -67,6 +76,19 @@
     <PackageVersion Include="Testcontainers.ClickHouse" Version="4.14.0" />
     <PackageVersion Include="NetArchTest.Rules" Version="1.3.2" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.9.0" />
+    <!--
+      Alarm zamanlayıcısının turu kontrol düzlemine yazıyor ve kabul kriterleri
+      (bakım penceresinde tetiklenme yok, pencere bitince var) ancak gerçek bir
+      DbContext üzerinde sınanabiliyor. Konteyner gerekmiyor.
+
+      Önce SQLite denendi ve ÖLÇÜLEREK elendi: EF'in SQLite sağlayıcısı
+      `DateTimeOffset` karşılaştırmasını SQL'e çeviremiyor ("The LINQ expression
+      ... could not be translated") ve zamanlayıcının tek sorgusu tam olarak o —
+      "vadesi gelmiş kurallar". Testi geçirmek için varlıkların zaman tipini
+      değiştirmek, üretimi test sağlayıcısına uydurmak olurdu. InMemory sorguyu
+      .NET semantiğiyle koşuyor; SQL doğruluğu zaten entegrasyon testinin işi.
+    -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.11" />
   </ItemGroup>
 
 </Project>

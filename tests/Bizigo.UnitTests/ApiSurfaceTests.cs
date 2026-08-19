@@ -69,6 +69,36 @@ public sealed class ApiSurfaceTests
         Assert.Equal(expected.Order(), Enum.GetValues<FilterOperator>().Order());
     }
 
+    /// <summary>
+    /// Alarm motoru da kapsam kapısından geçmek zorunda (T21).
+    ///
+    /// <para>
+    /// Bu bekçi diğerlerinden daha çok gerekiyor: alarm değerlendirmesi arka
+    /// planda, kimliksiz ve kimsenin bakmadığı saatlerde koşuyor. Somut bir
+    /// okuyucuya erişen bir kural, kapsam ayrımını delerdi ve <b>hiçbir belirti
+    /// üretmezdi</b> — tek sonuç, bir ekibin başka ekibin sayısını görmesi olurdu.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Alarm_motoru_somut_okuyuculara_erisemez()
+    {
+        var alerting = typeof(global::Bizigo.Alerting.AlertEvaluator).Assembly;
+
+        var offenders = Types.InAssembly(alerting)
+            .That()
+            .HaveDependencyOnAny(
+                typeof(EventReader).FullName!,
+                typeof(EventWriter).FullName!,
+                typeof(ChangeEventReader).FullName!)
+            .GetTypes()
+            .Select(t => t.FullName)
+            .ToArray();
+
+        Assert.True(
+            offenders.Length == 0,
+            "Alarm motoru somut okuyuculara erişiyor: " + string.Join(", ", offenders));
+    }
+
     [Fact]
     public void IScopedQuery_her_metodunda_kapsam_istiyor()
     {

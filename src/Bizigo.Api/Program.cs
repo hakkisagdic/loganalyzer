@@ -1,4 +1,5 @@
 using Bizigo.Api;
+using Bizigo.Alerting;
 using Bizigo.Authoring;
 using Bizigo.ControlPlane;
 using Bizigo.Ingest;
@@ -47,6 +48,9 @@ builder.Services.AddBizigoReplay();
 
 // Parser yazarlığı: taslak deposu ve yayın kapıları (T18).
 builder.Services.AddBizigoAuthoring();
+
+// Alarm motoru ve bildirim kanalları (T21, T22).
+builder.Services.AddBizigoAlerting(builder.Configuration);
 
 // Kimlik ve yetkilendirme (T09).
 builder.Services.AddBizigoAuthentication(builder.Configuration);
@@ -124,6 +128,8 @@ app.MapPipelineHealth();
 app.MapReplay();
 app.MapParsers();
 app.MapParserAuthoring();
+app.MapAlerts();
+app.MapNotificationChannels();
 
 // Ingest sayaçları: "boru hattı akıyor mu" sorusunun tek bakışta cevabı.
 // `declared_encoding_mismatches` sıfırdan büyükse envanterdeki `encoding` yanlış.
