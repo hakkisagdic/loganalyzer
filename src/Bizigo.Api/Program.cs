@@ -1,4 +1,5 @@
 using Bizigo.Api;
+using Bizigo.Api.Webhooks;
 using Bizigo.Authoring;
 using Bizigo.ControlPlane;
 using Bizigo.Ingest;
@@ -47,6 +48,9 @@ builder.Services.AddBizigoReplay();
 
 // Parser yazarlığı: taslak deposu ve yayın kapıları (T18).
 builder.Services.AddBizigoAuthoring();
+
+// Değişiklik webhook'ları: uç kaydı ve imza yapılandırması (T24, K34).
+builder.Services.AddChangeWebhooks(builder.Configuration);
 
 // Kimlik ve yetkilendirme (T09).
 builder.Services.AddBizigoAuthentication(builder.Configuration);
@@ -120,6 +124,7 @@ app.MapOtlpLogs();
 app.MapEvents();
 app.MapSources();
 app.MapChanges();
+app.MapChangeWebhooks();
 app.MapPipelineHealth();
 app.MapReplay();
 app.MapParsers();

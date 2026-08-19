@@ -31,6 +31,19 @@ public static class RepositoryLayout
     public static string ComposeFile => Path.Combine(Root, "deploy", "docker-compose.yml");
 
     /// <summary>
+    /// Sağlayıcıların gerçek webhook gövdeleri (T24).
+    ///
+    /// <para>
+    /// Dosya olarak duruyorlar, kod içinde string sabit olarak değil: gövdeler
+    /// uzun ve iç içe, ve eşlemenin değeri tam olarak <b>gerçek</b> şekle
+    /// dayanmasında. Kaynakta kısaltılmış bir örnek, eşlemeyi kendi
+    /// varsayımımıza göre sınamak olurdu.
+    /// </para>
+    /// </summary>
+    public static string WebhookFixtureDirectory =>
+        Path.Combine(Root, "tests", "Bizigo.UnitTests", "Fixtures", "webhooks");
+
+    /// <summary>
     /// <b>Üretimin</b> pattern kütüphanesi: <c>legacy</c> üstüne <c>bizigo-v1</c>
     /// kaplaması — <c>ParserToolbox.Create</c> ile aynı kurulum.
     ///
