@@ -268,6 +268,28 @@ public static class EventsEndpoints
     /// Operatör adları <b>beyaz listeden</b> çözülüyor. <c>Enum.TryParse</c> ile
     /// açmak, ileride eklenen bir operatörü istemeden API yüzeyine taşırdı.
     /// </summary>
+    /// <summary>
+    /// Tek bir filtre isteğini alan modeline çevirir; bilinmeyen operatörde
+    /// istisna fırlatır.
+    ///
+    /// <para>
+    /// <c>internal</c>: alarm kuralları da aynı filtre sözdizimini kabul ediyor
+    /// (T21) ve operatör beyaz listesinin ikinci bir kopyası, bir gün birinde
+    /// olup diğerinde olmayan bir operatöre dönüşürdü.
+    /// </para>
+    /// </summary>
+    internal static FieldFilter ToFilter(FieldFilterRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!TryParseOperator(request.Op, out var op))
+        {
+            throw new ArgumentException($"Bilinmeyen operatör: '{request.Op}'.", nameof(request));
+        }
+
+        return new FieldFilter(request.Field, op, request.Values);
+    }
+
     private static bool TryParseOperator(string op, out FilterOperator parsed)
     {
         (var found, parsed) = op switch

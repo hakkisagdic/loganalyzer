@@ -37,7 +37,7 @@ public sealed class ScopedQuery(
             .Select(s => new SourceSummary(
                 s.SourceId, s.OwnerGroup, s.PeerAddress, s.Hostname,
                 s.Vendor, s.Product, s.ParserId, s.Encoding, s.SourceClass,
-                s.Enabled, !string.IsNullOrWhiteSpace(s.ParserId)))
+                s.Enabled, !string.IsNullOrWhiteSpace(s.ParserId), s.CreatedAt))
             .ToArray();
 
         await _audit.RecordAsync(new AuditRecord(
@@ -155,6 +155,27 @@ public sealed class ScopedQuery(
             result.Count, (int)watch.ElapsedMilliseconds, true), cancellationToken);
 
         return result;
+    }
+
+    public async Task<IReadOnlyList<SourceActivityRow>> GetSourceActivityAsync(
+        SourceActivityWindow window,
+        AccessScope scope,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        ArgumentNullException.ThrowIfNull(scope);
+
+        var predicate = ScopePredicate.From(scope, window.OwnerGroups);
+        var watch = Stopwatch.StartNew();
+
+        var rows = await _events.GetSourceActivityAsync(window, predicate, cancellationToken);
+
+        await _audit.RecordAsync(new AuditRecord(
+            scope.Subject, "sources.activity", "events",
+            Describe(scope, predicate), $"{window.From:O}..{window.To:O}",
+            rows.Count, (int)watch.ElapsedMilliseconds, true), cancellationToken);
+
+        return rows;
     }
 
     public Task<bool> CanReadRawObjectAsync(string objectKey, AccessScope scope, CancellationToken cancellationToken = default)

@@ -229,6 +229,84 @@ public sealed class EventReader(ClickHouseContext context)
         return Convert.ToInt64(scalar, CultureInfo.InvariantCulture);
     }
 
+    /// <summary>
+    /// Kaynak başına <b>son görülme</b> ve olay sayısı — <b>tek</b> sorguda, kaynak
+    /// sayısından bağımsız (T21).
+    ///
+    /// <para>
+    /// <b>Neden burada ve neden tek:</b> "bu kaynaktan en son ne zaman veri geldi"
+    /// sorusunun üç ayrı yerde cevaplanması gerekiyordu — sessizlik alarmı,
+    /// envanter listesi ve boru hattı sağlığı. Üç kopya, üç farklı zaman kolonu
+    /// seçimi ve üç farklı kapsam davranışı demekti. Tek yüzey var, üçü de bunu
+    /// çağırıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>İki zaman damgası birden dönüyor, çünkü ikisi farklı soru:</b>
+    /// <c>last_event_at</c> olayın kendi zamanı (cihazın saati olabilir),
+    /// <c>last_ingested_at</c> bizim onu aldığımız an. Sessizlik "cihazdan haber
+    /// aldık mı" sorusu olduğu için <b>ingested</b> olanı kullanmalı; cihaz saati
+    /// kayan bir kaynak aksi halde susmuş görünürdü.
+    /// </para>
+    ///
+    /// <para>
+    /// ⚠️ Tarama sınırı yine de <c>ts</c> üzerinde: sıralama anahtarı
+    /// <c>(owner_group, source_id, ts)</c> ve <c>ingested_at</c> üzerinden
+    /// filtrelemek tam tarama olurdu. Bunun bilinen bedeli, saati pencerenin
+    /// dışına düşecek kadar yanlış olan bir kaynağın <b>hiç</b> görünmemesi —
+    /// yani susmuş sayılması. Bu bir yanlış alarm değil, doğru bir bulgu:
+    /// o kaynağın verisi kimsenin bakacağı yerde durmuyor.
+    /// </para>
+    /// </summary>
+    public async Task<IReadOnlyList<SourceActivityRow>> GetSourceActivityAsync(
+        SourceActivityWindow window,
+        ScopePredicate scope,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+
+        if (scope.DeniesEverything)
+        {
+            return [];
+        }
+
+        var builder = new QueryBuilder(scope);
+        builder.AddTimeRange(window.From, window.To);
+        builder.AddScope();
+        builder.AddInList("source_id", window.SourceIds);
+        builder.AddOwnerGroupNarrowing(window.OwnerGroups);
+
+        await using var connection = _context.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText = $"""
+            SELECT owner_group, source_id,
+                   max(ts) AS last_event_at,
+                   max(ingested_at) AS last_ingested_at,
+                   count() AS event_count
+            FROM {_options.EventsTable}
+            WHERE {builder.Where}
+            GROUP BY owner_group, source_id
+            """;
+        command.CommandTimeout = _options.QueryTimeoutSeconds;
+        builder.Apply(command);
+
+        var rows = new List<SourceActivityRow>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            rows.Add(new SourceActivityRow(
+                (string)reader["owner_group"],
+                (string)reader["source_id"],
+                new DateTimeOffset(DateTime.SpecifyKind((DateTime)reader["last_event_at"], DateTimeKind.Utc)),
+                new DateTimeOffset(DateTime.SpecifyKind((DateTime)reader["last_ingested_at"], DateTimeKind.Utc)),
+                Convert.ToInt64(reader["event_count"], CultureInfo.InvariantCulture)));
+        }
+
+        return rows;
+    }
+
     internal static LogEvent Map(System.Data.Common.DbDataReader reader)
     {
         var keys = (string[])reader["attr_keys"];

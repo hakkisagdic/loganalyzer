@@ -3,6 +3,7 @@ using System;
 using Bizigo.ControlPlane;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Bizigo.ControlPlane.Migrations
 {
     [DbContext(typeof(ControlPlaneDbContext))]
-    partial class ControlPlaneDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260819080550_AddAlertingTables")]
+    partial class AddAlertingTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -275,48 +278,6 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasDatabaseName("ix_audit_log_subject_at");
 
                     b.ToTable("audit_log", "bizigo");
-                });
-
-            modelBuilder.Entity("Bizigo.ControlPlane.ChangeWebhookDeliveryEntity", b =>
-                {
-                    b.Property<string>("DeliveryKey")
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)")
-                        .HasColumnName("delivery_key");
-
-                    b.Property<Guid>("ChangeId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("change_id");
-
-                    b.Property<string>("EndpointId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("endpoint_id");
-
-                    b.Property<string>("OwnerGroup")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("owner_group");
-
-                    b.Property<string>("Provider")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)")
-                        .HasColumnName("provider");
-
-                    b.Property<DateTimeOffset>("ReceivedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("received_at");
-
-                    b.HasKey("DeliveryKey")
-                        .HasName("pk_change_webhook_deliveries");
-
-                    b.HasIndex("EndpointId", "ReceivedAt")
-                        .HasDatabaseName("ix_change_webhook_deliveries_endpoint_id_received_at");
-
-                    b.ToTable("change_webhook_deliveries", "bizigo");
                 });
 
             modelBuilder.Entity("Bizigo.ControlPlane.IdpGroupMappingEntity", b =>

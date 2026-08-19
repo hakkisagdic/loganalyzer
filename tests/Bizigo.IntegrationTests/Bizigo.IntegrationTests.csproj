@@ -8,6 +8,8 @@
     <PackageReference Include="Testcontainers" />
     <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="Testcontainers.ClickHouse" />
+    <!-- Alarm testleri sahte saat kullanıyor: zamanlayıcı davranışı duvar saatiyle ölçülmez. -->
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,6 +30,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bizigo.Authoring\Bizigo.Authoring.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Alerting\Bizigo.Alerting.csproj" />
   </ItemGroup>
 
 </Project>

@@ -59,9 +59,39 @@ public interface IScopedQuery
     /// </para>
     /// </summary>
     Task<IReadOnlyList<SourceSummary>> SearchSourcesAsync(AccessScope scope, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Kaynak başına <b>son görülme</b> ve olay sayısı — kaynak sayısından bağımsız,
+    /// tek sorgu (T21).
+    ///
+    /// <para>
+    /// <b>Bu metodun varlık sebebi tek bir cümle:</b> "bu kaynaktan en son ne zaman
+    /// veri geldi" sorusunun üç yerde ayrı ayrı cevaplanmasını engellemek.
+    /// Sessizlik alarmı, envanter listesindeki "son görülme" sütunu ve
+    /// <c>/v1/health/pipeline</c> — üçü de <b>buradan</b> okumalı. Üçüncü bir kopya
+    /// yazmak, üç farklı zaman kolonu seçimi ve üç farklı kapsam davranışı demek
+    /// olurdu; ilk ikisinin ayrışması ancak alarm yanlış tetiklendiğinde fark edilirdi.
+    /// </para>
+    ///
+    /// <para>
+    /// Dönen küme <b>yalnızca pencerede verisi olan</b> kaynakları içerir. Hiç
+    /// verisi olmayan kaynak burada görünmez — "yokluk" bilgisi envanterle
+    /// birleştirilerek elde edilir, çünkü olay tablosu var olmayan bir şeyi
+    /// listeleyemez.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyList<SourceActivityRow>> GetSourceActivityAsync(
+        SourceActivityWindow window,
+        AccessScope scope,
+        CancellationToken cancellationToken = default);
 }
 
 /// <param name="IsKnownToDispatcher"><c>parser_id</c> bağlı mı — dispatcher kademe 1.</param>
+/// <param name="CreatedAt">
+/// Envantere girdiği an. Sessizlik alarmının ihtiyacı: henüz hiç veri göndermemiş
+/// bir kaynağın "susuyor" sayılıp sayılmayacağı buna bakılarak kararlaştırılıyor —
+/// aksi halde her yeni kaynak eklendiği dakika alarm üretirdi.
+/// </param>
 public sealed record SourceSummary(
     string SourceId,
     string OwnerGroup,
@@ -73,4 +103,5 @@ public sealed record SourceSummary(
     string Encoding,
     string SourceClass,
     bool Enabled,
-    bool IsKnownToDispatcher);
+    bool IsKnownToDispatcher,
+    DateTimeOffset CreatedAt);

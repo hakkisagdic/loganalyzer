@@ -7,6 +7,7 @@
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="NetArchTest.Rules" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,6 +38,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bizigo.Authoring\Bizigo.Authoring.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Alerting\Bizigo.Alerting.csproj" />
   </ItemGroup>
 
 </Project>

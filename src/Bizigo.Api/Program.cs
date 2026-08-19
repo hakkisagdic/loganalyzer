@@ -1,3 +1,4 @@
+using Bizigo.Alerting;
 using Bizigo.Api;
 using Bizigo.Api.Webhooks;
 using Bizigo.Authoring;
@@ -51,6 +52,9 @@ builder.Services.AddBizigoAuthoring();
 
 // Değişiklik webhook'ları: uç kaydı ve imza yapılandırması (T24, K34).
 builder.Services.AddChangeWebhooks(builder.Configuration);
+
+// Alarm motoru ve bildirim kanalları (T21, T22).
+builder.Services.AddBizigoAlerting(builder.Configuration);
 
 // Kimlik ve yetkilendirme (T09).
 builder.Services.AddBizigoAuthentication(builder.Configuration);
@@ -129,6 +133,8 @@ app.MapPipelineHealth();
 app.MapReplay();
 app.MapParsers();
 app.MapParserAuthoring();
+app.MapAlerts();
+app.MapNotificationChannels();
 
 // Ingest sayaçları: "boru hattı akıyor mu" sorusunun tek bakışta cevabı.
 // `declared_encoding_mismatches` sıfırdan büyükse envanterdeki `encoding` yanlış.
