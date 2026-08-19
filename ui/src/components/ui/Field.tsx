@@ -70,6 +70,7 @@ export interface SelectFieldProps
   extends Omit<SelectHTMLAttributes<HTMLSelectElement>, "id" | "children"> {
   readonly label: string;
   readonly hint?: string;
+  readonly error?: string;
   readonly options: readonly SelectOption[];
   /** Boş seçenek etiketi. Verilmezse alan zorunlu demektir. */
   readonly emptyLabel?: string;
@@ -79,14 +80,18 @@ export interface SelectFieldProps
  * Etiketli açılır liste.
  *
  * <p>
- * <c>Field</c> ile aynı kimlik/ipucu bağlama kuralları: <c>useId</c> ve
- * <c>aria-describedby</c>. Ayrı bir bileşen olmasının sebebi yalnızca
- * <c>&lt;select&gt;</c>'in çocuk alması.
+ * Ortak kitte, ekranın içinde değil: alarm formu kural tipi, karşılaştırma ve
+ * kapsam için üç ayrı liste kullanıyor ve her birini ekranın kendi çizmesi,
+ * F2 sonunda toparlanamayan tutarsızlığın başladığı yer olurdu (T13 → T28).
+ * <c>Field</c> ile aynı erişilebilirlik kurallarını paylaşıyor — kimlik
+ * <c>useId</c>'den, ipucu ve hata <c>aria-describedby</c> ile bağlı. Ayrı bir
+ * bileşen olmasının sebebi yalnızca <c>&lt;select&gt;</c>'in çocuk alması.
  * </p>
  */
 export function SelectField({
   label,
   hint,
+  error,
   options,
   emptyLabel,
   className,
@@ -94,6 +99,9 @@ export function SelectField({
 }: SelectFieldProps) {
   const id = useId();
   const hintId = `${id}-hint`;
+  const errorId = `${id}-error`;
+
+  const describedBy = [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ");
 
   return (
     <div className={styles.field}>
@@ -103,8 +111,11 @@ export function SelectField({
       <select
         {...rest}
         id={id}
-        className={[styles.fieldControl, className].filter(Boolean).join(" ")}
-        aria-describedby={hint ? hintId : undefined}
+        className={[styles.fieldControl, error ? styles.fieldInvalid : null, className]
+          .filter(Boolean)
+          .join(" ")}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={describedBy || undefined}
       >
         {emptyLabel === undefined ? null : <option value="">{emptyLabel}</option>}
         {options.map((option) => (
@@ -116,6 +127,11 @@ export function SelectField({
       {hint ? (
         <p className={styles.fieldHint} id={hintId}>
           {hint}
+        </p>
+      ) : null}
+      {error ? (
+        <p className={styles.fieldError} id={errorId}>
+          {error}
         </p>
       ) : null}
     </div>
