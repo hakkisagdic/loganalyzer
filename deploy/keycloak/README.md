@@ -69,10 +69,15 @@ oluşturuyor; rolü realm dosyasında o ada bağlanıyor.
 >
 > Dönüş adresi `redirectUris` içinde **birebir** yazılı:
 > `http://localhost:3000/signin-oidc`. Next tarafındaki yol
-> (`ui/src/app/signin-oidc/`) değişirse burası da değişmeli. Listedeki
-> `http://localhost:5080/signin-oidc` API'nin OIDC işleyicisinden kalma; K31
-> ile o işleyici kaldırıldı ama giriş, eski kurulumların bozulmaması için
-> bırakıldı.
+> (`ui/src/app/signin-oidc/`) değişirse burası da değişmeli.
+>
+> **API'nin eski dönüş adresi listeden silindi.**
+> `http://localhost:5080/signin-oidc` ve `http://localhost:5080/*` (çıkış)
+> `Bizigo.Api`'nin OIDC işleyicisinden kalmaydı; K31 ile o işleyici kaldırıldı.
+> Karşılığı olmayan bir `redirect_uri` yalnızca saldırı yüzeyi büyütüyor:
+> oraya yönlenen bir yetkilendirme kodu uygulamanın hiç görmediği bir uçta
+> açığa çıkar. `KeycloakRealmTests.Kaldirilmis_API_OIDC_donus_adresi_realm_de_yok`
+> girişlerin geri gelmediğini sabitliyor.
 
 ## Geliştirme kullanıcıları
 

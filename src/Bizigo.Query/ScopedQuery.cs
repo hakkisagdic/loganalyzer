@@ -122,6 +122,29 @@ public sealed class ScopedQuery(
         return result;
     }
 
+    public async Task<IReadOnlyList<EventFieldView>> GetEventViewAsync(
+        Guid eventId,
+        EventViewKind view,
+        AccessScope scope,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+
+        var predicate = ScopePredicate.From(scope);
+        var watch = Stopwatch.StartNew();
+
+        var fields = await _events.GetViewAsync(eventId, view, predicate, cancellationToken);
+
+        // Görünüm okuması da denetime giriyor: "kim hangi olaya baktı" sorusunun
+        // cevabı sekmeye göre değişmemeli.
+        await _audit.RecordAsync(new AuditRecord(
+            scope.Subject, "events.view", view == EventViewKind.Ocsf ? "events_ocsf" : "events_otel",
+            Describe(scope, predicate), eventId.ToString(),
+            fields.Count == 0 ? 0 : 1, (int)watch.ElapsedMilliseconds, true), cancellationToken);
+
+        return fields;
+    }
+
     public Task<long> CountEventsAsync(EventQuery query, AccessScope scope, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);

@@ -1,10 +1,10 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { AppShell } from "@/components/AppShell";
 import styles from "@/components/AppShell.module.css";
-import { LogoutButton } from "@/components/LogoutButton";
 import { Badge, Card } from "@/components/ui/Field";
 import { EmptyState, ErrorState } from "@/components/ui/States";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { currentUser } from "@/lib/auth/currentUser";
 
 export const dynamic = "force-dynamic";
@@ -33,40 +33,17 @@ export default async function HomePage() {
 
   if (identity.status === "error") {
     return (
-      <div className={styles.shell}>
-        <header className={styles.header}>
-          <span className={styles.brand}>Bizigo Log Analyzer</span>
-          <span className={styles.spacer} />
-          <ThemeToggle />
-          <LogoutButton />
-        </header>
-        <main className={styles.main} id="icerik">
-          <ErrorState title={identity.message} hint={identity.hint} />
-        </main>
-      </div>
+      <AppShell>
+        <ErrorState title={identity.message} hint={identity.hint} />
+      </AppShell>
     );
   }
 
   const user = identity.user;
 
   return (
-    <div className={styles.shell}>
-      <a className="skip-link" href="#icerik">
-        İçeriğe atla
-      </a>
-
-      <header className={styles.header}>
-        <span className={styles.brand}>Bizigo Log Analyzer</span>
-        <span className={styles.spacer} />
-        <span className={styles.identity} title={user.username}>
-          {user.username || user.subject}
-        </span>
-        <ThemeToggle />
-        <LogoutButton />
-      </header>
-
-      <main className={styles.main} id="icerik">
-        <h1>Giriş yapıldı</h1>
+    <AppShell username={user.username || user.subject}>
+      <h1>Giriş yapıldı</h1>
 
         {user.sees_nothing ? (
           // Kapsam boşsa kullanıcı hiçbir veri göremez ve sebebi bir yetki
@@ -137,11 +114,15 @@ export default async function HomePage() {
 
         <Card padded={false}>
           <EmptyState
-            title="Ekranlar henüz yok"
-            description="Bu iskelet yalnızca kimlik akışını ve tasarım temelini taşıyor. Olay arama, parser editörü ve alarmlar sonraki ticket'larda geliyor."
+            title="Log arama hazır"
+            description="Parser editörü, kaynak envanteri ve alarmlar sonraki ticket'larda geliyor."
+            action={
+              <Link className={styles.brand} href="/olaylar">
+                Log aramaya git →
+              </Link>
+            }
           />
         </Card>
-      </main>
-    </div>
+    </AppShell>
   );
 }

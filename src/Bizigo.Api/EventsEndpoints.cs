@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json.Serialization;
 using Bizigo.Contracts;
 using Bizigo.Query;
 using Bizigo.Storage.Raw;
@@ -8,23 +9,56 @@ namespace Bizigo.Api;
 /// <param name="Field">Filtrelenecek alan adı.</param>
 /// <param name="Op">Operatör: <c>eq|ne|in|gt|lt|contains|startswith</c>.</param>
 /// <param name="Values">Değerler. <c>in</c> dışında tek eleman beklenir.</param>
-public sealed record FieldFilterRequest(string Field, string Op, IReadOnlyList<string> Values);
+public sealed record FieldFilterRequest(
+    [property: JsonPropertyName("field")] string Field,
+    [property: JsonPropertyName("op")] string Op,
+    [property: JsonPropertyName("values")] IReadOnlyList<string> Values);
 
+/// <summary>
+/// Arama isteği.
+///
+/// <para>
+/// Alan adları açıkça <c>snake_case</c>. Varsayılan politika camelCase kabul
+/// ediyordu ama yanıttaki imleç <c>after_timestamp</c> adıyla dönüyor: ekran
+/// aldığı imleci <b>olduğu gibi</b> geri gönderemiyordu ve yarım imleç sessizce
+/// ilk sayfayı tekrarlıyordu. İki adlandırmayı yan yana taşımak yerine tek
+/// tarafa çekildi (bkz. <see cref="EventResponse"/>).
+/// </para>
+/// </summary>
 public sealed record EventSearchRequest
 {
+    [JsonPropertyName("from")]
     public DateTimeOffset? From { get; init; }
+
+    [JsonPropertyName("to")]
     public DateTimeOffset? To { get; init; }
+
+    [JsonPropertyName("full_text")]
     public string? FullText { get; init; }
+
+    [JsonPropertyName("filters")]
     public IReadOnlyList<FieldFilterRequest> Filters { get; init; } = [];
+
+    [JsonPropertyName("owner_groups")]
     public IReadOnlyList<string> OwnerGroups { get; init; } = [];
+
+    [JsonPropertyName("source_ids")]
     public IReadOnlyList<string> SourceIds { get; init; } = [];
+
+    [JsonPropertyName("parse_statuses")]
     public IReadOnlyList<string> ParseStatuses { get; init; } = [];
 
     /// <summary>Keyset imleci: önceki sayfanın son <c>ts</c> + <c>event_id</c> değeri.</summary>
+    [JsonPropertyName("after_timestamp")]
     public DateTimeOffset? AfterTimestamp { get; init; }
+
+    [JsonPropertyName("after_event_id")]
     public Guid? AfterEventId { get; init; }
 
+    [JsonPropertyName("limit")]
     public int Limit { get; init; } = 200;
+
+    [JsonPropertyName("ascending")]
     public bool Ascending { get; init; }
 }
 
@@ -57,9 +91,23 @@ public static class EventsEndpoints
             .RequireAuthorization(BizigoAuthPolicies.Read)
             .WithTags("events");
 
-        group.MapPost("/search", SearchAsync).WithName("SearchEvents");
-        group.MapGet("/{id:guid}", GetAsync).WithName("GetEvent");
-        group.MapGet("/{id:guid}/raw", GetRawAsync).WithName("GetEventRaw");
+        // `Produces<T>` yalnızca belge süsü değil: T14'ün ürettiği TypeScript'te
+        // gövde tipi buradan doğuyor. Bildirilmezse ekran `unknown` alıyor ve
+        // tipi elle yazmak zorunda kalıyor — T14'ün önlemek için var olduğu şey.
+        // `ProducesContractTests` bunu `/v1/*` altındaki her uç için zorluyor.
+        group.MapPost("/search", SearchAsync)
+            .WithName("SearchEvents")
+            .Produces<EventSearchResponse>();
+
+        group.MapGet("/{id:guid}", GetAsync)
+            .WithName("GetEvent")
+            .Produces<EventDetailResponse>()
+            .Produces(StatusCodes.Status404NotFound);
+
+        group.MapGet("/{id:guid}/raw", GetRawAsync)
+            .WithName("GetEventRaw")
+            .Produces<EventRawResponse>()
+            .Produces(StatusCodes.Status404NotFound);
 
         return routes;
     }
@@ -90,16 +138,10 @@ public static class EventsEndpoints
 
         var page = await query.SearchEventsAsync(eventQuery, scope, cancellationToken);
 
-        return Results.Ok(new
-        {
-            events = page.Events,
-            next = page.Next is null ? null : new
-            {
-                after_timestamp = page.Next.Timestamp,
-                after_event_id = page.Next.EventId,
-            },
-            has_more = page.HasMore,
-        });
+        return Results.Ok(new EventSearchResponse(
+            [.. page.Events.Select(EventResponse.From)],
+            page.Next is null ? null : new EventCursorResponse(page.Next.Timestamp, page.Next.EventId),
+            page.HasMore));
     }
 
     private static async Task<IResult> GetAsync(
@@ -119,7 +161,21 @@ public static class EventsEndpoints
 
         // Kapsam dışı olay da 404: 403 dönmek "böyle bir olay var ama göremezsin"
         // bilgisini sızdırırdı.
-        return found is null ? Results.NotFound() : Results.Ok(found);
+        if (found is null)
+        {
+            return Results.NotFound();
+        }
+
+        // İki görünüm de aynı istekte. Sekme değiştirmek yeni bir istek
+        // gerektirseydi kullanıcı boş ekran görür, üç ayrı hata durumu ele
+        // alınırdı.
+        var ocsf = await query.GetEventViewAsync(id, EventViewKind.Ocsf, scope, cancellationToken);
+        var otel = await query.GetEventViewAsync(id, EventViewKind.Otel, scope, cancellationToken);
+
+        return Results.Ok(new EventDetailResponse(
+            EventResponse.From(found),
+            [.. ocsf.Select(f => new EventFieldResponse(f.Name, f.Value))],
+            [.. otel.Select(f => new EventFieldResponse(f.Name, f.Value))]));
     }
 
     /// <summary>
@@ -169,19 +225,10 @@ public static class EventsEndpoints
             });
         }
 
-        return Results.Ok(new
-        {
-            event_id = lookup.Record.EventId,
-            object_key = lookup.ObjectKey,
-            objects_scanned = lookup.ObjectsScanned,
-            received_at = lookup.Record.ReceivedAt,
-            source_key = lookup.Record.SourceKey,
-            transport = new { proto = lookup.Record.TransportProto, peer = lookup.Record.TransportPeer },
-            encoding_declared = lookup.Record.EncodingDeclared,
-            // ORİJİNAL BAYTLAR. Metin olarak dönmek, kodlama tespiti yanlışsa
-            // düzeltilecek olan şeyi bozmak olurdu (K4).
-            raw_b64 = Convert.ToBase64String(lookup.Record.Body.Span),
-        });
+        // Tespit edilen kodlama olay satırından geliyor, manifestten değil:
+        // ekranda "envanter ne diyor" ile "baytlara bakınca ne çıktı" yan yana
+        // durmadan windows-1254 bir satırın doğru çözülüp çözülmediği görülemiyor.
+        return Results.Ok(EventRawResponse.From(lookup, found.EncodingDetected));
     }
 
     private static bool TryBuild(EventSearchRequest request, out EventQuery query, out string error)

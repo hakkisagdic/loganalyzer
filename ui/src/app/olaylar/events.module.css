@@ -1,0 +1,295 @@
+/*
+ * Olay ekranlarının biçimleri (T15 arama, T16 detay).
+ *
+ * Ham renk ya da ham ölçü YOK — hepsi `tokens.css`'ten. Ortak bileşenlerin
+ * biçimleri `components/ui/ui.module.css` içinde; buradakiler yalnızca bu iki
+ * ekranın yerleşimi.
+ */
+
+/* --- Filtre formu -------------------------------------------------------- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.formRow {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.grow {
+  inline-size: 100%;
+}
+
+.formGrid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.fieldset {
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.legend {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+  padding-inline: var(--space-2);
+}
+
+.checkRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-1);
+  /* Dokunmatik hedef alt sınırı (WCAG 2.5.8). */
+  min-block-size: 2.75rem;
+}
+
+.formActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.reset {
+  font-size: var(--text-sm);
+  color: var(--accent-strong);
+}
+
+/* --- Uyarılar ------------------------------------------------------------ */
+
+.noticeMuted {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 3px solid var(--border-2);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+}
+
+.noticeWarning {
+  font-size: var(--text-sm);
+  color: var(--text-1);
+  padding: var(--space-4);
+  border: 1px solid var(--warning);
+  background: var(--warning-soft);
+  border-radius: var(--radius-md);
+}
+
+/* --- Sonuç tablosu ------------------------------------------------------- */
+
+.timeCell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-items: flex-start;
+}
+
+.timeLink {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.muted {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+
+/* --- Sayfalama ----------------------------------------------------------- */
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-block: var(--space-2);
+}
+
+.pagerNext {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--accent-strong);
+}
+
+/* --- Kayıtlı aramalar ---------------------------------------------------- */
+
+.saved {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.savedForm {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.savedInput {
+  flex: 1;
+  min-inline-size: 14rem;
+  padding: var(--space-2) var(--space-3);
+  min-block-size: 2.75rem;
+  background: var(--surface-1);
+  color: var(--text-1);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-md);
+}
+
+.savedEmpty {
+  font-size: var(--text-xs);
+  color: var(--text-3);
+}
+
+.savedList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.savedList li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-full);
+  background: var(--surface-1);
+}
+
+.savedRemove {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: var(--text-md);
+  line-height: 1;
+}
+
+/* --- Detay ekranı -------------------------------------------------------- */
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  border-block-end: 1px solid var(--border-1);
+}
+
+.tab {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  text-decoration: none;
+  border-block-end: 2px solid transparent;
+  min-block-size: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tabActive {
+  color: var(--text-1);
+  font-weight: var(--weight-medium);
+  border-block-end-color: var(--accent);
+}
+
+.detailGrid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.definition {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.definitionTerm {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+}
+
+.definitionValue {
+  font-size: var(--text-sm);
+  color: var(--text-1);
+  overflow-wrap: anywhere;
+}
+
+/** Olay gövdesi: tek aralıklı ve yazı yönü içeriğe bırakılmış. */
+.bodyText {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-loose);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: var(--space-4);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+}
+
+.issues {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.issueStep {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-3);
+}
+
+/* --- Ham görünüm --------------------------------------------------------- */
+
+.hex {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--leading-loose);
+  white-space: pre;
+  overflow-x: auto;
+  padding: var(--space-4);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  /*
+   * Ham baytlar ASLA `dir="auto"` almıyor: hex dökümü ve onun karşısındaki
+   * ASCII sütunu konum bilgisi taşıyor. Arapça bir gövdede yazı yönünü
+   * içeriğe bırakmak, ofsetleri baytlardan ayırırdı.
+   */
+  direction: ltr;
+  unicode-bidi: bidi-override;
+}
+
+.rawActions {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  flex-wrap: wrap;
+}

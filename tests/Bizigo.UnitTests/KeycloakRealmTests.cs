@@ -134,6 +134,38 @@ public sealed class KeycloakRealmTests
     }
 
     /// <summary>
+    /// API'nin OIDC dönüş adresi listede <b>kalmamalı</b>.
+    ///
+    /// <para>
+    /// K31 ile <c>Bizigo.Api</c>'den cookie+OIDC işleyicileri kaldırıldı;
+    /// <c>http://localhost:5080/signin-oidc</c> artık hiçbir şeyi karşılamıyor.
+    /// Duran bir <c>redirect_uri</c> yalnızca saldırı yüzeyi: o adrese yönlenen
+    /// bir yetkilendirme kodu, uygulamanın hiç görmediği bir uçta açığa çıkar.
+    /// "Eski kurulumlar bozulmasın" gerekçesi tutmuyor, çünkü eski kurulum
+    /// zaten çalışmıyor — o işleyici kodda yok.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Kaldirilmis_API_OIDC_donus_adresi_realm_de_yok()
+    {
+        var ui = Clients.Single(c => c.GetProperty("clientId").GetString() == "bizigo-ui");
+
+        var redirects = ui.GetProperty("redirectUris")
+            .EnumerateArray()
+            .Select(u => u.GetString())
+            .ToArray();
+
+        Assert.DoesNotContain("http://localhost:5080/signin-oidc", redirects);
+
+        // Çıkış tarafı da aynı: API artık kimseyi karşılamıyor.
+        var postLogout = ui.GetProperty("attributes")
+            .GetProperty("post.logout.redirect.uris")
+            .GetString()!;
+
+        Assert.DoesNotContain("5080", postLogout, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Realm dosyası <c>clientScopes</c> verdiği için Keycloak <b>yerleşik
     /// scope'ları hiç oluşturmuyor</b>. Var olmayan bir scope'a referans vermek
     /// hata üretmiyor — sessizce düşüyor ve token eksik claim'le çıkıyor.

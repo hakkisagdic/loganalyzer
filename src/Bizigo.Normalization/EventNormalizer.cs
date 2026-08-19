@@ -165,6 +165,23 @@ public sealed class EventNormalizer(TimeProvider? timeProvider = null)
             attrs["bizigo.tags"] = string.Join(',', source.Parsed.Tags);
         }
 
+        // Parser'ın ŞİKAYETLERİ. `parse_status=partial` tek başına "bir şey
+        // eksik" diyor ama hangi adımın neden takıldığını söylemiyor; o bilgi
+        // ayrıştırma anında `ParseContext` içinde vardı ve ClickHouse'a hiç
+        // ulaşmıyordu. Sebepsiz bir `partial`, olay detayında cevaplanamayan bir
+        // soru bırakıyor (T16) ve tam da F1'in "sessiz bozulma" sınıfından.
+        //
+        // Etiketlerdeki gerekçenin aynısı: tek anahtar, adım başına anahtar
+        // değil — `mapKeys` bloom filtresi anahtar kümesi üzerinde.
+        //
+        // Yalnızca sorunlu satırlarda doğuyor; `ok` olan olaylarda liste boş.
+        if (source.Parsed.Issues.Count > 0)
+        {
+            attrs["bizigo.parse_issues"] = string.Join(
+                " | ",
+                source.Parsed.Issues.Select(i => $"{i.Step}: {i.Message}"));
+        }
+
         return attrs;
     }
 

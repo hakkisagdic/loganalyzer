@@ -19,6 +19,24 @@ public interface IScopedQuery
 
     Task<LogEvent?> GetEventAsync(Guid eventId, AccessScope scope, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Olayın OCSF ya da OTel görünümündeki hâli (T16 olay detayı).
+    ///
+    /// <para>
+    /// Alan adlarını API <b>türetmiyor</b>, ClickHouse görünümünden okuyor.
+    /// Türetmeyi buraya taşımak eşlemenin ikinci kopyası olurdu; oysa aynı adları
+    /// F3'ün Sigma derleyicisi ve doğrudan SQL konuşan araçlar da görüyor (K8).
+    /// </para>
+    ///
+    /// <para>Kapsam dışı olayda <b>boş liste</b> dönüyor — 404'ün bilgi gizleme
+    /// gerekçesi burada da geçerli.</para>
+    /// </summary>
+    Task<IReadOnlyList<EventFieldView>> GetEventViewAsync(
+        Guid eventId,
+        EventViewKind view,
+        AccessScope scope,
+        CancellationToken cancellationToken = default);
+
     Task<long> CountEventsAsync(EventQuery query, AccessScope scope, CancellationToken cancellationToken = default);
 
     /// <summary>
