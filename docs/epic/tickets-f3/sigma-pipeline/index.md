@@ -22,7 +22,19 @@ ile birlikte.
 - Alan adı eşlemesi: Sigma taxonomy → bizim `events_ocsf` kolon adlarımız
 (düzleştirilmiş, noktalı değil).
 - Değer dönüşümleri ve gerekiyorsa `class_uid` / `activity_id` ekleme.
+
+  Ölçülmüş tek örnek: `fortigate_high_port_scan.yml` `proto: 6` yazıyor, kolon
+  `LowCardinality(String)`. Kolon **var**, tip tutmuyor — eşleme boşluğundan
+  ayrı bir sınıf, ve düzeltmesi de ayrı.
 - `unmapped.X` → `unmapped['X']` (bizde `Map`, noktalı erişim çalışmıyor).
+
+  **Bu madde artık ölçülmüş bir boşluğa karşılık geliyor.** T30 prototipi
+  `UNMAPPED_FIELDS` diye 9 alan tespit etti ve `unmapped_expression()` yazdı,
+  ama ikisini de **hiçbir dönüşüme bağlamadı**. Ölçüldü: örneklemin **8 kuralı**
+  (`url` ×4, `dns_query_name` ×2, `query`, `http_method`, `user_agent`) bu
+  yüzden ham Sigma adıyla SQL'e iniyor ve ClickHouse reddediyor. Yani
+  `compiled=24 / runs=14` farkının çoğu şemanın değil prototipin eksikliği.
+  Ayrıntı: [T30 ölçümü](../../t30-sigma-olcumu/index.md).
 - Tablo adı: `FROM logs` yerine bizim görünümümüz.
 - Kapsanan her logsource için **en az bir altın örnek** ve beklenen eşleşme.
 

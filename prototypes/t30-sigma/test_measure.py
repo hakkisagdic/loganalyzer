@@ -111,15 +111,16 @@ def test_veri_var_ama_altin_ornek_yoksa_reddediliyor() -> None:
 
 
 def test_altin_ornek_bulununca_geciyor() -> None:
-    """Tek bir vendor'ın örneği bile bulunursa ölçüm anlamlı olabilir."""
+    """Tek bir sonda tutarsa o vendor doğrulanmış sayılıyor."""
     probes = measure.golden_probes()
     assert probes, "altın örnek sondaları türetilemedi — dosyalar taşınmış olabilir"
 
-    fortinet = probes["Fortinet"]
-
     def stub(sql: str, *_args: object, **_kwargs: object) -> tuple[int, str]:
         if "position(raw_data" in sql:
-            return (1 if fortinet[:20] in sql else 0), ""
+            return (1 if any(x in sql for x in probes["Fortinet"]) else 0), ""
+        if "device_vendor_name" in sql or "metadata_product_name" in sql:
+            # Yalnızca Fortinet yüklü; diğerlerinin sıfırı yabancı veri değil.
+            return (87 if "Fortinet" in sql else 0), ""
         return 87, ""
 
     measure.run_on_clickhouse = stub
@@ -130,15 +131,143 @@ def test_altin_ornek_bulununca_geciyor() -> None:
     assert not result.golden["Cisco"]
 
 
-def test_sondalar_ayirt_edici_uzunlukta() -> None:
-    """Kısa ya da jenerik sonda işe yaramaz: sentetik veri de aynı söz dizimini
-    taşıyor ve `level="notice"` gibi bir parça onda da bulunur."""
+def test_sonda_turetilemezse_olcum_reddediliyor() -> None:
+    """**Bu, ön kontrolün kendi eliyle kapandığı hâlin bekçisi.**
+
+    Eski kapı `if probes and not any(golden.values())` yazıyordu. Sonda listesi
+    boş olduğunda `probes and ...` her zaman False oluyor, ölçüm geçiyor — ve
+    dört vendor da "altın örnek YOK" bayrağı alıyor, çünkü boş sözlükte
+    `.get()` None dönüyor. Bekçi hem yanlış konuşuyor hem sözünü tutmuyordu.
+
+    Gerçek bir koşumda tam olarak böyle oldu: veri doğruydu, ön kontrol dördü
+    için de "YOK" dedi, ve reddetmesi gerekirken ölçümü yaptı.
+
+    Boş sonda listesi bir CEVAP değil bir ARIZA: kurulum bozuk demek.
+    """
+    measure.run_on_clickhouse = lambda *a, **k: (1_120_001, "")
+    original = measure.golden_probes
+    measure.golden_probes = lambda: {}
+
+    try:
+        result = measure.preflight("http://x", "u", "p", 1.0)
+    finally:
+        measure.golden_probes = original
+
+    assert not result.ok, "sonda yokken ölçüm GEÇMEMELİ"
+    assert "TÜRETİLEMEDİ" in result.reason
+    assert "KURULUM" in result.reason
+
+
+def test_yabanci_verili_vendor_uyariyla_gecmiyor() -> None:
+    """Satırı olup altın örneği olmayan vendor **reddediliyor**, uyarılmıyor.
+
+    Eskiden yalnızca "hiçbiri bulunamadı" reddediliyordu; bir vendor'ın
+    yabancı veriyle dolu olması uyarıyla geçiyordu. O uyarı tam da engellemek
+    için yazıldığı şeyi üretir: o vendor'ın kuralları `matches=false` verir ve
+    sıfır "kapsam düşük" diye okunur.
+    """
+    probes = measure.golden_probes()
+
+    def stub(sql: str, *_args: object, **_kwargs: object) -> tuple[int, str]:
+        if "position(raw_data" in sql:
+            # Yalnızca Fortinet'in sondası tutuyor.
+            return (1 if any(x in sql for x in probes["Fortinet"]) else 0), ""
+        if "device_vendor_name" in sql or "metadata_product_name" in sql:
+            # Cisco'nun satırı VAR ama altın örneği yok: yabancı veri.
+            return (87 if "Fortinet" in sql or "Cisco" in sql else 0), ""
+        return 174, ""
+
+    measure.run_on_clickhouse = stub
+    result = measure.preflight("http://x", "u", "p", 1.0)
+
+    assert not result.ok
+    assert "Cisco" in result.reason
+    assert "Fortinet" not in result.reason.split(":")[1].split(".")[0]
+    assert result.probes, "reddederken aranan sondalar raporlanmalı"
+
+
+def test_sonda_sorgusu_hata_verirse_bulunamadi_sayilmiyor() -> None:
+    """Kırık sorgu ile yüklenmemiş veri aynı şey değil; eskiden hata yutuluyordu."""
+
+    def stub(sql: str, *_args: object, **_kwargs: object) -> tuple[int, str]:
+        if "position(raw_data" in sql:
+            return 0, "Code: 62. DB::Exception: Syntax error"
+        return 500, ""
+
+    measure.run_on_clickhouse = stub
+    result = measure.preflight("http://x", "u", "p", 1.0)
+
+    assert not result.ok
+    assert "SORGULANAMADI" in result.reason
+    assert "Syntax error" in result.reason
+
+
+def test_sondalar_damga_tasimiyor() -> None:
+    """**Sondanın damgayla kesişmesi doğru veriyi reddettirir.**
+
+    Yükleyici örneklerin 2015–2024 tarihlerini ölçüm penceresine taşımak için
+    damgayı yeniden yazıyor. Damga taşıyan bir sonda, veri doğru yüklenmiş olsa
+    bile tutmaz — ve bekçi doğru veriyi reddeder. Yanlış pozitiften daha sinsi,
+    çünkü "veri yanlış" diye okunur.
+    """
     probes = measure.golden_probes()
 
     assert set(probes) == {"Fortinet", "Cisco", "MikroTik", "nginx"}
 
-    for vendor, probe in probes.items():
-        assert len(probe) == 60, f"{vendor} sondası {len(probe)} karakter"
+    for vendor, candidates in probes.items():
+        assert candidates, f"{vendor} için sonda türetilemedi"
+
+        for probe in candidates:
+            assert len(probe) == measure.PROBE_LENGTH, f"{vendor}: {len(probe)} karakter"
+            assert not measure._VOLATILE.search(probe), f"{vendor} sondası damga taşıyor: {probe!r}"
+
+
+def test_damga_filtresi_pencereyi_gercekten_kaydiriyor() -> None:
+    """**Bu test, bir öncekinin ölçemediği şeyi ölçüyor.**
+
+    `test_sondalar_damga_tasimiyor` bugünkü örneklerde damga filtresi
+    kaldırılınca da yeşil kalıyor — çünkü o dosyalardaki en uzun satırların
+    ortası zaten damga taşımıyor. Yani filtreyi kanıtlamıyor, yalnızca bugünkü
+    verinin şanslı olduğunu söylüyor. Bu, deponun §6'sındaki "geçen test
+    geçtiğini kanıtlamaz" durumunun ta kendisi.
+
+    Burada satır, ortası damga OLACAK biçimde kuruluyor: naif orta-dilim
+    seçimi damgaya düşerdi, filtre onu kaydırmak zorunda.
+    """
+    left = "srcip=10.1.100.11 srcport=54321 dstip=192.0.2.7 "
+    stamp = "eventtime=1557513467369913239 date=2019-05-10 time=11:37:47 "
+    right = "action=\"close\" policyid=1 sessionid=105048 proto=6 dstport=443"
+    line = left + stamp + right
+
+    naive = line[(len(line) - measure.PROBE_LENGTH) // 2:][:measure.PROBE_LENGTH]
+    assert measure._VOLATILE.search(naive), "kurgu bozuk: naif dilim zaten damgasız"
+
+    window = measure._stable_window(line, measure.PROBE_LENGTH)
+
+    assert window, "damgasız pencere var ama bulunamadı"
+    assert not measure._VOLATILE.search(window), f"pencere damga taşıyor: {window!r}"
+    assert window in line
+
+
+def test_vendor_basina_birden_cok_sonda() -> None:
+    """Tek satıra bağlı sonda kırılgan: yükleyici o satırı yüklememiş olabilir.
+
+    Farklı satırlardan birkaç sonda alıp "herhangi biri tutsun" demek, veri
+    doğruyken çıkan yanlış negatifi kapatıyor.
+    """
+    probes = measure.golden_probes()
+
+    for vendor, candidates in probes.items():
+        assert len(candidates) > 1, f"{vendor} tek sondaya bağlı"
+        assert len(set(candidates)) == len(candidates), f"{vendor} sondaları tekrar ediyor"
+
+
+def test_depo_koku_bulunamazsa_sessizce_geri_cekilmiyor() -> None:
+    """Eskiden `here.parent` dönüyordu; yanlış kök = boş sonda = kapalı bekçi."""
+    assert measure._repo_root() is not None, "bu depoda kök bulunmalı"
+
+    # Damgasız pencere bulunamayan satır için sonda üretilmiyor — uydurulmuyor.
+    assert measure._stable_window("2026-08-13 01:02:03", 44) == ""
 
 
 def test_reddedilen_kolonlar_uc_hata_bicimini_de_okuyor() -> None:
@@ -156,6 +285,62 @@ def test_reddedilen_kolonlar_uc_hata_bicimini_de_okuyor() -> None:
     ) == ["process_name"]
 
     assert measure.rejected_columns("") == []
+
+
+def test_eslemesiz_alanlar_statik_olarak_sayiliyor() -> None:
+    """**Bu boşluk prototipin kendi kusuruydu ve ölçümü çarpıtıyordu.**
+
+    `UNMAPPED_FIELDS` dokuz alan tanımlıyor ama hiçbir dönüşüme bağlı değil;
+    `unmapped_expression()` de tanımlı ve hiçbir yerden çağrılmıyor. Sonuç:
+    o alanlara giden kurallar ham Sigma adıyla SQL'e iniyor ve ClickHouse
+    reddediyor.
+
+    Yani `runs < compiled` farkının bir kısmı ŞEMANIN değil PROTOTİPİN
+    eksikliği — ve ayrı sayılmazsa kapsam kararı yanlış sebebe dayanırdı.
+    Sayı statik: ClickHouse koşmadan da biliniyor.
+    """
+    field_map = {"srcip": "src_endpoint_ip", "action": "activity_name"}
+
+    # Görünümde olan alan: boşluk yok.
+    assert measure.unhandled_fields(
+        "detection:\n  selection:\n    srcip: 10.0.0.1\n  condition: selection", field_map
+    ) == []
+
+    # Görünümde olmayan alan: boşluk var ve adıyla raporlanıyor.
+    assert measure.unhandled_fields(
+        "detection:\n  selection:\n    url|contains: '/admin'\n  condition: selection", field_map
+    ) == ["url"]
+
+    # Operatör eki alan adının parçası değil.
+    assert measure.unhandled_fields(
+        "detection:\n  selection:\n    action|startswith: 'blo'\n  condition: selection", field_map
+    ) == []
+
+
+def test_ornekleme_gercek_bosluk_sayisi() -> None:
+    """Örneklemin bugünkü hâli: 24 kuralın 8'i eşleme dalı olmayan alana gidiyor.
+
+    Sayı değişirse ya kurallar ya pipeline değişmiş demektir; ikisi de ölçümü
+    etkiliyor ve fark edilmeden geçmemeli.
+    """
+    import ast
+    from pathlib import Path
+
+    source = Path(__file__).parent / "bizigo_pipeline.py"
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    field_map: dict[str, str] = {}
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.AnnAssign) and getattr(node.target, "id", "") == "FIELD_MAP":
+            field_map = {k.value: v.value for k, v in zip(node.value.keys, node.value.values)}
+
+    assert field_map, "FIELD_MAP okunamadı"
+
+    rules = sorted((Path(__file__).parent / "rules").glob("*.yml"))
+    affected = [p.name for p in rules if measure.unhandled_fields(p.read_text(encoding="utf-8"), field_map)]
+
+    assert len(rules) == 24
+    assert len(affected) == 8, f"beklenen 8, ölçülen {len(affected)}: {affected}"
 
 
 def test_esleyen_kural_yoksa_inf_yerine_sifir() -> None:

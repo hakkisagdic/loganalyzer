@@ -46,8 +46,10 @@ Canlı kip, ölçmeye başlamadan önce `events_ocsf`'e bakıyor ve **geçemezse
 | --- | --- |
 | Sorgu hata veriyor | Reddediyor — görünüm yok ya da kimlik yanlış |
 | Tablo boş | Reddediyor — statik kipi öneriyor |
-| **Satır var ama altın örnek yok** | **Reddediyor** — veri başka bir turdan kalmış |
-| Altın örnek bulundu | Geçiyor, vendor dağılımını basıyor |
+| **Sonda türetilemedi** | **Reddediyor** — kurulum sorunu; kapının kendisi çalışmıyor |
+| Sonda sorgusu hata verdi | Reddediyor — "bulamadım" ile karıştırılmıyor |
+| **Bir vendor'ın satırı var, altın örneği yok** | **Reddediyor** — o vendor'ın verisi yabancı |
+| Her yüklü vendor'ın altın örneği bulundu | Geçiyor, vendor dağılımını basıyor |
 
 Üçüncü satır bir koşumda **gerçekten yaşandı**: tabloda önceki bir turdan kalma
 1.000.000 satırlık tek-vendor'lu sentetik benchmark verisi vardı. Kontrol
@@ -55,10 +57,23 @@ Canlı kip, ölçmeye başlamadan önce `events_ocsf`'e bakıyor ve **geçemezse
 O sıfır eşlemenin değil **verinin** sonucuydu.
 
 Kontrol bu yüzden artık bir **yokluk** kanıtı değil **varlık** kanıtı arıyor:
-altın örnek dosyalarının en uzun satırından türetilen 60 karakterlik bir sonda
-gövdede (`raw_data`) gerçekten duruyor mu. Sonda çalışma anında dosyadan
-türetiliyor — sabit yazılsaydı örnekler değiştiği gün kontrol sessizce yalan
-söylemeye başlardı.
+altın örnek dosyalarından türetilen bir sonda gövdede (`raw_data`) gerçekten
+duruyor mu. Sonda çalışma anında dosyadan türetiliyor — sabit yazılsaydı
+örnekler değiştiği gün kontrol sessizce yalan söylemeye başlardı.
+
+**Sonda tasarımı iki kez düzeltildi, ikisi de gerçek bir yanlış negatiften
+sonra.** Vendor başına **beş** sonda türetiliyor, her biri **damga taşımayan**
+bir bölgeden alınıyor, ve **herhangi birinin** tutması yetiyor:
+
+- Yükleyici örneklerin 2015–2024 tarihlerini ölçüm penceresine taşımak için
+  damgayı yeniden yazıyor. Damgayla kesişen bir sonda, veri doğru yüklenmiş
+  olsa bile tutmaz.
+- Tek satıra bağlı sonda kırılgan: yükleyici satırları tekilleştiriyorsa ya da
+  bir alt küme yüklüyorsa, seçilen *o* satır tabloda olmayabilir.
+
+Reddedildiğinde **aranan sondalar basılıyor**. Aksi hâlde bekçinin reddi
+teşhis edilemez bir çıkmaz sokak olur; operatör aynı sorguyu elle koşturup
+bekçinin mi yoksa verinin mi yanlış olduğunu ayırabilmeli.
 
 Sebep: boş bir görünüme karşı koşulan ölçüm her kural için `matches=false`
 üretir ve o tablo "kapsam düşük" diye okunur. Sıfırı sonuç sanmak, bu ticket'ın
@@ -124,7 +139,7 @@ bunu nasıl ölçekleyeceğini yazıyor.
 | Pipeline noktalı yol üretiyor (`dst_endpoint.ip`), görünüm düzleştirilmiş (`dst_endpoint_ip`) | `FIELD_MAP` doğrudan düzleştirilmiş ada eşliyor; nokta hiç doğmuyor |
 | Backend `FROM logs` yazıyor | `SetStateTransformation("table", …)` + gerekirse `rewrite_table()`, ve **ikame raporlanıyor** |
 | Tutarsız tırnaklama | Düzleştirilmiş adlar tırnak gerektirmiyor — sorun kaynağında kuruyor |
-| `unmapped.X` erişimi | Bizde `Map(String, String)`; `unmapped['X']` gerekiyor, `unmapped_expression()` |
+| `unmapped.X` erişimi | ⚠️ **ÇÖZÜLMEDİ.** `unmapped_expression()` yazıldı ama hiçbir yerden çağrılmıyor; `UNMAPPED_FIELDS` de hiçbir dönüşüme bağlı değil. Örneklemin **8 kuralı** bu yüzden ham Sigma adıyla SQL'e iniyor. Araç bunu `unhandled_fields` ile ayrı sayıyor; bağlanması T31'de |
 
 Beşinci bir tuzak prototip yazılırken çıktı: **`type_uid` bizde yok.**
 `ocsf_pipeline` sınıf ayırıcısını `type_uid` ile ekliyor; K8 gereği kolona
@@ -139,7 +154,7 @@ Bunlar pySigma gerektirmeden, dosyadan sayıldı:
 | Ölçü | Değer |
 | --- | --- |
 | Eşlenen alan sayısı | **28** |
-| `unmapped`'e düşen alan | **9** |
+| `unmapped` için **tespit edilmiş** alan | **9** (⚠️ hiçbiri bağlı değil — düşen alan sayısı **0**) |
 | Pipeline'ın anlamlı satırı (yorum hariç) | **111** |
 | 24 kurala bölünürse | **4,62 satır/kural** |
 

@@ -67,7 +67,7 @@ pySigma gerektirmeden, prototip dosyasından sayıldı:
 | --- | --- |
 | Örneklem | **24 kural** (4 vendor × 4 kategori) |
 | Eşlenen alan | **28** |
-| `unmapped` Map'ine düşen alan | **9** |
+| `unmapped` için **tespit edilmiş** alan | **9** (⚠️ bağlı değil; gerçekten düşen: **0**) |
 | Pipeline'ın anlamlı satırı | **111** |
 | Örneklem başına | **4,62 satır/kural** |
 
@@ -83,15 +83,19 @@ Dördü araştırmadan biliniyordu; **beşincisi prototip yazılırken çıktı.
 | 1 | Pipeline noktalı yol üretiyor (`dst_endpoint.ip`), görünüm düzleştirilmiş (`dst_endpoint_ip`) | Çözüldü — `FIELD_MAP` doğrudan düzleştirilmiş ada eşliyor, nokta hiç doğmuyor |
 | 2 | Backend `FROM logs` yazıyor | Çözüldü — durum değişkeni; okunmazsa metin ikamesi ve **ikame raporlanıyor** |
 | 3 | Tutarsız tırnaklama | Kaynağında kurudu — düzleştirilmiş ad tırnak gerektirmiyor |
-| 4 | `unmapped.X` erişimi | Çözüldü — bizde `Map(String, String)`, `unmapped['X']` gerekiyor |
+| 4 | `unmapped.X` erişimi | ⚠️ **ÇÖZÜLMEDİ** — aşağıya bakınız. Prototip alanları tespit etti, dönüşüme bağlamadı |
 | 5 | **`type_uid` bizde yok** | **Yeni.** `ocsf_pipeline` sınıf ayırıcısını `type_uid` ile ekliyor; K8 gereği yazılan tek OCSF kolonu `class_uid` + `activity_id`. `type_uid` şart koşan bir pipeline **derlenip koşmayan** SQL üretir |
 
 Beşincisi T30'un aradığı tuzak sınıfının tam örneği: derleme başarılı, SQL
 yanlış, ve hiçbir şey kırmızı yanmıyor.
 
-`unmapped`'e düşen 9 alan ayrı bir maliyet kalemi: Map erişimi ClickHouse'ta
-çalışıyor ama **indekslenmiyor**. Yani bedeli doğruluk değil hız — ve bu, F3'te
-hangi alanların kolona terfi etmesi gerektiğinin listesi.
+`unmapped` için tespit edilen 9 alan ayrı bir maliyet kalemi: Map erişimi
+ClickHouse'ta çalışıyor ama **indekslenmiyor**. Yani bedeli doğruluk değil hız —
+ve bu, F3'te hangi alanların kolona terfi etmesi gerektiğinin listesi.
+
+⚠️ Ama bu bir **plan**, ölçüm değil: prototipte o dal hiç bağlanmadı, dolayısıyla
+bugün hiçbir alan `unmapped`'e düşmüyor — düştüğü sanılan alanlar ham adla SQL'e
+inip reddediliyor. Hızın bedeli T31'de dal bağlandıktan sonra ölçülebilir.
 
 ## Birinci koşum — **geçersiz**, ve nedeni ölçümün kendi dersi
 
@@ -138,10 +142,118 @@ geçmeden önce eşlemenin kendisi ele alınmalı. On kural var olmayan kolonlar
 gidiyor ve bu kapsam daraltılarak çözülmez: daraltılan kapsamdaki kurallar da
 aynı kolonlara gidiyor.
 
-`untouched = 0` ile `unmapped = 0` birlikte okununca resim netleşiyor: sorun
-eşlemenin **atlanması** değil, ürettiği adların bizde **olmaması**. Beşinci
-tuzağın (`type_uid`) canlı karşılığı gibi duruyor — ama **doğrulanmadı**;
-reddedilen kolon adları gelmeden bu bir hipotez.
+## İkinci koşum — **yine geçersiz**, ve bu sefer bekçi kendi kendini kapattı
+
+Altın örnekler yüklendi, koşum yapıldı, `compiled 24 / runs 14 / matches 2`
+çıktı. Ama ön kontrol dört vendor için de *"satır var ama altın örnek YOK"*
+dedi — **ve buna rağmen ölçümü yaptı.**
+
+İkisi birden imkânsız görünüyor; imkânsız olmayan tek açıklaması kapının
+kendisiydi:
+
+```python
+if probes and not any(golden.values()):   # ← `probes and` bekçiyi kapatıyor
+```
+
+Sonda listesi boşsa `probes and ...` her zaman `False`; ölçüm geçiyor. Üstelik
+boş sözlükte `.get(vendor)` `None` döndüğü için ekran dört vendor'a da "YOK"
+basıyor. **Bekçi hem yanlış konuşuyor hem sözünü tutmuyor** — "geçemezse ölçüm
+hiç yapılmaz" yazılmıştı, yapıldı.
+
+Çıktının kendisi bunu kanıtlıyor: sondalar türetilmiş olsaydı ve hiçbiri
+tutmasaydı `not any(...)` doğru olur, koşum çıkış kodu 3 ile ölürdü. Ölmedi.
+Öyleyse `probes` boştu. Sondaların neden türetilemediği ikincil: `measure.py`
+depo ağacının dışından koşturulduğunda `_repo_root()` sessizce `here.parent`'a
+geri çekiliyordu ve altın örnek dizinleri bulunamıyordu.
+
+**Bu, ilk koşumdaki hatadan daha tehlikeli bir sınıf.** İlki sahte veriyi
+kabul ediyordu — yanlış pozitif. İkincisi **doğru veriyi reddediyor** görünüp
+yine de geçiyor: yanlış negatif *ve* atlanan kapı, bir arada.
+
+Deponun §7'si bunu zaten yazıyor: *"bir bekçinin sessizce atlaması, bekçinin
+kendisinden tehlikelidir."* `Produces<T>` kapısının elle yazılmış listeden
+beslenmesiyle aynı desen — orada üç test yeşildi ve on altı uç kapıya hiç
+görünmüyordu.
+
+### Ne düzeltildi
+
+| Eski davranış | Yeni davranış |
+| --- | --- |
+| Sonda listesi boşsa kapı atlanıyor | **Reddediyor** — boş liste cevap değil arıza; kurulum bozuk demek |
+| `_repo_root()` bulamayınca `here.parent` | `None` dönüyor; sessiz geri çekilme yok |
+| Sonda sorgusu hatası yutuluyor | **Reddediyor** — kırık sorgu ile yüklenmemiş veri ayrı şeyler |
+| Yalnızca "hiçbiri bulunamadı" reddediliyor | **Satırı olup altın örneği olmayan her vendor** reddediliyor |
+| Vendor başına tek sonda, en uzun satırın ortası | Beş sonda, farklı satırlardan, **herhangi biri** tutsun |
+| Sonda damgayla kesişebiliyor | Damga taşımayan pencere seçiliyor (`_VOLATILE`) |
+| Reddedince sebep yok | **Aranan sondalar basılıyor** — operatör elle doğrulayabilsin |
+
+Son iki satır koordinatörün damga hipotezinin karşılığı. Bu koşumun sebebi
+damga değildi (kapı zaten kapalıydı), ama hipotez geçerli: yükleyici damgayı
+yeniden yazıyor ve eski sonda seçimi ona düşebilirdi. İkisi ayrı ayrı
+kapatıldı.
+
+### Bekçilerin kırmızı yanabildiği ölçüldü
+
+Dört düzeltmenin dördü de tek tek geri alındı ve ilgili test kırmızı yandı.
+Beşincisi — *"sondalar damga taşımıyor"* — geri alındığında **yeşil kaldı**:
+bugünkü örnek dosyalarında en uzun satırların ortası zaten damgasız, yani o
+test filtreyi değil verinin şansını ölçüyordu. §6'nın "geçen test geçtiğini
+kanıtlamaz" durumu. Ortası bilerek damga olan bir satırla ikinci bir test
+yazıldı; o kırmızı yanıyor.
+
+Ölçüm aracının test sayısı 13 → **19**.
+
+### `compiled 24 / runs 14 / matches 2` ne söylüyor
+
+`runs = 14` **birinci koşumla birebir aynı**. Veri tamamen değiştiği hâlde
+değişmemesi, "kolon varlığı veriden bağımsızdır" iddiasını doğruluyor —
+yukarıdaki statik boşluk analizinin canlı karşılığı.
+
+`matches` 0'dan 2'ye çıktı, yani veri gerçekten değişti. Ama **%8 kapsam
+kararına dayanak değil**: ön kontrol kendi verisini tanımadığı sürece o sayının
+arkasında duran bir şey yok.
+
+### Düzeltme: `runs = 14`'ün bir kısmı prototipin kendi kusuru
+
+İlk yorumum yanlıştı. *"Sorun eşlemenin atlanması değil, ürettiği adların bizde
+olmaması"* yazmıştım; T32 ajanı statik olarak baktı ve **üçüncü bir olasılığı**
+gösterdi, ben de bağımsız olarak doğruladım:
+
+`bizigo_pipeline.py` iki liste tutuyor — `FIELD_MAP` (28 alan) ve
+`UNMAPPED_FIELDS` (9 alan). Birincisi `FieldMappingTransformation`'a veriliyor,
+**ikincisi hiçbir yere.** `unmapped_expression()` tanımlı ve depo genelinde hiç
+çağrılmıyor. Yani `unmapped` dalı **yazıldı ama bağlanmadı**.
+
+Sonuç ölçüldü: örneklemin **8 kuralı** (`url` ×4, `dns_query_name` ×2, `query`,
+`http_method`, `user_agent`) ham Sigma adıyla SQL'e iniyor.
+
+Dokuzuncusu **ayrı bir sınıf**: `fortigate_high_port_scan.yml` `proto: 6` yazıyor,
+kolon `LowCardinality(String)` — kolon **var**, tip tutmuyor. Bu bir eşleme
+boşluğu değil, eksik **değer dönüşümü**; T31'in kapsamındaki "değer dönüşümleri"
+maddesi tam olarak bunun için.
+
+Onuncusunu bulamadım. Ad yokluğu ve tip uyuşmazlığı için baktım, ikisi de
+dokuzu açıklıyor; onuncunun sebebi bu iki sınıfın dışında. Reddedilen kolon
+özeti bir sonraki koşumda gösterecek — **aramadım değil, aradım ve bulamadım.**
+
+Yani `runs < compiled` farkı **üç ayrı sebepten** doğuyor ve üçü farklı şeyler
+söylüyor:
+
+| Sınıf | Sayı | Anlamı | Çözümü |
+| --- | --- | --- | --- |
+| Prototip boşluğu | 8 | Alan biliniyor, dönüşüme bağlanmamış | T31: `unmapped['X']` dalını bağla |
+| Değer dönüşümü eksik | 1 | Kolon var, tip tutmuyor (`proto: 6` ↔ String) | T31: değer dönüşümü |
+| Bilinmiyor | 1 | Ad ve tip analizinde görünmedi | Sonraki koşumun kolon özeti |
+
+**Bu, ölçülen sayıyı olduğundan kötü gösteriyordu.** Kapsam kararı buna
+dayandırılsaydı, şemanın yetersizliği sanılan şeyin bir kısmı prototipin
+tamamlanmamışlığı olurdu. Araç artık bunu `unhandled_fields` ile **statik**
+olarak ayrı sayıyor (ClickHouse gerekmiyor), yani fark bir daha sessizce
+ölçüme karışmıyor.
+
+Beşinci tuzağın (`type_uid`) canlı karşılığı olup olmadığı hâlâ **hipotez**:
+yukarıdaki dokuz vakanın hiçbiri `type_uid` değil, dolayısıyla o tuzak ya
+onuncu vakada saklı ya da bu örneklemde hiç tetiklenmiyor.
 
 Araç artık reddedilen kolonları da özetliyor (ClickHouse'un üç ayrı hata
 cümlesini de okuyarak), dolayısıyla bir sonraki koşumda hem sayı hem **sebep**
