@@ -176,26 +176,3 @@ export function changeWriteRequest(values: ChangeFormValues): ChangeWriteBody {
     ...(stamp ? { timestamp: new Date(stamp).toISOString() } : {}),
   };
 }
-
-export type ScreenState = "loading" | "error" | "empty" | "ready";
-
-/**
- * Ekranın dört durumundan hangisi (T13 kuralı, T28 denetleyecek).
- *
- * <p>
- * Saf bir fonksiyon çünkü asıl kırılgan yer sıra: hata varken "boş" göstermek,
- * kullanıcıya "kayıt yok" diye yanlış bilgi vermek olurdu — oysa kayıt olabilir,
- * yalnızca okunamadı.
- * </p>
- */
-export function screenState(rows: readonly unknown[] | null, error: string | null): ScreenState {
-  if (rows === null) {
-    return "loading";
-  }
-
-  if (error) {
-    return "error";
-  }
-
-  return rows.length === 0 ? "empty" : "ready";
-}

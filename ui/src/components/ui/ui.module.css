@@ -59,8 +59,10 @@
 }
 
 .buttonDanger {
-  background: var(--danger);
-  color: #ffffff;
+  /* `--danger` değil `--danger-solid`: koyu temada `--danger` açılıyor ve beyaz
+     metinle AA kontrastını geçmiyor (gerekçe tokens.css'te). */
+  background: var(--danger-solid);
+  color: var(--danger-on);
 }
 
 /* --- Kart ---------------------------------------------------------------- */

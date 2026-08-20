@@ -7,7 +7,7 @@ import { Badge, Card, Field, SelectField } from "@/components/ui/Field";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { api } from "@/lib/api/client";
-import { describeError } from "@/lib/alerts/errors";
+import { describeError } from "@/lib/api/errors";
 import { formatInstant, type MaintenanceWindow, type MaintenanceWindowList } from "@/lib/alerts/types";
 
 import styles from "../alerts.module.css";

@@ -3,31 +3,6 @@
  * farklı görünmesi "başka bir olaya bakıyorum" hissi veriyor.
  */
 
-/**
- * Zaman damgası — **UTC**, saniye hassasiyetinde.
- *
- * <p>
- * Yerel saat dilimine çevirmiyoruz ve bu bilinçli: veri UTC'de saklanıyor,
- * cihazlar farklı dilimlerde ve bir olayı ekipçe konuşurken tek ortak ölçek
- * gerekiyor. F1'de aynı anı gösteren iki damganın farklı ofsetlerle geldiği
- * ölçüldü; ekranda dilim değiştirmek o karışıklığı geri getirirdi.
- * </p>
- */
-export function formatTimestamp(value: string): string {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return `${date.toISOString().slice(0, 19).replace("T", " ")}Z`;
-}
-
-/** `datetime-local` alanının beklediği biçim (saniyesiz, dilimsiz). */
-export function toDateTimeLocal(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 16);
-}
 
 const SEVERITY_LABELS: Record<number, string> = {
   0: "belirtilmemiş",

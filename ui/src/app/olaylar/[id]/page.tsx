@@ -10,7 +10,8 @@ import type { EventDetail, EventFieldView, EventRaw } from "@/lib/api/client";
 import { ApiError, NotFoundError } from "@/lib/api/errors";
 import { serverApi } from "@/lib/api/server";
 import { currentUser } from "@/lib/auth/currentUser";
-import { formatParseStatus, formatSeverity, formatTimestamp, readParseIssues } from "@/lib/events/format";
+import { formatParseStatus, formatSeverity, readParseIssues } from "@/lib/events/format";
+import { formatInstant } from "@/lib/ui/time";
 import { decodeBase64, decodeText, toHexDump } from "@/lib/events/raw";
 
 import styles from "../events.module.css";
@@ -122,7 +123,7 @@ export default async function EventDetailPage({
         <div className={styles.detailGrid}>
           <Definition term="Zaman (UTC)">
             <span className={styles.timeCell}>
-              <span>{formatTimestamp(event.ts)}</span>
+              <span>{formatInstant(event.ts)}</span>
               <TimeSourceBadge value={event.time_source} />
             </span>
           </Definition>
@@ -222,7 +223,7 @@ function CoreView({ event }: { event: EventDetail["event"] }) {
       <Card>
         <div className={styles.detailGrid}>
           <Definition term="event_id">{event.event_id}</Definition>
-          <Definition term="Alınma (UTC)">{formatTimestamp(event.ingested_at)}</Definition>
+          <Definition term="Alınma (UTC)">{formatInstant(event.ingested_at)}</Definition>
           <Definition term="Vendor / ürün">
             {[event.vendor, event.product].filter(Boolean).join(" / ") || "—"}
           </Definition>

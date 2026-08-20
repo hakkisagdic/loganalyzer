@@ -9,10 +9,10 @@ import { api } from "@/lib/api/client";
 import { describeError } from "@/lib/api/errors";
 import {
   createRequest,
-  screenState,
   toggleRequest,
   type ConnectorSummary,
 } from "@/lib/changes/connector";
+import { screenState } from "@/lib/ui/screen-state";
 
 import styles from "../changes.module.css";
 

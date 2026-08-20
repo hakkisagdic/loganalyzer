@@ -1,17 +1,18 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { ChangeTable, formatInstant, type ChangeRow } from "@/app/degisiklikler/ChangeTable";
+import { ChangeTable, type ChangeRow } from "@/app/degisiklikler/ChangeTable";
+import { formatInstant } from "@/lib/ui/time";
 import { ConnectorTable } from "@/app/degisiklikler/connectorler/ConnectorTable";
 import {
   CREDENTIAL_MASK,
   changeWriteRequest,
   createRequest,
   credentialForSave,
-  screenState,
   toggleRequest,
   type ConnectorSummary,
 } from "@/lib/changes/connector";
+import { screenState } from "@/lib/ui/screen-state";
 
 /**
  * Değişiklik akışı ve connector ekranları (T24/T25).
@@ -329,10 +330,18 @@ describe("çok dilli gövde", () => {
     expect(html).toContain('target="_blank"');
   });
 
-  it("zaman damgası sabit biçimde, hizalanabilir", () => {
-    expect(formatInstant("2026-08-18T09:19:47Z")).toBe("2026-08-18 09:19");
-    // Bozuk damga tabloyu bozmuyor.
-    expect(formatInstant("bozuk")).toBe("—");
+  it("zaman damgası ürün genelindeki tek biçimde", () => {
+    // T28 denetimi üç ayrı biçim buldu: burası dakika hassasiyetinde ve
+    // dilimsizdi, olay ekranları saniyeli ve `Z` ekliydi, alarm ekranları ise
+    // YEREL saatte. Sonuncusu bir alarm tetiklenmesini log satırıyla eşleştiren
+    // kullanıcıya saat farkı kadar sapmış iki zaman gösteriyordu. Tek biçim
+    // `lib/ui/time.ts`'te ve UTC olduğu açıkça yazılı.
+    expect(formatInstant("2026-08-18T09:19:47Z")).toBe("2026-08-18 09:19:47Z");
+    // Boş değer tabloyu bozmuyor.
+    expect(formatInstant(null)).toBe("—");
+    // Çözülemeyen damga GİZLENMİYOR: bozuk bir değer, gösterilmeyen bir
+    // değerden çok daha fazla bilgi taşıyor.
+    expect(formatInstant("bozuk")).toBe("bozuk");
   });
 });
 

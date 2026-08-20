@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { ErrorState, LoadingState } from "@/components/ui/States";
 import { api } from "@/lib/api/client";
-import { describeError } from "@/lib/alerts/errors";
+import { describeError } from "@/lib/api/errors";
 import type {
   AlertRule,
   AlertRuleDetail,

@@ -1,4 +1,7 @@
 import type { SourceActivityItem, SourceItem } from "@/lib/api/client";
+import { formatSince } from "@/lib/ui/time";
+
+export { formatSince };
 
 /**
  * Envanter ile olay etkinliğinin birleştirilmesi (T17).
@@ -119,29 +122,3 @@ export function describeSilence(row: InventoryRow, now: Date): Silence {
   return { kind: "active", label: formatSince(row.activity.last_ingested_at, now) };
 }
 
-/** "3 saat önce" — okunur bir geçmiş süre. */
-export function formatSince(timestamp: string, now: Date): string {
-  const then = Date.parse(timestamp);
-
-  if (Number.isNaN(then)) {
-    return timestamp;
-  }
-
-  const seconds = Math.max(0, Math.round((now.getTime() - then) / 1000));
-
-  if (seconds < 60) {
-    return "az önce";
-  }
-
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) {
-    return `${minutes} dakika önce`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  if (hours < 48) {
-    return `${hours} saat önce`;
-  }
-
-  return `${Math.floor(hours / 24)} gün önce`;
-}

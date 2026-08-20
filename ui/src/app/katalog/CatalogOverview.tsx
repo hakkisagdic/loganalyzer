@@ -7,7 +7,7 @@ import { Badge, Card } from "@/components/ui/Field";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { api } from "@/lib/api/client";
-import { describeError } from "@/lib/alerts/errors";
+import { describeError } from "@/lib/api/errors";
 import { formatInstant, toNumber } from "@/lib/alerts/types";
 import {
   COVERAGE_WARN_PERCENT,

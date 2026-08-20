@@ -7,7 +7,8 @@ import { Card, Field } from "@/components/ui/Field";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { api } from "@/lib/api/client";
 import { describeError } from "@/lib/api/errors";
-import { changeWriteRequest, screenState } from "@/lib/changes/connector";
+import { changeWriteRequest } from "@/lib/changes/connector";
+import { screenState } from "@/lib/ui/screen-state";
 
 import { ChangeTable, type ChangeRow } from "./ChangeTable";
 

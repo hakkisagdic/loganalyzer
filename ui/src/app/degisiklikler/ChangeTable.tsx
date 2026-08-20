@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/Field";
 import { DataTable, type Column } from "@/components/ui/DataTable";
+import { formatInstant } from "@/lib/ui/time";
 
 /**
  * `change_events` satırının UI karşılığı.
@@ -17,18 +18,6 @@ export interface ChangeRow {
   readonly summary: string;
   readonly source: string;
   readonly external_ref: string;
-}
-
-/**
- * Zaman damgası biçimi. `Intl` yerine sabit bir biçim: tabloda hizalanması
- * gereken bir sütun ve yerel biçim uzunluğu satırdan satıra değiştirirdi.
- */
-export function formatInstant(value: string): string {
-  const date = new Date(value);
-
-  return Number.isNaN(date.getTime())
-    ? "—"
-    : date.toISOString().replace("T", " ").slice(0, 16);
 }
 
 /**
