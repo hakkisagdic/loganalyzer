@@ -351,6 +351,45 @@ def test_ornekleme_gercek_bosluk_sayisi() -> None:
     assert open_gaps == {}, f"sınıflandırılmamış alan kaldı: {open_gaps}"
 
 
+def test_orneklem_bekciyi_HALA_sinamaya_devam_ediyor() -> None:
+    """**Örneklemi düzeltmek, bekçiyi test etmeyi bırakmak olmamalı.**
+
+    `nginx_dns_rebind.yml` düzeltildi: `query` alanı nginx'te hiç yoktu ve
+    kural zaten `category: dns` yüzünden `class_uid=4003` arıyordu, oysa nginx
+    parser'ı `4002` yazıyor — iki ayrı sebeple hiçbir zaman eşleşemezdi.
+
+    Ama düzeltmeyle birlikte bekçiyi tetikleyen kural sayısı 3'ten 2'ye indi.
+    Bir sonraki temizlik onu sıfıra indirirse bekçi örneklemde HİÇ sınanmaz
+    olur ve bunu hiçbir şey söylemez — bekçi kırılsa bile örneklem yeşil kalır.
+
+    Bu yüzden "en az bir kural düşürülüyor" ayrı bir bekçi. Sıfıra inmesi
+    gerekiyorsa bilinçli bir hareket olsun.
+    """
+    import importlib
+    import sys
+    from pathlib import Path
+
+    root = measure._repo_root()
+    sys.path.insert(0, str(root / "sidecar"))
+    shipping = importlib.import_module("app.sigma_pipeline")
+
+    blocked = [
+        path.name
+        for path in sorted((Path(__file__).parent / "rules").glob("*.yml"))
+        if any(
+            field in shipping.SCHEMA_GAPS
+            for field in shipping.rule_fields(path.read_text(encoding="utf-8"))
+        )
+    ]
+
+    assert blocked, (
+        "Örneklemde bekçiyi tetikleyen kural kalmadı. Bekçi artık uçtan uca "
+        "sınanmıyor; ya bir şema boşluğu kuralı geri konmalı ya bu bilinçli "
+        "olarak kaydedilmeli."
+    )
+    assert "fortigate_dns_tunnel.yml" in blocked
+
+
 def test_semada_olmayan_alan_ESLENMIYOR_dusuruluyor() -> None:
     """`dns_query_name` bir eşleme boşluğu değil, bir ŞEMA boşluğu.
 
@@ -368,6 +407,56 @@ def test_semada_olmayan_alan_ESLENMIYOR_dusuruluyor() -> None:
     assert "dns_query_name" in shipping.SCHEMA_GAPS
     assert "dns_query_name" not in shipping.ATTRS_MAP
     assert "url" in shipping.ATTRS_MAP
+
+
+def test_veritabani_acikca_gonderiliyor() -> None:
+    """**Bu ölçüm bir kez yalnızca birinin elle kurduğu görünüm sayesinde koştu.**
+
+    Sorgular veritabanını göndermiyordu, dolayısıyla `default`'a gidiyorlardı.
+    Canlı yığında görünümler `bizigo` altında; ölçüm "Unknown table expression
+    identifier 'events_ocsf'" ile düştü ve `default`'a elle takma görünüm
+    kurularak geçildi.
+
+    O an ölçüm tekrarlanabilir olmaktan çıktı: aynı komut, kurulumu bilmeyen
+    birinde koşmaz. Ön kontrolün altın örnek arayışıyla aynı sınıf — ölçümün
+    bağlandığı yer ile ölçmek istediği yer aynı olmalı.
+    """
+    seen: dict[str, str] = {}
+
+    class _Request:
+        def __init__(self, url: str, method: str = "GET") -> None:
+            self.url = url
+
+        def add_header(self, name: str, value: str) -> None:
+            seen[name] = value
+
+    class _Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b"3"
+
+    original_request = measure.urllib.request.Request
+    original_open = measure.urllib.request.urlopen
+    measure.urllib.request.Request = _Request
+    measure.urllib.request.urlopen = lambda *a, **k: _Response()
+
+    try:
+        rows, error = measure.run_on_clickhouse(
+            "SELECT * FROM events_ocsf", "http://x", "u", "p", 1.0
+        )
+    finally:
+        measure.urllib.request.Request = original_request
+        measure.urllib.request.urlopen = original_open
+
+    assert rows == 3 and not error
+    assert seen.get("X-ClickHouse-Database") == "bizigo", (
+        f"veritabanı gönderilmedi: {seen}"
+    )
 
 
 def test_esleyen_kural_yoksa_inf_yerine_sifir() -> None:
@@ -395,9 +484,24 @@ def test_tablo_adi_ikamesi_raporlaniyor() -> None:
     assert untouched == "SELECT * FROM events_ocsf"
 
 
+#: Testlerin yerine sahte koyduğu modül üyeleri.
+#:
+#: Her testten sonra geri yükleniyor. Yüklenmezse sahteler SIZAR ve sonraki
+#: test, farkında olmadan bir öncekinin sahtesini ölçer.
+#:
+#: **Bu bir kez gerçekten oldu.** `test_veritabani_acikca_gonderiliyor` tek
+#: başına geçiyor, paketle düşüyordu: kendinden önce sıralanan bir test
+#: `measure.run_on_clickhouse`'u sahteyle değiştirmiş ve geri koymamıştı, yani
+#: test gerçek fonksiyona hiç ulaşamıyordu. Deponun §6'sındaki desen —
+#: "tek başına geçiyor, sınıfla düşüyor" — ve orada da sebep testin kendisi
+#: değil paylaşılan durumdu.
+_PATCHED = ("run_on_clickhouse", "golden_probes")
+
+
 def main() -> int:
     tests = [value for name, value in sorted(globals().items()) if name.startswith("test_")]
     failed = 0
+    pristine = {name: getattr(measure, name) for name in _PATCHED}
 
     for test in tests:
         try:
@@ -406,6 +510,11 @@ def main() -> int:
         except AssertionError as exc:
             failed += 1
             print(f"✗ {test.__name__}: {exc or 'assertion failed'}")
+        finally:
+            # `finally`: başarısız bir test de sahtesini bırakıp gidebilir ve
+            # o zaman TEK bir hata, sonrasındaki her testi kirletir.
+            for name, original in pristine.items():
+                setattr(measure, name, original)
 
     print(f"\n{len(tests) - failed}/{len(tests)} geçti")
     return 1 if failed else 0

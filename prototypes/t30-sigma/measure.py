@@ -29,6 +29,10 @@ Kapsam kararının dayanağı **`matches`**, `compiled` değil.
 
 Kullanım
 --------
+Depo ağacının **içinden** koşmalı: `sidecar/app/sigma_pipeline` oradan import
+ediliyor ve altın örnek sondaları `catalog/parsers/*/samples` altından
+türetiliyor. Dışarı kopyalanırsa ön kontrol "KURULUM sorunu" diye reddeder.
+
     python3.13 -m venv .venv && .venv/bin/pip install \\
         'pySigma==1.5.0' 'pysigma-backend-clickhouse==1.1.1' 'PyYAML==6.0.3'
 
@@ -38,6 +42,13 @@ Kullanım
     # Canlı koşum (T30 kabul kriteri):
     .venv/bin/python measure.py --clickhouse-url http://localhost:8123 \\
         --clickhouse-user bizigo --clickhouse-password bizigo
+
+Sidecar imajının içinden koşturuluyorsa yorumlayıcı **`/opt/venv/bin/python`**:
+çıplak `python` sistem yorumlayıcısıdır ve `yaml`'ı görmez. O hâlde araç
+"Bağımlılık eksik" der ve buraya yönlendirir — yani bu satır olmadan hata
+mesajı çember çiziyordu.
+
+    /opt/venv/bin/python measure.py --clickhouse-url http://clickhouse:8123
 """
 
 from __future__ import annotations
@@ -57,6 +68,13 @@ RULES_DIR = Path(__file__).parent / "rules"
 
 #: Backend'in yazdığı sabit tablo adı. Bizim tablomuz `events_ocsf`.
 BACKEND_TABLE = "logs"
+
+#: Görünümlerin gerçekte durduğu veritabanı (deploy/docker-compose.yml:19).
+#:
+#: Varsayılan `default` DEĞİL: `default`'a düşen bir ölçüm "böyle tablo yok"
+#: der ve bu, kurulum hatası mı yoksa veri eksikliği mi olduğu belirsiz bir
+#: hata. Doğru varsayılan, yığının gerçekten kullandığı ad.
+DEFAULT_DATABASE = "bizigo"
 
 
 @dataclass
@@ -270,11 +288,27 @@ def rewrite_table(sql: str, table: str) -> tuple[str, bool]:
     return sql.replace(needle, f"FROM {table}"), True
 
 
-def run_on_clickhouse(sql: str, url: str, user: str, password: str, timeout: float) -> tuple[int, str]:
+def run_on_clickhouse(
+    sql: str,
+    url: str,
+    user: str,
+    password: str,
+    timeout: float,
+    database: str = DEFAULT_DATABASE,
+) -> tuple[int, str]:
     """Sorguyu çalıştırır; (satır sayısı, hata) döner.
 
     `SELECT *` yerine `count()` sarmalayıcısı: ölçülen şey satırların içeriği
     değil, sorgunun **koşup koşmadığı** ve bir şey bulup bulmadığı.
+
+    Veritabanı neden AÇIKÇA gönderiliyor
+    ------------------------------------
+    Eskiden gönderilmiyordu ve sorgular `default`'a gidiyordu. Canlı yığında
+    görünümler `bizigo` altında (deploy/docker-compose.yml `CLICKHOUSE_DB`),
+    yani ölçüm *"Unknown table expression identifier 'events_ocsf'"* ile
+    düşüyordu. Koşabilmesi için `default`'a elle takma görünüm kurmak
+    gerekmişti — ve o an ölçüm, birinin elle kurduğu bir duruma bağlanmış
+    oluyordu. Tekrarlanabilir olmayan bir sayı bağlayıcı olamaz.
     """
     wrapped = f"SELECT count() FROM ({sql})"
     query = urllib.parse.urlencode({"query": wrapped, "default_format": "TSV"})
@@ -284,6 +318,8 @@ def run_on_clickhouse(sql: str, url: str, user: str, password: str, timeout: flo
         request.add_header("X-ClickHouse-User", user)
     if password:
         request.add_header("X-ClickHouse-Key", password)
+    if database:
+        request.add_header("X-ClickHouse-Database", database)
 
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
@@ -454,7 +490,9 @@ class Preflight:
     probes: dict[str, list[str]] = field(default_factory=dict)
 
 
-def preflight(url: str, user: str, password: str, timeout: float) -> Preflight:
+def preflight(
+    url: str, user: str, password: str, timeout: float, database: str = DEFAULT_DATABASE
+) -> Preflight:
     """`events_ocsf` ölçülebilir durumda mı.
 
     **Neden reddetmek gerekiyor:** altın örnekler yüklenmemişse her kural
@@ -468,7 +506,7 @@ def preflight(url: str, user: str, password: str, timeout: float) -> Preflight:
     * Satır sayısı **sıfır** → veri yüklenmemiş; ölçüm yapılmamalı
     * Satır var              → ölçülebilir, ama vendor dağılımı da raporlanıyor
     """
-    total, error = run_on_clickhouse("SELECT * FROM events_ocsf", url, user, password, timeout)
+    total, error = run_on_clickhouse("SELECT * FROM events_ocsf", url, user, password, timeout, database)
 
     if error:
         return Preflight(
@@ -498,13 +536,13 @@ def preflight(url: str, user: str, password: str, timeout: float) -> Preflight:
     for vendor in ("Fortinet", "Cisco", "MikroTik"):
         rows, _ = run_on_clickhouse(
             f"SELECT * FROM events_ocsf WHERE device_vendor_name = '{vendor}'",
-            url, user, password, timeout,
+            url, user, password, timeout, database,
         )
         vendors[vendor] = rows
 
     rows, _ = run_on_clickhouse(
         "SELECT * FROM events_ocsf WHERE metadata_product_name = 'nginx'",
-        url, user, password, timeout,
+        url, user, password, timeout, database,
     )
     vendors["nginx"] = rows
 
@@ -558,7 +596,7 @@ def preflight(url: str, user: str, password: str, timeout: float) -> Preflight:
             escaped = probe.replace("\\", "\\\\").replace("'", "''")
             hits, error = run_on_clickhouse(
                 f"SELECT * FROM events_ocsf WHERE position(raw_data, '{escaped}') > 0",
-                url, user, password, timeout,
+                url, user, password, timeout, database,
             )
 
             # Sorgu hatası "bulamadım" DEĞİL. Eskiden hata yutuluyordu ve
@@ -766,7 +804,12 @@ def measure(args: argparse.Namespace) -> Report:
                 outcome.no_data = bool(vendor) and report.vendor_rows.get(vendor, 0) == 0
 
                 rows, run_error = run_on_clickhouse(
-                    sql, args.clickhouse_url, args.clickhouse_user, args.clickhouse_password, args.timeout
+                    sql,
+                    args.clickhouse_url,
+                    args.clickhouse_user,
+                    args.clickhouse_password,
+                    args.timeout,
+                    args.database,
                 )
                 outcome.runs = not run_error
                 outcome.rows = rows
@@ -853,6 +896,14 @@ def main() -> int:
     parser.add_argument("--clickhouse-url", default="", help="örn. http://localhost:8123")
     parser.add_argument("--clickhouse-user", default="bizigo")
     parser.add_argument("--clickhouse-password", default="bizigo")
+    parser.add_argument(
+        "--database",
+        default=DEFAULT_DATABASE,
+        help=(
+            f"görünümlerin bulunduğu veritabanı (varsayılan {DEFAULT_DATABASE!r}). "
+            "`default` verilirse canlı yığındaki görünümler bulunamaz."
+        ),
+    )
     parser.add_argument("--timeout", type=float, default=15.0)
     parser.add_argument("--json", default="", help="ölçümü bu dosyaya JSON olarak yaz")
     args = parser.parse_args()
@@ -865,7 +916,11 @@ def main() -> int:
     # aynısı — bu sefer ölçüm aracının kendisinde.
     if args.clickhouse_url:
         checked = preflight(
-            args.clickhouse_url, args.clickhouse_user, args.clickhouse_password, args.timeout
+            args.clickhouse_url,
+            args.clickhouse_user,
+            args.clickhouse_password,
+            args.timeout,
+            args.database,
         )
 
         if not checked.ok:
@@ -891,7 +946,7 @@ def main() -> int:
 
             return 3
 
-        print(f"Ön kontrol: events_ocsf {checked.rows} satır")
+        print(f"Ön kontrol: {args.database}.events_ocsf {checked.rows} satır")
 
         for vendor, rows in sorted(checked.vendors.items()):
             # Satırı olup altın örneği olmayan vendor buraya gelemiyor:

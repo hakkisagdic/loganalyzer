@@ -148,41 +148,98 @@ public sealed class BaselineWindowMeasurement(DevStackFixture stack) : IAsyncLif
 
         // Penceredeki ayrı imza sayısı tabandan bağımsız; oranın paydası bu.
         var windowSignatures = await DistinctSignaturesAsync(from, to, scope);
-
-        if (windowSignatures == 0)
-        {
-            Say("⚠ Pencerede hiç imzalı olay yok — ölçüm anlamsız. Daha yoğun bir aralık seçin.");
-            Emit(report);
-            return;
-        }
+        var rows = new List<BaselineSweepRow>();
 
         foreach (var length in BaselineLengths)
         {
+            var baselineFrom = from - Gap - length;
+
+            // ARŞİV DERİNLİĞİ — sayıyı basmadan ÖNCE.
+            //
+            // Bu bir yokluk kontrolü değil VARLIK kanıtı: tabanın en uzak
+            // ucunda gerçekten olay var mı. Sorulmasaydı, arşivin bittiği
+            // yerden sonraki her uzunluk aynı sayıyı üretir, eğri düzleşir ve
+            // o düzleşme aranan dirsekle birebir aynı görünürdü.
+            var reaches = await HasSignaturesAsync(baselineFrom, baselineFrom + ProbeSpan(length), scope);
+
+            if (!reaches)
+            {
+                rows.Add(new BaselineSweepRow(length, BaselineLengthStatus.ArchiveTooShort, 0, 0));
+                Say(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{BaselineSweepVerdict.Describe(length),10} {"—",12} {windowSignatures,18} {"arşiv ulaşmıyor",12}"));
+                continue;
+            }
+
             var window = new CorrelationWindow
             {
                 From = from,
                 To = to,
                 BaselineTo = from - Gap,
-                BaselineFrom = from - Gap - length,
+                BaselineFrom = baselineFrom,
             };
 
             var firstSeen = await _reader.GetFirstSeenSignaturesAsync(
                 window, scope, 100_000, TestContext.Current.CancellationToken);
 
+            var ratio = windowSignatures == 0 ? 0 : (double)firstSeen.Count / windowSignatures;
+            rows.Add(new BaselineSweepRow(length, BaselineLengthStatus.Measured, firstSeen.Count, ratio));
+
             Say(string.Create(
                 CultureInfo.InvariantCulture,
-                $"{Describe(length),10} {firstSeen.Count,12} {windowSignatures,18} " +
-                $"{100.0 * firstSeen.Count / windowSignatures,11:0.0}%"));
+                $"{BaselineSweepVerdict.Describe(length),10} {firstSeen.Count,12} {windowSignatures,18} " +
+                $"{100.0 * ratio,11:0.0}%"));
         }
 
         Say(string.Empty);
+
+        var unmeasurable = BaselineSweepVerdict.UnmeasurableCount(rows);
+
+        if (unmeasurable > 0)
+        {
+            // Eksik satırı söylemeyen bir rapor, tam bir süpürme yapılmış
+            // izlenimi bırakır.
+            Say($"⚠ {unmeasurable} taban uzunluğu ölçülemedi: arşiv o kadar geriye gitmiyor. " +
+                "Bu satırlarda sayı BASILMADI — basılsaydı arşivin sınırı verinin " +
+                "karakteri gibi okunurdu.");
+        }
+
         Say("Okuma notu: oran, taban uzadıkça düşmeli. Aranan yer eğrinin");
         Say("DÜZLEŞTİĞİ nokta — ondan sonrası gürültüyü azaltmıyor, yalnızca");
-        Say("sorguyu pahalılaştırıyor. Oran hiç düşmüyorsa taban yeterince");
-        Say("geçmiş içermiyor demektir ve ölçüm daha uzun bir arşivle tekrarlanmalı.");
+        Say("sorguyu pahalılaştırıyor.");
 
         Emit(report);
+
+        // REDDETME — en sonda, çünkü tablo reddedilse bile OKUNMALI: sebebi
+        // teşhis edecek olan o tablo.
+        var rejection = BaselineSweepVerdict.Reject(windowSignatures, rows);
+
+        Assert.True(
+            rejection is null,
+            $"Süpürme okunabilir bir eğri üretmedi, dolayısıyla ölçüm YAPILMADI:\n{rejection}\n\n" +
+            "Bu bir başarısızlık değil bir REDDETME: yeşil bir koşum 'ölçüm yapıldı' diye " +
+            "okunur ve tabloya bakan kişi orada bir sayı arar. Ölçemediğini söyleyip " +
+            $"yeşil bitmek, o sayıyı uydurmakla aynı kapıya çıkardı. Rapor: {LogFile}");
     }
+
+    /// <summary>
+    /// Tabanın en uzak ucundan ne kadarlık bir dilime bakılacağı.
+    ///
+    /// <para>
+    /// Uzunlukla ölçekleniyor ama bir saatle sınırlı: 30 günlük bir taban için
+    /// bütün tabanı taramak gereksiz pahalı, 1 saatlik taban için ise bir
+    /// saatlik dilim zaten tabanın kendisi.
+    /// </para>
+    /// </summary>
+    private static TimeSpan ProbeSpan(TimeSpan length) =>
+        length < TimeSpan.FromHours(1) ? length : TimeSpan.FromHours(1);
+
+    /// <summary>
+    /// Bu aralıkta hiç imzalı olay var mı — arşivin oraya ULAŞTIĞININ kanıtı.
+    /// </summary>
+    private async Task<bool> HasSignaturesAsync(
+        DateTimeOffset from, DateTimeOffset to, ScopePredicate scope) =>
+        await DistinctSignaturesAsync(from, to, scope) > 0;
 
     /// <summary>
     /// Penceredeki ayrı imza sayısı — oranın paydası.
@@ -210,11 +267,6 @@ public sealed class BaselineWindowMeasurement(DevStackFixture stack) : IAsyncLif
 
         return all.Count;
     }
-
-    private static string Describe(TimeSpan length) =>
-        length < TimeSpan.FromDays(1)
-            ? string.Create(CultureInfo.InvariantCulture, $"{length.TotalHours:0}sa")
-            : string.Create(CultureInfo.InvariantCulture, $"{length.TotalDays:0}g");
 
     private static void Emit(IEnumerable<string> report)
     {
