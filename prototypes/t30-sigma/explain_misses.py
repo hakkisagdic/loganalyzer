@@ -116,6 +116,70 @@ def _shipping():
     return importlib.import_module("app.sigma_pipeline")
 
 
+def column_value_spaces(root: Path) -> dict[str, frozenset[str]]:
+    """`events_ocsf` kolonu → o kolonun **kapalı değer uzayı** (yoksa yok).
+
+    Neden gerekiyor — ölçülmüş bir hata
+    -----------------------------------
+    Araç `fortigate_user_auth_fail`'in `status: 'failure'` değerini "örneklerde
+    yok" diye raporladı ve o rapora dayanarak kural `failed`'a çevrildi.
+    **Düzeltme kuralı bozdu.**
+
+    Ham FortiGate satırı gerçekten `status="failed"` yazıyor. Ama
+    `catalog/mappings/auth_outcome.yaml` ingest sırasında `failed → failure`
+    **çeviriyor** — kolonda duran değer `failure`. Kural baştan doğruydu.
+
+    Metin ekseni bunu göremez, çünkü çeviri ham satırda değil **ingest'te**
+    oluyor. Bu yüzden `absent` kutusu bir **üst sınır**: her elemanı örneklem
+    boşluğu değil, bir kısmı normalleştirilmiş değer.
+
+    Zincir üç halka ve üçü de mekanik, elle yazılmıyor:
+
+    1. `db/clickhouse/0003` → `<core> AS <ocsf>` çiftleri
+    2. `catalog/parsers/*` → `<core>: {{ table: <ad> }}`
+    3. `catalog/mappings/<ad>.yaml` → tablonun **değerleri**
+    """
+    import yaml
+
+    view = (root / "db" / "clickhouse" / "0003_ocsf_otel_views.sql").read_text(encoding="utf-8")
+    core_to_ocsf = dict(re.findall(r"^\s+(\w+)\s+AS\s+(\w+),", view, re.M))
+
+    # Hangi core alanı hangi sözlükle dolduruluyor.
+    tables: dict[str, set[str]] = {}
+
+    for parser in sorted((root / "catalog" / "parsers").rglob("*.yaml")):
+        text = parser.read_text(encoding="utf-8")
+
+        for core, table in re.findall(r"^\s{4}(\w+):\s*\{[^}]*table:\s*(\w+)", text, re.M):
+            tables.setdefault(core, set()).add(table)
+
+    spaces: dict[str, frozenset[str]] = {}
+
+    for core, names in tables.items():
+        ocsf = core_to_ocsf.get(core)
+
+        if ocsf is None:
+            continue
+
+        values: set[str] = set()
+
+        for name in names:
+            path = root / "catalog" / "mappings" / f"{name}.yaml"
+
+            if not path.is_file():
+                continue
+
+            document = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            # Anahtar cihazın sözcüğü, DEĞER kolona yazılan. Kural
+            # normalleştirilmiş değeri arıyor, yani değerlere bakıyoruz.
+            values.update(str(item) for item in document.values())
+
+        if values:
+            spaces[ocsf] = frozenset(values)
+
+    return spaces
+
+
 def corpus_dir(root: Path) -> Path:
     """Korpusun yeri — **T32'nin sabitinden**, elle yazılmadan.
 
@@ -183,6 +247,14 @@ class Literal:
     #: `RST`/`Reset` ile aynı sınıf: kural vendor'ın sözlüğünü değil kendi
     #: sözlüğünü kullanıyor.
     near_misses: list[str] = field(default_factory=list)
+
+    #: Değer, kolonun **kapalı değer uzayında** bulundu mu.
+    #:
+    #: Bulunduysa `absent` değil `present`: ham satırda geçmemesi önemli değil,
+    #: ingest onu oraya çeviriyor. Bu alan kararın SEBEBİNİ taşıyor — çünkü
+    #: "örneklerde yok ama kolonda var" tek başına şaşırtıcı ve gerekçesiz
+    #: bir sonuç.
+    in_value_space: bool = False
 
 
 @dataclass
@@ -370,9 +442,17 @@ def load_samples(root: Path, product: str) -> str:
 
 
 def examine(
-    rule_text: str, name: str, samples: str, product: str, text_fields: frozenset[str]
+    rule_text: str,
+    name: str,
+    samples: str,
+    product: str,
+    text_fields: frozenset[str],
+    spaces: dict[str, frozenset[str]] | None = None,
+    columns: dict[str, str] | None = None,
 ) -> RuleReport:
     report = RuleReport(name=name, product=product)
+    spaces = spaces or {}
+    columns = columns or {}
 
     for literal in rule_literals(rule_text):
         literal.verdict, literal.swallowed_by, literal.lines = classify(
@@ -380,7 +460,20 @@ def examine(
         )
 
         if literal.verdict == ABSENT:
-            literal.near_misses = near_misses(literal.value, samples)
+            # ÖNCE kapalı değer uzayı, sonra yakın sözcük.
+            #
+            # Sıra önemli: değer kolonda gerçekten duruyorsa bu bir kelime
+            # hatası DEĞİL ve `⚠ yakın sözcük` uyarısı yanlış yönlendirirdi —
+            # bir tur boyunca tam olarak öyle oldu ve doğru bir kural
+            # "düzeltilerek" bozuldu.
+            space = spaces.get(columns.get(literal.field, ""))
+
+            if space and literal.value in space:
+                literal.verdict = PRESENT
+                literal.in_value_space = True
+            else:
+                literal.near_misses = near_misses(literal.value, samples)
+
         report.literals.append(literal)
 
     return report
@@ -422,6 +515,9 @@ def main(argv: list[str] | None = None) -> int:
     cache: dict[str, str] = {}
     reports: list[RuleReport] = []
     text_fields = free_text_fields()
+    spaces = column_value_spaces(root)
+    shipping = _shipping()
+    columns = dict(shipping.FIELD_MAP) if shipping else {}
 
     for path in rules:
         text = path.read_text(encoding="utf-8")
@@ -435,7 +531,9 @@ def main(argv: list[str] | None = None) -> int:
         if product not in cache:
             cache[product] = load_samples(root, product)
 
-        reports.append(examine(text, path.name, cache[product], product, text_fields))
+        reports.append(
+            examine(text, path.name, cache[product], product, text_fields, spaces, columns)
+        )
 
     buckets = {ABSENT: [], SUBSTRING_ONLY: [], PRESENT: []}
 
@@ -456,6 +554,19 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{'desen YOK':<18} {len(buckets[ABSENT]):>6}   örneklem kusuru — kapsam kararına GİRMEZ")
     print(f"{'yalnızca içinde':<18} {len(buckets[SUBSTRING_ONLY]):>6}   eşleşse bile YANLIŞ sebeple")
     print(f"{'desen var':<18} {len(buckets[PRESENT]):>6}   eşleşmiyorsa suç EŞLEMEDE")
+
+    translated = [
+        (r.name, l) for r in reports for l in r.literals if l.in_value_space
+    ]
+
+    if translated:
+        print(
+            f"\n{len(translated)} dizge ham satırda YOK ama kolonun kapalı değer "
+            "uzayında VAR — ingest onu çeviriyor, yani kural doğru:"
+        )
+
+        for name, literal in translated:
+            print(f"  {name:<34} {literal.field} = {literal.value!r}")
 
     for title, key in (
         ("Örneklemde deseni olmayan kurallar", ABSENT),
