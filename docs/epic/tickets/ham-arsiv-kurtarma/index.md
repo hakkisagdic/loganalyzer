@@ -117,11 +117,26 @@ süresinden kısa olamaz.
    - Nesneyi yaz, geri oku, doğrula, `State = Verified` ve `VerifiedAt`
      güncelle.
 
-3. **Kurtarma bir zamanlanmış iş mi, elle tetiklenen bir uç mu** — karar bu
-   ticket'ta veriliyor ve **gerekçesiyle** yazılıyor. İkisinin de bir maliyeti
-   var: otomatik kurtarma, bozuk bir S3 yapılandırmasında sonsuz yeniden yazma
-   döngüsüne girebilir; elle tetikleme, kimsenin bakmadığı 48 saatte hiç
-   koşmaz.
+3. **Kurtarma tespitten tetiklenir, ayrı bir zamanlamadan değil.** Scrub bir
+   nesneyi `Missing` işaretlediği anda kurtarma **kuyruğa girer**; aradaki süre
+   sıfıra yakın olmalı.
+
+   Gerekçe doğrudan 2. bulgudan geliyor: bağlayıcı kısıt **pencere**. Kurtarma
+   kendi takvimiyle koşarsa tespit ile kurtarma arasına ikinci bir gecikme
+   girer ve 48 saatlik bütçe iki bağımsız periyot arasında bölünür — yani
+   kimsenin toplamını tutmadığı bir bütçe. Tetikleme tespite bağlıysa pencerenin
+   tamamı tespite kalıyor ve tek bir sayı (tam tarama süresi) bütçeyi belirliyor.
+
+   **Elle tetiklenen uç ikincil olarak durur** — operatör bildiği bir kaybı
+   scrub'ın sırası gelmeden kurtarabilsin diye. Ama birincil yol o değil:
+   birincil olsaydı koruma yine bir insanın bakmasına bağlanırdı ve bu depoda
+   tam o sınıfta bir kalem patladı — CI dört birleştirme boyunca kırmızıydı,
+   kimse bakmadı.
+
+   Otomatik tetiklemenin bilinen riski, bozuk bir S3 yapılandırmasında sonsuz
+   yeniden yazma döngüsü. Kurtarma denemesi sayılmalı ve nesne başına bir üst
+   sınırdan sonra durup **kurtarılamaz** işaretlenmeli — sessizce yeniden
+   denemeye devam etmemeli.
 
 4. **Kapsam sınırları arasındaki ilişkiyi yapılandırmada görünür kıl.**
    `SegmentRetention` ile `ScrubInterval × (arşiv boyutu / ScrubSampleSize)`
@@ -140,7 +155,7 @@ süresinden kısa olamaz.
 
 ## Kabul kriterleri
 
-Kayıp nesnenin WAL segmenti, State = Missing olduğu sürece silinmiyorKayıp nesne yerel segmentten yeniden kurulup yazılıyor ve State = Verified oluyorYeniden kurulan nesnenin sha256'sı manifest'le uyuşmuyorsa yazma yapılmıyorSegment artık yoksa "kurtarılamaz" ayrı bir durum olarak görünüyor; sessizce geçilmiyorTam tarama süresi kurtarma penceresinden uzunsa açılışta uyarı loglanıyorReplay, kurtarılmış nesneyi eksik saymıyor (409 üretmiyor)
+Kayıp nesnenin WAL segmenti, State = Missing olduğu sürece silinmiyorScrub bir nesneyi Missing işaretlediğinde kurtarma aynı turda kuyruğa giriyor; ayrı bir zamanlayıcı beklenmiyorKayıp nesne yerel segmentten yeniden kurulup yazılıyor ve State = Verified oluyorYeniden kurulan nesnenin sha256'sı manifest'le uyuşmuyorsa yazma yapılmıyorSegment artık yoksa "kurtarılamaz" ayrı bir durum olarak görünüyor; sessizce geçilmiyorTekrarlanan başarısız kurtarma denemesi üst sınırda duruyor; sonsuz döngü yokTam tarama süresi kurtarma penceresinden uzunsa açılışta uyarı loglanıyorReplay, kurtarılmış nesneyi eksik saymıyor (409 üretmiyor)
 
 ## Bekçiler
 
@@ -153,10 +168,12 @@ teslim edilir.
 | `Kayip_nesne_segmentten_geri_yukleniyor` | Ana yol: `Missing` → yeniden kur → `Verified` | ❌ sahte depo |
 | `Sha256_tutmayan_yeniden_kurulum_yazilmiyor` | Kurtarmanın kendisi bozuksa arşivi bozmuyor | ❌ |
 | `Segment_yoksa_kurtarilamaz_isaretleniyor` | Sessiz geçiş yok | ❌ |
+| `Kayip_tespit_edilince_kurtarma_ayni_turda_kuyruga_giriyor` | 3. maddenin kararı: tetikleme tespite bağlı, ayrı zamanlamaya değil | ❌ |
+| `Tekrarlanan_basarisiz_kurtarma_ust_sinirda_duruyor` | Bozuk S3 yapılandırmasında sonsuz döngü yok | ❌ |
 | `Tam_tarama_penceresi_asiyorsa_uyari_veriyor` | 2. bulgunun görünür kılınması | ❌ |
 | `RawArchiveTests` genişletmesi | Gerçek S3 üzerinde uçtan uca kurtarma | ✅ **koordinatör koşturur** |
 
-İlk beşi konteyner istemiyor: `IRawObjectStore` zaten arayüz ve
+Sonuncusu dışında hiçbiri konteyner istemiyor: `IRawObjectStore` zaten arayüz ve
 `RawArchiveTestDoubles` var. Bu bilerek böyle — F1 kapanışının notu, beş
 hatanın dördünün konteyner gerektirmeden yakalanabildiğiydi.
 

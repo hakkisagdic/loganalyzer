@@ -312,6 +312,52 @@ okuma uçları T20. `GET /v1/parsers/drafts/{id}` sözleşmesi ikisine birden
 çivilendi (`yaml` alanı, `snake_case`) ki biri diğerini beklemesin. Merge'de
 o satırlardan hiçbiri iki kez silinmedi — bölünme tuttu.
 
+### F1'den kalan borç: T39 — ham arşiv kurtarma
+
+`status: 0` · `tickets/ham-arsiv-kurtarma` · kaynağı
+[T04 karar belgesi](../t04-kararlar/index.md) açık kalem #4
+
+F1 karar belgeleri yazılırken çıktı ve **yeni bir ticket açtırdı**, çünkü
+bulunan şey eksik bir özellik değil: 48 saatlik WAL saklama penceresi *"nesne
+kaybolursa yerelden yeniden yükle"* için seçilmiş, `RawManifestEntity.WalSegment`
+o bağı taşıyor, scrub kaybı `RawObjectState.Missing` ile görüyor — ve kurtarmayı
+yapan kod **yok**.
+
+Ticket'a çevrilirken kod tekrar okundu, iki şey daha çıktı:
+
+| # | Bulgu | Sonucu |
+| --- | --- | --- |
+| a | `DeleteExpiredSegmentsAsync` silme kararını yalnızca `VerifiedAt`'e bakarak veriyor; `State` sorguya hiç girmiyor | Kaybın **tespit edilmiş olması**, kurtarma kaynağı olan WAL segmentinin silinmesini engellemiyor. Mekanizma yazılsa bile bu satır düzeltilmeden **kendi kaynağını silebilir** |
+| b | Scrub 6 saatte 20 nesne tarıyor → 48 saatte 160 nesne → ~64 MB'lık nesnelerle ~**10 GB** | Arşiv bundan büyükse tam tarama penceresinden uzun sürüyor ve kayıp, segment silindikten *sonra* fark ediliyor. Koruma belli bir boyuttan sonra **aritmetik olarak erişilemez** |
+
+(b) yapılandırmadan **hesaplandı**, ölçülmedi. T04'ün "bu sayıların gerekçesi
+kayıtta yok" diyen iki ayrı açık kalemi (#2 scrub örneklemesi, #3 saklama
+penceresi) aslında tek kalemin iki yarısıymış: pencere, tam tarama süresinden
+kısa olamaz.
+
+**Verilen karar:** kurtarma **tespitten tetiklenir**, ayrı bir zamanlamadan
+değil — aksi hâlde 48 saatlik bütçe iki bağımsız periyot arasında bölünür ve
+toplamı kimse tutmaz. Elle tetiklenen uç ikincil kalır; birincil olsaydı koruma
+yine bir insanın bakmasına bağlanırdı.
+
+### D kalemine bağ: ingest çift yazma penceresi
+
+T39 ile aynı turda ölçülen ayrı bir kalem, ama aynı aileden.
+`IngestRetryWindowTests` (birim, Docker yok) şunu sabitliyor: `AcceptAsync`
+batch'i WAL'a yazıp `fsync` ettikten **sonra** dolu kanalda bekliyor, yani veri
+dayanıklı olduğu hâlde istemcinin elinde 200 yok. O pencerede zaman aşımına
+düşüp yeniden gönderen istemci WAL'a ikinci çerçeveyi yazdırıyor.
+
+Asıl bulgu tekrarın kendisi değil: iki kayıt **birbirine bağlanamıyor**.
+`EventId` her çözümlemede `Guid.CreateVersion7` ile yeniden üretildiği için
+gövde baytları birebir aynı, kimlikler farklı — arşiv, ClickHouse ve replay
+bu ikisinin aynı gönderim olduğunu **söyleyemiyor**.
+
+Sorun bir *tekrar* sorunu değil bir *kimlik* sorunu, ve sonucu şu: tekilleştirme
+eklendiğinde anahtar **var olmayan bir yerden** gelmek zorunda — ya istemciden
+bir başlık, ya gövdenin hash'i. İkisi ayrı kararlar, maliyetleri farklı.
+Ayrıntısı [T03 karar belgesi](../t03-kararlar/index.md) açık kalem #3'te.
+
 **T27'nin önündeki tek açık karar:** izin listesindeki `POST /v1/replay`.
 Atfı yanlıştı ("T19 — replay ekranı"), oysa replay ekranının ticket'ı yok.
 Tüketicisi olmayan bir uca yanıt tipi yazmak listenin var olma sebebini boşa
