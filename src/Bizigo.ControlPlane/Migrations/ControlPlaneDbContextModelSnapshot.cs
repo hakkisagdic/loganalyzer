@@ -277,6 +277,183 @@ namespace Bizigo.ControlPlane.Migrations
                     b.ToTable("audit_log", "bizigo");
                 });
 
+            modelBuilder.Entity("Bizigo.ControlPlane.ChangeConfigSnapshotEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("body");
+
+                    b.Property<DateTimeOffset>("CapturedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("captured_at");
+
+                    b.Property<Guid>("ConnectorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connector_id");
+
+                    b.Property<int>("LineCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_count");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("sha256");
+
+                    b.HasKey("Id")
+                        .HasName("pk_change_config_snapshots");
+
+                    b.HasIndex("ConnectorId", "CapturedAt")
+                        .HasDatabaseName("ix_change_config_snapshots_connector_id_captured_at");
+
+                    b.ToTable("change_config_snapshots", "bizigo");
+                });
+
+            modelBuilder.Entity("Bizigo.ControlPlane.ChangeConnectorEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ConfigJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("config_json");
+
+                    b.Property<byte>("ConnectorType")
+                        .HasColumnType("smallint")
+                        .HasColumnName("connector_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CredentialCipher")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("credential_cipher");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("enabled");
+
+                    b.Property<int?>("IntervalSeconds")
+                        .HasColumnType("integer")
+                        .HasColumnName("interval_seconds");
+
+                    b.Property<string>("LastError")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTimeOffset?>("LastRunAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_run_at");
+
+                    b.Property<byte?>("LastRunState")
+                        .HasColumnType("smallint")
+                        .HasColumnName("last_run_state");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTimeOffset?>("NextRunAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_run_at");
+
+                    b.Property<string>("OwnerGroup")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("owner_group");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("slug");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_change_connectors");
+
+                    b.HasIndex("OwnerGroup")
+                        .HasDatabaseName("ix_change_connectors_owner_group");
+
+                    b.HasIndex("Slug")
+                        .IsUnique()
+                        .HasDatabaseName("ix_change_connectors_slug");
+
+                    b.HasIndex("Enabled", "NextRunAt")
+                        .HasDatabaseName("ix_change_connectors_enabled_next_run_at");
+
+                    b.ToTable("change_connectors", "bizigo");
+                });
+
+            modelBuilder.Entity("Bizigo.ControlPlane.ChangeConnectorRunEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("ChangesWritten")
+                        .HasColumnType("integer")
+                        .HasColumnName("changes_written");
+
+                    b.Property<Guid>("ConnectorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("connector_id");
+
+                    b.Property<string>("Error")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("error");
+
+                    b.Property<DateTimeOffset>("FinishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("finished_at");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_at");
+
+                    b.Property<byte>("State")
+                        .HasColumnType("smallint")
+                        .HasColumnName("state");
+
+                    b.HasKey("Id")
+                        .HasName("pk_change_connector_runs");
+
+                    b.HasIndex("StartedAt")
+                        .HasDatabaseName("ix_change_connector_runs_started_at");
+
+                    b.HasIndex("ConnectorId", "StartedAt")
+                        .HasDatabaseName("ix_change_connector_runs_connector_id_started_at");
+
+                    b.ToTable("change_connector_runs", "bizigo");
+                });
+
             modelBuilder.Entity("Bizigo.ControlPlane.ChangeWebhookDeliveryEntity", b =>
                 {
                     b.Property<string>("DeliveryKey")
@@ -562,6 +739,10 @@ namespace Bizigo.ControlPlane.Migrations
                     b.Property<int>("State")
                         .HasColumnType("integer")
                         .HasColumnName("state");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
 
                     b.Property<string>("Vendor")
                         .IsRequired()

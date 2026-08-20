@@ -18,6 +18,12 @@ namespace Bizigo.Normalization;
 /// Boş olması bir hata değil: F3'ün "ilk görülen imza" korelasyonu zaten
 /// yalnızca etiketlenebilmiş olaylar üzerinde çalışıyor.
 /// </param>
+/// <param name="SignatureHash">
+/// Maskelenmiş imzanın kimliği (K35) — <b>her olayda dolu</b>, <c>0</c> yalnızca
+/// gövde boşsa ya da satır <c>MaskCatalog.MaxInputLength</c>'i aşıyorsa.
+/// <paramref name="TemplateId"/>'nin aksine örneklemeye ve sidecar'a bağlı
+/// değil; F3'ün iki korelasyonu bunun üstünde duruyor.
+/// </param>
 public sealed record ParsedEvent(
     RawRecord Raw,
     string Decoded,
@@ -25,7 +31,8 @@ public sealed record ParsedEvent(
     ResolvedSource Source,
     ParseResult Parsed,
     DispatchTier Tier,
-    string TemplateId = "");
+    string TemplateId = "",
+    ulong SignatureHash = 0);
 
 /// <summary>
 /// Ayrıştırılmış olayların çıkışı.

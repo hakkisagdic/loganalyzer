@@ -8,8 +8,8 @@ boru hattı, T04 ham arşiv, T05 parser motoru, T06 dispatcher, T07 normalizasyo
 T08 vendor kataloğu, T09 kimlik, T10 API uçları, T11 replay ve T12 sidecar.
 
 **F2 (görünürlük) sürüyor:** T13 Next.js iskeleti ve BFF, T14 OpenAPI tip
-üretimi, T15 log arama ekranı, T16 olay detayı ve ham görünüm, T18 parser yayın
-akışı.
+üretimi, T15 log arama ekranı, T16 olay detayı ve ham görünüm, T17 kaynak envanteri,
+T18 parser yayın akışı.
 
 Planlama belgeleri Traycer epic'inde:
 `mimari-kararlar` · `f1-teknik-plan` · `rca-raporu-ozelligi` · `tickets/`
@@ -239,6 +239,70 @@ gerçek olayların gelmediğini fark etmiyor.
 gövdenin sha256'sı kullanılıyor. Talep **önce** yazılıyor, değişiklik olayı
 sonra — ters sırada iki eşzamanlı teslimatın ikisi de satır düşürürdü.
 
+**Webhook uçları artık ekrandan tanımlanıyor** (T25, K34). `change_connectors`
+tablosu kaynağın tipini, hedefini, zamanlamasını, sahip grubunu ve **şifreli**
+kimlik bilgisini tutuyor; alıcı bir isteği karşılarken önce bu tabloya, sonra
+`appsettings.json`'daki uçlara bakıyor. **Veritabanı kazanıyor** — tersi olsaydı
+ekrandan yapılan bir değişiklik unutulmuş bir yapılandırma satırı yüzünden
+sessizce etkisiz kalırdı.
+
+**Gizli bilgi anahtarı ürün geneli tek:** `Security__SecretKey` (base64, 32 bayt,
+AES-256-GCM). T22 bunu `Alerting:SecretKey` olarak kurmuştu; T25 connector
+kimlik bilgileri için aynı şeye ihtiyaç duyunca ortaklaştırıldı
+(`Bizigo.Contracts.Security`). İki anahtar, iki rotasyon hikâyesi ve altı ay
+sonra birinin döndürülüp diğerinin unutulması demekti. **Anahtar yoksa gizli
+bilgi kaydedilmiyor** — düz metne düşmek, "şifreli saklanıyor" iddiasını
+sessizce yalanlardı.
+
+**Hata mesajının temizliği runner'ın değil servisin işi.** Bir toplayıcıdan ya
+da bir istisnadan gelen her metin, veritabanına yazılmadan ve kullanıcıya
+gösterilmeden önce `SecretRedactor`'dan geçiyor. Gerekçe ölçüldü: sızıntının en
+sık gerçekleştiği yer bağlantı hatasının mesajı ve orada gizli bilgi çoğu zaman
+kimsenin yazmadığı bir yerden — kütüphanenin istisna metninden — geliyor.
+
+**Toplayıcısı olmayan connector tipi etkinleştirilemiyor.** Cihaz config
+toplayıcısı T26'da; o gelene kadar `DeviceConfig` connector'ı kaydedilebiliyor
+ama açılamıyor. Alternatif — zamanlayıcının her turda "bu tip için toplayıcı
+yok" diye hata yazması — çalışma geçmişini gerçek arızalarla sahtelerinin
+karıştığı bir yığına çevirirdi.
+
+**Saklama tek politika, üç tablo:** `change_webhook_deliveries`,
+`change_connector_runs` ve `change_config_snapshots` 90 gün sonra siliniyor
+(`Changes:Connectors:Retention`). İki istisna var ve ikisi de bilinçli:
+`change_events` politikanın **dışında** — RCA'nın F3'te arayacağı geçmiş hiç
+silinmiyor; ve her connector'ın **en yeni** anlık görüntüsü kesimin gerisinde
+kalsa bile korunuyor, yoksa hiç değişmeyen bir cihazın taban çizgisi silinir ve
+bir sonraki çekim config'in tamamını sahte bir değişiklik olarak raporlar.
+
+**Cihaz config farkı (T26).** `Bizigo.Devices` ürünün cihazlara **bağlanan**
+tek derlemesi; SSH bağımlılığı yalnızca orada ve arayüzün yüzeyinde yazma diye
+bir şey yok — bu ürün config okuyor, değiştirmiyor. FortiGate, Cisco ASA ve
+MikroTik: üçü de SSH konuşuyor, komutları vendor başına yazıldı (`show`,
+`more system:running-config`, `/export terse` — hepsi sayfalama kapalı ve
+satır kaydırması olmayan biçimler, çünkü yarım ya da farklı bölünmüş bir çıktı
+silinmiş yüzlerce satır gibi görünür).
+
+**Gürültü elenmezse tablo işe yaramaz.** Cihazlar her çekimde değişen satırlar
+basıyor: FortiGate config dosyası sürümünü, ASA `Cryptochecksum`'ı, MikroTik
+export başlığına o anın tarihini. `ConfigNormalizer` bunları eliyor ve
+**gizli değerleri silmiyor, maskeliyor**: `set psksecret ENC …` →
+`set psksecret ENC <gizli:a3f21c08>`. Silmek dönen bir anahtarı görünmez
+yapardı; oysa rotasyon gerçek bir değişiklik. Özet değişince fark yakalanıyor,
+değer hiçbir yere yazılmıyor.
+
+**Fark bölüm başına çoklu-küme farkı, LCS değil.** Ağ config'i bildirimsel:
+aynı bölümdeki iki ayarın sırası anlam taşımıyor ve cihazlar yeniden yazımda
+sırayı değiştirebiliyor. LCS her yeniden yazımda yüzlerce sahte değişiklik
+üretirdi, üstelik maliyeti iki tarafın çarpımı kadar. Bu yöntem girdi
+uzunluğunda doğrusal. Bedeli açık: bölüm **içinde** yer değiştiren satır fark
+üretmiyor — bildirimsel bir config'te zaten bir değişiklik değil.
+
+**Saklanan anlık görüntü ham config değil.** Normalize + maskelenmiş metin,
+üstüne şifreli. Bu ürün config yedeklemiyor: RCA'nın ihtiyacı "ne değişti",
+config'in kopyası değil — ve kopya tutulduğu an saklama, erişim ve sızıntı
+sorumluluğu da doğar. `change_events`'e yazılan kayıt da bölüm **adlarını**
+taşıyor, satır içeriklerini değil.
+
 ## Proje düzeni
 
 ```
@@ -259,9 +323,11 @@ ui/                            Next.js: arayüz + BFF (OIDC, oturum, API vekili)
   src/app/signin-oidc/         OIDC dönüş ucu — yol realm dosyasında sabit
   src/app/api/bff/[...path]/   Bizigo.Api'ye açılan tek kapı
   src/app/olaylar/             log arama (T15) ve olay detayı + ham baytlar (T16)
+  src/app/kaynaklar/           kaynak envanteri, son görülme, CSV yükleme (T17)
   src/lib/auth/                keşif, PKCE, oturum deposu, yenileme
   src/lib/api/                 üretilen tipler + tarayıcı/sunucu istemcileri
   src/lib/events/              arama ölçütleri, kısa sorgu kuralı, hex/kodlama
+  src/lib/sources/             envanter + etkinlik birleştirmesi
   src/app/tokens.css           tasarım jetonları — ekranlar ham değer yazmıyor
 sidecar/                       Python: drain3 + pysigma
 catalog/patterns/              Logstash grok setleri — VERİ, elle düzenlenmez

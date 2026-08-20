@@ -1,0 +1,14 @@
+title: "nginx: SQL enjeksiyon denemesi"
+id: 86872380-0000-4000-8000-000000000000
+status: experimental
+description: T30 ölçüm örneklemi — F1 kataloğunun tanıdığı vendor'lara göre yazıldı.
+logsource:
+  category: firewall
+  product: nginx
+detection:
+  selection:
+    url|contains:
+      - 'UNION SELECT'
+      - "' OR '1'='1"
+  condition: selection
+level: medium

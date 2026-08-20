@@ -96,32 +96,36 @@ const fallbackMessages: Record<number, ApiProblem> = {
 };
 
 /**
- * Bir hatayı kullanıcıya gösterilebilecek metne çeviriyor.
+ * Yakalanan bir hatayı `ErrorState`'in `hint`ine yazılabilecek tek satıra
+ * çeviriyor.
  *
  * <p>
- * <c>ApiError</c> zaten sunucunun cümlesini taşıyor; onu yeniden yazmak,
- * sunucudaki gerekçeyi (hangi grup kapsam dışında, hangi sınır aşıldı) atıp
- * yerine genel bir cümle koymak olurdu. Yalnızca <b>tanınmayan</b> hata
- * biçimleri için genel bir metin üretiliyor — çıplak <c>String(cause)</c> çoğu
- * zaman <c>[object Object]</c> basar.
+ * Ekranlar `instanceof` zinciri yazmasın diye burada: aynı zinciri her ekranda
+ * tekrarlamak, biri unuttuğunda kullanıcıya `[object Object]` gösteren bir
+ * ekran demek. `ApiError` zaten sunucunun cümlesini taşıyor; onu yeniden
+ * yazmak, gerekçeyi (hangi grup kapsam dışında, hangi sınır aşıldı) atıp
+ * yerine genel bir cümle koymak olurdu.
  * </p>
  *
  * <p>
- * T23'te alarm ekranının içinde doğdu; T19'da buraya taşındı. Ekranların
- * hatayı <b>aynı</b> biçimde göstermesi bir tutarlılık tercihi değil,
- * doğruluk meselesi: iki ekranın iki farklı özeti, aynı 403'ü iki farklı
- * sebep gibi gösterirdi (T28 bunu denetleyecek).
+ * T23'te alarm ekranının, T20'de katalog ekranının içinde ayrı ayrı doğdu;
+ * T19 üçüncü tüketiciyi getirince buraya taşındı. Ekranların hatayı
+ * <b>aynı</b> biçimde göstermesi bir tutarlılık tercihi değil, doğruluk
+ * meselesi: iki farklı özet, aynı 403'ü iki farklı sebep gibi gösterirdi
+ * (T28 bunu denetleyecek).
  * </p>
  */
 export function describeError(cause: unknown): string {
   if (cause instanceof ApiError) {
-    return [cause.problem.error, cause.hint].filter(Boolean).join(" ");
+    return cause.hint ? `${cause.message} ${cause.hint}` : cause.message;
   }
 
   if (cause instanceof TransportError) {
     return cause.message;
   }
 
+  // `Error` ama bizim tiplerimizden biri değil: mesajı yine de göstermek,
+  // "beklenmeyen bir hata" demekten çok daha fazlasını söylüyor.
   return cause instanceof Error ? cause.message : "Beklenmeyen bir hata oluştu.";
 }
 

@@ -70,18 +70,21 @@ public static class ParsersEndpoints
         // görmesi anlamına gelmiyor.
         group.MapGet("/", List)
             .RequireAuthorization(BizigoAuthPolicies.Read)
-            .WithName("ListParsers");
+            .WithName("ListParsers")
+            .Produces<ParserListResponse>();
 
         group.MapGet("/{id}", Get)
             .RequireAuthorization(BizigoAuthPolicies.Read)
-            .WithName("GetParser");
+            .WithName("GetParser")
+            .Produces<ParserDetailResponse>()
+            .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
 
         group.MapPost("/try", Try)
             .RequireAuthorization(BizigoAuthPolicies.Author)
             .WithName("TryParser")
             .Produces<ParserTryResponse>()
-            .Produces(StatusCodes.Status400BadRequest)
-            .Produces(StatusCodes.Status404NotFound);
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces<ErrorResponse>(StatusCodes.Status404NotFound);
 
         return routes;
     }
@@ -90,19 +93,24 @@ public static class ParsersEndpoints
     {
         var snapshot = catalog.Current;
 
-        return Results.Ok(new
-        {
-            count = snapshot.Parsers.Count,
-            parsers = snapshot.Parsers
-                .OrderBy(static p => p.Id, StringComparer.Ordinal)
-                .Select(Summarize),
-        });
+        var parsers = snapshot.Parsers
+            .OrderBy(static p => p.Id, StringComparer.Ordinal)
+            .Select(Summarize)
+            .ToArray();
+
+        // Katalog geneli GROK003. Ekranın uyarıyı gösterebilmesi için parser
+        // başına detay çekmesi gerekseydi katalog açılışı N istek atardı — ve
+        // çoğu ekran bunu yapmayıp uyarıyı hiç göstermezdi.
+        return Results.Ok(new ParserListResponse(
+            parsers.Length,
+            parsers,
+            parsers.Sum(static p => p.BacktrackingGroks)));
     }
 
     private static IResult Get(string id, ParserCatalog catalog) =>
         catalog.Current.ByParserId.TryGetValue(id, out var parser)
             ? Results.Ok(Detail(parser))
-            : Results.NotFound(new { error = $"'{id}' kataloğda yok." });
+            : Results.NotFound(new ErrorResponse($"'{id}' kataloğda yok."));
 
     /// <summary>
     /// Bir satırı kataloğa <b>ya da henüz yayınlanmamış bir taslağa</b> karşı
@@ -129,11 +137,9 @@ public static class ParsersEndpoints
 
         if (line.Length == 0 && yaml.Length == 0)
         {
-            return Results.BadRequest(new
-            {
-                error = "'line' ya da 'yaml' verilmeli.",
-                hint = "Satır olmadan yalnızca taslak kapıları koşturulabilir; ikisi birden boşsa denenecek bir şey yok.",
-            });
+            return Results.BadRequest(new ErrorResponse(
+                "'line' ya da 'yaml' verilmeli.",
+                "Satır olmadan yalnızca taslak kapıları koşturulabilir; ikisi birden boşsa denenecek bir şey yok."));
         }
 
         if (yaml.Length > 0)
@@ -145,7 +151,7 @@ public static class ParsersEndpoints
         {
             if (!catalog.Current.ByParserId.TryGetValue(parserId, out var parser))
             {
-                return Results.NotFound(new { error = $"'{parserId}' kataloğda yok." });
+                return Results.NotFound(new ErrorResponse($"'{parserId}' kataloğda yok."));
             }
 
             return Results.Ok(new ParserTryResponse(
@@ -197,55 +203,46 @@ public static class ParsersEndpoints
             verdict.Compiled is { } compiled && line.Length > 0
                 ? ParseOutcomeResponse.From(compiled.Parse(line))
                 : null,
-            ParserGateResponse.From(verdict),
+            PublishVerdictResponse.From(verdict),
             line.Length > 0
                 ? ParserDispatchResponse.From(dispatcher.Dispatch(line, boundParserId: null))
                 : null);
     }
 
-    private static object Summarize(CompiledParser parser)
+    private static ParserSummaryResponse Summarize(CompiledParser parser)
     {
         var metadata = parser.Definition.Metadata;
 
-        return new
-        {
-            id = metadata.Id,
-            version = metadata.Version,
-            vendor = metadata.Vendor,
-            product = metadata.Product,
-            description = metadata.Description,
-            license = metadata.License,
-            specificity = metadata.Specificity,
-        };
+        return new ParserSummaryResponse(
+            metadata.Id,
+            metadata.Version,
+            metadata.Vendor,
+            metadata.Product,
+            metadata.Description,
+            metadata.License,
+            metadata.Specificity,
+            parser.Groks.Count(static g => !g.IsLinearTime));
     }
 
-    private static object Detail(CompiledParser parser)
+    private static ParserDetailResponse Detail(CompiledParser parser)
     {
         var groks = parser.Groks.ToArray();
         var match = parser.Definition.Match;
 
-        return new
-        {
-            summary = Summarize(parser),
-            match = new
-            {
-                transport = match.Transport,
-                contains = match.Contains,
-                source_labels = match.SourceLabels,
-            },
-            steps = parser.Steps.Count,
-            groks = new
-            {
-                total = groks.Length,
+        return new ParserDetailResponse(
+            Summarize(parser),
+            new ParserMatchResponse([.. match.Transport], [.. match.Contains], match.SourceLabels),
+            parser.Steps.Count,
+            new ParserGrokResponse(
+                groks.Length,
                 // Geri izlemeye düşen ifade `MatchTimeout` ödüyor ve o duvar
                 // saatini ölçüyor: yüklü makinede sağlıklı bir satır `failed`
                 // olabiliyor. Katalog bugün sıfır veriyor ve öyle kalmalı.
-                backtracking = groks.Count(static g => !g.IsLinearTime),
-                fallback_reasons = groks
+                groks.Count(static g => !g.IsLinearTime),
+                [.. groks
                     .Where(static g => !g.IsLinearTime)
                     .Select(static g => g.FallbackReason)
-                    .ToArray(),
-            },
-        };
+                    .Where(static reason => !string.IsNullOrEmpty(reason))
+                    .Select(static reason => reason!)]));
     }
 }

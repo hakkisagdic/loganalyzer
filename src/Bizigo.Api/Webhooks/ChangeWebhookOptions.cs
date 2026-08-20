@@ -121,10 +121,18 @@ public sealed class GenericWebhookMapping
         new Dictionary<string, string>(StringComparer.Ordinal);
 }
 
-/// <summary>Uç kimliğinden yapılandırmaya. T25 bunu kontrol düzlemine taşıyabilir.</summary>
+/// <summary>
+/// Uç kimliğinden yapılandırmaya.
+///
+/// <para>
+/// <b>T25'te asenkron oldu.</b> Uçlar artık öncelikle kontrol düzleminden —
+/// yani ekrandan tanımlanan connector'lardan — geliyor (K34). Senkron bir
+/// imzayla veritabanı okumak, istek başına bir <c>.Result</c> demekti.
+/// </para>
+/// </summary>
 public interface IChangeWebhookRegistry
 {
-    ChangeWebhookEndpoint? Find(string endpointId);
+    Task<ChangeWebhookEndpoint?> FindAsync(string endpointId, CancellationToken cancellationToken = default);
 }
 
 public sealed class ChangeWebhookRegistry : IChangeWebhookRegistry
@@ -180,6 +188,11 @@ public sealed class ChangeWebhookRegistry : IChangeWebhookRegistry
 
         _byId = options.Endpoints.ToDictionary(e => e.Id, StringComparer.Ordinal);
     }
+
+    public Task<ChangeWebhookEndpoint?> FindAsync(
+        string endpointId,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(Find(endpointId));
 
     /// <summary>
     /// Pasif uç <see langword="null"/> dönüyor: çağıran onu "yok" gibi görüyor.

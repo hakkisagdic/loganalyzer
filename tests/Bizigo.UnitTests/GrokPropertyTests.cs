@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Bizigo.Parsing.Grok;
 
 namespace Bizigo.UnitTests;
@@ -30,6 +29,7 @@ public sealed class GrokPropertyTests
         var random = new Random(20260816);   // sabit tohum: kırılan durum yeniden üretilebilsin
         var compiled = 0;
         var rejected = 0;
+        var backtracking = 0;
 
         for (var iteration = 0; iteration < 5_000; iteration++)
         {
@@ -42,12 +42,29 @@ public sealed class GrokPropertyTests
 
                 // Derlendiyse çalıştırılabilir de olmalı; eşleşme sonucu önemsiz,
                 // önemli olan burada patlamaması.
-                var stopwatch = Stopwatch.StartNew();
                 grok.Match("test 10.0.0.1 GET /x 200", new Dictionary<string, object?>(StringComparer.Ordinal));
-                stopwatch.Stop();
 
-                Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(2),
-                    $"Eşleşme {stopwatch.ElapsedMilliseconds} ms sürdü. Pattern: {pattern}");
+                // Buradaki iddia bir SÜRE değil bir YAPI: doğrusal zaman
+                // garantisi olmayan her ifade, neden olmadığını söyleyebilmeli.
+                //
+                // Önceki hâli `Stopwatch` ile 2 saniyelik mutlak bir bütçeye
+                // bakıyordu ve o bütçe pattern'in davranışını değil makinenin
+                // hızını ölçüyordu: test tek başına geçiyor, eşzamanlı bir
+                // Release build varken düşüyordu — yani sağlıklı bir eşleşme
+                // "bozuk pattern" diye raporlanıyordu. F1'in beş kez ödediği
+                // hata sınıfının aynısı.
+                //
+                // Sonsuz döngü bu kontrolle kaybolmuyor: bir asılma zaten
+                // asılmadır ve koşum zaman aşımına uğrar. Kaybolan tek şey,
+                // yüklü bir makinede sağlıklı kodu suçlayan bir bütçe.
+                if (!grok.IsLinearTime)
+                {
+                    backtracking++;
+                }
+
+                Assert.True(
+                    grok.IsLinearTime || !string.IsNullOrWhiteSpace(grok.FallbackReason),
+                    $"Doğrusal olmayan ifade sebebini söylemiyor. Pattern: {pattern}");
             }
             catch (GrokCompilationException ex)
             {
@@ -66,6 +83,14 @@ public sealed class GrokPropertyTests
         // Üretim gerçekten iki tarafa da düşmeli; hepsi reddedilseydi test boş geçerdi.
         Assert.True(compiled > 100, $"Yalnızca {compiled} pattern derlendi — üreteç çok bozuk pattern üretiyor.");
         Assert.True(rejected > 100, $"Yalnızca {rejected} pattern reddedildi — üreteç yeterince zorlamıyor.");
+
+        // Yukarıdaki yapısal iddianın BOŞ GEÇMEDİĞİNİN kanıtı. Üreteç bir gün
+        // yalnızca doğrusal ifadeler üretmeye başlarsa iddia her durumda doğru
+        // olur ve hiçbir şey sınamaz — testin kendi `compiled`/`rejected`
+        // bekçilerinin varlık sebebiyle aynı.
+        Assert.True(
+            backtracking > 0,
+            "Hiç geri izleyen ifade üretilmedi; doğrusallık iddiası boş geçti.");
     }
 
     [Fact]

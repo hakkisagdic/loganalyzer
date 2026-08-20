@@ -1,0 +1,50 @@
+-- Maskelenmiş imzanın sabit genişlikli kimliği (K35).
+--
+-- Neden `template_id` yetmiyor: o kolon sidecar'ın çıktısı ve sidecar sıcak
+-- yolda değil (K14). Bugün yalnızca ayrıştırması **başarısız** olan olaylarda ve
+-- başarılı olanların **%1**'inde (SampleRate) doluyor, üstelik bir imzanın **ilk**
+-- görülüşünde tanım gereği boş: `TemplateAnnotator` önbellekte bulamayınca
+-- kuyruğa atıp boş dönüyor. Yani "yeni bir şey oldu" diyen tam o satırda kimlik
+-- yok — oysa RCA belgesi ilk-görülen imzayı "tek en güçlü sinyal" diye
+-- tanımlıyor. Hacim sapması da kırılıyor: başarılı olaylarda sayılar gerçeğin
+-- %1'i, Poisson/z-score bunun üstüne kurulamaz.
+--
+-- `signature_hash` **her olayda** doluyor: maskeleme zaten sıcak yolda koşuyor,
+-- çıkan imzanın hash'i yazma anında hesaplanıyor. Böylece iki korelasyon da saf
+-- SQL'e dönüyor ve sidecar'a, örneklemeye, önbelleğe hiç bağlı kalmıyor.
+--
+-- `template_id` KALIYOR: insan-okunur kümeleme ve F4'ün grok taslağı ondan
+-- geliyor. İki alan farklı iş yapıyor, biri diğerinin yerine geçmiyor.
+--
+-- ── Tip seçimi ──────────────────────────────────────────────────────────────
+-- UInt64, LowCardinality(String) değil. İmza kardinalitesi tanımı gereği
+-- yüksek (kurumda on binlerce ayrı imza) ve LowCardinality tam olarak orada
+-- bozuluyor: sözlük her granülde büyüyor, kazanç negatife dönüyor.
+-- `template_id`'nin LowCardinality olması doğru, çünkü şablon sayısı düşük.
+--
+-- Değer: maskelenmiş metnin UTF-8 baytları üzerinde XXH64 — ClickHouse'un
+-- `xxHash64()` fonksiyonuyla **birebir aynı**. Bunun bedava getirdiği şey,
+-- hash'in doğruluğunun üretim veritabanının kendisine karşı sınanabilmesi
+-- (bkz. tests/Bizigo.IntegrationTests, SignatureHashClickHouseTests).
+--
+-- 0 = "imza yok": gövde boş ya da satır 16 KB'lık maskeleme sınırını aşıyor
+-- (`MaskCatalog.SkippedTooLong` sayıyor). Nullable(UInt64) yerine ayrılmış değer
+-- seçildi — null her satıra bir bayt ve her korelasyon sorgusuna bir
+-- `IS NOT NULL` eklerdi.
+--
+-- ── Atlama indeksi bilerek YOK ──────────────────────────────────────────────
+-- F3'ün iki korelasyonu da bu kolonu `GROUP BY` ile okuyor, `WHERE` ile değil:
+-- pencere zaten `ts` ile daraltılıyor (idx_ts) ve granül atlama bir şey
+-- kazandırmıyor. "Bu imzalı olayları göster" tekil sorgusu bir bloom_filter'dan
+-- yararlanırdı, ama ALTER ile eklenen indeks yalnızca **yeni** parçalara
+-- uygulanır; şimdi eklemek kapsandığı sanılan ama geçmişi kapsamayan bir indeks
+-- bırakırdı. Karar sorgu şekilleri ölçüldükten sonra, T35'te.
+--
+-- ── Geçmiş satırlar ─────────────────────────────────────────────────────────
+-- 0 kalıyor. ALTER ADD COLUMN yalnızca meta veri değiştiriyor, tablo yeniden
+-- yazılmıyor. Geçmişi doldurmanın tek doğru yolu replay: ham arşivden yeniden
+-- ayrıştırma aynı maskeleme sözlüğünü koşturuyor ve `ReplayDiff` imza
+-- değişimini raporluyor.
+ALTER TABLE events
+    ADD COLUMN IF NOT EXISTS signature_hash UInt64 DEFAULT 0
+    AFTER template_id;

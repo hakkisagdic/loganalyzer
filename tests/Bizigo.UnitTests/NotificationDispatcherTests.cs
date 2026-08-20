@@ -1,5 +1,6 @@
 using Bizigo.Alerting;
 using Bizigo.Alerting.Notifications;
+using Bizigo.Contracts.Security;
 using Bizigo.ControlPlane;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -26,9 +27,12 @@ public sealed class NotificationDispatcherTests : IDisposable
     private readonly AlertingStats _stats = new();
     private readonly RecordingChannel _channel = new(NotificationChannelType.Slack);
 
+    /// <summary>Base64, 32 bayt. Anahtar artık ürün geneli (`Security:SecretKey`, T25).</summary>
+    private static readonly string Key =
+        Convert.ToBase64String(Enumerable.Range(0, 32).Select(i => (byte)i).ToArray());
+
     private readonly AlertingOptions _options = new()
     {
-        SecretKey = Convert.ToBase64String(Enumerable.Range(0, 32).Select(i => (byte)i).ToArray()),
         ProductBaseUrl = "https://bizigo.example",
         MaxDeliveryAttempts = 3,
     };
@@ -39,7 +43,7 @@ public sealed class NotificationDispatcherTests : IDisposable
         _options,
         _factory,
         [_channel],
-        new SecretProtector(_options),
+        new SecretProtector(Key),
         _stats,
         NullLogger<NotificationDispatcher>.Instance,
         _time);
@@ -60,7 +64,7 @@ public sealed class NotificationDispatcherTests : IDisposable
             Name = "noc-slack",
             OwnerGroup = "network/core",
             ChannelType = NotificationChannelType.Slack,
-            SecretCipher = new SecretProtector(_options).Protect("https://hooks.slack.com/services/A/B/C"),
+            SecretCipher = new SecretProtector(Key).Protect("https://hooks.slack.com/services/A/B/C"),
         };
 
         await using var db = _factory.CreateDbContext();

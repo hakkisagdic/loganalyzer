@@ -213,10 +213,34 @@ public static class ChangeWebhookMapper
     ///
     /// <para>
     /// Eklenti aynı yapıyı <c>STARTED</c>, <c>COMPLETED</c> ve <c>FINALIZED</c>
-    /// fazlarında üç kez gönderiyor. <b>Yalnızca <c>COMPLETED</c> kabul
-    /// ediliyor:</b> orada <c>status</c> dolu ve iş bitmiş oluyor.
-    /// <c>FINALIZED</c> aynı bilgiyi ikinci kez taşıyor — idempotans anahtarı
-    /// fazı içerdiği için ikisini de kabul etmek her koşuya iki satır yazardı.
+    /// fazlarında üç kez gönderiyor. <b>Biten iki faz da kabul ediliyor</b> ve
+    /// mükerrerlik faz üzerinden değil, <b>yapı kimliği</b> üzerinden çözülüyor:
+    /// teslimat anahtarı <c>{iş}#{numara}</c>, yani ilk gelen faz kazanıyor,
+    /// ikincisi mükerrer sayılıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// İlk hâli yalnızca <c>COMPLETED</c> kabul ediyordu ve bu <b>sessiz bir
+    /// başarısızlıktı</b>: yalnızca <c>FINALIZED</c> gönderecek şekilde
+    /// yapılandırılmış bir Jenkins'ten hiçbir kayıt oluşmaz, hiçbir hata da
+    /// görünmezdi. Bu üründe sessiz başarısızlık en pahalı hata sınıfı.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Anahtar durumu da içeriyor</b> (<c>{iş}#{numara}:{durum}</c>) ve bu,
+    /// ilk hâlin bıraktığı borcu kapatıyor. <c>FINALIZED</c> son işlem
+    /// adımlarından sonra geldiği için nadiren <c>COMPLETED</c>'dan farklı bir
+    /// <c>status</c> taşıyor — bir post-build adımı düşerse yapı <c>SUCCESS</c>
+    /// bildirip <c>FAILURE</c> olarak bitebiliyor. Anahtar yalnızca yapı
+    /// kimliğinden kurulsaydı o durumda <b>erken ve yanlış</b> durum kaydedilir,
+    /// hiçbir belirti de vermezdi.
+    /// </para>
+    ///
+    /// <para>
+    /// Olağan durumda iki faz aynı <c>status</c>'u taşıyor, anahtarlar
+    /// çakışıyor ve <b>tek kayıt</b> oluşuyor. Durum gerçekten değiştiyse ikinci
+    /// kayıt oluşuyor — ve o ikinci kayıt gürültü değil, gerçekten olmuş bir
+    /// ikinci olgu. Bu üründe sessiz yanlışlık, nadir bir ek satırdan pahalı.
     /// </para>
     /// </summary>
     private static WebhookMapResult MapJenkins(
@@ -227,14 +251,18 @@ public static class ChangeWebhookMapper
         var phase = Read(root, "$.build.phase");
         var job = Read(root, "$.name");
         var number = Read(root, "$.build.number");
-        var delivery = $"{job}#{number}:{phase}";
-
-        if (!string.Equals(phase, "COMPLETED", StringComparison.Ordinal))
-        {
-            return Ignored(delivery, $"Jenkins fazı '{phase}' — yalnızca COMPLETED kaydediliyor.");
-        }
 
         var status = Read(root, "$.build.status");
+
+        // Faz anahtarın DIŞINDA, durum İÇİNDE: iki bitiş fazı aynı durumu
+        // bildiriyorsa tek kayıt; durum değiştiyse ikinci kayıt, çünkü o
+        // gerçekten ikinci bir olgu.
+        var delivery = $"{job}#{number}:{status}";
+
+        if (phase is not ("COMPLETED" or "FINALIZED"))
+        {
+            return Ignored($"{job}#{number}", $"Jenkins fazı '{phase}' — yapı henüz bitmedi.");
+        }
 
         var change = Build(endpoint, clock,
             // Bir iş birden çok hedefe dağıtım yapabiliyor; hedef parametreden

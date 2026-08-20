@@ -261,7 +261,7 @@ public sealed record ParserTestCaseResponse(
 /// </para>
 /// </summary>
 /// <param name="Stage"><c>passed</c> · <c>schema</c> · <c>redos</c> · <c>tests</c>.</param>
-public sealed record ParserGateResponse(
+public sealed record PublishVerdictResponse(
     [property: JsonPropertyName("ok")] bool Ok,
     [property: JsonPropertyName("stage")] string Stage,
     [property: JsonPropertyName("parser_id")] string ParserId,
@@ -273,11 +273,11 @@ public sealed record ParserGateResponse(
     [property: JsonPropertyName("errors")] IReadOnlyList<string> Errors,
     [property: JsonPropertyName("warnings")] IReadOnlyList<string> Warnings)
 {
-    public static ParserGateResponse From(PublishVerdict verdict)
+    public static PublishVerdictResponse From(PublishVerdict verdict)
     {
         ArgumentNullException.ThrowIfNull(verdict);
 
-        return new ParserGateResponse(
+        return new PublishVerdictResponse(
             verdict.Ok,
             verdict.Stage.ToString().ToLowerInvariant(),
             verdict.ParserId,
@@ -312,7 +312,7 @@ public sealed record ParserGateResponse(
 public sealed record ParserTryResponse(
     [property: JsonPropertyName("mode")] string Mode,
     [property: JsonPropertyName("result")] ParseOutcomeResponse? Result,
-    [property: JsonPropertyName("draft")] ParserGateResponse? Draft,
+    [property: JsonPropertyName("draft")] PublishVerdictResponse? Draft,
     [property: JsonPropertyName("dispatch")] ParserDispatchResponse? Dispatch);
 
 /// <summary>
@@ -324,28 +324,29 @@ public sealed record ParserTryResponse(
 /// sorusunun cevabı ayrı bir istek gerektirmemeli.
 /// </para>
 /// </summary>
-public sealed record ParserDraftResponse(
+public sealed record ParserAuthoringResponse(
     [property: JsonPropertyName("id")] Guid? Id,
     [property: JsonPropertyName("parser_id")] string ParserId,
     [property: JsonPropertyName("version")] string Version,
     [property: JsonPropertyName("state")] string State,
     [property: JsonPropertyName("error")] string Error,
-    [property: JsonPropertyName("gate")] ParserGateResponse? Gate)
+    [property: JsonPropertyName("verdict")] PublishVerdictResponse? Verdict)
 {
-    public static ParserDraftResponse From(AuthoringResult result)
+    public static ParserAuthoringResponse From(AuthoringResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
 
-        return new ParserDraftResponse(
+        return new ParserAuthoringResponse(
             result.Draft?.Id,
             result.Draft?.ParserId ?? string.Empty,
             result.Draft?.Version ?? string.Empty,
             // Durum adı, sayı değil: `ParserState` sırası değişirse gövde
-            // sessizce başka bir durum gösterirdi. Yazım `GET /v1/parsers/drafts`
-            // ile birebir aynı (`Draft`/`InReview`/…) — aynı yüzeyde iki farklı
-            // yazım, ekranın hangisini bekleyeceğini tahmin etmesi demek olurdu.
-            (result.Draft?.State ?? ParserState.Draft).ToString(),
+            // sessizce başka bir durum gösterirdi. Yazım küçük harf ve
+            // `GET /v1/parsers/drafts` ile birebir aynı (`draft`/`inreview`/…) —
+            // aynı yüzeyde iki farklı yazım, ekranın hangisini bekleyeceğini
+            // tahmin etmesi demek olurdu.
+            (result.Draft?.State ?? ParserState.Draft).ToString().ToLowerInvariant(),
             result.Error,
-            result.Verdict is null ? null : ParserGateResponse.From(result.Verdict));
+            result.Verdict is null ? null : PublishVerdictResponse.From(result.Verdict));
     }
 }

@@ -167,7 +167,73 @@ public sealed class ChangeWebhookMappingTests
 
         // Teslimat kimliği başlıktan değil gövdeden türüyor — Notification
         // Plugin bir kimlik başlığı göndermiyor.
-        Assert.Equal("deploy-fw-config#842:COMPLETED", result.DeliveryId);
+        Assert.Equal("deploy-fw-config#842:SUCCESS", result.DeliveryId);
+    }
+
+    [Fact]
+    public void Jenkins_finalized_fazi_da_esleniyor()
+    {
+        // İlk hâli yalnızca COMPLETED kabul ediyordu: yalnızca FINALIZED
+        // gönderecek şekilde yapılandırılmış bir Jenkins'ten hiçbir kayıt
+        // oluşmaz, hiçbir hata da görünmezdi. Sessiz başarısızlık.
+        var result = ChangeWebhookMapper.Map(
+            Endpoint(ChangeWebhookProviders.Jenkins),
+            Headers(),
+            Fixture("jenkins-finalized.json"),
+            Clock);
+
+        Assert.Equal(WebhookMapOutcome.Mapped, result.Outcome);
+        Assert.Equal("fw-core-01", result.Change!.TargetId);
+        Assert.Equal("FINALIZED", result.Change.Details["phase"]);
+    }
+
+    [Fact]
+    public void Jenkins_iki_bitis_fazi_ayni_teslimat_sayiliyor()
+    {
+        // Olağan hâl: iki faz aynı durumu bildiriyor, anahtarlar çakışıyor ve
+        // idempotans kapısı ikincisini eliyor. Faz anahtara girseydi her koşu
+        // iki satır yazardı.
+        var endpoint = Endpoint(ChangeWebhookProviders.Jenkins);
+
+        var completed = ChangeWebhookMapper.Map(endpoint, Headers(), Fixture("jenkins-completed.json"), Clock);
+        var finalized = ChangeWebhookMapper.Map(endpoint, Headers(), Fixture("jenkins-finalized.json"), Clock);
+
+        Assert.Equal(completed.DeliveryId, finalized.DeliveryId);
+    }
+
+    /// <summary>
+    /// <b>İlk hâlin bıraktığı borç, burada kapanıyor.</b>
+    ///
+    /// <para>
+    /// Anahtar yalnızca yapı kimliğinden kurulduğunda, post-build adımı düşen
+    /// bir yapı <c>COMPLETED: SUCCESS</c> olarak kaydediliyor ve ardından gelen
+    /// <c>FINALIZED: FAILURE</c> "mükerrer" sayılıp atılıyordu. Sonuç: RCA'nın
+    /// gördüğü kayıt <b>yanlış</b>, ve hiçbir belirti yok.
+    /// </para>
+    ///
+    /// <para>
+    /// Durum anahtara girdiği için artık ikinci kayıt oluşuyor. Bedeli nadir bir
+    /// ek satır; kazancı, sessizce yanlış kalmamak.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Jenkins_durumu_degisen_yapi_ikinci_kayit_uretiyor()
+    {
+        var endpoint = Endpoint(ChangeWebhookProviders.Jenkins);
+
+        var completed = ChangeWebhookMapper.Map(
+            endpoint, Headers(), Fixture("jenkins-completed.json"), Clock);
+
+        // Aynı yapı, post-build adımından sonra FAILURE olarak bitiyor.
+        var flipped = Encoding.UTF8.GetString(Fixture("jenkins-finalized.json"))
+            .Replace("\"status\": \"SUCCESS\"", "\"status\": \"FAILURE\"", StringComparison.Ordinal);
+
+        var finalized = ChangeWebhookMapper.Map(
+            endpoint, Headers(), Encoding.UTF8.GetBytes(flipped), Clock);
+
+        Assert.NotEqual(completed.DeliveryId, finalized.DeliveryId);
+        Assert.Equal("deploy-fw-config#842:FAILURE", finalized.DeliveryId);
+        Assert.Contains("FAILURE", finalized.Change!.Summary, StringComparison.Ordinal);
     }
 
     [Fact]

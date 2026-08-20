@@ -89,7 +89,14 @@
         "operationId": "PipelineHealth",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PipelineHealthResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -135,7 +142,53 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserPublishResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parsers/coverage": {
+      "get": {
+        "tags": [
+          "parsers"
+        ],
+        "operationId": "ParserCoverage",
+        "parameters": [
+          {
+            "name": "force",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogCoverageResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -310,7 +363,58 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sources/activity": {
+      "get": {
+        "tags": [
+          "sources"
+        ],
+        "operationId": "SourceActivity",
+        "parameters": [
+          {
+            "name": "hours",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceActivityListResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -323,7 +427,24 @@
         "operationId": "ImportSourcesCsv",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceCsvImportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceCsvErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -380,7 +501,14 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSearchResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -400,8 +528,229 @@
           "required": true
         },
         "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeWriteResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/changes/connectors": {
+      "get": {
+        "tags": [
+          "changes"
+        ],
+        "operationId": "ListChangeConnectors",
+        "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "changes"
+        ],
+        "operationId": "CreateChangeConnector",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/changes/connectors/{id}": {
+      "get": {
+        "tags": [
+          "changes"
+        ],
+        "operationId": "GetChangeConnector",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "changes"
+        ],
+        "operationId": "UpdateChangeConnector",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "changes"
+        ],
+        "operationId": "DeleteChangeConnector",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/v1/changes/connectors/{id}/test": {
+      "post": {
+        "tags": [
+          "changes"
+        ],
+        "operationId": "TestChangeConnector",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorTestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/changes/connectors/{id}/runs": {
+      "get": {
+        "tags": [
+          "changes"
+        ],
+        "operationId": "ListChangeConnectorRuns",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorRunListResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -414,7 +763,14 @@
         "operationId": "ListParsers",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserListResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -437,7 +793,24 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -470,10 +843,24 @@
             }
           },
           "400": {
-            "description": "Bad Request"
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
-            "description": "Not Found"
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -486,7 +873,14 @@
         "operationId": "ListParserDrafts",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserDraftListResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -511,7 +905,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ParserDraftResponse"
+                  "$ref": "#/components/schemas/ParserAuthoringResponse"
                 }
               }
             }
@@ -523,6 +917,38 @@
       }
     },
     "/v1/parsers/drafts/{id}": {
+      "get": {
+        "tags": [
+          "parsers"
+        ],
+        "operationId": "GetParserDraft",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserDraftDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
       "put": {
         "tags": [
           "parsers"
@@ -555,7 +981,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ParserDraftResponse"
+                  "$ref": "#/components/schemas/ParserAuthoringResponse"
                 }
               }
             }
@@ -589,7 +1015,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ParserDraftResponse"
+                  "$ref": "#/components/schemas/ParserAuthoringResponse"
                 }
               }
             }
@@ -599,7 +1025,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ParserDraftResponse"
+                  "$ref": "#/components/schemas/ParserAuthoringResponse"
                 }
               }
             }
@@ -626,7 +1052,24 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserAuthoringResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -650,7 +1093,24 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserPublishResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserAuthoringResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1866,25 +2326,211 @@
           }
         }
       },
-      "ChangeWriteRequest": {
+      "CatalogCoverageResponse": {
         "required": [
-          "ownerGroup",
-          "targetKind",
-          "targetId",
-          "changeKind"
+          "ok",
+          "partial",
+          "failed",
+          "total",
+          "measured_at",
+          "stale",
+          "by_parser"
         ],
         "type": "object",
         "properties": {
-          "ownerGroup": {
+          "ok": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "partial": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "failed": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "measured_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stale": {
+            "type": "boolean"
+          },
+          "by_parser": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParserCoverageEntryResponse"
+            }
+          }
+        }
+      },
+      "CatalogReloadResponse": {
+        "required": [
+          "loaded",
+          "from_repository",
+          "from_database",
+          "shadowed",
+          "errors"
+        ],
+        "type": "object",
+        "properties": {
+          "loaded": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "from_repository": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "from_database": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "shadowed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ChangeResponse": {
+        "required": [
+          "change_id",
+          "timestamp",
+          "owner_group",
+          "target_kind",
+          "target_id",
+          "change_kind",
+          "actor",
+          "summary",
+          "details",
+          "source",
+          "external_ref"
+        ],
+        "type": "object",
+        "properties": {
+          "change_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "owner_group": {
             "type": "string"
           },
-          "targetKind": {
+          "target_kind": {
             "type": "string"
           },
-          "targetId": {
+          "target_id": {
             "type": "string"
           },
-          "changeKind": {
+          "change_kind": {
+            "type": "string"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "source": {
+            "type": "string"
+          },
+          "external_ref": {
+            "type": "string"
+          }
+        }
+      },
+      "ChangeSearchResponse": {
+        "required": [
+          "count",
+          "changes"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChangeResponse"
+            }
+          }
+        }
+      },
+      "ChangeWriteRequest": {
+        "required": [
+          "owner_group",
+          "target_kind",
+          "target_id",
+          "change_kind"
+        ],
+        "type": "object",
+        "properties": {
+          "owner_group": {
+            "type": "string"
+          },
+          "target_kind": {
+            "type": "string"
+          },
+          "target_id": {
+            "type": "string"
+          },
+          "change_kind": {
             "type": "string"
           },
           "timestamp": {
@@ -1909,8 +2555,20 @@
           "source": {
             "type": "string"
           },
-          "externalRef": {
+          "external_ref": {
             "type": "string"
+          }
+        }
+      },
+      "ChangeWriteResponse": {
+        "required": [
+          "change_id"
+        ],
+        "type": "object",
+        "properties": {
+          "change_id": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -1975,6 +2633,244 @@
           }
         }
       },
+      "ConnectorListResponse": {
+        "required": [
+          "count",
+          "connectors"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "connectors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectorView"
+            }
+          }
+        }
+      },
+      "ConnectorRequest": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "connector_type": {
+            "type": "string"
+          },
+          "owner_group": {
+            "type": "string"
+          },
+          "config": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          },
+          "credential": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "interval_seconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ConnectorRunListResponse": {
+        "required": [
+          "count",
+          "runs"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "runs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectorRunView"
+            }
+          }
+        }
+      },
+      "ConnectorRunView": {
+        "required": [
+          "started_at",
+          "finished_at",
+          "state",
+          "changes_written",
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string"
+          },
+          "changes_written": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "ConnectorTestResponse": {
+        "required": [
+          "ok",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ConnectorView": {
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "connector_type",
+          "owner_group",
+          "config",
+          "credential_set",
+          "credential",
+          "interval_seconds",
+          "enabled",
+          "next_run_at",
+          "last_run_at",
+          "last_run_state",
+          "last_error",
+          "receive_path",
+          "created_at",
+          "updated_at"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "connector_type": {
+            "type": "string"
+          },
+          "owner_group": {
+            "type": "string"
+          },
+          "config": {
+            "$ref": "#/components/schemas/JsonElement"
+          },
+          "credential_set": {
+            "type": "boolean"
+          },
+          "credential": {
+            "type": "string"
+          },
+          "interval_seconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "next_run_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "last_run_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "last_run_state": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "last_error": {
+            "type": "string"
+          },
+          "receive_path": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "CreatedIdResponse": {
         "required": [
           "id"
@@ -1995,6 +2891,12 @@
         "properties": {
           "error": {
             "type": "string"
+          },
+          "hint": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -2426,6 +3328,7 @@
           }
         }
       },
+      "JsonElement": { },
       "MaintenanceWindowListResponse": {
         "required": [
           "windows"
@@ -2732,6 +3635,96 @@
           }
         }
       },
+      "ParserAuthoringResponse": {
+        "required": [
+          "id",
+          "parser_id",
+          "version",
+          "state",
+          "error",
+          "verdict"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "parser_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "verdict": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PublishVerdictResponse"
+              }
+            ]
+          }
+        }
+      },
+      "ParserCoverageEntryResponse": {
+        "required": [
+          "parser_id",
+          "wins"
+        ],
+        "type": "object",
+        "properties": {
+          "parser_id": {
+            "type": "string"
+          },
+          "wins": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "ParserDetailResponse": {
+        "required": [
+          "summary",
+          "match",
+          "steps",
+          "groks"
+        ],
+        "type": "object",
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/ParserSummaryResponse"
+          },
+          "match": {
+            "$ref": "#/components/schemas/ParserMatchResponse"
+          },
+          "steps": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "groks": {
+            "$ref": "#/components/schemas/ParserGrokResponse"
+          }
+        }
+      },
       "ParserDispatchResponse": {
         "required": [
           "tier",
@@ -2760,6 +3753,84 @@
           }
         }
       },
+      "ParserDraftDetailResponse": {
+        "required": [
+          "id",
+          "parser_id",
+          "version",
+          "state",
+          "owner",
+          "yaml",
+          "verdict",
+          "updated_at",
+          "previous_version",
+          "previous_yaml"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parser_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "yaml": {
+            "type": "string"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/PublishVerdictResponse"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "previous_version": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "previous_yaml": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ParserDraftListResponse": {
+        "required": [
+          "count",
+          "drafts"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "drafts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParserDraftResponse"
+            }
+          }
+        }
+      },
       "ParserDraftRequest": {
         "required": [
           "yaml"
@@ -2776,17 +3847,20 @@
           "id",
           "parser_id",
           "version",
+          "vendor",
+          "product",
           "state",
-          "error",
-          "gate"
+          "owner",
+          "passing_tests",
+          "quarantined",
+          "created_at",
+          "updated_at",
+          "published_at"
         ],
         "type": "object",
         "properties": {
           "id": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": "string",
             "format": "uuid"
           },
           "parser_id": {
@@ -2795,21 +3869,43 @@
           "version": {
             "type": "string"
           },
+          "vendor": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
           "state": {
             "type": "string"
           },
-          "error": {
+          "owner": {
             "type": "string"
           },
-          "gate": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ParserGateResponse"
-              }
-            ]
+          "passing_tests": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "quarantined": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "published_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -2836,34 +3932,15 @@
           }
         }
       },
-      "ParserGateResponse": {
+      "ParserGrokResponse": {
         "required": [
-          "ok",
-          "stage",
-          "parser_id",
-          "version",
-          "passing_tests",
-          "schema_errors",
-          "redos",
-          "tests",
-          "errors",
-          "warnings"
+          "total",
+          "backtracking",
+          "fallback_reasons"
         ],
         "type": "object",
         "properties": {
-          "ok": {
-            "type": "boolean"
-          },
-          "stage": {
-            "type": "string"
-          },
-          "parser_id": {
-            "type": "string"
-          },
-          "version": {
-            "type": "string"
-          },
-          "passing_tests": {
+          "total": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -2871,35 +3948,94 @@
             ],
             "format": "int32"
           },
-          "schema_errors": {
+          "backtracking": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "fallback_reasons": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ParserSchemaErrorResponse"
+              "type": "string"
             }
+          }
+        }
+      },
+      "ParserListResponse": {
+        "required": [
+          "count",
+          "parsers",
+          "backtracking_groks"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           },
-          "redos": {
+          "parsers": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/ParserRedosFindingResponse"
+              "$ref": "#/components/schemas/ParserSummaryResponse"
             }
           },
-          "tests": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ParserTestCaseResponse"
-            }
-          },
-          "errors": {
+          "backtracking_groks": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "ParserMatchResponse": {
+        "required": [
+          "transport",
+          "contains",
+          "source_labels"
+        ],
+        "type": "object",
+        "properties": {
+          "transport": {
             "type": "array",
             "items": {
               "type": "string"
             }
           },
-          "warnings": {
+          "contains": {
             "type": "array",
             "items": {
               "type": "string"
             }
+          },
+          "source_labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ParserPublishResponse": {
+        "required": [
+          "draft",
+          "catalog"
+        ],
+        "type": "object",
+        "properties": {
+          "draft": {
+            "$ref": "#/components/schemas/ParserAuthoringResponse"
+          },
+          "catalog": {
+            "$ref": "#/components/schemas/CatalogReloadResponse"
           }
         }
       },
@@ -2956,6 +4092,55 @@
           },
           "message": {
             "type": "string"
+          }
+        }
+      },
+      "ParserSummaryResponse": {
+        "required": [
+          "id",
+          "version",
+          "vendor",
+          "product",
+          "description",
+          "license",
+          "specificity",
+          "backtracking_groks"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "vendor": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "license": {
+            "type": "string"
+          },
+          "specificity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "backtracking_groks": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -3035,7 +4220,7 @@
                 "type": "null"
               },
               {
-                "$ref": "#/components/schemas/ParserGateResponse"
+                "$ref": "#/components/schemas/PublishVerdictResponse"
               }
             ]
           },
@@ -3048,6 +4233,340 @@
                 "$ref": "#/components/schemas/ParserDispatchResponse"
               }
             ]
+          }
+        }
+      },
+      "PipelineArchiveHealth": {
+        "required": [
+          "by_state",
+          "healthy"
+        ],
+        "type": "object",
+        "properties": {
+          "by_state": {
+            "type": "object",
+            "additionalProperties": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          "healthy": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PipelineDispatchHealth": {
+        "required": [
+          "total",
+          "bound_ratio",
+          "bound_ratio_target",
+          "bound_ratio_healthy",
+          "bound_misses",
+          "unmatched_ratio",
+          "unassigned_source_events"
+        ],
+        "type": "object",
+        "properties": {
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "bound_ratio": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "bound_ratio_target": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "bound_ratio_healthy": {
+            "type": "boolean"
+          },
+          "bound_misses": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "unmatched_ratio": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "unassigned_source_events": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "PipelineHealthResponse": {
+        "required": [
+          "dispatch",
+          "parse",
+          "wal",
+          "ingest",
+          "archive",
+          "sidecar",
+          "inventory"
+        ],
+        "type": "object",
+        "properties": {
+          "dispatch": {
+            "$ref": "#/components/schemas/PipelineDispatchHealth"
+          },
+          "parse": {
+            "$ref": "#/components/schemas/PipelineParseHealth"
+          },
+          "wal": {
+            "$ref": "#/components/schemas/PipelineWalHealth"
+          },
+          "ingest": {
+            "$ref": "#/components/schemas/PipelineIngestHealth"
+          },
+          "archive": {
+            "$ref": "#/components/schemas/PipelineArchiveHealth"
+          },
+          "sidecar": {
+            "$ref": "#/components/schemas/PipelineSidecarHealth"
+          },
+          "inventory": {
+            "$ref": "#/components/schemas/PipelineInventoryHealth"
+          }
+        }
+      },
+      "PipelineIngestHealth": {
+        "required": [
+          "accepted_records",
+          "rejected_full",
+          "rejected_invalid",
+          "non_utf8_records",
+          "declared_encoding_mismatches"
+        ],
+        "type": "object",
+        "properties": {
+          "accepted_records": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "rejected_full": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "rejected_invalid": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "non_utf8_records": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "declared_encoding_mismatches": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "PipelineInventoryHealth": {
+        "required": [
+          "unassigned_sources"
+        ],
+        "type": "object",
+        "properties": {
+          "unassigned_sources": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "PipelineParseHealth": {
+        "required": [
+          "ok",
+          "unmatched",
+          "processed_records"
+        ],
+        "type": "object",
+        "properties": {
+          "ok": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "unmatched": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "processed_records": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "PipelineSidecarHealth": {
+        "required": [
+          "enabled",
+          "circuit",
+          "opened_count",
+          "dropped_queue_full",
+          "dropped_circuit_open",
+          "signature_drift"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "circuit": {
+            "type": "string"
+          },
+          "opened_count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "dropped_queue_full": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "dropped_circuit_open": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "signature_drift": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "PipelineWalHealth": {
+        "required": [
+          "total_bytes",
+          "is_full",
+          "recovery"
+        ],
+        "type": "object",
+        "properties": {
+          "total_bytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "is_full": {
+            "type": "boolean"
+          },
+          "recovery": {
+            "$ref": "#/components/schemas/PipelineWalRecovery"
+          }
+        }
+      },
+      "PipelineWalRecovery": {
+        "required": [
+          "segment_count",
+          "frame_count",
+          "truncated_bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "segment_count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "frame_count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "truncated_bytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           }
         }
       },
@@ -3116,6 +4635,73 @@
           }
         }
       },
+      "PublishVerdictResponse": {
+        "required": [
+          "ok",
+          "stage",
+          "parser_id",
+          "version",
+          "passing_tests",
+          "schema_errors",
+          "redos",
+          "tests",
+          "errors",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "stage": {
+            "type": "string"
+          },
+          "parser_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "passing_tests": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "schema_errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParserSchemaErrorResponse"
+            }
+          },
+          "redos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParserRedosFindingResponse"
+            }
+          },
+          "tests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParserTestCaseResponse"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "ReplayRequest": {
         "required": [
           "from",
@@ -3154,6 +4740,125 @@
           },
           "continueOnMissingObjects": {
             "type": "boolean"
+          }
+        }
+      },
+      "SourceActivityListResponse": {
+        "required": [
+          "from",
+          "to",
+          "count",
+          "sources"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceActivityResponse"
+            }
+          }
+        }
+      },
+      "SourceActivityResponse": {
+        "required": [
+          "source_id",
+          "owner_group",
+          "last_event_at",
+          "last_ingested_at",
+          "event_count"
+        ],
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "owner_group": {
+            "type": "string"
+          },
+          "last_event_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_ingested_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "event_count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "SourceCsvErrorResponse": {
+        "required": [
+          "error",
+          "details"
+        ],
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SourceCsvImportResponse": {
+        "required": [
+          "created",
+          "updated",
+          "total"
+        ],
+        "type": "object",
+        "properties": {
+          "created": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "updated": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },

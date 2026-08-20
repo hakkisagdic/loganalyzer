@@ -1,4 +1,5 @@
 using Bizigo.Authoring;
+using Bizigo.Parsing.Dispatch;
 using Bizigo.ControlPlane;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,7 +27,17 @@ public static class ParserAuthoringEndpoints
 
         group.MapGet("/", ListAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("ListParserDrafts");
+            .WithName("ListParserDrafts")
+            .Produces<ParserDraftListResponse>();
+
+        // T20'nin fark görünümü: taslağın gövdesi ve YAYINDAKİ sürümün gövdesi
+        // AYNI yanıtta. İki ayrı istekle çekmek, inceleme sırasında yayın
+        // değişirse kullanıcının olmayan bir farka bakması demekti.
+        group.MapGet("/{id:guid}", DetailAsync)
+            .RequireAuthorization(BizigoAuthPolicies.Author)
+            .WithName("GetParserDraft")
+            .Produces<ParserDraftDetailResponse>()
+            .Produces(StatusCodes.Status404NotFound);
 
         // `Produces<T>` yalnızca belge süsü değil: T14'ün ürettiği TypeScript'te
         // gövde `unknown` kalmasın diye. Bu üçünün tüketicisi T19'un editörü;
@@ -34,13 +45,13 @@ public static class ParserAuthoringEndpoints
         group.MapPost("/", CreateAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
             .WithName("CreateParserDraft")
-            .Produces<ParserDraftResponse>()
+            .Produces<ParserAuthoringResponse>()
             .Produces(StatusCodes.Status400BadRequest);
 
         group.MapPut("/{id:guid}", UpdateAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
             .WithName("UpdateParserDraft")
-            .Produces<ParserDraftResponse>()
+            .Produces<ParserAuthoringResponse>()
             .Produces(StatusCodes.Status400BadRequest);
 
         // 422 de aynı tipi taşıyor: kapıdan geçemeyen taslağın cevabı, geçenle
@@ -49,21 +60,37 @@ public static class ParserAuthoringEndpoints
         group.MapPost("/{id:guid}/submit", SubmitAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
             .WithName("SubmitParserDraft")
-            .Produces<ParserDraftResponse>()
-            .Produces<ParserDraftResponse>(StatusCodes.Status422UnprocessableEntity);
+            .Produces<ParserAuthoringResponse>()
+            .Produces<ParserAuthoringResponse>(StatusCodes.Status422UnprocessableEntity);
 
         group.MapPost("/{id:guid}/return", ReturnAsync)
             .RequireAuthorization(BizigoAuthPolicies.Admin)
-            .WithName("ReturnParserDraft");
+            .WithName("ReturnParserDraft")
+            .Produces<ParserAuthoringResponse>()
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
 
         group.MapPost("/{id:guid}/publish", PublishAsync)
             .RequireAuthorization(BizigoAuthPolicies.Admin)
-            .WithName("PublishParserDraft");
+            .WithName("PublishParserDraft")
+            .Produces<ParserPublishResponse>()
+            .Produces<ParserAuthoringResponse>(StatusCodes.Status422UnprocessableEntity);
 
         routes.MapPost("/v1/parsers/{parserId}/rollback", RollbackAsync)
             .RequireAuthorization(BizigoAuthPolicies.Admin)
             .WithName("RollbackParser")
-            .WithTags("parsers");
+            .WithTags("parsers")
+            .Produces<ParserPublishResponse>()
+            .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
+
+        // Altın örnek kapsamı (T20 kabul kriteri). Ölçüm katalog anlık
+        // görüntüsüne bağlı önbellekten geliyor; `force` ekrandaki "yeniden
+        // ölç" düğmesi için — örnek DOSYALARI katalog değişmeden de
+        // düzenlenebiliyor ve o durumda anlık görüntü aynı kalıyor.
+        routes.MapGet("/v1/parsers/coverage", CoverageAsync)
+            .RequireAuthorization(BizigoAuthPolicies.Read)
+            .WithName("ParserCoverage")
+            .WithTags("parsers")
+            .Produces<CatalogCoverageResponse>();
 
         return routes;
     }
@@ -77,21 +104,87 @@ public static class ParserAuthoringEndpoints
         var rows = await db.Parsers
             .AsNoTracking()
             .OrderByDescending(p => p.CreatedAt)
-            .Select(p => new
-            {
-                id = p.Id,
-                parser_id = p.ParserId,
-                version = p.Version,
-                state = p.State.ToString(),
-                owner = p.Owner,
-                passing_tests = p.PassingTests,
-                quarantined = p.Quarantined,
-                created_at = p.CreatedAt,
-                published_at = p.PublishedAt,
-            })
             .ToListAsync(cancellationToken);
 
-        return Results.Ok(new { count = rows.Count, drafts = rows });
+        return Results.Ok(new ParserDraftListResponse(rows.Count, [.. rows.Select(Describe)]));
+    }
+
+    /// <summary>
+    /// Taslağın gövdesi, yayındaki sürümün gövdesi ve kapı kararı.
+    ///
+    /// <para>
+    /// Fark <b>istemcide</b> alınıyor: sunucuda satır satır karşılaştırma
+    /// yapmak, gövdeyi zaten iki kez göndermişken üçüncü bir temsil üretirdi.
+    /// </para>
+    /// </summary>
+    private static async Task<IResult> DetailAsync(
+        Guid id,
+        IDbContextFactory<ControlPlaneDbContext> factory,
+        ParserPublishGate gate,
+        CancellationToken cancellationToken)
+    {
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+
+        var draft = await db.Parsers.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+
+        if (draft is null)
+        {
+            return Results.NotFound();
+        }
+
+        // Karşılaştırma tabanı: aynı parser_id için HÂLEN YAYINDA olan sürüm.
+        // "Bir önceki kayıt" değil — inceleyenin sorusu "yayına ne girecek",
+        // yani karşılaştırılacak şey yayındaki.
+        var published = await db.Parsers.AsNoTracking()
+            .Where(p => p.ParserId == draft.ParserId
+                && p.State == ParserState.Published
+                && p.Id != draft.Id)
+            .OrderByDescending(p => p.PublishedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        // Kapı yayın anında yeniden koşuyor; inceleyenin gördüğü karar da
+        // taze olmalı — kaydedildiği andaki karar aradan geçen sürede
+        // değişmiş olabilir (pattern kütüphanesi, eşleme tabloları).
+        var verdict = gate.Inspect(draft.Yaml, draft.ParserId);
+
+        return Results.Ok(new ParserDraftDetailResponse(
+            draft.Id,
+            draft.ParserId,
+            draft.Version,
+            draft.State.ToString().ToLowerInvariant(),
+            draft.Owner,
+            draft.Yaml,
+            PublishVerdictResponse.From(verdict),
+            draft.UpdatedAt,
+
+            // T20'nin fark görünümü için; T19 bunları yok sayıyor.
+            published?.Version,
+            published?.Yaml));
+    }
+
+    private static IResult CoverageAsync(
+        CatalogCoverageCache cache,
+        Dispatcher dispatcher,
+        IConfiguration configuration,
+        bool? force)
+    {
+        var coverage = cache.Measure(
+            configuration["Parsing:CatalogDirectory"] ?? "catalog",
+            dispatcher,
+            force ?? false);
+
+        return Results.Ok(new CatalogCoverageResponse(
+            coverage.Ok,
+            coverage.Partial,
+            coverage.Failed,
+            coverage.Total,
+            coverage.MeasuredAt,
+
+            // Ölçüm katalogdan eskiyse bunu SÖYLÜYORUZ. Bayat bir oranı taze
+            // gibi göstermek, ekranın tek sayısal göstergesini işe yaramaz kılar.
+            cache.IsStale,
+            [.. coverage.ByParser.Select(p => new ParserCoverageEntryResponse(p.ParserId, p.Wins))]));
     }
 
     private static Task<IResult> CreateAsync(
@@ -118,7 +211,7 @@ public static class ParserAuthoringEndpoints
     {
         if (string.IsNullOrWhiteSpace(request.Yaml))
         {
-            return Results.BadRequest(new { error = "'yaml' boş olamaz." });
+            return Results.BadRequest(new ErrorResponse("'yaml' boş olamaz."));
         }
 
         var result = await authoring.SaveDraftAsync(
@@ -129,8 +222,8 @@ public static class ParserAuthoringEndpoints
         // kaybeder. Kapı kararı yine de gövdede (`gate`): editör "şu an
         // yayınlanabilir miyim" sorusunu ikinci bir istek atmadan cevaplıyor.
         return result.Ok
-            ? Results.Ok(ParserDraftResponse.From(result))
-            : Results.BadRequest(new { error = result.Error });
+            ? Results.Ok(ParserAuthoringResponse.From(result))
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> SubmitAsync(
@@ -143,8 +236,8 @@ public static class ParserAuthoringEndpoints
         // Kapıdan geçemeyen taslak 422: istek biçimsel olarak doğru, içeriği
         // kabul edilebilir değil. 400 bunu "yanlış yazdın" gibi gösterirdi.
         return result.Ok
-            ? Results.Ok(ParserDraftResponse.From(result))
-            : Results.UnprocessableEntity(ParserDraftResponse.From(result));
+            ? Results.Ok(ParserAuthoringResponse.From(result))
+            : Results.UnprocessableEntity(ParserAuthoringResponse.From(result));
     }
 
     private static async Task<IResult> ReturnAsync(
@@ -155,8 +248,8 @@ public static class ParserAuthoringEndpoints
         var result = await authoring.ReturnToDraftAsync(id, cancellationToken);
 
         return result.Ok
-            ? Results.Ok(Describe(result))
-            : Results.BadRequest(new { error = result.Error });
+            ? Results.Ok(ParserAuthoringResponse.From(result))
+            : Results.BadRequest(new ErrorResponse(result.Error));
     }
 
     private static async Task<IResult> PublishAsync(
@@ -170,25 +263,14 @@ public static class ParserAuthoringEndpoints
 
         if (!result.Ok)
         {
-            return Results.UnprocessableEntity(Describe(result));
+            return Results.UnprocessableEntity(ParserAuthoringResponse.From(result));
         }
 
         // Yayın sonrası katalog HEMEN tazeleniyor: periyodik tazelemeyi beklemek,
         // kullanıcıya "yayınlandı" deyip davranışın dakikalarca değişmemesi olurdu.
         var report = await loader.LoadAsync(ParserDirectory(configuration), cancellationToken);
 
-        return Results.Ok(new
-        {
-            draft = Describe(result),
-            catalog = new
-            {
-                loaded = report.Loaded,
-                from_repository = report.FromRepository,
-                from_database = report.FromDatabase,
-                shadowed = report.Shadowed,
-                errors = report.Errors,
-            },
-        });
+        return Results.Ok(new ParserPublishResponse(ParserAuthoringResponse.From(result), Describe(report)));
     }
 
     private static async Task<IResult> RollbackAsync(
@@ -202,34 +284,39 @@ public static class ParserAuthoringEndpoints
 
         if (!result.Ok)
         {
-            return Results.BadRequest(new { error = result.Error });
+            return Results.BadRequest(new ErrorResponse(result.Error));
         }
 
         var report = await loader.LoadAsync(ParserDirectory(configuration), cancellationToken);
 
-        return Results.Ok(new
-        {
-            draft = Describe(result),
-            catalog = new { loaded = report.Loaded, shadowed = report.Shadowed },
-        });
+        return Results.Ok(new ParserPublishResponse(ParserAuthoringResponse.From(result), Describe(report)));
     }
 
     private static string ParserDirectory(IConfiguration configuration) =>
         configuration["Parsing:ParserDirectory"] ?? "catalog/parsers";
 
-    private static object Describe(AuthoringResult result) => new
-    {
-        id = result.Draft?.Id,
-        parser_id = result.Draft?.ParserId,
-        version = result.Draft?.Version,
-        state = result.Draft?.State.ToString(),
-        error = result.Error,
-        verdict = result.Verdict is null ? null : new
-        {
-            ok = result.Verdict.Ok,
-            passing_tests = result.Verdict.PassingTests,
-            errors = result.Verdict.Errors,
-            warnings = result.Verdict.Warnings,
-        },
-    };
+    // `Describe(AuthoringResult)` ve `Describe(PublishVerdict)` kaldırıldı:
+    // ikisi de artık `ParserResponses.cs` içindeki `From` fabrikalarında ve
+    // yapılandırılmış kapı çıktısını taşıyor. İki dönüştürücü, aynı kararın
+    // iki farklı özetini üretirdi.
+    private static ParserDraftResponse Describe(ParserEntity parser) => new(
+        parser.Id,
+        parser.ParserId,
+        parser.Version,
+        parser.Vendor,
+        parser.Product,
+        parser.State.ToString().ToLowerInvariant(),
+        parser.Owner,
+        parser.PassingTests,
+        parser.Quarantined,
+        parser.CreatedAt,
+        parser.UpdatedAt,
+        parser.PublishedAt);
+
+    private static CatalogReloadResponse Describe(CatalogSourceReport report) => new(
+        report.Loaded,
+        report.FromRepository,
+        report.FromDatabase,
+        [.. report.Shadowed],
+        [.. report.Errors]);
 }

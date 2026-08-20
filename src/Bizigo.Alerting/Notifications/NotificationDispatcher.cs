@@ -1,3 +1,4 @@
+using Bizigo.Contracts.Security;
 using Bizigo.ControlPlane;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;

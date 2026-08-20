@@ -197,7 +197,7 @@ export function ParserWorkbench({ sources, draftId }: ParserWorkbenchProps) {
       }
 
       setNotice(
-        result.gate?.ok
+        result.verdict?.ok
           ? "Taslak kaydedildi ve kapılardan geçiyor — incelemeye gönderebilirsiniz."
           : "Taslak kaydedildi. Kapılardan geçmiyor; incelemeye göndermeden önce aşağıdaki raporu giderin.",
       );

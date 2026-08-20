@@ -2,6 +2,7 @@ using System.Net;
 using Bizigo.Alerting;
 using Bizigo.Alerting.Notifications;
 using Bizigo.Contracts;
+using Bizigo.Contracts.Security;
 using Bizigo.ControlPlane;
 using Microsoft.Extensions.Logging;
 
@@ -29,10 +30,12 @@ public sealed class NotificationSecretTests
 
     private const string SmtpPassword = "sMtP-p4rol4-cok-gizli";
 
+    /// <summary>Base64, 32 bayt. Anahtar artık ürün geneli (`Security:SecretKey`, T25).</summary>
+    private static string Key() =>
+        Convert.ToBase64String(Enumerable.Range(0, 32).Select(i => (byte)i).ToArray());
+
     private static AlertingOptions Options() => new()
     {
-        // Base64, 32 bayt.
-        SecretKey = Convert.ToBase64String(Enumerable.Range(0, 32).Select(i => (byte)i).ToArray()),
         ProductBaseUrl = "https://bizigo.example",
         ChannelTimeout = TimeSpan.FromSeconds(5),
     };
@@ -40,7 +43,7 @@ public sealed class NotificationSecretTests
     [Fact]
     public void Sifreleme_gidip_geliyor()
     {
-        var protector = new SecretProtector(Options());
+        var protector = new SecretProtector(Key());
 
         var cipher = protector.Protect(SlackHook);
 
@@ -52,7 +55,7 @@ public sealed class NotificationSecretTests
     [Fact]
     public void Ayni_gizli_bilgi_her_seferinde_farkli_sifreli_metin_uretiyor()
     {
-        var protector = new SecretProtector(Options());
+        var protector = new SecretProtector(Key());
 
         // Nonce her şifrelemede yeniden üretiliyor. Aynı çıktı, iki kanalın aynı
         // hedefe yazdığını veritabanına bakarak anlamak demek olurdu.
@@ -62,7 +65,7 @@ public sealed class NotificationSecretTests
     [Fact]
     public void Kurcalanmis_sifreli_metin_reddediliyor()
     {
-        var protector = new SecretProtector(Options());
+        var protector = new SecretProtector(Key());
         var cipher = protector.Protect(SlackHook);
 
         var bytes = Convert.FromBase64String(cipher);
@@ -78,7 +81,7 @@ public sealed class NotificationSecretTests
     [Fact]
     public void Anahtar_yoksa_sifreleme_reddediliyor_duz_metne_dusulmuyor()
     {
-        var protector = new SecretProtector(new AlertingOptions());
+        var protector = new SecretProtector(base64Key: null);
 
         Assert.False(protector.IsConfigured);
         Assert.Throws<InvalidOperationException>(() => protector.Protect(SlackHook));
@@ -219,7 +222,7 @@ public sealed class NotificationSecretTests
     {
         using var factory = new InMemoryControlPlaneFactory();
         var options = Options();
-        var protector = new SecretProtector(options);
+        var protector = new SecretProtector(Key());
         var logs = new CapturingLoggerProvider();
 
         var channel = new SecretEchoingChannel(NotificationChannelType.Slack);

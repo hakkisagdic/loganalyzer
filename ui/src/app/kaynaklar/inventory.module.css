@@ -1,0 +1,130 @@
+/*
+ * Envanter ekranının yerleşimi (T17).
+ *
+ * Ham renk ya da ham ölçü YOK — hepsi `tokens.css`'ten. Ortak bileşenlerin
+ * biçimleri `components/ui/ui.module.css` içinde.
+ */
+
+.blockTitle {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+  margin-block-end: var(--space-3);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.muted {
+  color: var(--text-3);
+  font-size: var(--text-xs);
+}
+
+/* --- Uyarılar ------------------------------------------------------------ */
+
+/**
+ * Envanterde olmayan cihaz uyarısı. Ekranın en üstünde ve en dikkat çeken
+ * bloğu: verisi hiçbir ekibe görünmeyen bir cihaz, sessiz kalırsa hiç fark
+ * edilmiyor.
+ */
+.alarm {
+  font-size: var(--text-sm);
+  color: var(--text-1);
+  padding: var(--space-4);
+  border: 1px solid var(--danger);
+  background: var(--danger-soft);
+  border-radius: var(--radius-md);
+  margin-block-end: var(--space-3);
+}
+
+.noticeMuted {
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  padding: var(--space-3) var(--space-4);
+  border-inline-start: 3px solid var(--border-2);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+}
+
+.success {
+  font-size: var(--text-sm);
+  color: var(--success);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--success);
+  background: var(--success-soft);
+  border-radius: var(--radius-md);
+}
+
+/* --- Sağlık özeti -------------------------------------------------------- */
+
+.healthGrid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.indicator {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.indicatorValue {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-md);
+  font-weight: var(--weight-medium);
+  color: var(--text-1);
+}
+
+.definitionTerm {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+}
+
+/* --- Yazma formları ------------------------------------------------------ */
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.editorForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--surface-1);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+}
+
+.editorGrid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-1);
+  /* Dokunmatik hedef alt sınırı (WCAG 2.5.8). */
+  min-block-size: 2.75rem;
+}

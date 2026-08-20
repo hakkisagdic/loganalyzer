@@ -4,6 +4,7 @@ using Bizigo.Ingest.Discovery;
 using Bizigo.Normalization;
 using Bizigo.Parsing.Dispatch;
 using Bizigo.Parsing.Engine;
+using Bizigo.Parsing.Grok;
 using Microsoft.Extensions.Logging;
 
 namespace Bizigo.Ingest.Pipeline;
@@ -29,6 +30,7 @@ public sealed class ParsingSink(
     DispatchStats stats,
     IParsedEventSink downstream,
     ITemplateAnnotator templates,
+    MaskCatalog masks,
     ILogger<ParsingSink> logger) : IIngestSink
 {
     public async ValueTask HandleAsync(
@@ -59,6 +61,13 @@ public sealed class ParsingSink(
                     source.SourceId);
             }
 
+            // İmza — **her olayda**, örneklemesiz, önbelleksiz (K35). Bu satır
+            // F3'ün "ilk-görülen imza" ve "hacim sapması" korelasyonlarının
+            // tamamını sidecar'dan kurtarıyor: `template_id` bir imzanın ilk
+            // görülüşünde tanım gereği boş dönüyor, yani "yeni bir şey oldu"
+            // diyen tam o satırda kimlik yoktu.
+            var signature = masks.Compute(record.Decoded.Body);
+
             // Keşif katmanı (T12). Sidecar'a burada **gidilmiyor**: yalnızca
             // daha önce öğrenilmiş imzalar önbellekten okunuyor, bilinmeyen
             // imza sınırlı kuyruğa atılıyor. Kuyruk doluysa ya da sidecar ölüyse
@@ -66,6 +75,7 @@ public sealed class ParsingSink(
             var templateId = templates.Annotate(
                 source.SourceClass,
                 record.Decoded.Body,
+                signature,
                 result.Result.Status == ParseStatus.Failed);
 
             parsed.Add(new ParsedEvent(
@@ -75,7 +85,8 @@ public sealed class ParsingSink(
                 source,
                 result.Result,
                 result.Tier,
-                templateId));
+                templateId,
+                signature.Hash));
         }
 
         await downstream.HandleAsync(parsed, cancellationToken);

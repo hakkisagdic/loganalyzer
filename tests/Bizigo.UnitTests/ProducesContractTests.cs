@@ -1,5 +1,8 @@
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using Bizigo.Alerting;
 using Bizigo.Api;
+using Bizigo.Api.Connectors;
 using Bizigo.Api.Webhooks;
 using Bizigo.Authoring;
 using Bizigo.ControlPlane;
@@ -20,8 +23,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Bizigo.UnitTests;
 
 /// <summary>
-/// <c>/v1/*</c> altındaki her uç bir <c>Produces&lt;T&gt;</c> taşımalı — ve
-/// bugün taşımayanlar aşağıda <b>açık bir izin listesinde</b> duruyor.
+/// Her ürün ucu bir <c>Produces&lt;T&gt;</c> taşımalı — ve bugün taşımayanlar
+/// aşağıdaki <b>iki listeden</b> birinde duruyor.
 ///
 /// <para>
 /// <b>Neden bekçi gerekiyor:</b> yanıt tipi bildirilmeyen bir uç OpenAPI
@@ -31,17 +34,28 @@ namespace Bizigo.UnitTests;
 /// </para>
 ///
 /// <para>
-/// <b>Neden izin listesi:</b> bir yanıt tipini tüketicisi olmadan yazmak tahmin
-/// üretiyor — hangi alanların sözleşmeye girdiğine ekran karar vermeli. Bu
-/// yüzden tip, uçu gerçekten tüketen ticket ile birlikte geliyor. Listenin
-/// işlevi boşluğu <b>görünür</b> kılmak: ekranlar indikçe kısalıyor ve liste
-/// boşalmadan F2 bitmiş sayılmıyor (T27).
+/// <b>Neden iki liste:</b> tek liste iki farklı şeyi taşıyordu — "henüz tipsiz,
+/// ekran indikçe çıkacak" ile "hiçbir zaman tip almayacak". Karışınca
+/// <b>"liste boşaldı mı" sorusunun cevabı asla evet olamıyordu</b> ve T27'nin
+/// kabul kriteri sağlanamaz hâle geliyordu. <see cref="Pending"/> küçülüyor ve
+/// boşalmadan F2 bitmiyor; <see cref="Exempt"/> ise gerekçesiyle sabit duruyor
+/// ve <b>büyümesi testi kırıyor</b> (bkz. <see cref="ExpectedExemptCount"/>).
 /// </para>
 ///
 /// <para>
-/// Kalıp <c>ParsersEndpointTests</c>'ten: uygulama gerçekten başlatılmıyor,
-/// yalnızca uçlar kaydediliyor. Servisler çözülmüyor — kayıtlar yalnızca minimal
-/// API'nin parametreyi "servis mi gövde mi" diye ayırt edebilmesi için var.
+/// <b>Kapı denetlediği kümeyi kendisi buluyor.</b> Önceki hâli uçları elle
+/// yazılmış bir <c>Map*</c> listesinden topluyordu; T21/T22/T24 indiğinde 16 uç
+/// kapıya hiç görünmedi ve üç testin üçü de <b>geçti</b>. Bir bekçinin en
+/// tehlikeli başarısızlık biçimi buydu: yeşil yanıyordu ve yeşilliği hiçbir şey
+/// ifade etmiyordu. Artık <c>Bizigo.Api</c> derlemesindeki her
+/// <c>IEndpointRouteBuilder</c> uzantısı <b>yansımayla bulunup çağrılıyor</b>,
+/// yani unutulacak bir liste yok.
+/// </para>
+///
+/// <para>
+/// Uygulama gerçekten başlatılmıyor, yalnızca uçlar kaydediliyor. Servisler
+/// çözülmüyor — kayıtlar yalnızca minimal API'nin parametreyi "servis mi gövde
+/// mi" diye ayırt edebilmesi için var (kalıp <c>ParsersEndpointTests</c>'ten).
 /// </para>
 /// </summary>
 public sealed class ProducesContractTests
@@ -53,40 +67,89 @@ public sealed class ProducesContractTests
     /// <para>
     /// Bir satır silinirken uca <c>Produces&lt;T&gt;</c> eklenmiş olmalı; test
     /// listede olup da tipi <b>olan</b> bir ucu da hata sayıyor, yani liste
-    /// kendiliğinden bayatlayamıyor.
+    /// kendiliğinden bayatlayamıyor. <b>Boşalmadan F2 bitmiş sayılmıyor</b> (T27).
     /// </para>
     /// </summary>
     private static readonly Dictionary<string, string> Pending = new(StringComparer.Ordinal)
     {
-        ["POST /v1/logs"] = "Collector'ın ingest ucu; UI tüketicisi yok (istemcide de dışlanmış).",
-        ["POST /v1/sources"] = "T17 — kaynak envanteri ekranı",
-        ["POST /v1/sources/csv"] = "T17 — kaynak envanteri ekranı",
-        ["GET /v1/changes"] = "T24 — değişiklik akışı formu",
-        ["POST /v1/changes"] = "T24 — değişiklik akışı formu",
-        ["GET /v1/health/pipeline"] = "T20 — boru hattı sağlık ekranı",
-        ["POST /v1/replay"] = "T19 — replay ekranı",
-        // T19'un editörü dört ucu tüketti ve dördü listeden ÇIKTI:
+        // T19'un yazar yüzeyi dört ucu tüketti ve dördü buradan ÇIKTI:
         // `POST /v1/parsers/try`, `POST /v1/parsers/drafts`,
         // `PUT /v1/parsers/drafts/{id}`, `POST /v1/parsers/drafts/{id}/submit`.
-        // Kalan altısı T20'nin katalog yönetim ekranıyla birlikte tipleniyor —
-        // okuma uçları ve inceleme/yayın/geri alma orada tüketiliyor.
-        ["GET /v1/parsers"] = "T20 — katalog yönetim ekranı",
-        ["GET /v1/parsers/{id}"] = "T20 — katalog yönetim ekranı",
-        ["GET /v1/parsers/drafts"] = "T20 — inceleme kuyruğu",
-        ["POST /v1/parsers/drafts/{id}/return"] = "T20 — inceleme kuyruğu",
-        ["POST /v1/parsers/drafts/{id}/publish"] = "T20 — katalog yönetim ekranı",
-        ["POST /v1/parsers/{parserId}/rollback"] = "T20 — katalog yönetim ekranı",
+        // Okuma uçları ve yayın/geri alma T20 ile birlikte tiplendi.
+        //
+        // Geriye TEK satır kaldı ve atfı yanlıştı: `POST /v1/replay`'in
+        // karşısında "T19 — replay ekranı" yazıyordu, oysa T19 parser editörü
+        // ve kapsamında replay yok. Tüketicisi olmayan bir uca yanıt tipi
+        // yazmak, bu listenin var olma sebebini boşa çıkarırdı — hangi
+        // alanların sözleşmeye girdiğine ekran karar vermeli. Muafiyete
+        // taşımak da yanlış olurdu: replay'in bir gün ekranı olacak, "hiç
+        // tüketicisi olmayacak" diyemeyiz. Sahibi belli olana kadar burada
+        // duruyor ve F2'nin kapanışında (T27) karar verilmesi gereken tek
+        // kalem bu.
+        ["POST /v1/replay"] = "sahipsiz — replay ekranının ticket'ı yok (T27 kararı)",
+    };
 
-        // Alarm uçlarının on ikisi T23'te tipini kazandı ve bu listeden çıktı —
-        // ekran indi, tip artık tahmin değil. Kalan üçü gövdesiz 204: uydurulmuş
-        // bir yanıt tipi olmayan bir sözleşme vaat ederdi.
+    /// <summary>
+    /// <b>Kalıcı muafiyetler.</b> Bunların tüketicisi hiç olmayacak, dolayısıyla
+    /// bir yanıt tipi yazmak <see cref="Pending"/>'in kaçındığı şeyi yapmak
+    /// olurdu: tüketicisi olmayan bir tip tahmindir.
+    ///
+    /// <para>
+    /// Muafiyet <b>bedava değil</b>. Buraya bir satır eklemek
+    /// <see cref="ExpectedExemptCount"/>'u da değiştirmeyi gerektiriyor, yani
+    /// kaçış kapısı sessizce genişleyemiyor — genişlemesi ayrı ve görünür bir
+    /// karar oluyor.
+    /// </para>
+    /// </summary>
+    private static readonly Dictionary<string, string> Exempt = new(StringComparer.Ordinal)
+    {
+        ["POST /v1/logs"] =
+            "Collector'ın ingest ucu; UI istemcisinde tip düzeyinde dışlanmış (`ExcludedPath`).",
+        ["POST /v1/changes/webhooks/{endpointId}"] =
+            "CI sistemlerinin çağırdığı alıcı; UI tüketicisi yok.",
+
+        // 204 dönen uçlar: gövde yok. Uydurulmuş bir yanıt tipi, olmayan bir
+        // sözleşme vaat ederdi.
         ["DELETE /v1/alerts/rules/{id}"] = "204, gövdesiz.",
         ["DELETE /v1/alerts/maintenance/{id}"] = "204, gövdesiz.",
         ["DELETE /v1/alerts/channels/{id}"] = "204, gövdesiz.",
-
-        ["POST /v1/changes/webhooks/{endpointId}"] =
-            "CI sistemlerinin çağırdığı alıcı; UI tüketicisi yok (`POST /v1/logs` ile aynı sınıf).",
+        ["DELETE /v1/changes/connectors/{id}"] = "204, gövdesiz.",
     };
+
+    /// <summary>
+    /// <see cref="Exempt"/> bu sayıda kalmalı.
+    ///
+    /// <para>
+    /// Sabitin tek işlevi muafiyet listesini büyütmeyi <b>görünür</b> kılmak:
+    /// yeni bir muafiyet eklemek bu satırı da değiştirmeyi gerektiriyor ve
+    /// değişiklik incelemede tek başına göze çarpıyor. Küçülmesi de aynı şekilde
+    /// bilinçli olmalı — bir uç tip kazandıysa muafiyetten çıkmalı, sabit de
+    /// düşmeli.
+    /// </para>
+    /// </summary>
+    private const int ExpectedExemptCount = 6;
+
+    /// <summary>
+    /// <c>Bizigo.Api</c> içindeki <b>bütün</b> <c>IEndpointRouteBuilder</c>
+    /// uzantıları — yansımayla.
+    ///
+    /// <para>
+    /// Elle yazılmış bir liste yerine burayı kullanmanın tek sebebi var: bir
+    /// gün eklenen uç dosyası listeye yazılmayı unutulabilir, ve o an kapı
+    /// sessizce yeşil yanar. Bir kez oldu.
+    /// </para>
+    /// </summary>
+    private static IReadOnlyList<MethodInfo> Registrars() =>
+        [.. typeof(global::Program).Assembly
+            .GetTypes()
+            // Statik sınıf = sealed + abstract.
+            .Where(static t => t is { IsSealed: true, IsAbstract: true })
+            .SelectMany(static t => t.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            .Where(static m => m.IsDefined(typeof(ExtensionAttribute), inherit: false))
+            .Where(static m => m.Name.StartsWith("Map", StringComparison.Ordinal))
+            .Where(static m => m.GetParameters() is [{ } first, ..]
+                && typeof(IEndpointRouteBuilder).IsAssignableFrom(first.ParameterType))
+            .OrderBy(static m => m.Name, StringComparer.Ordinal)];
 
     /// <summary>
     /// Uçların tamamı. Servisler <b>çözülürse patlayan</b> fabrikalarla
@@ -113,13 +176,20 @@ public sealed class ProducesContractTests
             typeof(IngestGateway), typeof(IngestStats), typeof(WriteAheadLog),
             typeof(DiscoveryStats), typeof(SidecarOptions),
 
-            // T21/T22/T24 uçlarının bağımlılıkları. Bunlar eklenmeden
-            // `MapAlerts`/`MapChangeWebhooks` parametre çıkarımında patlıyordu ve
-            // bu üç uç dosyası kapıya HİÇ görünmüyordu.
+            // Uc dosyalarinin bagimliliklari. Kayit edilmezlerse parametre
+            // cikarimi "govde mi servis mi" diyemiyor ve `Map*` cagrisi
+            // patliyor -- yani o uc dosyasi kapiya hic gorunmuyor.
+            //
+            // `TimeProvider` bilerek listede YOK: ASP.NET onu kendi kurulumunda
+            // cozuyor ve zehirlemek `WebApplicationBuilder.Build()`'i patlatiyor.
             typeof(AlertRuleService), typeof(NotificationChannelService),
             typeof(AlertingOptions), typeof(AlertingStats), typeof(AlertPreview),
             typeof(IChangeWebhookRegistry), typeof(ChangeWebhookOptions),
-            typeof(ChangeWebhookDeliveryLog),
+            typeof(ChangeWebhookDeliveryLog), typeof(ChangeConnectorService),
+
+            // T20'nin kapsam ucu. Kaydedilmezse `CatalogCoverageCache` gövde
+            // parametresi sanılıyor ve `MapParserAuthoring` çıkarımda patlıyor.
+            typeof(CatalogCoverageCache), typeof(ParserPublishGate),
         })
         {
             var captured = type;
@@ -133,17 +203,31 @@ public sealed class ProducesContractTests
 
         var app = builder.Build();
 
-        app.MapOtlpLogs();
-        app.MapEvents();
-        app.MapSources();
-        app.MapChanges();
-        app.MapPipelineHealth();
-        app.MapReplay();
-        app.MapParsers();
-        app.MapParserAuthoring();
-        app.MapAlerts();
-        app.MapNotificationChannels();
-        app.MapChangeWebhooks();
+        foreach (var registrar in Registrars())
+        {
+            // Beklenmeyen imza SESSİZCE atlanmıyor. Atlanabilseydi, iki
+            // parametreli yeni bir `Map*` kapıya yine görünmez olurdu — kapatmaya
+            // çalıştığımız deliğin aynısı, başka kılıkta.
+            if (registrar.GetParameters().Length != 1 || registrar.IsGenericMethodDefinition)
+            {
+                throw new InvalidOperationException(
+                    $"{registrar.DeclaringType?.Name}.{registrar.Name} beklenmeyen imzada: " +
+                    "kapı yalnızca tek parametreli, generic olmayan `Map*` uzantılarını çağırabiliyor. " +
+                    "İmza bilinçli olarak değiştiyse bu test de güncellenmeli.");
+            }
+
+            try
+            {
+                registrar.Invoke(null, [app]);
+            }
+            catch (TargetInvocationException error) when (error.InnerException is not null)
+            {
+                throw new InvalidOperationException(
+                    $"{registrar.Name} kayıt sırasında patladı: {error.InnerException.Message}. " +
+                    "Muhtemelen bir bağımlılığı `Endpoints()` içindeki kayıt listesinde yok.",
+                    error.InnerException);
+            }
+        }
 
         return [.. ((IEndpointRouteBuilder)app).DataSources
             .SelectMany(static source => source.Endpoints)
@@ -151,16 +235,24 @@ public sealed class ProducesContractTests
     }
 
     /// <summary>
-    /// <c>METHOD /yol</c> — izin listesinin anahtarı. Rota deseninden kısıtlar
+    /// <c>METHOD /yol</c> — listelerin anahtarı. Rota deseninden kısıtlar
     /// (<c>{id:guid}</c>) çıkarılıyor: bir kısıt eklemek yanıt tipiyle ilgili
     /// değil, listeyi bozmamalı.
+    ///
+    /// <para>
+    /// <b>Önek filtresi yok.</b> Eskiden yalnızca <c>/v1/</c> denetleniyordu ve
+    /// bu, kapının ikinci kör noktasıydı: bir gün açılacak <c>/v2/</c> ya da
+    /// önek dışı bir ürün ucu sessizce kapsam dışı kalırdı. Denetlenen küme
+    /// artık "uç dosyalarının kaydettiği her şey" — <c>/internal/*</c>,
+    /// <c>/healthz</c> ve <c>/</c> zaten <c>Program.cs</c> içinde satır içi
+    /// kayıtlı, yani bir <c>Map*</c> uzantısından geçmiyorlar ve bu kümeye hiç
+    /// girmiyorlar.
+    /// </para>
     /// </summary>
-    private static IEnumerable<(string Key, RouteEndpoint Endpoint)> V1Endpoints() =>
-        Endpoints()
-            .Where(static e => (e.RoutePattern.RawText ?? string.Empty).StartsWith("/v1/", StringComparison.Ordinal))
-            .SelectMany(static e =>
-                (e.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods ?? ["?"])
-                    .Select(method => ($"{method} {StripConstraints(e.RoutePattern.RawText!)}", e)));
+    private static IEnumerable<(string Key, RouteEndpoint Endpoint)> ProductEndpoints() =>
+        Endpoints().SelectMany(static e =>
+            (e.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods ?? ["?"])
+                .Select(method => ($"{method} {StripConstraints(e.RoutePattern.RawText ?? string.Empty)}", e)));
 
     private static string StripConstraints(string pattern)
     {
@@ -168,11 +260,11 @@ public sealed class ProducesContractTests
 
         // MapGroup("/v1/x") + MapGet("/") deseni "/v1/x/" üretiyor; sondaki
         // eğik çizgi yolun kimliğine ait değil.
-        return trimmed.Length > 4 && trimmed.EndsWith('/') ? trimmed[..^1] : trimmed;
+        return trimmed.Length > 1 && trimmed.EndsWith('/') ? trimmed[..^1] : trimmed;
     }
 
     /// <summary>
-    /// Bir ucun 200 yanıtı için bildirilmiş <b>gövde tipi</b> var mı.
+    /// Bir ucun 2xx yanıtı için bildirilmiş <b>gövde tipi</b> var mı.
     /// <c>.Produces(404)</c> gibi gövdesiz bildirimler sayılmıyor.
     /// </summary>
     private static bool DeclaresResponseType(RouteEndpoint endpoint) =>
@@ -182,71 +274,306 @@ public sealed class ProducesContractTests
                 && m.Type is not null
                 && m.Type != typeof(void));
 
+    /// <summary>
+    /// <b>Kapının kendisinin bekçisi.</b> Denetlenen küme, uç dosyalarının
+    /// tamamından geliyor mu?
+    ///
+    /// <para>
+    /// Bu test yansıma keşfinin gerçekten iş gördüğünü sabitliyor: bugün bilinen
+    /// on iki uzantının hepsi bulunuyor ve hepsi çağrıldığı için hepsinin uçları
+    /// denetime giriyor. Yeni bir uç dosyası eklendiğinde burada bir şey
+    /// güncellemek gerekmiyor — sayı kendiliğinden artıyor ve <b>uçları da
+    /// otomatik denetime giriyor</b>; kapatılan delik tam olarak buydu.
+    /// </para>
+    /// </summary>
     [Fact]
-    public void V1_altindaki_her_uc_ya_yanit_tipi_bildiriyor_ya_izin_listesinde()
+    public void Kapi_butun_uc_dosyalarini_kendisi_buluyor()
     {
-        var missing = V1Endpoints()
+        var names = Registrars().Select(static m => m.Name).ToArray();
+
+        // Bugün var olanların hepsi. Bir dosya silinirse burası düşer ve silme
+        // bilinçli bir hareket olur.
+        Assert.Equal(
+            [
+                "MapAlerts", "MapAuth", "MapChangeConnectors", "MapChangeWebhooks", "MapChanges",
+                "MapEvents",
+                "MapNotificationChannels", "MapOtlpLogs", "MapParserAuthoring", "MapParsers",
+                "MapPipelineHealth", "MapReplay", "MapSources",
+            ],
+            names);
+
+        // Ve hepsi gerçekten uç üretiyor: keşif çalışsa da çağrı bir yerde
+        // yutulsaydı küme boş kalırdı ve bütün testler anlamsız yere geçerdi.
+        Assert.NotEmpty(ProductEndpoints());
+    }
+
+    [Fact]
+    public void Her_urun_ucu_ya_yanit_tipi_bildiriyor_ya_bir_listede()
+    {
+        var missing = ProductEndpoints()
             .Where(static pair => !DeclaresResponseType(pair.Endpoint))
             .Select(static pair => pair.Key)
-            .Where(key => !Pending.ContainsKey(key))
+            .Where(key => !Pending.ContainsKey(key) && !Exempt.ContainsKey(key))
             .Order(StringComparer.Ordinal)
             .ToArray();
 
         Assert.True(
             missing.Length == 0,
-            "Yanıt tipi bildirmeyen uç(lar) izin listesinde değil:\n  " +
+            "Yanıt tipi bildirmeyen uç(lar) hiçbir listede değil:\n  " +
             string.Join("\n  ", missing) +
-            "\n\nYa uca `.Produces<T>()` ekleyin ya da ProducesContractTests.Pending'e " +
-            "hangi ticket'ın kapatacağıyla birlikte yazın.");
+            "\n\nYa uca `.Produces<T>()` ekleyin, ya `Pending`'e hangi ticket'ın " +
+            "kapatacağıyla yazın, ya da gerçekten hiç tüketicisi olmayacaksa " +
+            "`Exempt`'e ekleyip `ExpectedExemptCount`'u da güncelleyin.");
     }
 
     /// <summary>
-    /// Liste <b>yalnızca</b> gerçekten eksik olanları taşımalı. Kapatılan bir uç
-    /// listede kalırsa liste kısalmayı bırakır ve boşluk yine görünmez olur —
-    /// bu testin varlık sebebi tam olarak listenin bayatlamasını engellemek.
+    /// Listeler <b>yalnızca</b> gerçekten eksik olanları taşımalı. Kapatılan bir
+    /// uç listede kalırsa liste kısalmayı bırakır ve boşluk yine görünmez olur —
+    /// bu testin varlık sebebi tam olarak listelerin bayatlamasını engellemek.
     /// </summary>
     [Fact]
-    public void Izin_listesi_bayat_giris_tasimiyor()
+    public void Listeler_bayat_giris_tasimiyor()
     {
-        var actual = V1Endpoints().ToArray();
+        var actual = ProductEndpoints().ToArray();
         var keys = actual.Select(static pair => pair.Key).ToHashSet(StringComparer.Ordinal);
 
-        var vanished = Pending.Keys.Where(key => !keys.Contains(key)).Order(StringComparer.Ordinal).ToArray();
+        var vanished = Pending.Keys.Concat(Exempt.Keys)
+            .Where(key => !keys.Contains(key))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
         Assert.True(
             vanished.Length == 0,
-            "İzin listesinde artık var olmayan uç(lar): " + string.Join(", ", vanished));
+            "Listelerde artık var olmayan uç(lar): " + string.Join(", ", vanished));
 
         var covered = actual
-            .Where(pair => Pending.ContainsKey(pair.Key) && DeclaresResponseType(pair.Endpoint))
+            .Where(pair => (Pending.ContainsKey(pair.Key) || Exempt.ContainsKey(pair.Key))
+                && DeclaresResponseType(pair.Endpoint))
             .Select(static pair => pair.Key)
             .Order(StringComparer.Ordinal)
             .ToArray();
 
         Assert.True(
             covered.Length == 0,
-            "Yanıt tipi kazanmış uç(lar) hâlâ izin listesinde: " + string.Join(", ", covered) +
-            " — ProducesContractTests.Pending'den silin.");
+            "Yanıt tipi kazanmış uç(lar) hâlâ listede: " + string.Join(", ", covered) +
+            " — Pending/Exempt'ten silin.");
     }
 
     /// <summary>
-    /// T15/T16'nın tükettiği uçlar listeden <b>çıkmış</b> olmalı. Bu test,
-    /// listenin gerçekten küçüldüğünün ölçüsü; olmadan "bir gün ekleriz"
-    /// sessizce kalıcı olabilir.
+    /// <b>Kapı denetlediği kümeyi kendisi buluyor mu</b> (T27).
+    ///
+    /// <para>
+    /// T17'de kapatılan yapısal delik buydu: bekçi uçları elle yazılmış bir
+    /// <c>Map*</c> listesinden topluyordu, T21/T22/T24 indiğinde 16 uç ona hiç
+    /// görünmedi ve üç testin üçü de geçti — yeşilliği hiçbir şey ifade
+    /// etmiyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// Bu test o deliğin <b>geri açılmasını</b> engelliyor: <c>Bizigo.Api</c>
+    /// içindeki uç dosyalarının her biri kapıya en az bir rota vermek zorunda.
+    /// Yeni bir uç dosyası eklenip yansıma onu bulamazsa — ya da bulunup
+    /// çağrılırken bağımlılık eksikliğinden patlarsa — burada kırmızı yanıyor,
+    /// listeye yazılmayı beklemeden.
+    /// </para>
     /// </summary>
     [Fact]
-    public void Olay_uclari_yanit_tipi_tasiyor()
+    public void Kapi_uc_dosyalarini_kendisi_buluyor()
     {
-        var events = V1Endpoints()
+        var registrars = Registrars();
+
+        // Adı `Map` ile başlayan uzantı, `/v1` altında rota üretiyor olmalı.
+        // İstisna: kimlik, sağlık ve iç gözlem uçları `/v1` altında değil.
+        var declaringTypes = registrars
+            .Select(m => m.DeclaringType!.Name)
+            .Distinct(StringComparer.Ordinal)
+            .ToHashSet(StringComparer.Ordinal);
+
+        // Uç dosyası olduğu adından belli olan her sınıf keşfedilmiş olmalı.
+        var endpointFiles = typeof(global::Program).Assembly
+            .GetTypes()
+            .Where(static t => t is { IsSealed: true, IsAbstract: true, IsPublic: true })
+            .Where(static t => t.Name.EndsWith("Endpoints", StringComparison.Ordinal)
+                || t.Name.EndsWith("Endpoint", StringComparison.Ordinal))
+            .Select(static t => t.Name)
+            .ToArray();
+
+        Assert.NotEmpty(endpointFiles);
+
+        var invisible = endpointFiles
+            .Where(name => !declaringTypes.Contains(name))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.True(
+            invisible.Length == 0,
+            "Bu uç dosyaları kapıya hiç görünmüyor: " + string.Join(", ", invisible) +
+            "\n\nAdı `Map` ile başlayan, ilk parametresi `IEndpointRouteBuilder` olan " +
+            "bir uzantı metodu bekleniyor.");
+    }
+
+    /// <summary>
+    /// Keşfedilen her uzantı <b>gerçekten çağrılabiliyor</b> olmalı.
+    ///
+    /// <para>
+    /// Bulunmak yetmiyor: bağımlılığı kayıtlı olmayan bir <c>Map*</c> çağrısı
+    /// parametre çıkarımında patlıyor ve o uç dosyası yine denetlenmemiş
+    /// kalıyor. T17'nin bulduğu delik tam olarak buydu — üç uç dosyası
+    /// bulunuyordu ama çağrılamıyordu.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Kesfedilen_her_uzanti_cagrilabiliyor()
+    {
+        // `Endpoints()` bütün uzantıları çağırıyor; patlarsa test burada düşer
+        // ve mesajı hangi uzantının çağrılamadığını söyler.
+        var endpoints = Endpoints();
+
+        Assert.NotEmpty(endpoints);
+
+        // Her keşfedilen uzantı en az bir rota bırakmış olmalı: sessizce hiçbir
+        // şey kaydetmeyen bir uzantı, kapıdan geçmiş ama denetlenmemiş demek.
+        Assert.True(
+            endpoints.Count >= Registrars().Count,
+            $"{Registrars().Count} uzantı bulundu ama yalnızca {endpoints.Count} rota kaydedildi.");
+    }
+
+    /// <summary>
+    /// T24/T25'in tükettiği değişiklik uçları listeden <b>çıkmış</b> olmalı.
+    ///
+    /// <para>
+    /// Ayrıca imzalı alıcı listede <b>kalmalı</b>: onun muafiyeti geçici bir
+    /// boşluk değil kalıcı bir karar — CI sistemleri çağırıyor, ekran değil.
+    /// Ayrımı sabitlemezsek biri onu "eksik" sanıp kapatmaya çalışır.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Degisiklik_uclari_yanit_tipi_tasiyor()
+    {
+        var changes = ProductEndpoints()
+            .Where(static pair => pair.Key.Contains("/v1/changes", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.NotEmpty(changes);
+
+        foreach (var (key, endpoint) in changes)
+        {
+            if (Pending.ContainsKey(key) || Exempt.ContainsKey(key))
+            {
+                continue;
+            }
+
+            Assert.True(DeclaresResponseType(endpoint), $"{key} yanıt tipi bildirmiyor.");
+        }
+
+        Assert.Contains("POST /v1/changes/webhooks/{endpointId}", Exempt.Keys);
+        Assert.DoesNotContain("GET /v1/changes", Pending.Keys);
+        Assert.DoesNotContain("POST /v1/changes", Pending.Keys);
+
+        // Uçların GERÇEKTEN kaydedildiğini sabitliyoruz. Bekçinin bulunmuş
+        // deliği tam olarak buydu: `Endpoints()` içindeki `Map*` listesine
+        // eklenmeyen bir uç kapıya hiç görünmüyor ve test yeşil yanıyor —
+        // yeşilliği hiçbir şey ifade etmiyor. Aşağıdaki liste, o listeden bir
+        // satır düşerse kırmızı yanıyor.
+        var keys = changes.Select(static pair => pair.Key).ToHashSet(StringComparer.Ordinal);
+
+        foreach (var expected in new[]
+        {
+            "GET /v1/changes",
+            "POST /v1/changes",
+            "POST /v1/changes/webhooks/{endpointId}",
+            "GET /v1/changes/connectors",
+            "POST /v1/changes/connectors",
+            "GET /v1/changes/connectors/{id}",
+            "PUT /v1/changes/connectors/{id}",
+            "DELETE /v1/changes/connectors/{id}",
+            "POST /v1/changes/connectors/{id}/test",
+            "GET /v1/changes/connectors/{id}/runs",
+        })
+        {
+            Assert.True(
+                keys.Contains(expected),
+                $"{expected} bekçiye hiç görünmüyor — Endpoints() içindeki Map* listesinde eksik.");
+        }
+    }
+
+    /// <summary>
+    /// Muafiyet listesi sessizce büyüyemez.
+    ///
+    /// <para>
+    /// <see cref="Pending"/> "bir gün kapanacak" demek ve boşalması T27'nin
+    /// kabul kriteri. <see cref="Exempt"/> ise hiç kapanmayacak; ikisi tek listede
+    /// dururken o kriter <b>sağlanamaz</b> hâldeydi. Ayırmanın bedeli, muafiyetin
+    /// kolay bir kaçış kapısına dönüşmesi olurdu — sayının sabitlenmesi bunu
+    /// engelliyor: yeni bir muafiyet, ayrı ve görünür bir karar.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Muafiyet_listesi_sessizce_buyuyemez()
+    {
+        Assert.Equal(ExpectedExemptCount, Exempt.Count);
+
+        // Muafiyet gerekçesiz olmaz: "neden hiç tüketicisi olmayacak" sorusunun
+        // cevabı listede yazılı durmalı.
+        foreach (var (key, reason) in Exempt)
+        {
+            Assert.False(
+                string.IsNullOrWhiteSpace(reason),
+                $"{key} muafiyeti gerekçesiz.");
+        }
+
+        // İki liste ayrık olmalı; bir uç hem "bekliyor" hem "muaf" olamaz.
+        Assert.Empty(Pending.Keys.Intersect(Exempt.Keys, StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// Ekranı inmiş uçlar <see cref="Pending"/>'den <b>çıkmış</b> olmalı. Bu
+    /// test, listenin gerçekten küçüldüğünün ölçüsü; olmadan "bir gün ekleriz"
+    /// sessizce kalıcı olabilir.
+    ///
+    /// <para>
+    /// Uç <b>sayısı</b> burada sabitlenmiyor: o alanların sahibi başka ticket'lar
+    /// ve yeni bir uç eklemeleri bu bekçiyi ilgilendirmiyor. Sabitlenen tek şey
+    /// sözleşme — tip ya var, ya gerekçeli muafiyet.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData("/v1/events")]
+    [InlineData("/v1/alerts")]
+    public void Ekrani_inmis_uclar_yanit_tipi_tasiyor(string prefix)
+    {
+        var endpoints = ProductEndpoints()
+            .Where(pair => pair.Key.Contains(prefix, StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.NotEmpty(endpoints);
+
+        foreach (var (key, endpoint) in endpoints)
+        {
+            // 204 dönen silme uçları muaf; geri kalanı tip taşımalı.
+            if (Exempt.ContainsKey(key))
+            {
+                continue;
+            }
+
+            Assert.True(DeclaresResponseType(endpoint), $"{key} yanıt tipi bildirmiyor.");
+            Assert.DoesNotContain(key, Pending.Keys);
+        }
+    }
+
+    /// <summary>
+    /// T15/T16'nın uçları: üç tane, üçü de tipli. Sayı burada <b>sabitlenmiş</b>
+    /// çünkü bu yüzeyin sahibi bu ticket — bir olay ucunun sessizce kaybolması
+    /// ya da eklenmesi görünmeli.
+    /// </summary>
+    [Fact]
+    public void Olay_yuzeyi_uc_uctan_ibaret()
+    {
+        var events = ProductEndpoints()
             .Where(static pair => pair.Key.Contains("/v1/events", StringComparison.Ordinal))
             .ToArray();
 
         Assert.Equal(3, events.Length);
-
-        foreach (var (key, endpoint) in events)
-        {
-            Assert.True(DeclaresResponseType(endpoint), $"{key} yanıt tipi bildirmiyor.");
-            Assert.DoesNotContain(key, Pending.Keys);
-        }
     }
 
     /// <summary>
@@ -254,9 +581,9 @@ public sealed class ProducesContractTests
     /// gerçekten küçüldüğünün ölçüsü bu.
     ///
     /// <para>
-    /// Uç adları burada <b>elle</b> yazılı, <c>Pending</c>'den türetilmiyor:
-    /// türetilseydi test kendi kendini onaylar, dört satır listeye geri
-    /// eklendiğinde de yeşil yanardı.
+    /// Uç adları burada <b>elle</b> yazılı, <see cref="Pending"/>'den
+    /// türetilmiyor: türetilseydi test kendi kendini onaylar, dört satır listeye
+    /// geri eklendiğinde de yeşil yanardı.
     /// </para>
     /// </summary>
     [Theory]
@@ -266,36 +593,28 @@ public sealed class ProducesContractTests
     [InlineData("POST /v1/parsers/drafts/{id}/submit")]
     public void Parser_editorunun_uclari_yanit_tipi_tasiyor(string key)
     {
-        var (_, endpoint) = Assert.Single(V1Endpoints(), pair => pair.Key == key);
+        var (_, endpoint) = Assert.Single(ProductEndpoints(), pair => pair.Key == key);
 
         Assert.True(DeclaresResponseType(endpoint), $"{key} yanıt tipi bildirmiyor.");
         Assert.DoesNotContain(key, Pending.Keys);
     }
 
     /// <summary>
-    /// T20'nin uçları <b>hâlâ</b> listede. İki ajanın aynı satırı silmesi
-    /// çakışma üretiyordu; bu test sınırı koda yazıyor, mesajlaşmaya değil.
-    /// Satırlar T20'nin ekranıyla birlikte silinecek ve o zaman bu test de
-    /// düşecek — düşmesi doğru, çünkü liste boşalmadan F2 bitmiş sayılmıyor.
+    /// <b>Liste tek satıra indi.</b> T19'un dört ucu çıkınca geriye yalnızca
+    /// <c>POST /v1/replay</c> kaldı ve o da sahipsiz — replay ekranının ticket'ı
+    /// yok.
+    ///
+    /// <para>
+    /// Sayı sabitlendi ki listeye sessizce satır eklenmesin: yeni bir uç
+    /// tüketicisiz iniyorsa bu ayrı ve görünür bir karar olmalı. Sahipsiz
+    /// kalemin ne olacağına F2'nin kapanışı (T27) karar veriyor; bir ekran
+    /// gelirse satır düşer, gelmeyeceği kesinleşirse <see cref="Exempt"/>'e
+    /// taşınır ve <see cref="ExpectedExemptCount"/> de artar.
+    /// </para>
     /// </summary>
     [Fact]
-    public void Katalog_ekraninin_uclari_T20_ye_atifla_bekliyor()
+    public void Bekleyen_listede_yalnizca_sahipsiz_replay_kaldi()
     {
-        string[] deferred =
-        [
-            "GET /v1/parsers",
-            "GET /v1/parsers/{id}",
-            "GET /v1/parsers/drafts",
-            "POST /v1/parsers/drafts/{id}/return",
-            "POST /v1/parsers/drafts/{id}/publish",
-            "POST /v1/parsers/{parserId}/rollback",
-        ];
-
-        foreach (var key in deferred)
-        {
-            Assert.True(
-                Pending.TryGetValue(key, out var owner) && owner.StartsWith("T20", StringComparison.Ordinal),
-                $"{key} ya tipini kazandı ya da atfı değişti — izin listesini güncelleyin.");
-        }
+        Assert.Equal(["POST /v1/replay"], Pending.Keys.Order(StringComparer.Ordinal));
     }
 }

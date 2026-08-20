@@ -1,0 +1,13 @@
+title: "Cisco ASA: VPN oturum açma"
+id: 14477452-0000-4000-8000-000000000000
+status: experimental
+description: T30 ölçüm örneklemi — F1 kataloğunun tanıdığı vendor'lara göre yazıldı.
+logsource:
+  category: firewall
+  product: asa
+detection:
+  selection:
+    message|contains: 'Group User'
+    user|contains: '@'
+  condition: selection
+level: medium

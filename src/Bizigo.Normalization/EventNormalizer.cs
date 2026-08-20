@@ -53,6 +53,7 @@ public sealed class EventNormalizer(TimeProvider? timeProvider = null)
             ParseGeneration = 1,
             EncodingDetected = source.EncodingName,
             TemplateId = source.TemplateId,
+            SignatureHash = source.SignatureHash,
 
             SeverityNum = Byte(core, "severity_num"),
             OcsfClassUid = UInt32(source.Parsed.Ocsf, "class_uid"),

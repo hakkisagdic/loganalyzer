@@ -1,0 +1,90 @@
+/*
+  Değişiklik ekranlarının yerleşimi.
+
+  Renk, boşluk ve tipografi değerleri BURADA YOK: hepsi `tokens.css`'ten
+  geliyor. Ham değer yazmak, T28'in denetiminde toparlanamayan tutarsızlığın
+  başladığı yer (T13 kuralı).
+*/
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block-end: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.link {
+  color: var(--accent);
+  font-size: var(--text-sm);
+}
+
+.form {
+  display: grid;
+  /* Dar ekranda tek sütuna düşüyor; sabit iki sütun 360 px'de taşıyordu. */
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+/*
+  `Field` kendi sarmalayıcısını çiziyor ama `select` ve `datalist` onun
+  kapsamında değil — aynı görünümü almaları için aynı jetonlar burada
+  tekrarlanıyor.
+*/
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-2);
+}
+
+.select {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font: inherit;
+  inline-size: 100%;
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Form içinde tam satır kaplayan öğeler (hata kutusu, kaydet düğmesi). */
+.form > :is(button, [role="alert"]) {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-3);
+  margin-block-start: var(--space-3);
+}
+
+.definitionTerm {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--text-3);
+}
+
+.definitionValue {
+  display: block;
+  color: var(--text-1);
+  /* Uzun slug ve yol değerleri hücreyi taşırmasın. */
+  overflow-wrap: anywhere;
+}
+
+.testResult {
+  margin-block-start: var(--space-3);
+}

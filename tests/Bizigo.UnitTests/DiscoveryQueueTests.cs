@@ -41,12 +41,12 @@ public sealed class DiscoveryQueueTests
         var options = new SidecarOptions { QueueCapacity = 1, SampleRate = 0 };
         var queue = new DiscoveryQueue(options, stats);
         var annotator = new DiscoveryAnnotator(
-            options, Masks, new TemplateCache(1024), queue, stats);
+            options, new TemplateCache(1024), queue, stats);
 
         for (var index = 0; index < 5_000; index++)
         {
             var templateId = annotator.Annotate(
-                "firewall", $"deny tcp 10.0.{index / 256}.{index % 256} -> 10.9.9.9", parseFailed: true);
+                Masks, "firewall", $"deny tcp 10.0.{index / 256}.{index % 256} -> 10.9.9.9", parseFailed: true);
 
             Assert.Equal(string.Empty, templateId);
         }
@@ -62,20 +62,20 @@ public sealed class DiscoveryQueueTests
         var options = new SidecarOptions { QueueCapacity = 8, SampleRate = 0 };
         var queue = new DiscoveryQueue(options, stats);
         var cache = new TemplateCache(1024);
-        var annotator = new DiscoveryAnnotator(options, Masks, cache, queue, stats);
+        var annotator = new DiscoveryAnnotator(options, cache, queue, stats);
 
         const string First = "Failed password for admin from 10.1.2.3 port 51234 ssh2";
         const string Second = "Failed password for admin from 192.168.0.7 port 22 ssh2";
 
         // İlk satır bilinmiyor: etiketsiz kalıyor, kuyruğa giriyor.
-        Assert.Equal(string.Empty, annotator.Annotate("linux", First, parseFailed: true));
+        Assert.Equal(string.Empty, annotator.Annotate(Masks, "linux", First, parseFailed: true));
         Assert.Equal(1, stats.Enqueued);
 
         // Sidecar'ın cevabı geldi.
         cache.Set(Masks.Signature(First), "linux:7");
 
         // Aynı imzalı ikinci satır artık ücretsiz.
-        Assert.Equal("linux:7", annotator.Annotate("linux", Second, parseFailed: true));
+        Assert.Equal("linux:7", annotator.Annotate(Masks, "linux", Second, parseFailed: true));
         Assert.Equal(1, stats.Enqueued);
         Assert.Equal(1, stats.CacheHits);
     }
@@ -87,11 +87,11 @@ public sealed class DiscoveryQueueTests
         var options = new SidecarOptions { QueueCapacity = 64, SampleRate = 0 };
         var queue = new DiscoveryQueue(options, stats);
         var annotator = new DiscoveryAnnotator(
-            options, Masks, new TemplateCache(64), queue, stats);
+            options, new TemplateCache(64), queue, stats);
 
         for (var index = 0; index < 100; index++)
         {
-            annotator.Annotate("linux", $"accepted connection {index}", parseFailed: false);
+            annotator.Annotate(Masks, "linux", $"accepted connection {index}", parseFailed: false);
         }
 
         Assert.Equal(0, stats.Enqueued);
@@ -104,9 +104,9 @@ public sealed class DiscoveryQueueTests
         var options = new SidecarOptions { Enabled = false, QueueCapacity = 8 };
         var queue = new DiscoveryQueue(options, stats);
         var annotator = new DiscoveryAnnotator(
-            options, Masks, new TemplateCache(8), queue, stats);
+            options, new TemplateCache(8), queue, stats);
 
-        Assert.Equal(string.Empty, annotator.Annotate("linux", "deny 10.0.0.1", parseFailed: true));
+        Assert.Equal(string.Empty, annotator.Annotate(Masks, "linux", "deny 10.0.0.1", parseFailed: true));
         Assert.Equal(0, stats.Enqueued);
         Assert.Equal(0, stats.CacheMisses);
     }

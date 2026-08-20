@@ -1,0 +1,148 @@
+/*
+  Katalog ekranı stilleri — hepsi T13'ün jetonlarından. Ham renk ya da ham
+  boşluk yok; bir ekranın kendi değerini yazması, T28'in toparlayamayacağı
+  tutarsızlığın başladığı yer.
+*/
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding-block-end: var(--space-3);
+  border-block-end: 1px solid var(--border-1);
+}
+
+.tabs a {
+  color: var(--text-2);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  padding: var(--space-1) 0;
+  border-block-end: 2px solid transparent;
+}
+
+.tabs a:hover {
+  color: var(--text-1);
+  border-block-end-color: var(--border-2);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.toolbar h1,
+.toolbar h2 {
+  margin: 0;
+  margin-inline-end: auto;
+}
+
+.inlineActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.muted {
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.metricValue {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-1);
+  /* Ölçüm yenilenirken sütun kaymasın. */
+  font-variant-numeric: tabular-nums;
+}
+
+.metricLabel {
+  font-size: var(--text-xs);
+  color: var(--text-2);
+}
+
+/* --- Fark görünümü -------------------------------------------------------- */
+
+/*
+  Tek aralıklı ve `dir="ltr"`: YAML'ın kendisi soldan sağa bir yapı, içindeki
+  Arapça DEĞER sağdan sola olsa bile. `dir="auto"` burada satırın tamamını
+  ters çevirip girintiyi okunamaz hâle getirirdi — `DataTable`'daki serbest
+  metin sütunundan farkı bu.
+*/
+.diff {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  background: var(--surface-2);
+}
+
+.diffRow {
+  display: grid;
+  grid-template-columns: 4ch 4ch 2ch 1fr;
+  gap: var(--space-2);
+  padding-inline: var(--space-3);
+  white-space: pre;
+}
+
+.diffAdded {
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+}
+
+.diffRemoved {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+}
+
+.diffNumber {
+  color: var(--text-3);
+  text-align: end;
+  user-select: none;
+}
+
+.diffSign {
+  color: var(--text-2);
+  user-select: none;
+}
+
+.diffText {
+  color: var(--text-1);
+  /* Uzun satır kesilmesin, kaydırılsın: YAML'da girinti anlam taşıyor. */
+  overflow-wrap: normal;
+}
+
+.verdictList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+.verdictError {
+  color: var(--danger);
+}
+
+.verdictWarning {
+  color: var(--warning);
+}
