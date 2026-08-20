@@ -1,12 +1,17 @@
 # Derleme hattının bağımlılıkları.
 #
-# pySigma ve ClickHouse backend'i BURADA SABİTLENMİYOR — sidecar'ınkiler
-# kullanılıyor. Gerekçe: sidecar imajı `/v1/sigma/compile` ucuyla aynı kuralı
-# çalışma zamanında derliyor. İki taraf ayrı sürüm sabitlerse, UI'daki
-# "bu kuralı derle ve önizle" akışı build-time üretilen SQL'den BAŞKA bir SQL
-# gösterir — ve ikisi ayrıştığında hiçbir şey kırmızı yanmaz.
--r ../../sidecar/requirements.txt
-
-# ⚠️ `view_columns.py` bu bağımlılıkların HİÇBİRİNİ istemiyor; saf metin işi.
-#    Kapı 1'in ClickHouse'suz ve pySigma'sız koşabilmesinin sebebi bu, ve
-#    testleri de çıplak bir Python 3.11+ ile koşuyor.
+# ⚠️ SÜRÜMLER SİDECAR'INKİLERLE AYNI OLMAK ZORUNDA ve bunu bir test tutuyor
+#    (`test_requirements.py`). Gerekçe: sidecar'ın `/v1/sigma/compile` ucu
+#    UI'daki "bu kuralı derle ve önizle" akışını besliyor. İki taraf ayrı sürüm
+#    sabitlerse ekranın gösterdiği SQL ile build-time üretilen SQL ayrışır — ve
+#    **ayrıştıklarında hiçbir şey kırmızı yanmaz.**
+#
+# Neden `-r ../../sidecar/requirements.txt` DEĞİL: o dosya drain3'ü bir git
+# SHA'sından çekiyor ve Sigma derleme hattını üçüncü taraf bir deponun
+# erişilebilirliğine bağlamak olurdu (`ci.yml`, sidecar işinin notu). F3 bu hatta
+# bağlı; ağ, kapının gerekçesi olamaz.
+#
+# Yani: tek kaynak yerine **iki dosya + bir bekçi**. Kopya değil, ölçülen kopya.
+pySigma==1.5.0
+pysigma-backend-clickhouse==1.1.1
+PyYAML==6.0.3

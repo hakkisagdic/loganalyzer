@@ -1,0 +1,12 @@
+title: "nginx: yönetim yoluna istek"
+id: 56293354-0000-4000-8000-000000000000
+status: experimental
+description: T30 ölçüm örneklemi — F1 kataloğunun tanıdığı vendor'lara göre yazıldı.
+logsource:
+  category: firewall
+  product: nginx
+detection:
+  selection:
+    url|startswith: '/admin'
+  condition: selection
+level: medium

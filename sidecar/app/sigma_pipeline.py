@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import os
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
@@ -157,7 +158,70 @@ ATTRS_MAP: dict[str, str] = {
     # nginx: `otel."http.response.status_code": "{{ response }}"`
     "status_code": "otel.http.response.status_code",
     "sc_status": "otel.http.response.status_code",
+    # MikroTik: grok `fw_chain` yakalıyor, `fields:` öneksiz iniyor.
+    #
+    # Zincir adı bir EYLEM DEĞİL. `routeros_forward_new.yml` `action: 'forward'`
+    # yazıyordu ve `action` → `activity_name`'e gidiyor; o kolon RouterOS'ta
+    # bilinçli olarak boş. Sorgu doğru kolona bakıp yanlış kavramı arıyordu.
+    "fw_chain": "fw_chain",
+    "rule_chain": "fw_chain",
 }
+
+#: Vendor'a göre **bilinçli olarak boş kalan** kolonlar.
+#:
+#: `activity_name` üç vendor'da dolu, RouterOS'ta boş — ve boşluğu kaza değil:
+#: `mikrotik.routeros/firewall.yaml` *"RouterOS firewall kaydı kuralın ne
+#: verdiğini içermiyor; `accept` ya da `drop` yazmak uydurma olurdu"* diyor.
+#: Parser doğru davranıyor.
+#:
+#: **Üç sınıflı model bunu ifade edemiyor.** `FIELD_MAP` küresel: `action`
+#: eşlemesi Fortinet/Cisco/nginx için doğru, dolayısıyla `SCHEMA_GAPS`'e
+#: konamaz. Ama RouterOS kuralı `action` kullandığında sorgu koşar, doğru
+#: kolona bakar ve **sonsuza kadar sıfır döner** — 6/7/8. tuzaklarla aynı
+#: sessiz sınıf, farklı sebep.
+#:
+#: Bu yüzden dördüncü bir sınıf: **logsource'a bağlı** boşluk. Kural o
+#: vendor'da o kolona giderse derleme düşüyor ve mesaj alternatifi söylüyor.
+VENDOR_EMPTY_COLUMNS: dict[str, dict[str, str]] = {
+    "routeros": {
+        "activity_name": (
+            "RouterOS firewall kaydı kuralın ne VERDİĞİNİ içermiyor, yalnızca "
+            "eşleştiğini bildiriyor; parser `action`'ı bu yüzden bilerek boş "
+            "bırakıyor ve doldurmak uydurma olurdu. Zincir adı arıyorsanız "
+            "`fw_chain` kullanın — `unmapped['fw_chain']`'e gidiyor. Kuralın "
+            "gerçekten izin/ret arıyorsa bu vendor'da karşılığı yok."
+        ),
+    },
+}
+
+#: T32'nin `remedy` sözlüğü — **kopya değil, aynı değerler.**
+#:
+#: `tools/sigma-build/sigma_build/gate.py` kanonik kaynak. Sidecar imajı
+#: `tools/` taşımadığı için oradan import edilemiyor; ayrışmayı bir test
+#: yakalıyor (`test_remedy_sozlugu_T32_ile_ayni`). Ayrışırsa T32'nin manifesti
+#: bizim engellerimizi yanlış tarafa sayar ve "liste boşaldı mı" sorusunun
+#: cevabı sessizce bozulur.
+REMEDY_SCHEMA = "schema"
+REMEDY_UNKNOWN = "unknown"
+
+
+@dataclass(frozen=True)
+class SchemaGap:
+    """Kapatılamayan bir alanın **gerekçesi ve sahibi**.
+
+    Neden düz metin yetmiyor
+    ------------------------
+    Önce yalnızca gerekçe vardı ve gerekçe Türkçe bir cümleydi. T32'nin derleme
+    hattı engelleri `remedy`'ye göre **kapanabilir** ve **kapanamaz** diye
+    ayırıyor, ve o ayrım olmadan "gated listesi boşaldı mı" sorusunun cevabı
+    asla evet olamaz (§8 — `Pending` ile `Exempt` aynı listede duramaz).
+
+    Cümleden `remedy` çıkarmak, T32'ye Türkçe ayrıştırtmak olurdu.
+    """
+
+    reason: str
+    remedy: str = REMEDY_SCHEMA
+
 
 #: Kurallarda geçen ama **hiçbir parser'ın üretmediği** alanlar.
 #:
@@ -171,26 +235,39 @@ ATTRS_MAP: dict[str, str] = {
 #: Liste kısaldıkça kapsam büyür: bir alanın buradan çıkması için onu üreten
 #: bir parser gerekiyor, pipeline satırı değil. Yani bu liste **parser
 #: kataloğuna açılmış bir talep**.
-SCHEMA_GAPS: dict[str, str] = {
-    "dns_query_name": (
+#:
+#: ⚠️ Hiçbir girdi `upstream` DEĞİL. T32'nin sözlüğünde `upstream` "kimsenin
+#: yapamayacağı iş" demek ve bilinçli bir muafiyet gibi konuluyor, sayısı ayrıca
+#: sabitleniyor. Muafiyet vermek **iki ayrı bilinçli hareket** gerektiriyor ve
+#: ikincisi T32'nin sahibinde; buradan tek taraflı verilemez. Adayı `rule_name`
+#: ve `unknown` olarak duruyor — "kapanamaz" değil "kapanır mı bilmiyoruz",
+#: yani sayımda kapanabilirler tarafında ve listeden gizlenmiyor.
+SCHEMA_GAPS: dict[str, SchemaGap] = {
+    "dns_query_name": SchemaGap(
         "Hiçbir parser DNS sorgu adı üretmiyor. FortiGate `traffic`/`event` ve "
         "MikroTik `system`/`firewall` parser'larında DNS alanı yok. Kapatmak için "
         "önce bir DNS parser'ı gerekiyor."
     ),
-    "query": (
+    "query": SchemaGap(
         "Aynı boşluk. Ayrıca `nginx` logsource'unda DNS sorgusu aramak kuralın "
         "kendi hatası: nginx bir web sunucusu, DNS sorgusu üretmiyor."
     ),
-    "QueryName": "Bkz. `dns_query_name` — aynı boşluk, Windows adlandırmasıyla.",
-    "answer": (
+    "QueryName": SchemaGap(
+        "Bkz. `dns_query_name` — aynı boşluk, Windows adlandırmasıyla. Aynı DNS "
+        "parser'ı ikisini de kapatır."
+    ),
+    "answer": SchemaGap(
         "DNS cevabı üreten parser yok. `dns_query_name` ile aynı boşluk; ikisi "
         "birlikte kapanır, çünkü ikisini de aynı DNS parser'ı üretecek."
     ),
-    "rule_name": (
+    "rule_name": SchemaGap(
         "FortiGate `policyid` üretiyor ama kural ADI değil. Numarayı ada eşlemek "
-        "cihaz yapılandırmasını gerektirir; bizde yok."
+        "cihazın yapılandırmasını gerektirir ve o yapılandırma log satırında hiç "
+        "yok — yani bir parser değişikliği bunu KAPATMIYOR. `upstream` adayı, ama "
+        "muafiyeti T32'nin sahibi verecek; o güne kadar `unknown`.",
+        REMEDY_UNKNOWN,
     ),
-    "policy_id": (
+    "policy_id": SchemaGap(
         "FortiGate ham satırında `policyid` var ama parser onu `fields:`'e "
         "almıyor, dolayısıyla `attrs`'a inmiyor. Parser değişikliği gerekiyor."
     ),
@@ -580,11 +657,11 @@ def bizigo_pipeline(mappings_path: Path | str | None = None):
         ProcessingItem(
             identifier=f"bizigo_schema_gap_{field}",
             transformation=DetectionItemFailureTransformation(
-                f"`{field}` bu şemada eşlenemiyor: {reason}"
+                f"`{field}` bu şemada eşlenemiyor [remedy={gap.remedy}]: {gap.reason}"
             ),
             field_name_conditions=[IncludeFieldCondition(fields=[field])],
         )
-        for field, reason in SCHEMA_GAPS.items()
+        for field, gap in SCHEMA_GAPS.items()
     ]
 
     items += [
@@ -613,7 +690,23 @@ def bizigo_pipeline(mappings_path: Path | str | None = None):
         ),
     ]
 
-    # 5) Genel bekçi — eşlemelerden SONRA, daraltmalardan ÖNCE.
+    # 5) Logsource'a bağlı boşluklar — eşleme SONRASI, çünkü ölçüt eşlenmiş
+    #    kolon adı (`activity_name`), ham Sigma adı (`action`) değil.
+    items += [
+        ProcessingItem(
+            identifier=f"bizigo_vendor_empty_{product}_{column}",
+            transformation=DetectionItemFailureTransformation(
+                f"`{column}` bu logsource'da (`{product}`) her zaman BOŞ "
+                f"[remedy={REMEDY_SCHEMA}]: {reason}"
+            ),
+            field_name_conditions=[IncludeFieldCondition(fields=[column])],
+            rule_conditions=[LogsourceCondition(product=product)],
+        )
+        for product, columns in VENDOR_EMPTY_COLUMNS.items()
+        for column, reason in columns.items()
+    ]
+
+    # 6) Genel bekçi — eşlemelerden SONRA, daraltmalardan ÖNCE.
     #
     # Buraya kadar eşlenmemiş bir alan `events_ocsf`'te var olmayan bir kolon
     # adıyla SQL'e iner. ClickHouse onu reddeder, ama reddi ancak sorgu
@@ -713,5 +806,11 @@ def describe() -> dict[str, Iterable[str]]:
         "table": TABLE,
         "columns": sorted(set(FIELD_MAP.values())),
         "attrs_keys": sorted(ATTRS_MAP.values()),
-        "schema_gaps": sorted(SCHEMA_GAPS),
+        # Düz liste yerine remedy'ye göre: T33 ekranı "31'i şema bekliyor,
+        # 11'i asla derlenmeyecek" diyebilmeli. Tek liste, iki cümleyi
+        # ayıramaz.
+        "schema_gaps": {
+            field: {"remedy": gap.remedy, "reason": gap.reason}
+            for field, gap in sorted(SCHEMA_GAPS.items())
+        },
     }

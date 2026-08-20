@@ -174,6 +174,32 @@ geçiyordu, ama kapının **arkasındaki** nesne paylaşılıyordu.
 | 4 | **1M satır bulk insert** | Kabul kriteri 1M diyor; test **100k** koşuyor ve bunu yorumunda gerekçesiyle söylüyor ("CI'da tam 1M pahalı"). Sayı `TestOutputHelper`'a yazılıyor ama **hiçbir eşikle karşılaştırılmıyor** — tek `Assert` satır sayısında. Yani hız iki katına yavaşlasa test yeşil kalır |
 | 5 | **Yeniden deneme** | Ticket "yeniden deneme + kısmi başarısızlık davranışı tanımlı" istiyor. Kısmi başarısızlık **tanımlı**: batch düşürülüyor, `_dropped` sayacı artıyor, hata seviyesinde loglanıyor ve *"veri ham arşivde, replay gerekebilir"* deniyor — yani kayıp kapatılabilir bir kayıp. Ama **yeniden deneme yok**; anlık bir ClickHouse kesintisi bir batch'i doğrudan replay'e havale ediyor. Bunun bilinçli sadelik mi olduğu **kayıtta yok** |
 | 6 | **`ORDER BY`'ın üç adayı** | Seçilenin gerekçesi DDL'de tam; **reddedilen iki adayın ne olduğu** F1 §6.2'de kaldı, kodda yok |
+| 7 | **`ScopeNegativeTests` elle bakıma bağlı** | On iki okuma yolu tek tek yazılmış. Yeni bir okuma yolu eklendiğinde listeye satır eklenmesi gerekiyor ve eklenmezse **hiçbir şey kırmızı yanmıyor** — aşağıda |
 
 Dördüncüsü, bu fazın öğrendiği kalıbın bir örneği: ölçülen ama **kırmızı
 yanamayan** bir sayı, ölçülmemiş sayıdan yalnızca biraz iyi.
+
+### Yedincisi ayrı duruyor: elle liste kalıbı, dördüncü kez
+
+Bu depoda elle beslenen bir listenin bekçiyi kör etmesi **üç kez** yaşandı:
+
+| Nerede | Ne görünmez oldu |
+| --- | --- |
+| `ProducesContractTests` | Uçlar elle yazılmış `Map*` listesinden toplanıyordu; **16 uç kapıya hiç görünmedi ve üç test de yeşildi** |
+| Yaşam süresi bekçisi | `AddBizigoAuthentication` listede yoktu; kimlik/yetki grafiği **bir kez bile** kapsam doğrulamasından geçmemişti |
+| `sigma_build` Kapı 2 | Tip denetimi hiç yapılmıyordu |
+
+Üçü de **yansımaya çevrilerek** çözüldü: denetlenen kümeyi keşfet, elle kalan
+tek şey beklenen küme olsun.
+
+`ScopeNegativeTests` dördüncü örnek ve **en pahalısı**: burada eksik olan bir uç
+değil, bir okuma yolunun **negatif testi** — yani kapsam sızıntısı. Kaçınılmaz
+da değil; çözümü ilk üçüyle aynı, uçları gezip her okuma yolunun negatif testi
+var mı diye sormak.
+
+**§8 burada da geçerli.** Negatif testi *olmayacak* bir okuma yolu varsa (kapsam
+kavramı olmayan bir uç gibi) o yol `Exempt`'e **sabit sayıyla** girmeli,
+`Pending`'e değil. İkisi tek listede durursa "liste boşaldı mı" sorusunun cevabı
+asla evet olamaz.
+
+Kapatılması ayrı bir ticket.

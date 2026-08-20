@@ -28,6 +28,7 @@ from sigma_build.golden_gate import (
     load_expectations,
     precheck,
 )
+from sigma_build.view_columns import repo_root
 
 CONN = {"url": "http://yok", "user": "u", "password": "p", "database": "d"}
 
@@ -304,3 +305,70 @@ def test_kural_uretiliyorsa_bos_beyan_kirmizi():
     """İlk kural üretildiği anda kapı kendiliğinden diş kazanıyor."""
     (problem,) = check_corpus_shape([], produced_rules=24)
     assert "24 kural üretiliyor ama beyan listesi boş" in problem
+
+
+# --------------------------------------------------------------------------- #
+# Depodaki gerçek beyan listesi
+# --------------------------------------------------------------------------- #
+
+#: Beyan sayıları — **iki sabit**, tek değil.
+#:
+#: `none` beklentilerinin sayısı ayrıca çivili, çünkü sıfıra düşerse kapı
+#: "eşleşen ile eşleşmeyeni ayırt edebildiğini" bir daha hiç gösteremez ve bunu
+#: hiçbir şey söylemez. `check_corpus_shape` "en az bir tane" diyor; bu sabit
+#: "kaç tane" diyor, yani 2'den 1'e düşüş de görünüyor.
+#:
+#: Aynı sorunun kardeşi T31 tarafında da var (bekçiyi tetikleyen kural sayısı
+#: 3'ten 2'ye indi); orada da ayrı bir test tutuyor.
+EXPECTED_AT_LEAST_ONE_COUNT = 6
+EXPECTED_NONE_COUNT = 2
+
+
+def repo_expectations():
+    from sigma_build.golden_gate import EXPECTATIONS_PATH
+
+    return load_expectations(repo_root() / EXPECTATIONS_PATH)
+
+
+def test_depodaki_beyan_sayilari_sabit():
+    expectations = repo_expectations()
+    counts = {
+        EXPECT_AT_LEAST_ONE: sum(1 for e in expectations if e.expect == EXPECT_AT_LEAST_ONE),
+        EXPECT_NONE: sum(1 for e in expectations if e.expect == EXPECT_NONE),
+    }
+    assert counts == {
+        EXPECT_AT_LEAST_ONE: EXPECTED_AT_LEAST_ONE_COUNT,
+        EXPECT_NONE: EXPECTED_NONE_COUNT,
+    }
+
+
+def test_depodaki_beyan_listesi_ayirt_edebiliyor():
+    from sigma_build.manifest import OUTPUT_DIR
+
+    produced = len(list((repo_root() / OUTPUT_DIR).glob("*.sql")))
+    assert check_corpus_shape(repo_expectations(), produced) == []
+
+
+def test_her_beyanin_uretilmis_bir_sqli_var():
+    """Beyanı olup dosyası olmayan kural, **var olmayan bir kapsamı** iddia eder.
+
+    Bir kural kapıya takıldığında (`gated`) dosyası silinir; beyanı kalırsa
+    beyan listesi o kuralın hâlâ çalıştığını söylemeye devam eder. Bu test
+    ClickHouse gerektirmiyor ve gerçek korpusa karşı koşuyor.
+    """
+    from sigma_build.manifest import OUTPUT_DIR
+
+    output = repo_root() / OUTPUT_DIR
+    eksik = [e.file_name for e in repo_expectations() if not (output / e.file_name).is_file()]
+    assert eksik == []
+
+
+def test_her_beyanin_gerekcesi_kanit_tasiyor():
+    """Gerekçe "çünkü öyle" olamaz: örnek dosyasına ya da bir sayıya işaret etmeli.
+
+    Beklentilerin hepsi `catalog/parsers/*/samples/` içeriğinden türetildi;
+    gerekçe o kanıtı taşımazsa beklenti kırıldığında kimse doğrulayamaz.
+    """
+    for expectation in repo_expectations():
+        assert "samples/" in expectation.why or "geçmiyor" in expectation.why, expectation.rule_id
+        assert len(expectation.why) > 80, f"{expectation.rule_id}: gerekçe fazla kısa"

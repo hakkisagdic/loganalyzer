@@ -1,13 +1,25 @@
-title: "MikroTik: yeni forward bağlantısı"
+title: "MikroTik: yeni forward zincirinde TCP bağlantısı"
 id: 33839694-0000-4000-8000-000000000000
 status: experimental
-description: T30 ölçüm örneklemi — F1 kataloğunun tanıdığı vendor'lara göre yazıldı.
+description: >-
+  T30 ölçüm örneklemi. İlk hâli `action: 'forward'` yazıyordu ve bu **doğru
+  kolona bakıp yanlış kavramı arıyordu**: `action` → `activity_name`, ama o
+  kolon RouterOS'ta bilinçli olarak boş — parser'ın kendi notu, *"RouterOS
+  firewall kaydı kuralın ne verdiğini içermiyor; `accept` ya da `drop` yazmak
+  uydurma olurdu"*.
+
+  Yani parser doğruydu, eşleme yanlıştı. `forward` bir eylem değil bir ZİNCİR
+  adı ve grok onu `fw_chain`'e yakalıyor.
+
+  Bu kusur ne eşleme sözlüğüne ne üretilen SQL'e bakarak görülebilirdi: sorgu
+  derlenir, koşar, var olan bir kolona vurur ve sonsuza kadar sıfır döner.
+  Yalnızca **veriye sorularak** görüldü — T32'nin 3. kapısı bunun için var.
 logsource:
   category: network_connection
   product: routeros
 detection:
   selection:
     proto: 'tcp'
-    action: 'forward'
+    fw_chain: 'forward'
   condition: selection
 level: medium

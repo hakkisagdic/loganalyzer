@@ -81,8 +81,16 @@ def test_attrs_anahtarlarinin_karsiligi_parser_katalogunda_var() -> None:
     missing = []
 
     for field, key in sp.ATTRS_MAP.items():
-        namespace, _, bare = key.partition(".")
-        needle = f'"{bare}":' if namespace in {"otel", "ocsf"} else f"{bare}:"
+        namespace, dot, rest = key.partition(".")
+
+        # Öneksiz anahtar (`fw_chain`) `partition` ile bozuluyordu: `rest` boş
+        # kalıyor, aranan dizge `":"` oluyor ve **her dosyada** bulunuyordu.
+        # Yani bekçi öneksiz anahtarlar için sessizce her şeyi geçiriyordu —
+        # ölçüldü: sahte bir anahtar konduğunda düzeltme olmadan yakalanmıyor.
+        if not dot:
+            namespace, rest = "", key
+
+        needle = f'"{rest}":' if namespace in {"otel", "ocsf"} else f"{rest}:"
 
         if needle not in corpus:
             missing.append(f"{field} → {key} (aranan: {needle})")
@@ -101,10 +109,6 @@ def test_dns_alanlari_semada_yok_ve_eslenmiyor() -> None:
     for field in ("dns_query_name", "query", "QueryName", "answer"):
         assert field in sp.SCHEMA_GAPS
         assert field not in sp.ATTRS_MAP
-
-    # Gerekçe boş bırakılamaz: liste bir gün kapanacaksa neyin kapatacağı yazılı olmalı.
-    for field, reason in sp.SCHEMA_GAPS.items():
-        assert len(reason) > 30, f"{field}: gerekçe yok"
 
 
 def test_unmapped_ifadesi_kose_parantez() -> None:
@@ -329,3 +333,129 @@ def test_bekci_gercek_kolonlari_gecirıyor() -> None:
     assert _re.match(pattern, "unmapped['otel.url.path']")
     assert _re.match(pattern, sp.ip_text_expression("src_endpoint_ip"))
     assert not _re.match(pattern, "srcip"), "ham Sigma adı geçmemeli"
+
+
+# ---------------------------------------------------------------------------
+# T32 ile sözleşme
+# ---------------------------------------------------------------------------
+
+TOOLS = Path(__file__).resolve().parents[2] / "tools" / "sigma-build"
+
+
+def test_remedy_sozlugu_T32_ile_ayni() -> None:
+    """**İki ayrı ajanın aynı sözlüğü kullandığı, ölçülerek biliniyor olmalı.**
+
+    T32'nin manifesti engelleri `remedy`'ye göre kapanabilir/kapanamaz diye
+    ayırıyor ve `gated_closeable` / `gated_upstream` sayılarını oradan
+    türetiyor. Bizim yazdığımız değer o sözlükte YOKSA, `CLOSEABLE_REMEDIES`
+    üyelik kontrolü sessizce `False` döner ve engel **kapanamaz** tarafına
+    yazılır — yani "liste boşaldı mı" sorusunun cevabı asla evet olmaz.
+
+    Hatanın tamamı bir yazım farkında: `"schema"` yerine `"schemas"`. Hiçbir
+    yerde hata yok, sayaç yok, belirti yok.
+
+    Sidecar imajı `tools/` taşımıyor, dolayısıyla değerler orada yeniden
+    yazılıyor. Yeniden yazmanın bedeli ayrışma; bu test o bedeli ödüyor.
+    """
+    if not TOOLS.is_dir():
+        # Dizin yoksa (dağıtılmış imaj) sınanacak bir şey de yok. Ama dizin
+        # VARSA import başarısız olmamalı: "koşuma giriyor ama ortam hazır
+        # değil" hâli, §7'nin sessizce kırmızı yanan CI'sının ta kendisi.
+        pytest.skip("tools/sigma-build bu ağaçta yok — imaj koşumu")
+
+    import sys
+
+    if str(TOOLS) not in sys.path:
+        sys.path.insert(0, str(TOOLS))
+
+    from sigma_build.gate import CLOSEABLE_REMEDIES, REMEDY_SCHEMA, REMEDY_UNKNOWN
+
+    assert sp.REMEDY_SCHEMA == REMEDY_SCHEMA
+    assert sp.REMEDY_UNKNOWN == REMEDY_UNKNOWN
+
+    for field, gap in sp.SCHEMA_GAPS.items():
+        assert gap.remedy in CLOSEABLE_REMEDIES, (
+            f"{field}: `{gap.remedy}` T32'nin sözlüğünde yok ya da muafiyete "
+            "yazılmış. Muafiyet iki bilinçli hareket gerektiriyor ve ikincisi "
+            "T32'nin sahibinde."
+        )
+
+
+def test_hicbir_bosluk_tek_tarafli_MUAFIYET_almiyor() -> None:
+    """`upstream` "kimsenin yapamayacağı iş" demek ve sayısı ayrıca sabitleniyor.
+
+    Buradan tek taraflı verilirse T32'nin `gated_upstream` sabiti sessizce
+    kayar — muafiyet eklemenin iki ayrı bilinçli hareket olmasının sebebi tam
+    olarak buydu (§8).
+    """
+    assert all(gap.remedy != "upstream" for gap in sp.SCHEMA_GAPS.values())
+
+
+def test_her_bosluk_kapatan_isi_ADLANDIRYOR() -> None:
+    """Gerekçe, "neyin kapatacağını" söylemiyorsa liste bir çöp kutusudur."""
+    for field, gap in sp.SCHEMA_GAPS.items():
+        assert len(gap.reason) > 30, f"{field}: gerekçe yok"
+        assert gap.remedy, f"{field}: remedy yok"
+
+
+def test_routeros_action_kolonu_SESSIZCE_bos_donmuyor() -> None:
+    """**Dördüncü boşluk sınıfı: logsource'a bağlı boş kolon.**
+
+    `activity_name` üç vendor'da dolu, RouterOS'ta boş — ve boşluk kaza değil,
+    parser'ın bilinçli kararı: *"RouterOS firewall kaydı kuralın ne verdiğini
+    içermiyor; `accept` ya da `drop` yazmak uydurma olurdu."*
+
+    Üç sınıflı model bunu ifade edemiyordu. `FIELD_MAP` küresel, dolayısıyla
+    `action` eşlemesi diğer vendor'lar için doğru ve `SCHEMA_GAPS`'e konamaz.
+    Ama RouterOS kuralı `action` kullandığında sorgu koşar, VAR OLAN bir kolona
+    bakar ve sonsuza kadar sıfır döner.
+
+    Bu kusur ne sözlüğe ne üretilen SQL'e bakarak görülebilirdi — yalnızca
+    veriye sorularak. T32'nin 3. kapısı canlı ClickHouse'ta yakaladı.
+    """
+    pytest.importorskip("sigma.backends.clickhouse.clickhouse")
+    from sigma.collection import SigmaCollection
+    from sigma.exceptions import SigmaTransformationError
+
+    rule = (
+        "title: t\nid: 44444444-0000-4000-8000-000000000000\nstatus: experimental\n"
+        "logsource:\n  category: network_connection\n  product: routeros\n"
+        "detection:\n  selection:\n    action: 'forward'\n  condition: selection\nlevel: low\n"
+    )
+
+    with pytest.raises(SigmaTransformationError) as caught:
+        sp.bizigo_backend(mappings_path=CATALOG / "mappings").convert(
+            SigmaCollection.from_yaml(rule)
+        )
+
+    # Mesaj alternatifi ADLANDIRIYOR: "burada boş" tek başına ne yapılacağını
+    # söylemiyor ve kullanıcı aynı yanlışı başka bir alanla tekrarlar.
+    assert "fw_chain" in str(caught.value)
+
+
+def test_bekci_diger_vendorlarda_action_i_ENGELLEMIYOR() -> None:
+    """Bekçinin ölçüsü. Küresel olsaydı üç vendor'ın kuralları da düşerdi.
+
+    Bu, düzeltmenin kendi bedelini sınırlayan bekçi: `activity_name`'i topluca
+    yasaklamak kolaydı ve ölçülmeden fark edilmezdi.
+    """
+    pytest.importorskip("sigma.backends.clickhouse.clickhouse")
+    from sigma.collection import SigmaCollection
+
+    rule = (
+        "title: t\nid: 55555555-0000-4000-8000-000000000000\nstatus: experimental\n"
+        "logsource:\n  category: firewall\n  product: fortigate\n"
+        "detection:\n  selection:\n    action: 'blocked'\n  condition: selection\nlevel: low\n"
+    )
+    sql = sp.bizigo_backend(mappings_path=CATALOG / "mappings").convert(
+        SigmaCollection.from_yaml(rule)
+    )[0]
+
+    assert "activity_name='blocked'" in sql
+
+
+def test_zincir_adi_attrs_tarafina_gidiyor() -> None:
+    """`forward` bir zincir adı; grok onu `fw_chain`'e yakalıyor, `fields:`
+    öneksiz iniyor, yani `unmapped['fw_chain']`."""
+    assert sp.ATTRS_MAP["fw_chain"] == "fw_chain"
+    assert sp.unmapped_expression(sp.ATTRS_MAP["fw_chain"]) == "unmapped['fw_chain']"

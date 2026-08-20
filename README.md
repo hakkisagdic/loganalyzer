@@ -27,6 +27,9 @@ Planlama belgeleri Traycer epic'inde:
 ## Hızlı başlangıç
 
 ```bash
+# 0. Git kancaları (klon başına BİR KEZ)
+git config core.hooksPath .githooks
+
 # 1. Geliştirme ortamı
 cd deploy && cp .env.example .env && docker compose up -d --wait && cd ..
 
@@ -41,6 +44,17 @@ dotnet run --project src/Bizigo.Api
 # 4. Arayüzü çalıştır (ayrı terminal)
 cd ui && cp .env.example .env.local && npm install && npm run dev
 ```
+
+**0. adım ne yapıyor.** `.githooks/pre-push`, `main`'e push etmeden önce bir
+önceki CI koşumuna bakıyor ve kırmızıysa push'u durduruyor. Sebebi ölçülmüş bir
+olay: compose dosyası dört merge boyunca ayrıştırılamıyordu, kapı her koşumda
+kırmızı yanıyordu ve kimse bakmadığı için üstüne üç merge daha kondu (B18/B19).
+Bilerek geçmek için `git push --no-verify`.
+
+`gh` kurulu değilse kanca **gürültülü biçimde açık kalıyor** — kapatsaydı
+`--no-verify` alışkanlığa döner ve kanca tamamen ölürdü. O boşluğu GitHub
+tarafındaki `.github/workflows/ci-red.yml` kapatıyor: main kırmızı kaldığında
+açık bir konu (issue) yazıyor ve hiçbir yerel kuruluma bağlı değil.
 
 `Bizigo.Api` gibi arayüz de **compose'un dışında**, doğrudan makinede koşuyor:
 sıcak yeniden yükleme geliştirme döngüsünü hızlandırıyor ve API zaten aynı
@@ -448,10 +462,28 @@ vendor'lar arasında sırayla dağıtılmış, varış zamanları düzgün (unif
 ritim bilerek modellenmedi, çünkü ritim 45 dakikalık olay penceresinin
 yoğunluğunu yükleyicinin koşturulduğu saate bağlardı.
 
+**Baseline ölçümü artık kendi verisini tohumluyor.** `BaselineWindowMeasurement`
+compose yığınına bakmıyor: her eğri için izole bir ClickHouse veritabanı kurup
+yukarıdaki tiplerin **aynısıyla** tohumluyor. Dışarıdan bağlanmak ölçümü birinin
+elle kurduğu bir duruma bağlardı; **tekrarlanabilirlik, sayının bağlayıcı
+olmasının şartı.**
+
 > ⚠️ Baseline eğrisinin **dirseği bu fixture'ın özelliğidir**, üretimin değil:
 > yaklaşık `1/λ_min` civarında oluşuyor, yani seçilen `--zipf` ve
-> `--events`/`--span-days` oranının sonucu. Bağlayıcı sayı için ölçümü farklı
-> `--zipf` ile tekrarlayın; dirsek kayıyorsa ölçülen şey fixture'dır.
+> `--events`/`--span-days` oranının sonucu. Bu yüzden ölçüm **iki farklı
+> `--zipf` ile birden** koşuyor ve `BaselineFixtureVerdict.Compare`'in **imzası**
+> iki eğri istiyor — tavsiye olarak yazılsaydı bir kez koşturulur ve unutulurdu.
+> Dirsekler ayrışırsa "seçilebilir taban" **doğmuyor** (`Baseline` alanı `null`),
+> yani rapor basacak bir sayı bulamıyor.
+>
+> **Ölçüldü (ClickHouse'suz ön görü, `BaselineFixturePreviewTests`):** `zipf=2.0`
+> dirseği **7 gün**, `zipf=1.4` dirseği **1 gün**. Yani bugünkü fixture'dan
+> üretim için bağlayıcı bir taban uzunluğu **çıkmıyor**; ölçümün kanıtladığı şey
+> mekanizmanın çalıştığı. Bağlayıcı sayı gerçek müşteri verisiyle tekrarlanmalı.
+>
+> İkinci sınır: 87 örnek satır ~81 imza taşıyor, yani taban yeterince uzadığında
+> oran **sıfıra** iniyor — üretimde olmayacak bir hâl. Yenilik üretmeye devam
+> eden bir örneklem gerekiyor.
 
 > ⚠️ **Maskeleme sözlüğünde ay *adı* için maske yok.** `NUMBER` günü ve saati
 > yutuyor ama `May`/`Oct` imzada kalıyor, yani syslog biçimli vendor'larda

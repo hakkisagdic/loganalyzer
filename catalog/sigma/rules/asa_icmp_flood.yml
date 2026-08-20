@@ -1,0 +1,12 @@
+title: "Cisco ASA: ICMP sağanağı"
+id: 25520785-0000-4000-8000-000000000000
+status: experimental
+description: T30 ölçüm örneklemi — F1 kataloğunun tanıdığı vendor'lara göre yazıldı.
+logsource:
+  category: network_connection
+  product: asa
+detection:
+  selection:
+    proto: 'ICMP'
+  condition: selection
+level: medium
