@@ -1,7 +1,7 @@
 ---
 title: "T26 — Change: cihaz config fark tespiti"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # T26 — Change: cihaz config fark tespiti

@@ -1,12 +1,16 @@
 ---
 title: "T35 — Beş deterministik korelasyon"
 kind: ticket
-status: 0
+status: 2
 ---
 
 # T35 — Beş deterministik korelasyon
 
 **Bağımlılık:** T29, T34 · **Sonraki:** T36
+
+> Sevk edildi — `t35-korelasyonlar` dalı, birleştirme koordinatörde.
+> Sınır kararı (SQL toplar, C# karar verir), üç sessiz tuzak ve baseline
+> ölçüm aracı: [T35 korelasyonlar](../../t35-korelasyonlar/index.md).
 
 ## Amaç
 

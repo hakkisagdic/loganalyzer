@@ -1,7 +1,7 @@
 ---
 title: "T36 — Kanıt paketi ve deterministik rapor"
 kind: ticket
-status: 0
+status: 1
 ---
 
 # T36 — Kanıt paketi ve deterministik rapor

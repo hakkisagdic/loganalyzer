@@ -1,7 +1,7 @@
 ---
 title: "T32 — Derleme hattı ve SQL versiyonlama"
 kind: ticket
-status: 0
+status: 1
 ---
 
 # T32 — Derleme hattı ve SQL versiyonlama
