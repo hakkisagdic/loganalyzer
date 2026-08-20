@@ -148,6 +148,16 @@ public sealed class ArchitectureTests
         builder.Services.AddChangeConnectors(builder.Configuration);
         builder.Services.AddBizigoAlerting(builder.Configuration);
 
+        // T34. Bu satır **Program.cs ile elle eşleşiyor** ve listeden düşen bir
+        // `Add*` çağrısı bekçiyi o katmana sessizce kör bırakıyor — bu depoda
+        // aynı yapısal delik `Produces<T>` kapısında zaten yaşandı: uçlar elle
+        // yazılmış bir listeden toplanıyordu ve 16 uç kapıya hiç görünmeden üç
+        // test yeşil yanıyordu. Kanıt katmanı eklendiğinde liste güncellenmezse
+        // aynı şey burada olurdu; nitekim kanıt sağlayıcıları ilk yazımda
+        // singleton'dı ve tam da bu doğrulamanın yakalaması gereken hatayı
+        // taşıyorlardı.
+        builder.Services.AddBizigoEvidence();
+
         // `Build()` doğrulamayı kendisi koşuyor: Development ortamında
         // `ValidateScopes` ve `ValidateOnBuild` açık. Hiçbir bağlantı
         // kurulmuyor — yalnızca grafik inşa ediliyor.
