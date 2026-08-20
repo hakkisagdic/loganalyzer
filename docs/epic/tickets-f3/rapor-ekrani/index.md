@@ -1,7 +1,7 @@
 ---
 title: "T37 — Rapor ekranı ve export"
 kind: ticket
-status: 0
+status: 2
 ---
 
 # T37 — Rapor ekranı ve export
