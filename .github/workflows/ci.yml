@@ -101,10 +101,19 @@ jobs:
       #
       # İş akışı dosyaları da kapsamda: aynı hata sınıfı orada da mümkün ve
       # oradaki bir tekrarlanan anahtar, kapının KENDİSİNİ sessizce değiştirir.
+      # Sigma kuralları da kapsamda ve bunun bedeli ÖLÇÜLDÜ:
+      # `catalog/sigma/rules/asa_teardown_rst.yml` aynı eşlemede
+      # `message|contains` anahtarını İKİ KEZ taşıyor. YAML sonuncuyu alıyor,
+      # yani `Teardown` koşulu sessizce düşüyor ve kural yalnızca `RST`
+      # arıyor — başlığının söylediğinden başka bir şey yapıyor.
+      #
+      # Bir detection kuralında bu sınıf, compose dosyasındakinden **daha**
+      # pahalı: kural yayınlanır, çalışır, hiçbir sayaç artmaz ve daraltılmış
+      # hâliyle "çalışıyor" görünür.
       - name: Tekrarlanan anahtar var mı
         run: >
           yamllint -d '{rules: {key-duplicates: enable}}'
-          deploy/docker-compose.yml .github/workflows/
+          deploy/docker-compose.yml .github/workflows/ catalog/sigma/rules/
 
   ui:
     name: Arayüz — tip kapısı, testler, derleme

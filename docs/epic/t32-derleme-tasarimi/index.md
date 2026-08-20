@@ -261,6 +261,71 @@ günden kırmızı yanan — dolayısıyla gevşetilecek — bir kapı yaratırd
 Kapının canlı yarısı koordinatörde koşuyor (§2); CI'da koşan yarı beyan
 listesinin şekli ve ClickHouse'a hiç bağlanmıyor.
 
+### Ölçüldü · Kapı 3 ilk koşumda gerçek bir eşleme kusuru buldu
+
+`routeros_forward_new` beyanı **düştü** ve düşmesi doğru. Üretilen SQL
+`activity_name='forward'` arıyor; veride `class_uid=4001` var, `tcp` var
+(150 satır), eksik olan `activity_name` — ve boş olması bir kaza değil:
+`catalog/parsers/mikrotik.routeros/firewall.yaml` `action`'ı **bilerek** boş
+bırakıyor, çünkü RouterOS kaydı kuralın eşleştiğini bildiriyor, `accept`/`drop`
+yazmak uydurma olurdu. Zincir adı `fields.fw_chain`'e gidiyor.
+
+Yani parser doğru, kuralın **eşlemesi** yanlış: `forward` bir eylem değil bir
+zincir adı. Beyan da yanlış değildi — örnek dosyada gerçekten `forward:` +
+`proto TCP` taşıyan üç satır var. Kayıp **boru hattında**, dosyanın söylediği ile
+ClickHouse'a inen arasında.
+
+**Bunu ancak bu kapı gösterebilirdi.** Ne derleme, ne birim testi, ne Kapı 2 bu
+soruyu soruyor. Beyan bugün kırmızı ve öyle kalmalı; düzeltme T31'in
+`FIELD_MAP`'inde.
+
+### Beyan yazılmayan iki kural — ve ikisinin de sebebi kayıtlı
+
+**`nginx_dns_rebind`:** örneklerde `localhost` yalnızca referrer alanında,
+`127.0.0.1` yalnızca remote_ip konumunda, ve combined format Host başlığı
+taşımıyor. `device_hostname`'in ne olduğu okunamadı, beyan yazılmadı. `--discover`
+koşumu kuralı **boş** buldu — okuma ölçümle doğrulandı. Tahminle beyan yazılsaydı
+kapı yanlış sebeple kırmızı yanardı.
+
+**`asa_teardown_rst`:** `--discover` bunu **eşleşti** diye buldu ve tam bu yüzden
+beyan yazılmadı. Üretilen SQL `raw_data ILIKE '%RST%'` ve ASA örneklerinde harf
+duyarsız `rst` geçen tek yerler **"first"** ve **"burst"** sözcüklerinin içi —
+gerçek bir TCP RST yok. Yani kural **yanlış sebeple** eşleşiyor.
+
+`at_least_one` yazılsaydı kapı yeşil yanar ve bir **yanlış pozitifi kutsardı**.
+"Eşleşti" ile "doğru sebeple eşleşti" farklı şeyler, ve bu ayrımı `--discover`
+sayısı değil örnek dosyanın içeriği veriyor — beyanların gerekçesinin
+ClickHouse sayısından değil dosyadan gelmesinin sebebi bu.
+
+Kuralın ikinci bir kusuru daha var (aşağıda) ve ikisi birbirini gizliyordu.
+
+### Bulgu · Sigma kuralları tekrarlanan YAML anahtarına karşı korumasızdı
+
+`asa_teardown_rst.yml` aynı eşlemede `message|contains` anahtarını **iki kez**
+taşıyor:
+
+```yaml
+    message|contains: 'Teardown'
+    message|contains: 'RST'
+```
+
+YAML sonuncuyu alıyor, yani `Teardown` koşulu **sessizce düşüyor** ve kural
+başlığının söylediğinden başka bir şey yapıyor.
+
+Depoda bu sınıfın bekçisi zaten var — `compose-lint` işi `yamllint`in
+`key-duplicates` kuralını `deploy/docker-compose.yml` ve `.github/workflows/`
+üzerinde koşturuyor. Sigma kuralları kapsamda **değildi**; eklendi.
+
+Bir detection kuralında bu sınıf compose dosyasındakinden **daha pahalı**: kural
+yayınlanır, çalışır, hiçbir sayaç artmaz ve daraltılmış hâliyle "çalışıyor"
+görünür.
+
+⚠️ Bekçi eklendiği anda **kırmızı yanıyor** — ölçüldü, `exit=1`. Bu bilinçli:
+bekçinin gerçek bir kusuru yakaladığı böyle gösteriliyor (önce bekçi, sonra
+düzeltme). Kuralın nasıl düzeltileceği bir **detection kararı** (iki koşul
+listeye mi alınmalı, `RST` alt dizgi araması yeterli mi) ve tek başıma
+vermedim.
+
 ### KARAR · Kapı 1'den geçemeyen kural dosya üretmez
 
 Manifest'e `gated` olarak sebebiyle yazılır (`unknown_column: url`). Böylece
