@@ -67,8 +67,15 @@ public static class BaselineSweepVerdict
     /// mutlak farkı taşır ama ikincisi oranın yarıya inmesidir. Mutlak bir
     /// eşik, düşük hacimli veri kümelerinde eğriyi olduğundan düz gösterirdi.
     /// </para>
+    ///
+    /// <para>
+    /// <c>internal</c>, <c>private</c> değil: <see cref="BaselineFixtureVerdict"/>
+    /// dirseği ararken <b>aynı</b> eşiği kullanmak zorunda. İkinci bir sabit
+    /// yazmak, bir gün yalnızca birinin değişmesi ve iki fonksiyonun aynı
+    /// tabloya farklı cevap vermesi demekti.
+    /// </para>
     /// </summary>
-    private const double MeaningfulDrop = 0.05;
+    internal const double MeaningfulDrop = 0.05;
 
     /// <summary>
     /// Süpürme okunabilir mi. Okunabiliyorsa <c>null</c>, değilse <b>sebep</b>.
