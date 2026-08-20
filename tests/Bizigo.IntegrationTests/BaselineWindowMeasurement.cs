@@ -38,6 +38,27 @@ namespace Bizigo.IntegrationTests;
 /// Rapor <c>$TMPDIR/t35-baseline.log</c>'a da yazılıyor. <b>İki koşum kaydedin</b>
 /// (farklı gün / farklı yük): tek koşum bir günün karakterini ölçer.
 /// </para>
+///
+/// <para>
+/// <b>Veri nereden geliyor (T39):</b> <c>bizigo seed golden</c> altın örnekleri
+/// gerçek boru hattından geçirip 30 güne yayıyor. Yayılımın <b>nasıl</b>
+/// yapıldığı burada okunan sayıyı doğrudan belirliyor ve gerekçesiyle
+/// <c>Bizigo.Cli.Seeding.GoldenSamplePlan</c> içinde yazılı. İki uyarı okunmadan
+/// bu tablo yorumlanmamalı:
+/// </para>
+///
+/// <list type="bullet">
+/// <item><b>Eğrinin dirseği fixture'ın özelliği.</b> Yaklaşık <c>1/λ_min</c>
+/// civarında oluşuyor, yani seçilen Zipf üssünün ve hacim/süre oranının sonucu.
+/// Bağlayıcı bir sayı için ölçüm farklı <c>--zipf</c> ile tekrarlanmalı: dirsek
+/// kayıyorsa ölçülen şey tabanın uzunluğu değil fixture'dır.</item>
+/// <item><b>İmza ay adına duyarlı.</b> Maskeleme sözlüğünde ay <i>adı</i> için
+/// maske yok; syslog biçimli vendor'larda aynı şablon her ay yeni bir
+/// <c>signature_hash</c> alıyor. 30 günlük bir yayılım kaçınılmaz olarak bir ay
+/// sınırı içeriyor, yani tabanı ayın birinden öteye uzatmak "ilk-görülen"
+/// oranını beklendiği kadar düşürmüyor. Yükleyici bu sayıyı her koşumda
+/// basıyor.</item>
+/// </list>
 /// </summary>
 [Collection(DevStackCollection.Name)]
 public sealed class BaselineWindowMeasurement(DevStackFixture stack) : IAsyncLifetime

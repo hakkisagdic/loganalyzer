@@ -224,13 +224,14 @@ public sealed class SignatureHotPathTests : IDisposable
 
         return (
             new ParsingSink(
-                new Dispatcher(catalog, new DispatchStats()),
+                new EventComposer(
+                    new Dispatcher(catalog, new DispatchStats()),
+                    annotator,
+                    masks ?? Masks,
+                    NullLogger<EventComposer>.Instance),
                 new SourceDirectory(_factory),
                 new DispatchStats(),
-                collector,
-                annotator,
-                masks ?? Masks,
-                NullLogger<ParsingSink>.Instance),
+                collector),
             collector.Events);
     }
 

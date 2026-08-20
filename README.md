@@ -370,6 +370,60 @@ giriş yapıyor ve birden çok kopya çalıştırılırsa oturumlar kopyalar ara
 paylaşılmıyor. `SessionStore` arayüzü paylaşılan bir depo (Redis) eklenebilsin
 diye ayrıldı; dağıtım çok kopyaya çıkmadan önce doldurulmalı.
 
+### Ölçüm verisi — `bizigo seed golden` (T39)
+
+F3'ün iki ölçümü de **gerçek** veri istiyor: Sigma kapsam ölçümü
+(`prototypes/t30-sigma/measure.py`) vendor başına sayıyor, baseline penceresi
+ölçümü (`BaselineWindowMeasurement`) tabanı 1 saatten 30 güne süpürüyor. İkisinin
+de ön kontrolü sentetik kıyaslama verisini **reddediyor** ve doğru yapıyor.
+
+```bash
+export DOTNET_ROOT="$HOME/.dotnet"
+BIN=src/Bizigo.Cli/bin/Debug/net10.0/bizigo
+
+# Docker'sız: üret, zaman damgası bekçisini koştur, raporla.
+$BIN seed golden --dry-run
+
+# Yükle. Bağlantı --clickhouse ya da BIZIGO_CLICKHOUSE'tan geliyor.
+$BIN seed golden --clickhouse 'Host=localhost;Port=8123;Database=bizigo;Username=bizigo;Password=bizigo'
+
+# Yeniden yükleme: yalnızca kendi kapsam grubunu siler, tablodaki diğer veriye
+# DOKUNMAZ. Bayraksız koşum, grup doluysa hata verip durur.
+$BIN seed golden --replace
+```
+
+**Doğrudan `INSERT` yok.** Satırlar `EncodingDetector` → `EventComposer`
+(dispatch + imza + şablon) → `EventNormalizer` → `EventWriter` yolundan geçiyor,
+yani `signature_hash`, `template_id`, `attrs` (OCSF/OTel görünümlerinin girdisi),
+`time_source` ve `parse_status` üretimdekiyle **aynı** üretiliyor. Elle yazılan
+bir satır bunların hepsinde ayrışabilir ve ayrıştığı hiçbir yerde görünmez.
+
+**Zaman damgaları yeniden yazılıyor, gövde değil.** Örnek dosyalar 2015–2024
+tarihleri taşıyor; olduğu gibi yüklenirse baseline ölçümü hiçbir şey göremez.
+`SampleTimeRewriter` yalnızca damga tokenını hedef ana taşıyor — aynı olayı
+yarın basan cihaz da aynı şeyi yapar. Damga biçimi bilgisi böylece **ikinci kez**
+yazılmış oluyor (birincisi parser YAML'ının `date` adımı); ayrışma sessiz kalmasın
+diye yükleyici her olayda normalize edilmiş `ts`'nin ektiği ana eşit olduğunu
+**doğruluyor** ve tutmazsa durup satırı basıyor.
+
+**Yayılım kararı ölçülen sayıyı belirliyor**, o yüzden `GoldenSamplePlan` içinde
+yazılı: sıklık yasası Zipf (`--zipf`, varsayılan 2.0), sıra **imza** üzerinden ve
+vendor'lar arasında sırayla dağıtılmış, varış zamanları düzgün (uniform) — günlük
+ritim bilerek modellenmedi, çünkü ritim 45 dakikalık olay penceresinin
+yoğunluğunu yükleyicinin koşturulduğu saate bağlardı.
+
+> ⚠️ Baseline eğrisinin **dirseği bu fixture'ın özelliğidir**, üretimin değil:
+> yaklaşık `1/λ_min` civarında oluşuyor, yani seçilen `--zipf` ve
+> `--events`/`--span-days` oranının sonucu. Bağlayıcı sayı için ölçümü farklı
+> `--zipf` ile tekrarlayın; dirsek kayıyorsa ölçülen şey fixture'dır.
+
+> ⚠️ **Maskeleme sözlüğünde ay *adı* için maske yok.** `NUMBER` günü ve saati
+> yutuyor ama `May`/`Oct` imzada kalıyor, yani syslog biçimli vendor'larda
+> (Cisco ASA, MikroTik, nginx) aynı şablon **her ay yeni bir `signature_hash`**
+> alıyor. Ölçüldü: 87 örnek satırın 38'i bu davranışı gösteriyor; 5 günlük
+> yayılımda 81 ayrı imza, 30 günlükte 92, 90 günlükte 102. Yükleyici bunu her
+> koşumda basıyor. F3'ün "ilk-görülen imza" sinyali için gerçek bir kalem.
+
 ### Parser CLI
 
 ```bash

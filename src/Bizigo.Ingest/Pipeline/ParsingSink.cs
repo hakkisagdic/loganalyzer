@@ -1,11 +1,6 @@
-using Bizigo.Contracts;
 using Bizigo.ControlPlane;
-using Bizigo.Ingest.Discovery;
 using Bizigo.Normalization;
 using Bizigo.Parsing.Dispatch;
-using Bizigo.Parsing.Engine;
-using Bizigo.Parsing.Grok;
-using Microsoft.Extensions.Logging;
 
 namespace Bizigo.Ingest.Pipeline;
 
@@ -19,19 +14,21 @@ namespace Bizigo.Ingest.Pipeline;
 /// </para>
 ///
 /// <para>
+/// Kaynağı çözdükten sonrasını <see cref="EventComposer"/> yapıyor: dispatch,
+/// imza ve şablon etiketi orada tek kopya hâlinde duruyor (T39).
+/// </para>
+///
+/// <para>
 /// Hiçbir şey <b>reddedilmiyor</b>: eşleşmeyen kaynak <c>_unassigned</c>'a,
 /// eşleşmeyen satır <c>failed</c>'a düşüyor. İkisi de ham arşivde duruyor ve
 /// parser düzeltilince replay ile geri kazanılıyor (K12).
 /// </para>
 /// </summary>
 public sealed class ParsingSink(
-    Dispatcher dispatcher,
+    EventComposer composer,
     SourceDirectory sources,
     DispatchStats stats,
-    IParsedEventSink downstream,
-    ITemplateAnnotator templates,
-    MaskCatalog masks,
-    ILogger<ParsingSink> logger) : IIngestSink
+    IParsedEventSink downstream) : IIngestSink
 {
     public async ValueTask HandleAsync(
         IReadOnlyList<DecodedRecord> batch,
@@ -50,43 +47,7 @@ public sealed class ParsingSink(
                 stats.RecordUnassignedSource();
             }
 
-            var result = dispatcher.Dispatch(record.Decoded.Body, source.ParserId);
-
-            if (result.Result.TimedOut)
-            {
-                // Zaman aşımı karantina sinyali (F1 §4.1 kademe 3); görünür olmalı.
-                logger.LogWarning(
-                    "Parser {Parser} zaman aşımına uğradı ({Source}).",
-                    result.Result.ParserId,
-                    source.SourceId);
-            }
-
-            // İmza — **her olayda**, örneklemesiz, önbelleksiz (K35). Bu satır
-            // F3'ün "ilk-görülen imza" ve "hacim sapması" korelasyonlarının
-            // tamamını sidecar'dan kurtarıyor: `template_id` bir imzanın ilk
-            // görülüşünde tanım gereği boş dönüyor, yani "yeni bir şey oldu"
-            // diyen tam o satırda kimlik yoktu.
-            var signature = masks.Compute(record.Decoded.Body);
-
-            // Keşif katmanı (T12). Sidecar'a burada **gidilmiyor**: yalnızca
-            // daha önce öğrenilmiş imzalar önbellekten okunuyor, bilinmeyen
-            // imza sınırlı kuyruğa atılıyor. Kuyruk doluysa ya da sidecar ölüyse
-            // dönen değer boş — boru hattı hiçbir şey beklemez.
-            var templateId = templates.Annotate(
-                source.SourceClass,
-                record.Decoded.Body,
-                signature,
-                result.Result.Status == ParseStatus.Failed);
-
-            parsed.Add(new ParsedEvent(
-                record.Raw with { OwnerGroup = source.OwnerGroup, SourceId = source.SourceId },
-                record.Decoded.Body,
-                record.Decoded.Name,
-                source,
-                result.Result,
-                result.Tier,
-                templateId,
-                signature.Hash));
+            parsed.Add(composer.Compose(record, source));
         }
 
         await downstream.HandleAsync(parsed, cancellationToken);
