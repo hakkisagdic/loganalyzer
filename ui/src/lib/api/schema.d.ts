@@ -743,6 +743,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListReviews"];
+        put?: never;
+        post: operations["CreateReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reviews/quality": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetGoldenSetQuality"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/reviews/triggers/{triggerId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CloseAlertTrigger"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -894,6 +942,12 @@ export interface components {
             owner_group: string;
             summary: string;
             deliveries: components["schemas"]["AlertDeliveryResponse"][];
+            state: string;
+            /** Format: date-time */
+            closed_at: null | string;
+            closed_by: null | string;
+            /** Format: uuid */
+            review_id: null | string;
         };
         AuthMeResponse: {
             subject: string;
@@ -984,6 +1038,19 @@ export interface components {
         ChannelTestResponse: {
             ok: boolean;
             error: string;
+        };
+        CloseTriggerRequest: {
+            verdict?: string;
+            contradicting_evidence?: string;
+            note?: string;
+        };
+        CloseTriggerResponse: {
+            /** Format: uuid */
+            trigger_id: string;
+            /** Format: date-time */
+            closed_at: string;
+            bundle_generated: boolean;
+            review: components["schemas"]["ReviewResponse"];
         };
         ConnectorListResponse: {
             /** Format: int32 */
@@ -1160,6 +1227,20 @@ export interface components {
             field: string;
             op: string;
             values: string[];
+        };
+        GoldenSetQualityResponse: {
+            /** Format: int64 */
+            total: number | string;
+            /** Format: int64 */
+            decided: number | string;
+            /** Format: int64 */
+            correct: number | string;
+            /** Format: int64 */
+            unknown: number | string;
+            /** Format: double */
+            accuracy: null | number | string;
+            /** Format: double */
+            unknown_ratio: null | number | string;
         };
         JsonElement: unknown;
         MaintenanceWindowListResponse: {
@@ -1682,6 +1763,34 @@ export interface components {
             /** Format: double */
             duration_seconds: number | string;
             applied: boolean;
+        };
+        ReviewListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            reviews: components["schemas"]["ReviewResponse"][];
+        };
+        ReviewRequest: {
+            /** Format: uuid */
+            bundle_id?: string;
+            verdict?: string;
+            contradicting_evidence?: string;
+            note?: string;
+            owner_group?: null | string;
+        };
+        ReviewResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            bundle_id: string;
+            /** Format: uuid */
+            trigger_id: null | string;
+            owner_group: string;
+            verdict: string;
+            contradicting_evidence: string;
+            note: string;
+            reviewer: string;
+            /** Format: date-time */
+            reviewed_at: string;
         };
         SourceActivityListResponse: {
             /** Format: date-time */
@@ -3261,6 +3370,116 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChannelTestResponse"];
+                };
+            };
+        };
+    };
+    ListReviews: {
+        parameters: {
+            query: {
+                bundleId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewListResponse"];
+                };
+            };
+        };
+    };
+    CreateReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    GetGoldenSetQuality: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoldenSetQualityResponse"];
+                };
+            };
+        };
+    };
+    CloseAlertTrigger: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                triggerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseTriggerRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloseTriggerResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
