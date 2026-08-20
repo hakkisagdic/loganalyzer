@@ -102,10 +102,6 @@ def test_dns_alanlari_semada_yok_ve_eslenmiyor() -> None:
         assert field in sp.SCHEMA_GAPS
         assert field not in sp.ATTRS_MAP
 
-    # Gerekçe boş bırakılamaz: liste bir gün kapanacaksa neyin kapatacağı yazılı olmalı.
-    for field, reason in sp.SCHEMA_GAPS.items():
-        assert len(reason) > 30, f"{field}: gerekçe yok"
-
 
 def test_unmapped_ifadesi_kose_parantez() -> None:
     """Nokta erişimi Tuple/Nested içindir; bizim kolonumuz `Map`."""
@@ -329,3 +325,66 @@ def test_bekci_gercek_kolonlari_gecirıyor() -> None:
     assert _re.match(pattern, "unmapped['otel.url.path']")
     assert _re.match(pattern, sp.ip_text_expression("src_endpoint_ip"))
     assert not _re.match(pattern, "srcip"), "ham Sigma adı geçmemeli"
+
+
+# ---------------------------------------------------------------------------
+# T32 ile sözleşme
+# ---------------------------------------------------------------------------
+
+TOOLS = Path(__file__).resolve().parents[2] / "tools" / "sigma-build"
+
+
+def test_remedy_sozlugu_T32_ile_ayni() -> None:
+    """**İki ayrı ajanın aynı sözlüğü kullandığı, ölçülerek biliniyor olmalı.**
+
+    T32'nin manifesti engelleri `remedy`'ye göre kapanabilir/kapanamaz diye
+    ayırıyor ve `gated_closeable` / `gated_upstream` sayılarını oradan
+    türetiyor. Bizim yazdığımız değer o sözlükte YOKSA, `CLOSEABLE_REMEDIES`
+    üyelik kontrolü sessizce `False` döner ve engel **kapanamaz** tarafına
+    yazılır — yani "liste boşaldı mı" sorusunun cevabı asla evet olmaz.
+
+    Hatanın tamamı bir yazım farkında: `"schema"` yerine `"schemas"`. Hiçbir
+    yerde hata yok, sayaç yok, belirti yok.
+
+    Sidecar imajı `tools/` taşımıyor, dolayısıyla değerler orada yeniden
+    yazılıyor. Yeniden yazmanın bedeli ayrışma; bu test o bedeli ödüyor.
+    """
+    if not TOOLS.is_dir():
+        # Dizin yoksa (dağıtılmış imaj) sınanacak bir şey de yok. Ama dizin
+        # VARSA import başarısız olmamalı: "koşuma giriyor ama ortam hazır
+        # değil" hâli, §7'nin sessizce kırmızı yanan CI'sının ta kendisi.
+        pytest.skip("tools/sigma-build bu ağaçta yok — imaj koşumu")
+
+    import sys
+
+    if str(TOOLS) not in sys.path:
+        sys.path.insert(0, str(TOOLS))
+
+    from sigma_build.gate import CLOSEABLE_REMEDIES, REMEDY_SCHEMA, REMEDY_UNKNOWN
+
+    assert sp.REMEDY_SCHEMA == REMEDY_SCHEMA
+    assert sp.REMEDY_UNKNOWN == REMEDY_UNKNOWN
+
+    for field, gap in sp.SCHEMA_GAPS.items():
+        assert gap.remedy in CLOSEABLE_REMEDIES, (
+            f"{field}: `{gap.remedy}` T32'nin sözlüğünde yok ya da muafiyete "
+            "yazılmış. Muafiyet iki bilinçli hareket gerektiriyor ve ikincisi "
+            "T32'nin sahibinde."
+        )
+
+
+def test_hicbir_bosluk_tek_tarafli_MUAFIYET_almiyor() -> None:
+    """`upstream` "kimsenin yapamayacağı iş" demek ve sayısı ayrıca sabitleniyor.
+
+    Buradan tek taraflı verilirse T32'nin `gated_upstream` sabiti sessizce
+    kayar — muafiyet eklemenin iki ayrı bilinçli hareket olmasının sebebi tam
+    olarak buydu (§8).
+    """
+    assert all(gap.remedy != "upstream" for gap in sp.SCHEMA_GAPS.values())
+
+
+def test_her_bosluk_kapatan_isi_ADLANDIRYOR() -> None:
+    """Gerekçe, "neyin kapatacağını" söylemiyorsa liste bir çöp kutusudur."""
+    for field, gap in sp.SCHEMA_GAPS.items():
+        assert len(gap.reason) > 30, f"{field}: gerekçe yok"
+        assert gap.remedy, f"{field}: remedy yok"
