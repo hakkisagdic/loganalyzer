@@ -38,7 +38,6 @@ services:
   # Kontrol düzlemi — PostgreSQL (K23)
   # İki veritabanı: `bizigo` (envanter/katalog/audit) ve `keycloak`.
   # --------------------------------------------------------------------------
-  # --------------------------------------------------------------------------
   # Oturum deposu — Redis (B7)
   #
   # BFF'in oturumları T13'te bellek içindeydi ve bu TEK SÜREÇTE doğruydu.
@@ -51,8 +50,25 @@ services:
   #
   # Kalıcılık YOK ve bilinçli: oturum verisi zaten geçici, TTL'i uygulama
   # veriyor. Disk yedeği almak, token'ları diske yazmak demek olurdu.
+  #
+  # NEDEN AYRI BİR ÖRNEK — sidecar'ın `redis`'iyle birleştirilmesin.
+  # İlk yazımda bu servis `redis` adını aldı ve sidecar'ın 155 satır aşağıdaki
+  # `redis`'iyle çakıştı; compose dosyası ayrıştırılamaz hâle geldi. Ad
+  # çakışması düzeltilirken akla gelen ilk çözüm — "iki redis fazlalık,
+  # birleştir" — çalışmıyor, çünkü iki kullanımın kalıcılık ihtiyacı ZIT:
+  #
+  #   * sidecar Drain3 ağacını Redis'ten geri yüklüyor (`miners.py`,
+  #     `RedisStateStore.load_state`); durum kaybolursa `template_id`'ler
+  #     kayar ve bunun hiçbir belirtisi olmaz.
+  #   * oturum tarafında ise kalıcılık bir KUSUR: token diske yazılmış olur.
+  #
+  # Tek örnekte ikisi sağlanamıyor, çünkü RDB anlık görüntüsü **örneğin
+  # tamamını** yazar — veritabanı seçmez. `--save 60 1` demek "sidecar için
+  # kalıcı" değil, "0 numaralı veritabanındaki token'lar da dahil her şey
+  # diske" demek. Ayrılığın sebebi tembellik değil, RDB'nin veritabanı
+  # seçmemesi.
   # --------------------------------------------------------------------------
-  redis:
+  redis-session:
     image: redis:8-alpine
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     ports:
@@ -204,8 +220,15 @@ services:
       - "host.docker.internal:host-gateway"
 
   # --------------------------------------------------------------------------
-  # Analiz sidecar'ı — Drain3 + pySigma (K14). SICAK YOLDA DEĞİL.
-  # T01'de iskelet; gerçek içerik T12'de.
+  # Sidecar'ın durum deposu — Drain3 ağacı burada duruyor (T01/T12).
+  #
+  # Kalıcılık AÇIK (`--save 60 1` + adlandırılmış cilt) ve bu bir gereklilik:
+  # `sidecar/app/miners.py` yeniden başlarken durumu `load_state` ile geri
+  # yüklüyor. Durum kaybolursa şablonlar sıfırdan öğrenilir ve `template_id`'ler
+  # kayar — sessiz sınıftan bir bozulma, çünkü sidecar çalışmaya devam eder.
+  #
+  # Dışarı port AÇILMIYOR: yalnızca sidecar konuşuyor. Oturum deposu ayrı bir
+  # servis (`redis-session`, yukarıda) ve ayrı olma sebebi orada yazılı.
   # --------------------------------------------------------------------------
   redis:
     image: redis:8-alpine
@@ -218,6 +241,10 @@ services:
       timeout: 3s
       retries: 20
 
+  # --------------------------------------------------------------------------
+  # Analiz sidecar'ı — Drain3 + pySigma (K14). SICAK YOLDA DEĞİL.
+  # T01'de iskelet; gerçek içerik T12'de.
+  # --------------------------------------------------------------------------
   sidecar:
     build:
       # Context repo kökü: imaja iki ayrı dizinden dosya giriyor — `sidecar/`
