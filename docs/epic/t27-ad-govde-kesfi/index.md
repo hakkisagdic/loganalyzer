@@ -86,6 +86,13 @@ hak ettiğini kontrol etsin.
 
 Listeyi üretmek için (kalıcı araç yazılmadı; bir kapı sanılmasın diye):
 
+> **Sayı farkı, ve neden burada duruyor.** Yukarıdaki 56, ölçümü yapan Python
+> betiğinin sayısı; aşağıdaki `grep` **53** döndürüyor. Fark iki desenin
+> katılığından: betik `[Theory]`/`[Fact]` özniteliğinden metoda kadar bakıyor ve
+> `_her_` sınırını farklı çiziyor. İkisi de doğru, ama **bir belgenin sayısı
+> kendi yayımladığı komutla üretilemiyorsa o da bir sürüklenmedir** — bu yüzden
+> ikisi de yazılı. Kullanılacak sayı `grep`'inki: yeniden üretilebilen o.
+
 ```bash
 grep -rhoE 'public\s+(async\s+)?(Task|void)\s+[A-Za-z_0-9]*(butun|Her_|_her_|hicbir|zincir|tamami|uctan|kendisi|bosald)[A-Za-z_0-9]*' \
   tests --include='*.cs' | sed 's/.* //' | sort -u
