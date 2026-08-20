@@ -9,6 +9,40 @@ import type { EventSearchBody } from "@/lib/api/client";
  * ve T21'in alarm ekranı bu ekrana <b>derin bağlantı</b> verebiliyor. "Kayıtlı
  * arama" da bu yüzden bir URL'den ibaret.
  * </p>
+ *
+ * <p>
+ * ⚠️ <b>"Bir arama" bu üründe iki yerde temsil ediliyor</b> ve ayrışmaları
+ * hiçbir yerde kırmızı yanmıyor: buradaki <see cref="PARAM"/> kümesi ile alarm
+ * kuralının gövdesindeki <c>AlertSearch</c> (<c>src/Bizigo.Alerting/</c>).
+ * Ekrandan kurulan bir alarm, ekranda görülen sonuçtan başkasını izlerse bu
+ * sessiz bir hata olur.
+ * </p>
+ *
+ * <p>
+ * Bugünkü karşılıklar — <b>ölçülmüş değil, okunmuş</b>:
+ * </p>
+ *
+ * <table>
+ *   <tr><th>Buradaki alan</th><th><c>AlertSearch</c> karşılığı</th></tr>
+ *   <tr><td><c>fullText</c></td><td><c>FullText</c> ✓</td></tr>
+ *   <tr><td><c>sourceId</c></td><td><c>SourceIds</c> ✓</td></tr>
+ *   <tr><td><c>parseStatuses</c></td><td><c>ParseStatuses</c> ✓</td></tr>
+ *   <tr><td><c>vendor</c>, <c>proto</c>, <c>action</c>, <c>severityMin</c></td>
+ *       <td><c>Filters</c> ✓ — aynı <c>FieldFilter</c> üçlüsü, aynı operatör
+ *           beyaz listesi (<c>EventsEndpoints.ToFilter</c>)</td></tr>
+ *   <tr><td><c>ownerGroup</c></td><td><b>YOK</b> — kural kapsamını
+ *       daraltamıyor; kuralın kapsamı sahibinin kapsamı</td></tr>
+ *   <tr><td><c>from</c>/<c>to</c></td><td><b>YOK</b> — kuralın penceresi
+ *       değerlendirme aralığından geliyor</td></tr>
+ *   <tr><td><c>limit</c>, <c>cursor</c>, <c>force</c></td>
+ *       <td>ekrana özgü; kuralda karşılığı olmamalı</td></tr>
+ * </table>
+ *
+ * <p>
+ * Yani bir aramadan alarm kurulurken <b>grup daraltması ve zaman aralığı
+ * düşüyor</b>. Bu bilinçli, ama sessiz olmamalı: ekran bir gün "bu aramadan
+ * alarm kur" düğmesi kazanırsa, düşen iki alanı kullanıcıya söylemek zorunda.
+ * </p>
  */
 
 /**

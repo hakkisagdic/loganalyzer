@@ -263,6 +263,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sources/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SourceActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/sources/csv": {
         parameters: {
             query?: never;
@@ -1111,6 +1127,86 @@ export interface components {
             /** @default  */
             parserId: string;
         };
+        PipelineArchiveHealth: {
+            by_state: {
+                [key: string]: number | string;
+            };
+            healthy: boolean;
+        };
+        PipelineDispatchHealth: {
+            /** Format: int64 */
+            total: number | string;
+            /** Format: double */
+            bound_ratio: number | string;
+            /** Format: double */
+            bound_ratio_target: number | string;
+            bound_ratio_healthy: boolean;
+            /** Format: int64 */
+            bound_misses: number | string;
+            /** Format: double */
+            unmatched_ratio: number | string;
+            /** Format: int64 */
+            unassigned_source_events: number | string;
+        };
+        PipelineHealthResponse: {
+            dispatch: components["schemas"]["PipelineDispatchHealth"];
+            parse: components["schemas"]["PipelineParseHealth"];
+            wal: components["schemas"]["PipelineWalHealth"];
+            ingest: components["schemas"]["PipelineIngestHealth"];
+            archive: components["schemas"]["PipelineArchiveHealth"];
+            sidecar: components["schemas"]["PipelineSidecarHealth"];
+            inventory: components["schemas"]["PipelineInventoryHealth"];
+        };
+        PipelineIngestHealth: {
+            /** Format: int64 */
+            accepted_records: number | string;
+            /** Format: int64 */
+            rejected_full: number | string;
+            /** Format: int64 */
+            rejected_invalid: number | string;
+            /** Format: int64 */
+            non_utf8_records: number | string;
+            /** Format: int64 */
+            declared_encoding_mismatches: number | string;
+        };
+        PipelineInventoryHealth: {
+            /** Format: int32 */
+            unassigned_sources: number | string;
+        };
+        PipelineParseHealth: {
+            /** Format: int64 */
+            ok: number | string;
+            /** Format: int64 */
+            unmatched: number | string;
+            /** Format: int64 */
+            processed_records: number | string;
+        };
+        PipelineSidecarHealth: {
+            enabled: boolean;
+            circuit: string;
+            /** Format: int64 */
+            opened_count: number | string;
+            /** Format: int64 */
+            dropped_queue_full: number | string;
+            /** Format: int64 */
+            dropped_circuit_open: number | string;
+            /** Format: int64 */
+            signature_drift: number | string;
+        };
+        PipelineWalHealth: {
+            /** Format: int64 */
+            total_bytes: number | string;
+            is_full: boolean;
+            recovery: components["schemas"]["PipelineWalRecovery"];
+        };
+        PipelineWalRecovery: {
+            /** Format: int32 */
+            segment_count: number | string;
+            /** Format: int32 */
+            frame_count: number | string;
+            /** Format: int64 */
+            truncated_bytes: number | string;
+        };
         PreviewPointResponse: {
             /** Format: date-time */
             at: string;
@@ -1137,6 +1233,37 @@ export interface components {
             sourceIds?: string[];
             dryRun?: boolean;
             continueOnMissingObjects?: boolean;
+        };
+        SourceActivityListResponse: {
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            /** Format: int32 */
+            count: number | string;
+            sources: components["schemas"]["SourceActivityResponse"][];
+        };
+        SourceActivityResponse: {
+            source_id: string;
+            owner_group: string;
+            /** Format: date-time */
+            last_event_at: string;
+            /** Format: date-time */
+            last_ingested_at: string;
+            /** Format: int64 */
+            event_count: number | string;
+        };
+        SourceCsvErrorResponse: {
+            error: string;
+            details: string[];
+        };
+        SourceCsvImportResponse: {
+            /** Format: int32 */
+            created: number | string;
+            /** Format: int32 */
+            updated: number | string;
+            /** Format: int32 */
+            total: number | string;
         };
         SourceListResponse: {
             /** Format: int32 */
@@ -1261,7 +1388,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PipelineHealthResponse"];
+                };
             };
         };
     };
@@ -1427,7 +1556,40 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["SourceResponse"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceResponse"];
+                };
+            };
+        };
+    };
+    SourceActivity: {
+        parameters: {
+            query?: {
+                hours?: number | string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceActivityListResponse"];
+                };
             };
         };
     };
@@ -1445,7 +1607,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["SourceCsvImportResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceCsvErrorResponse"];
+                };
             };
         };
     };
