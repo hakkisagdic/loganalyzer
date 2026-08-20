@@ -26,6 +26,36 @@ public sealed record RelocatedField(string Key, int Lines, string Sample, bool F
 /// <param name="Lines">Bu vendor'ın örnek satır sayısı.</param>
 /// <param name="Populated">Görünüm takma adı → dolduğu satır sayısı.</param>
 /// <param name="AttributeKeys"><c>attrs</c> anahtarı → o anahtarı taşıyan satır sayısı.</param>
+/// <param name="NeverTogether">
+/// İkisi de ayrı ayrı dolan ama <b>aynı satırda hiç birlikte dolmayan</b> kolon
+/// çiftleri.
+///
+/// <para>
+/// Ölçüm başlangıçta her alanı <b>bağımsız</b> sayıyordu ve o sayım, bir kuralın
+/// cevaplamak istediği soruyu cevaplamıyor: kural yüklemleri <b>aynı olayda</b>
+/// istiyor. İki alan ayrı ayrı %100 dolu olup kesişimi sıfır olabilir; tablo
+/// "ikisi de var" der, kural yine eşleşmez.
+/// </para>
+///
+/// <para>
+/// <b>Sınırı açık:</b> bu <i>alan</i> düzeyinde kesişim, <i>değer</i> düzeyinde
+/// değil. "Aynı satırda ikisi de dolu" ile "aynı satırda ikisi de kuralın
+/// aradığı değeri taşıyor" farklı sorular; ikincisi kural değerlendirmesidir ve
+/// ürünün SQL yolunda yapılıyor. Burası yalnızca sıfırın sıfır olduğunu
+/// gösteriyor: hiç birlikte dolmuyorlarsa değer düzeyinde kesişim de imkânsız.
+/// </para>
+/// </param>
+/// <param name="Substituted">
+/// <b>Dolu ama değeri satırdan gelmiyor.</b> Alias → satır sayısı.
+///
+/// <para>
+/// Ölçülmüş vaka: <c>EventNormalizer</c>, <c>core.host</c> boşsa
+/// <c>device_hostname</c>'i kaynak anahtarıyla dolduruyor. Kolon <b>hiçbir zaman
+/// boş görünmüyor</b>, ama içindeki değer cihazın adı değil bizim ürettiğimiz
+/// kaynak kimliği. "Kolon dolu" ile "bilgi satırdan geldi" aynı şey değil ve
+/// aradaki fark bir kuralın eşleşip eşleşmeyeceğini belirliyor.
+/// </para>
+/// </param>
 /// <param name="Relocated">Kutu 2: OCSF kolonuna değil <c>unmapped</c>'e inmiş bilgi.</param>
 /// <param name="Uncaptured">Kutu 1: hiçbir alana girmemiş metin.</param>
 /// <param name="UncapturedDropped">
@@ -37,6 +67,8 @@ public sealed record VendorFieldReport(
     int Lines,
     IReadOnlyDictionary<string, int> Populated,
     IReadOnlyDictionary<string, int> AttributeKeys,
+    IReadOnlyList<(string First, string Second)> NeverTogether,
+    IReadOnlyDictionary<string, int> Substituted,
     IReadOnlyList<RelocatedField> Relocated,
     IReadOnlyList<UncapturedFragment> Uncaptured,
     int UncapturedDropped);
@@ -175,6 +207,8 @@ public static class FieldCoverage
         var attributes = new Dictionary<string, int>(StringComparer.Ordinal);
         var fragments = new Dictionary<string, int>(StringComparer.Ordinal);
         var relocated = new Dictionary<string, RelocatedField>(StringComparer.Ordinal);
+        var substituted = new Dictionary<string, int>(StringComparer.Ordinal);
+        var together = new Dictionary<(string, string), int>();
 
         foreach (var logEvent in events)
         {
@@ -197,6 +231,27 @@ public static class FieldCoverage
                 if (column.Source != "attrs")
                 {
                     onColumns[column.Alias] = value;
+
+                    // Değer satırda geçmiyorsa kolonu dolduran şey satır değil:
+                    // ya bir sabit ya bir geri düşüş. `fields values` sabitleri
+                    // ayrıca listeliyor; buradaki sayı ikisini birlikte
+                    // gösteriyor ve raporda öyle okunuyor.
+                    if (!logEvent.Body.Contains(value, StringComparison.Ordinal))
+                    {
+                        substituted[column.Alias] = substituted.GetValueOrDefault(column.Alias) + 1;
+                    }
+                }
+            }
+
+            // Aynı satırda birlikte dolan çiftler — kesişim sorusunun ölçüsü.
+            var filled = onColumns.Keys.OrderBy(static alias => alias, StringComparer.Ordinal).ToList();
+
+            for (var i = 0; i < filled.Count; i++)
+            {
+                for (var j = i + 1; j < filled.Count; j++)
+                {
+                    var pair = (filled[i], filled[j]);
+                    together[pair] = together.GetValueOrDefault(pair) + 1;
                 }
             }
 
@@ -222,11 +277,33 @@ public static class FieldCoverage
             .ThenBy(static pair => pair.Key, StringComparer.Ordinal)
             .ToList();
 
+        // Ayrı ayrı dolan ama hiç birlikte dolmayan çiftler.
+        var structural = populated.Keys
+            .Where(alias => columns.Any(column =>
+                string.Equals(column.Alias, alias, StringComparison.Ordinal) && column.Source != "attrs"))
+            .OrderBy(static alias => alias, StringComparer.Ordinal)
+            .ToList();
+
+        var neverTogether = new List<(string First, string Second)>();
+
+        for (var i = 0; i < structural.Count; i++)
+        {
+            for (var j = i + 1; j < structural.Count; j++)
+            {
+                if (together.GetValueOrDefault((structural[i], structural[j])) == 0)
+                {
+                    neverTogether.Add((structural[i], structural[j]));
+                }
+            }
+        }
+
         return new VendorFieldReport(
             vendor,
             events.Count,
             populated,
             attributes,
+            neverTogether,
+            substituted,
             [
                 .. relocated.Values
                     .OrderByDescending(static entry => entry.Lines)
