@@ -180,6 +180,20 @@ public sealed class ScopedQuery(
         return result;
     }
 
+    public Task<long> CountOutOfScopeChangesAsync(
+        ChangeQuery query,
+        AccessScope scope,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(scope);
+
+        // Kullanıcının kendi daraltması (`query.OwnerGroups`) bilerek
+        // uygulanmıyor: soru "senin kapsamının dışında ne var", daraltmanın
+        // dışında ne var değil. Olay tarafındaki ikizi de aynı şeyi yapıyor.
+        return _changes.CountOutOfScopeAsync(query, ScopePredicate.From(scope), cancellationToken);
+    }
+
     public async Task<IReadOnlyList<SourceActivityRow>> GetSourceActivityAsync(
         SourceActivityWindow window,
         AccessScope scope,

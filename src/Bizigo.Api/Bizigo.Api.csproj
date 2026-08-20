@@ -7,6 +7,7 @@
     <ProjectReference Include="..\Bizigo.Replay\Bizigo.Replay.csproj" />
     <ProjectReference Include="..\Bizigo.Authoring\Bizigo.Authoring.csproj" />
     <ProjectReference Include="..\Bizigo.Alerting\Bizigo.Alerting.csproj" />
+    <ProjectReference Include="..\Bizigo.Evidence\Bizigo.Evidence.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

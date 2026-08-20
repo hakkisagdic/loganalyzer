@@ -32,13 +32,13 @@
       Olmazsa `dotnet test tests/Bizigo.UnitTests` tek başına koştuğunda CLI
       derlenmemiş olur ve testler sessizce atlanır.
     -->
-    <ProjectReference Include="..\..\src\Bizigo.Cli\Bizigo.Cli.csproj"
-                      ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\Bizigo.Cli\Bizigo.Cli.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bizigo.Authoring\Bizigo.Authoring.csproj" />
     <ProjectReference Include="..\..\src\Bizigo.Alerting\Bizigo.Alerting.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Evidence\Bizigo.Evidence.csproj" />
   </ItemGroup>
 
 </Project>

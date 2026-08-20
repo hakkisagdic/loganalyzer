@@ -163,6 +163,9 @@ internal sealed class FakeScopedQuery : IScopedQuery, IAlertQuerySource
     public Task<IReadOnlyList<ChangeEvent>> SearchChangesAsync(ChangeQuery query, AccessScope scope, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<ChangeEvent>>([]);
 
+    public Task<long> CountOutOfScopeChangesAsync(ChangeQuery query, AccessScope scope, CancellationToken cancellationToken = default) =>
+        Task.FromResult(0L);
+
     public Task<EventPage> SearchEventsAsync(EventQuery query, AccessScope scope, CancellationToken cancellationToken = default) =>
         Task.FromResult(new EventPage([], null, false));
 

@@ -49,6 +49,20 @@ public interface IScopedQuery
     Task<IReadOnlyList<ChangeEvent>> SearchChangesAsync(ChangeQuery query, AccessScope scope, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Kapsam dışındaki <b>değişiklik</b> sayısı — olay tarafındaki
+    /// <see cref="CountOutOfScopeEventsAsync"/>'in ikizi (T34).
+    ///
+    /// <para>
+    /// Kanıt sağlayıcısı bunu sayamasaydı <c>0</c> dönmek zorunda kalırdı, ve
+    /// <c>0</c> "dışarıda ilişkili değişiklik yok" diye okunur. Kök neden başka
+    /// grubun cihazındaki bir config değişikliğiyse rapor bunu <b>bilmeden</b>
+    /// yanlış sonuca varırdı — sayamadığını sıfır sanmak, bu projedeki en
+    /// pahalı hata sınıfı.
+    /// </para>
+    /// </summary>
+    Task<long> CountOutOfScopeChangesAsync(ChangeQuery query, AccessScope scope, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Ham arşiv nesnesinin bu kapsamdan okunabilir olup olmadığı.
     /// Ham okuma yolu da bu kapıdan geçmeli — yoksa kapsam ayrımı arka kapıdan
     /// delinir (F1 §6.1 madde 3).
