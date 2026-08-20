@@ -30,6 +30,28 @@ public sealed record ReplayPlan
     /// </summary>
     public bool ContinueOnMissingObjects { get; init; }
 
+    /// <summary>
+    /// <b>Hâlâ yazılan</b> bir bölümün de replay'e dâhil edilmesine izin verilsin mi.
+    ///
+    /// <para>
+    /// Varsayılan <see langword="false"/> ve gerekçesi F1'in açık bıraktığı
+    /// ölçümün cevabı: <c>REPLACE PARTITION</c> atomik <b>ama bu yetmiyor</b>.
+    /// Motor önce mevcut satırları okuyup gölge tabloyu kuruyor, sonra bölümü
+    /// değiştiriyor. O iki adım arasında canlı ingest'in aynı bölüme yazdığı her
+    /// satır gölgede yok — ve değiştirme onu <b>sessizce siliyor</b>. Atomiklik
+    /// yalnızca "yarım bölüm görünmez" diyor; anlık görüntüden sonra geleni
+    /// korumuyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Bu yüzden açık bölüm (bugünün bölümü) varsayılan olarak reddediliyor.
+    /// Geçmiş bölümlerde yeni yazma olmadığı için tehlike yok ve replay'in
+    /// olağan kullanımı zaten geçmiş. Bugünü de kapsamak isteyen, ingest'i
+    /// durdurduğunu bilerek bu bayrağı açıyor.
+    /// </para>
+    /// </summary>
+    public bool AllowOpenPartition { get; init; }
+
     public bool HasFilter => OwnerGroups.Count > 0 || SourceIds.Count > 0;
 
     public override string ToString() => string.Create(
@@ -83,6 +105,16 @@ public sealed record ReplayReport
 
     /// <summary>Arşivde olup ClickHouse'ta karşılığı olmayan kayıtlar.</summary>
     public int NewRows { get; init; }
+
+    /// <summary>
+    /// Canlı yazmaya açık olduğu için <b>atlanan</b> bölümler.
+    ///
+    /// <para>
+    /// Boş olmayan bir liste sessiz bir kısalma değil, raporun söylediği bir
+    /// karar: "bu aralığın şu bölümü replay edilmedi, çünkü hâlâ yazılıyor".
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<string> SkippedOpenPartitions { get; init; } = [];
 
     /// <summary>Filtre dışı olduğu için değiştirilmeden kopyalanan satırlar.</summary>
     public int CopiedUnchanged { get; init; }

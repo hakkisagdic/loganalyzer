@@ -147,7 +147,8 @@ public static class ReplayDiff
             IReadOnlyList<string> missing,
             TimeSpan duration,
             bool applied,
-            int copied) => new()
+            int copied,
+            IReadOnlyList<string>? skippedOpen = null) => new()
             {
                 Plan = plan,
                 Partitions = partitions.Select(p => p.Partition).ToArray(),
@@ -163,6 +164,7 @@ public static class ReplayDiff
                 Samples = Samples,
                 Duration = duration,
                 Applied = applied,
+                SkippedOpenPartitions = skippedOpen ?? [],
             };
     }
 }
