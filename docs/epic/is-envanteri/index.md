@@ -141,25 +141,37 @@ Bu turda dört örnek çıktı.
 | --- | --- | --- | --- |
 | `ProducesContractTests` | `/v1/*` altındaki her uç sözleşmeli | **Listedeki** uçlar — 16 uç listede yoktu | Keşif yansımaya çevrilince |
 | Ömür bekçisi | Üretim DI grafiği kapsam doğrulamasından geçiyor | `AddBizigoAuthentication` **hariç** grafik | Keşif yansımaya çevrilince |
-| `sigma_build` Kapı 2 | Tip uyuşmazlığı yakalanıyor | AST'nin **ayrıştırılabilirliği** | Yeni test yazılırken |
+| `sigma_build` Kapı 2 | Tip uyuşmazlığı yakalanıyor | `EXPLAIN SYNTAX` yalnızca AST'yi yeniden yazıyor, **tip denetimi yapmıyor** — iki bilinen kırık sorguya da 200 | Kapının kendi `--self-test` kipi |
 | `Ayni_id_icin_en_yuksek_surum_kazaniyor` | Sürüm çözümlemesi | `specificity` **sıralaması** (iki farklı `id`) | Yeni test yazılırken |
 
 **Nasıl bulunduklarına dikkat** — arayan birine nereye bakacağını söyleyen kısım
 bu:
 
-- **Üçü, keşif elle tutulan bir listeden yansımaya çevrilince ortaya çıktı.**
-Liste kaldırıldığı an denetlenen küme büyüdü ve bekçinin daha önce neyi
-görmediği sayı olarak göründü. Yani: *bir bekçi elle tutulan bir listeden
-besleniyorsa, listeyi kaldırmak teşhis aracıdır.*
-- **Dördüncüsü, o bekçinin iddiasına dayanan yeni bir test yazılırken çıktı.**
+**Üç ayrı yol.** Dördü tek bir yöntemle bulunmadı ve aradaki fark, arayan biri
+için asıl bilgi.
+
+- **İkisi, keşif elle tutulan bir listeden yansımaya çevrilince çıktı**
+(`ProducesContractTests`, ömür bekçisi). Liste kaldırıldığı an denetlenen küme
+büyüdü ve bekçinin daha önce neyi görmediği **sayı olarak** göründü. Yani:
+*bir bekçi elle tutulan bir listeden besleniyorsa, listeyi kaldırmak teşhis
+aracıdır.*
+- **Biri, kapının kendi `--self-test` kipiyle çıktı** (`sigma_build` Kapı 2).
+Kip, kapıyı **bilinen kırık girdilere** karşı koşturuyor; `EXPLAIN SYNTAX` iki
+kırık sorgunun ikisine de 200 dönünce kapının hiçbir şey ölçmediği görüldü. Bu
+en ucuz yol ve tek başına bir kalıp: *bir bekçiye, yakalaması gereken şeyi
+yakalayıp yakalamadığını soran bir kip yaz.* Kip olmasaydı kusur kural seti
+üretime çıkana kadar görünmeyecekti.
+- **Biri, o bekçinin iddiasına dayanan yeni bir test yazılırken çıktı**
+(`Ayni_id_icin_en_yuksek_surum_kazaniyor`).
 `Yayinlanan_parser_sonraki_olayi_ayristiriyor` "yeni sürüm kataloğa giriyor"
-varsayımına dayanıyordu; o varsayımı kim tutuyor diye bakınca, tutmadığı
+varsayımına dayanıyordu; o varsayımı kim tutuyor diye bakınca tutmadığı
 görüldü. Yani: *bir iddiaya dayanacaksan önce onu kimin tuttuğuna bak.*
 
-**En can sıkıcı ortak nokta:** dördüncüsünde bilgi zaten kayıtlıydı. Testin
-kendi yorumu *"`Replace` sürüm çözümlemesi yapmıyor; çözümleme dizinden
-yüklemede"* diyordu ve testin adı sürüm çözümlemesini iddia ediyordu. İki cümle
-yan yana duruyordu; kimse ikisini birden okumamıştı.
+**En can sıkıcı örnek sonuncusu**, çünkü bilgi zaten kayıtlıydı: testin kendi
+yorumu *"`Replace` sürüm çözümlemesi yapmıyor; çözümleme dizinden yüklemede"*
+diyordu ve testin **adı** sürüm çözümlemesini iddia ediyordu. İki cümle yan yana
+duruyordu; kimse ikisini birden okumamıştı. Diğer üçü keşif ya da araç
+gerektirdi, bu yalnızca dikkat gerektiriyordu.
 
 #### Katalogda arandı — üç bulgu
 
