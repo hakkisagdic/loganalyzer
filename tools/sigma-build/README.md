@@ -12,10 +12,52 @@ Tasarımın tamamı ve kararların gerekçeleri:
 | --- | --- |
 | `view_columns.py` — görünüm kolon kümesini göçlerden türetir | ✅ |
 | `detections/schema/view-columns.json` — türetilmiş küme, versiyonlu | ✅ |
-| Kapı 1 — kural SQL'i var olmayan kolona gidiyor mu | ⏳ sırada |
+| `gate.py` — Kapı 1: kural SQL'i var olmayan kolona gidiyor mu | ✅ |
 | Kapı 2 — `EXPLAIN` (kendi CI işinde) | ⏳ |
 | Manifest, takaslı yazım, sürüklenme kapısı | ⏳ |
 | Gerçek derleme | ⏳ T31'i bekliyor |
+
+## Kapı 1 — ne yakalıyor, ne yakalamıyor
+
+Kolon **varlığına** bakıyor. Örneklemdeki 24 gerçek sorguda ölçüldü:
+**8 kural takılıyor, 16'sı geçiyor.**
+
+| Kural | Engel |
+| --- | --- |
+| `fortigate_blocked_category` | `url` |
+| `fortigate_dns_tunnel` | `dns_query_name` |
+| `nginx_admin_path` | `url` |
+| `nginx_dns_rebind` | `query` |
+| `nginx_large_upload` | `http_method`, `url` |
+| `nginx_scanner_agent` | `user_agent` |
+| `nginx_sqli_probe` | `url` |
+| `routeros_dns_request` | `dns_query_name` |
+
+**Yakalayamadığı:** tip uyuşmazlığı — kolon var, karşılaştırma geçersiz.
+Örneklemde iki tane var ve ikisi de Kapı 1'i **geçiyor**, geçmeleri de doğru:
+
+- `connection_info_protocol_name=6` — kolon `LowCardinality(String)`
+- `src_endpoint_ip ILIKE '203.0.113.%'` — kolon `IPv6`, `ILIKE` String istiyor
+
+Kapı 1'in bunları yakalaması ancak kolon tiplerini de modellemesiyle olurdu,
+yani ClickHouse'un yarısını yeniden yazmakla. Yakalayan yer Kapı 2. İki kapının
+neden ayrı olduğu bu; biri diğerinin yerine konursa yakalanmayan sınıf sessiz
+kalır.
+
+`8 + 2 = 10`, ve `compiled=24 / runs=14`. Örneklem tam olarak açıklandı.
+
+## Ad çıkarımı gürültülü tarafa yanılıyor
+
+SQL'den kolon adı çıkarmak tam bir ayrıştırıcı olmadan kesin değil. Bilinmeyen
+bir ClickHouse anahtar sözcüğü kolon sanılabilir — ve bu **kasıtlı olarak**
+kabul edilen taraf:
+
+| Yanılma | Sonuç |
+| --- | --- |
+| Anahtar sözcük kolon sanıldı | Kural reddedilir, rapora düşer — **gürültülü**, listeye bir sözcük eklenir |
+| Kolon referansı görülmedi | Kural kapıdan **geçer**, çalışma zamanında kırılır — **sessiz** |
+
+Yanılma yönünün kendisi bir testle çivili (`test_bilinmeyen_sozcuk_gurultulu_tarafa_yaniliyor`).
 
 ## Neden ayrı bir dizin, `sidecar/` değil
 
@@ -80,9 +122,16 @@ ClickHouse'suz ve pySigma'sız koşabilmesinin sebebi bu.
 
 CI'da `sigma-build` işi bu testleri ve `--check` kapısını koşturuyor.
 
-### Ölçülmüş: kapı kırmızı yanabiliyor
+Testler pySigma **istemiyor**: `tests/fixtures/generated-sql-sample.json`
+prototipin 24 kuralının gerçek backend çıktısını donmuş olarak taşıyor.
+Prototip "atılabilir" işaretli ve testler kurulum durumuna bağlanmamalı.
+T31'in kalıcı pipeline'ı geldiğinde örneklem yenilenir.
 
-Beş mutasyon uygulandı, her biri en az bir testi düşürdü, sonra geri alındı:
+### Ölçülmüş: kapılar kırmızı yanabiliyor
+
+On mutasyon uygulandı, her biri en az bir testi düşürdü, sonra geri alındı.
+
+`view_columns.py`:
 
 | Mutasyon | Düşen test |
 | --- | --- |
@@ -91,6 +140,16 @@ Beş mutasyon uygulandı, her biri en az bir testi düşürdü, sonra geri alın
 | Parantez derinliği sayılmadı (naif virgül bölmesi) | 12 |
 | Ad kuralı zorlaması kaldırıldı | 1 |
 | Adsız ifade sessizce kabul edildi | 1 |
+
+`gate.py`:
+
+| Mutasyon | Düşen test |
+| --- | --- |
+| Metin sabitleri elenmedi | 12 |
+| Fonksiyon adları elenmedi | 1 |
+| Tablo adı elenmedi | 16 |
+| Anahtar sözcükler elenmedi | 15 |
+| Kapı her şeyi geçirdi | 6 |
 
 ## Koşturmadığım test
 
