@@ -55,17 +55,14 @@ public sealed partial class ScopeCoverageTests
     /// </summary>
     private static readonly Dictionary<string, string> Pending = new(StringComparer.Ordinal)
     {
-        ["GetEventHistogramAsync"] =
-            "Histogram kapsam dışı satırları saymamalı; T15'in ekranı bunu gösteriyor ama negatif testi yok.",
-        ["GetFirstSeenSignaturesAsync"] =
-            "F3 korelasyonu (T35). İlk-görülen imza başka grubun verisinden gelirse rapor yanlış olur.",
-        ["GetSignatureVolumeAsync"] = "F3 korelasyonu (T35), aynı gerekçe.",
-        ["GetAttributeLiftAsync"] = "F3 korelasyonu (T35), aynı gerekçe.",
-        ["GetPropagationAsync"] = "F3 korelasyonu (T35), aynı gerekçe.",
-        ["CountOutOfScopeChangesAsync"] =
-            "Kapsam dışı DEĞİŞİKLİK sayımı. Olay tarafının eşdeğeri (`CountOutOfScopeEventsAsync`) sınanıyor, bu sınanmıyor.",
-        ["CanReadRawObjectAsync"] =
-            "Ham nesne okuma kapısı (T04). Kapsam kararı nesne anahtarından veriliyor; negatif testi ham arşiv tarafında.",
+        // BOŞ. Yedi satırla açıldı; yedisi de bu turda kapandı.
+        //
+        // Beşi T35'in korelasyonlarıydı ve ticket `status:2` görünüyordu —
+        // yani "bitmiş" bir işin kapsam kapısı hiç sınanmamıştı. Kalan ikisi
+        // değişiklik sayımı ve ham nesne kapısıydı.
+        //
+        // Buraya satır eklemek serbest ama bedeli görünür: eklenen her satır,
+        // sınanmamış bir kapsam kararı demek.
     };
 
     /// <summary>
@@ -200,6 +197,31 @@ public sealed partial class ScopeCoverageTests
     /// <summary>
     /// Muafiyet listesi sessizce genişlemiyor (§8).
     /// </summary>
+    /// <summary>
+    /// <b>Liste boşaldı mı.</b>
+    ///
+    /// <para>
+    /// Yedi satırla açıldı ve yedisi de kapandı; bu test o durumu <b>sabitliyor</b>.
+    /// Ayrı bir test olması bilinçli: yukarıdaki bekçi "listede olan bir kalem
+    /// sorun değil" diyor, bu ise "listede kalem <i>olmaması</i> gerekiyor"
+    /// diyor. İkisi farklı iddialar ve ikincisi kaybolursa liste sessizce
+    /// yeniden dolabilir.
+    /// </para>
+    ///
+    /// <para>
+    /// Kalıp <c>ProducesContractTests.Izin_listesi_bosaldi_mi</c>'dan; orada da
+    /// listenin boşalması bir fazın bitiş şartıydı.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Izin_listesi_bosaldi_mi()
+    {
+        Assert.True(
+            Pending.Count == 0,
+            "Sınanmamış kapsam kararı var:\n  " + string.Join("\n  ", Pending.Keys) +
+            "\n\nHer satır, kapsam kapısının doğru çalıştığı gösterilmemiş bir yol demek.");
+    }
+
     [Fact]
     public void Muafiyet_sayisi_sabit()
     {
