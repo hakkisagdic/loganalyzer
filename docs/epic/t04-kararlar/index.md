@@ -103,14 +103,14 @@ yakalanabilirdi — baştan beri dosyada okunabilir birer sözleşme ihlaliydile
 | 1 | **Lifecycle / tiering** | Ticket'ta açıkça "v2" |
 | 2 | **Scrub örnekleme oranı** | `ScrubSampleSize = 20` yapılandırmada; bu sayının **neden 20 olduğu kayıtta yok**. Kaç nesneden kaçının örneklendiği ve o oranın kaybı ne kadar sürede yakalayacağı ölçülmemiş |
 | 3 | **48 saatlik pencere ölçülmedi** | `SegmentRetention = 48:00:00`. Risk #13'ün gerekçesi yazılı ama sürenin **neden 48 olduğu kayıtta yok** — RustFS'in kayıp fark etme süresine karşı ölçülmüş bir sayı değil |
-| 4 | **Kayıp nesnenin yerelden geri yüklenmesi** | Politika bu; WAL segmenti 48 saat duruyor. Ama *"nesne kayboldu, segmentten yeniden yükle"* yolunu koşturan bir kod ya da test **yok**. Manifest kaybı **görüyor** (`RawObjectState.Missing`), kurtarma elle. → **[T39](../tickets/ham-arsiv-kurtarma/index.md)** |
+| 4 | **Kayıp nesnenin yerelden geri yüklenmesi** | Politika bu; WAL segmenti 48 saat duruyor. Ama *"nesne kayboldu, segmentten yeniden yükle"* yolunu koşturan bir kod ya da test **yok**. Manifest kaybı **görüyor** (`RawObjectState.Missing`), kurtarma elle. → **[T40](../tickets/ham-arsiv-kurtarma/index.md)** |
 
 Dördüncüsü en dikkat çekeni: koruma **tasarlanmış** ve saklama süresi ona göre
 seçilmiş, ama kurtarmayı yapan şey yazılmamış. Bugünkü hâlde manifest kaybı
 raporluyor ve gerisi operatörde.
 
 Ticket'a çevrilirken kod tekrar okundu ve iki şey daha çıktı — ikisi de
-mekanizmanın tasarımını değiştiriyor, ayrıntısı T39'da:
+mekanizmanın tasarımını değiştiriyor, ayrıntısı T40'ta:
 
 - **Kaybın tespit edilmiş olması kurtarma kaynağını korumuyor.**
   `DeleteExpiredSegmentsAsync` silme kararını yalnızca `VerifiedAt`'e bakarak
