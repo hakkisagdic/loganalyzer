@@ -80,6 +80,13 @@ class RuleOutcome:
     #: `unmapped[...]` erişimi içeriyor mu (indekssiz, yani yavaş).
     unmapped_hits: int = 0
 
+    #: Bu kuralın vendor'ına ait HİÇ satır yok.
+    #:
+    #: `matches=False` ile karıştırılmamalı: biri "kural eşleşmedi", diğeri
+    #: "ölçülecek veri yoktu". İkisini tek sayıya indirmek, kapsam kararını
+    #: yüklenmemiş bir fixture'a dayandırmak olurdu.
+    no_data: bool = False
+
     #: Tablo adının elle düzeltilmesi gerekti mi. Gerekiyorsa backend durum
     #: değişkenini okumuyor demektir ve bu T31'in çözmesi gereken bir şey.
     table_rewritten: bool = False
@@ -103,8 +110,28 @@ class Report:
     table_rewrites: int = 0
     unmapped_rules: int = 0
 
+    no_data: int = 0
+
+    #: `events_ocsf` satır sayısı ve vendor dağılımı — ön kontrolden.
+    view_rows: int = 0
+    vendor_rows: dict[str, int] = field(default_factory=dict)
+
     outcomes: list[RuleOutcome] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+
+    @property
+    def measurable(self) -> int:
+        """Verisi olan kurallar — kapsam oranının paydası.
+
+        `no_data` olanlar düşülüyor: ölçülemeyen bir kuralı "eşleşmedi"
+        saymak, oranı fixture eksikliğiyle aşağı çekerdi.
+        """
+        return self.rules - self.no_data
+
+    @property
+    def match_ratio(self) -> float:
+        """Kapsam kararının dayanağı: eşleşen / ölçülebilir."""
+        return self.matches / self.measurable if self.measurable else 0.0
 
     @property
     def mapping_lines_per_rule(self) -> float:
@@ -193,6 +220,82 @@ def run_on_clickhouse(sql: str, url: str, user: str, password: str, timeout: flo
         return 0, f"{type(exc).__name__}: {exc}"
 
 
+@dataclass
+class Preflight:
+    """Ölçüme başlamadan önce verinin gerçekten orada olduğunun kanıtı."""
+
+    ok: bool
+    reason: str = ""
+    rows: int = 0
+    vendors: dict[str, int] = field(default_factory=dict)
+
+
+def preflight(url: str, user: str, password: str, timeout: float) -> Preflight:
+    """`events_ocsf` ölçülebilir durumda mı.
+
+    **Neden reddetmek gerekiyor:** altın örnekler yüklenmemişse her kural
+    `runs=true, matches=false` verir. O tablo, "kural eşleşmedi" diye okunur ve
+    kapsam kararı yüklenmemiş bir fixture'a dayandırılır — protokolün
+    engellemek için var olduğu sessiz yanlış sonuç sınıfının ta kendisi.
+
+    Üç durumu ayırıyor, çünkü üçünün cevabı farklı:
+
+    * Sorgu **hata** verdi   → görünüm yok ya da kimlik yanlış; ölçüm yapılamaz
+    * Satır sayısı **sıfır** → veri yüklenmemiş; ölçüm yapılmamalı
+    * Satır var              → ölçülebilir, ama vendor dağılımı da raporlanıyor
+    """
+    total, error = run_on_clickhouse("SELECT * FROM events_ocsf", url, user, password, timeout)
+
+    if error:
+        return Preflight(
+            ok=False,
+            reason=(
+                "`events_ocsf` sorgulanamadı. Görünüm oluşturulmamış ya da kimlik bilgisi "
+                f"yanlış olabilir. ClickHouse yanıtı: {error}"
+            ),
+        )
+
+    if total == 0:
+        return Preflight(
+            ok=False,
+            rows=0,
+            reason=(
+                "`events_ocsf` BOŞ. Altın örnekler yüklenmeden ölçüm yapılırsa her kural "
+                "`runs=true, matches=false` verir ve bu 'kural eşleşmedi' diye okunur. "
+                "Önce örnekleri yükleyin; yalnızca derleme sayıları isteniyorsa "
+                "`--clickhouse-url` VERMEDEN koşun (statik kip)."
+            ),
+        )
+
+    # Vendor dağılımı: yalnızca FortiGate yüklüyse Cisco kurallarının
+    # `matches=0` vermesi eşlemenin değil fixture'ın eksikliği.
+    vendors: dict[str, int] = {}
+
+    for vendor in ("Fortinet", "Cisco", "MikroTik"):
+        rows, _ = run_on_clickhouse(
+            f"SELECT * FROM events_ocsf WHERE device_vendor_name = '{vendor}'",
+            url, user, password, timeout,
+        )
+        vendors[vendor] = rows
+
+    rows, _ = run_on_clickhouse(
+        "SELECT * FROM events_ocsf WHERE metadata_product_name = 'nginx'",
+        url, user, password, timeout,
+    )
+    vendors["nginx"] = rows
+
+    return Preflight(ok=True, rows=total, vendors=vendors)
+
+
+#: Kuralın `logsource.product` değeri → ön kontroldeki vendor anahtarı.
+PRODUCT_TO_VENDOR = {
+    "fortigate": "Fortinet",
+    "asa": "Cisco",
+    "routeros": "MikroTik",
+    "nginx": "nginx",
+}
+
+
 def measure(args: argparse.Namespace) -> Report:
     import yaml
 
@@ -202,6 +305,12 @@ def measure(args: argparse.Namespace) -> Report:
         mapped_fields=mapped_field_count(),
         pipeline_lines=pipeline_line_count(),
     )
+
+    checked = getattr(args, "_preflight", None)
+
+    if checked is not None:
+        report.view_rows = checked.rows
+        report.vendor_rows = dict(checked.vendors)
 
     started = time.monotonic()
     with_pipeline = compile_rules(with_pipeline=True)
@@ -229,11 +338,17 @@ def measure(args: argparse.Namespace) -> Report:
             outcome.sql = sql
 
             if args.clickhouse_url:
+                vendor = PRODUCT_TO_VENDOR.get(outcome.product, "")
+                outcome.no_data = bool(vendor) and report.vendor_rows.get(vendor, 0) == 0
+
                 rows, run_error = run_on_clickhouse(
                     sql, args.clickhouse_url, args.clickhouse_user, args.clickhouse_password, args.timeout
                 )
                 outcome.runs = not run_error
                 outcome.rows = rows
+
+                # Vendor'ın hiç satırı yoksa `matches=False` bir SONUÇ değil,
+                # ölçümün yapılamadığının işareti; oranın paydasından düşülüyor.
                 outcome.matches = outcome.runs and rows > 0
 
                 if run_error:
@@ -248,6 +363,15 @@ def measure(args: argparse.Namespace) -> Report:
     report.untouched = sum(1 for o in report.outcomes if o.untouched)
     report.table_rewrites = sum(1 for o in report.outcomes if o.table_rewritten)
     report.unmapped_rules = sum(1 for o in report.outcomes if o.unmapped_hits > 0)
+    report.no_data = sum(1 for o in report.outcomes if o.no_data)
+
+    if report.no_data:
+        missing = sorted({o.product for o in report.outcomes if o.no_data})
+        report.notes.append(
+            f"{report.no_data} kuralın vendor'ına ait HİÇ satır yok ({', '.join(missing)}). "
+            "Bunların `matches=false` olması eşlemenin değil fixture'ın eksikliği; "
+            "kapsam oranının paydasından düşüldüler."
+        )
 
     if not args.clickhouse_url:
         report.notes.append(
@@ -279,6 +403,31 @@ def main() -> int:
     parser.add_argument("--json", default="", help="ölçümü bu dosyaya JSON olarak yaz")
     args = parser.parse_args()
 
+    # ÖN KONTROL — ölçümden önce, ve geçemezse ölçüm HİÇ yapılmıyor.
+    #
+    # Sebep protokolün kendisi: boş bir görünüme karşı koşulan ölçüm her kural
+    # için `matches=false` üretir ve o tablo "kapsam düşük" diye okunur. Sıfırı
+    # sonuç sanmak, T30'un engellemek için var olduğu sessiz yanlış sonucun
+    # aynısı — bu sefer ölçüm aracının kendisinde.
+    if args.clickhouse_url:
+        checked = preflight(
+            args.clickhouse_url, args.clickhouse_user, args.clickhouse_password, args.timeout
+        )
+
+        if not checked.ok:
+            print("ÖLÇÜM YAPILMADI.", file=sys.stderr)
+            print(checked.reason, file=sys.stderr)
+            return 3
+
+        print(f"Ön kontrol: events_ocsf {checked.rows} satır")
+
+        for vendor, rows in sorted(checked.vendors.items()):
+            flag = "" if rows else "   ← veri yok, bu vendor'ın kuralları ölçülemez"
+            print(f"  {vendor:<10} {rows:>8}{flag}")
+
+        print()
+        args._preflight = checked
+
     try:
         report = measure(args)
     except ImportError as exc:
@@ -287,9 +436,13 @@ def main() -> int:
         return 2
 
     print(f"Örneklem            : {report.rules} kural")
+    print(f"Ölçülebilir         : {report.measurable} (verisi olan)")
     print(f"Derlendi            : {report.compiled}")
     print(f"ClickHouse kabul etti: {report.runs}")
     print(f"Satır döndürdü      : {report.matches}")
+
+    if args.clickhouse_url:
+        print(f"Eşleşme oranı       : {report.match_ratio:.0%}  ← kapsam kararının dayanağı")
     print(f"Pipeline'a dokunmadı: {report.untouched}")
     print(f"Eşleme satırı       : {report.pipeline_lines} ({report.mapped_fields} alan)")
     print(f"Kural başına eşleme : {report.mapping_lines_per_rule:.2f} satır")
