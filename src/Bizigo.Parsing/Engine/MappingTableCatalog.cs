@@ -32,6 +32,45 @@ public sealed class MappingTableCatalog
         return _tables.TryGetValue(table, out var entries) && entries.TryGetValue(key, out value);
     }
 
+    /// <summary>
+    /// Tablonun üretebileceği <b>bütün</b> değerler — tekrarsız, sıralı.
+    ///
+    /// <para>
+    /// <b>Neden gerekiyor:</b> bir eşleme tablosu, beslediği kolonun değer
+    /// uzayını <b>daraltıyor</b>. <c>outcome</c> kolonu
+    /// <c>http_status_outcome</c>'dan besleniyorsa orada hiçbir zaman bir HTTP
+    /// kodu durmuyor, yalnızca <c>success</c>/<c>failure</c> duruyor — yani
+    /// <c>status|startswith: '5'</c> arayan bir Sigma kuralı, veri ne olursa
+    /// olsun <b>asla</b> eşleşemez. Bu, verinin değil şemanın söylediği bir
+    /// şey ve sorulmadan bilinemez (T39).
+    /// </para>
+    ///
+    /// <para>
+    /// Bilinmeyen tablo için boş dizi dönmüyor, <b>istisna</b> atıyor: boş dizi
+    /// "değer uzayı yok" ile "tablo yok"u aynı şeye indirir ve ikincisi
+    /// sessizce "hiçbir değer üretilemiyor" diye okunurdu.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<string> Outputs(string table)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(table);
+
+        if (!_tables.TryGetValue(table, out var entries))
+        {
+            throw new KeyNotFoundException($"Eşleme tablosu bulunamadı: {table}");
+        }
+
+        return
+        [
+            .. entries.Values
+                .Select(static value => Convert.ToString(
+                    value, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty)
+                .Where(static value => value.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(static value => value, StringComparer.Ordinal),
+        ];
+    }
+
     public static MappingTableCatalog LoadFromDirectory(string directory)
     {
         var tables = new Dictionary<string, IReadOnlyDictionary<string, object?>>(StringComparer.Ordinal);

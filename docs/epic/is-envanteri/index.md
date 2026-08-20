@@ -231,6 +231,44 @@ parametresinin özelliği olacaktı. Önleyen şey bir uyarı değil bir **imza*
 
 Ayrıntı: [`t39-alan-kapsami`](../t39-alan-kapsami/index.md).
 
+#### Koşum düzeninin sessiz yanlışı
+
+Yukarıdakiler aracın kendisiyle ilgiliydi. Bunun bir kardeşi var ve **kod hiç
+değişmiyor**: araç doğru, ölçüm doğru, ama **çıkış kodu kimseye ulaşmıyor.**
+
+Kalıp tek satır:
+
+```bash
+dotnet test … 2>&1 | tail -5        # tail 0 döndürüyor, test kırmızıysa bile
+komut_a && komut_b >/dev/null 2>&1  # a'nın çıktısı da hatası da yutuluyor
+```
+
+Kabuk boru hattının çıkış kodu **son** komutundan gelir ve `tail` her hâlükârda
+başarılı. Sonuç: kırmızı bir koşum "geçmiş" görünüyor, `&&` zinciri devam
+ediyor, ve bir sonraki adım **bayat ikiliyle** koşuyor.
+
+Bu turda dört kez oldu:
+
+| Kim | Nasıl | Sonucu |
+| --- | --- | --- |
+| Sigma tarafı | `&&` zinciri `tail` ile bitiyordu | Bir testi **kırmızıyken commit etti** |
+| Koordinatör | `$?`'ı `tail`'in ardından okudu | İki kez; koşum "geçti" göründü |
+| T39 | Mutasyon sonrası `dotnet build … >/dev/null 2>&1` | Derleme **hata verdi**, test bayat ikiliyle koştu ve "bulgu yok" gibi göründü. Kırmızı ölçümü tekrarlamak gerekti |
+
+**Neden ölçüm aracının yalanıyla aynı sınıf:** her ikisinde de "ölçemedim" ile
+"sorun yok" aynı çıktıya iniyor. Farkı, buradaki kusurun **koda hiç
+dokunmaması** — hiçbir test, hiçbir bekçi bunu yakalayamaz, çünkü kusur testin
+kendisinde değil onu koşturan satırda.
+
+**Uygulanacak alışkanlık:** ölçüm koşumlarında boru hattı **kırpma amaçlı
+kullanılmaz**; çıktı gerekiyorsa önce dosyaya yazılıp sonra kırpılır, ya da
+`set -o pipefail` açılır. `>/dev/null` ile susturulan bir adımın ardından `&&`
+gelmez — susturulan adım başarısız olabilir ve zincir onu görmez.
+
+Bu üç bölüm birlikte okunmalı: **bekçinin körlüğü → ölçüm aracının yalanı →
+koşum düzeninin sessizliği.** Üçü de aynı soruyu farklı katmanda soruyor:
+*"ölçemediğimi söyleyebiliyor muyum?"*
+
 ## 3 · Doğrulanmamış olan
 
 | # | Ne | Kim |

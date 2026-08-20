@@ -3,6 +3,7 @@ using Bizigo.Cli.Fields;
 using Bizigo.Cli.Seeding;
 using Bizigo.Contracts;
 using Bizigo.Parsing.Dispatch;
+using Bizigo.Parsing.Engine;
 using Bizigo.Parsing.Grok;
 using Bizigo.Storage.ClickHouse;
 
@@ -309,4 +310,147 @@ internal static class FieldsCommandHandlers
 
     private static string Clip(string text) =>
         text.Length <= 70 ? text : text[..67] + "…";
+
+    /// <summary>
+    /// <c>bizigo fields values</c> — kolonların taşıyabildiği değerleri çıkarır,
+    /// istenirse Sigma kurallarıyla birleştirir.
+    ///
+    /// <para>
+    /// Bu ölçüm <b>veriye hiç bakmıyor</b> ve bakmaması asıl özelliği: örneklemde
+    /// bir değerin bulunmaması "bugün yok", şemanın onu üretememesi "hiçbir zaman
+    /// olmayacak" demek. İkisi Kapı 3'ün tablosunda aynı görünüyor ve verdikleri
+    /// iş emri zıt.
+    /// </para>
+    /// </summary>
+    public static int Values(
+        string catalogDirectory,
+        string mappingsDirectory,
+        string migrationsDirectory,
+        string? rulesJson,
+        string pipelinePath)
+    {
+        var columns = OcsfViewSchema.Read(migrationsDirectory);
+        var tables = MappingTableCatalog.LoadFromDirectory(mappingsDirectory);
+        var spaces = ColumnValueSpaces.Build(catalogDirectory, tables, columns);
+
+        if (spaces.Count == 0)
+        {
+            Console.Error.WriteLine($"hata   {catalogDirectory} altında `metadata.vendor` taşıyan parser yok.");
+            return 1;
+        }
+
+        Console.WriteLine(string.Create(
+            CultureInfo.InvariantCulture,
+            $"""
+             === kolon değer uzayları (T39) ===
+             katalog : {catalogDirectory}
+             tablolar: {mappingsDirectory}
+             görünüm : {columns.Count} kolon
+             """));
+
+        foreach (var space in spaces)
+        {
+            Console.WriteLine();
+            Console.WriteLine(string.Create(
+                CultureInfo.InvariantCulture,
+                $"=== {space.Vendor} ({string.Join(", ", space.Products)}) ==="));
+
+            foreach (var column in space.Columns.Values.OrderBy(
+                         static column => column.Alias, StringComparer.Ordinal))
+            {
+                var body = column.Kind switch
+                {
+                    ValueSpaceKind.Open => "AÇIK — cihaz ne yazarsa",
+                    ValueSpaceKind.Absent => "YOK",
+                    _ => "KAPALI: " + string.Join(" · ", column.Values),
+                };
+
+                Console.WriteLine($"  {column.Alias,-32} {Clip(body)}");
+
+                if (column.Kind == ValueSpaceKind.Closed)
+                {
+                    Console.WriteLine($"  {string.Empty,-32} ← {string.Join(", ", column.Sources)}");
+                }
+            }
+
+            if (space.UnreachableCoreFields.Count > 0)
+            {
+                // Parser dolduruyor, normalizasyon hiçbir kolona taşımıyor.
+                Console.Error.WriteLine(
+                    "  ⚠ hiçbir kolona ulaşmayan `core` alanı: " +
+                    string.Join(", ", space.UnreachableCoreFields));
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(rulesJson))
+        {
+            Console.WriteLine();
+            Console.WriteLine(
+                "Kural birleştirmesi atlandı (--rules verilmedi). Üretmek için:\n" +
+                "  python3 prototypes/t30-sigma/explain_misses.py --json /tmp/misses.json");
+            return 0;
+        }
+
+        return JoinRules(rulesJson, spaces, pipelinePath);
+    }
+
+    private static int JoinRules(
+        string rulesJson,
+        IReadOnlyList<VendorValueSpace> spaces,
+        string pipelinePath)
+    {
+        var rules = RuleReachability.ReadRules(rulesJson);
+        var fieldMap = SigmaFieldMap.Read(pipelinePath);
+        var reaches = RuleReachability.Join(rules, spaces, fieldMap);
+
+        var unreachable = reaches.Where(static item => item.Verdict == ReachVerdict.Unreachable).ToList();
+        var gaps = reaches.Where(static item => item.Verdict == ReachVerdict.ParserGap).ToList();
+        var unknown = reaches.Where(static item => item.Verdict == ReachVerdict.Unknown).ToList();
+        var mistaken = reaches.Where(static item => item.TextAxisWrong).ToList();
+
+        Console.WriteLine();
+        Console.WriteLine(string.Create(
+            CultureInfo.InvariantCulture,
+            $"""
+             === kural × değer uzayı ({rules.Count} kural, {reaches.Count} dizge) ===
+             alan çevirisi: {pipelinePath} ({fieldMap.Count} giriş)
+             ERİŞİLEMEZ    : {unreachable.Count} dizge — şema söylüyor, örneklem değil
+             PARSER BOŞLUĞU: {gaps.Count} dizge — vendor'da açık ama bazı parser'lar hiç doldurmuyor
+             söylenemez    : {unknown.Count} dizge — uzay açık, şema bir şey demiyor
+             erişilebilir  : {reaches.Count - unreachable.Count - gaps.Count - unknown.Count} dizge
+             """));
+
+        Section("ERİŞİLEMEZ — örneklem düzelse de eşleşmez", unreachable);
+        Section("PARSER BOŞLUĞU — kural o parser'ın satırlarına vuruyorsa eşleşemez", gaps);
+        Section("METİN EKSENİ YANILIYOR — ham satırda yok ama kolonda VAR", mistaken);
+
+        Console.WriteLine();
+        Console.WriteLine(
+            "Okuma notu: bu üç liste `explain_misses.py`'nin metin ekseninden BAĞIMSIZ.\n" +
+            "Orada 'desen YOK' çıkan bir kural örneklem büyüyünce eşleşebilir; burada\n" +
+            "ERİŞİLEMEZ çıkan bir kural, örneklem ne olursa olsun eşleşmez. Üçüncü liste\n" +
+            "ters yönü gösteriyor: metin ekseninin 'yok' dediği bir değer, eşleme tablosu\n" +
+            "onu üretiyorsa kolonda vardır ve kural doğrudur.");
+
+        return 0;
+    }
+
+    private static void Section(string title, IReadOnlyList<LiteralReach> items)
+    {
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        Console.WriteLine();
+        Console.WriteLine($"### {title}");
+
+        foreach (var item in items.OrderBy(static item => item.Rule, StringComparer.Ordinal))
+        {
+            Console.WriteLine(string.Create(
+                CultureInfo.InvariantCulture,
+                $"  {item.Rule}  [{item.Vendor}]  {item.Literal.Field}|{item.Literal.Operator} = '{item.Literal.Value}'"));
+            Console.WriteLine($"      {item.Reason}");
+        }
+    }
 }

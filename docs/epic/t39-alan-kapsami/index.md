@@ -143,9 +143,87 @@ koşulu + SQL ifadesi). İki taraf ayrışsaydı fark *"yazma yolunda kayıp"* d
 raporlanırdı — araç kendi kusurunu ürünün kusuru gibi gösterirdi. `Unknown()`
 bekçisi `EventWriter`'ın yazdığı her kolonun tanımlı olduğunu sınıyor.
 
+## Dördüncü ölçüm — kolonun taşıyabildiği değerler (`fields values`)
+
+Üç kutu "bilgi alan oldu mu" diye soruyor. Bu ölçüm bir adım öte gidiyor:
+**alan oldu ama hangi değerleri taşıyabiliyor.**
+
+Bir eşleme tablosu, beslediği kolonun değer uzayını **daraltıyor**. `status`
+kolonu `outcome`'dan geliyor ve `http_status_outcome.yaml` HTTP kodunu
+`success`/`failure`'a çeviriyor — yani o kolonda **hiçbir zaman bir sayı
+durmuyor**. `status|startswith: '5'` arayan bir kural, örneklem düzelse de
+eşleşemez.
+
+Ölçüm **veriye hiç bakmıyor** ve bakmaması asıl özelliği: örneklemde bir
+değerin bulunmaması *"bugün yok"*, şemanın onu üretememesi *"hiçbir zaman
+olmayacak"*. İkisi aynı tabloda aynı görünüyor ve verdikleri iş emri zıt.
+
+### Ölçülen değer uzayları
+
+Dört vendor için `status` **kapalı** ve yalnızca `failure` · `success`
+taşıyor. `class_uid`, `activity_id`, `severity_id`,
+`connection_info_protocol_name`, `device_vendor_name`, `metadata_product_name`
+de kapalı. `activity_name`, `actor_user_name`, `device_hostname` ve uç noktalar
+**açık** — cihaz ne yazarsa.
+
+### Kural birleştirmesi — 24 kural, 33 dizge
+
+Kuralları **okumuyor**: `explain_misses.py --json` zaten `alan|operatör = değer`
+üçlülerini çıkarıyor, bu taraf onu tüketiyor. Alan adı çevirisi de
+`bizigo_pipeline.py`'nin `FIELD_MAP`'inden okunuyor. İki ayrıştırıcı yazmak,
+iki aracın aynı kuralı farklı kolona bağladığı günü hazırlamak olurdu.
+
+| Sınıf | Sayı | Anlamı |
+| --- | --- | --- |
+| **ERİŞİLEMEZ** | **0** | Aradım, yok — bugünkü korpusta hiçbir kural, gittiği kolonun üretemeyeceği bir değer aramıyor |
+| **PARSER BOŞLUĞU** | 4 | Vendor'da açık ama bazı parser'lar kolonu hiç doldurmuyor |
+| **METİN EKSENİ YANILIYOR** | 1 | Ham satırda yok ama kolonda **var** |
+| söylenemez | 24 | Uzay açık; şema bir şey demiyor |
+| erişilebilir | 5 | — |
+
+### Parser boşluğu — vendor birleşiminde kaybolan fark
+
+```
+routeros_drop_input.yml  [MikroTik]  action = 'drop'
+    `activity_name` bu vendor'da açık ama mikrotik.routeros.firewall onu HİÇ doldurmuyor.
+
+nginx_dns_rebind.yml     [NGINX]     hostname|contains = 'localhost' (+2 dizge)
+    `device_hostname` açık ama nginx.access.json onu HİÇ doldurmuyor.
+```
+
+Vendor düzeyinde birleşim yanıltıyordu: `activity_name` MikroTik'te "açık"
+görünüyor çünkü `routeros.system` dolduruyor — ama kural firewall satırlarına
+vuruyor. Liste olmasaydı ölçüm *"açık uzay, söylenemez"* der ve asıl cevabı
+gizlerdi. nginx'inki **yeni bir bulgu**: JSON erişim logunda sanal sunucu adı
+yok.
+
+### Metin ekseni yanılıyor — ters yön
+
+```
+fortigate_user_auth_fail.yml  [Fortinet]  status = 'failure'
+    `status` kapalı uzayında `failure` VAR (failure · success) —
+    ham satırda geçmemesi önemli değil, auth_outcome.yaml `failed → failure` çeviriyor.
+```
+
+`explain_misses.py` bu dizgeyi **`absent`** kutusuna koymuştu ve gerekçesi
+*"kural vendor'ın sözlüğünü değil kendi sözlüğünü kullanıyor"*du. Alan ekseninden
+bakınca tersi görünüyor: **ürün zaten çeviriyor**, kolonda gerçekten `failure`
+duruyor, kural doğru.
+
+**Bu, metin ekseninin sistematik bir sapması:** bir eşleme tablosu cihazın
+sözcüğünü normalleştiriyorsa, kuralın aradığı normalleştirilmiş değer ham
+satırda hiç geçmez ve `absent` görünür. `absent` kutusu bu yüzden bir **üst
+sınır**; her elemanı örneklem boşluğu değil. Kapsam oranının paydası hesaplanırken
+bu düşülmeli.
+
 ## Açık kalem
 
-**`Reset-I` bir parser kalemi.** ASA teardown satırlarında `reason` boş kalıyor
-(`reason` yalnızca 3 satırda dolu, hepsi AAA mesajı). Gerçek sonlanma sebebi
-hiçbir alana inmiyor, dolayısıyla o bilgiye vuran her kural ham metne uzanmak
-zorunda. Düzeltilmeden `asa_teardown_rst` doğru sebeple eşleşemez.
+**`Reset-I` yapısal olarak adreslenemiyor.** ASA teardown satırlarında `reason`
+boş kalıyor (`reason` yalnızca 3 satırda dolu, hepsi AAA mesajı). Sonlanma
+sebebi hiçbir yapısal alana inmiyor.
+
+Kuralın kendisi düzeltildi — `Teardown` **AND** `Reset` artık doğru satırı
+buluyor ve `first`/`burst` tesadüfü kalktı. Ama bunu ancak `raw_data`'ya
+uzanarak yapabiliyor: tam metin taraması, indekssiz, ve kolon karşılaştırmasının
+verdiği garantiyi vermiyor. Kalem *"doğru sebeple eşleşemez"* değil
+**"yapısal olarak adreslenemiyor"** — birincisi artık yanlış, ikincisi kalıcı.
