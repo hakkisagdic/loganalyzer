@@ -398,6 +398,22 @@ aynı kalıyor, gerekçesi değişerek:
 eşleşmediği hâlâ ölçülmedi. Hepsinin sebebi eşleme kusuru çıkarsa oran
 düşmez ama *"eşlemeyi düzelt"* önceliği kapsamın önüne geçer.
 
+## Korpus tasarımı kalemi — tuzak değil
+
+`nginx_dns_rebind` bugün eşleşmiyor ve **kural doğru**. `nginx.access` parser'ı
+iki biçim tanıyor: `combined` `core.host`'u `http_vhost`'tan dolduruyor, `json`
+doldurmuyor. Kural combined satırlara vurur ve doğru sonuç verir; altın
+örneklerimizin ağırlıklı json olması bir **korpus** özelliği.
+
+9. tuzakla karıştırılmamalı: orada kolon o vendor'da **hiç** dolmuyordu, burada
+doluyor. `logsource` ile daraltmak şemamızın sınırını kuralın içine gömmek
+olurdu — kurallar dışarıdan geliyor ve bizim biçim ayrımımıza göre yeniden
+yazılmamalı (T31'de CIDR'ın reddedilme gerekçesinin aynısı).
+
+**Kalem:** altın örneklerimiz bir vendor'ın iki biçiminden yalnızca birini
+temsil ediyor. Kapsam ölçümü bunu bilmeden okunursa, korpusun darlığı kuralın
+kusuru sanılır.
+
 ## Hâlâ ölçülmedi
 
 - [ ] **Yanlış pozitif**: eşleşen 6 kuralın döndürdüğü satırlar gerçekten o
