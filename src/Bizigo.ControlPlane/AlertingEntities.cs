@@ -186,6 +186,46 @@ public sealed class AlertTriggerEntity
 
     [MaxLength(1024)]
     public string Summary { get; set; } = string.Empty;
+
+    // --- Asgari yaşam döngüsü (T38) ----------------------------------------
+    //
+    // T38 "alarm kapatan kullanıcı inceleme adımını atlayamıyor" diyordu ve
+    // depoda kapatma diye bir şey YOKTU: bu varlık ateşle-unut bir geçmiş
+    // kaydıydı. Kapatma olmadan atlayamama da olmuyor.
+    //
+    // BİLEREK DAR: durum, kapatan, kapatma zamanı, inceleme bağı. Atama,
+    // eskalasyon, susturma yok — susturma zaten ayrı bir kavram ve ayrı bir
+    // tablosu var (MaintenanceWindowEntity).
+
+    public AlertTriggerState State { get; set; } = AlertTriggerState.Open;
+
+    /// <summary>Kapatan kullanıcının OIDC <c>sub</c>'ı. Açıkken boş.</summary>
+    [MaxLength(256)]
+    public string ClosedBySubject { get; set; } = string.Empty;
+
+    public DateTimeOffset? ClosedAt { get; set; }
+
+    /// <summary>
+    /// Kapatırken verilen inceleme. <b>Kapalı bir tetiklenmede dolu olmak
+    /// zorunda</b> — zorunluluğu taşıyan bağ bu, ve boş bırakılabilseydi
+    /// "atlayamıyor" iddiası yalnızca ekranda kalırdı.
+    /// </summary>
+    public Guid? ReviewId { get; set; }
+}
+
+/// <summary>
+/// Tetiklenmenin yaşam döngüsü (T38).
+///
+/// <para>
+/// İki durum yeterli: bir alarm ya bakılmayı bekliyor ya kapatılmış.
+/// Ara durumlar ("inceleniyor", "atandı") ancak sahiplenme varsa anlamlı ve
+/// sahiplenme bu ticket'ın kapsamı dışında.
+/// </para>
+/// </summary>
+public enum AlertTriggerState
+{
+    Open = 0,
+    Closed = 1,
 }
 
 /// <summary>
