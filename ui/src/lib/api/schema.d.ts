@@ -819,6 +819,8 @@ export interface components {
             /** Format: int64 */
             scoped_queries: number | string;
             notifications: components["schemas"]["AlertingNotificationStats"];
+            /** Format: int64 */
+            clock_skewed_sources: number | string;
         };
         AlertPreviewResponse: {
             rule_type: string;
