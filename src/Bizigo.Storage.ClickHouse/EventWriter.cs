@@ -16,7 +16,12 @@ public sealed record WriteResult(long RowsWritten, TimeSpan Duration);
 /// </summary>
 public sealed class EventWriter(ClickHouseContext context)
 {
-    private static readonly string[] EventColumns =
+    /// <summary>
+    /// <c>internal</c>: <see cref="EventFieldKinds"/> bu listenin <b>tamamını</b>
+    /// tanımak zorunda ve bunu bir bekçiyle sınıyor. Kolon eklenip orası
+    /// unutulursa alan kapsamı ölçümü o kolonu sessizce görmezdi.
+    /// </summary>
+    internal static readonly string[] EventColumns =
     [
         "ts", "ingested_at", "time_source", "event_id", "owner_group", "source_id", "host", "vendor", "product",
         "parser_id", "parser_version", "parse_status", "parse_generation", "encoding_detected",
