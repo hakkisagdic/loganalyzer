@@ -2,26 +2,29 @@ title: "FortiGate: kimlik doğrulama hatası"
 id: 03702803-0000-4000-8000-000000000000
 status: experimental
 description: >-
-  T30 ölçüm örneklemi. Kural `status: 'failure'` arıyordu; FortiGate
-  `status="failed"` yazıyor. **Dizge dışında her şey doğruydu** — üretilen SQL
-  doğru, `status` kolonu doğru, veri de var. Yalnızca aranan sözcük vendor'ın
-  yazdığı sözcük değildi.
+  T30 ölçüm örneklemi.
 
-  Bu, `asa_teardown_rst` (`RST` ↔ `Reset-I`) ve `routeros_forward_new`
-  (`action` ↔ `fw_chain`) ile aynı sınıf: kural, vendor'ın yazdığını değil
-  **yazacağını varsaydığımızı** arıyor. Üçü de dışarıdan "eşleşmiyor" diye
-  görünüyordu ve üçünün sebebi farklı sanılıyordu.
+  ⚠️ Bu kural bir tur boyunca `failed`'a çevrildi ve **yanlıştı; geri alındı.**
+  Gerekçe kayda değer, çünkü ölçüm aracının bir kör noktasıydı.
 
-  Düz bir varlık kontrolü bunu "örneklemde desen yok" sayardı — yani
-  düzeltilebilir bir kural hatası, ölçülemez bir örneklem boşluğu gibi
-  okunurdu. `explain_misses.py`'nin yakın-sözcük uyarısı ayırdı:
-  `'failure' ↔ failed`.
+  Ham FortiGate satırı `status="failed"` yazıyor, dolayısıyla metin ekseninde
+  bakan bir araç `failure` dizgesini örneklerde bulamıyor ve "örneklem boşluğu"
+  diyor. Ama `catalog/mappings/auth_outcome.yaml` ingest sırasında
+  `failed → failure` **çeviriyor**: `status` kolonunda gerçekten duran değer
+  `failure`.
+
+  Yani kural baştan doğruydu. `failed`'a çevirmek onu kolonun hiç taşımadığı
+  bir değere bağlıyordu — düzeltme diye yapılan şey kuralı bozuyordu.
+
+  Ders: bir eşleme tablosu cihazın sözcüğünü normalleştiriyorsa, kuralın
+  aradığı **normalleştirilmiş** değer ham satırda hiç geçmez. `absent` kutusu
+  bir ÜST SINIR; her elemanı örneklem boşluğu değil.
 logsource:
   category: firewall
   product: fortigate
 detection:
   selection:
-    status: 'failed'
+    status: 'failure'
     user|contains: 'admin'
   condition: selection
 level: medium
