@@ -5,6 +5,7 @@
       "rule_id": "07131427-0000-4000-8000-000000000000",
       "file_name": "07131427-0000-4000-8000-000000000000.sql",
       "expect": "none",
+      "kind": "invariant",
       "why": "routeros_winbox_access — kural `dst_endpoint_port=8291` arıyor ve `8291` MikroTik örneklerinin İKİSİNDE DE hiç geçmiyor (firewall.log 0, system.log 0). Yanlış pozitif bekçisi: bu kural satır döndürürse ya port eşlemesi ya vendor daraltması bozulmuştur."
     },
     {
@@ -23,6 +24,7 @@
       "rule_id": "21934394-0000-4000-8000-000000000000",
       "file_name": "21934394-0000-4000-8000-000000000000.sql",
       "expect": "none",
+      "kind": "invariant",
       "why": "asa_deny_inbound — kural `activity_name='Deny' AND dst_endpoint_port=445` arıyor; `445` cisco.asa/samples/network.log içinde hiç geçmiyor. Örnekte `Deny tcp` satırları VAR, yani bu beklenti `activity_name` koşulunu değil **port koşulunu** sınıyor — ikisi AND ile bağlı ve biri tutmuyor."
     },
     {
