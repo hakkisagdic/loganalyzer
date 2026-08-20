@@ -1,22 +1,32 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Bizigo.Alerting.Notifications;
+namespace Bizigo.Contracts.Security;
 
 /// <summary>
-/// Kanal gizli bilgilerinin şifrelenmesi (T22).
+/// Saklanan gizli bilgilerin şifrelenmesi — bildirim kanalları (T22) ve
+/// connector kimlik bilgileri (T25) için <b>ortak</b>.
 ///
 /// <para>
 /// <b>AES-256-GCM</b>: şifreleme ve bütünlük tek işlemde. Sadece şifreleseydik
 /// (ör. AES-CBC) veritabanına erişebilen biri şifreli metni <b>değiştirebilir</b>
 /// ve webhook'un gideceği adresi sessizce başka bir yere çevirebilirdi —
 /// alarmların bir saldırganın sunucusuna akması, okunamayan bir paroladan çok
-/// daha kötü.
+/// daha kötü. Aynı gerekçe connector tarafında daha da sert: kurcalanmış bir
+/// kimlik bilgisi, ürünün bir cihaza <b>saldırganın seçtiği</b> adresle
+/// bağlanması demek.
 /// </para>
 ///
 /// <para>
 /// Biçim: <c>base64(nonce ‖ tag ‖ ciphertext)</c>. Nonce her şifrelemede yeniden
 /// üretiliyor; GCM'de nonce tekrarı anahtarı fiilen kırıyor.
+/// </para>
+///
+/// <para>
+/// <b>T25'te <c>Bizigo.Alerting</c>'den buraya taşındı.</b> Connector'ların
+/// alarm motoruna bağımlı olması yanlış yön olurdu, ve ikinci bir şifreleme
+/// şeması yazmak iki anahtar, iki rotasyon hikâyesi demekti. Anahtarın nereden
+/// geldiği <see cref="SecretProtectionOptions"/>'ta karara bağlı.
 /// </para>
 /// </summary>
 public sealed class SecretProtector
@@ -26,11 +36,18 @@ public sealed class SecretProtector
 
     private readonly byte[]? _key;
 
-    public SecretProtector(AlertingOptions options)
+    public SecretProtector(SecretProtectionOptions options)
+        : this(options?.SecretKey)
     {
-        ArgumentNullException.ThrowIfNull(options);
+    }
 
-        if (string.IsNullOrWhiteSpace(options.SecretKey))
+    /// <param name="base64Key">
+    /// base64, 32 bayt. Boş/<see langword="null"/> ise koruyucu
+    /// <b>yapılandırılmamış</b> sayılıyor ve şifreleme reddediliyor.
+    /// </param>
+    public SecretProtector(string? base64Key)
+    {
+        if (string.IsNullOrWhiteSpace(base64Key))
         {
             _key = null;
             return;
@@ -39,18 +56,19 @@ public sealed class SecretProtector
         byte[] key;
         try
         {
-            key = Convert.FromBase64String(options.SecretKey);
+            key = Convert.FromBase64String(base64Key);
         }
         catch (FormatException ex)
         {
+            // Mesaj anahtarın DEĞERİNİ değil, biçimini söylüyor.
             throw new InvalidOperationException(
-                "Alerting:SecretKey base64 değil. 32 baytlık bir anahtar bekleniyor.", ex);
+                $"{SecretProtectionOptions.SectionName}:SecretKey base64 değil. 32 baytlık bir anahtar bekleniyor.", ex);
         }
 
         if (key.Length != 32)
         {
             throw new InvalidOperationException(
-                $"Alerting:SecretKey {key.Length} bayt; AES-256 için 32 bayt gerekiyor.");
+                $"{SecretProtectionOptions.SectionName}:SecretKey {key.Length} bayt; AES-256 için 32 bayt gerekiyor.");
         }
 
         _key = key;
@@ -67,7 +85,7 @@ public sealed class SecretProtector
         ArgumentNullException.ThrowIfNull(plaintext);
 
         var key = _key ?? throw new InvalidOperationException(
-            "Alerting:SecretKey tanımlı değil; gizli bilgi şifrelenemiyor.");
+            "Security:SecretKey tanımlı değil; gizli bilgi şifrelenemiyor.");
 
         var nonce = RandomNumberGenerator.GetBytes(NonceSize);
         var bytes = Encoding.UTF8.GetBytes(plaintext);
@@ -101,7 +119,7 @@ public sealed class SecretProtector
         ArgumentException.ThrowIfNullOrWhiteSpace(cipherText);
 
         var key = _key ?? throw new InvalidOperationException(
-            "Alerting:SecretKey tanımlı değil; gizli bilgi çözülemiyor.");
+            "Security:SecretKey tanımlı değil; gizli bilgi çözülemiyor.");
 
         byte[] packed;
         try
@@ -110,12 +128,12 @@ public sealed class SecretProtector
         }
         catch (FormatException ex)
         {
-            throw new InvalidOperationException("Kanal gizli bilgisi okunamadı.", ex);
+            throw new InvalidOperationException("Saklanan gizli bilgi okunamadı.", ex);
         }
 
         if (packed.Length < NonceSize + TagSize)
         {
-            throw new InvalidOperationException("Kanal gizli bilgisi eksik.");
+            throw new InvalidOperationException("Saklanan gizli bilgi eksik.");
         }
 
         var nonce = packed.AsSpan(0, NonceSize);
@@ -131,7 +149,7 @@ public sealed class SecretProtector
         catch (CryptographicException ex)
         {
             throw new InvalidOperationException(
-                "Kanal gizli bilgisi doğrulanamadı; anahtar değişmiş ya da kayıt kurcalanmış olabilir.", ex);
+                "Saklanan gizli bilgi doğrulanamadı; anahtar değişmiş ya da kayıt kurcalanmış olabilir.", ex);
         }
 
         return Encoding.UTF8.GetString(plain);

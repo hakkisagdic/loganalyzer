@@ -1,5 +1,6 @@
 using Bizigo.Alerting;
 using Bizigo.Api;
+using Bizigo.Api.Connectors;
 using Bizigo.Api.Webhooks;
 using Bizigo.Authoring;
 using Bizigo.ControlPlane;
@@ -52,6 +53,10 @@ builder.Services.AddBizigoAuthoring();
 
 // Değişiklik webhook'ları: uç kaydı ve imza yapılandırması (T24, K34).
 builder.Services.AddChangeWebhooks(builder.Configuration);
+
+// Connector yapılandırması, zamanlayıcı ve saklama temizliği (T25).
+// AddChangeWebhooks'tan SONRA: kontrol düzlemi defteri onu yedek olarak tüketiyor.
+builder.Services.AddChangeConnectors(builder.Configuration);
 
 // Alarm motoru ve bildirim kanalları (T21, T22).
 builder.Services.AddBizigoAlerting(builder.Configuration);
@@ -129,6 +134,7 @@ app.MapEvents();
 app.MapSources();
 app.MapChanges();
 app.MapChangeWebhooks();
+app.MapChangeConnectors();
 app.MapPipelineHealth();
 app.MapReplay();
 app.MapParsers();

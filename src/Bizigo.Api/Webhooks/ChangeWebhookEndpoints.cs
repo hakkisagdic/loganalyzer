@@ -48,7 +48,11 @@ public static class ChangeWebhookEndpoints
         configuration.GetSection(ChangeWebhookOptions.SectionName).Bind(options);
 
         services.AddSingleton(options);
-        services.AddSingleton<IChangeWebhookRegistry>(_ => new ChangeWebhookRegistry(options));
+
+        // Yapılandırma dosyasından gelen uçlar. T25'ten sonra bunlar artık
+        // BİRİNCİL kaynak değil, yedek: `ControlPlaneWebhookRegistry` önce
+        // ekrandan tanımlanan connector'lara bakıyor.
+        services.AddSingleton(_ => new ChangeWebhookRegistry(options));
 
         services.AddSingleton<ChangeWebhookDeliveryLog>();
 
@@ -83,7 +87,7 @@ public static class ChangeWebhookEndpoints
         CancellationToken cancellationToken)
     {
         var log = loggers.CreateLogger(typeof(ChangeWebhookEndpoints));
-        var endpoint = registry.Find(endpointId);
+        var endpoint = await registry.FindAsync(endpointId, cancellationToken);
 
         // Bilinmeyen ya da pasif uç: gövde hiç okunmuyor. "Var ama kapalı"
         // ayrımı da dışarı verilmiyor.

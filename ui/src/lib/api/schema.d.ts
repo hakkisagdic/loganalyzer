@@ -295,6 +295,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/changes/connectors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListChangeConnectors"];
+        put?: never;
+        post: operations["CreateChangeConnector"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/changes/connectors/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetChangeConnector"];
+        put: operations["UpdateChangeConnector"];
+        post?: never;
+        delete: operations["DeleteChangeConnector"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/changes/connectors/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TestChangeConnector"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/changes/connectors/{id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListChangeConnectorRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parsers": {
         parameters: {
             query?: never;
@@ -744,11 +808,33 @@ export interface components {
             unrestricted: boolean;
             sees_nothing: boolean;
         };
+        ChangeResponse: {
+            /** Format: uuid */
+            change_id: string;
+            /** Format: date-time */
+            timestamp: string;
+            owner_group: string;
+            target_kind: string;
+            target_id: string;
+            change_kind: string;
+            actor: string;
+            summary: string;
+            details: {
+                [key: string]: string;
+            };
+            source: string;
+            external_ref: string;
+        };
+        ChangeSearchResponse: {
+            /** Format: int32 */
+            count: number | string;
+            changes: components["schemas"]["ChangeResponse"][];
+        };
         ChangeWriteRequest: {
-            ownerGroup: string;
-            targetKind: string;
-            targetId: string;
-            changeKind: string;
+            owner_group: string;
+            target_kind: string;
+            target_id: string;
+            change_kind: string;
             /** Format: date-time */
             timestamp?: null | string;
             actor?: string;
@@ -757,7 +843,11 @@ export interface components {
                 [key: string]: string;
             };
             source?: string;
-            externalRef?: string;
+            external_ref?: string;
+        };
+        ChangeWriteResponse: {
+            /** Format: uuid */
+            change_id: string;
         };
         ChannelSettingsResponse: {
             headers: {
@@ -774,6 +864,66 @@ export interface components {
         ChannelTestResponse: {
             ok: boolean;
             error: string;
+        };
+        ConnectorListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            connectors: components["schemas"]["ConnectorView"][];
+        };
+        ConnectorRequest: {
+            slug?: string;
+            name?: string;
+            connector_type?: string;
+            owner_group?: string;
+            config?: null | components["schemas"]["JsonElement"];
+            credential?: null | string;
+            /** Format: int32 */
+            interval_seconds?: null | number | string;
+            enabled?: boolean;
+        };
+        ConnectorRunListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            runs: components["schemas"]["ConnectorRunView"][];
+        };
+        ConnectorRunView: {
+            /** Format: date-time */
+            started_at: string;
+            /** Format: date-time */
+            finished_at: string;
+            state: string;
+            /** Format: int32 */
+            changes_written: number | string;
+            error: string;
+        };
+        ConnectorTestResponse: {
+            ok: boolean;
+            message: string;
+        };
+        ConnectorView: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+            connector_type: string;
+            owner_group: string;
+            config: components["schemas"]["JsonElement"];
+            credential_set: boolean;
+            credential: string;
+            /** Format: int32 */
+            interval_seconds: null | number | string;
+            enabled: boolean;
+            /** Format: date-time */
+            next_run_at: null | string;
+            /** Format: date-time */
+            last_run_at: null | string;
+            last_run_state: null | string;
+            last_error: string;
+            receive_path: null | string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
         };
         CreatedIdResponse: {
             /** Format: uuid */
@@ -890,6 +1040,7 @@ export interface components {
             op: string;
             values: string[];
         };
+        JsonElement: unknown;
         MaintenanceWindowListResponse: {
             windows: components["schemas"]["MaintenanceWindowResponse"][];
         };
@@ -1318,7 +1469,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ChangeSearchResponse"];
+                };
             };
         };
     };
@@ -1335,12 +1488,172 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeWriteResponse"];
+                };
+            };
+        };
+    };
+    ListChangeConnectors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
             /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "application/json": components["schemas"]["ConnectorListResponse"];
+                };
+            };
+        };
+    };
+    CreateChangeConnector: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorView"];
+                };
+            };
+        };
+    };
+    GetChangeConnector: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorView"];
+                };
+            };
+        };
+    };
+    UpdateChangeConnector: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorView"];
+                };
+            };
+        };
+    };
+    DeleteChangeConnector: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
+            };
+        };
+    };
+    TestChangeConnector: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorTestResponse"];
+                };
+            };
+        };
+    };
+    ListChangeConnectorRuns: {
+        parameters: {
+            query?: {
+                limit?: number | string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorRunListResponse"];
+                };
             };
         };
     };

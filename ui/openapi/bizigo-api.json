@@ -380,7 +380,14 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeSearchResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -400,8 +407,229 @@
           "required": true
         },
         "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangeWriteResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/changes/connectors": {
+      "get": {
+        "tags": [
+          "changes"
+        ],
+        "operationId": "ListChangeConnectors",
+        "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "changes"
+        ],
+        "operationId": "CreateChangeConnector",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/changes/connectors/{id}": {
+      "get": {
+        "tags": [
+          "changes"
+        ],
+        "operationId": "GetChangeConnector",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "changes"
+        ],
+        "operationId": "UpdateChangeConnector",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorView"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "changes"
+        ],
+        "operationId": "DeleteChangeConnector",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/v1/changes/connectors/{id}/test": {
+      "post": {
+        "tags": [
+          "changes"
+        ],
+        "operationId": "TestChangeConnector",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorTestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/changes/connectors/{id}/runs": {
+      "get": {
+        "tags": [
+          "changes"
+        ],
+        "operationId": "ListChangeConnectorRuns",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectorRunListResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -1816,25 +2044,104 @@
           }
         }
       },
-      "ChangeWriteRequest": {
+      "ChangeResponse": {
         "required": [
-          "ownerGroup",
-          "targetKind",
-          "targetId",
-          "changeKind"
+          "change_id",
+          "timestamp",
+          "owner_group",
+          "target_kind",
+          "target_id",
+          "change_kind",
+          "actor",
+          "summary",
+          "details",
+          "source",
+          "external_ref"
         ],
         "type": "object",
         "properties": {
-          "ownerGroup": {
+          "change_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "owner_group": {
             "type": "string"
           },
-          "targetKind": {
+          "target_kind": {
             "type": "string"
           },
-          "targetId": {
+          "target_id": {
             "type": "string"
           },
-          "changeKind": {
+          "change_kind": {
+            "type": "string"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "source": {
+            "type": "string"
+          },
+          "external_ref": {
+            "type": "string"
+          }
+        }
+      },
+      "ChangeSearchResponse": {
+        "required": [
+          "count",
+          "changes"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChangeResponse"
+            }
+          }
+        }
+      },
+      "ChangeWriteRequest": {
+        "required": [
+          "owner_group",
+          "target_kind",
+          "target_id",
+          "change_kind"
+        ],
+        "type": "object",
+        "properties": {
+          "owner_group": {
+            "type": "string"
+          },
+          "target_kind": {
+            "type": "string"
+          },
+          "target_id": {
+            "type": "string"
+          },
+          "change_kind": {
             "type": "string"
           },
           "timestamp": {
@@ -1859,8 +2166,20 @@
           "source": {
             "type": "string"
           },
-          "externalRef": {
+          "external_ref": {
             "type": "string"
+          }
+        }
+      },
+      "ChangeWriteResponse": {
+        "required": [
+          "change_id"
+        ],
+        "type": "object",
+        "properties": {
+          "change_id": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -1922,6 +2241,244 @@
           },
           "error": {
             "type": "string"
+          }
+        }
+      },
+      "ConnectorListResponse": {
+        "required": [
+          "count",
+          "connectors"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "connectors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectorView"
+            }
+          }
+        }
+      },
+      "ConnectorRequest": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "connector_type": {
+            "type": "string"
+          },
+          "owner_group": {
+            "type": "string"
+          },
+          "config": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          },
+          "credential": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "interval_seconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ConnectorRunListResponse": {
+        "required": [
+          "count",
+          "runs"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "runs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectorRunView"
+            }
+          }
+        }
+      },
+      "ConnectorRunView": {
+        "required": [
+          "started_at",
+          "finished_at",
+          "state",
+          "changes_written",
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string"
+          },
+          "changes_written": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "ConnectorTestResponse": {
+        "required": [
+          "ok",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ConnectorView": {
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "connector_type",
+          "owner_group",
+          "config",
+          "credential_set",
+          "credential",
+          "interval_seconds",
+          "enabled",
+          "next_run_at",
+          "last_run_at",
+          "last_run_state",
+          "last_error",
+          "receive_path",
+          "created_at",
+          "updated_at"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "connector_type": {
+            "type": "string"
+          },
+          "owner_group": {
+            "type": "string"
+          },
+          "config": {
+            "$ref": "#/components/schemas/JsonElement"
+          },
+          "credential_set": {
+            "type": "boolean"
+          },
+          "credential": {
+            "type": "string"
+          },
+          "interval_seconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "next_run_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "last_run_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "last_run_state": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "last_error": {
+            "type": "string"
+          },
+          "receive_path": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -2376,6 +2933,7 @@
           }
         }
       },
+      "JsonElement": { },
       "MaintenanceWindowListResponse": {
         "required": [
           "windows"

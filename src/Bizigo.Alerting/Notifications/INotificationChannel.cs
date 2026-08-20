@@ -1,3 +1,4 @@
+using Bizigo.Contracts.Security;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Bizigo.ControlPlane;
