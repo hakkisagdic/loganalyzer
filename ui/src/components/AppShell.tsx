@@ -27,6 +27,15 @@ const NAV = [
   { href: "/olaylar", label: "Log arama" },
   { href: "/kaynaklar", label: "Kaynaklar" },
   { href: "/alarmlar", label: "Alarmlar" },
+  // Katalog T20 ile indi ama gezinmeye girmemişti: gezinmede olmayan bir ekran
+  // yalnızca adresini bilenin ekranıdır. T19 parser editörünü eklerken yanına
+  // koydu — ikisi aynı işin iki yarısı (yaz/dene → yayınla/geri al).
+  { href: "/katalog", label: "Parser kataloğu" },
+  // Editör `author` rolü istiyor ve kapı sunucuda (`parserlar/layout.tsx`).
+  // Bağlantının herkese görünmesi bilinçli: gizlemek, yetkisi olmayan birine
+  // ekranın VAR OLDUĞUNU saklardı ve "neden ben göremiyorum" sorusu hiç
+  // sorulamazdı. Girildiğinde sebebi açıkça yazan bir ekran çıkıyor.
+  { href: "/parserlar", label: "Parser editörü" },
 ] as const;
 
 export function AppShell({ username, children }: AppShellProps) {

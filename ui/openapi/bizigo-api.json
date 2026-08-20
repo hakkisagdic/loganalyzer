@@ -833,7 +833,34 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserTryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -874,7 +901,17 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserAuthoringResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
           }
         }
       }
@@ -940,7 +977,17 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserAuthoringResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
           }
         }
       }
@@ -964,7 +1011,24 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserAuthoringResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserAuthoringResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -2827,6 +2891,12 @@
         "properties": {
           "error": {
             "type": "string"
+          },
+          "hint": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3477,6 +3547,94 @@
           }
         }
       },
+      "ParseIssueResponse": {
+        "required": [
+          "step",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "step": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ParseOutcomeResponse": {
+        "required": [
+          "parser_id",
+          "parser_version",
+          "status",
+          "timed_out",
+          "timestamp",
+          "tags",
+          "fields",
+          "core",
+          "ocsf",
+          "otel",
+          "issues"
+        ],
+        "type": "object",
+        "properties": {
+          "parser_id": {
+            "type": "string"
+          },
+          "parser_version": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "timed_out": {
+            "type": "boolean"
+          },
+          "timestamp": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "fields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "core": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "ocsf": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "otel": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParseIssueResponse"
+            }
+          }
+        }
+      },
       "ParserAuthoringResponse": {
         "required": [
           "id",
@@ -3496,22 +3654,13 @@
             "format": "uuid"
           },
           "parser_id": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "string"
           },
           "version": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "string"
           },
           "state": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "string"
           },
           "error": {
             "type": "string"
@@ -3573,6 +3722,34 @@
           },
           "groks": {
             "$ref": "#/components/schemas/ParserGrokResponse"
+          }
+        }
+      },
+      "ParserDispatchResponse": {
+        "required": [
+          "tier",
+          "reason",
+          "attempts",
+          "result"
+        ],
+        "type": "object",
+        "properties": {
+          "tier": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "attempts": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "result": {
+            "$ref": "#/components/schemas/ParseOutcomeResponse"
           }
         }
       },
@@ -3732,6 +3909,29 @@
           }
         }
       },
+      "ParserExpectationResponse": {
+        "required": [
+          "key",
+          "expected",
+          "actual",
+          "passed"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "expected": {
+            "type": "string"
+          },
+          "actual": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          }
+        }
+      },
       "ParserGrokResponse": {
         "required": [
           "total",
@@ -3839,6 +4039,62 @@
           }
         }
       },
+      "ParserRedosFindingResponse": {
+        "required": [
+          "code",
+          "severity",
+          "blocking",
+          "message",
+          "fragment"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "blocking": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "fragment": {
+            "type": "string"
+          }
+        }
+      },
+      "ParserSchemaErrorResponse": {
+        "required": [
+          "line",
+          "column",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "line": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "column": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
       "ParserSummaryResponse": {
         "required": [
           "id",
@@ -3888,18 +4144,95 @@
           }
         }
       },
-      "ParserTryRequest": {
+      "ParserTestCaseResponse": {
         "required": [
-          "line"
+          "name",
+          "line",
+          "passed",
+          "expectations"
         ],
         "type": "object",
         "properties": {
-          "line": {
+          "name": {
             "type": "string"
           },
-          "parserId": {
+          "line": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "expectations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParserExpectationResponse"
+            }
+          }
+        }
+      },
+      "ParserTryRequest": {
+        "type": "object",
+        "properties": {
+          "line": {
             "type": "string",
             "default": ""
+          },
+          "parser_id": {
+            "type": "string",
+            "default": ""
+          },
+          "yaml": {
+            "type": "string",
+            "default": ""
+          }
+        }
+      },
+      "ParserTryResponse": {
+        "required": [
+          "mode",
+          "result",
+          "draft",
+          "dispatch"
+        ],
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string"
+          },
+          "result": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ParseOutcomeResponse"
+              }
+            ]
+          },
+          "draft": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PublishVerdictResponse"
+              }
+            ]
+          },
+          "dispatch": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ParserDispatchResponse"
+              }
+            ]
           }
         }
       },
@@ -4305,7 +4638,13 @@
       "PublishVerdictResponse": {
         "required": [
           "ok",
+          "stage",
+          "parser_id",
+          "version",
           "passing_tests",
+          "schema_errors",
+          "redos",
+          "tests",
           "errors",
           "warnings"
         ],
@@ -4314,6 +4653,15 @@
           "ok": {
             "type": "boolean"
           },
+          "stage": {
+            "type": "string"
+          },
+          "parser_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
           "passing_tests": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -4321,6 +4669,24 @@
               "string"
             ],
             "format": "int32"
+          },
+          "schema_errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParserSchemaErrorResponse"
+            }
+          },
+          "redos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParserRedosFindingResponse"
+            }
+          },
+          "tests": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParserTestCaseResponse"
+            }
           },
           "errors": {
             "type": "array",

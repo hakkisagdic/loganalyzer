@@ -987,6 +987,7 @@ export interface components {
         };
         ErrorResponse: {
             error: string;
+            hint?: null | string;
         };
         EventCursorResponse: {
             /** Format: date-time */
@@ -1159,12 +1160,38 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
         };
+        ParseIssueResponse: {
+            step: string;
+            message: string;
+        };
+        ParseOutcomeResponse: {
+            parser_id: string;
+            parser_version: string;
+            status: string;
+            timed_out: boolean;
+            /** Format: date-time */
+            timestamp: null | string;
+            tags: string[];
+            fields: {
+                [key: string]: string;
+            };
+            core: {
+                [key: string]: string;
+            };
+            ocsf: {
+                [key: string]: string;
+            };
+            otel: {
+                [key: string]: string;
+            };
+            issues: components["schemas"]["ParseIssueResponse"][];
+        };
         ParserAuthoringResponse: {
             /** Format: uuid */
             id: null | string;
-            parser_id: null | string;
-            version: null | string;
-            state: null | string;
+            parser_id: string;
+            version: string;
+            state: string;
             error: string;
             verdict: null | components["schemas"]["PublishVerdictResponse"];
         };
@@ -1179,6 +1206,13 @@ export interface components {
             /** Format: int32 */
             steps: number | string;
             groks: components["schemas"]["ParserGrokResponse"];
+        };
+        ParserDispatchResponse: {
+            tier: string;
+            reason: string;
+            /** Format: int32 */
+            attempts: number | string;
+            result: components["schemas"]["ParseOutcomeResponse"];
         };
         ParserDraftDetailResponse: {
             /** Format: uuid */
@@ -1221,6 +1255,12 @@ export interface components {
             /** Format: date-time */
             published_at: null | string;
         };
+        ParserExpectationResponse: {
+            key: string;
+            expected: string;
+            actual: string;
+            passed: boolean;
+        };
         ParserGrokResponse: {
             /** Format: int32 */
             total: number | string;
@@ -1246,6 +1286,20 @@ export interface components {
             draft: components["schemas"]["ParserAuthoringResponse"];
             catalog: components["schemas"]["CatalogReloadResponse"];
         };
+        ParserRedosFindingResponse: {
+            code: string;
+            severity: string;
+            blocking: boolean;
+            message: string;
+            fragment: string;
+        };
+        ParserSchemaErrorResponse: {
+            /** Format: int32 */
+            line: number | string;
+            /** Format: int32 */
+            column: number | string;
+            message: string;
+        };
         ParserSummaryResponse: {
             id: string;
             version: string;
@@ -1258,10 +1312,26 @@ export interface components {
             /** Format: int32 */
             backtracking_groks: number | string;
         };
+        ParserTestCaseResponse: {
+            name: string;
+            /** Format: int32 */
+            line: number | string;
+            passed: boolean;
+            expectations: components["schemas"]["ParserExpectationResponse"][];
+        };
         ParserTryRequest: {
+            /** @default  */
             line: string;
             /** @default  */
-            parserId: string;
+            parser_id: string;
+            /** @default  */
+            yaml: string;
+        };
+        ParserTryResponse: {
+            mode: string;
+            result: null | components["schemas"]["ParseOutcomeResponse"];
+            draft: null | components["schemas"]["PublishVerdictResponse"];
+            dispatch: null | components["schemas"]["ParserDispatchResponse"];
         };
         PipelineArchiveHealth: {
             by_state: {
@@ -1360,8 +1430,14 @@ export interface components {
         };
         PublishVerdictResponse: {
             ok: boolean;
+            stage: string;
+            parser_id: string;
+            version: string;
             /** Format: int32 */
             passing_tests: number | string;
+            schema_errors: components["schemas"]["ParserSchemaErrorResponse"][];
+            redos: components["schemas"]["ParserRedosFindingResponse"][];
+            tests: components["schemas"]["ParserTestCaseResponse"][];
             errors: string[];
             warnings: string[];
         };
@@ -2075,7 +2151,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ParserTryResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -2114,6 +2210,15 @@ export interface operations {
         responses: {
             /** @description OK */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParserAuthoringResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2170,6 +2275,15 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "application/json": components["schemas"]["ParserAuthoringResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
             };
         };
@@ -2190,7 +2304,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ParserAuthoringResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParserAuthoringResponse"];
+                };
             };
         };
     };

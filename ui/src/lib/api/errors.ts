@@ -99,9 +99,21 @@ const fallbackMessages: Record<number, ApiProblem> = {
  * Yakalanan bir hatayı `ErrorState`'in `hint`ine yazılabilecek tek satıra
  * çeviriyor.
  *
- * <p>Ekranlar `instanceof` zinciri yazmasın diye burada: aynı zinciri her
- * ekranda tekrarlamak, biri unuttuğunda kullanıcıya `[object Object]` gösteren
- * bir ekran demek.</p>
+ * <p>
+ * Ekranlar `instanceof` zinciri yazmasın diye burada: aynı zinciri her ekranda
+ * tekrarlamak, biri unuttuğunda kullanıcıya `[object Object]` gösteren bir
+ * ekran demek. `ApiError` zaten sunucunun cümlesini taşıyor; onu yeniden
+ * yazmak, gerekçeyi (hangi grup kapsam dışında, hangi sınır aşıldı) atıp
+ * yerine genel bir cümle koymak olurdu.
+ * </p>
+ *
+ * <p>
+ * T23'te alarm ekranının, T20'de katalog ekranının içinde ayrı ayrı doğdu;
+ * T19 üçüncü tüketiciyi getirince buraya taşındı. Ekranların hatayı
+ * <b>aynı</b> biçimde göstermesi bir tutarlılık tercihi değil, doğruluk
+ * meselesi: iki farklı özet, aynı 403'ü iki farklı sebep gibi gösterirdi
+ * (T28 bunu denetleyecek).
+ * </p>
  */
 export function describeError(cause: unknown): string {
   if (cause instanceof ApiError) {
@@ -112,7 +124,9 @@ export function describeError(cause: unknown): string {
     return cause.message;
   }
 
-  return "Beklenmeyen bir hata oluştu.";
+  // `Error` ama bizim tiplerimizden biri değil: mesajı yine de göstermek,
+  // "beklenmeyen bir hata" demekten çok daha fazlasını söylüyor.
+  return cause instanceof Error ? cause.message : "Beklenmeyen bir hata oluştu.";
 }
 
 function normalizeProblem(status: number, body: unknown): ApiProblem {
