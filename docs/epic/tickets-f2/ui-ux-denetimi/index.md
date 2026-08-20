@@ -1,7 +1,7 @@
 ---
 title: "T28 — UI/UX ve estetik denetimi"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # T28 — UI/UX ve estetik denetimi
@@ -97,11 +97,16 @@ devreye girmeli — renk paleti ve grafik seçimi kendi başına bir disiplin.
 
 ## Durum — bekçi dilimi sevk edildi
 
-Bulgular ve düzeltmeler: [T28 denetimi — bulgular ve bekçiler](../../t28-denetim-bulgulari/index.md).
+Bulgular ve düzeltmeler: [T28 denetimi — dokuz bulgu, bekçileri ve bilinçli boşluklar](../../t28-denetim-bulgulari/index.md).
 
 **Yedi bulgu**, dördü denetleyenin kendi ekranlarında; hepsi düzeltildi ve
 **altı bekçiyle** sabitlendi. Altısının da kırmızı yanabildiği ölçüldü.
 
-**Ekran görüntüleri henüz alınmadı.** Kabul kriteri düşürülmedi; Playwright
-kurulumu ve Next sunucusu gerektirdiği için koordinatörle ayrı bir adım olarak
-kararlaştırıldı. Ticket o adım bitince kapanacak.
+**Ekran görüntüleri alındı:** 18 görüntü (9 sahne × açık/koyu tema),
+`docs/ekran-goruntuleri/`. İki bulgu daha çıkardılar — ikisi de bekçilerin
+göremeyeceği sınıftan, çünkü bozulan şey HTML ya da kural değil **yerleşim**di.
+
+Sunucu ayağa kaldırılmadı: sahneler bileşen düzeyinde, gerçek jetonlar ve gerçek
+bileşen CSS'iyle. Kanıtlamadığı şey (yönlendirme, kimlik akışı, düzen birleşimi)
+`docs/ekran-goruntuleri/BENIOKU.md` içinde yazılı; onu T27'nin uçtan uca
+akışları karşılıyor.
