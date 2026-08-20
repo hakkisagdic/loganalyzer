@@ -239,6 +239,68 @@ public sealed class FieldCoverageTests
         }
     }
 
+    /// <summary>
+    /// <b>Kesişim sorusu — ölçümün kendi kusuruydu.</b>
+    ///
+    /// <para>
+    /// Araç her alanı <b>bağımsız</b> sayıyordu: iki alan ayrı ayrı %100 dolu
+    /// görünüp aynı satırda hiç birlikte olmayabilir. Kural yüklemleri
+    /// <b>aynı olayda</b> istiyor, dolayısıyla bağımsız sayım kuralın sorusunu
+    /// cevaplamıyordu. Sigma tarafı aynı kusuru kendi kutularında buldu; bu,
+    /// alan ekseninin karşılığı.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Ayri_ayri_dolan_alanlar_ayni_satirda_olmayabiliyor()
+    {
+        var report = FieldCoverage.Measure(
+            [
+                Event("bir", action: "deny"),                 // activity_name dolu, proto boş
+                Event("iki", action: string.Empty, proto: "tcp"), // proto dolu, activity_name boş
+            ],
+            Columns);
+
+        var vendor = Assert.Single(report.Vendors);
+
+        // İkisi de "dolu" görünüyor…
+        Assert.Equal(1, vendor.Populated["activity_name"]);
+        Assert.Equal(1, vendor.Populated["connection_info_protocol_name"]);
+
+        // …ama aynı satırda hiç birlikte değiller.
+        Assert.Contains(
+            ("activity_name", "connection_info_protocol_name"),
+            vendor.NeverTogether);
+    }
+
+    /// <summary>
+    /// <b>"Kolon dolu" ile "bilgi satırdan geldi" aynı şey değil.</b>
+    ///
+    /// <para>
+    /// Ölçülmüş vaka: <c>EventNormalizer</c> <c>core.host</c> boşken
+    /// <c>device_hostname</c>'i kaynak anahtarıyla dolduruyor. Kolon hiçbir
+    /// zaman boş görünmüyor ve doluluk oranı <c>%100</c> çıkıyor — ama değer
+    /// cihazın adı değil. Bir kural o kolona vurduğunda bunu göremiyor.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Satirdan_gelmeyen_deger_ayrica_sayiliyor()
+    {
+        var report = FieldCoverage.Measure(
+            [
+                // `deny` gövdede geçiyor: satırdan geldi.
+                Event("action deny burada", action: "deny"),
+
+                // `deny` gövdede YOK: sabit ya da geri düşüş.
+                Event("bambaska bir satir", action: "deny"),
+            ],
+            Columns);
+
+        var vendor = Assert.Single(report.Vendors);
+
+        Assert.Equal(2, vendor.Populated["activity_name"]);
+        Assert.Equal(1, vendor.Substituted["activity_name"]);
+    }
+
     private static LogEvent Event(
         string body,
         string action,

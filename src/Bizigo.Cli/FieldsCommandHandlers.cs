@@ -163,6 +163,21 @@ internal static class FieldsCommandHandlers
             Console.WriteLine("  KUTU 3b — burada boş, başka vendor'da dolu:");
             Console.WriteLine("    " + (emptyHere.Count == 0 ? "(yok)" : string.Join(", ", emptyHere)));
 
+            Console.WriteLine("  KESİŞİM — ikisi de dolu ama AYNI SATIRDA hiç birlikte değil:");
+            Console.WriteLine("    " + (vendor.NeverTogether.Count == 0
+                ? "(yok)"
+                : string.Join(", ", vendor.NeverTogether.Select(static pair => $"{pair.First}+{pair.Second}"))));
+
+            var substituted = vendor.Substituted
+                .Where(pair => pair.Value > 0)
+                .OrderByDescending(static pair => pair.Value)
+                .Select(pair => string.Create(
+                    CultureInfo.InvariantCulture, $"{pair.Key}={pair.Value}/{vendor.Lines}"))
+                .ToList();
+
+            Console.WriteLine("  DOLU AMA DEĞERİ SATIRDAN GELMİYOR (sabit ya da geri düşüş):");
+            Console.WriteLine("    " + (substituted.Count == 0 ? "(yok)" : string.Join("  ", substituted)));
+
             var fromLine = vendor.Relocated.Where(static entry => entry.FromLine).ToList();
 
             Console.WriteLine("  KUTU 2 — satırdan gelmiş ama OCSF kolonuna değil `unmapped`'e inmiş:");

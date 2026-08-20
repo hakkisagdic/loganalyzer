@@ -114,6 +114,76 @@ gerçekte yapabildiğini olduğundan iyi göstermek olurdu.
 
 **Ölçüldü:** blob kuralı kaldırılınca iki kutu-1 testi de düşüyor; geri alındı.
 
+## Kesişim — ölçümün kendi kusuruydu, ölçüldü ve kapatıldı
+
+Sigma tarafı `present` kutusunda bir kusur buldu: **ölçüm yüklemleri tek tek
+arıyor, kural onları aynı olayda istiyor.** Aynı soru alan ekseninde de
+geçerliydi ve cevap **evet, aynı kusur bizde de vardı**: `Populated` sayacı her
+alanı bağımsız sayıyordu. İki alan ayrı ayrı %100 dolu görünüp aynı satırda hiç
+birlikte olmayabilir.
+
+Artık ölçülüyor. Sonuç:
+
+| Vendor | Ayrı ayrı dolu ama **aynı satırda hiç birlikte olmayan** çiftler |
+| --- | --- |
+| **MikroTik** | **12 çift.** `activity_name` hiçbir ağ alanıyla birlikte dolmuyor (`+connection_info_protocol_name`, `+dst_endpoint_ip`, `+dst_endpoint_port`, `+src_endpoint_port`); `actor_user_name` de aynı dörtlüyle; `status` ağ alanlarıyla |
+| **Fortinet** | 3 çift: `status` + (`connection_info_protocol_name`, `src_endpoint_port`, `dst_endpoint_port`) |
+| **Cisco** | 4 çift |
+| **NGINX** | yok |
+
+MikroTik'in 12 çifti tek bir sebebin sonucu: `system` parser'ı kimlik alanlarını,
+`firewall` parser'ı ağ alanlarını dolduruyor ve **hiçbir satır ikisini birden
+taşımıyor**. Yani `activity_name` ile bir port isteyen kural, iki alan da "dolu"
+görünse bile eşleşemez. Bu, `MissingIn` listesinin satır düzeyindeki kardeşi.
+
+**Sınırı açık:** bu *alan* düzeyinde kesişim, *değer* düzeyinde değil. "Aynı
+satırda ikisi de dolu" ile "aynı satırda ikisi de kuralın aradığı değeri
+taşıyor" farklı sorular; ikincisi kural değerlendirmesidir ve ürünün SQL yolunda
+yapılıyor — üçüncü bir değerlendirici yazmak §9'un yasakladığı şey. Buradaki
+ölçüm yalnızca **sıfırın sıfır olduğunu** gösteriyor: hiç birlikte dolmuyorlarsa
+değer düzeyinde kesişim de imkânsız.
+
+## "Kolon dolu" ile "bilgi satırdan geldi" aynı şey değil
+
+`device_hostname` dört vendor'da da **%100 dolu** görünüyordu. Doğru ve
+yanıltıcı: `EventNormalizer`, `core.host` boşken kolonu **kaynak anahtarıyla**
+dolduruyor (`Host = … : source.Raw.SourceKey`). Kolon hiçbir zaman boş
+görünmüyor, ama içindeki değer cihazın adı değil bizim ürettiğimiz kimlik.
+
+Artık ayrıca sayılıyor — **değeri ham satırda geçmeyen** satırlar:
+
+| Vendor | `device_hostname` satırdan gelmiyor |
+| --- | --- |
+| NGINX | **22/24** |
+| Fortinet | 13/22 |
+| MikroTik | 0/14 |
+| Cisco | 1/27 |
+
+Aynı sayaç sabitleri de yakalıyor (`class_uid`, `device_vendor_name`,
+`metadata_version`, `raw_ref` — hepsi 100%) ve dönüştürülmüş değerleri de
+(`connection_info_protocol_name`: `UDP` → `udp`, satırda o hâliyle yok).
+Üçünü ayırmak `fields values`'ın işi: orada sabitler `KAPALI: … ← sabit` diye
+görünüyor.
+
+### `core.host` çelişkisi çözüldü — üçüncü bir açıklamayla
+
+Koordinatörün verdiği iki ihtimal de doğru değil:
+
+| İddia | Ölçülen |
+| --- | --- |
+| "Combined örneklerimiz vhost taşımıyor" | **Yanlış.** `combined.log`'un 14 satırının **2'si** `lessons.example.com` ile başlıyor |
+| "6'nın ölçümü bir dosyayı atlıyor" | Hayır |
+| "Parser testi sentetik girdi kullanıyor" | Hayır — `combined.yaml:98`'deki girdi, örnek dosyadaki satırın **birebir kendisi** |
+
+Doğru açıklama üçüncüsü: **örnekler vhost taşıyor ama yalnızca 2/14 satırda**,
+ve kalan satırlarda `device_hostname` boş görünmüyor çünkü geri düşüş onu
+dolduruyor. Alan kapsamı ölçümü bu sayıyı bağımsız olarak üretti — 24 nginx
+satırının 22'sinde `device_hostname` satırdan gelmiyor, yani **2'sinde geliyor**.
+
+Sonucu `nginx_dns_rebind` için keskin: `hostname|contains: 'localhost'` kuralı
+`device_hostname`'e vurduğunda satırların çoğunda `golden-nginx.access` görüyor —
+cihazın adını değil. Kural bu hâliyle vhost arayamaz.
+
 ## Kabul edilmiş sınırlar
 
 - **Kutu 1'de ayraç ve söz dizimi de var.** "Yakalanmamış" bilgi demek değil.
