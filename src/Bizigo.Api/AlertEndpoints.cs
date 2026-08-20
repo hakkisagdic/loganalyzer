@@ -360,7 +360,14 @@ public static class AlertEndpoints
 
                 // Redaksiyondan geçmiş hâli; gönderici gizli bilgiyi buraya
                 // yazamıyor (T22 bekçisi).
-                d.LastError))]))
+                d.LastError))],
+            t.State.ToString().ToLowerInvariant(),
+            t.ClosedAt,
+
+            // Boş dize yerine `null`: "kapatan yok" ile "kapatanın adı boş"
+            // aynı şey değil ve ekranın ikisini ayırt edebilmesi gerekiyor.
+            string.IsNullOrEmpty(t.ClosedBySubject) ? null : t.ClosedBySubject,
+            t.ReviewId))
             .ToArray();
 
         return Results.Ok(new AlertTriggerListResponse(triggers.Length, triggers));

@@ -6,6 +6,7 @@ using Bizigo.Api.Connectors;
 using Bizigo.Api.Webhooks;
 using Bizigo.Authoring;
 using Bizigo.ControlPlane;
+using Bizigo.Evidence;
 using Bizigo.Ingest.Discovery;
 using Bizigo.Ingest.Pipeline;
 using Bizigo.Ingest.Wal;
@@ -186,6 +187,11 @@ public sealed class ProducesContractTests
             // T20'nin kapsam ucu. Kaydedilmezse `CatalogCoverageCache` gövde
             // parametresi sanılıyor ve `MapParserAuthoring` çıkarımda patlıyor.
             typeof(CatalogCoverageCache), typeof(ParserPublishGate),
+
+            // T38'in altın küme uçları. Aynı kalıp: kayıtsız bir servis
+            // parametresi gövde sanılıyor ve `MapGoldenReviews` çıkarımda
+            // patlıyor — yani dosyanın tamamı kapıya görünmez oluyor.
+            typeof(GoldenReviewStore), typeof(AlertClosureService),
         })
         {
             var captured = type;
@@ -276,7 +282,7 @@ public sealed class ProducesContractTests
     ///
     /// <para>
     /// Bu test yansıma keşfinin gerçekten iş gördüğünü sabitliyor: bugün bilinen
-    /// on iki uzantının hepsi bulunuyor ve hepsi çağrıldığı için hepsinin uçları
+    /// on üç uzantının hepsi bulunuyor ve hepsi çağrıldığı için hepsinin uçları
     /// denetime giriyor. Yeni bir uç dosyası eklendiğinde burada bir şey
     /// güncellemek gerekmiyor — sayı kendiliğinden artıyor ve <b>uçları da
     /// otomatik denetime giriyor</b>; kapatılan delik tam olarak buydu.
@@ -292,7 +298,7 @@ public sealed class ProducesContractTests
         Assert.Equal(
             [
                 "MapAlerts", "MapAuth", "MapChangeConnectors", "MapChangeWebhooks", "MapChanges",
-                "MapEvents",
+                "MapEvents", "MapGoldenReviews",
                 "MapNotificationChannels", "MapOtlpLogs", "MapParserAuthoring", "MapParsers",
                 "MapPipelineHealth", "MapReplay", "MapSources",
             ],
