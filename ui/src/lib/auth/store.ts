@@ -10,11 +10,35 @@
  * </p>
  *
  * <p>
- * Uygulama <b>tek süreçte</b> koştuğu sürece bellek içi harita yeterli. Birden
- * çok kopya çalıştırıldığı gün buraya paylaşılan bir depo (Redis) gerekiyor:
- * arayüz o gün değişmesin diye baştan soyutlandı, uygulama sınıfı değil.
+ * <b>İki uygulama var</b> ve seçim yapılandırmadan geliyor: bellek içi harita
+ * (tek süreç, geliştirme) ve Redis (çok kopya, B7). Arayüz T13'te tam bu gün
+ * için ayrılmıştı — uygulama değişti, sözleşme değil.
+ * </p>
+ *
+ * <p>
+ * Bellek içi hâl <b>kaldırılmadı</b> ve bu bilinçli: geliştirmede Redis zorunlu
+ * olsaydı, kimsenin tek komutla çalıştıramadığı bir yerel ortam doğardı.
  * </p>
  */
+
+/**
+ * Depoya <b>ulaşılamıyor</b> — "oturum yok" ile karıştırılmaması gereken hâl.
+ *
+ * <p>
+ * Ayrı bir tip olmasının sebebi tek bir senaryo: Redis düştüğünde
+ * <c>get()</c> <c>undefined</c> dönseydi kullanıcı <b>oturumsuz</b> görünürdü,
+ * girişe yönlendirilirdi, giriş yeni oturumu yazmayı denerdi, o da düşerdi —
+ * ve kimse hiçbir hata görmeden <b>sonsuz döngüye</b> girerdi.
+ * </p>
+ *
+ * <p>
+ * "Herkes çıkış yapmış olur" kabul edilebilir bir sonuç; "sessizce oturumsuz
+ * görünür" değil. Bu tip, ikisini ayıran şey.
+ * </p>
+ */
+export class SessionStoreUnavailableError extends Error {
+  override name = "SessionStoreUnavailableError";
+}
 export interface SessionRecord {
   readonly accessToken: string;
   readonly refreshToken: string | undefined;
@@ -77,7 +101,49 @@ type StoreHolder = { [globalKey]?: SessionStore };
 
 export function sessionStore(): SessionStore {
   const holder = globalThis as StoreHolder;
-  return (holder[globalKey] ??= new InMemorySessionStore());
+  return (holder[globalKey] ??= createConfiguredStore());
+}
+
+/**
+ * Depoyu yapılandırmadan seçiyor.
+ *
+ * <p>
+ * Redis modülü <b>tembel</b> yükleniyor: bellek içi kipte `redis` paketi hiç
+ * içeri alınmıyor, dolayısıyla onu kurmayan bir geliştirme ortamı da çalışıyor.
+ * </p>
+ */
+function createConfiguredStore(): SessionStore {
+  const kind = process.env.BFF_SESSION_STORE ?? "memory";
+
+  if (kind !== "redis") {
+    return new InMemorySessionStore();
+  }
+
+  const url = process.env.BFF_REDIS_URL;
+
+  if (!url) {
+    // Sessizce belleğe düşmek, üretimde tek kopyalık bir depoyla çalıştığını
+    // fark etmemek demek: ikinci kopya açıldığı gün oturumlar rastgele
+    // düşmeye başlar ve sebebi Keycloak sanılır.
+    throw new Error(
+      "BFF_SESSION_STORE=redis ama BFF_REDIS_URL tanımlı değil. " +
+        "Adres olmadan Redis deposu kurulamaz; sessizce belleğe düşmek, " +
+        "çok kopyalı bir kurulumda oturumların rastgele düşmesi demek.",
+    );
+  }
+
+  // Yalnızca bu dalda içeri alınıyor.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { createRedisClient } = require("./redis-client") as typeof import("./redis-client");
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { RedisSessionStore } = require("./redis-store") as typeof import("./redis-store");
+
+  return new RedisSessionStore(createRedisClient(url));
+}
+
+/** Testlerin kendi deposunu takabilmesi için. */
+export function useSessionStore(store: SessionStore): void {
+  (globalThis as StoreHolder)[globalKey] = store;
 }
 
 /**
