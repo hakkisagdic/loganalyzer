@@ -15,8 +15,45 @@ Tasarımın tamamı ve kararların gerekçeleri:
 | `gate.py` — Kapı 1: kural SQL'i var olmayan kolona gidiyor mu | ✅ |
 | `manifest.py` — manifest, takaslı yazım, sürüklenme kapısı | ✅ |
 | `compile.py` — tek komut (`--write` / `--check` / `--summary`) | ✅ |
-| Kapı 2 — `EXPLAIN` (kendi CI işinde) | ⏳ |
+| `explain_gate.py` — Kapı 2: `EXPLAIN`, kendi CI işinde | ✅ yazıldı, **koşturulmadı** |
 | Kural seti + gerçek derleme | ⏳ T31'i bekliyor |
+
+## Kapı 2 kendini sınıyor
+
+`detections/sigma/` bugün boş, yani Kapı 2 sıfır sorgu sorup sessizce yeşil
+kalırdı — ve "sessizce yeşil bekçi" bu deponun adını koyduğu sınıf. CI işi bu
+yüzden önce `--self-test` koşturuyor: sonucu **bilinen** üç sorgu, ikisi
+reddedilmeli, biri kabul edilmeli.
+
+```bash
+python -m sigma_build.explain_gate --self-test --clickhouse-url http://localhost:8123
+python -m sigma_build.explain_gate --clickhouse-url http://localhost:8123
+```
+
+Kırmızı yanabildiği **her koşumda** ölçülüyor, bir kez değil. Ve sınav aynı
+zamanda bir ölçüm: iki reddin gerçekleşeceği şu an `0001_events.sql`'den
+okunmuş bir **çıkarım**; ilk koşum onu ya doğrulayacak ya çürütecek.
+
+Hata sınıflandırması güvenli tarafa bozuluyor: desenler ClickHouse sürümüyle
+bayatlayabilir, ve bayatladıkları gün tanınmayan hata yine bir engel üretiyor —
+kayıp `kind` çözünürlüğünde, kuralın kapıdan geçmesinde değil. Bağlantı hatası
+ise engel değil **istisna**: ortam bozukken "bütün kurallar kırık" yazdırmak
+ölçüm aracının kendi sessiz yanlışı olurdu.
+
+## `gated` tek sayı değil
+
+| Sayı | Anlamı |
+| --- | --- |
+| `gated_closeable` | Azalması **beklenen** — biri kapatabilir |
+| `gated_upstream` | Yukarı akış/backend değişmeden kapanmaz |
+
+Tek sayı olsaydı "liste boşaldı mı" sorusunun cevabı asla evet olamazdı
+(§8'in `Pending`/`Exempt` ayrımı). `upstream` hiçbir sınıflandırıcı tarafından
+kendiliğinden atanmıyor; muafiyet gibi bilinçli bir hareket. `unknown`
+kapanabilirler tarafında duruyor — "kapanamaz" ile "kapanır mı bilmiyoruz" aynı
+şey değil ve bilinmeyeni muafiyete yazmak işi gizlerdi.
+
+Bir kural ancak engellerinin **hepsi** kapanabiliyorsa kapanabilir sayılıyor.
 
 ## Kapı bugünden koşuyor, hat bitmeden
 
