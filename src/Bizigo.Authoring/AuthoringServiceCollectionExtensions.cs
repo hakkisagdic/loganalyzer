@@ -18,6 +18,9 @@ public static class AuthoringServiceCollectionExtensions
         services.AddSingleton<ParserAuthoringService>();
         services.AddSingleton<PublishedParserLoader>();
 
+        // Kapsam ölçümü pahalı; önbellek katalog anlık görüntüsüne bağlı (T20).
+        services.AddSingleton<CatalogCoverageCache>();
+
         // Katalog kaynağını DEĞİŞTİRİYOR: artık repodaki dosyalara ek olarak
         // yayınlanmış taslaklar da okunuyor. `AddBizigoParsing`'in kaydettiği
         // yalnızca-dizin sürümünün yerini alıyor.
