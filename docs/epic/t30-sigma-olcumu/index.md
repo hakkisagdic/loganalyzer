@@ -67,7 +67,7 @@ pySigma gerektirmeden, prototip dosyasından sayıldı:
 | --- | --- |
 | Örneklem | **24 kural** (4 vendor × 4 kategori) |
 | Eşlenen alan | **28** |
-| `unmapped` için **tespit edilmiş** alan | **9** (⚠️ bağlı değil; gerçekten düşen: **0**) |
+| `unmapped` için tespit edilmiş alan | **9** — T30'da bağlı değildi, T31'de bağlandı; bugün **5 kural** kullanıyor |
 | Pipeline'ın anlamlı satırı | **111** |
 | Örneklem başına | **4,62 satır/kural** |
 
@@ -76,18 +76,27 @@ sayısı. Canlı koşumdan sonra payda `matches` olacak ve sayı yükselecek.
 
 ## Tuzaklar
 
-Dördü araştırmadan biliniyordu; **beşincisi prototip yazılırken çıktı.**
+Dördü araştırmadan biliniyordu. **Beşincisi prototip yazılırken, son üçü T31'in
+kalıcı pipeline'ı yazılırken çıktı** — ve son üçü ancak üretilen SQL okunduğunda.
 
 | # | Tuzak | Durum |
 | --- | --- | --- |
 | 1 | Pipeline noktalı yol üretiyor (`dst_endpoint.ip`), görünüm düzleştirilmiş (`dst_endpoint_ip`) | Çözüldü — `FIELD_MAP` doğrudan düzleştirilmiş ada eşliyor, nokta hiç doğmuyor |
 | 2 | Backend `FROM logs` yazıyor | Çözüldü — durum değişkeni; okunmazsa metin ikamesi ve **ikame raporlanıyor** |
 | 3 | Tutarsız tırnaklama | Kaynağında kurudu — düzleştirilmiş ad tırnak gerektirmiyor |
-| 4 | `unmapped.X` erişimi | ⚠️ **ÇÖZÜLMEDİ** — aşağıya bakınız. Prototip alanları tespit etti, dönüşüme bağlamadı |
+| 4 | `unmapped.X` erişimi | **T31'de çözüldü.** Prototipte tespit edilmiş ama bağlanmamıştı; kalıcı pipeline `unmapped['otel.url.path']` üretiyor ve 5 kural bunu kullanıyor. Anahtarların **ad alanlı** olması ayrı bir tuzaktı — 6. satır |
 | 5 | **`type_uid` bizde yok** | **Yeni.** `ocsf_pipeline` sınıf ayırıcısını `type_uid` ile ekliyor; K8 gereği yazılan tek OCSF kolonu `class_uid` + `activity_id`. `type_uid` şart koşan bir pipeline **derlenip koşmayan** SQL üretir |
+| 6 | **`attrs` anahtarları ad alanlı** | **Yeni, T31'de çıktı.** `unmapped['url']` yazmak plandı ve yanlıştı: `EventNormalizer` parser'ın `otel:` bloğunu `otel.` önekiyle yazıyor, gerçek anahtar `otel.url.path`. Düz ad **hata vermez** — eksik Map anahtarı boş dizge döner, sorgu koşar, sonsuza kadar sıfır döndürür |
+| 7 | **`IPv6` kolonunda metin operatörü** | **Yeni, T31'de çıktı.** `src_endpoint_ip ILIKE '10.%'` tip hatası verir; ama düz `toString()` **daha kötü**: ClickHouse IPv4'ü `::ffff:10.0.0.1` saklıyor, sorgu koşar ve hiçbir zaman tutmaz. Önek sökülüyor |
+| 8 | **Backend ifadeleri backtick'liyor** | **Yeni, T31'de çıktı.** `field_quote_pattern` varsayılanı `^[a-zA-Z0-9_]*$`; `unmapped['otel.url.path']` backtick'lenip kolon adı sanılıyordu. Yalnızca üretilen SQL okununca görüldü |
 
 Beşincisi T30'un aradığı tuzak sınıfının tam örneği: derleme başarılı, SQL
 yanlış, ve hiçbir şey kırmızı yanmıyor.
+
+**6, 7 ve 8 aynı sınıfın üyeleri ve üçü de yalnızca üretilen SQL okunduğunda
+görüldü** — tablolara bakarak değil. Üçünün de ortak imzası: sorgu koşar, hata
+vermez, sonsuza kadar boş döner. Prototip aşamasında "eşleme doğru mu" diye
+sözlüğe bakmak bunların hiçbirini yakalamazdı.
 
 `unmapped` için tespit edilen 9 alan ayrı bir maliyet kalemi: Map erişimi
 ClickHouse'ta çalışıyor ama **indekslenmiyor**. Yani bedeli doğruluk değil hız —
@@ -259,22 +268,90 @@ Araç artık reddedilen kolonları da özetliyor (ClickHouse'un üç ayrı hata
 cümlesini de okuyarak), dolayısıyla bir sonraki koşumda hem sayı hem **sebep**
 gelecek. O liste T31'in eşleme tablosunun ilk taslağı olacak.
 
-## Doldurulacak — altın örnekler yüklendikten sonra
+## Üçüncü koşum — **geçerli**. T31 sonrası, 1.120.001 satırlık canlı veri
 
-Koşum: `prototypes/t30-sigma/README.md` içindeki komut. Ön kontrol raporunda
-her vendor için `altın örnek bulundu` yazmıyorsa ölçüm yine geçersizdir.
+Ön kontrol dört vendor için de `altın örnek bulundu` dedi. Bu, protokolün
+istediği tek şeydi ve ilk kez sağlandı.
 
-- [ ] Reddedilen **kolon adları** — okuma sırasında ilk bakılacak şey
-- [ ] `matches` ve `match_ratio` (payda: `measurable`)
-- [ ] Kural başına gerçek eşleme satırı (payda = `matches`)
-- [ ] Kural başına derleme süresi ve 269 kuralın toplam maliyeti
-- [ ] En az bir kuralın canlı ClickHouse'ta doğru sonuç verdiği (kabul kriteri)
-- [ ] Tablo adı ikamesi gerekti mi — gerektiyse T31 bunu kaynağında çözmeli
-- [ ] Yanlış pozitif var mı: eşleşen satırlar gerçekten o kuralın aradığı mı
+| | Temiz taban (T30 prototipi) | T31 |
+| --- | --- | --- |
+| Derlendi | 24 | **21** (+3 bekçi düşürdü) |
+| ClickHouse kabul etti | 14 | **21** |
+| **Derlenip koşamayan** | **10** | **0** |
+| Satır döndürdü | 2 | **6** |
+| Eşleşme oranı | %8 | **%25** |
+| Sınıflandırılmamış alan | 8 | **0** |
 
-⚠️ Birinci koşumun `runs = 14` sayısı **devralınmayacak**, yeniden okunacak.
-Kolonların varlığı veriye bağlı değil, ama o 14 kural sentetik veriye karşı
-koştu ve hangi kuralların hangi sebeple düştüğü değişebilir.
+Vendor dağılımı: Cisco 7.426 · Fortinet 1.078.801 · MikroTik 22.343 · nginx 11.430.
+
+### `compiled == runs` neyi kanıtlıyor
+
+**Derlenen her kural koşuyor.** Prototipte 24'ün 10'u ClickHouse'a çarpıyordu;
+şimdi çarpan yok, reddedilen kolon adı listesi boş.
+
+Bu, yukarıdaki **2. geçersizleme kontrolünü kapatıyor** — *"`compiled` yüksek
+ama `runs` düşükse kapsamı daraltmak çözmez"*. O kontrol iki koşum boyunca
+kapsam kararını bloke ediyordu; artık bloke etmiyor.
+
+1. kontrol (`untouched`) zaten hiç tetiklenmedi: pipeline her kurala dokunuyor.
+
+### ⚠️ Ama `%25` iki farklı soruya iki farklı cevap veriyor
+
+Payda `measurable = 24`. İçinde bekçinin **bilerek düşürdüğü** 3 kural var.
+Onları "eşleşmedi" saymak, iki ayrı soruyu tek sayıya indirmek:
+
+| Soru | Payda | Sayı |
+| --- | --- | --- |
+| **Kapsam:** kataloğun ne kadarına hizmet edebiliyoruz? | 24 (bloke olanlar dahil) | **%25** |
+| **Eşleme kalitesi:** eşleyebildiklerimizin ne kadarı tutuyor? | 21 (bloke olanlar hariç) | **%29** |
+
+İkisi de doğru ve **karıştırılmamalı**. Bloke edilen kural bir eşleme kusuru
+değil — o alan bizde hiç yok. Ama bir **kapsam** kusuru: DNS kuralı koşmuyorsa
+DNS kapsamı iddia edilemez.
+
+Aşağıdaki karar tablosu **kapsam** sorusunu soruyor, dolayısıyla doğru sayı
+**%25**. Bunu yazmasaydık bir sonraki okuyucu %29'u alıp bir dal yukarı
+çıkabilirdi; iki sayı arasındaki fark tam olarak bir eşiğin genişliği kadar
+değil, ama aynı büyüklük mertebesinde ve o kadarı yeter.
+
+`no_data` paydadan düşülüyor ama `blocked` düşülmüyor — **bilinçli**. İkisi de
+"ölçemedik" demiyor: `no_data` *"veri yüklenmemiş"*, `blocked` ise *"bu şemada
+hiç ölçülemez"*. Birincisi fixture'ın eksikliği, ikincisi ürünün sınırı.
+
+### Karar tablosunun söylediği
+
+`%25` → **`< %40`** dalı: tek vendor (FortiGate), ve *"T31 önce `unmapped`
+alanlarını kolona terfi etsin"*.
+
+⚠️ Bu dalın gerekçesi **artık kısmen yanlış**. Tablo yazıldığında `unmapped`
+dalı hiç bağlı değildi; bugün bağlı ve 5 kural onu kullanıyor. Yani düşük oranın
+sebebi "eşleme eksik" değil. Üç sebep kaldı ve üçü farklı iş:
+
+1. **Altın örnekler dar.** 24 kuralın 6'sı eşleşti; eşleşmeyenlerin kaçının
+   sebebi verinin o deseni hiç içermemesi olduğu **ölçülmedi**. Bu, kapsamın
+   değil örneklemin kusuru olabilir ve tablonun paydası bunu ayırmıyor.
+2. **3 kural şema boşluğunda** — DNS. Bir DNS parser'ı üçünü birden açar.
+3. Kalan kurallar koşuyor ama satır döndürmüyor; sebebi bilinmiyor.
+
+**Kapsam kararı bu tablodan doğrudan okunmamalı.** 1. madde ölçülmeden `%25`
+kapsamın mı örneklemin mi sayısı olduğu bilinemez — ve bu, aynı belgede iki kez
+düşülen tuzağın üçüncü hâli. Ölçülecek şey: eşleşmeyen her kural için, aradığı
+desen altın örneklerde **var mı**.
+
+## Hâlâ ölçülmedi
+
+- [ ] **Yanlış pozitif**: eşleşen 6 kuralın döndürdüğü satırlar gerçekten o
+      kuralın aradığı şey mi. Eşleşme sayısı tek başına doğruluk kanıtı değil —
+      bu belgenin bütün dersi bu.
+- [ ] **Eşleşmeyen 15 kural için**: aradığı desen altın örneklerde var mı.
+      Yukarıdaki 1. madde; kapsam kararı buna bağlı.
+- [ ] Kural başına gerçek eşleme satırı (payda = `matches`) ve 269 kuralın
+      toplam maliyeti. Ölçekleme uyarısı hâlâ geçerli: çarpım **ayrık alan**
+      üzerinden yapılmalı, kural sayısı üzerinden değil.
+
+**Ölçüldü ve kapandı:** reddedilen kolon adları (boş), tablo adı ikamesi
+(gerekmedi — pipeline tabloyu kaynağında veriyor), en az bir kuralın canlı
+ClickHouse'ta koştuğu.
 
 ## Ön kontrol — ölçüm aracının kendi bekçisi
 

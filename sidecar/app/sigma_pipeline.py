@@ -158,6 +158,40 @@ ATTRS_MAP: dict[str, str] = {
     # nginx: `otel."http.response.status_code": "{{ response }}"`
     "status_code": "otel.http.response.status_code",
     "sc_status": "otel.http.response.status_code",
+    # MikroTik: grok `fw_chain` yakalıyor, `fields:` öneksiz iniyor.
+    #
+    # Zincir adı bir EYLEM DEĞİL. `routeros_forward_new.yml` `action: 'forward'`
+    # yazıyordu ve `action` → `activity_name`'e gidiyor; o kolon RouterOS'ta
+    # bilinçli olarak boş. Sorgu doğru kolona bakıp yanlış kavramı arıyordu.
+    "fw_chain": "fw_chain",
+    "rule_chain": "fw_chain",
+}
+
+#: Vendor'a göre **bilinçli olarak boş kalan** kolonlar.
+#:
+#: `activity_name` üç vendor'da dolu, RouterOS'ta boş — ve boşluğu kaza değil:
+#: `mikrotik.routeros/firewall.yaml` *"RouterOS firewall kaydı kuralın ne
+#: verdiğini içermiyor; `accept` ya da `drop` yazmak uydurma olurdu"* diyor.
+#: Parser doğru davranıyor.
+#:
+#: **Üç sınıflı model bunu ifade edemiyor.** `FIELD_MAP` küresel: `action`
+#: eşlemesi Fortinet/Cisco/nginx için doğru, dolayısıyla `SCHEMA_GAPS`'e
+#: konamaz. Ama RouterOS kuralı `action` kullandığında sorgu koşar, doğru
+#: kolona bakar ve **sonsuza kadar sıfır döner** — 6/7/8. tuzaklarla aynı
+#: sessiz sınıf, farklı sebep.
+#:
+#: Bu yüzden dördüncü bir sınıf: **logsource'a bağlı** boşluk. Kural o
+#: vendor'da o kolona giderse derleme düşüyor ve mesaj alternatifi söylüyor.
+VENDOR_EMPTY_COLUMNS: dict[str, dict[str, str]] = {
+    "routeros": {
+        "activity_name": (
+            "RouterOS firewall kaydı kuralın ne VERDİĞİNİ içermiyor, yalnızca "
+            "eşleştiğini bildiriyor; parser `action`'ı bu yüzden bilerek boş "
+            "bırakıyor ve doldurmak uydurma olurdu. Zincir adı arıyorsanız "
+            "`fw_chain` kullanın — `unmapped['fw_chain']`'e gidiyor. Kuralın "
+            "gerçekten izin/ret arıyorsa bu vendor'da karşılığı yok."
+        ),
+    },
 }
 
 #: T32'nin `remedy` sözlüğü — **kopya değil, aynı değerler.**
@@ -656,7 +690,23 @@ def bizigo_pipeline(mappings_path: Path | str | None = None):
         ),
     ]
 
-    # 5) Genel bekçi — eşlemelerden SONRA, daraltmalardan ÖNCE.
+    # 5) Logsource'a bağlı boşluklar — eşleme SONRASI, çünkü ölçüt eşlenmiş
+    #    kolon adı (`activity_name`), ham Sigma adı (`action`) değil.
+    items += [
+        ProcessingItem(
+            identifier=f"bizigo_vendor_empty_{product}_{column}",
+            transformation=DetectionItemFailureTransformation(
+                f"`{column}` bu logsource'da (`{product}`) her zaman BOŞ "
+                f"[remedy={REMEDY_SCHEMA}]: {reason}"
+            ),
+            field_name_conditions=[IncludeFieldCondition(fields=[column])],
+            rule_conditions=[LogsourceCondition(product=product)],
+        )
+        for product, columns in VENDOR_EMPTY_COLUMNS.items()
+        for column, reason in columns.items()
+    ]
+
+    # 6) Genel bekçi — eşlemelerden SONRA, daraltmalardan ÖNCE.
     #
     # Buraya kadar eşlenmemiş bir alan `events_ocsf`'te var olmayan bir kolon
     # adıyla SQL'e iner. ClickHouse onu reddeder, ama reddi ancak sorgu
