@@ -27,9 +27,7 @@ public sealed class ReplayStoreTests(DevStackFixture stack) : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
-        _context = await stack.CreateIsolatedClickHouseContextAsync(TestContext.Current.CancellationToken);
-        await new ClickHouseMigrator(_context).MigrateAsync(
-            RepoPath("db/clickhouse"), TestContext.Current.CancellationToken);
+        _context = await DevStackSetup.ClickHouseAsync(stack, TestContext.Current.CancellationToken);
 
         _writer = new EventWriter(_context);
         _replay = new ReplayStore(_context);
@@ -39,17 +37,6 @@ public sealed class ReplayStoreTests(DevStackFixture stack) : IAsyncLifetime
     {
         _context.Dispose();
         return ValueTask.CompletedTask;
-    }
-
-    private static string RepoPath(string relative)
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Bizigo.sln")))
-        {
-            dir = dir.Parent;
-        }
-
-        return Path.Combine(dir!.FullName, relative);
     }
 
     private static LogEvent Event(string ownerGroup, string action, int offsetSeconds = 0) => new()

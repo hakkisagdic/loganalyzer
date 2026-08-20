@@ -96,7 +96,9 @@ public sealed class ReplayEngine(
             };
         }
 
-        var rebuilt = await RebuildAsync(plan, objects, cancellationToken);
+        var rebuilt = ExcludeSkipped(
+            await RebuildAsync(plan, objects, cancellationToken), skippedOpen);
+
         var existing = await LoadExistingAsync(partitions, cancellationToken);
 
         var comparison = ReplayDiff.Compare(rebuilt, existing, SampleLimit);
@@ -387,6 +389,52 @@ public sealed class ReplayEngine(
         ReplayPlan plan,
         IReadOnlyList<PartitionInfo> partitions) =>
         SplitOpen(plan, partitions, _time.GetUtcNow());
+
+    /// <summary>
+    /// Atlanan açık bölümlere düşen yeniden kurulmuş kayıtları karşılaştırmadan
+    /// çıkarır.
+    ///
+    /// <para>
+    /// <b>Bu olmadan rapor yalan söylüyordu.</b> Açık bölüm replay'e girmiyor,
+    /// dolayısıyla mevcut satırları da <b>okunmuyor</b> — ama arşivden yeniden
+    /// kurulan karşılıkları elde kalıyordu. <c>ReplayDiff</c> "karşılığı yok"
+    /// gördüğü her kaydı <c>NewRows</c> sayıyor, yani rapor "şu kadar yeni satır
+    /// eklenecek" diyor, uygulama o bölüme hiç dokunmuyor ve satırlar zaten
+    /// oradaydı.
+    /// </para>
+    ///
+    /// <para>
+    /// En sinsi tarafı: kuru koşu ile gerçek koşu <b>aynı</b> yanlış sayıyı
+    /// veriyor, dolayısıyla "iki rapor eşit" kontrolü bunu yakalamıyor. Ancak
+    /// uygulamadan sonra ikinci bir kuru koşu koşturunca görülüyor — sayı hâlâ
+    /// sıfırdan büyük kalıyor ve "yapacak iş bitti" hiçbir zaman doğru olmuyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Saf ve <c>public</c></b>, <see cref="SplitOpen"/> ile aynı gerekçeyle:
+    /// veri kaybını değil ama rapor doğruluğunu belirleyen bir karar ve yalnızca
+    /// konteyner kaldıran bir testle sınanabilmesi, bu deponun bedelini ölçtüğü
+    /// hatanın aynısı olurdu.
+    /// </para>
+    /// </summary>
+    public static Dictionary<Guid, LogEvent> ExcludeSkipped(
+        Dictionary<Guid, LogEvent> rebuilt,
+        IReadOnlyList<string> skippedPartitions)
+    {
+        ArgumentNullException.ThrowIfNull(rebuilt);
+        ArgumentNullException.ThrowIfNull(skippedPartitions);
+
+        if (skippedPartitions.Count == 0)
+        {
+            return rebuilt;
+        }
+
+        var skipped = skippedPartitions.ToHashSet(StringComparer.Ordinal);
+
+        return rebuilt
+            .Where(pair => !skipped.Contains(PartitionOf(pair.Value.Timestamp)))
+            .ToDictionary(static pair => pair.Key, static pair => pair.Value);
+    }
 
     private static string PartitionOf(DateTimeOffset timestamp) =>
         timestamp.UtcDateTime.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
