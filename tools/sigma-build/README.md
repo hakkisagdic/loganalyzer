@@ -13,9 +13,27 @@ Tasarımın tamamı ve kararların gerekçeleri:
 | `view_columns.py` — görünüm kolon kümesini göçlerden türetir | ✅ |
 | `detections/schema/view-columns.json` — türetilmiş küme, versiyonlu | ✅ |
 | `gate.py` — Kapı 1: kural SQL'i var olmayan kolona gidiyor mu | ✅ |
+| `manifest.py` — manifest, takaslı yazım, sürüklenme kapısı | ✅ |
+| `compile.py` — tek komut (`--write` / `--check` / `--summary`) | ✅ |
 | Kapı 2 — `EXPLAIN` (kendi CI işinde) | ⏳ |
-| Manifest, takaslı yazım, sürüklenme kapısı | ⏳ |
-| Gerçek derleme | ⏳ T31'i bekliyor |
+| Kural seti + gerçek derleme | ⏳ T31'i bekliyor |
+
+## Kapı bugünden koşuyor, hat bitmeden
+
+`detections/sigma/manifest.json` şu an sıfır kural taşıyor ve
+`run.pipeline_version` `null`. Bu **bugünkü doğru durum**: sıfır Sigma kuralı
+derleniyor, ve sebebi "hiç kural yok" değil "henüz derlemiyoruz" — manifest
+ikisini karıştırmıyor.
+
+Kapı yine de CI'da. Sebep bu turda ölçüldü: `bizigo_pipeline.py`
+`UNMAPPED_FIELDS`'ı tanımlamış ama hiçbir dönüşüme vermemişti,
+`unmapped_expression()` yazılmış ama hiç çağrılmamıştı. **Hazırlanmış ama
+bağlanmamış**, ve bağlanmamış olması hiçbir yerde belirti üretmiyordu — 24
+kuralın 8'i sessizce koşmuyordu. Kapıyı "hat bitince bağlarız" diye bekletmek
+aynı deseni bir kez daha kurardı.
+
+T31 geldiğinde değişen tek yer `collect_outcomes()`; kapı ve yazım dokunulmadan
+kalıyor, ve kuralların belirmesi bir git diff'i olarak görünüyor.
 
 ## Kapı 1 — ne yakalıyor, ne yakalamıyor
 
@@ -150,6 +168,38 @@ On mutasyon uygulandı, her biri en az bir testi düşürdü, sonra geri alınd�
 | Tablo adı elenmedi | 16 |
 | Anahtar sözcükler elenmedi | 15 |
 | Kapı her şeyi geçirdi | 6 |
+
+`manifest.py`:
+
+| Mutasyon | Düşen test |
+| --- | --- |
+| Takas geri alma kaldırıldı | 1 |
+| `gated` kural da dosya üretti | 3 |
+| Kapı hedefin üstüne yazdı | 6 |
+| Manifest sırası girdiye bağlandı | 1 |
+| Manifest'e derleme tarihi eklendi | 1 |
+
+Canlı kapı da ölçüldü: `detections/sigma/` içine bayat bir dosya bırakıldığında
+ve manifest elle bozulduğunda `--check` çıkış kodu 1 veriyor, geri alınınca 0.
+
+## Derleme tarihi neden hiçbir yerde yok — ticket'tan bilinçli sapma
+
+Ticket "kural kimliği, kaynak sürümü ve **derleme tarihi** ile birlikte" diyor.
+Üçü birden olamıyor:
+
+- Kriter A: *aynı girdi, aynı SQL.*
+- Kriter B: *çıktı depodakiyle aynı değilse CI düşer.*
+- Derleme tarihi: her koşumda değişir.
+
+Tarihi kural dosyalarına koymak kapıyı 269 dosyada öldürüyor; manifest'e koymak
+**manifest'in kendi kapısını** öldürüyor, çünkü manifest de karşılaştırılan
+çıktının parçası. Kalan tek yol kapının o alanı görmezden gelmesi — yani kapıyı
+yumuşatmak.
+
+Tarih atıldı çünkü **git zaten tutuyor ve daha güvenilir tutuyor**:
+`git log detections/sigma/manifest.json`. Kaybedilen bilgi yok; kaybedilen tek
+şey aynı bilginin ikinci, sürüklenebilir kopyası. Girdinin parçası olan sürümler
+(`ruleset_commit`, `pipeline_version`, `pipeline_sha`) duruyor.
 
 ## Koşturmadığım test
 
