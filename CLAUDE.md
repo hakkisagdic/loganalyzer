@@ -18,6 +18,26 @@ koşturur**. Kod yazması istisnadır.
 **Uygulayıcı ajan** tek bir ticket'ı kendi git worktree'sinde yazar, kendi hafif
 testlerini koşturur, commit eder, raporlar. **Push etmez, birleştirmez.**
 
+### Koordinatör önde boş durur
+
+Koordinatörün birinci işi **kullanıcıya açık olmak**. Uzun süren hiçbir şey onun
+turunu tıkamamalı:
+
+- Derleme, test paketi, Docker koşumu, ölçüm — hepsi **arka plan prosesi**
+olarak başlatılır, sonuç geldiğinde okunur. Öndeki tur beklemez.
+- Yapılabilecek her iş **bir ajana verilir**. Koordinatörün kendi eliyle kod
+yazması istisnadır; ölçümü koşturmak ile ölçüm aracını yazmak farklı işlerdir ve
+ikincisi ajanındır.
+- Bir ajan Docker gerektiren bir şeye ihtiyaç duyuyorsa, **aracı ajan yazar,
+koordinatör koşturur** — arka planda. Bu, §2'nin bölünmesini bozmadan
+koordinatörü serbest tutuyor.
+- Kullanıcı bir şey sorduğunda cevap, koşan bir işin bitmesini beklememeli.
+Ne koştuğunu ve ne beklediğini söyle, devam et.
+
+Gerekçe: koordinatör tıkandığında beş ajan da tıkanıyor — birleştirmeyi,
+kararları ve ölçümleri o veriyor. Bir oturumda dokuz dakikalık bir ölçüm turu
+kapattı ve o sırada dört ajan boşta bekledi.
+
 ---
 
 ## 2 · Test bölünmesi — bu kural pazarlığa açık değil
