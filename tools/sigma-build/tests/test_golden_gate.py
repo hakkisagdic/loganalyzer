@@ -17,6 +17,8 @@ from pathlib import Path
 import pytest
 
 from sigma_build.golden_gate import (
+    CLASS_CORPUS_GAP,
+    CLASS_INVARIANT,
     EXPECT_AT_LEAST_ONE,
     EXPECT_NONE,
     Expectation,
@@ -33,8 +35,12 @@ from sigma_build.view_columns import repo_root
 CONN = {"url": "http://yok", "user": "u", "password": "p", "database": "d"}
 
 
-def beklenti(rule_id="a", file_name="a.sql", expect=EXPECT_AT_LEAST_ONE, why="altın örnekte bu olay var") -> Expectation:
-    return Expectation(rule_id=rule_id, file_name=file_name, expect=expect, why=why)
+def beklenti(rule_id="a", file_name="a.sql", expect=EXPECT_AT_LEAST_ONE,
+             why="altın örnekte bu olay var", kind=None) -> Expectation:
+    # `none` beklentileri `kind` istiyor; testlerde varsayılan `invariant`.
+    if expect == EXPECT_NONE and kind is None:
+        kind = CLASS_INVARIANT
+    return Expectation(rule_id=rule_id, file_name=file_name, expect=expect, why=why, kind=kind)
 
 
 def sahte_post(cevaplar: dict[str, str], *, reddedilenler: frozenset[str] = frozenset()):
@@ -421,3 +427,54 @@ def test_manifestten_kural_adi_okunuyor():
     assert titles
     assert all(name.endswith(".sql") for name in titles)
     assert any("routeros" in ad for ad in titles.values())
+
+
+# --------------------------------------------------------------------------- #
+# `none` iki farklı iddia taşıyor — kırmızıları zıt anlamlı
+# --------------------------------------------------------------------------- #
+
+def test_none_beklentisi_kind_istiyor():
+    """Kırmızı yandığında "kural bozuldu" mu "korpus genişledi" mi dediği buna bağlı.
+
+    `invariant` kırmızısı **kötü haber**: yanlış pozitif doğdu.
+    `corpus_gap` kırmızısı **iyi haber**: artık veri var, beyan
+    `at_least_one`'a dönüştürülebilir.
+
+    Tek kutuda dursalardı kırmızının anlamı okunamazdı.
+    """
+    with pytest.raises(ValueError, match="kind"):
+        Expectation(rule_id="x", file_name="x.sql", expect=EXPECT_NONE, why="sebep var")
+
+
+def test_at_least_one_kind_kabul_etmiyor():
+    """`kind` yalnızca `none` için anlamlı; başka yerde durması onu süs yapardı."""
+    with pytest.raises(ValueError, match="yalnızca"):
+        Expectation(rule_id="x", file_name="x.sql", expect=EXPECT_AT_LEAST_ONE,
+                    why="sebep var", kind=CLASS_INVARIANT)
+
+
+def test_bilinmeyen_kind_reddediliyor():
+    with pytest.raises(ValueError, match="kind"):
+        Expectation(rule_id="x", file_name="x.sql", expect=EXPECT_NONE,
+                    why="sebep var", kind="belki")
+
+
+#: Depodaki `none` beyanlarının **sınıfa göre** sayısı.
+#:
+#: `corpus_gap` bugün sıfır: kalan 12 beyan T31 ajanının üç kutulu ölçümünün
+#: kural bazında dökümünü bekliyor. O geldiğinde bu sayı artacak ve **azalması
+#: beklenen** taraf olacak — `invariant` ise sabit kalmalı.
+EXPECTED_NONE_INVARIANT = 2
+EXPECTED_NONE_CORPUS_GAP = 0
+
+
+def test_none_beyanlari_sinifa_gore_sabit():
+    expectations = repo_expectations()
+    sayim = {
+        CLASS_INVARIANT: sum(1 for e in expectations if e.kind == CLASS_INVARIANT),
+        CLASS_CORPUS_GAP: sum(1 for e in expectations if e.kind == CLASS_CORPUS_GAP),
+    }
+    assert sayim == {
+        CLASS_INVARIANT: EXPECTED_NONE_INVARIANT,
+        CLASS_CORPUS_GAP: EXPECTED_NONE_CORPUS_GAP,
+    }
