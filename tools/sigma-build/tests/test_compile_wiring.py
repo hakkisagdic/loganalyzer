@@ -44,7 +44,16 @@ def sahte_pipeline(*, hata: BaseException | None = None, sql: str = "SELECT * FR
 
     module = types.SimpleNamespace(
         bizigo_backend=lambda **kwargs: Backend(),
-        describe=lambda: {"schema_gaps": ["dns_query_name", "query"]},
+        # T31 `schema_gaps`'i **sözlük** olarak veriyor: `{alan: {remedy, reason}}`.
+        # Düz liste hâli remedy'yi bize tahmin ettiriyordu; artık beyan eden o.
+        describe=lambda: {
+            "schema_gaps": {
+                "dns_query_name": {"remedy": "schema", "reason": "hiçbir parser üretmiyor"},
+                "query": {"remedy": "schema", "reason": "hiçbir parser üretmiyor"},
+            }
+        },
+        FIELD_MAP={"action": "activity_name"},
+        VENDOR_EMPTY_COLUMNS={"routeros": {"activity_name": "parser bilerek boş bırakıyor"}},
         rule_fields=lambda text: ["dns_query_name"] if "dns_query_name" in text else ["dstport"],
     )
     return module
@@ -86,7 +95,8 @@ def test_bilincli_red_gated_failed_degil(monkeypatch, tmp_path):
     (outcome,) = compile_module.collect_outcomes()
     assert outcome.status == STATUS_GATED
     assert [b.column for b in outcome.blockers] == ["dns_query_name"]
-    assert outcome.blockers[0].remedy == "pipeline_or_schema"
+    # `remedy` T31'in beyanından geliyor, bizim tahminimizden değil.
+    assert outcome.blockers[0].remedy == "schema"
 
 
 def test_gercek_hata_failed(monkeypatch, tmp_path):
@@ -106,13 +116,36 @@ def test_alan_cikarilamazsa_sebep_yutulmuyor(monkeypatch, tmp_path):
     from sigma.exceptions import SigmaTransformationError
 
     pipeline = sahte_pipeline(hata=SigmaTransformationError("tanınmayan bir sebep"))
-    pipeline.describe = lambda: {"schema_gaps": []}
+    pipeline.describe = lambda: {"schema_gaps": {}}
+    pipeline.VENDOR_EMPTY_COLUMNS = {}
     hazirla(monkeypatch, tmp_path, pipeline=pipeline)
 
     (outcome,) = compile_module.collect_outcomes()
     assert outcome.status == STATUS_GATED
     assert outcome.blockers[0].kind == "unsupported_construct"
     assert "tanınmayan bir sebep" in (outcome.blockers[0].detail or "")
+
+
+def test_vendorda_hep_bos_kolon_alan_adiyla_raporlaniyor(monkeypatch, tmp_path):
+    """`VENDOR_EMPTY_COLUMNS` **eşlenmiş kolon adıyla** anahtarlı (`activity_name`),
+    kural ise Sigma adını taşıyor (`action`). Eşleme yapılmadan kesişim boş çıkar
+    ve engel sessizce `unknown`'a düşer — ölçüldü, `routeros_drop_input` tam
+    olarak öyle düşüyordu.
+
+    Raporlanan ad Sigma adı, çünkü kuralı düzeltecek kişinin değiştireceği o.
+    """
+    from sigma.exceptions import SigmaTransformationError
+
+    kural = KURAL.replace("dstport: 445", "action: 'drop'")
+    pipeline = sahte_pipeline(hata=SigmaTransformationError("`activity_name` her zaman BOŞ"))
+    pipeline.rule_fields = lambda text: ["action"]
+    hazirla(monkeypatch, tmp_path, kural=kural, pipeline=pipeline)
+
+    (outcome,) = compile_module.collect_outcomes()
+    assert outcome.status == STATUS_GATED
+    assert [b.column for b in outcome.blockers] == ["action"]
+    assert outcome.blockers[0].remedy == "schema"
+    assert "activity_name" in outcome.blockers[0].message
 
 
 def test_bos_korpus_bos_liste(monkeypatch):
