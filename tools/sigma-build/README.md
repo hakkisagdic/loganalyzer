@@ -102,15 +102,44 @@ Aynı koşum `0001_events.sql`'den okunan tipleri de doğruladı (`toTypeName` �
 `remedy: unknown` diye etiketleniyordu — **kapanabilir bir iş kalemi "kapanır mı
 bilmiyoruz" kutusunda.** Desen eklendi, testi ölçülen metinle yazıldı.
 
-Varsayılan artık `EXPLAIN`. Biçim seçimi bir daha tahminle yapılmasın diye
-`--probe-forms` adayları yan yana ölçüyor ve CI her koşumda basıyor:
+### Hangi biçim — ölçüldü, seçildi
 
 ```bash
 python -m sigma_build.explain_gate --probe-forms --clickhouse-url http://localhost:8123
 ```
 
-`EXPLAIN SYNTAX` aday listesinde **duruyor** — "denedik, olmadı" bilgisini
-silmek, bir sonraki kişinin aynı seçimi aynı gerekçeyle yapmasına kapı açardı.
+Canlı 26.7.3, üç sorgu, üç tur:
+
+| Biçim | Ayırt ediyor mu | Sonuçlar |
+| --- | --- | --- |
+| `EXPLAIN` | ✓ | `red, red, kabul` |
+| `EXPLAIN PLAN` | ✓ | `red, red, kabul` |
+| `EXPLAIN ESTIMATE` | ✓ | `red, red, kabul` |
+| `EXPLAIN QUERY TREE` | ✗ | `kabul, red, kabul` — **kısmen** |
+| `EXPLAIN SYNTAX` | ✗ | `kabul, kabul, kabul` |
+
+**Maliyet ayırt edici değil**: ısınma çıkarıldığında üç doğru biçim de
+~12–13 ms/sorgu. 269 kural × ~13 ms ≈ **3,5 saniye** — CI'da bir kalem değil.
+Geriye tek ölçüt olarak doğruluk kalıyor ve o da üçünde eşit, o yüzden en açık
+olanı duruyor. **Biçim seçimi maliyetle gerekçelendirilemez.**
+
+⚠️ İlk ölçüm ısınmasızdı ve `EXPLAIN`'i `EXPLAIN PLAN`'in 2,3 katı gösterdi.
+Çıplak `EXPLAIN` zaten `EXPLAIN PLAN` olduğu için imkânsız bir sonuç; ölçülen şey
+biçim değil **listedeki sıraydı** (§6). Artık her biçimden önce sayılmayan bir
+ısınma turu atılıyor ve turların en hızlısı raporlanıyor.
+
+### `QUERY TREE` — kısmen çalışan bir kapı hiç çalışmayandan tehlikeli
+
+`ILIKE ↔ IPv6`'yı yakalıyor, tamsayı uyuşmazlığını kaçırıyor. Biri "daha ucuz ve
+tip hatasını yakalıyor" diye ona geçseydi kapı `ILIKE` hatalarını yakalamaya
+devam edeceği için **çalışıyor görünürdü**; sessizce geçen tek sınıf tamsayı
+uyuşmazlıkları olurdu. `EXPLAIN SYNTAX` en azından her şeye "kabul" diyerek
+kendini ele veriyordu.
+
+Bu yüzden probe'un ölçütü "üç sonucun **üçü de** beklenen mi" — "en az bir red
+üretti mi" değil. İkisi de aday listesinde **duruyor**: "denedik, olmadı"
+bilgisini silmek, bir sonraki kişinin aynı seçimi aynı gerekçeyle yapmasına kapı
+açardı.
 
 Hata sınıflandırması güvenli tarafa bozuluyor: desenler ClickHouse sürümüyle
 bayatlayabilir, ve bayatladıkları gün tanınmayan hata yine bir engel üretiyor —

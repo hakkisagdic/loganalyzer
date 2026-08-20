@@ -184,3 +184,85 @@ def test_aday_bicimler_arasinda_explain_syntax_duruyor():
     """
     assert "EXPLAIN SYNTAX" in CANDIDATE_FORMS
     assert DEFAULT_EXPLAIN_FORM == "EXPLAIN"
+
+
+# --------------------------------------------------------------------------- #
+# `--probe-forms` — kriter ve ısınma
+# --------------------------------------------------------------------------- #
+
+def _fake_explain(reddedilenler: set[str]):
+    """Verilen sorguları reddeden, kalanını kabul eden sahte kapı."""
+    from sigma_build.gate import GATE_EXPLAIN, Blocker, GateVerdict
+
+    cagrilar: list[tuple[str, str]] = []
+
+    def sahte(sql, *, form=None, **kwargs):
+        cagrilar.append((form or "", sql))
+        red = any(parca in sql for parca in reddedilenler)
+        return GateVerdict(
+            gate=GATE_EXPLAIN,
+            blockers=(Blocker(kind="type_mismatch", message="tip", remedy="pipeline"),) if red else (),
+        )
+
+    return sahte, cagrilar
+
+
+def test_kismen_ayirt_eden_bicim_yesil_sayilmiyor(monkeypatch):
+    """Ölçülen hâl: `EXPLAIN QUERY TREE` `['kabul','red','kabul']` veriyor.
+
+    `ILIKE ↔ IPv6`'yı yakalıyor, tamsayı uyuşmazlığını kaçırıyor. "En az bir red
+    üretti mi" diyen gevşek bir kriter bunu yeşil gösterirdi — ve **kısmen
+    çalışan bir kapı hiç çalışmayandan tehlikeli**: `EXPLAIN SYNTAX` her şeye
+    "kabul" diyerek kendini ele veriyordu, bu ise çalışıyor görünüp tek bir
+    sınıfı sessizce geçirirdi.
+    """
+    from sigma_build.explain_gate import probe_forms
+
+    sahte, _ = _fake_explain({"ILIKE"})  # yalnızca ILIKE'ı yakalıyor
+    monkeypatch.setattr("sigma_build.explain_gate.explain_sql", sahte)
+
+    (row,) = probe_forms(forms=("EXPLAIN QUERY TREE",), rounds=1, url="http://yok")
+    assert row["results"] == ["kabul", "red", "kabul"]
+    assert row["discriminates"] is False
+
+
+def test_tam_ayirt_eden_bicim_yesil(monkeypatch):
+    from sigma_build.explain_gate import probe_forms
+
+    sahte, _ = _fake_explain({"ILIKE", "connection_info_protocol_name=6"})
+    monkeypatch.setattr("sigma_build.explain_gate.explain_sql", sahte)
+
+    (row,) = probe_forms(forms=("EXPLAIN",), rounds=1, url="http://yok")
+    assert row["results"] == ["red", "red", "kabul"]
+    assert row["discriminates"] is True
+
+
+def test_isinma_turu_sayilmiyor(monkeypatch):
+    """Isınma olmadan ölçüm biçimi değil **listedeki sırayı** ölçüyordu.
+
+    Canlı koşumda `EXPLAIN`, `EXPLAIN PLAN`'in 2,3 katı çıkmıştı — ClickHouse'ta
+    çıplak `EXPLAIN` zaten `EXPLAIN PLAN`'in kendisi olduğu için fiziksel olarak
+    imkânsız bir sonuç. Sıra ters çevrildiğinde fark biçimi değil ilk sırayı
+    takip etti (§6: bir ölçümün sonucunun koşum sırasıyla ilgisi olmamalı).
+
+    Bu test ısınmanın **gerçekten koştuğunu** çiviliyor: üç sorgu × (1 ısınma +
+    2 ölçüm turu) = 9 çağrı.
+    """
+    from sigma_build.explain_gate import SELF_TEST_QUERIES, probe_forms
+
+    sahte, cagrilar = _fake_explain(set())
+    monkeypatch.setattr("sigma_build.explain_gate.explain_sql", sahte)
+
+    probe_forms(forms=("EXPLAIN",), rounds=2, url="http://yok")
+    assert len(cagrilar) == len(SELF_TEST_QUERIES) * 3
+
+
+def test_bicim_her_cagriya_gecirilyor(monkeypatch):
+    """Biçim geçirilmezse probe beş kez aynı şeyi ölçer ve tablo anlamsızlaşır."""
+    from sigma_build.explain_gate import probe_forms
+
+    sahte, cagrilar = _fake_explain(set())
+    monkeypatch.setattr("sigma_build.explain_gate.explain_sql", sahte)
+
+    probe_forms(forms=("EXPLAIN ESTIMATE",), rounds=1, url="http://yok")
+    assert {form for form, _ in cagrilar} == {"EXPLAIN ESTIMATE"}
