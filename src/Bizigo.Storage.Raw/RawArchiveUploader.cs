@@ -8,6 +8,14 @@ namespace Bizigo.Storage.Raw;
 
 public sealed record UploadReport(int SegmentsProcessed, int ObjectsWritten, int SegmentsDeleted);
 
+/// <param name="Attempted">Kurtarılmaya çalışılan nesne sayısı.</param>
+/// <param name="Recovered">Yeniden yazılıp doğrulanan nesne sayısı.</param>
+/// <param name="Unrecoverable">
+/// Kurtarılamadığı <b>kesinleşen</b> nesneler: kaynak segment yok, yeniden
+/// kurulan içerik manifest'le uyuşmuyor, ya da deneme üst sınırı doldu.
+/// </param>
+public sealed record RecoveryReport(int Attempted, int Recovered, int Unrecoverable);
+
 /// <summary>
 /// WAL segmentlerini ham arşive taşır ve manifest'i yazar (F1 §7.0, §7.1).
 ///
@@ -68,10 +76,40 @@ public sealed class RawArchiveUploader(
             return 0;
         }
 
-        var builders = new Dictionary<RawObjectKey, RawObjectBuilder>();
         var written = 0;
 
-        foreach (var line in segments.ReadLines(segment.Id))
+        foreach (var (groupKey, built) in BuildObjects(segment.Id))
+        {
+            await StoreAsync(groupKey, built, segment.Id, db, cancellationToken);
+            written++;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return written;
+    }
+
+    /// <summary>
+    /// Segmentteki satırları arşiv nesnelerine dönüştürür — <b>depoya yazmadan</b>.
+    ///
+    /// <para>
+    /// Yükleme ile kurtarma (T40) bu tek yolu paylaşıyor. İkinci bir kurulum
+    /// yolu yazmak §9'un yasakladığı kopya olurdu ve ayrışma tam olarak
+    /// kurtarmanın yakalayamayacağı yerde ortaya çıkardı: yeniden kurulan nesne
+    /// farklı bir sha256 üretir, kurtarma "manifest yanlış" diye durur ve gerçek
+    /// sebep başka bir dosyada aranırdı.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Belirlenimci olmak zorunda:</b> aynı segment aynı satırları aynı
+    /// sırayla aynı gruplara koyup aynı yerlerde bölmeli. Kurtarmanın nesneyi
+    /// sha256'sından tanıması buna dayanıyor.
+    /// </para>
+    /// </summary>
+    private IEnumerable<(RawObjectKey GroupKey, BuiltRawObject Built)> BuildObjects(string segmentId)
+    {
+        var builders = new Dictionary<RawObjectKey, RawObjectBuilder>();
+
+        foreach (var line in segments.ReadLines(segmentId))
         {
             RawRecord record;
             try
@@ -81,7 +119,7 @@ public sealed class RawArchiveUploader(
             catch (Exception ex) when (ex is FormatException or KeyNotFoundException or InvalidOperationException)
             {
                 // Tek bozuk satır yüzünden segmentin tamamını arşivsiz bırakmayız.
-                logger.LogWarning(ex, "Segment {Segment} içinde çözülemeyen satır atlandı.", segment.Id);
+                logger.LogWarning(ex, "Segment {Segment} içinde çözülemeyen satır atlandı.", segmentId);
                 continue;
             }
 
@@ -111,9 +149,8 @@ public sealed class RawArchiveUploader(
 
             if (builder.UncompressedBytes >= _options.TargetObjectBytes)
             {
-                await FlushAsync(groupKey, builder, segment, db, cancellationToken);
+                yield return (groupKey, builder.Build(_options.CompressionLevel));
                 builders[groupKey] = new RawObjectBuilder();
-                written++;
             }
         }
 
@@ -124,22 +161,21 @@ public sealed class RawArchiveUploader(
                 continue;
             }
 
-            await FlushAsync(groupKey, builder, segment, db, cancellationToken);
-            written++;
+            yield return (groupKey, builder.Build(_options.CompressionLevel));
         }
-
-        await db.SaveChangesAsync(cancellationToken);
-        return written;
     }
 
-    private async Task FlushAsync(
+    /// <summary>
+    /// Kurulmuş nesneyi depoya yazar, geri okuyup doğrular ve manifest satırını
+    /// ekler.
+    /// </summary>
+    private async Task StoreAsync(
         RawObjectKey groupKey,
-        RawObjectBuilder builder,
-        PendingSegment segment,
+        BuiltRawObject built,
+        string segmentId,
         ControlPlaneDbContext db,
         CancellationToken cancellationToken)
     {
-        var built = builder.Build(_options.CompressionLevel);
         var key = (groupKey with { Id = Guid.CreateVersion7(built.TsFrom).ToString("N") }).Value;
 
         await store.PutAsync(key, built.Compressed, cancellationToken);
@@ -155,7 +191,7 @@ public sealed class RawArchiveUploader(
             logger.LogError(
                 "Ham nesne {Key} geri okumada doğrulanamadı — segment {Segment} silinmeyecek.",
                 key,
-                segment.Id);
+                segmentId);
         }
 
         var now = _time.GetUtcNow();
@@ -171,10 +207,157 @@ public sealed class RawArchiveUploader(
             UploadedAt = now,
             VerifiedAt = verified ? now : null,
             State = verified ? RawObjectState.Verified : RawObjectState.ChecksumMismatch,
-            WalSegment = segment.Id,
+            WalSegment = segmentId,
         });
 
         await refSink.RecordAsync(key, built.Refs, cancellationToken);
+    }
+
+    /// <summary>
+    /// Kayıp ya da bozuk nesneleri yerel WAL segmentinden geri yükler (T40).
+    ///
+    /// <para>
+    /// <b>Neden tespitten tetikleniyor, kendi takviminden değil:</b> bağlayıcı
+    /// kısıt saklama penceresi. Kurtarma ayrı bir zamanlamayla koşsaydı tespit
+    /// ile kurtarma arasına ikinci bir gecikme girerdi ve 48 saatlik bütçe iki
+    /// bağımsız periyot arasında bölünürdü — kimsenin toplamını tutmadığı bir
+    /// bütçe. Scrub bir nesneyi <c>Missing</c> işaretlediği turda kurtarma da
+    /// koşuyor, yani pencerenin tamamı tespite kalıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Nesne sha256'sından tanınıyor.</b> Segment birden çok nesne üretmiş
+    /// olabilir ve manifest hangisinin hangisi olduğunu ayrıca söylemiyor;
+    /// yeniden kurulan adaylardan sha256'sı tutan, tanım gereği aranan nesne.
+    /// Tutan aday yoksa <b>hiçbir şey yazılmıyor</b>: manifest'in kaydı doğru
+    /// kabul ediliyor, sapan taraf kurtarmadır ve yanlış içerikle üzerine
+    /// yazmak kaybı sessiz bir bozulmaya çevirirdi.
+    /// </para>
+    /// </summary>
+    public async Task<RecoveryReport> RecoverAsync(CancellationToken cancellationToken = default)
+    {
+        await sources.RefreshAsync(cancellationToken);
+
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+
+        var broken = await db.RawManifest
+            .Where(m => m.State == RawObjectState.Missing || m.State == RawObjectState.ChecksumMismatch)
+            .Where(m => m.RecoveryAttempts < _options.MaxRecoveryAttempts)
+            .OrderBy(m => m.RecoveryAttempts)
+            .Take(_options.ScrubSampleSize)
+            .ToListAsync(cancellationToken);
+
+        var recovered = 0;
+        var unrecoverable = 0;
+
+        // Segment başına tek kurulum: aynı segmentten iki nesne kaybolduysa
+        // satırları iki kez okumanın anlamı yok ve kurulum en pahalı adım.
+        foreach (var group in broken.GroupBy(m => m.WalSegment, StringComparer.Ordinal))
+        {
+            var candidates = TryBuild(group.Key);
+
+            foreach (var entry in group)
+            {
+                entry.RecoveryAttempts++;
+
+                // `FirstOrDefault` değer demeti döndürdüğü için eşleşme yokken
+                // `null` değil VARSAYILAN demet geliyor; ayrımı `Built` üzerinden
+                // yapmak zorundayız. Yalnızca `match is null` yazmak, eşleşmeyen
+                // durumda boş bir demeti geçerli sanıp NullReference'a düşürüyordu.
+                var match = candidates?.FirstOrDefault(c =>
+                    string.Equals(c.Built.Sha256, entry.Sha256, StringComparison.Ordinal));
+
+                if (match?.Built is null)
+                {
+                    if (Exhausted(entry))
+                    {
+                        unrecoverable++;
+                    }
+
+                    continue;
+                }
+
+                await store.PutAsync(entry.ObjectKey, match.Value.Built.Compressed, cancellationToken);
+
+                var readBack = await store.GetAsync(entry.ObjectKey, cancellationToken);
+                var verified = readBack is not null
+                    && string.Equals(Sha256Of(readBack), entry.Sha256, StringComparison.Ordinal);
+
+                if (!verified)
+                {
+                    logger.LogError(
+                        "Kurtarılan nesne {Key} geri okumada doğrulanamadı.", entry.ObjectKey);
+
+                    if (Exhausted(entry))
+                    {
+                        unrecoverable++;
+                    }
+
+                    continue;
+                }
+
+                entry.State = RawObjectState.Verified;
+                entry.VerifiedAt = _time.GetUtcNow();
+                recovered++;
+
+                logger.LogInformation(
+                    "Ham nesne {Key} segment {Segment}'ten geri yüklendi.",
+                    entry.ObjectKey,
+                    group.Key);
+            }
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return new RecoveryReport(broken.Count, recovered, unrecoverable);
+    }
+
+    /// <summary>
+    /// Deneme hakkı bittiyse durumu kesinleştirir.
+    ///
+    /// <para>
+    /// Sessizce yeniden denemeye devam etmek, bozuk bir S3 yapılandırmasında
+    /// sonsuz yeniden yazma döngüsü demekti — ve operatör için "hâlâ deniyor"
+    /// ile "artık denemiyor" arasındaki fark, bakması gereken tek şey.
+    /// </para>
+    /// </summary>
+    private bool Exhausted(RawManifestEntity entry)
+    {
+        if (entry.RecoveryAttempts < _options.MaxRecoveryAttempts)
+        {
+            return false;
+        }
+
+        entry.State = RawObjectState.Unrecoverable;
+
+        logger.LogError(
+            "Ham nesne {Key} kurtarılamadı ({Attempts} deneme). Kaynak segment: {Segment}.",
+            entry.ObjectKey,
+            entry.RecoveryAttempts,
+            string.IsNullOrEmpty(entry.WalSegment) ? "(kayıt yok)" : entry.WalSegment);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Segmenti yeniden kurmayı dener. Segment artık yoksa <see langword="null"/>.
+    /// </summary>
+    private List<(RawObjectKey GroupKey, BuiltRawObject Built)>? TryBuild(string segmentId)
+    {
+        if (string.IsNullOrEmpty(segmentId))
+        {
+            return null;
+        }
+
+        try
+        {
+            var built = BuildObjects(segmentId).ToList();
+            return built.Count > 0 ? built : null;
+        }
+        catch (IOException ex)
+        {
+            logger.LogWarning(ex, "Segment {Segment} okunamadı; kurtarma bu tur atlanıyor.", segmentId);
+            return null;
+        }
     }
 
     /// <summary>
