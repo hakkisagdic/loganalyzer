@@ -109,14 +109,18 @@ def test_depodaki_civi_tutarli():
     assert verify(REPO_CATALOG) == []
 
 
-def test_depodaki_civi_henuz_civilenmemis():
-    """Bugünkü **doğru** durum: kaynak belli, commit belli değil.
+def test_civi_kaynagini_dogru_soyluyor():
+    """Korpus **SigmaHQ'dan gelmiyor** ve çivi bunu söylemek zorunda.
 
-    `commit: null` "kural yok" demiyor, "hangi sürümden alacağımıza karar
-    verilmedi" diyor — T30'un kapsam ölçümünü bekliyor. İkisini karıştırmamak,
-    manifest'teki `pipeline_version: null` ile aynı ayrım.
+    24 kural T30 prototipinden terfi ettirildi (koordinatör kararı). Çivi
+    `source` alanında SigmaHQ yazsaydı, kapsamı okuyan biri bunları yukarı
+    akıştan gelmiş sanır ve "SigmaHQ'nun %x'ini kapsıyoruz" diye okurdu —
+    örneklem SigmaHQ'nun dağılımını temsil etmiyor (T30 bunu açıkça yazıyor).
+
+    T30'un kapsam kararı geldiğinde çivi değişecek, kapı değişmeyecek.
     """
     pin = load_pin(REPO_CATALOG)
-    assert pin.source == "https://github.com/SigmaHQ/sigma"
-    assert pin.commit is None
-    assert pin.rules == {}
+    assert "SigmaHQ" not in pin.source
+    assert "bizigo" in pin.source
+    assert pin.is_pinned
+    assert len(pin.rules) == 24

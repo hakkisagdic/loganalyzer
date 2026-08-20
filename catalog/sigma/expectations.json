@@ -1,0 +1,29 @@
+{
+  "_comment": "Kural başına beklenen altın örnek sonucu. Kapı 3 bunları canlı ClickHouse'a karşı doğruluyor. KAPSAM SAYISI BURADA DEĞİL: kapsam verinin şekline bağlı ve kapı yapılırsa bir vendor'ın payı kaydığında kırmızı yanar.",
+  "expectations": [
+    {
+      "rule_id": "07131427-0000-4000-8000-000000000000",
+      "file_name": "07131427-0000-4000-8000-000000000000.sql",
+      "expect": "none",
+      "why": "routeros_winbox_access — kural `dst_endpoint_port=8291` arıyor ve `8291` MikroTik örneklerinin İKİSİNDE DE hiç geçmiyor (firewall.log 0, system.log 0). Yanlış pozitif bekçisi: bu kural satır döndürürse ya port eşlemesi ya vendor daraltması bozulmuştur."
+    },
+    {
+      "rule_id": "21934394-0000-4000-8000-000000000000",
+      "file_name": "21934394-0000-4000-8000-000000000000.sql",
+      "expect": "none",
+      "why": "asa_deny_inbound — kural `activity_name='Deny' AND dst_endpoint_port=445` arıyor; `445` cisco.asa/samples/network.log içinde hiç geçmiyor. Örnekte `Deny tcp` satırları VAR, yani bu beklenti `activity_name` koşulunu değil **port koşulunu** sınıyor — ikisi AND ile bağlı ve biri tutmuyor."
+    },
+    {
+      "rule_id": "25520785-0000-4000-8000-000000000000",
+      "file_name": "25520785-0000-4000-8000-000000000000.sql",
+      "expect": "at_least_one",
+      "why": "asa_icmp_flood — catalog/parsers/cisco.asa/samples/network.log içinde ICMP geçen 2 satır var. Kural yalnızca `connection_info_protocol_name='icmp'` arıyor, başka koşulu yok."
+    },
+    {
+      "rule_id": "33839694-0000-4000-8000-000000000000",
+      "file_name": "33839694-0000-4000-8000-000000000000.sql",
+      "expect": "at_least_one",
+      "why": "routeros_forward_new — catalog/parsers/mikrotik.routeros/samples/firewall.log içinde `firewall,info forward:` VE `proto TCP` taşıyan 3 satır var (ör. satır 4: `proto TCP (SYN), 10.0.0.91:45572->198.51.100.101:443`). Kural `activity_name='forward' AND connection_info_protocol_name='tcp'` arıyor; küçük harfe çevirme `catalog/mappings/ip_proto_name.yaml` üzerinden."
+    }
+  ]
+}
