@@ -17,6 +17,8 @@ Tasarımın tamamı ve kararların gerekçeleri:
 | `compile.py` — tek komut (`--write` / `--check` / `--summary`) | ✅ |
 | `explain_gate.py` — Kapı 2: `EXPLAIN`, kendi CI işinde | ✅ **koşturuldu** — ilk koşum kapının kendi kusurunu buldu |
 | `ruleset.py` — kural seti çivisi, ağsız doğrulama | ✅ |
+| `golden_gate.py` — Kapı 3: altın örnek, ön kontrol + beyanlar | ✅ yazıldı, **koşturulmadı** |
+| `clickhouse.py` — Kapı 2 ve 3'ün ortak HTTP yüzeyi | ✅ |
 | Kural setinin **yükseltme** yolu (ağ) | ⏳ kapsam kararını bekliyor |
 | Gerçek derleme | ⏳ T31'i bekliyor |
 
@@ -146,6 +148,52 @@ bayatlayabilir, ve bayatladıkları gün tanınmayan hata yine bir engel üretiy
 kayıp `kind` çözünürlüğünde, kuralın kapıdan geçmesinde değil. Bağlantı hatası
 ise engel değil **istisna**: ortam bozukken "bütün kurallar kırık" yazdırmak
 ölçüm aracının kendi sessiz yanlışı olurdu.
+
+## Kapı 3 — iki soru, iki ayrı yer
+
+| Soru | Nerede | Neden |
+| --- | --- | --- |
+| Beyan edilmiş kural beklediğini buluyor mu | **Kapı** | Verinin şeklinden bağımsız |
+| Kaç kural bir şey yakalıyor | **Ölçüm** | Verinin şekline bağlı |
+
+*"En az N kural eşleşmeli"* diyen bir kapı, bir vendor'ın payı kaydığında kırmızı
+yanar ve sebebi kural setinde değil **veride** olur. Kapsam raporlanıyor, kapı
+yapılmıyor.
+
+```bash
+python -m sigma_build.golden_gate --shape-only                      # CI, ağsız
+python -m sigma_build.golden_gate --clickhouse-url http://localhost:8123
+python -m sigma_build.golden_gate --discover --clickhouse-url ...   # beyan YAZMAZ, basar
+```
+
+Beyanlar `catalog/sigma/expectations.json`: kural başına `at_least_one` ya da
+`none`, ve **zorunlu gerekçe** — gerekçesiz bir beklenti, kırıldığı gün
+"herhâlde veri değişmiştir" diye gevşetilir.
+
+`none` beklentisi yalnızca yanlış pozitif bekçisi değil, kapının **ayırt
+edebildiğinin kanıtı**: yalnızca `at_least_one`'lardan oluşan bir listeyi her
+şeyi eşleştiren bozuk bir kapı da geçerdi.
+
+Veri yoksa kapı **hiç koşmuyor** (çıkış 3): sorgu hatası, boş tablo ve eksik
+vendor ayrı ayrı raporlanıyor — T30'un protokolü.
+
+`--discover` beyan **yazmıyor**, basıyor. Beyan bir karardır; aracın kendi
+ölçümünden otomatik doğması kapıyı bugünkü davranışın fotoğrafına çevirirdi ve o
+kapı hiçbir şeyi kanıtlamaz.
+
+## Kapı 2 bugün boş dönüyor — bu başarı göstergesi
+
+T31 ölçüldü: `compiled == runs == 21`, eşlenemeyen kuralları derleme aşamasında
+düşürüyor. Yani ClickHouse'a koşmayan tek bir SQL çarpmıyor ve Kapı 2 hiçbir şey
+yakalamıyor.
+
+Kapının bugünkü işi, **T31'in sınıflandırmasının ClickHouse ile aynı fikirde
+olduğunu** doğrulamak. İkisi ayrışırsa bunu başka hiçbir şey görmez: Kapı 1 kolon
+adlarına bakıyor, T31 kendi eşleme tablosuna, ve ikisi de ClickHouse'a sormuyor.
+
+Boş dönen bir bekçinin iki sebebi olabilir — korunan şey sağlam, ya da bekçi kör.
+Kapı 2 için ikisini ayıran şey `--self-test`, ve o kip zaten bir kez kapının
+kendi körlüğünü buldu.
 
 ## `gated` tek sayı değil
 

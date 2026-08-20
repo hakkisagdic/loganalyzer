@@ -201,6 +201,66 @@ silmek, bir sonraki kişinin aynı seçimi aynı gerekçeyle yapmasına kapı a�
 Probe CI'da kapı değil **ölçüm** olarak koşuyor — bir ClickHouse yükseltmesi
 `QUERY TREE`'yi düzeltebilir ya da `PLAN`'i bozabilir, ve o gün bu tablo söyler.
 
+### KARAR · Kapı 2 bugün boş dönüyor — ve bu bir **başarı göstergesi**
+
+T31 ölçüldü: `compiled == runs == 21`. Eşlenemeyen kuralları derleme aşamasında
+düşürdüğü için ClickHouse'a koşmayan tek bir SQL çarpmıyor. Yani Kapı 2 bugün
+hiçbir şey yakalamıyor.
+
+**Bu, kapının gereksiz olduğu anlamına gelmiyor; tam tersi.** Kapı 2'nin bugünkü
+işi, T31'in sınıflandırmasının **ClickHouse ile aynı fikirde olduğunu**
+doğrulamak. İkisi ayrışırsa — T31 "eşlendi" der, ClickHouse reddeder — bunu
+başka hiçbir şey görmez: Kapı 1 kolon adlarına bakıyor, T31 kendi eşleme
+tablosuna, ve ikisi de ClickHouse'a sormuyor.
+
+Bu not buraya **biri bir gün "hiçbir şey yakalamıyor" diye kaldırmasın diye**
+yazıldı. Boş dönen bir bekçinin iki sebebi olabilir: korunan şey sağlam, ya da
+bekçi kör. Kapı 2 için ikisini ayıran şey `--self-test` — ve o kip zaten bir kez
+kapının kendi körlüğünü buldu (`EXPLAIN SYNTAX`).
+
+### KARAR · Kapı 3 iki soruyu **iki ayrı yere** koyuyor
+
+Kapı 3 iki şey ölçebilirdi ve ikisini tek kapıya koymak, hangisinin kırıldığını
+belirsiz bırakırdı:
+
+| Soru | Nerede | Neden orada |
+| --- | --- | --- |
+| **Derleme doğruluğu** — beyan edilmiş bir kural beklediği şeyi buluyor mu | **Kapı** | Kural başına; verinin şeklinden bağımsız, ya bulur ya bulmaz |
+| **Kapsam** — kaç kural bir şey yakalıyor | **Ölçüm** | Verinin şekline bağlı |
+
+§6'nın "mutlak bütçe yerine oran" maddesinin buradaki karşılığı daha sert:
+**kapsam hiç kapı değil.** *"En az N kural eşleşmeli"* diyen bir kapı, bir
+vendor'ın payı kaydığında kırmızı yanar ve o kırmızının sebebi kural setinde
+değil **veride** olur — yani kapı yanlış soruyu sormuş olur.
+
+Beyanlar `catalog/sigma/expectations.json` içinde, kural başına
+`at_least_one` ya da `none` ve **zorunlu bir gerekçe**. Gerekçe alanı boş
+bırakılamıyor: gerekçesiz bir beklenti, kırıldığı gün "herhâlde veri
+değişmiştir" diye gevşetilir.
+
+`none` beklentisi yalnızca yanlış pozitif bekçisi değil, **kapının ayırt
+edebildiğinin kanıtı**: yalnızca `at_least_one` beyanlarından oluşan bir listeyi,
+her şeyi eşleştiren bozuk bir kapı da geçerdi. Kapı bu yüzden listede iki yönün
+de bulunmasını **istiyor**.
+
+Veri yoksa kapı **hiç koşmuyor** (çıkış 3) — T30'un ön kontrol protokolü, üç
+durumu ayrı raporlayarak: sorgu hata verdi (kurulum), tablo boş (yükleyici
+koşmamış), vendor eksik (o vendor'ın kuralları ölçülemez). Gerekçesi T30'da
+ölçülmüş: tabloda önceki turdan kalma tek vendor'lı veri varken "boş mu"
+sorusunun cevabı hayırdı, ölçüm geçti ve **%0 eşleşme** üretti — o sıfır
+eşlemenin değil verinin sonucuydu.
+
+**Kapı bugünden CI'da ama ilk gün kırmızı yanmıyor.** Koşul "üretilen her kural
+beyanlı olmalı"; sıfır kural üretiliyorsa sıfır beyan gerekiyor. Bu bir gevşetme
+değil koşulun kendisi, ve iki tuzağın arasından geçiyor: kapıyı "kural seti
+gelince bağlarız" diye ertelemek **hazırlanmış ama bağlanmamış** desenini
+kurardı; bugün koşulsuz zorlamak ise ilgisiz bir işi bekleyen ve o yüzden ilk
+günden kırmızı yanan — dolayısıyla gevşetilecek — bir kapı yaratırdı. İlk kural
+üretildiği anda kapı **kendiliğinden** diş kazanıyor.
+
+Kapının canlı yarısı koordinatörde koşuyor (§2); CI'da koşan yarı beyan
+listesinin şekli ve ClickHouse'a hiç bağlanmıyor.
+
 ### KARAR · Kapı 1'den geçemeyen kural dosya üretmez
 
 Manifest'e `gated` olarak sebebiyle yazılır (`unknown_column: url`). Böylece

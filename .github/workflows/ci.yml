@@ -338,6 +338,22 @@ jobs:
         working-directory: tools/sigma-build
         run: python -m sigma_build.explain_gate --clickhouse-url http://localhost:8123
 
+      # KAPI 3'ÜN ÇEVRİMDIŞI YARISI. Kapının kendisi **yüklü altın örnek**
+      # istiyor ve bu iş yalnızca şema kuruyor, veri yüklemiyor — canlı yarısı
+      # koordinatörde koşuyor (§2).
+      #
+      # Burada koşan şey beyan listesinin **şekli**: kapı "eşleşen" ile
+      # "eşleşmeyen"i ayırt edebildiğini gösterebiliyor mu. Yalnızca
+      # `at_least_one` beyanlarından oluşan bir liste, her şeyi eşleştiren bozuk
+      # bir kapı tarafından da geçilirdi.
+      #
+      # Bugün sıfır kural üretiliyor (kural seti çivisi boş), o yüzden sıfır
+      # beyan isteniyor ve adım yeşil. İlk kural üretildiği anda kapı
+      # kendiliğinden diş kazanıyor — koşul "üretilen her kural beyanlı olmalı".
+      - name: Kapı 3 beyan listesi ayırt edebiliyor mu
+        working-directory: tools/sigma-build
+        run: python -m sigma_build.golden_gate --shape-only
+
   integration:
     name: Entegrasyon testleri (Testcontainers)
     runs-on: ubuntu-latest
