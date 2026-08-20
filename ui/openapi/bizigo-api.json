@@ -142,7 +142,53 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserPublishResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/parsers/coverage": {
+      "get": {
+        "tags": [
+          "parsers"
+        ],
+        "operationId": "ParserCoverage",
+        "parameters": [
+          {
+            "name": "force",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogCoverageResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -717,7 +763,14 @@
         "operationId": "ListParsers",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserListResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -740,7 +793,24 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -776,7 +846,14 @@
         "operationId": "ListParserDrafts",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserDraftListResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -803,6 +880,38 @@
       }
     },
     "/v1/parsers/drafts/{id}": {
+      "get": {
+        "tags": [
+          "parsers"
+        ],
+        "operationId": "GetParserDraft",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserDraftDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
       "put": {
         "tags": [
           "parsers"
@@ -879,7 +988,24 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserAuthoringResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -903,7 +1029,24 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserPublishResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParserAuthoringResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -2119,6 +2262,113 @@
           }
         }
       },
+      "CatalogCoverageResponse": {
+        "required": [
+          "ok",
+          "partial",
+          "failed",
+          "total",
+          "measured_at",
+          "stale",
+          "by_parser"
+        ],
+        "type": "object",
+        "properties": {
+          "ok": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "partial": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "failed": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "measured_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stale": {
+            "type": "boolean"
+          },
+          "by_parser": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParserCoverageEntryResponse"
+            }
+          }
+        }
+      },
+      "CatalogReloadResponse": {
+        "required": [
+          "loaded",
+          "from_repository",
+          "from_database",
+          "shadowed",
+          "errors"
+        ],
+        "type": "object",
+        "properties": {
+          "loaded": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "from_repository": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "from_database": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "shadowed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "ChangeResponse": {
         "required": [
           "change_id",
@@ -3227,6 +3477,183 @@
           }
         }
       },
+      "ParserAuthoringResponse": {
+        "required": [
+          "id",
+          "parser_id",
+          "version",
+          "state",
+          "error",
+          "verdict"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "parser_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "version": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "state": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "error": {
+            "type": "string"
+          },
+          "verdict": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PublishVerdictResponse"
+              }
+            ]
+          }
+        }
+      },
+      "ParserCoverageEntryResponse": {
+        "required": [
+          "parser_id",
+          "wins"
+        ],
+        "type": "object",
+        "properties": {
+          "parser_id": {
+            "type": "string"
+          },
+          "wins": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "ParserDetailResponse": {
+        "required": [
+          "summary",
+          "match",
+          "steps",
+          "groks"
+        ],
+        "type": "object",
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/ParserSummaryResponse"
+          },
+          "match": {
+            "$ref": "#/components/schemas/ParserMatchResponse"
+          },
+          "steps": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "groks": {
+            "$ref": "#/components/schemas/ParserGrokResponse"
+          }
+        }
+      },
+      "ParserDraftDetailResponse": {
+        "required": [
+          "id",
+          "parser_id",
+          "version",
+          "state",
+          "owner",
+          "yaml",
+          "verdict",
+          "updated_at",
+          "previous_version",
+          "previous_yaml"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parser_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "yaml": {
+            "type": "string"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/PublishVerdictResponse"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "previous_version": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "previous_yaml": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ParserDraftListResponse": {
+        "required": [
+          "count",
+          "drafts"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "drafts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParserDraftResponse"
+            }
+          }
+        }
+      },
       "ParserDraftRequest": {
         "required": [
           "yaml"
@@ -3235,6 +3662,229 @@
         "properties": {
           "yaml": {
             "type": "string"
+          }
+        }
+      },
+      "ParserDraftResponse": {
+        "required": [
+          "id",
+          "parser_id",
+          "version",
+          "vendor",
+          "product",
+          "state",
+          "owner",
+          "passing_tests",
+          "quarantined",
+          "created_at",
+          "updated_at",
+          "published_at"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parser_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "vendor": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "passing_tests": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "quarantined": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "published_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "ParserGrokResponse": {
+        "required": [
+          "total",
+          "backtracking",
+          "fallback_reasons"
+        ],
+        "type": "object",
+        "properties": {
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "backtracking": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "fallback_reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ParserListResponse": {
+        "required": [
+          "count",
+          "parsers",
+          "backtracking_groks"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "parsers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ParserSummaryResponse"
+            }
+          },
+          "backtracking_groks": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "ParserMatchResponse": {
+        "required": [
+          "transport",
+          "contains",
+          "source_labels"
+        ],
+        "type": "object",
+        "properties": {
+          "transport": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "contains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source_labels": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ParserPublishResponse": {
+        "required": [
+          "draft",
+          "catalog"
+        ],
+        "type": "object",
+        "properties": {
+          "draft": {
+            "$ref": "#/components/schemas/ParserAuthoringResponse"
+          },
+          "catalog": {
+            "$ref": "#/components/schemas/CatalogReloadResponse"
+          }
+        }
+      },
+      "ParserSummaryResponse": {
+        "required": [
+          "id",
+          "version",
+          "vendor",
+          "product",
+          "description",
+          "license",
+          "specificity",
+          "backtracking_groks"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "vendor": {
+            "type": "string"
+          },
+          "product": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "license": {
+            "type": "string"
+          },
+          "specificity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "backtracking_groks": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -3648,6 +4298,40 @@
                 "string"
               ],
               "format": "double"
+            }
+          }
+        }
+      },
+      "PublishVerdictResponse": {
+        "required": [
+          "ok",
+          "passing_tests",
+          "errors",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "passing_tests": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
             }
           }
         }

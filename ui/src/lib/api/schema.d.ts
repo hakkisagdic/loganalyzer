@@ -100,6 +100,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parsers/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ParserCoverage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/ingest/stats": {
         parameters: {
             query?: never;
@@ -446,7 +462,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["GetParserDraft"];
         put: operations["UpdateParserDraft"];
         post?: never;
         delete?: never;
@@ -824,6 +840,30 @@ export interface components {
             unrestricted: boolean;
             sees_nothing: boolean;
         };
+        CatalogCoverageResponse: {
+            /** Format: int32 */
+            ok: number | string;
+            /** Format: int32 */
+            partial: number | string;
+            /** Format: int32 */
+            failed: number | string;
+            /** Format: int32 */
+            total: number | string;
+            /** Format: date-time */
+            measured_at: string;
+            stale: boolean;
+            by_parser: components["schemas"]["ParserCoverageEntryResponse"][];
+        };
+        CatalogReloadResponse: {
+            /** Format: int32 */
+            loaded: number | string;
+            /** Format: int32 */
+            from_repository: number | string;
+            /** Format: int32 */
+            from_database: number | string;
+            shadowed: string[];
+            errors: string[];
+        };
         ChangeResponse: {
             /** Format: uuid */
             change_id: string;
@@ -1119,8 +1159,104 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
         };
+        ParserAuthoringResponse: {
+            /** Format: uuid */
+            id: null | string;
+            parser_id: null | string;
+            version: null | string;
+            state: null | string;
+            error: string;
+            verdict: null | components["schemas"]["PublishVerdictResponse"];
+        };
+        ParserCoverageEntryResponse: {
+            parser_id: string;
+            /** Format: int32 */
+            wins: number | string;
+        };
+        ParserDetailResponse: {
+            summary: components["schemas"]["ParserSummaryResponse"];
+            match: components["schemas"]["ParserMatchResponse"];
+            /** Format: int32 */
+            steps: number | string;
+            groks: components["schemas"]["ParserGrokResponse"];
+        };
+        ParserDraftDetailResponse: {
+            /** Format: uuid */
+            id: string;
+            parser_id: string;
+            version: string;
+            state: string;
+            owner: string;
+            yaml: string;
+            verdict: components["schemas"]["PublishVerdictResponse"];
+            /** Format: date-time */
+            updated_at: string;
+            previous_version: null | string;
+            previous_yaml: null | string;
+        };
+        ParserDraftListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            drafts: components["schemas"]["ParserDraftResponse"][];
+        };
         ParserDraftRequest: {
             yaml: string;
+        };
+        ParserDraftResponse: {
+            /** Format: uuid */
+            id: string;
+            parser_id: string;
+            version: string;
+            vendor: string;
+            product: string;
+            state: string;
+            owner: string;
+            /** Format: int32 */
+            passing_tests: number | string;
+            quarantined: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** Format: date-time */
+            published_at: null | string;
+        };
+        ParserGrokResponse: {
+            /** Format: int32 */
+            total: number | string;
+            /** Format: int32 */
+            backtracking: number | string;
+            fallback_reasons: string[];
+        };
+        ParserListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            parsers: components["schemas"]["ParserSummaryResponse"][];
+            /** Format: int32 */
+            backtracking_groks: number | string;
+        };
+        ParserMatchResponse: {
+            transport: string[];
+            contains: string[];
+            source_labels: {
+                [key: string]: string;
+            };
+        };
+        ParserPublishResponse: {
+            draft: components["schemas"]["ParserAuthoringResponse"];
+            catalog: components["schemas"]["CatalogReloadResponse"];
+        };
+        ParserSummaryResponse: {
+            id: string;
+            version: string;
+            vendor: string;
+            product: string;
+            description: string;
+            license: string;
+            /** Format: int32 */
+            specificity: number | string;
+            /** Format: int32 */
+            backtracking_groks: number | string;
         };
         ParserTryRequest: {
             line: string;
@@ -1221,6 +1357,13 @@ export interface components {
             /** Format: date-time */
             last_seen: null | string;
             gaps_seconds: (number | string)[];
+        };
+        PublishVerdictResponse: {
+            ok: boolean;
+            /** Format: int32 */
+            passing_tests: number | string;
+            errors: string[];
+            warnings: string[];
         };
         ReplayRequest: {
             /** Format: date-time */
@@ -1432,7 +1575,40 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ParserPublishResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    ParserCoverage: {
+        parameters: {
+            query?: {
+                force?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogCoverageResponse"];
+                };
             };
         };
     };
@@ -1844,7 +2020,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ParserListResponse"];
+                };
             };
         };
     };
@@ -1864,7 +2042,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ParserDetailResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -1904,7 +2093,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ParserDraftListResponse"];
+                };
             };
         };
     };
@@ -1923,6 +2114,35 @@ export interface operations {
         responses: {
             /** @description OK */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    GetParserDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParserDraftDetailResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1990,7 +2210,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ParserAuthoringResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -2010,7 +2241,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ParserPublishResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParserAuthoringResponse"];
+                };
             };
         };
     };

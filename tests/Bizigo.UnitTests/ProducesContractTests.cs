@@ -73,16 +73,10 @@ public sealed class ProducesContractTests
     private static readonly Dictionary<string, string> Pending = new(StringComparer.Ordinal)
     {
         ["POST /v1/replay"] = "T19 — replay ekranı",
-        ["GET /v1/parsers"] = "T18 — parser editörü",
-        ["GET /v1/parsers/{id}"] = "T18 — parser editörü",
-        ["POST /v1/parsers/try"] = "T18 — parser editörü",
-        ["GET /v1/parsers/drafts"] = "T18 — parser editörü",
-        ["POST /v1/parsers/drafts"] = "T18 — parser editörü",
-        ["PUT /v1/parsers/drafts/{id}"] = "T18 — parser editörü",
-        ["POST /v1/parsers/drafts/{id}/submit"] = "T18 — parser editörü",
-        ["POST /v1/parsers/drafts/{id}/return"] = "T18 — parser editörü",
-        ["POST /v1/parsers/drafts/{id}/publish"] = "T18 — parser editörü",
-        ["POST /v1/parsers/{parserId}/rollback"] = "T18 — parser editörü",
+        ["POST /v1/parsers/try"] = "T19 — parser editörü (yazar yüzeyi)",
+        ["POST /v1/parsers/drafts"] = "T19 — parser editörü (yazar yüzeyi)",
+        ["PUT /v1/parsers/drafts/{id}"] = "T19 — parser editörü (yazar yüzeyi)",
+        ["POST /v1/parsers/drafts/{id}/submit"] = "T19 — parser editörü (yazar yüzeyi)",
     };
 
     /// <summary>
@@ -177,6 +171,10 @@ public sealed class ProducesContractTests
             typeof(AlertingOptions), typeof(AlertingStats), typeof(AlertPreview),
             typeof(IChangeWebhookRegistry), typeof(ChangeWebhookOptions),
             typeof(ChangeWebhookDeliveryLog), typeof(ChangeConnectorService),
+
+            // T20'nin kapsam ucu. Kaydedilmezse `CatalogCoverageCache` gövde
+            // parametresi sanılıyor ve `MapParserAuthoring` çıkarımda patlıyor.
+            typeof(CatalogCoverageCache), typeof(ParserPublishGate),
         })
         {
             var captured = type;

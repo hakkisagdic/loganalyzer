@@ -77,6 +77,7 @@ public sealed class ParserAuthoringService(
 
         draft.Yaml = yaml;
         draft.Owner = owner;
+        draft.UpdatedAt = _time.GetUtcNow();
 
         // Kimlik ve sürüm YAML'ın kendisinden geliyor; kullanıcının ayrıca
         // yazması iki gerçek kaynak doğururdu. Çözülemezse boş kalıyor ve
@@ -117,6 +118,7 @@ public sealed class ParserAuthoringService(
 
         draft.State = ParserState.InReview;
         draft.PassingTests = verdict.PassingTests;
+        draft.UpdatedAt = _time.GetUtcNow();
         await db.SaveChangesAsync(cancellationToken);
 
         return new AuthoringResult(true, draft, verdict, string.Empty);
@@ -141,6 +143,7 @@ public sealed class ParserAuthoringService(
         }
 
         entity.State = ParserState.Draft;
+        entity.UpdatedAt = _time.GetUtcNow();
         await db.SaveChangesAsync(cancellationToken);
 
         return new AuthoringResult(true, entity, null, string.Empty);
@@ -194,6 +197,7 @@ public sealed class ParserAuthoringService(
         candidate.State = ParserState.Published;
         candidate.PassingTests = verdict.PassingTests;
         candidate.PublishedAt = _time.GetUtcNow();
+        candidate.UpdatedAt = _time.GetUtcNow();
 
         await db.SaveChangesAsync(cancellationToken);
 
@@ -245,8 +249,10 @@ public sealed class ParserAuthoringService(
         }
 
         current.State = ParserState.Retired;
+        current.UpdatedAt = _time.GetUtcNow();
         previous.State = ParserState.Published;
         previous.PublishedAt = _time.GetUtcNow();
+        previous.UpdatedAt = _time.GetUtcNow();
 
         await db.SaveChangesAsync(cancellationToken);
 
