@@ -96,6 +96,12 @@ FIELD_MAP: dict[str, str] = {
     "user": "actor_user_name",
     "User": "actor_user_name",
     "username": "actor_user_name",
+    # `user_name` eksikti ve eksikliği SESSİZDİ: eşlenmeyince ham adıyla SQL'e
+    # iniyor, `events_ocsf`'te öyle bir kolon yok, sorgu kırılıyor. Aşağıdaki
+    # `bizigo_unmapped_field_guard` artık bu sınıfı topluca yakalıyor; bu satır
+    # onun yakaladığı ilk vakanın düzeltmesi.
+    "user_name": "actor_user_name",
+    "TargetUserName": "actor_user_name",
     # --- Cihaz ---
     "hostname": "device_hostname",
     "Computer": "device_hostname",
@@ -272,6 +278,27 @@ FIELD_EXPRESSION_PATTERN = (
     r"|replaceRegexpOne\(toString\([a-zA-Z0-9_]+\), '[^']*', ''\)"
     r")$"
 )
+
+
+def known_field_pattern() -> str:
+    """Eşleme sonrası **kabul edilebilir** alan biçimleri; genel bekçinin ölçütü.
+
+    Üç şey geçerli: görünümün gerçek bir kolonu, bizim Map erişimimiz, bizim IP
+    ifademiz. Başka her şey eşlenmemiş demektir ve derlemeyi düşürüyor.
+
+    Kolon listesi burada `VIEW_COLUMNS`'tan türetiliyor, elle yazılmıyor:
+    ikinci bir liste tutulsaydı biri güncellenip diğeri unutulurdu ve bekçi
+    sessizce yanlış alanı geçirirdi.
+    """
+    columns = "|".join(sorted(re.escape(column) for column in VIEW_COLUMNS))
+
+    return (
+        r"^(?:"
+        + columns
+        + r"|unmapped\['[a-zA-Z0-9_.]+'\]"
+        + r"|replaceRegexpOne\(toString\([a-zA-Z0-9_]+\), '[^']*', ''\)"
+        + r")$"
+    )
 
 
 def load_proto_table(mappings_path: Path | str | None = None) -> dict[str, str]:
@@ -521,7 +548,11 @@ def bizigo_pipeline(mappings_path: Path | str | None = None):
     etkilenmez.
     """
     from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
-    from sigma.processing.conditions import IncludeFieldCondition, LogsourceCondition
+    from sigma.processing.conditions import (
+        ExcludeFieldCondition,
+        IncludeFieldCondition,
+        LogsourceCondition,
+    )
     from sigma.processing.transformations import (
         AddConditionTransformation,
         DetectionItemFailureTransformation,
@@ -581,6 +612,32 @@ def bizigo_pipeline(mappings_path: Path | str | None = None):
             transformation=_ip_text_transformation(),
         ),
     ]
+
+    # 5) Genel bekçi — eşlemelerden SONRA, daraltmalardan ÖNCE.
+    #
+    # Buraya kadar eşlenmemiş bir alan `events_ocsf`'te var olmayan bir kolon
+    # adıyla SQL'e iner. ClickHouse onu reddeder, ama reddi ancak sorgu
+    # KOŞTURULDUĞUNDA görünür: derleme yeşil, kural kataloğa girer, ve hata
+    # canlıda ortaya çıkar.
+    #
+    # `SCHEMA_GAPS` yalnızca ÖNGÖRÜLEN alanları kapsıyordu. Bu bekçi
+    # öngörülmeyenleri de kapsıyor ve gerekçesi somut: `user_name` eşlemesi
+    # eksikti, hiçbir şey kırmızı yanmıyordu, bunu bir API testi tesadüfen
+    # yakaladı. Tesadüfe bırakılacak bir sınıf değil.
+    items.append(
+        ProcessingItem(
+            identifier="bizigo_unmapped_field_guard",
+            transformation=DetectionItemFailureTransformation(
+                "Bu alan `events_ocsf` görünümüne eşlenmiyor. Kolonu varsa "
+                "`FIELD_MAP`'e, `attrs` içindeyse `ATTRS_MAP`'e, hiç üretilmiyorsa "
+                "`SCHEMA_GAPS`'e eklenmeli — eşlenmeden bırakılırsa üretilen SQL "
+                "var olmayan bir kolona vurur ve bu ancak canlıda görünür."
+            ),
+            field_name_conditions=[
+                ExcludeFieldCondition(fields=[known_field_pattern()], mode="re")
+            ],
+        )
+    )
 
     items += _logsource_items(ProcessingItem, LogsourceCondition, AddConditionTransformation)
 

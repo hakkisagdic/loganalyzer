@@ -300,6 +300,7 @@ def sigma_compile(request: SigmaCompileRequest) -> SigmaCompileResponse:
             request.target,
             table_name=table,
             full_log_column=state.settings.sigma_full_log_column,
+            mappings_path=str(state.settings.sigma_mappings_path),
         )
     except SigmaBackendUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

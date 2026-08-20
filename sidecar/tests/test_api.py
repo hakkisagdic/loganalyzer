@@ -166,9 +166,24 @@ def test_sigma_compile_clickhouse_sql_uretiyor(client):
     body = response.json()
     assert body["queries"], "en az bir sorgu bekleniyor"
     assert "admin" in body["sql"]
-    # Backend'in varsayılanı `logs`; bizim şemamız `events`.
-    assert body["table"] == "events"
-    assert "FROM events" in body["sql"]
+
+    # Hedef `events` DEĞİL `events_ocsf` (T31).
+    #
+    # Bu test eskiden `events` bekliyordu ve geçiyordu — ama geçmesi bir şey
+    # ifade etmiyordu: üretilen SQL ham Sigma alan adlarına vuruyordu
+    # (`user_name`, `action`) ve `events` tablosunda o adlar YOK. Yani uç,
+    # hiçbir zaman koşamayacak bir sorguyu doğru gibi gösteriyordu ve test de
+    # onu çiviliyordu.
+    #
+    # Artık Bizigo pipeline'ı bağlı: adlar `events_ocsf` görünümünün
+    # kolonlarına eşleniyor ve üretilen SQL gerçekten koşabiliyor. Varsayılanı
+    # değiştirmek şu an bedavaydı — ucun hiç tüketicisi yok.
+    assert body["table"] == "events_ocsf"
+    assert "FROM events_ocsf" in body["sql"]
+
+    # Eşlemenin uygulandığının kanıtı: ham ad gitti, kolon adı geldi.
+    assert "actor_user_name" in body["sql"], f"eşleme uygulanmamış: {body['sql']}"
+    assert "activity_name" in body["sql"]
 
 
 def test_sigma_compile_desteklenmeyen_hedef(client):

@@ -287,3 +287,45 @@ def test_sema_bosluklu_kural_SESSIZCE_gecmiyor() -> None:
     assert "dns_query_name" in str(caught.value)
     # Sebep de taşınıyor: "eşlenemedi" tek başına ne yapılacağını söylemiyor.
     assert "parser" in str(caught.value)
+
+
+def test_hic_taninmayan_alan_da_derlemeyi_dusuruyor() -> None:
+    """**`SCHEMA_GAPS` yalnızca ÖNGÖRÜLEN alanları kapsıyordu.**
+
+    Bu bekçi öngörülmeyenleri kapsıyor ve gerekçesi somut: `user_name`
+    eşlemesi eksikti, ham adıyla SQL'e iniyordu, `events_ocsf`'te öyle bir
+    kolon yok — ve hiçbir şey kırmızı yanmıyordu. Onu bir API testi tesadüfen
+    yakaladı. Tesadüfe bırakılacak bir sınıf değil.
+    """
+    pytest.importorskip("sigma.backends.clickhouse.clickhouse")
+    from sigma.collection import SigmaCollection
+    from sigma.exceptions import SigmaTransformationError
+
+    rule = (
+        "title: t\nid: 33333333-0000-4000-8000-000000000000\nstatus: experimental\n"
+        "logsource:\n  category: firewall\n  product: fortigate\n"
+        "detection:\n  selection:\n    ThisFieldDoesNotExist: 'x'\n"
+        "  condition: selection\nlevel: low\n"
+    )
+
+    with pytest.raises(SigmaTransformationError) as caught:
+        sp.bizigo_backend(mappings_path=CATALOG / "mappings").convert(
+            SigmaCollection.from_yaml(rule)
+        )
+
+    # Mesaj ne yapılacağını söylüyor: hangi sözlüğe eklenmesi gerektiği yazılı.
+    assert "FIELD_MAP" in str(caught.value)
+    assert "SCHEMA_GAPS" in str(caught.value)
+
+
+def test_bekci_gercek_kolonlari_gecirıyor() -> None:
+    """Bekçi fazla hevesli olsaydı her kuralı düşürürdü; ölçüsü budur."""
+    pattern = sp.known_field_pattern()
+    import re as _re
+
+    for column in ("src_endpoint_ip", "activity_name", "raw_data"):
+        assert _re.match(pattern, column), f"{column} gerçek kolon, geçmeli"
+
+    assert _re.match(pattern, "unmapped['otel.url.path']")
+    assert _re.match(pattern, sp.ip_text_expression("src_endpoint_ip"))
+    assert not _re.match(pattern, "srcip"), "ham Sigma adı geçmemeli"
