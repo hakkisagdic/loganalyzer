@@ -119,6 +119,44 @@ jobs:
         working-directory: ui
         run: npm run build
 
+  sidecar:
+    name: Sidecar — pytest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      # Sidecar imajı `python:3.13-slim`; testler üretimde kurulacak olandan
+      # başka bir sürümde koşmamalı.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      # `sigma-build`'in İÇİNE değil AYRI iş — üç gerekçe:
+      #
+      # 1. Sidecar'ın `requirements.txt`'i drain3'ü bir **git SHA'sından**
+      #    çekiyor (upstream PyPI'ya yayımlamıyor, bkz. dosyanın başındaki not).
+      #    Bunu `sigma-build`'e koymak, Sigma derleme hattını üçüncü taraf bir
+      #    deponun erişilebilirliğine bağlamak olurdu — ve F3 o hatta bağlı.
+      # 2. Kırmızının anlamı: kırmızı bir `sigma-build` "Sigma derlemesi bozuldu"
+      #    demeli. İki paket aynı işte olsaydı kırmızı belirsizleşirdi.
+      # 3. İkinci bir Python kurulumunun maliyeti `setup-python` önbellekliyken
+      #    ihmal edilebilir; karşılığında iki iş paralel koşuyor.
+      #
+      # Testler tam bağımlılık kümesini istiyor: `drain3.masking`,
+      # `fastapi.testclient` ve `app.main` üzerinden pydantic/redis/PyYAML.
+      # Kısaltılmış bir kurulum denenirse import hatası verir.
+      - name: Bağımlılıklar
+        working-directory: sidecar
+        run: pip install -r requirements-dev.txt
+
+      # `conftest.py` maske dosyasını depo kökünden okuyor ve REDIS_URL'i
+      # ulaşılamaz bir adrese sabitliyor: sidecar'ın "kalıcılık olmadan da çalış"
+      # yolu böylece her koşumda sınanıyor.
+      - name: Sidecar birim testleri
+        working-directory: sidecar
+        run: python -m pytest
+
   sigma-build:
     name: Sigma derleme hattı — kapılar ve testler
     runs-on: ubuntu-latest
