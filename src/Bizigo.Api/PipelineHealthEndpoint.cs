@@ -30,7 +30,9 @@ public static class PipelineHealthEndpoint
         routes.MapGet("/v1/health/pipeline", HandleAsync)
             .RequireAuthorization(BizigoAuthPolicies.Read)
             .WithName("PipelineHealth")
-            .WithTags("health");
+            .WithTags("health")
+            // Tüketicisi T17'nin envanter ekranındaki özet bloğu.
+            .Produces<PipelineHealthResponse>();
 
         return routes;
     }
@@ -59,71 +61,55 @@ public static class PipelineHealthEndpoint
 
         var boundRatio = dispatch.BoundRatio;
 
-        return Results.Ok(new
-        {
+        return Results.Ok(new PipelineHealthResponse(
             // 1) Dispatcher: envanter bakımsız kalırsa bu oran düşer ve sistem
             //    hâlâ çalışıyor görünür.
-            dispatch = new
-            {
-                total = dispatch.Total,
-                bound_ratio = Math.Round(boundRatio, 4),
-                bound_ratio_target = BoundRatioTarget,
-                bound_ratio_healthy = dispatch.Total == 0 || boundRatio >= BoundRatioTarget,
-                bound_misses = dispatch.BoundMisses,
-                unmatched_ratio = Math.Round(dispatch.UnmatchedRatio, 4),
-                unassigned_source_events = dispatch.UnassignedSources,
-            },
+            new PipelineDispatchHealth(
+                dispatch.Total,
+                Math.Round(boundRatio, 4),
+                BoundRatioTarget,
+                dispatch.Total == 0 || boundRatio >= BoundRatioTarget,
+                dispatch.BoundMisses,
+                Math.Round(dispatch.UnmatchedRatio, 4),
+                dispatch.UnassignedSources),
 
             // 2) parse_status dağılımı.
-            parse = new
-            {
-                ok = dispatch.Bound + dispatch.Candidate,
-                unmatched = dispatch.Unmatched,
-                processed_records = ingest.ProcessedRecords,
-            },
+            new PipelineParseHealth(
+                dispatch.Bound + dispatch.Candidate,
+                dispatch.Unmatched,
+                ingest.ProcessedRecords),
 
             // 3) WAL derinliği: dayanıklılık sınırı burada. Dolarsa ingest 503 döner.
-            wal = new
-            {
-                total_bytes = wal.TotalBytes,
-                is_full = wal.IsFull,
-                recovery = wal.Recovery,
-            },
+            new PipelineWalHealth(
+                wal.TotalBytes,
+                wal.IsFull,
+                new PipelineWalRecovery(
+                    wal.Recovery.SegmentCount, wal.Recovery.FrameCount, wal.Recovery.TruncatedBytes)),
 
             // 4) Ingest kabul/ret sayaçları.
-            ingest = new
-            {
-                accepted_records = ingest.AcceptedRecords,
-                rejected_full = ingest.RejectedFull,
-                rejected_invalid = ingest.RejectedInvalid,
-                non_utf8_records = ingest.NonUtf8Records,
-                declared_encoding_mismatches = ingest.DeclaredEncodingMismatches,
-            },
+            new PipelineIngestHealth(
+                ingest.AcceptedRecords,
+                ingest.RejectedFull,
+                ingest.RejectedInvalid,
+                ingest.NonUtf8Records,
+                ingest.DeclaredEncodingMismatches),
 
             // 5) Arşiv + scrub: kayıp ya da bozuk nesne replay gününde değil
             //    bugün görünmeli.
-            archive = new
-            {
-                by_state = manifest.ToDictionary(x => x.State.ToString(), x => x.Count, StringComparer.Ordinal),
-                healthy = manifest.All(x => x.State is RawObjectState.Uploaded or RawObjectState.Verified),
-            },
+            new PipelineArchiveHealth(
+                manifest.ToDictionary(x => x.State.ToString(), x => x.Count, StringComparer.Ordinal),
+                manifest.All(x => x.State is RawObjectState.Uploaded or RawObjectState.Verified)),
 
             // 6) Sidecar devre kesici: sıcak yolda olmadığı için arızası hiçbir
             //    alarmı tetiklemez, tek belirtisi template_id'nin boş kalmasıdır.
-            sidecar = new
-            {
-                enabled = sidecarOptions.Enabled,
-                circuit = breaker?.State.ToString() ?? "Disabled",
-                opened_count = breaker?.OpenedCount ?? 0,
-                dropped_queue_full = discovery.DroppedQueueFull,
-                dropped_circuit_open = discovery.DroppedCircuitOpen,
-                signature_drift = discovery.SignatureDrift,
-            },
+            new PipelineSidecarHealth(
+                sidecarOptions.Enabled,
+                breaker?.State.ToString() ?? "Disabled",
+                breaker?.OpenedCount ?? 0,
+                discovery.DroppedQueueFull,
+                discovery.DroppedCircuitOpen,
+                discovery.SignatureDrift),
 
-            inventory = new
-            {
-                unassigned_sources = unassigned,
-            },
-        });
+            new PipelineInventoryHealth(unassigned)));
     }
 }

@@ -93,11 +93,11 @@ public sealed class AlertingOptions
     /// </summary>
     public string SearchPath { get; set; } = "/olaylar";
 
-    /// <summary>
-    /// Kanal gizli bilgilerini şifreleyen anahtar; base64, 32 bayt (AES-256-GCM).
-    /// Boşsa gizli bilgi <b>kaydedilemiyor</b> — düz metne düşmek yerine reddediliyor.
-    /// </summary>
-    public string SecretKey { get; set; } = string.Empty;
+    // Gizli bilgi anahtarı BURADA DEĞİL. T22'de `Alerting:SecretKey` olarak
+    // duruyordu; T25 connector kimlik bilgileri için aynı şeye ihtiyaç duyunca
+    // `Security:SecretKey`e taşındı (bkz. SecretProtectionOptions). İki ayrı
+    // anahtar, iki ayrı rotasyon hikâyesi ve altı ay sonra birinin döndürülüp
+    // diğerinin unutulması demekti.
 
     /// <summary>Bir teslimin toplam deneme hakkı.</summary>
     public int MaxDeliveryAttempts { get; set; } = 5;

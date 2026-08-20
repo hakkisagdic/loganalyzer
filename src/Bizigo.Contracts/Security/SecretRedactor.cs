@@ -1,7 +1,7 @@
-namespace Bizigo.Alerting.Notifications;
+namespace Bizigo.Contracts.Security;
 
 /// <summary>
-/// Gizli bilgiyi metinden söker (T22 kabul kriteri).
+/// Gizli bilgiyi metinden söker (T22 kabul kriteri; T25'te paylaşıma çıktı).
 ///
 /// <para>
 /// <b>Neden şifrelemenin üstüne ayrıca bu var:</b> şifreleme gizli bilgiyi

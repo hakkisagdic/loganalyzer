@@ -113,6 +113,18 @@ public sealed class ParserEntity
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
+    /// <summary>
+    /// Gövdenin son değiştiği an.
+    ///
+    /// <para>
+    /// <c>CreatedAt</c> yetmiyor: taslak kaydedildikçe <c>Yaml</c> yerinde
+    /// güncelleniyor, yani oluşturma anı bir süre sonra "bu taslakta en son ne
+    /// zaman çalışıldı" sorusunu yanıtlamayı bırakıyor. İnceleme kuyruğu (T20)
+    /// ve editörün taslak listesi (T19) ikisi de bu sütunu istiyor.
+    /// </para>
+    /// </summary>
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+
     public DateTimeOffset? PublishedAt { get; set; }
 }
 

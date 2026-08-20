@@ -1,3 +1,4 @@
+using Bizigo.Contracts.Security;
 using Bizigo.Alerting.Notifications;
 using Bizigo.Contracts;
 using Bizigo.ControlPlane;
@@ -115,7 +116,7 @@ public sealed class NotificationChannelService(
                 // Anahtar yoksa düz metne DÜŞMÜYORUZ. "Şifreli saklanıyor"
                 // iddiasının sessizce yanlışlanacağı tek yer burasıydı.
                 return ChannelSaveResult.Fail(
-                    "Alerting:SecretKey tanımlı değil; gizli bilgi şifrelenemediği için kaydedilmedi.");
+                    "Security:SecretKey tanımlı değil; gizli bilgi şifrelenemediği için kaydedilmedi.");
             }
 
             channel.SecretCipher = protector.Protect(input.Secret);

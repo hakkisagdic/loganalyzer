@@ -218,6 +218,56 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
         Assert.Equal(["fg-core"], sources.Select(s => s.SourceId));
     }
 
+    /// <summary>
+    /// "Son görülme" de kapsamlı (T17).
+    ///
+    /// <para>
+    /// Envanter listesi kapsamlı olsa bile etkinlik sorgusu olmasaydı, bir ekip
+    /// başka bir ekibin cihazının <b>ne zaman veri gönderdiğini</b> öğrenirdi —
+    /// yani cihazın varlığını ve çalışma düzenini. Envanterin gizlediği bilgiyi
+    /// etkinlik ucunun sızdırması, kapsam ayrımını arka kapıdan delmek olurdu.
+    /// </para>
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task Son_gorulme_baska_grubun_kaynagini_sizdirmiyor()
+    {
+        var window = new SourceActivityWindow { From = Now.AddHours(-1), To = Now.AddHours(1) };
+
+        var mine = await _query.GetSourceActivityAsync(
+            window, CoreOnly(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(["fg-core"], mine.Select(r => r.SourceId));
+        Assert.All(mine, r => Assert.Equal("net-core", r.OwnerGroup));
+
+        // Yönetici ikisini de görüyor — testin diğer yarısı: yukarıdaki liste
+        // filtre çalıştığı için tek satır, veri olmadığı için değil.
+        var all = await _query.GetSourceActivityAsync(
+            window, AccessScope.System("admin"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, all.Count);
+    }
+
+    /// <summary>
+    /// Kapsam daraltması etkinlik sorgusunda da kapsamı <b>genişletemiyor</b>.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task Son_gorulme_daraltmasi_kapsami_genisletemiyor()
+    {
+        var window = new SourceActivityWindow
+        {
+            From = Now.AddHours(-1),
+            To = Now.AddHours(1),
+            OwnerGroups = ["net-edge"],
+        };
+
+        var rows = await _query.GetSourceActivityAsync(
+            window, CoreOnly(), TestContext.Current.CancellationToken);
+
+        Assert.Empty(rows);
+    }
+
     [Fact]
     [Trait("Category", "Integration")]
     public async Task Baska_gruba_degisiklik_olayi_yazilamiyor()

@@ -100,6 +100,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/parsers/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ParserCoverage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/ingest/stats": {
         parameters: {
             query?: never;
@@ -263,6 +279,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/sources/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SourceActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/sources/csv": {
         parameters: {
             query?: never;
@@ -289,6 +321,70 @@ export interface paths {
         get: operations["SearchChanges"];
         put?: never;
         post: operations["WriteChange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/changes/connectors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListChangeConnectors"];
+        put?: never;
+        post: operations["CreateChangeConnector"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/changes/connectors/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetChangeConnector"];
+        put: operations["UpdateChangeConnector"];
+        post?: never;
+        delete: operations["DeleteChangeConnector"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/changes/connectors/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TestChangeConnector"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/changes/connectors/{id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListChangeConnectorRuns"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -366,7 +462,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["GetParserDraft"];
         put: operations["UpdateParserDraft"];
         post?: never;
         delete?: never;
@@ -744,11 +840,57 @@ export interface components {
             unrestricted: boolean;
             sees_nothing: boolean;
         };
+        CatalogCoverageResponse: {
+            /** Format: int32 */
+            ok: number | string;
+            /** Format: int32 */
+            partial: number | string;
+            /** Format: int32 */
+            failed: number | string;
+            /** Format: int32 */
+            total: number | string;
+            /** Format: date-time */
+            measured_at: string;
+            stale: boolean;
+            by_parser: components["schemas"]["ParserCoverageEntryResponse"][];
+        };
+        CatalogReloadResponse: {
+            /** Format: int32 */
+            loaded: number | string;
+            /** Format: int32 */
+            from_repository: number | string;
+            /** Format: int32 */
+            from_database: number | string;
+            shadowed: string[];
+            errors: string[];
+        };
+        ChangeResponse: {
+            /** Format: uuid */
+            change_id: string;
+            /** Format: date-time */
+            timestamp: string;
+            owner_group: string;
+            target_kind: string;
+            target_id: string;
+            change_kind: string;
+            actor: string;
+            summary: string;
+            details: {
+                [key: string]: string;
+            };
+            source: string;
+            external_ref: string;
+        };
+        ChangeSearchResponse: {
+            /** Format: int32 */
+            count: number | string;
+            changes: components["schemas"]["ChangeResponse"][];
+        };
         ChangeWriteRequest: {
-            ownerGroup: string;
-            targetKind: string;
-            targetId: string;
-            changeKind: string;
+            owner_group: string;
+            target_kind: string;
+            target_id: string;
+            change_kind: string;
             /** Format: date-time */
             timestamp?: null | string;
             actor?: string;
@@ -757,7 +899,11 @@ export interface components {
                 [key: string]: string;
             };
             source?: string;
-            externalRef?: string;
+            external_ref?: string;
+        };
+        ChangeWriteResponse: {
+            /** Format: uuid */
+            change_id: string;
         };
         ChannelSettingsResponse: {
             headers: {
@@ -774,6 +920,66 @@ export interface components {
         ChannelTestResponse: {
             ok: boolean;
             error: string;
+        };
+        ConnectorListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            connectors: components["schemas"]["ConnectorView"][];
+        };
+        ConnectorRequest: {
+            slug?: string;
+            name?: string;
+            connector_type?: string;
+            owner_group?: string;
+            config?: null | components["schemas"]["JsonElement"];
+            credential?: null | string;
+            /** Format: int32 */
+            interval_seconds?: null | number | string;
+            enabled?: boolean;
+        };
+        ConnectorRunListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            runs: components["schemas"]["ConnectorRunView"][];
+        };
+        ConnectorRunView: {
+            /** Format: date-time */
+            started_at: string;
+            /** Format: date-time */
+            finished_at: string;
+            state: string;
+            /** Format: int32 */
+            changes_written: number | string;
+            error: string;
+        };
+        ConnectorTestResponse: {
+            ok: boolean;
+            message: string;
+        };
+        ConnectorView: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+            connector_type: string;
+            owner_group: string;
+            config: components["schemas"]["JsonElement"];
+            credential_set: boolean;
+            credential: string;
+            /** Format: int32 */
+            interval_seconds: null | number | string;
+            enabled: boolean;
+            /** Format: date-time */
+            next_run_at: null | string;
+            /** Format: date-time */
+            last_run_at: null | string;
+            last_run_state: null | string;
+            last_error: string;
+            receive_path: null | string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
         };
         CreatedIdResponse: {
             /** Format: uuid */
@@ -890,6 +1096,7 @@ export interface components {
             op: string;
             values: string[];
         };
+        JsonElement: unknown;
         MaintenanceWindowListResponse: {
             windows: components["schemas"]["MaintenanceWindowResponse"][];
         };
@@ -952,13 +1159,189 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
         };
+        ParserAuthoringResponse: {
+            /** Format: uuid */
+            id: null | string;
+            parser_id: null | string;
+            version: null | string;
+            state: null | string;
+            error: string;
+            verdict: null | components["schemas"]["PublishVerdictResponse"];
+        };
+        ParserCoverageEntryResponse: {
+            parser_id: string;
+            /** Format: int32 */
+            wins: number | string;
+        };
+        ParserDetailResponse: {
+            summary: components["schemas"]["ParserSummaryResponse"];
+            match: components["schemas"]["ParserMatchResponse"];
+            /** Format: int32 */
+            steps: number | string;
+            groks: components["schemas"]["ParserGrokResponse"];
+        };
+        ParserDraftDetailResponse: {
+            /** Format: uuid */
+            id: string;
+            parser_id: string;
+            version: string;
+            state: string;
+            owner: string;
+            yaml: string;
+            verdict: components["schemas"]["PublishVerdictResponse"];
+            /** Format: date-time */
+            updated_at: string;
+            previous_version: null | string;
+            previous_yaml: null | string;
+        };
+        ParserDraftListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            drafts: components["schemas"]["ParserDraftResponse"][];
+        };
         ParserDraftRequest: {
             yaml: string;
+        };
+        ParserDraftResponse: {
+            /** Format: uuid */
+            id: string;
+            parser_id: string;
+            version: string;
+            vendor: string;
+            product: string;
+            state: string;
+            owner: string;
+            /** Format: int32 */
+            passing_tests: number | string;
+            quarantined: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** Format: date-time */
+            published_at: null | string;
+        };
+        ParserGrokResponse: {
+            /** Format: int32 */
+            total: number | string;
+            /** Format: int32 */
+            backtracking: number | string;
+            fallback_reasons: string[];
+        };
+        ParserListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            parsers: components["schemas"]["ParserSummaryResponse"][];
+            /** Format: int32 */
+            backtracking_groks: number | string;
+        };
+        ParserMatchResponse: {
+            transport: string[];
+            contains: string[];
+            source_labels: {
+                [key: string]: string;
+            };
+        };
+        ParserPublishResponse: {
+            draft: components["schemas"]["ParserAuthoringResponse"];
+            catalog: components["schemas"]["CatalogReloadResponse"];
+        };
+        ParserSummaryResponse: {
+            id: string;
+            version: string;
+            vendor: string;
+            product: string;
+            description: string;
+            license: string;
+            /** Format: int32 */
+            specificity: number | string;
+            /** Format: int32 */
+            backtracking_groks: number | string;
         };
         ParserTryRequest: {
             line: string;
             /** @default  */
             parserId: string;
+        };
+        PipelineArchiveHealth: {
+            by_state: {
+                [key: string]: number | string;
+            };
+            healthy: boolean;
+        };
+        PipelineDispatchHealth: {
+            /** Format: int64 */
+            total: number | string;
+            /** Format: double */
+            bound_ratio: number | string;
+            /** Format: double */
+            bound_ratio_target: number | string;
+            bound_ratio_healthy: boolean;
+            /** Format: int64 */
+            bound_misses: number | string;
+            /** Format: double */
+            unmatched_ratio: number | string;
+            /** Format: int64 */
+            unassigned_source_events: number | string;
+        };
+        PipelineHealthResponse: {
+            dispatch: components["schemas"]["PipelineDispatchHealth"];
+            parse: components["schemas"]["PipelineParseHealth"];
+            wal: components["schemas"]["PipelineWalHealth"];
+            ingest: components["schemas"]["PipelineIngestHealth"];
+            archive: components["schemas"]["PipelineArchiveHealth"];
+            sidecar: components["schemas"]["PipelineSidecarHealth"];
+            inventory: components["schemas"]["PipelineInventoryHealth"];
+        };
+        PipelineIngestHealth: {
+            /** Format: int64 */
+            accepted_records: number | string;
+            /** Format: int64 */
+            rejected_full: number | string;
+            /** Format: int64 */
+            rejected_invalid: number | string;
+            /** Format: int64 */
+            non_utf8_records: number | string;
+            /** Format: int64 */
+            declared_encoding_mismatches: number | string;
+        };
+        PipelineInventoryHealth: {
+            /** Format: int32 */
+            unassigned_sources: number | string;
+        };
+        PipelineParseHealth: {
+            /** Format: int64 */
+            ok: number | string;
+            /** Format: int64 */
+            unmatched: number | string;
+            /** Format: int64 */
+            processed_records: number | string;
+        };
+        PipelineSidecarHealth: {
+            enabled: boolean;
+            circuit: string;
+            /** Format: int64 */
+            opened_count: number | string;
+            /** Format: int64 */
+            dropped_queue_full: number | string;
+            /** Format: int64 */
+            dropped_circuit_open: number | string;
+            /** Format: int64 */
+            signature_drift: number | string;
+        };
+        PipelineWalHealth: {
+            /** Format: int64 */
+            total_bytes: number | string;
+            is_full: boolean;
+            recovery: components["schemas"]["PipelineWalRecovery"];
+        };
+        PipelineWalRecovery: {
+            /** Format: int32 */
+            segment_count: number | string;
+            /** Format: int32 */
+            frame_count: number | string;
+            /** Format: int64 */
+            truncated_bytes: number | string;
         };
         PreviewPointResponse: {
             /** Format: date-time */
@@ -975,6 +1358,13 @@ export interface components {
             last_seen: null | string;
             gaps_seconds: (number | string)[];
         };
+        PublishVerdictResponse: {
+            ok: boolean;
+            /** Format: int32 */
+            passing_tests: number | string;
+            errors: string[];
+            warnings: string[];
+        };
         ReplayRequest: {
             /** Format: date-time */
             from: string;
@@ -986,6 +1376,37 @@ export interface components {
             sourceIds?: string[];
             dryRun?: boolean;
             continueOnMissingObjects?: boolean;
+        };
+        SourceActivityListResponse: {
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            /** Format: int32 */
+            count: number | string;
+            sources: components["schemas"]["SourceActivityResponse"][];
+        };
+        SourceActivityResponse: {
+            source_id: string;
+            owner_group: string;
+            /** Format: date-time */
+            last_event_at: string;
+            /** Format: date-time */
+            last_ingested_at: string;
+            /** Format: int64 */
+            event_count: number | string;
+        };
+        SourceCsvErrorResponse: {
+            error: string;
+            details: string[];
+        };
+        SourceCsvImportResponse: {
+            /** Format: int32 */
+            created: number | string;
+            /** Format: int32 */
+            updated: number | string;
+            /** Format: int32 */
+            total: number | string;
         };
         SourceListResponse: {
             /** Format: int32 */
@@ -1110,7 +1531,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PipelineHealthResponse"];
+                };
             };
         };
     };
@@ -1152,7 +1575,40 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ParserPublishResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    ParserCoverage: {
+        parameters: {
+            query?: {
+                force?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogCoverageResponse"];
+                };
             };
         };
     };
@@ -1276,7 +1732,40 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["SourceResponse"];
+                };
+            };
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceResponse"];
+                };
+            };
+        };
+    };
+    SourceActivity: {
+        parameters: {
+            query?: {
+                hours?: number | string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceActivityListResponse"];
+                };
             };
         };
     };
@@ -1294,7 +1783,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["SourceCsvImportResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SourceCsvErrorResponse"];
+                };
             };
         };
     };
@@ -1318,7 +1818,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ChangeSearchResponse"];
+                };
             };
         };
     };
@@ -1335,12 +1837,172 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeWriteResponse"];
+                };
+            };
+        };
+    };
+    ListChangeConnectors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
             /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "application/json": components["schemas"]["ConnectorListResponse"];
+                };
+            };
+        };
+    };
+    CreateChangeConnector: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorView"];
+                };
+            };
+        };
+    };
+    GetChangeConnector: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorView"];
+                };
+            };
+        };
+    };
+    UpdateChangeConnector: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorView"];
+                };
+            };
+        };
+    };
+    DeleteChangeConnector: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
+            };
+        };
+    };
+    TestChangeConnector: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorTestResponse"];
+                };
+            };
+        };
+    };
+    ListChangeConnectorRuns: {
+        parameters: {
+            query?: {
+                limit?: number | string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorRunListResponse"];
+                };
             };
         };
     };
@@ -1358,7 +2020,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ParserListResponse"];
+                };
             };
         };
     };
@@ -1378,7 +2042,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ParserDetailResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -1418,7 +2093,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ParserDraftListResponse"];
+                };
             };
         };
     };
@@ -1437,6 +2114,35 @@ export interface operations {
         responses: {
             /** @description OK */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    GetParserDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParserDraftDetailResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1504,7 +2210,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ParserAuthoringResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };
@@ -1524,7 +2241,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ParserPublishResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParserAuthoringResponse"];
+                };
             };
         };
     };

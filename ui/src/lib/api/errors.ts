@@ -95,6 +95,26 @@ const fallbackMessages: Record<number, ApiProblem> = {
   429: { error: "Çok fazla istek.", hint: "Sorgu bitmeden yenisini başlatmayı deneyin." },
 };
 
+/**
+ * Yakalanan bir hatayı `ErrorState`'in `hint`ine yazılabilecek tek satıra
+ * çeviriyor.
+ *
+ * <p>Ekranlar `instanceof` zinciri yazmasın diye burada: aynı zinciri her
+ * ekranda tekrarlamak, biri unuttuğunda kullanıcıya `[object Object]` gösteren
+ * bir ekran demek.</p>
+ */
+export function describeError(cause: unknown): string {
+  if (cause instanceof ApiError) {
+    return cause.hint ? `${cause.message} ${cause.hint}` : cause.message;
+  }
+
+  if (cause instanceof TransportError) {
+    return cause.message;
+  }
+
+  return "Beklenmeyen bir hata oluştu.";
+}
+
 function normalizeProblem(status: number, body: unknown): ApiProblem {
   if (body && typeof body === "object" && "error" in body && typeof body.error === "string") {
     const hint = "hint" in body && typeof body.hint === "string" ? body.hint : undefined;

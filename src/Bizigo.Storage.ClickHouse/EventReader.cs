@@ -54,6 +54,19 @@ public sealed class EventReader(ClickHouseContext context)
     };
 
     /// <summary>
+    /// Filtrelenebilir alan adları.
+    ///
+    /// <para>
+    /// <c>public</c>: izin listesi bir <b>sözleşme</b> ve iki yerden sınanıyor.
+    /// Arayüz tarafındaki <c>criteria-bridge.ts</c> arama ölçütlerini bu
+    /// kolonlara çeviriyor; <c>AlertCriteriaBridgeTests</c> köprünün
+    /// hedeflediği her kolonun burada gerçekten var olduğunu doğruluyor.
+    /// Kolon adı değişirse çeviri sessizce değil, kırmızı yanarak bozuluyor.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyCollection<string> FilterableFields => FilterableColumns.Keys;
+
+    /// <summary>
     /// Okuma sütun listesi. <c>internal</c>: replay de aynı listeyi kullanıyor —
     /// iki kopya, bir kolon eklendiği gün sessizce ayrışırdı.
     /// </summary>

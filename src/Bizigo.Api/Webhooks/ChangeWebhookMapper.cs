@@ -213,10 +213,25 @@ public static class ChangeWebhookMapper
     ///
     /// <para>
     /// Eklenti aynı yapıyı <c>STARTED</c>, <c>COMPLETED</c> ve <c>FINALIZED</c>
-    /// fazlarında üç kez gönderiyor. <b>Yalnızca <c>COMPLETED</c> kabul
-    /// ediliyor:</b> orada <c>status</c> dolu ve iş bitmiş oluyor.
-    /// <c>FINALIZED</c> aynı bilgiyi ikinci kez taşıyor — idempotans anahtarı
-    /// fazı içerdiği için ikisini de kabul etmek her koşuya iki satır yazardı.
+    /// fazlarında üç kez gönderiyor. <b>Biten iki faz da kabul ediliyor</b> ve
+    /// mükerrerlik faz üzerinden değil, <b>yapı kimliği</b> üzerinden çözülüyor:
+    /// teslimat anahtarı <c>{iş}#{numara}</c>, yani ilk gelen faz kazanıyor,
+    /// ikincisi mükerrer sayılıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// İlk hâli yalnızca <c>COMPLETED</c> kabul ediyordu ve bu <b>sessiz bir
+    /// başarısızlıktı</b>: yalnızca <c>FINALIZED</c> gönderecek şekilde
+    /// yapılandırılmış bir Jenkins'ten hiçbir kayıt oluşmaz, hiçbir hata da
+    /// görünmezdi. Bu üründe sessiz başarısızlık en pahalı hata sınıfı.
+    /// </para>
+    ///
+    /// <para>
+    /// Bedeli bilinçli: <c>FINALIZED</c> son işlem adımlarından sonra geldiği
+    /// için nadiren <c>COMPLETED</c>'dan farklı bir <c>status</c> taşıyabilir ve
+    /// ilk-gelen-kazanır kuralı o durumda erken durumu kaydeder. Alternatif —
+    /// ikisini de yazmak — her koşuya iki satır demekti; RCA için gürültü,
+    /// nadir bir durum sapmasından pahalı.
     /// </para>
     /// </summary>
     private static WebhookMapResult MapJenkins(
@@ -227,11 +242,14 @@ public static class ChangeWebhookMapper
         var phase = Read(root, "$.build.phase");
         var job = Read(root, "$.name");
         var number = Read(root, "$.build.number");
-        var delivery = $"{job}#{number}:{phase}";
 
-        if (!string.Equals(phase, "COMPLETED", StringComparison.Ordinal))
+        // Faz anahtarın DIŞINDA: iki bitiş fazı aynı yapıyı bildiriyor ve aynı
+        // teslimat sayılmalı.
+        var delivery = $"{job}#{number}";
+
+        if (phase is not ("COMPLETED" or "FINALIZED"))
         {
-            return Ignored(delivery, $"Jenkins fazı '{phase}' — yalnızca COMPLETED kaydediliyor.");
+            return Ignored(delivery, $"Jenkins fazı '{phase}' — yapı henüz bitmedi.");
         }
 
         var status = Read(root, "$.build.status");

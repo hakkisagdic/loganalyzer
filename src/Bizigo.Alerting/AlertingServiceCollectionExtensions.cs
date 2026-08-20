@@ -1,3 +1,4 @@
+using Bizigo.Contracts.Security;
 using Bizigo.Alerting.Notifications;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,7 +35,12 @@ public static class AlertingServiceCollectionExtensions
         // olarak oydu. `TryAddSingleton`: başka bir modül kendi sahtesini
         // kaydettiyse onu ezmiyoruz.
         services.TryAddSingleton(TimeProvider.System);
-        services.AddSingleton<SecretProtector>();
+
+        // Gizli bilgi koruyucusu ürün genelinde TEK (T25). `TryAdd`: connector
+        // modülü de aynı kaydı yapıyor ve hangisinin önce eklendiği fark
+        // etmemeli — iki ayrı örnek iki ayrı anahtar demek olurdu.
+        services.TryAddSingleton(_ => new SecretProtector(
+            configuration[$"{SecretProtectionOptions.SectionName}:SecretKey"]));
         services.AddSingleton<AlertEvaluator>();
         services.AddSingleton<AlertRuleService>();
         services.AddSingleton<AlertPreview>();
