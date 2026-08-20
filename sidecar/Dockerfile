@@ -3,7 +3,8 @@
 #
 # ⚠️ BUILD CONTEXT REPO KÖKÜ. Çünkü imaja iki ayrı dizinden dosya giriyor:
 #      sidecar/        → uygulama
-#      catalog/masks/  → maskeleme sözlüğü (tek kaynak, F1 §9)
+#      catalog/masks/    → maskeleme sözlüğü (tek kaynak, F1 §9)
+#      catalog/mappings/ → Sigma değer dönüşümleri (ip_proto_name, T31)
 #    Maskeleri sidecar'ın içine kopyalamak "tek kaynak" kuralını bozardı:
 #    .NET tarafı aynı dosyayı okuyor ve ikisi ayrışırsa `template_id` sessizce
 #    yanlış olur.
@@ -35,12 +36,14 @@ WORKDIR /app
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    BIZIGO_MASKS_PATH=/app/masks/bizigo-masks.yaml
+    BIZIGO_MASKS_PATH=/app/masks/bizigo-masks.yaml \
+    BIZIGO_MAPPINGS_PATH=/app/mappings
 
 COPY --from=builder /opt/venv /opt/venv
 
 COPY sidecar/app ./app
 COPY catalog/masks ./masks
+COPY catalog/mappings ./mappings
 
 # Kök olmayan kullanıcı: sidecar ayrıştırılamamış, yani güvenilmeyen metin
 # işliyor. Yüzey ne kadar dar olursa o kadar iyi.

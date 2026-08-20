@@ -18,6 +18,11 @@ API_VERSION = "v1"
 
 DEFAULT_MASKS_PATH = "/app/masks/bizigo-masks.yaml"
 
+#: `catalog/mappings/` — Sigma değer dönüşümleri buradan okunuyor, KOPYALANMIYOR.
+#: Maskelerle aynı gerekçe: tablo iki yerde tutulsaydı ingest ile sessizce
+#: ayrışırdı ve `proto: 6` içeren kural, ingest'in `tcp` yazdığı satırı bulamazdı.
+DEFAULT_MAPPINGS_PATH = "/app/mappings"
+
 
 def _int(name: str, default: int) -> int:
     raw = os.environ.get(name)
@@ -58,8 +63,9 @@ class Settings:
 
     # Sigma derlemesi — backend'in varsayılanları (`logs` / `full_log`) bizim
     # şemamıza uymuyor (db/clickhouse/0001_events.sql).
-    sigma_table: str = "events"
-    sigma_full_log_column: str = "body"
+    sigma_table: str = "events_ocsf"
+    sigma_full_log_column: str = "raw_data"
+    sigma_mappings_path: Path = field(default_factory=lambda: Path(DEFAULT_MAPPINGS_PATH))
 
     @staticmethod
     def from_env() -> "Settings":
@@ -74,8 +80,11 @@ class Settings:
             snapshot_interval_minutes=_int("DRAIN_SNAPSHOT_INTERVAL_MINUTES", 5),
             max_miners=_int("SIDECAR_MAX_MINERS", 64),
             max_batch=_int("SIDECAR_MAX_BATCH", 500),
-            sigma_table=os.environ.get("SIGMA_TABLE", "events"),
-            sigma_full_log_column=os.environ.get("SIGMA_FULL_LOG_COLUMN", "body"),
+            sigma_table=os.environ.get("SIGMA_TABLE", "events_ocsf"),
+            sigma_full_log_column=os.environ.get("SIGMA_FULL_LOG_COLUMN", "raw_data"),
+            sigma_mappings_path=Path(
+                os.environ.get("BIZIGO_MAPPINGS_PATH", DEFAULT_MAPPINGS_PATH)
+            ),
         )
         settings.validate()
         return settings

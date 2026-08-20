@@ -318,29 +318,56 @@ def test_eslemesiz_alanlar_statik_olarak_sayiliyor() -> None:
 
 
 def test_ornekleme_gercek_bosluk_sayisi() -> None:
-    """Örneklemin bugünkü hâli: 24 kuralın 8'i eşleme dalı olmayan alana gidiyor.
+    """Örneklemin bugünkü hâli: **sıfır** kural sınıflandırılmamış alana gidiyor.
 
-    Sayı değişirse ya kurallar ya pipeline değişmiş demektir; ikisi de ölçümü
-    etkiliyor ve fark edilmeden geçmemeli.
+    T31 öncesi bu sayı **8**'di (`url` ×4, `dns_query_name` ×2, `query`,
+    `http_method`, `user_agent`) ve o sekiz kural ham Sigma adıyla SQL'e
+    iniyordu. Şimdi her alanın bir cevabı var:
+
+    * `url`, `user_agent`  → `ATTRS_MAP`, ad alanlı `unmapped[...]` anahtarıyla
+    * `http_method`        → `activity_name` kolonu (indeksli, Map'ten ucuz)
+    * `dns_query_name`, `query` → `SCHEMA_GAPS`; derleme DÜŞÜYOR
+
+    Sıfırdan sapma iki şeyden biri demek: ya örneklem büyüdü ya pipeline'da
+    eksik bir satır var. İkisi de sessiz geçmemeli.
     """
-    import ast
+    import importlib
+    import sys
     from pathlib import Path
 
-    source = Path(__file__).parent / "bizigo_pipeline.py"
-    tree = ast.parse(source.read_text(encoding="utf-8"))
-    field_map: dict[str, str] = {}
-
-    for node in ast.walk(tree):
-        if isinstance(node, ast.AnnAssign) and getattr(node.target, "id", "") == "FIELD_MAP":
-            field_map = {k.value: v.value for k, v in zip(node.value.keys, node.value.values)}
-
-    assert field_map, "FIELD_MAP okunamadı"
+    root = measure._repo_root()
+    assert root is not None, "depo kökü bulunamadı"
+    sys.path.insert(0, str(root / "sidecar"))
+    shipping = importlib.import_module("app.sigma_pipeline")
 
     rules = sorted((Path(__file__).parent / "rules").glob("*.yml"))
-    affected = [p.name for p in rules if measure.unhandled_fields(p.read_text(encoding="utf-8"), field_map)]
+    affected = {
+        path.name: shipping.unsupported_fields(path.read_text(encoding="utf-8"))
+        for path in rules
+    }
+    open_gaps = {name: fields for name, fields in affected.items() if fields}
 
     assert len(rules) == 24
-    assert len(affected) == 8, f"beklenen 8, ölçülen {len(affected)}: {affected}"
+    assert open_gaps == {}, f"sınıflandırılmamış alan kaldı: {open_gaps}"
+
+
+def test_semada_olmayan_alan_ESLENMIYOR_dusuruluyor() -> None:
+    """`dns_query_name` bir eşleme boşluğu değil, bir ŞEMA boşluğu.
+
+    Ayrım ölçüme giriyor: eşlenseydi `unmapped['dns_query_name']` üretilir,
+    ClickHouse hata vermez (eksik Map anahtarı boş dizge döner), sorgu koşar ve
+    sıfır satır döner. O sıfır "kural eşleşmedi" diye okunurdu.
+    """
+    import importlib
+    import sys
+
+    root = measure._repo_root()
+    sys.path.insert(0, str(root / "sidecar"))
+    shipping = importlib.import_module("app.sigma_pipeline")
+
+    assert "dns_query_name" in shipping.SCHEMA_GAPS
+    assert "dns_query_name" not in shipping.ATTRS_MAP
+    assert "url" in shipping.ATTRS_MAP
 
 
 def test_esleyen_kural_yoksa_inf_yerine_sifir() -> None:

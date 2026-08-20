@@ -84,6 +84,13 @@ class RuleOutcome:
     #: Pipeline'da eşleme dalı olmayan alanlar — **statik**, ClickHouse gerekmiyor.
     unhandled: list[str] = field(default_factory=list)
 
+    #: Pipeline bu kuralı BİLEREK mi düşürdü (şema boşluğu / eşlenmemiş alan).
+    #:
+    #: `compiled=False` iki zıt şey olabilir: kural bozuk (kötü) ya da bekçi
+    #: çalıştı (iyi). Ayırmazsak T31'in en önemli kazanımı raporda bir kayıp
+    #: gibi görünür.
+    blocked: bool = False
+
     #: ClickHouse'un tanımadığı kolon adları — reddedilen SQL'in SEBEBİ.
     #:
     #: Sayı "on kural düştü" der; bu liste "hangi kolon yüzünden" der ve
@@ -121,6 +128,15 @@ class Report:
     unmapped_rules: int = 0
 
     no_data: int = 0
+
+    #: **Bilinçli** olarak derlenmeyen kural sayısı: şema boşluğu ya da
+    #: eşlenmemiş alan yüzünden pipeline'ın DÜŞÜRDÜĞÜ kurallar.
+    #:
+    #: `compiled`'dan ayrı sayılıyor, çünkü ikisi zıt şeyler söylüyor:
+    #: `compiled` düşüşü bir gerileme gibi okunur, oysa buradaki düşüş
+    #: bekçinin ÇALIŞTIĞININ kanıtı. Ayrılmasaydı T31'in en önemli kazanımı
+    #: raporda bir kayıp gibi görünürdü.
+    blocked: int = 0
 
     #: Eşleme dalı olmayan alana giden kural sayısı — prototip boşluğu.
     unhandled_rules: int = 0
@@ -173,6 +189,32 @@ def load_rules() -> list[tuple[str, str]]:
     return [(path.name, path.read_text(encoding="utf-8")) for path in sorted(RULES_DIR.glob("*.yml"))]
 
 
+def _shipping():
+    """`sidecar/app/sigma_pipeline` — ürünün eşleme modülü.
+
+    Prototip dizininden import edilebilmesi için `sidecar/` yola ekleniyor.
+    Kopyalanmıyor: kopya, ölçülen ile dağıtılanın ayrışabildiği anlamına
+    gelirdi ve o ayrışma sessiz olurdu.
+    """
+    import importlib
+    import sys
+
+    root = _repo_root()
+
+    if root is None:
+        raise RuntimeError(
+            "Depo kökü bulunamadı; `sidecar/app/sigma_pipeline` import edilemiyor. "
+            "`measure.py` depo ağacının içinden koşmalı."
+        )
+
+    sidecar = str(root / "sidecar")
+
+    if sidecar not in sys.path:
+        sys.path.insert(0, sidecar)
+
+    return importlib.import_module("app.sigma_pipeline")
+
+
 def compile_rules(with_pipeline: bool) -> dict[str, tuple[str, str]]:
     """Her kuralı derler. Dönen: ad → (sql, hata).
 
@@ -182,9 +224,7 @@ def compile_rules(with_pipeline: bool) -> dict[str, tuple[str, str]]:
     """
     from sigma.collection import SigmaCollection
 
-    from bizigo_pipeline import bizigo_pipeline
-
-    backend = _backend(bizigo_pipeline() if with_pipeline else None)
+    backend = _backend(with_pipeline)
     results: dict[str, tuple[str, str]] = {}
 
     for name, text in load_rules():
@@ -198,10 +238,21 @@ def compile_rules(with_pipeline: bool) -> dict[str, tuple[str, str]]:
     return results
 
 
-def _backend(pipeline):
+def _backend(with_pipeline: bool):
+    """Ölçülen backend — pipeline'lı hâli **ürünün kendisi**.
+
+    Prototipin `bizigo_pipeline.py`'si artık ölçülmüyor. Ölçüm ürünü ölçmezse
+    verdiği sayı ürün hakkında bir şey söylemez; T30'un ikinci koşumu
+    `sidecar/app/sigma_pipeline.py`'ye karşı alınıyor.
+    """
     from sigma.backends.clickhouse.clickhouse import ClickhouseBackend
 
-    return ClickhouseBackend(processing_pipeline=pipeline)
+    if not with_pipeline:
+        # Taban: pipeline'sız çıktı. Bir kuralın çıktısı bununla birebir
+        # aynıysa eşleme ona hiç dokunmamış demektir.
+        return ClickhouseBackend(processing_pipeline=None)
+
+    return _shipping().bizigo_backend(mappings_path=_repo_root() / "catalog" / "mappings")
 
 
 def rewrite_table(sql: str, table: str) -> tuple[str, bool]:
@@ -656,12 +707,14 @@ def rejected_columns(error: str) -> list[str]:
 def measure(args: argparse.Namespace) -> Report:
     import yaml
 
-    from bizigo_pipeline import FIELD_MAP, TABLE, mapped_field_count, pipeline_line_count
+    shipping = _shipping()
 
     report = Report(
-        mapped_fields=mapped_field_count(),
-        pipeline_lines=pipeline_line_count(),
+        mapped_fields=shipping.mapped_field_count(),
+        pipeline_lines=shipping.pipeline_line_count(),
     )
+    FIELD_MAP = shipping.FIELD_MAP
+    TABLE = shipping.TABLE
 
     checked = getattr(args, "_preflight", None)
 
@@ -685,11 +738,22 @@ def measure(args: argparse.Namespace) -> Report:
         )
 
         # Statik: ClickHouse gerekmiyor, koşum yapılmasa da doluyor.
-        outcome.unhandled = unhandled_fields(text, FIELD_MAP)
+        #
+        # Ölçüt ÜRÜNÜN kendi sınıflandırması. Buradaki yerel `unhandled_fields`
+        # yalnızca `FIELD_MAP`'e bakıyordu ve `ATTRS_MAP` doğduktan sonra
+        # kapatılmış boşlukları hâlâ açık sayıyordu — ölçüm aracının kendisi
+        # bayatlamıştı. Ürünü ölçen bir araç, ürünün ölçütünü kullanmalı.
+        outcome.unhandled = shipping.unsupported_fields(text)
 
         sql, error = with_pipeline[name]
         outcome.compiled = bool(sql) and not error
         outcome.error = error
+
+        # Bekçinin düşürdüğü kural, derlenemeyen kuraldan farklı bir şey.
+        # `SigmaTransformationError` pipeline'ın BİLİNÇLİ reddi; başka her hata
+        # beklenmedik. İkisi tek sayıda toplanırsa bekçinin çalışması bir
+        # gerileme gibi okunur.
+        outcome.blocked = "SigmaTransformationError" in error
 
         if outcome.compiled:
             outcome.untouched = sql == baseline[name][0]
@@ -719,6 +783,7 @@ def measure(args: argparse.Namespace) -> Report:
 
     report.rules = len(report.outcomes)
     report.compiled = sum(1 for o in report.outcomes if o.compiled)
+    report.blocked = sum(1 for o in report.outcomes if o.blocked)
     report.runs = sum(1 for o in report.outcomes if o.runs)
     report.matches = sum(1 for o in report.outcomes if o.matches)
     report.untouched = sum(1 for o in report.outcomes if o.untouched)
@@ -731,12 +796,23 @@ def measure(args: argparse.Namespace) -> Report:
         for column in outcome.unhandled:
             report.unhandled_by_field[column] = report.unhandled_by_field.get(column, 0) + 1
 
+    if report.blocked:
+        blocked_names = sorted(o.name for o in report.outcomes if o.blocked)
+        report.notes.append(
+            f"{report.blocked} kural pipeline tarafından BİLEREK düşürüldü "
+            f"({', '.join(blocked_names)}). Bunlar derleme hatası DEĞİL: eşlenemeyen bir "
+            "alana giden kuralın sessizce geçmesi engelleniyor (T31 kabul kriteri). "
+            "Alternatifi `unmapped['<alan>']` üretmekti — derlenir, koşar ve sonsuza "
+            "kadar sıfır satır döndürürdü. `compiled` sayısındaki düşüş bir gerileme "
+            "değil, bekçinin çalıştığının kanıtı."
+        )
+
     if report.unhandled_rules:
         report.notes.append(
-            f"{report.unhandled_rules} kural, pipeline'da eşleme dalı OLMAYAN bir alana gidiyor. "
-            "Bu kuralların SQL'i ham Sigma adıyla iniyor ve ClickHouse reddediyor — yani "
-            "`runs < compiled` farkının bir kısmı ŞEMANIN değil PROTOTİPİN eksikliği. "
-            "`UNMAPPED_FIELDS` tanımlı ama hiçbir dönüşüme bağlı değil; bağlanması T31'de."
+            f"{report.unhandled_rules} kural, pipeline'ın HİÇBİR dalına uymayan bir alana "
+            "gidiyor — ne kolonu var, ne `attrs` karşılığı, ne de bilinen bir şema "
+            "boşluğu. Sıfır olması beklenir; sıfır değilse `sigma_pipeline.py`'de "
+            "eksik bir satır var demektir."
         )
 
     for outcome in report.outcomes:
@@ -840,6 +916,8 @@ def main() -> int:
     print(f"Örneklem            : {report.rules} kural")
     print(f"Ölçülebilir         : {report.measurable} (verisi olan)")
     print(f"Derlendi            : {report.compiled}")
+    if report.blocked:
+        print(f"Bekçi düşürdü       : {report.blocked}  ← hata değil, kasıt")
     print(f"ClickHouse kabul etti: {report.runs}")
     print(f"Satır döndürdü      : {report.matches}")
 
