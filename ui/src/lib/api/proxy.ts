@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { readBffConfig } from "@/lib/auth/config";
 import { discover, OidcError, refresh, accessTokenExpiry } from "@/lib/auth/oidc";
 import { readSessionId, resolveSession } from "@/lib/auth/session";
-import { sessionStore } from "@/lib/auth/store";
+import { SessionStoreUnavailableError, sessionStore } from "@/lib/auth/store";
 
 /**
  * Tarayıcı → Next → `Bizigo.Api` vekili.
@@ -128,7 +128,25 @@ async function refreshOnce(sessionId: string, refreshToken: string): Promise<str
 export async function proxyToApi(request: NextRequest, apiPath: string): Promise<NextResponse> {
   const config = readBffConfig();
   const sessionId = readSessionId(request, config);
-  const session = await resolveSession(sessionId, config);
+
+  let session: Awaited<ReturnType<typeof resolveSession>>;
+
+  try {
+    session = await resolveSession(sessionId, config);
+  } catch (error) {
+    if (!(error instanceof SessionStoreUnavailableError)) {
+      throw error;
+    }
+
+    // 401 DEĞİL. 401 istemciye "yeniden giriş yap" dedirtir, giriş de aynı
+    // depoya yazmayı dener ve düşer — kullanıcı döngüye girer. 503 "sunucuda
+    // bir şey bozuk, sende değil" diyor ve doğru olan bu.
+    return apiError(
+      503,
+      "Oturum deposuna ulaşılamıyor.",
+      "Yeniden giriş yapmak düzeltmiyor; paylaşılan oturum deposu yanıt vermiyor.",
+    );
+  }
 
   if (!session) {
     // Yönlendirme DEĞİL, 401. Bu ucu çağıran taraf `fetch`; 302 dönmek

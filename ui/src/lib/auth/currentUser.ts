@@ -4,6 +4,7 @@ import type { AuthMe } from "@/lib/api/client";
 
 import { readBffConfig } from "./config";
 import { resolveSession } from "./session";
+import { SessionStoreUnavailableError } from "./store";
 
 /**
  * Sunucu bileşenlerinin kimlik sorgusu.
@@ -31,7 +32,26 @@ export type IdentityResult =
 export async function currentUser(): Promise<IdentityResult> {
   const config = readBffConfig();
   const jar = await cookies();
-  const session = await resolveSession(jar.get(config.cookieName)?.value, config);
+
+  let session: Awaited<ReturnType<typeof resolveSession>>;
+
+  try {
+    session = await resolveSession(jar.get(config.cookieName)?.value, config);
+  } catch (error) {
+    if (!(error instanceof SessionStoreUnavailableError)) {
+      throw error;
+    }
+
+    // ÜÇÜNCÜ DURUM, ve varlık sebebi tam olarak bu: depo ulaşılamazken
+    // "anonymous" dönmek kullanıcıyı girişe yollardı, giriş yeni oturumu
+    // yazmayı denerdi, o da düşerdi — ve kimse bir hata görmeden sonsuz
+    // döngüye girerdi (B7).
+    return {
+      status: "error",
+      message: "Oturum deposuna ulaşılamıyor.",
+      hint: "Paylaşılan oturum deposu (Redis) yanıt vermiyor; yönetici kontrol etmeli. Yeniden giriş yapmak bu durumu düzeltmiyor.",
+    };
+  }
 
   if (!session) {
     return { status: "anonymous" };

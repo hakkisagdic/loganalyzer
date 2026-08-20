@@ -367,14 +367,38 @@ npm run api:check      # CI kapısı: üretilenler depodakiyle aynı mı
 ```
 
 **Kimlik akışı Next'te (K31).** Tarayıcıya yalnızca oturum çerezi gidiyor; erişim
-ve yenileme token'ları Next sunucusunun belleğindeki oturum deposunda duruyor ve
-API'ye sunucudan sunucuya `Authorization: Bearer` ile taşınıyor. `Bizigo.Api`
-saf kaynak sunucusu: cookie ve OIDC işleyicisi taşımıyor.
+ve yenileme token'ları sunucudaki oturum deposunda duruyor ve API'ye sunucudan
+sunucuya `Authorization: Bearer` ile taşınıyor. `Bizigo.Api` saf kaynak
+sunucusu: cookie ve OIDC işleyicisi taşımıyor.
 
-⚠️ Oturum deposu **bellek içi**: Next sunucusu yeniden başlarsa herkes yeniden
-giriş yapıyor ve birden çok kopya çalıştırılırsa oturumlar kopyalar arasında
-paylaşılmıyor. `SessionStore` arayüzü paylaşılan bir depo (Redis) eklenebilsin
-diye ayrıldı; dağıtım çok kopyaya çıkmadan önce doldurulmalı.
+**Oturum deposu seçilebilir** (B7). Varsayılan `memory`, çok kopyalı kurulum
+için `redis`:
+
+```bash
+BFF_SESSION_STORE=memory                 # tek süreç — geliştirmenin varsayılanı
+BFF_SESSION_STORE=redis                  # çok kopya
+BFF_REDIS_URL=redis://localhost:6379     # `redis` seçildiyse ZORUNLU
+```
+
+Bellek içi hâl bilerek duruyor: Redis zorunlu olsaydı yerel ortam tek komutla
+ayağa kalkmazdı. Ama sınırı da yerinde — Next sunucusu yeniden başlarsa herkes
+yeniden giriş yapıyor ve **ikinci bir kopya açıldığında oturumlar paylaşılmıyor**.
+
+Üç şey depo değişse de değişmiyor:
+
+- **Çerez hâlâ opak bir anahtar.** İçinde token yok, çözülebilecek bir şey yok.
+`ui/tests/redis-session.test.ts` aynı sızıntı iddialarını Redis deposuyla da
+koşturuyor.
+- **TTL tek kaynaktan.** Redis `EXPIRE`'ı kaydın kendi ömründen türüyor, o da
+`BFF_SESSION_TTL_SECONDS`'ten. İkinci bir ömür değeri, oturumun ya erken
+ölmesi ya Redis'te sızıntı olarak kalması demekti.
+- **Ulaşılamayan depo, oturumsuz kullanıcı DEĞİL.** Redis düşerse vekil `503`
+dönüyor, `401` değil: `401` istemciye "yeniden giriş yap" dedirtir, giriş de
+aynı depoya yazmayı dener ve düşer — kullanıcı hiçbir hata görmeden sonsuz
+döngüye girer. `currentUser()`'ın üç durumlu olmasının sebebi de buydu.
+
+`redis` servisi `deploy/docker-compose.yml` içinde; kalıcılığı **kapalı**, çünkü
+oturum verisi geçici ve diske yazmak token'ları diske yazmak olurdu.
 
 ### Parser CLI
 
