@@ -131,6 +131,51 @@ public interface IScopedQuery
         EventHistogramQuery query,
         AccessScope scope,
         CancellationToken cancellationToken = default);
+
+    // ---- F3 korelasyonları (T35) ------------------------------------------
+    //
+    // Dördü de **toplama** döndürüyor, karar değil: eşik, oran ve z-score
+    // sağlayıcı tarafında hesaplanıyor. Sınır bilinçli — istatistiği SQL'e
+    // gömmek onu yalnızca canlı ClickHouse'la sınanabilir hâle getirirdi ve
+    // yanlış bir z-score hiçbir yerde hata vermez, yalnızca hipotez
+    // sıralamasını sessizce bozar.
+    //
+    // Beşinci korelasyon (sessizlik) burada yok: `GetSourceActivityAsync`
+    // zaten var ve onu **paylaşıyor**. İkinci bir kopya, üç farklı zaman
+    // kolonu seçimi ve üç farklı kapsam davranışı demek olurdu.
+
+    /// <summary>
+    /// Tabanda hiç görülmemiş, pencerede beliren imzalar — RCA'nın tek en
+    /// güçlü sinyali. T29'dan önce yazılamıyordu.
+    /// </summary>
+    Task<IReadOnlyList<SignatureCount>> GetFirstSeenSignaturesAsync(
+        CorrelationWindow window,
+        AccessScope scope,
+        int limit,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>İmza başına pencere ve taban <b>ham</b> sayımları.</summary>
+    Task<IReadOnlyList<SignatureVolume>> GetSignatureVolumeAsync(
+        CorrelationWindow window,
+        AccessScope scope,
+        int limit,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Alan değeri başına pencere ve taban sayımları; lift çağıranda.</summary>
+    Task<IReadOnlyList<FieldValueCount>> GetAttributeLiftAsync(
+        CorrelationWindow window,
+        AccessScope scope,
+        IReadOnlyList<string> fields,
+        int limitPerField,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Kaynak başına ilk bozulma anı, sıralı — ve güvenilmez zamanlı olay sayısı.</summary>
+    Task<IReadOnlyList<SourceOnset>> GetPropagationAsync(
+        CorrelationWindow window,
+        AccessScope scope,
+        byte severityAtOrBelow,
+        int limit,
+        CancellationToken cancellationToken = default);
 }
 
 /// <param name="IsKnownToDispatcher"><c>parser_id</c> bağlı mı — dispatcher kademe 1.</param>

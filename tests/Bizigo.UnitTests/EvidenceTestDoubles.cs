@@ -14,7 +14,7 @@ namespace Bizigo.UnitTests;
 /// çağrıların kendisi kaydediliyor.
 /// </para>
 /// </summary>
-internal sealed class RecordingScopedQuery : IScopedQuery
+internal class RecordingScopedQuery : IScopedQuery
 {
     public List<EventQuery> EventQueries { get; } = [];
 
@@ -84,13 +84,64 @@ internal sealed class RecordingScopedQuery : IScopedQuery
     public Task<IReadOnlyList<SourceSummary>> SearchSourcesAsync(AccessScope scope, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<SourceSummary>>([]);
 
-    public Task<IReadOnlyList<SourceActivityRow>> GetSourceActivityAsync(
+    public virtual Task<IReadOnlyList<SourceActivityRow>> GetSourceActivityAsync(
         SourceActivityWindow window, AccessScope scope, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<SourceActivityRow>>([]);
 
     public Task<IReadOnlyList<HistogramBucket>> GetEventHistogramAsync(
         EventHistogramQuery query, AccessScope scope, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<HistogramBucket>>([]);
+
+    // ---- F3 korelasyonları (T35) ------------------------------------------
+
+    public List<CorrelationWindow> CorrelationWindows { get; } = [];
+
+    public List<SignatureCount> FirstSeen { get; } = [];
+
+    public List<SignatureVolume> Volumes { get; } = [];
+
+    public List<FieldValueCount> LiftRows { get; } = [];
+
+    public List<SourceOnset> Onsets { get; } = [];
+
+    /// <summary>Ortak öznitelik sorgusuna geçirilen alanlar — izin listesi sınanıyor.</summary>
+    public List<string> LiftFieldsAsked { get; } = [];
+
+    /// <summary>Yayılmaya geçirilen önem eşiği.</summary>
+    public byte SeverityAsked { get; private set; }
+
+    public Task<IReadOnlyList<SignatureCount>> GetFirstSeenSignaturesAsync(
+        CorrelationWindow window, AccessScope scope, int limit, CancellationToken cancellationToken = default)
+    {
+        CorrelationWindows.Add(window);
+        return Task.FromResult<IReadOnlyList<SignatureCount>>([.. FirstSeen.Take(limit)]);
+    }
+
+    public Task<IReadOnlyList<SignatureVolume>> GetSignatureVolumeAsync(
+        CorrelationWindow window, AccessScope scope, int limit, CancellationToken cancellationToken = default)
+    {
+        CorrelationWindows.Add(window);
+        return Task.FromResult<IReadOnlyList<SignatureVolume>>([.. Volumes.Take(limit)]);
+    }
+
+    public Task<IReadOnlyList<FieldValueCount>> GetAttributeLiftAsync(
+        CorrelationWindow window, AccessScope scope, IReadOnlyList<string> fields, int limitPerField,
+        CancellationToken cancellationToken = default)
+    {
+        CorrelationWindows.Add(window);
+        LiftFieldsAsked.AddRange(fields);
+        return Task.FromResult<IReadOnlyList<FieldValueCount>>([.. LiftRows]);
+    }
+
+    public Task<IReadOnlyList<SourceOnset>> GetPropagationAsync(
+        CorrelationWindow window, AccessScope scope, byte severityAtOrBelow, int limit,
+        CancellationToken cancellationToken = default)
+    {
+        CorrelationWindows.Add(window);
+        SeverityAsked = severityAtOrBelow;
+        return Task.FromResult<IReadOnlyList<SourceOnset>>([.. Onsets.Take(limit)]);
+    }
+
 }
 
 /// <summary>

@@ -14,6 +14,7 @@ namespace Bizigo.Query;
 public sealed class ScopedQuery(
     EventReader events,
     ChangeEventReader changes,
+    CorrelationReader correlations,
     EventWriter writer,
     ControlPlaneDbContext controlPlane,
     IAuditSink audit) : IScopedQuery
@@ -235,6 +236,108 @@ public sealed class ScopedQuery(
 
         return rows;
     }
+
+    // ---- F3 korelasyonları (T35) ------------------------------------------
+    //
+    // Dördü de aynı kalıpta: kapsamı yükleme, sorguyu koştur, denetime yaz.
+    // `query.OwnerGroups` daraltması `ScopePredicate.From`'a **veriliyor**,
+    // yani daraltma kapsamı genişletemiyor.
+
+    public async Task<IReadOnlyList<SignatureCount>> GetFirstSeenSignaturesAsync(
+        CorrelationWindow window,
+        AccessScope scope,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        ArgumentNullException.ThrowIfNull(scope);
+
+        var predicate = ScopePredicate.From(scope, window.OwnerGroups);
+        var watch = Stopwatch.StartNew();
+
+        var rows = await correlations.GetFirstSeenSignaturesAsync(window, predicate, limit, cancellationToken);
+
+        await _audit.RecordAsync(new AuditRecord(
+            scope.Subject, "rca.first-seen", "events",
+            Describe(scope, predicate), Describe(window),
+            rows.Count, (int)watch.ElapsedMilliseconds, true), cancellationToken);
+
+        return rows;
+    }
+
+    public async Task<IReadOnlyList<SignatureVolume>> GetSignatureVolumeAsync(
+        CorrelationWindow window,
+        AccessScope scope,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        ArgumentNullException.ThrowIfNull(scope);
+
+        var predicate = ScopePredicate.From(scope, window.OwnerGroups);
+        var watch = Stopwatch.StartNew();
+
+        var rows = await correlations.GetSignatureVolumeAsync(window, predicate, limit, cancellationToken);
+
+        await _audit.RecordAsync(new AuditRecord(
+            scope.Subject, "rca.volume", "events",
+            Describe(scope, predicate), Describe(window),
+            rows.Count, (int)watch.ElapsedMilliseconds, true), cancellationToken);
+
+        return rows;
+    }
+
+    public async Task<IReadOnlyList<FieldValueCount>> GetAttributeLiftAsync(
+        CorrelationWindow window,
+        AccessScope scope,
+        IReadOnlyList<string> fields,
+        int limitPerField,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        ArgumentNullException.ThrowIfNull(scope);
+
+        var predicate = ScopePredicate.From(scope, window.OwnerGroups);
+        var watch = Stopwatch.StartNew();
+
+        var rows = await correlations.GetAttributeLiftAsync(
+            window, predicate, fields, limitPerField, cancellationToken);
+
+        await _audit.RecordAsync(new AuditRecord(
+            scope.Subject, "rca.attribute-lift", "events",
+            Describe(scope, predicate), Describe(window),
+            rows.Count, (int)watch.ElapsedMilliseconds, true), cancellationToken);
+
+        return rows;
+    }
+
+    public async Task<IReadOnlyList<SourceOnset>> GetPropagationAsync(
+        CorrelationWindow window,
+        AccessScope scope,
+        byte severityAtOrBelow,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+        ArgumentNullException.ThrowIfNull(scope);
+
+        var predicate = ScopePredicate.From(scope, window.OwnerGroups);
+        var watch = Stopwatch.StartNew();
+
+        var rows = await correlations.GetPropagationAsync(
+            window, predicate, severityAtOrBelow, limit, cancellationToken);
+
+        await _audit.RecordAsync(new AuditRecord(
+            scope.Subject, "rca.propagation", "events",
+            Describe(scope, predicate), Describe(window),
+            rows.Count, (int)watch.ElapsedMilliseconds, true), cancellationToken);
+
+        return rows;
+    }
+
+    private static string Describe(CorrelationWindow window) => string.Create(
+        CultureInfo.InvariantCulture,
+        $"{window.From:O}..{window.To:O} baseline={window.BaselineFrom:O}..{window.BaselineTo:O}");
 
     public Task<bool> CanReadRawObjectAsync(string objectKey, AccessScope scope, CancellationToken cancellationToken = default)
     {
