@@ -299,6 +299,45 @@ ClickHouse sayısından değil dosyadan gelmesinin sebebi bu.
 
 Kuralın ikinci bir kusuru daha var (aşağıda) ve ikisi birbirini gizliyordu.
 
+#### Düzeltildi — ve cevap örneklerin satır sonundaydı
+
+`Teardown` satırlarının kuyruğu ASA'nın sözlüğünü söylüyor: **`TCP Reset-I`**,
+iki satırda. ASA sıfırlamayı `Reset-I`/`Reset-O` diye yazıyor, `RST` diye **hiç
+yazmıyor**. Yani kusur iki katmanlıydı ve ikisi de tekrarlanan anahtarın
+arkasındaydı: `RST` vendor'ın kullanmadığı bir kısaltma, ve tekrarlanan anahtar
+`Teardown`'ı düşürdüğü için kural iki koşuldan **hiçbirini** doğru soramıyordu.
+
+```yaml
+message|contains|all:
+  - 'Teardown'
+  - 'Reset'
+```
+
+`|all` şart: **düz bir liste Sigma'da OR'dur** ve burada AND isteniyor. İki
+koşulu listeye almak, tekrarlanan anahtarın yaptığının kardeşi olurdu — metinsel
+olarak geçerli, anlamsal olarak sessizce başka bir kural. Üretilen SQL doğrulandı:
+`raw_data ILIKE '%Teardown%' AND raw_data ILIKE '%Reset%'`.
+
+`Reset-I` değil `Reset`: `-I`/`-O` yön eki ve kural yönü umursamıyor. Yöne
+bağlamak bugün çalışırdı — örneklemde `Reset-I` 2, `Reset-O` 0 — ama kuralın
+sormadığı bir şeyi sormak olurdu.
+
+**Ölçüldü (örnek dosya üzerinden, canlı doğrulama koordinatörde):**
+
+| Aranan dizge | `Teardown` ile aynı satırda | Kapı |
+| --- | --- | --- |
+| `Reset` | 2 | geçer |
+| `Reset-I` | 2 | geçer — yöne bağlamak bugün fark etmiyor |
+| `Reset-O` | 0 | **düşer** — kuralın gerçekten veriye baktığının kanıtı |
+| `RST` (eski hâl) | 0 | `Teardown` ile hiç kesişmiyor; eski eşleşme `first`/`burst`'tendi |
+
+#### Not · Kural adı vendor'ın sözlüğünü değil bizim varsayımımızı taşıyor
+
+Dosya adı hâlâ `asa_teardown_rst.yml` ve kural artık `RST` aramıyor. Ad
+değiştirilmedi — çivi ve UUID ona bağlı — ama adın yanlış şey söylediği burada
+kayıtlı. Bu, kuralın kusurunun **kaynağı**: adı yazan kişi ASA'nın `RST` yazdığını
+varsaymış, örneklere bakmamıştı.
+
 ### Bulgu · Sigma kuralları tekrarlanan YAML anahtarına karşı korumasızdı
 
 `asa_teardown_rst.yml` aynı eşlemede `message|contains` anahtarını **iki kez**

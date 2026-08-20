@@ -22,7 +22,7 @@
     },
     {
       "path": "asa_teardown_rst.yml",
-      "sha256": "sha256:adc6ec5597843539ba01b7a1eddfd7d71f9701aa4c325805f5c0beffc5ccbb4e"
+      "sha256": "sha256:a494c1150e9299234c656d424910472c731f7297be3c00a87c9fc56482e06053"
     },
     {
       "path": "asa_vpn_login.yml",

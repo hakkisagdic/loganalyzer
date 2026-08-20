@@ -57,13 +57,13 @@
       "rule_id": "07883503-0000-4000-8000-000000000000",
       "title": "Cisco ASA: RST ile kapanan oturum",
       "source_path": "catalog/sigma/rules/asa_teardown_rst.yml",
-      "source_sha": "sha256:adc6ec5597843539ba01b7a1eddfd7d71f9701aa4c325805f5c0beffc5ccbb4e",
+      "source_sha": "sha256:a494c1150e9299234c656d424910472c731f7297be3c00a87c9fc56482e06053",
       "logsource": {
         "category": "network_connection",
         "product": "asa"
       },
       "status": "written",
-      "output_sha": "sha256:c23500bb3b2282b73977b9230d24773b01c2036cf22bebd5312e627634ce336c"
+      "output_sha": "sha256:6af561e3421867b6f09ed1ad6566e14915d0e3c7bdb2e236552e11c13cc45aac"
     },
     {
       "rule_id": "14477452-0000-4000-8000-000000000000",

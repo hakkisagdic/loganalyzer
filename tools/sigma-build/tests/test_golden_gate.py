@@ -320,7 +320,7 @@ def test_kural_uretiliyorsa_bos_beyan_kirmizi():
 #:
 #: Aynı sorunun kardeşi T31 tarafında da var (bekçiyi tetikleyen kural sayısı
 #: 3'ten 2'ye indi); orada da ayrı bir test tutuyor.
-EXPECTED_AT_LEAST_ONE_COUNT = 5
+EXPECTED_AT_LEAST_ONE_COUNT = 6
 EXPECTED_NONE_COUNT = 2
 
 
