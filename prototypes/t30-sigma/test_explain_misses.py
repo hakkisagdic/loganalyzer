@@ -204,8 +204,64 @@ def test_kisa_dizge_yakinlik_aranmiyor() -> None:
     assert em.near_misses("RST", "burst first reset") == []
 
 
+
+
+def test_yapisal_alanda_onek_eslesmesi_ANLAM_gurultu_degil() -> None:
+    """**Kutu 2 bir yanlış pozitif üretti ve sezgisel bu yüzden daraltıldı.**
+
+    `fortigate_admin_from_wan` `srcip|startswith: '203.0.113.'` yazıyor ve
+    `203.0.113.7` ile eşleşiyor — tam istenen şey. Ham gövdede bakınca "daha
+    uzun bir sözcüğün içinde" görünüyor, çünkü IP'lerde nokta sözcük sınırı
+    değil.
+
+    Ayrım alanın TÜRÜNDE: serbest metinde içinde-geçmek gürültü, yapısal bir
+    alanda önek eşleşmesi anlam. Yapısal alan zaten kolonun kendisinde
+    karşılaştırılıyor.
+    """
+    corpus = "srcip=203.0.113.7 srcport=443 dstip=10.1.100.11"
+
+    assert em.classify("203.0.113.", corpus, free_text=False)[0] == em.PRESENT
+    # Serbest metin sayılsaydı şüpheli kutusuna düşerdi — eski davranış.
+    assert em.classify("203.0.113.", corpus, free_text=True)[0] == em.SUBSTRING_ONLY
+
+
+def test_serbest_metin_alanlari_URUNDEN_tureiyor() -> None:
+    """Elle yazılsaydı `message` başka bir kolona gittiği gün sessizce ayrışırdı."""
+    fields = em.free_text_fields()
+
+    assert "message" in fields
+    # Yapısal alanlar listede OLMAMALI: olsalardı kutu 2 onlarda da çalışır
+    # ve bugünkü yanlış pozitifi geri getirirdi.
+    assert "srcip" not in fields
+    assert "action" not in fields
+
+
 def main() -> int:
+    """Koşucu.
+
+    **Dosyadaki `def test_` sayısı ile koşulan sayı karşılaştırılıyor** ve bu
+    bir kolaylık değil bir bekçi: koşucu dosyanın sonunda olmadığı için
+    altına eklenen testler `globals()` dolduğunda henüz tanımlı değildi ve
+    **hiç koşmadan** paket yeşil kalıyordu. Bu, iki kez oldu — ikisinde de
+    sayıya bakıp geçilebilirdi.
+
+    §7'nin deseni: bir bekçinin sessizce atlaması, bekçinin kendisinden
+    tehlikeli.
+    """
+    import re
+    from pathlib import Path
+
     tests = [value for name, value in sorted(globals().items()) if name.startswith("test_")]
+    declared = len(re.findall(r"^def (test_\w+)", Path(__file__).read_text(encoding="utf-8"), re.M))
+
+    if declared != len(tests):
+        print(
+            f"✗ KOŞUM EKSİK: dosyada {declared} test tanımlı, {len(tests)} tanesi toplandı.\n"
+            "  Koşucu dosyanın SONUNDA değil; altına eklenen testler hiç koşmuyor.",
+            file=sys.stderr,
+        )
+        return 1
+
     failed = 0
 
     for test in tests:
