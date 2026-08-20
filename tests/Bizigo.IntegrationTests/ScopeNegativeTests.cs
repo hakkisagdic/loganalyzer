@@ -616,6 +616,85 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
         Assert.False(await _query.CanReadRawObjectAsync(
             mine, AccessScope.Denied, TestContext.Current.CancellationToken));
     }
+
+    /// <summary>
+    /// Koşturulduğunda kanıtladığı şey: <b>grubu çözülemeyen</b> anahtar da
+    /// reddediliyor.
+    ///
+    /// <para>
+    /// Kapsam kapısının en sessiz kaçış deliği bu — anahtarın <i>biçimini
+    /// bozarak</i> geçmek. Kod bugün doğru davranıyor (<c>ExtractOwnerGroup</c>
+    /// <c>null</c> dönüyor, kapı <c>false</c> veriyor) ama davranışı hiçbir şey
+    /// tutmuyordu: "belli değil" ile "serbest"in ayrıldığı yer yalnızca bir
+    /// <c>null</c> kontrolüydü ve o kontrol bir gün gevşetilse hiçbir yerde
+    /// kırmızı yanmazdı.
+    /// </para>
+    ///
+    /// <para>
+    /// Varsayılanın <b>ret</b> olması, <c>AccessScope</c>'un "kapalı başlar"
+    /// kuralının bu kapıdaki karşılığı: tanınmayan bir anahtar, kapsamı
+    /// bilinmeyen bir nesne demek ve kapsamı bilinmeyen nesne okunmaz.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [Trait("Category", "Integration")]
+    // kapsam: CanReadRawObjectAsync
+    [InlineData("baska/net-core/2026/08/17/10/default/01J0.ndjson.zst")]  // önek yanlış
+    [InlineData("raw")]                                                   // grup segmenti yok
+    [InlineData("raw/")]                                                  // grup boş
+    [InlineData("net-core/2026/08/17/10/default/01J0.ndjson.zst")]        // önek hiç yok
+    public async Task Cozulemeyen_anahtar_reddediliyor(string objectKey)
+    {
+        Assert.False(await _query.CanReadRawObjectAsync(
+            objectKey, CoreOnly(), TestContext.Current.CancellationToken));
+    }
+
+    /// <summary>
+    /// Koşturulduğunda kanıtladığı şey: kapsam dışı sayım, kullanıcının
+    /// <b>kendi daraltmasına</b> bakmıyor.
+    ///
+    /// <para>
+    /// Karar <c>ScopedQuery</c>'de yalnızca yorumda duruyordu: soru <i>"senin
+    /// kapsamının dışında ne var"</i>, <i>"daraltmanın dışında ne var"</i>
+    /// değil. Daraltma uygulansaydı sayı, kullanıcı listeyi <b>kendi</b>
+    /// daralttığı için büyürdü ve rapor bunu "başka grubun verisi" diye
+    /// gösterirdi — cümle aynı, anlamı farklı, ve hiçbir şey kırmızı yanmaz.
+    /// </para>
+    ///
+    /// <para>
+    /// İki uç da (olay ve değişiklik) aynı vaadi veriyor, o yüzden ikisi de
+    /// burada.
+    /// </para>
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Integration")]
+    // kapsam: CountOutOfScopeEventsAsync
+    // kapsam: CountOutOfScopeChangesAsync
+    public async Task Kapsam_disi_sayimi_kullanicinin_kendi_daraltmasina_bakmiyor()
+    {
+        // Her iki gruba da erişimi olan kullanıcı: kapsamının dışında hiçbir
+        // şey YOK.
+        var both = AccessScope.ForGroups("u-both", ["net-core", "net-edge"]);
+
+        await _query.WriteChangeAsync(
+            NewChange("net-edge"), AccessScope.System("admin"), TestContext.Current.CancellationToken);
+
+        // Sorguda kendini net-core'a daraltıyor.
+        var narrowedEvents = AllEvents() with { OwnerGroups = ["net-core"] };
+        var narrowedChanges = new ChangeQuery
+        {
+            From = Now.AddHours(-1),
+            To = Now.AddHours(1),
+            OwnerGroups = ["net-core"],
+        };
+
+        // Daraltma uygulansaydı ikisi de 1 dönerdi: "kapsam dışında bir şey var".
+        Assert.Equal(0, await _query.CountOutOfScopeEventsAsync(
+            narrowedEvents, both, TestContext.Current.CancellationToken));
+
+        Assert.Equal(0, await _query.CountOutOfScopeChangesAsync(
+            narrowedChanges, both, TestContext.Current.CancellationToken));
+    }
 }
 
 /// <summary>Denetim kaydı bu testlerin konusu değil; ayrı testleri var.</summary>

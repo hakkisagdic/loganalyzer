@@ -150,5 +150,195 @@ public sealed class RawArchiveRecoveryTests : IDisposable
         Assert.Contains("segment-1", _segments.Deleted);
     }
 
+    /// <summary>
+    /// <b>Kayıp nesne yerel segmentten geri yükleniyor.</b>
+    ///
+    /// <para>
+    /// T04'ün 48 saatlik penceresinin <i>sebebi</i> buydu ve bugüne kadar bunu
+    /// yapan kod yoktu: manifest kaybı görüyor, <c>WalSegment</c> kaynağı
+    /// söylüyordu, ve zincir orada bitiyordu.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Kayip_nesne_segmentten_geri_yukleniyor()
+    {
+        var entry = await UploadAsync();
+
+        _store.Lose(entry.ObjectKey);
+        await SetStateAsync(entry.ObjectKey, RawObjectState.Missing);
+
+        var report = await Uploader().RecoverAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, report.Attempted);
+        Assert.Equal(1, report.Recovered);
+        Assert.True(_store.Has(entry.ObjectKey));
+
+        await using var db = _factory.CreateDbContext();
+        var row = db.RawManifest.Single(m => m.ObjectKey == entry.ObjectKey);
+
+        Assert.Equal(RawObjectState.Verified, row.State);
+        Assert.NotNull(row.VerifiedAt);
+    }
+
+    /// <summary>
+    /// Kurtarılan nesnenin içeriği <b>birebir aynı</b>.
+    ///
+    /// <para>
+    /// Kurtarma nesneyi sha256'sından tanıyor, yani yazılan şey manifest'in
+    /// kaydettiği şeyle aynı olmak zorunda. Bu test o eşitliği doğrudan
+    /// ölçüyor: yeniden kurulan baytlar kaybolan baytlarla aynı değilse
+    /// "kurtarıldı" demek, sessiz bir bozulmayı başarı diye raporlamak olurdu.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Kurtarilan_nesne_kaybolanla_ayni()
+    {
+        var entry = await UploadAsync();
+
+        var original = await _store.GetAsync(entry.ObjectKey, TestContext.Current.CancellationToken);
+        Assert.NotNull(original);
+
+        _store.Lose(entry.ObjectKey);
+        await SetStateAsync(entry.ObjectKey, RawObjectState.Missing);
+
+        await Uploader().RecoverAsync(TestContext.Current.CancellationToken);
+
+        var restored = await _store.GetAsync(entry.ObjectKey, TestContext.Current.CancellationToken);
+        Assert.Equal(original, restored);
+    }
+
+    /// <summary>
+    /// <b>Segment artık yoksa sessizce geçilmiyor.</b>
+    ///
+    /// <para>
+    /// Deneme hakkı dolduğunda durum <c>Unrecoverable</c> oluyor. Ayrı bir
+    /// değer olması gerekiyor: <c>Missing</c>'de kalsaydı "kurtarma sırasını
+    /// bekliyor" ile "denendi, olmadı" ayırt edilemezdi ve operatörün bakması
+    /// gereken tek liste ikincisi.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Segment_yoksa_kurtarilamaz_isaretleniyor()
+    {
+        var entry = await UploadAsync();
+
+        _store.Lose(entry.ObjectKey);
+        await SetStateAsync(entry.ObjectKey, RawObjectState.Missing);
+        _segments.Forget("segment-1");
+
+        // Üst sınıra kadar deneniyor; sınıra gelmeden durum değişmiyor.
+        for (var i = 1; i < _options.MaxRecoveryAttempts; i++)
+        {
+            var partial = await Uploader().RecoverAsync(TestContext.Current.CancellationToken);
+            Assert.Equal(0, partial.Unrecoverable);
+        }
+
+        var final = await Uploader().RecoverAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(1, final.Unrecoverable);
+
+        await using var db = _factory.CreateDbContext();
+        var row = db.RawManifest.Single(m => m.ObjectKey == entry.ObjectKey);
+
+        Assert.Equal(RawObjectState.Unrecoverable, row.State);
+        Assert.Equal(_options.MaxRecoveryAttempts, row.RecoveryAttempts);
+    }
+
+    /// <summary>
+    /// <b>Kurtarılamaz işaretlenen nesne yeniden denenmiyor.</b>
+    ///
+    /// <para>
+    /// Sınır olmasaydı bozuk bir S3 yapılandırması her scrub turunda yeniden
+    /// yazma denerdi — sessiz ve sonsuz.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Kurtarilamaz_nesne_yeniden_denenmiyor()
+    {
+        var entry = await UploadAsync();
+
+        _store.Lose(entry.ObjectKey);
+        await SetStateAsync(entry.ObjectKey, RawObjectState.Unrecoverable);
+
+        var report = await Uploader().RecoverAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, report.Attempted);
+    }
+
+    /// <summary>
+    /// <b>Yeniden kurulan içerik manifest'le uyuşmuyorsa yazılmıyor.</b>
+    ///
+    /// <para>
+    /// Manifest'in sha256'sı doğru kabul ediliyor; sapan taraf kurtarmadır.
+    /// Yanlış içerikle üzerine yazmak, kaybı <b>sessiz bir bozulmaya</b>
+    /// çevirirdi — ve bozulma, kaybın aksine, hiçbir yerde "eksik" görünmezdi.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Sha256_tutmayan_yeniden_kurulum_yazilmiyor()
+    {
+        var entry = await UploadAsync();
+
+        _store.Lose(entry.ObjectKey);
+
+        // Manifest'teki sha256 bozuluyor: yeniden kurulan nesne artık hiçbir
+        // adayla eşleşmiyor.
+        await using (var db = _factory.CreateDbContext())
+        {
+            var row = db.RawManifest.Single(m => m.ObjectKey == entry.ObjectKey);
+            row.State = RawObjectState.Missing;
+            row.Sha256 = new string('0', 64);
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+
+        var report = await Uploader().RecoverAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, report.Attempted);
+        Assert.Equal(0, report.Recovered);
+        Assert.False(_store.Has(entry.ObjectKey));
+    }
+
+    /// <summary>
+    /// Kurtarma <b>saklama saatini yeniden başlatıyor</b> — ve koruma kalıcı
+    /// değil.
+    ///
+    /// <para>
+    /// Kurtarma <c>VerifiedAt</c>'i günceliyor, dolayısıyla segment kurtarmadan
+    /// sonra 48 saat daha tutuluyor. Bu <b>kasıtlı</b> ve penceremizin kendi
+    /// gerekçesinden çıkıyor: pencere, nesnenin kaybolmasının en olası olduğu
+    /// dönemi kapsamak için var, ve <i>az önce yazılmış</i> bir nesne tam olarak
+    /// o dönemde. Eski damgayı korumak, kurtarılan nesneyi ikinci bir kayba
+    /// karşı korumasız bırakırdı.
+    /// </para>
+    ///
+    /// <para>
+    /// Bedeli kayıtta dursun: aynı nesne tekrar tekrar kaybolursa segmenti
+    /// süresiz tutar. Deneme üst sınırı bunu sınırlıyor — <c>Unrecoverable</c>
+    /// olan nesne artık kurtarılmıyor, yani saat de yenilenmiyor.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Kurtarma_saklama_saatini_yeniden_baslatiyor()
+    {
+        var entry = await UploadAsync();
+
+        _store.Lose(entry.ObjectKey);
+        await SetStateAsync(entry.ObjectKey, RawObjectState.Missing);
+
+        _time.Advance(TimeSpan.FromHours(49));
+
+        // Kurtarmadan önce: kapı segmenti tutuyor (durum `Missing`).
+        Assert.Equal(0, (await Uploader().RunOnceAsync(TestContext.Current.CancellationToken)).SegmentsDeleted);
+
+        await Uploader().RecoverAsync(TestContext.Current.CancellationToken);
+
+        // Kurtarmadan hemen sonra: durum sağlam ama damga tazelendi, saat
+        // yeniden işliyor.
+        Assert.Equal(0, (await Uploader().RunOnceAsync(TestContext.Current.CancellationToken)).SegmentsDeleted);
+
+        // Yeni pencere de dolunca silinebiliyor: koruma kalıcı değil.
+        _time.Advance(TimeSpan.FromHours(49));
+        Assert.Equal(1, (await Uploader().RunOnceAsync(TestContext.Current.CancellationToken)).SegmentsDeleted);
+    }
+
     public void Dispose() => _factory.Dispose();
 }
