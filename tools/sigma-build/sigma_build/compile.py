@@ -40,6 +40,7 @@ from sigma_build.gate import (
     KIND_UNKNOWN_COLUMN,
     KIND_UNSUPPORTED_CONSTRUCT,
     REMEDY_PIPELINE_OR_SCHEMA,
+    REMEDY_SCHEMA,
     REMEDY_UNKNOWN,
     Blocker,
     check_columns,
@@ -180,6 +181,55 @@ def current_header() -> RunHeader:
     )
 
 
+def _declared_blockers(pipeline, text: str):
+    """T31'in **beyanlarından** engel üretir — istisna metninden değil.
+
+    İki ayrı beyan var ve ikisi de yapısal:
+
+    * `describe()["schema_gaps"]` — hiçbir parser'ın üretmediği alanlar. T31 bunu
+      `{alan: {remedy, reason}}` olarak veriyor, yani `remedy`'yi de **o**
+      söylüyor; bizim tahmin etmemize gerek yok.
+    * `VENDOR_EMPTY_COLUMNS` — belirli bir vendor'da hep boş kalan kolonlar
+      (`routeros` + `activity_name` gibi). Bu, `describe()`'de açık değil ama
+      modül düzeyinde **açık bir ad**; özel bir ada bağlanmıyoruz.
+
+    Anahtar dikkat: `VENDOR_EMPTY_COLUMNS` **eşlenmiş kolon adıyla** anahtarlı
+    (`activity_name`), kural ise Sigma adını taşıyor (`action`). Eşleme
+    yapılmadan kesişim boş çıkar ve engel sessizce `unknown`'a düşerdi —
+    ölçüldü, `routeros_drop_input` tam olarak öyle düşüyordu.
+
+    Raporlanan ad **Sigma adı**, çünkü kuralı düzeltecek kişinin değiştireceği o;
+    eşlendiği kolon mesajda duruyor.
+    """
+    gaps = pipeline.describe().get("schema_gaps", {}) or {}
+    field_map = getattr(pipeline, "FIELD_MAP", {})
+    vendor_empty = getattr(pipeline, "VENDOR_EMPTY_COLUMNS", {})
+    empty_columns = {column for columns in vendor_empty.values() for column in columns}
+
+    for field in pipeline.rule_fields(text):
+        declared = gaps.get(field) if isinstance(gaps, dict) else None
+        if declared is not None:
+            yield Blocker(
+                kind=KIND_UNKNOWN_COLUMN,
+                column=field,
+                message=f"`{field}` bu şemada eşlenemiyor: {declared.get('reason', '')}".strip(),
+                remedy=declared.get("remedy") or REMEDY_PIPELINE_OR_SCHEMA,
+            )
+            continue
+
+        column = field_map.get(field, field)
+        if column in empty_columns:
+            yield Blocker(
+                kind=KIND_UNKNOWN_COLUMN,
+                column=field,
+                message=(
+                    f"`{field}` → `{column}` bu vendor'da her zaman boş; "
+                    "parser onu bilerek doldurmuyor"
+                ),
+                remedy=REMEDY_SCHEMA,
+            )
+
+
 def _transformation_error() -> type[BaseException]:
     """T31'in bilinçli reddi hangi tiple geliyor.
 
@@ -260,17 +310,7 @@ def collect_outcomes() -> list[RuleOutcome]:
             (rule,) = collection.rules
             queries = backend.convert(collection)
         except _transformation_error() as error:
-            gaps = set(pipeline.describe().get("schema_gaps", ()))
-            blocked = [field for field in pipeline.rule_fields(text) if field in gaps]
-            blockers = tuple(
-                Blocker(
-                    kind=KIND_UNKNOWN_COLUMN,
-                    column=field,
-                    message=f"`{field}` bu şemada eşlenemiyor (T31 pipeline'ı reddetti)",
-                    remedy=REMEDY_PIPELINE_OR_SCHEMA,
-                )
-                for field in blocked
-            ) or (
+            blockers = tuple(_declared_blockers(pipeline, text)) or (
                 # Hangi alan olduğunu çıkaramadıysak sebep YUTULMUYOR: ham metin
                 # engelin içinde kalıyor. Çözünürlük kaybı var, sessiz kayıp yok.
                 Blocker(

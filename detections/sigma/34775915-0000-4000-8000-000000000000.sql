@@ -6,7 +6,7 @@
 -- kaynak     : catalog/sigma/rules/fortigate_high_port_scan.yml
 -- kaynak sha : sha256:f4b0a995a26509f220d09c7d438da37da82f40b11e8d7a8b2a37fa235b9c5878
 -- kural seti : t30-ornekleminden-terfi
--- pipeline   : bizigo-events-ocsf/ae264764362f (sha256:ae264764362fecd31fec7b2043a6f3a595063b95f497e0c73e02c50b98e3f718)
+-- pipeline   : bizigo-events-ocsf/fa56f2121e9b (sha256:fa56f2121e9bf35752eb2c65d4a68055f8e818f940100a42f1c1796c71ea46a5)
 --
 -- Derleme tarihi bilerek yazılmadı: sürüklenme kapısı bayt karşılaştırıyor.
 -- Yeniden üretmek: tools/sigma-build içinde `python -m sigma_build.compile --write`

@@ -90,7 +90,7 @@
     },
     {
       "path": "routeros_forward_new.yml",
-      "sha256": "sha256:d5d43add482493c7a3943b55d509679967b11555ab9076a7ba4583491550eeea"
+      "sha256": "sha256:91a9ba46ba5a00ddda6b0cfbea03d81193c78f64f0711aba4aa047d497015dc7"
     },
     {
       "path": "routeros_login_failure.yml",
