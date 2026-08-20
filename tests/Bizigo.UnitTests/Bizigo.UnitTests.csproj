@@ -27,12 +27,18 @@
     <ProjectReference Include="..\..\src\Bizigo.Replay\Bizigo.Replay.csproj" />
 
     <!--
-      CliSmokeTests derlenmiş `bizigo` ikilisini koşturuyor. Referans yalnızca
-      derleme sırası için; derlemeye bağlanmıyor (ReferenceOutputAssembly=false).
-      Olmazsa `dotnet test tests/Bizigo.UnitTests` tek başına koştuğunda CLI
-      derlenmemiş olur ve testler sessizce atlanır.
+      İki sebeple burada:
+
+      · CliSmokeTests derlenmiş `bizigo` ikilisini koşturuyor — referans olmazsa
+        `dotnet test tests/Bizigo.UnitTests` tek başına koştuğunda CLI
+        derlenmemiş olur ve testler sessizce atlanır.
+      · GoldenSeedTests (T39) yükleyicinin tiplerini DOĞRUDAN çağırıyor. Bu
+        yüzden `ReferenceOutputAssembly` artık false değil: zaman damgası
+        bekçisini süreç açmadan koşturmanın başka yolu yok ve bekçiyi kapı
+        arkasında bırakmak, ölçüm verisinin doğruluğunu ilk kez ClickHouse
+        koşumunda öğrenmek demekti.
     -->
-    <ProjectReference Include="..\..\src\Bizigo.Cli\Bizigo.Cli.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\src\Bizigo.Cli\Bizigo.Cli.csproj" />
   </ItemGroup>
 
   <ItemGroup>
