@@ -1,0 +1,12 @@
+title: "nginx: şüpheli Host başlığı"
+id: 14644215-0000-4000-8000-000000000000
+status: experimental
+description: T30 ölçüm örneklemi — F1 kataloğunun tanıdığı vendor'lara göre yazıldı.
+logsource:
+  category: dns
+  product: nginx
+detection:
+  selection:
+    query|contains: 'localhost'
+  condition: selection
+level: medium

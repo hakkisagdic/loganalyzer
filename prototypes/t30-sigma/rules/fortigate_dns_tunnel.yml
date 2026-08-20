@@ -1,0 +1,12 @@
+title: "FortiGate: uzun DNS sorgusu"
+id: 75335998-0000-4000-8000-000000000000
+status: experimental
+description: T30 ölçüm örneklemi — F1 kataloğunun tanıdığı vendor'lara göre yazıldı.
+logsource:
+  category: dns
+  product: fortigate
+detection:
+  selection:
+    dns_query_name|contains: '.tunnel.'
+  condition: selection
+level: medium
