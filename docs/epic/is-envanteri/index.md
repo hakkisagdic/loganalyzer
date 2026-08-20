@@ -201,6 +201,36 @@ bekliyor; `302020 — zaman damgası olmayan zarf` iddiasını `tags:
 ["_asa_no_timestamp"]` ile gerçekten ölçüyor ve doğru yapmanın örneği olarak
 duruyor.
 
+### Ölçüm aracının **kendi** sessiz yanlışı
+
+Yukarıdaki bölüm bekçilerle ilgiliydi. Bu ayrı bir sınıf ve bu turda **iki kez**
+çıktı: kusur ürünün değil, **ölçüm aracının** kendisinde ve aracın çıktısı
+yeşil.
+
+Farkı şu: bozuk bir bekçi bir kusuru göremez. Bozuk bir ölçüm aracı ise
+**gerçeğin tersini rapor eder** ve rapor bir karar belgesine dönüşür.
+
+| # | Araç | Ne dedi | Gerçek | Sebep |
+| --- | --- | --- | --- | --- |
+| 1 | Sigma kapsam ölçümü (`measure.py`) ön kontrolü | "Veri var, ölçebilirim" | Tablodaki 1M satır tek-vendor'lu sentetik kıyaslama verisiydi; ölçüm `%0` üretti ve o sıfır eşlemenin değil **verinin** sonucuydu | Kontrol bir **yokluk** kanıtı arıyordu ("tablo boş mu"), **varlık** kanıtı değil ("doğru veri mi") |
+| 2 | Alan kapsamı ölçümü (`fields coverage`) kutu 1 | "Hiçbir vendor'da yakalanmamış metin yok" → *parser her şeyi yakalamış* | ASA'nın `Reset-I`'si dahil, satırların bir kısmı hiçbir alana inmiyor | `attrs['message']` satırın **birebir kendisi**; kapsama sayılınca gövdede hiçbir aralık boşta kalmıyordu |
+
+**İkisinin ortak imzası:** araç, ölçemediği durumu ölçebildiği durumdan ayırt
+edemiyordu ve ayırt edememenin çıktısı **başarılı bir koşum**du.
+
+**İkisinin düzeltmesi de aynı biçimde:** *yokluk kanıtı yerine varlık kanıtı.*
+Sigma ön kontrolü artık altın örnek dosyasından türetilmiş bir sondayı gövdede
+**arıyor**; kutu 1 artık gövdenin kopyasını kapsama **saymıyor** — içinde başka
+bir yakalanmış değer geçen alan üst hâl sayılıyor. İkincisi bir eşik değil
+**yapı** kuralı: eşik bugünkü veride aynı sonucu verir, yarın kayardı.
+
+Üçüncü bir örnek aynı turda **önlendi**: baseline süpürmesi tek `--zipf` ile
+koşsaydı düzgün bir dirsek raporlayacaktı ve o sayı verinin değil tohumlama
+parametresinin özelliği olacaktı. Önleyen şey bir uyarı değil bir **imza**:
+`BaselineFixtureVerdict.Compare` iki eğri olmadan derlenmiyor.
+
+Ayrıntı: [`t39-alan-kapsami`](../t39-alan-kapsami/index.md).
+
 ## 3 · Doğrulanmamış olan
 
 | # | Ne | Kim |
