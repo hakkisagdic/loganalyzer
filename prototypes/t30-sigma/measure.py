@@ -64,7 +64,12 @@ import urllib.request
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-RULES_DIR = Path(__file__).parent / "rules"
+#: Korpus artık `catalog/sigma/rules/` (T32 terfisi); `prototypes/.../rules`
+#: emekli ve boş. Yol `_corpus_dir()` ile T32'nin sabitinden alınıyor.
+#:
+#: Eski hâli bu dizini okuyordu ve ölçüm **iki koşum boyunca** derleme
+#: hattından farklı bir korpusu ölçtü — "aynı kural setinin iki ölçümü" diye
+#: okunan sayılar aslında iki ayrı korpusun sayılarıydı.
 
 #: Backend'in yazdığı sabit tablo adı. Bizim tablomuz `events_ocsf`.
 BACKEND_TABLE = "logs"
@@ -202,9 +207,42 @@ class Report:
         return self.total_seconds / self.rules if self.rules else 0.0
 
 
+def _corpus_dir() -> Path:
+    """Korpusun yeri — T32'nin sabitinden, elle yazılmadan."""
+    import importlib
+    import sys
+
+    root = _repo_root()
+
+    if root is None:
+        raise RuntimeError("Depo kökü bulunamadı; korpus yeri çözülemiyor.")
+
+    tools = str(root / "tools" / "sigma-build")
+
+    if tools not in sys.path:
+        sys.path.insert(0, tools)
+
+    ruleset = importlib.import_module("sigma_build.ruleset")
+
+    return root / ruleset.CATALOG_DIR / ruleset.RULES_SUBDIR
+
+
 def load_rules() -> list[tuple[str, str]]:
-    """Örneklem: dosya adı ve gövdesi."""
-    return [(path.name, path.read_text(encoding="utf-8")) for path in sorted(RULES_DIR.glob("*.yml"))]
+    """Örneklem: dosya adı ve gövdesi.
+
+    Boş korpus **arıza**, cevap değil: sıfır kural üzerinden hesaplanan her
+    oran sıfır çıkar ve tablo "kapsam yok" diye okunur.
+    """
+    directory = _corpus_dir()
+    rules = sorted(directory.glob("*.yml"))
+
+    if not rules:
+        raise RuntimeError(
+            f"Kural korpusu BOŞ ya da yok: {directory}. Sıfır kuralla koşan bir "
+            "ölçüm her oranı sıfır verir ve o sıfır 'kapsam yok' diye okunur."
+        )
+
+    return [(path.name, path.read_text(encoding="utf-8")) for path in rules]
 
 
 def _shipping():

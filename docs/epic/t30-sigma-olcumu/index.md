@@ -354,6 +354,12 @@ eşleşemezdi; `matches=false` olmaları eşlemenin değil örneklemin sonucu.
 | 24 (hepsi) | %25 | — **hiçbir şey**; iki farklı sebebi tek sayıda topluyor |
 | **14** (deseni olanlar) | **≈%43** | **Eşlemenin kapsamı** — kapsam kararının dayanağı |
 
+⚠️ Payda **15**'e çıktı: `fortigate_user_auth_fail` düzeltildi (`failure` →
+`failed`, 10. tuzak). Yani "deseni yok" sayılan bir kural aslında **düzeltilebilir
+bir kural hatasıydı**. Yeni oran canlı koşumla ölçülecek; dal değişmiyor
+(`%40–%70`) ama sayı bu belgede çivilenmemeli — düzeltme kurala girdi, koşum
+henüz yapılmadı.
+
 `no_data` paydadan düşülüyordu; **`absent` de düşülmeliydi** ve aynı gerekçeyle:
 ikisi de *"ölçülemedi"*, *"eşleşmedi"* değil. Fark kozmetik değil — `%25`
 karar tablosunun `< %40` dalına, `%43` ise `%40–%70` dalına düşüyor. **İki
