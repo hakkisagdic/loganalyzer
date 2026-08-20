@@ -119,6 +119,42 @@ jobs:
         working-directory: ui
         run: npm run build
 
+  sigma-build:
+    name: Sigma derleme hattı — kapılar ve testler
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      # Backend `requires-python >=3.13`; sidecar imajı da `python:3.13-slim`.
+      # Derleme hattı üretimde kurulacak olandan başka bir sürümde koşmamalı.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      # `tools/sigma-build/requirements.txt` BİLEREK kurulmuyor: o dosya
+      # sidecar'ınkine işaret ediyor ve drain3'ü bir git SHA'sından çekiyor.
+      # Bu işteki iki adımın ikisi de saf metin işi — `view_columns.py` pySigma
+      # istemiyor. Gerçek derleme adımı geldiğinde (T32 sırası §5, madde 6) tam
+      # bağımlılık kurulumu o adımla birlikte gelir.
+      - name: Test bağımlılıkları
+        run: pip install pytest==9.1.1
+
+      - name: Derleme hattı birim testleri
+        working-directory: tools/sigma-build
+        run: python -m pytest
+
+      # KAPI: görünüm kolon kümesi `db/clickhouse/*.sql`'den türetiliyor ve
+      # `detections/schema/view-columns.json` içinde duruyor. Bir göç görünümü
+      # değiştirir de bu dosya güncellenmezse kapı düşer.
+      #
+      # Sürüklenmenin tehlikeli yönü sessiz olan: görünümden çıkmış bir kolon
+      # listede kalırsa, o kolona giden Sigma kuralı derleme kapısından GEÇER ve
+      # ancak çalışma zamanında kırılır.
+      - name: Görünüm kolon kümesi güncel mi
+        working-directory: tools/sigma-build
+        run: python -m sigma_build.view_columns --check
+
   integration:
     name: Entegrasyon testleri (Testcontainers)
     runs-on: ubuntu-latest
