@@ -97,6 +97,7 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
 
     [Fact]
     [Trait("Category", "Integration")]
+    // kapsam: SearchEventsAsync
     public async Task Arama_baska_grubun_olayini_dondurmuyor()
     {
         var page = await _query.SearchEventsAsync(AllEvents(), CoreOnly(), TestContext.Current.CancellationToken);
@@ -107,6 +108,7 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
 
     [Fact]
     [Trait("Category", "Integration")]
+    // kapsam: SearchEventsAsync
     public async Task Kimlikli_ama_eslemesiz_kullanici_hicbir_sey_gormuyor()
     {
         // Boş kapsam "her şey" değil "hiçbir şey" — eşleme tablosu boşken
@@ -121,6 +123,7 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
 
     [Fact]
     [Trait("Category", "Integration")]
+    // kapsam: GetEventAsync
     public async Task Baska_grubun_olayi_kimlikle_de_okunamiyor()
     {
         var edge = (await _query.SearchEventsAsync(
@@ -150,6 +153,7 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
     [InlineData(EventViewKind.Ocsf)]
     [InlineData(EventViewKind.Otel)]
     [Trait("Category", "Integration")]
+    // kapsam: GetEventViewAsync
     public async Task Baska_grubun_olayi_gorunumden_de_okunamiyor(EventViewKind view)
     {
         var edge = (await _query.SearchEventsAsync(
@@ -170,6 +174,7 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
     /// </summary>
     [Fact]
     [Trait("Category", "Integration")]
+    // kapsam: GetEventViewAsync
     public async Task Kendi_olayinin_OCSF_ve_OTel_gorunumu_okunabiliyor()
     {
         var core = (await _query.SearchEventsAsync(
@@ -199,6 +204,7 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
 
     [Fact]
     [Trait("Category", "Integration")]
+    // kapsam: SearchEventsAsync
     public async Task Kapsam_daraltmasi_kapsami_genisletemiyor()
     {
         // Kullanıcı sorguda başka bir grup isterse bu bir DARALTMA denemesidir;
@@ -212,6 +218,7 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
 
     [Fact]
     [Trait("Category", "Integration")]
+    // kapsam: SearchSourcesAsync
     public async Task Envanter_baska_grubun_kaynagini_gostermiyor()
     {
         var sources = await _query.SearchSourcesAsync(CoreOnly(), TestContext.Current.CancellationToken);
@@ -231,6 +238,7 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
     /// </summary>
     [Fact]
     [Trait("Category", "Integration")]
+    // kapsam: GetSourceActivityAsync
     public async Task Son_gorulme_baska_grubun_kaynagini_sizdirmiyor()
     {
         var window = new SourceActivityWindow { From = Now.AddHours(-1), To = Now.AddHours(1) };
@@ -254,6 +262,7 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
     /// </summary>
     [Fact]
     [Trait("Category", "Integration")]
+    // kapsam: GetSourceActivityAsync
     public async Task Son_gorulme_daraltmasi_kapsami_genisletemiyor()
     {
         var window = new SourceActivityWindow
@@ -271,6 +280,7 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
 
     [Fact]
     [Trait("Category", "Integration")]
+    // kapsam: WriteChangeAsync
     public async Task Baska_gruba_degisiklik_olayi_yazilamiyor()
     {
         var change = new ChangeEvent
@@ -289,6 +299,7 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
 
     [Fact]
     [Trait("Category", "Integration")]
+    // kapsam: SearchChangesAsync
     public async Task Kendi_grubuna_degisiklik_olayi_yazilabiliyor()
     {
         var change = new ChangeEvent
@@ -313,6 +324,7 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
 
     [Fact]
     [Trait("Category", "Integration")]
+    // kapsam: CountOutOfScopeEventsAsync
     public async Task Kapsam_disi_sayimi_icerik_sizdirmiyor()
     {
         // "Kapsamınız dışında N ilişkili olay var" — sayı veriliyor, içerik değil.
