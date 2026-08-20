@@ -242,10 +242,30 @@ public sealed class AlertChainTests(DevStackFixture stack) : IAsyncLifetime
     private AlertEvaluationContext Context(TimeProvider time, AlertingStats stats) => new(
         _source, stats, Now, TimeSpan.FromHours(6), TimeSpan.FromSeconds(20), Token, time);
 
+    /// <summary>
+    /// <b><c>IngestedAt</c> açıkça veriliyor ve atlanması testi düşürüyordu.</b>
+    ///
+    /// <para>
+    /// Sessizlik değerlendiricisi <c>Timestamp</c>'e değil
+    /// <c>LastIngestedAt</c>'e bakıyor ve bu bilinçli: soru "cihazın saatine
+    /// göre en son ne zaman" değil, <b>"ondan en son ne zaman haber aldık"</b> —
+    /// saati kayan bir kaynak aksi hâlde susmuş görünürdü.
+    /// </para>
+    ///
+    /// <para>
+    /// <c>LogEvent.IngestedAt</c>'in varsayılanı <c>DateTimeOffset.UtcNow</c>,
+    /// yani <b>gerçek duvar saati</b>. Alan verilmeyince satırlar sahte
+    /// <c>Now</c>'dan (2026-08-19) günler sonrasına damgalandı,
+    /// <c>since = now - seen</c> <b>negatif</b> çıktı, eşiğin altında kaldı ve
+    /// kaynak "susmuş" sayılmadı — sonuç <c>Quiet</c>. Belirti tetiklenmenin
+    /// hiç olmamasıydı; sebebi bir zaman damgasının yokluğuydu.
+    /// </para>
+    /// </summary>
     private static LogEvent Sample(string ownerGroup, string sourceId, DateTimeOffset at) => new()
     {
         EventId = Guid.CreateVersion7(at),
         Timestamp = at,
+        IngestedAt = at,
         OwnerGroup = ownerGroup,
         SourceId = sourceId,
         Host = sourceId,
