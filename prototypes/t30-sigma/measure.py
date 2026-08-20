@@ -81,6 +81,9 @@ class RuleOutcome:
     #: `unmapped[...]` erişimi içeriyor mu (indekssiz, yani yavaş).
     unmapped_hits: int = 0
 
+    #: Pipeline'da eşleme dalı olmayan alanlar — **statik**, ClickHouse gerekmiyor.
+    unhandled: list[str] = field(default_factory=list)
+
     #: ClickHouse'un tanımadığı kolon adları — reddedilen SQL'in SEBEBİ.
     #:
     #: Sayı "on kural düştü" der; bu liste "hangi kolon yüzünden" der ve
@@ -118,6 +121,12 @@ class Report:
     unmapped_rules: int = 0
 
     no_data: int = 0
+
+    #: Eşleme dalı olmayan alana giden kural sayısı — prototip boşluğu.
+    unhandled_rules: int = 0
+
+    #: Alan → kaç kuralda geçiyor. T31'in bağlaması gereken liste.
+    unhandled_by_field: dict[str, int] = field(default_factory=dict)
 
     #: Kolon adı → kaç kuralı düşürdü. En çok düşüreni en önce ele alınmalı.
     rejected_columns: dict[str, int] = field(default_factory=dict)
@@ -403,6 +412,50 @@ def preflight(url: str, user: str, password: str, timeout: float) -> Preflight:
     return Preflight(ok=True, rows=total, vendors=vendors, golden=golden)
 
 
+#: `events_ocsf` görünümünün kolonları (db/clickhouse/0003, 0004).
+#:
+#: Elle yazılı, çünkü statik kontrol ClickHouse'suz koşabilmeli. Ayrışırsa
+#: canlı koşum yakalar: orada kolonu ClickHouse'un kendisi reddediyor.
+VIEW_COLUMNS: frozenset[str] = frozenset({
+    "time", "uid", "class_uid", "activity_id", "severity_id",
+    "src_endpoint_ip", "src_endpoint_port", "dst_endpoint_ip", "dst_endpoint_port",
+    "connection_info_protocol_name", "activity_name", "status",
+    "actor_user_name", "device_hostname", "device_vendor_name",
+    "metadata_product_name", "metadata_version", "unmapped", "raw_data",
+})
+
+
+def unhandled_fields(rule_text: str, field_map: dict[str, str]) -> list[str]:
+    """Kuralın, pipeline'da **eşleme dalı olmayan** alanları.
+
+    Neden ayrı sayılıyor: `runs < compiled` farkı iki ayrı sebepten doğuyor ve
+    ikisi farklı şeyler söylüyor.
+
+    * **Şema boşluğu** — alan bizim modelimizde gerçekten yok.
+    * **Prototip boşluğu** — alan biliniyor (`UNMAPPED_FIELDS`) ama hiçbir
+      dönüşüme bağlanmamış, dolayısıyla ham Sigma adıyla SQL'e iniyor.
+
+    İkincisi ölçülen sayıyı **olduğundan kötü** gösteriyor ve kapsam kararını
+    şemanın değil prototipin eksikliğine dayandırırdı. Bu yüzden görünür
+    sayılıyor; düzeltilmesi T31'in kapsamında.
+    """
+    body = rule_text.split("selection:")
+    if len(body) < 2:
+        return []
+
+    selection = body[1].split("\n  condition:")[0]
+    found: list[str] = []
+
+    for match in re.finditer(r"^\s{4}([A-Za-z_][A-Za-z0-9_]*)(\|[a-z]+)?:", selection, re.M):
+        field = match.group(1)
+        target = field_map.get(field, field)
+
+        if target not in VIEW_COLUMNS and target not in found:
+            found.append(target)
+
+    return found
+
+
 #: Kuralın `logsource.product` değeri → ön kontroldeki vendor anahtarı.
 PRODUCT_TO_VENDOR = {
     "fortigate": "Fortinet",
@@ -455,7 +508,7 @@ def rejected_columns(error: str) -> list[str]:
 def measure(args: argparse.Namespace) -> Report:
     import yaml
 
-    from bizigo_pipeline import TABLE, mapped_field_count, pipeline_line_count
+    from bizigo_pipeline import FIELD_MAP, TABLE, mapped_field_count, pipeline_line_count
 
     report = Report(
         mapped_fields=mapped_field_count(),
@@ -482,6 +535,9 @@ def measure(args: argparse.Namespace) -> Report:
             category=str(source.get("category", "")),
             product=str(source.get("product", "")),
         )
+
+        # Statik: ClickHouse gerekmiyor, koşum yapılmasa da doluyor.
+        outcome.unhandled = unhandled_fields(text, FIELD_MAP)
 
         sql, error = with_pipeline[name]
         outcome.compiled = bool(sql) and not error
@@ -521,6 +577,19 @@ def measure(args: argparse.Namespace) -> Report:
     report.table_rewrites = sum(1 for o in report.outcomes if o.table_rewritten)
     report.unmapped_rules = sum(1 for o in report.outcomes if o.unmapped_hits > 0)
     report.no_data = sum(1 for o in report.outcomes if o.no_data)
+    report.unhandled_rules = sum(1 for o in report.outcomes if o.unhandled)
+
+    for outcome in report.outcomes:
+        for column in outcome.unhandled:
+            report.unhandled_by_field[column] = report.unhandled_by_field.get(column, 0) + 1
+
+    if report.unhandled_rules:
+        report.notes.append(
+            f"{report.unhandled_rules} kural, pipeline'da eşleme dalı OLMAYAN bir alana gidiyor. "
+            "Bu kuralların SQL'i ham Sigma adıyla iniyor ve ClickHouse reddediyor — yani "
+            "`runs < compiled` farkının bir kısmı ŞEMANIN değil PROTOTİPİN eksikliği. "
+            "`UNMAPPED_FIELDS` tanımlı ama hiçbir dönüşüme bağlı değil; bağlanması T31'de."
+        )
 
     for outcome in report.outcomes:
         for column in outcome.rejected_columns:
@@ -618,6 +687,16 @@ def main() -> int:
         print("Kural başına eşleme : ölçülemedi (eşleşen kural yok)")
     print(f"Kural başına süre   : {report.seconds_per_rule * 1000:.1f} ms")
     print(f"unmapped kullanan   : {report.unmapped_rules} kural")
+
+    if report.unhandled_by_field:
+        print(f"\nEşleme dalı olmayan alanlar ({report.unhandled_rules} kuralı etkiliyor):")
+
+        for column, count in sorted(
+            report.unhandled_by_field.items(), key=lambda pair: (-pair[1], pair[0])
+        ):
+            print(f"  {column:<32} {count}")
+
+        print("  → Bunlar STATİK; ClickHouse koşmadan da biliniyor.")
 
     if report.rejected_columns:
         print("\nClickHouse'un tanımadığı kolonlar (kaç kuralı düşürdü):")

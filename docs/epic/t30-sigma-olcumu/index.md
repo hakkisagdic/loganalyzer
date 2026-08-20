@@ -67,7 +67,7 @@ pySigma gerektirmeden, prototip dosyasından sayıldı:
 | --- | --- |
 | Örneklem | **24 kural** (4 vendor × 4 kategori) |
 | Eşlenen alan | **28** |
-| `unmapped` Map'ine düşen alan | **9** |
+| `unmapped` için **tespit edilmiş** alan | **9** (⚠️ bağlı değil; gerçekten düşen: **0**) |
 | Pipeline'ın anlamlı satırı | **111** |
 | Örneklem başına | **4,62 satır/kural** |
 
@@ -83,15 +83,19 @@ Dördü araştırmadan biliniyordu; **beşincisi prototip yazılırken çıktı.
 | 1 | Pipeline noktalı yol üretiyor (`dst_endpoint.ip`), görünüm düzleştirilmiş (`dst_endpoint_ip`) | Çözüldü — `FIELD_MAP` doğrudan düzleştirilmiş ada eşliyor, nokta hiç doğmuyor |
 | 2 | Backend `FROM logs` yazıyor | Çözüldü — durum değişkeni; okunmazsa metin ikamesi ve **ikame raporlanıyor** |
 | 3 | Tutarsız tırnaklama | Kaynağında kurudu — düzleştirilmiş ad tırnak gerektirmiyor |
-| 4 | `unmapped.X` erişimi | Çözüldü — bizde `Map(String, String)`, `unmapped['X']` gerekiyor |
+| 4 | `unmapped.X` erişimi | ⚠️ **ÇÖZÜLMEDİ** — aşağıya bakınız. Prototip alanları tespit etti, dönüşüme bağlamadı |
 | 5 | **`type_uid` bizde yok** | **Yeni.** `ocsf_pipeline` sınıf ayırıcısını `type_uid` ile ekliyor; K8 gereği yazılan tek OCSF kolonu `class_uid` + `activity_id`. `type_uid` şart koşan bir pipeline **derlenip koşmayan** SQL üretir |
 
 Beşincisi T30'un aradığı tuzak sınıfının tam örneği: derleme başarılı, SQL
 yanlış, ve hiçbir şey kırmızı yanmıyor.
 
-`unmapped`'e düşen 9 alan ayrı bir maliyet kalemi: Map erişimi ClickHouse'ta
-çalışıyor ama **indekslenmiyor**. Yani bedeli doğruluk değil hız — ve bu, F3'te
-hangi alanların kolona terfi etmesi gerektiğinin listesi.
+`unmapped` için tespit edilen 9 alan ayrı bir maliyet kalemi: Map erişimi
+ClickHouse'ta çalışıyor ama **indekslenmiyor**. Yani bedeli doğruluk değil hız —
+ve bu, F3'te hangi alanların kolona terfi etmesi gerektiğinin listesi.
+
+⚠️ Ama bu bir **plan**, ölçüm değil: prototipte o dal hiç bağlanmadı, dolayısıyla
+bugün hiçbir alan `unmapped`'e düşmüyor — düştüğü sanılan alanlar ham adla SQL'e
+inip reddediliyor. Hızın bedeli T31'de dal bağlandıktan sonra ölçülebilir.
 
 ## Birinci koşum — **geçersiz**, ve nedeni ölçümün kendi dersi
 
@@ -138,10 +142,47 @@ geçmeden önce eşlemenin kendisi ele alınmalı. On kural var olmayan kolonlar
 gidiyor ve bu kapsam daraltılarak çözülmez: daraltılan kapsamdaki kurallar da
 aynı kolonlara gidiyor.
 
-`untouched = 0` ile `unmapped = 0` birlikte okununca resim netleşiyor: sorun
-eşlemenin **atlanması** değil, ürettiği adların bizde **olmaması**. Beşinci
-tuzağın (`type_uid`) canlı karşılığı gibi duruyor — ama **doğrulanmadı**;
-reddedilen kolon adları gelmeden bu bir hipotez.
+### Düzeltme: `runs = 14`'ün bir kısmı prototipin kendi kusuru
+
+İlk yorumum yanlıştı. *"Sorun eşlemenin atlanması değil, ürettiği adların bizde
+olmaması"* yazmıştım; T32 ajanı statik olarak baktı ve **üçüncü bir olasılığı**
+gösterdi, ben de bağımsız olarak doğruladım:
+
+`bizigo_pipeline.py` iki liste tutuyor — `FIELD_MAP` (28 alan) ve
+`UNMAPPED_FIELDS` (9 alan). Birincisi `FieldMappingTransformation`'a veriliyor,
+**ikincisi hiçbir yere.** `unmapped_expression()` tanımlı ve depo genelinde hiç
+çağrılmıyor. Yani `unmapped` dalı **yazıldı ama bağlanmadı**.
+
+Sonuç ölçüldü: örneklemin **8 kuralı** (`url` ×4, `dns_query_name` ×2, `query`,
+`http_method`, `user_agent`) ham Sigma adıyla SQL'e iniyor.
+
+Dokuzuncusu **ayrı bir sınıf**: `fortigate_high_port_scan.yml` `proto: 6` yazıyor,
+kolon `LowCardinality(String)` — kolon **var**, tip tutmuyor. Bu bir eşleme
+boşluğu değil, eksik **değer dönüşümü**; T31'in kapsamındaki "değer dönüşümleri"
+maddesi tam olarak bunun için.
+
+Onuncusunu bulamadım. Ad yokluğu ve tip uyuşmazlığı için baktım, ikisi de
+dokuzu açıklıyor; onuncunun sebebi bu iki sınıfın dışında. Reddedilen kolon
+özeti bir sonraki koşumda gösterecek — **aramadım değil, aradım ve bulamadım.**
+
+Yani `runs < compiled` farkı **üç ayrı sebepten** doğuyor ve üçü farklı şeyler
+söylüyor:
+
+| Sınıf | Sayı | Anlamı | Çözümü |
+| --- | --- | --- | --- |
+| Prototip boşluğu | 8 | Alan biliniyor, dönüşüme bağlanmamış | T31: `unmapped['X']` dalını bağla |
+| Değer dönüşümü eksik | 1 | Kolon var, tip tutmuyor (`proto: 6` ↔ String) | T31: değer dönüşümü |
+| Bilinmiyor | 1 | Ad ve tip analizinde görünmedi | Sonraki koşumun kolon özeti |
+
+**Bu, ölçülen sayıyı olduğundan kötü gösteriyordu.** Kapsam kararı buna
+dayandırılsaydı, şemanın yetersizliği sanılan şeyin bir kısmı prototipin
+tamamlanmamışlığı olurdu. Araç artık bunu `unhandled_fields` ile **statik**
+olarak ayrı sayıyor (ClickHouse gerekmiyor), yani fark bir daha sessizce
+ölçüme karışmıyor.
+
+Beşinci tuzağın (`type_uid`) canlı karşılığı olup olmadığı hâlâ **hipotez**:
+yukarıdaki dokuz vakanın hiçbiri `type_uid` değil, dolayısıyla o tuzak ya
+onuncu vakada saklı ya da bu örneklemde hiç tetiklenmiyor.
 
 Araç artık reddedilen kolonları da özetliyor (ClickHouse'un üç ayrı hata
 cümlesini de okuyarak), dolayısıyla bir sonraki koşumda hem sayı hem **sebep**

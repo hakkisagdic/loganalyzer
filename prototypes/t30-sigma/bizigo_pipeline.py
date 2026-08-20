@@ -89,10 +89,24 @@ FIELD_MAP: dict[str, str] = {
 
 #: Görünümde karşılığı OLMAYAN ama kurallarda sık geçen alanlar.
 #:
-#: Bunlar `unmapped` Map'ine düşüyor. Ayrı bir liste, çünkü ölçümün ikinci
-#: sayısı bu: kural başına kaç alan düzleştirilmiş kolona değil Map'e gidiyor.
-#: Map erişimi ClickHouse'ta çalışıyor ama **indekslenmiyor** — yani maliyet
-#: doğruluk değil hız.
+#: ⚠️ **Bu liste hiçbir dönüşüme bağlı DEĞİL** — bilinçli değil, eksik.
+#: `bizigo_pipeline()` yalnızca `FIELD_MAP`'i kullanıyor; buradaki alanlar
+#: tespit edilip bırakılmış. `unmapped_expression()` de tanımlı ama hiçbir
+#: yerden çağrılmıyor.
+#:
+#: Sonucu ölçümde görünüyor: bu alanlara giden kurallar ham Sigma adıyla SQL'e
+#: iniyor (`url`, `dns_query_name`…) ve ClickHouse "böyle bir kolon yok" diyor.
+#: Yani `runs < compiled` farkının bir kısmı şemanın değil **prototipin**
+#: eksikliği. `measure.py` bunu ayrı sayıyor (`unhandled_fields`) ki fark
+#: sessizce ölçüme karışmasın.
+#:
+#: Bağlanması T31'in kapsamında ("`unmapped.X` → `unmapped['X']`"); burada
+#: bilerek bağlanmadı, çünkü prototipin işi maliyeti **ölçmek**, kalıcı
+#: çözümü yazmak değil. Ama ölçülen sayı bu eksikliği taşıdığı sürece
+#: olduğundan iyimser.
+#:
+#: Map erişimi ClickHouse'ta çalışıyor ama **indekslenmiyor** — yani bağlandığında
+#: maliyet doğruluk değil hız olacak.
 UNMAPPED_FIELDS: tuple[str, ...] = (
     "dns_query_name",
     "query",

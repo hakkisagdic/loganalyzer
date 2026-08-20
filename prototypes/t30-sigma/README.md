@@ -124,7 +124,7 @@ bunu nasıl ölçekleyeceğini yazıyor.
 | Pipeline noktalı yol üretiyor (`dst_endpoint.ip`), görünüm düzleştirilmiş (`dst_endpoint_ip`) | `FIELD_MAP` doğrudan düzleştirilmiş ada eşliyor; nokta hiç doğmuyor |
 | Backend `FROM logs` yazıyor | `SetStateTransformation("table", …)` + gerekirse `rewrite_table()`, ve **ikame raporlanıyor** |
 | Tutarsız tırnaklama | Düzleştirilmiş adlar tırnak gerektirmiyor — sorun kaynağında kuruyor |
-| `unmapped.X` erişimi | Bizde `Map(String, String)`; `unmapped['X']` gerekiyor, `unmapped_expression()` |
+| `unmapped.X` erişimi | ⚠️ **ÇÖZÜLMEDİ.** `unmapped_expression()` yazıldı ama hiçbir yerden çağrılmıyor; `UNMAPPED_FIELDS` de hiçbir dönüşüme bağlı değil. Örneklemin **8 kuralı** bu yüzden ham Sigma adıyla SQL'e iniyor. Araç bunu `unhandled_fields` ile ayrı sayıyor; bağlanması T31'de |
 
 Beşinci bir tuzak prototip yazılırken çıktı: **`type_uid` bizde yok.**
 `ocsf_pipeline` sınıf ayırıcısını `type_uid` ile ekliyor; K8 gereği kolona
@@ -139,7 +139,7 @@ Bunlar pySigma gerektirmeden, dosyadan sayıldı:
 | Ölçü | Değer |
 | --- | --- |
 | Eşlenen alan sayısı | **28** |
-| `unmapped`'e düşen alan | **9** |
+| `unmapped` için **tespit edilmiş** alan | **9** (⚠️ hiçbiri bağlı değil — düşen alan sayısı **0**) |
 | Pipeline'ın anlamlı satırı (yorum hariç) | **111** |
 | 24 kurala bölünürse | **4,62 satır/kural** |
 

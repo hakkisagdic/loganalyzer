@@ -158,6 +158,62 @@ def test_reddedilen_kolonlar_uc_hata_bicimini_de_okuyor() -> None:
     assert measure.rejected_columns("") == []
 
 
+def test_eslemesiz_alanlar_statik_olarak_sayiliyor() -> None:
+    """**Bu boşluk prototipin kendi kusuruydu ve ölçümü çarpıtıyordu.**
+
+    `UNMAPPED_FIELDS` dokuz alan tanımlıyor ama hiçbir dönüşüme bağlı değil;
+    `unmapped_expression()` de tanımlı ve hiçbir yerden çağrılmıyor. Sonuç:
+    o alanlara giden kurallar ham Sigma adıyla SQL'e iniyor ve ClickHouse
+    reddediyor.
+
+    Yani `runs < compiled` farkının bir kısmı ŞEMANIN değil PROTOTİPİN
+    eksikliği — ve ayrı sayılmazsa kapsam kararı yanlış sebebe dayanırdı.
+    Sayı statik: ClickHouse koşmadan da biliniyor.
+    """
+    field_map = {"srcip": "src_endpoint_ip", "action": "activity_name"}
+
+    # Görünümde olan alan: boşluk yok.
+    assert measure.unhandled_fields(
+        "detection:\n  selection:\n    srcip: 10.0.0.1\n  condition: selection", field_map
+    ) == []
+
+    # Görünümde olmayan alan: boşluk var ve adıyla raporlanıyor.
+    assert measure.unhandled_fields(
+        "detection:\n  selection:\n    url|contains: '/admin'\n  condition: selection", field_map
+    ) == ["url"]
+
+    # Operatör eki alan adının parçası değil.
+    assert measure.unhandled_fields(
+        "detection:\n  selection:\n    action|startswith: 'blo'\n  condition: selection", field_map
+    ) == []
+
+
+def test_ornekleme_gercek_bosluk_sayisi() -> None:
+    """Örneklemin bugünkü hâli: 24 kuralın 8'i eşleme dalı olmayan alana gidiyor.
+
+    Sayı değişirse ya kurallar ya pipeline değişmiş demektir; ikisi de ölçümü
+    etkiliyor ve fark edilmeden geçmemeli.
+    """
+    import ast
+    from pathlib import Path
+
+    source = Path(__file__).parent / "bizigo_pipeline.py"
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    field_map: dict[str, str] = {}
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.AnnAssign) and getattr(node.target, "id", "") == "FIELD_MAP":
+            field_map = {k.value: v.value for k, v in zip(node.value.keys, node.value.values)}
+
+    assert field_map, "FIELD_MAP okunamadı"
+
+    rules = sorted((Path(__file__).parent / "rules").glob("*.yml"))
+    affected = [p.name for p in rules if measure.unhandled_fields(p.read_text(encoding="utf-8"), field_map)]
+
+    assert len(rules) == 24
+    assert len(affected) == 8, f"beklenen 8, ölçülen {len(affected)}: {affected}"
+
+
 def test_esleyen_kural_yoksa_inf_yerine_sifir() -> None:
     """`inf` bir ölçüm gibi görünüyor ama ölçüm yapılamadığını anlatıyor."""
     report = measure.Report(rules=24, matches=0, pipeline_lines=111)
