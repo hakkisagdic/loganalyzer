@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { QualityBadge } from "@/app/rca/QualityBadge";
+import { ApiError, describeError } from "@/lib/api/errors";
 import { presentQuality, type GoldenSetQuality } from "@/lib/rca/quality";
 
 /**
@@ -115,5 +116,47 @@ describe("altın küme göstergesi", () => {
     expect(display.total).toBe(1204);
     expect(display.decided).toBe(900);
     expect(display.accuracy).toEqual({ kind: "ratio", percent: "%50.0" });
+  });
+});
+
+/**
+ * <b>Uç patladığında gösterge ne yapıyor.</b>
+ *
+ * <p>
+ * `GET /v1/rca/quality` canlı Postgres'e karşı hiç koşmadı; ekran tarafının
+ * sınayabileceği şey de zaten uç değil, <b>ucun düşmesine verilen tepki</b>.
+ * Sessizce kaybolan bir gösterge, sıfır gösterenden kötü: yokluğu bir bilgi
+ * gibi okunur ve "henüz kimse inceleme yapmadı" ile "gösterge bozuk" aynı
+ * boşluğa düşer.
+ * </p>
+ */
+describe("gösterge hata yolu", () => {
+  it("Sunucu_hatasinda_gosterge_duruyor_ve_sebebi_yaziyor", () => {
+    // Sayfa `describeError` ile mesajı çıkarıp bileşene veriyor; burada aynı
+    // yol koşuluyor ki ekranın gördüğü metin sınansın.
+    const message = describeError(
+      new ApiError(500, { error: "Kalite göstergesi hesaplanamadı." }),
+    );
+    const html = renderToStaticMarkup(<QualityBadge quality={null} error={message} />);
+
+    expect(html).toContain('data-quality="unavailable"');
+    expect(html).toContain("Altın küme");
+    expect(html).toContain("Kalite göstergesi hesaplanamadı.");
+
+    // En önemlisi: hata yolunda uydurulmuş bir sayı YOK — ne sayaç ne oran.
+    expect(html).not.toContain('data-field="total"');
+    expect(html).not.toContain('data-field="accuracy"');
+    expect(html).not.toContain("henüz karar verilmedi");
+  });
+
+  /**
+   * Hata metni gelmezse bile gösterge <b>bir şey söylüyor</b> — boş bir kutu,
+   * "sorun yok" diye okunur.
+   */
+  it("Sebep_bilinmese_de_gosterge_sessiz_kalmiyor", () => {
+    const html = renderToStaticMarkup(<QualityBadge quality={null} error={null} />);
+
+    expect(html).toContain('data-quality="unavailable"');
+    expect(html).toContain("Gösterge okunamadı.");
   });
 });
