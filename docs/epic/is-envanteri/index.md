@@ -5,9 +5,17 @@ title: "İş envanteri — ne bitti, ne eksik, kim yapıyor"
 
 # İş envanteri
 
-`main` = `52b209b`, CI **yeşil**. Bu belge 2026-08-20'de gerçek depo durumundan
-çıkarıldı ve aynı gün ikinci kez tazelendi. Ticket dosyalarındaki `status`
-alanları bu belgeyle aynı şeyi söylüyor (B11 kapandı).
+`main` = `a4dc297`. Bu belge gerçek depo durumundan çıkarıldı — ticket
+dosyalarındaki `status` alanlarına **değil koda** bakıldı, çünkü o alanlar yine
+bayatladı (B15).
+
+**Ölçüm `t19-parser-editoru` @ `main` birleşik hâlinde alındı:** 18 proje 0
+uyarı · **739** birim testi (3 atlanan) · **247** UI testi · `tsc` temiz ·
+`api:check` birebir.
+
+> Bu bölümdeki ölçümler ancak `npm install` **merge sonrası** koşulduğunda
+> tekrar edilebiliyor; `package.json` değişmişse worktree'nin `node_modules`'ü
+> bayat kalıyor ve `tsc` size ait olmayan bir hata gösteriyor (B16).
 
 ## 1 · Biten iş (main'de, doğrulanmış)
 
@@ -22,103 +30,112 @@ alanları bu belgeyle aynı şeyi söylüyor (B11 kapandı).
 | T22 | Bildirim kanalları | Dört kanal, AES-256-GCM, redaksiyon, geri adımlı yeniden deneme |
 | T23 | Alarm yönetim ekranı | Önizleme: kural yayından önce kendi gürültüsünü gösteriyor |
 | T24 | Change: imzalı webhook | GitHub/Jenkins/GitLab eşlemesi, idempotans Postgres'te |
-| T17 | Envanter ekranı + kapı düzeltmesi | Kapı denetlediği kümeyi yansımayla buluyor; izin listesi ikiye bölündü |
-| T19 | Parser editörü | Yazar yüzeyi uçları yanıt tipi kazandı |
-| T25 | Change connector yapılandırma | Kimlik bilgisi şifreli, maske ekranda da tutuyor, redaksiyon kapısı serviste |
-| T26 | Cihaz config fark tespiti | Üç vendor, gürültü elemesi, bölüm başına çoklu-küme farkı |
-| T29 | `signature_hash` sıcak yolda | Ölçüm teslim edildi |
-| T34 | Kanıt sözleşmesi | İki sağlayıcı; uç yok, depo ve rapor T36'da |
+| T17 | Kaynak envanteri + kapı düzeltmesi | `Produces` kapısı yansımalı; `Pending`/`Exempt` ayrımı ve `ExpectedExemptCount` |
+| T19 | Parser editörü + canlı test | Taslak yayınlanmadan deneniyor; ad-hoc derlemenin kataloğu kirletmediği testle sabit |
+| T20 | Katalog yönetim ekranı | Fark görünümü; okuma ve yayın uçları tipli |
+| T25 | Change connector yapılandırma | İki ekranın UI testi geldi; maskenin ekranda tuttuğu ölçüldü (B12) |
+| T26 | Cihaz config diff | Bölüm farkında diff; `FINALIZED` borcu ele alındı |
+| T28 | UI/UX denetimi | Yedi bulgu, hepsinin bekçisi kırmızı yanabiliyor |
+| T29 | `signature_hash` sıcak yolda | F3 ölçümü |
+| T34 | Kanıt sözleşmesi | Sağlayıcılar `IScopedQuery`'den geçiyor; mimari test kanıt katmanını da kapsıyor |
 
-**Ölçülen durum (2026-08-20, ikinci tazeleme):** 18 proje 0 uyarı · **738**
-birim testi (3 atlandı) · **247** UI testi · **96** entegrasyon testi ·
-`tsc` temiz · `api:check` birebir · CI yeşil.
+Önceki turun **"main'de ama açık eksiği var"** bölümü boşaldı ve kaldırıldı:
+tek satırı T25'ti ("iki ekranın UI testi yok"), testleri geldi ve satır yukarı
+taşındı.
 
-Entegrasyon testleri **yerelde de koşturuldu** (93/93, koordinatör) — bugüne
-kadar yalnızca CI koşuyordu. D2 böylece kapandı.
+## 2 · Teknik borç
 
-## 2 · Main'de ama açık eksiği var
+Bunlar ticket değil; biri kapanmazsa sessizce büyüyen şeyler. Tablo
+**iki bölümlü** — protokoldeki `Pending`/`Exempt` ayrımının envanterdeki
+karşılığı. Ayrım olmadan liste hiç boşalmıyordu: kapanacak bir kalemle
+kapanmayacak bir kalem yan yana durunca ikisi de "açık borç" gibi okunuyor ve
+kapanmayanlar listeyi sonsuza kadar dolu gösteriyordu.
 
-| # | Ticket | Durum | Eksik |
-| --- | --- | --- | --- |
-| T20 | Katalog ekranı | sürüyor | — |
-| T27 | F2 doğrulaması | akışlar ve bekçiler yazıldı | `Pending` tek satır kaldı (aşağıda); kuru koşu testi koşturulabilir hâle gelmedi |
-| T28 | UI/UX denetimi | sürüyor | — |
-
-## 3 · Açık teknik borç
-
-Bunlar ticket değil; biri kapanmazsa sessizce büyüyen şeyler.
+### 2.1 · Kapanacak
 
 | # | Borç | Nerede kapanacak |
 | --- | --- | --- |
-| ~~B1~~ | ~~API kendi içinde tutarsız~~ — **kapandı** (`2590d04`). Connector/change uçları `snake_case`'e çekildi, istek tarafı dahil. `ChangeWriteRequest` bilerek kırıldı: tek çağıranı ürünün kendi formuydu, bedeli sıfırken kırmak doğru andı. | — |
-| ~~B2~~ | ~~`targetKind` bir yöne metin, öbür yöne sayı~~ — **kapandı**. Dönüştürücü yerine `ChangeResponse` DTO'su kuruldu: `ChangeEvent` artık tel sözleşmesi değil, yani o tipe eklenen bir alan kimse karar vermeden API'ye sızamıyor. | — |
-| ~~B3~~ | ~~`Produces` kapısının yapısal deliği~~ — **kapandı** (T17). Uçlar yansımayla bulunuyor. T27 ikinci yarısını da kapattı: bulunmak yetmiyor, **çağrılabilmesi** de gerekiyor, ve on değişiklik rotası ada göre sabitlendi. İkisi de kırmızı yanabildiği ölçüldü. | — |
-| ~~B4~~ | ~~İzin listesi tek liste~~ — **kapandı** (T17). `Pending` küçülüyor, `Exempt` kalıcı ve `ExpectedExemptCount = 6` ile korunuyor. | — |
-| B5 | İzin listesinde **tek satır**: `POST /v1/replay`. **Karar verildi: tiplendirilecek.** Uç bugün `ReplayReport`'u — bir domain tipini — doğrudan tele yazıyor, yani §8'i aktif olarak ihlal ediyor; tiplenmemiş olmaktan kötü. Muafiyet yanlış olurdu ("hiç tüketicisi olmayacak" diyemeyiz), `Pending`'de kalması da T27'nin kriterini tanım gereği sağlanamaz yapıyordu. "Tüketicisi olmayan tip tahmindir" burada geçmiyor: uydurulacak bir şey yok, sunucunun ne gönderdiği belli — karar tüketicinin değil **sunucunun**. | T27 ajanı yazıyor; ardından `Izin_listesi_bosaldi_mi` ve F2'nin son kapısı |
-| B6 | `criteria.ts` `PARAM` kümesi ile `AlertSearch`/`FieldFilter` ayrışabilir; iki yönlü bekçi (T20) kuruldu ve **ters yön de** artık kullanımda (alarm bağlantısı). | kapandı sayılabilir; bekçi duruyor |
-| ~~B12~~ | ~~T25'in iki ekranının UI testi yok~~ — **kapandı**. Mantık `lib/changes`'e ve iki sunum bileşenine çıkarıldı; maskenin ekranda tuttuğu, `target_kind` çevirisi, dört durum ve çok dilli gövde sınandı. Maske bekçisi kırmızı yanabildiği ölçüldü. | — |
-| B7 | Next oturum deposu **bellek içi** — çok kopyaya çıkmadan Redis gerekiyor | F2 sonu / dağıtım |
-| B8 | Keşif belgesi süresiz önbellekli; realm yeniden import edilirse Next yeniden başlatılmalı | dağıtım notu |
-| B9 | `GetDocument.Insider` adı sözleşme dışı bir bağ; araç yeniden adlandırılırsa `api:check` düşer | kabul edilmiş risk |
-| ~~B10~~ | ~~Jenkins `FINALIZED` ilk-gelen-kazanır~~ — **kapandı** (T26). Teslimat anahtarı durumu da taşıyor: iki bitiş fazı aynı durumu bildiriyorsa tek kayıt, post-build adımı `SUCCESS`'i `FAILURE`'a çevirdiyse ikinci kayıt. Eski hâl erken ve **yanlış** durumu sessizce kalıcı yapıyordu. | — |
-| B13 | **Kuru koşu testi koşturulabilir değil** — `Skip` iskeleti + numaralı adımlar; Postgres manifest satırları ve S3 nesneleri gerekiyor | koordinatör, faz sonu |
-| B14 | `ui/node_modules` worktree'lerde **bayatlıyor**: `package.json` değiştiğinde `tsc` ve `npm test` ajana ait olmayan hata gösteriyor. Çözüm tek komut (`npm install`) ama tuzağa iki kişi düştü. | çalışma kuralı (§7) |
-| ~~B11~~ | ~~Ticket `status` alanları bayat~~ — **kapandı** 2026-08-20. Aşağıdaki tablo artık dosyalardaki değerlerle aynı. | — |
-| B15 | **`docs/epic/` senkronunun yönü tehlikeli.** Protokol epic dizinini kanonik sayıp `rsync -a --delete <epic>/ docs/epic/` diyor, ama ajanlar epic dizinine **erişemiyor** — yazdıkları yer depo kopyası. Koordinatör o komutu çalıştırınca ajanın yazdığı üzerine yazılıyor. **Bir kez oldu:** T27'nin 233 satırlık envanteri 148 satıra düştü, §8 tamamen kayboldu; `git checkout` ile geri alındı. Doğru yön artık **depo → epic dizini**. | çalışma kuralı (§7) — yön düzeltildi |
+| B7 | Next oturum deposu **bellek içi** — çok kopyaya çıkmadan Redis gerekiyor | dağıtım |
+| B10 | Jenkins `FINALIZED` ilk-gelen-kazanır: farklı `status` taşıyorsa erken durum kaydediliyor | T26'da ele alındı, kapanışı doğrulanacak |
+| **B14** | **Şema tamamlama listesi motorun kopyası.** `ui/src/lib/parsers/schema.ts` `ParserYamlLoader`'ın anahtar kümelerini istemcide tekrarlıyor. Motora yeni bir adım eklenip burası güncellenmezse öneri eksik kalır. Bedeli "öneri görünmüyor", sessiz yanlış davranış **değil** — bu yüzden kabul edildi. Ucuz bir bekçi bulunamadı; sunucudan çekmek tamamlamayı her tuşta ağ isteğine bağlardı. | bekçi tasarlanabilirse |
+| **B15** | **Ticket `status` alanları her merge'de bayatlıyor.** B11 bir kez kapatılmıştı ve yeniden açıldı; koordinatör `03a6efa`'da sekiz dosyayı düzeltti ama kalıcı çözüm değil — kapanışı bir kez yapmak yetmiyor. | koordinatör, her merge'de |
+| **B17** | **`docs/epic/` senkron yönü.** Protokol epic dizinini kanonik sayıyordu, ama ajanlar oraya **erişemiyor**; yazdıkları tek yer depo kopyası. Koordinatör `rsync <epic>/ docs/epic/` çalıştırınca T27'nin 233 satırlık envanteri 148 satıra düştü ve yeni bölümü kayboldu (`git checkout` ile geri alındı). Yön **depo → epic** olarak düzeltildi ve `CLAUDE.md` §11'e yazıldı. Kalan risk: iki ajan aynı belgeyi paralel güncellerse çakışma kaçınılmaz — bu turda oldu. | çalışma kuralı; koordinatör tek yazar atamalı |
 
-## 4 · Doğrulanmamış olan
+### 2.2 · Kapanmayacak — gerekçesiyle kabul edilmiş
+
+| # | Risk | Neden kalıcı |
+| --- | --- | --- |
+| B8 | Keşif belgesi süresiz önbellekli; realm yeniden import edilirse Next yeniden başlatılmalı | Önbelleği kısaltmak her istekte Keycloak'a bağımlılık demek. Dağıtım notu olarak yazılı; kod değişikliği değil işletim kuralı. |
+| B9 | `GetDocument.Insider` adı sözleşme dışı bir bağ; araç yeniden adlandırılırsa `api:check` düşer | Ayrımı bir ortam değişkenine bağlamak daha kötüydü: bayrak yanlışlıkla üretime taşınabilir ve göçleri sessizce atlayan bir API bırakırdı. Araç adı değişirse belge üretimi **kırmızı yanıyor** — hatanın doğru yönü bu. |
+| **B16** | **Worktree `node_modules` bayatlığı.** `package.json` bir dalda değişince diğer worktree'lerin `node_modules`'ü eskiyor ve `tsc` kişiye ait olmayan bir hata gösteriyor (`Cannot find module 'playwright'`). Bu turda **üç ayrı yerde** aynı duvara toslandı: main, T27 ajanı, T19 ajanı. | Ajanlar ayrı worktree'lerde çalıştığı sürece yapısal. Azaltılabilir (protokolde "merge sonrası `npm install`"), yok edilemez. |
+
+### 2.3 · Bu turda kapanan
+
+| # | Borç | Nasıl kapandı |
+| --- | --- | --- |
+| ~~B1~~ | API kendi içinde tutarsız (`camelCase`/`snake_case`) | T25; connector/change uçları çevrildi, istek tarafı dahil |
+| ~~B2~~ | `targetKind` bir yöne metin, öbür yöne sayı | T25; `ChangeResponse` DTO'su, `ChangeEvent` artık tel sözleşmesi değil |
+| ~~B3~~ | **`Produces` kapısının yapısal deliği** — uçlar elle yazılmış `Map*` listesinden | T17; keşif yansımaya çevrildi, `/v1/` önek filtresi de kalktı |
+| ~~B4~~ | İzin listesi tek liste, "küçülen" ile "kalıcı muaf" ayrımı yok | T17; `Pending`/`Exempt` ayrıldı, `ExpectedExemptCount` muafiyeti görünür kıldı |
+| ~~B5~~ | İzin listesinde 21 satır | T17+T19+T20; **1 satıra indi** (`POST /v1/replay`, sahipsiz) |
+| ~~B6~~ | `criteria.ts` ile `AlertSearch`/`FieldFilter` sessizce ayrışabilir | T20; `ui/tests/alert-criteria-bridge.test.ts` köprüyü sabitledi |
+| ~~B11~~ | Ticket `status` alanları bayat | 2026-08-20'de kapandı, **B15 olarak yeniden açıldı** |
+| ~~B12~~ | T25'in iki ekranının UI testi yok, maske ölçülmedi | T25; `ui/tests/changes-screen.test.tsx` maskeyi sınıyor |
+| ~~B13~~ | **Elle tutulan `Add*` listesi ömür bekçisini körleştiriyor** | T19 (`5dcb786`); keşif yansımaya çevrildi — ayrıntısı aşağıda |
+
+### Üç kez ısıran kalıp — ve neden artık ısıramaz
+
+Bu turun asıl bulgusu tek bir borç değil, **borcun şekli**: elle tutulan bir
+liste bir bekçiyi besliyor ve liste eskidiğinde bekçi yeşil yanmaya devam
+ediyor. Aynı şey üç yerde oldu:
+
+| Nerede | Ne göremedi | Kapatan |
+| --- | --- | --- |
+| `Produces<T>` kapısı | Elle `Map*` listesi — **16 uç** kapıya hiç görünmedi, üç testin üçü de geçti | T17 |
+| Ömür bekçisi | Elle `Add*` listesi — kanıt katmanı görünmedi, sağlayıcıları tam da bekçinin arayacağı hatayı taşıyordu | T19 |
+| Ömür bekçisi | Aynı liste **doğduğu gün eksikti** — aşağıdaki iki kalem | T19 |
+
+**Doğduğu gün eksik olan iki şey:**
+
+- **`AddBizigoAuthentication`** — `Program.cs`'te çağrılıyor, bekçide hiç yoktu.
+Yani **kimlik ve yetkilendirme grafiği kapsam doğrulamasından bir kez bile
+geçmemişti**. Bu, listenin eskimesi değil; hiç doğru olmamış olması.
+- **`AddBizigoDiscovery`** — `AddBizigoIngest`'in içinden çağrılıyor, dolayısıyla
+elle listeye girmesi hiç akla gelmezdi.
+
+Kapatılışı: keşif hem uzantılar hem **derlemeler** için yansımalı. Derleme
+listesini elle bırakmak deliği bir kat yukarı taşımak olurdu; kompozisyon
+kökünden başlanıp `Bizigo.*` referansları geçişli yükleniyor
+(`AppDomain.GetAssemblies()` yetmiyor — hiç dokunulmamış derleme yüklü olmaz).
+Tanınmayan bir imza **atlanmıyor, testi düşürüyor**: atlamak bekçiyi en sinsi
+biçimde körleştirirdi. Elle kalan tek şey artık *denetlenen* küme değil
+*beklenen* küme.
+
+### Kaçırılan kapı — ve nasıl kaçırıldı
+
+T26 indikten sonra `api:generate`/`api:check` **kırıldı ve kimse görmedi**:
+`DeviceConfigRunner` singleton kaydedilip scoped `IScopedQuery` alıyordu, belge
+üretimi de `Main`'i gerçekten çalıştırdığı için tek gerçek DI doğrulaması
+oydu. Kusur ancak T19 birleştirmesinde, ona hiç dokunmamış bir dalda görüldü.
+
+İki ders, ikisi de kayıtlı: **(a)** doğrulama listesinden düşen bir kapı, kapı
+olmaktan çıkıyor — koordinatörün faz doğrulamasında tip kapısı vardı ve
+düşmüştü; **(b)** bir kusurun yalnızca tesadüfen görülebilir olması, kusurun
+kendisi kadar önemli. İkincisi
+`ArchitectureTests.Uretim_DI_grafi_kapsam_dogrulamasindan_geciyor` ile
+kapatıldı: kapsam doğrulaması artık her birim testi koşumunda.
+
+## 3 · Doğrulanmamış olan
 
 | # | Ne | Kim |
 | --- | --- | --- |
 | ~~D1~~ | ~~Tarayıcı giriş akışı canlı Keycloak'a karşı hiç koşulmadı~~ — **koşuldu ve geçti** 2026-08-20. Ayrıntı aşağıda. | — |
-| ~~D2~~ | ~~Entegrasyon testleri yerelde hiç koşulmadı~~ — **koşuldu**, 93/93 geçti. | — |
+| ~~D2~~ | ~~Entegrasyon testleri yerelde hiç koşulmadı~~ — **koşuldu**, 93/93 geçti (koordinatör, 2026-08-20). | — |
 | D3 | `SidecarLiveTests` atlanıyor (canlı sidecar gerekiyor) | koordinatör, T29 ölçümü |
-| ~~D4~~ | ~~"Replay sırasında canlı ingest bozulmuyor"~~ — **ölçüldü ve iddia YANLIŞ çıktı.** Ayrıntı aşağıda. | — |
-| D5 | `HotPathCostMeasurement.K35_sicak_yol_maliyeti` atlanıyor | T29/T30 zinciri |
-| ~~D7~~ | ~~Kimlik katmanı kapsam doğrulamasından geçiyor mu~~ — **geçmiyormuş.** `Add*` keşfi yansımaya çevrilince `AddBizigoAuthentication`'ın ömür bekçisinin elle listesinde **hiç olmadığı** çıktı; `AddBizigoDiscovery` de yoktu (`AddBizigoIngest`'in içinden çağrıldığı için akla gelmemiş). Elle liste yalnızca eskimiyormuş, **doğduğu gün eksikmiş**. İkisi de artık keşfediliyor. | — |
-| D8 | **Sigma kapsam ölçümü koştu ama sayısı kullanılamaz.** `match_ratio = %0` çıktı; sebebi eşleme değil **veri**: ClickHouse'daki 1M satır tek-vendor'lu sentetik benchmark verisi, altın örnek değil. Ölçüm aracının ön kontrolü "boş mu" diye soruyordu, "doğru veri mi" diye değil — sonradan varlık kanıtı arayacak şekilde sertleştirildi. **Veriden bağımsız tek sayı kullanılabilir:** `compiled=24, runs=14`, yani on kural var olmayan kolonlara giden SQL üretiyor. | koordinatör; altın örnek yükleyicisi yazılıyor |
+| **D4** | **Kimlik/yetkilendirme grafiği kapsam doğrulamasından hiç geçmemişti** — `AddBizigoAuthentication` ömür bekçisinin listesinde yoktu. Artık geçiyor (`5dcb786`), ama bugüne kadar geçmemiş olması D1'in bulduğu sınıfla aynı: doğrulanmamış bir katman, çalıştığı sanılan bir katman. | ✅ kapandı |
 
-### D4'ün sonucu — F1'in kapalı sandığı kapı açıkmış
-
-F1 şöyle bırakmıştı: *"`REPLACE PARTITION` atomik olduğu için beklenen doğru
-davranış, ama yük altında sınanmadı."* Ölçülünce iddia yanlış çıktı ve sebebi
-atomikliğin **ne söylediğiyle** ilgili.
-
-Motor önce mevcut satırları okuyup gölge tabloyu kuruyor, sonra bölümü
-değiştiriyor. O iki adım arasında canlı ingest'in aynı bölüme yazdığı her satır
-gölgede **yok** — ve değiştirme onu sessizce siliyor. Hata yok, sayaç yok,
-belirti yok. Atomiklik *"yarım bölüm görünmez"* diyor, *"anlık görüntüden sonra
-geleni korurum"* demiyor.
-
-**Kapatma biçimi:** açık bölüm (bugünün bölümü) varsayılan olarak replay'in
-dışında ve atlandığı **rapora yazılıyor** (`SkippedOpenPartitions`). Sessiz veri
-kaybı, görünür bir karara çevrildi. İngest'i durdurduğunu bilen operatör
-`AllowOpenPartition` ile bugünü de kapsayabiliyor.
-
-Karar saf bir fonksiyonda ve saat dışarıdan veriliyor, yani altı test
-**konteynersiz** koşuyor — gece yarısı sınırının kayması dâhil.
-
-### D6 — alarm bağlantısı kuralın filtrelerini taşımıyordu
-
-Bağlantı `kural=<guid>` taşıyor ama arama ekranı onu **hiç okumuyordu**;
-`AlertLinkBuilder`'ın kendi yorumu "ekran kuralı kimliğinden okuyor" diyordu.
-Sonuç 404 değil, daha sinsisi: kullanıcı doğru ekrana ve doğru aralığa gidiyor
-ama kuralın **alan filtreleri olmadan** — yani "5 dakikada `action=deny` > 100"
-alarmı, o beş dakikanın bütün olaylarını gösteren bir ekran açıyordu.
-
-**Kapatma biçimi kimliği çözdürmek değil:** bağlantı bir kez üretilip bildirime
-gömülüyor ve kullanıcı günler sonra tıklıyor, yani kimliği çözen ekran
-*bugünkü* kuralı gösterirdi. Filtreler bağlantının kendisine gömüldü
-(`criteria-bridge.ts`'in ters yönü) ve bağlantı **o anın fotoğrafı** oldu;
-`kural` kaynak göstergesi olarak kaldı.
-
-Ters yön birebir değildi: ekranın "n ve üzeri"si ileri yönde `gt(n-1)`'e
-çevriliyor, geri yönde 1 eklenmezse alarm **bir kademe geniş** bir ekran açıyor
-— ve tek kademelik sapmayı kimse fark etmez.
-
-Ekranda karşılığı olmayan filtreler (`src_ip`, `user_name`) sessizce düşmüyor:
-`eksik` parametresiyle bildiriliyor ve ekran kullanıcıya *"bu alarmın N filtresi
-burada gösterilemiyor, sonuçlar daha geniş"* diyor.
+| **D5** | **Sigma kapsam ölçümü koştu ama sayısı kullanılamaz.** `match_ratio = %0`; sebebi eşleme değil **veri**: ClickHouse'daki 1M satır tek-vendor'lu sentetik benchmark verisi, altın örnek değil. Aracın ön kontrolü "boş mu" diye soruyordu, "doğru veri mi" diye değil — sonradan altın örnek sondası arayacak şekilde sertleştirildi. **Veriden bağımsız tek kullanılabilir sayı:** `compiled=24, runs=14` — on kural var olmayan kolonlara giden SQL üretiyor, ve bu kapsam daraltarak çözülmez. | koordinatör; altın örnek yükleyicisi yazılıyor |
+| **D6** | **Baseline pencere ölçümü de aynı sebeple bekliyor** — araç en az taban süresi kadar gerçek geçmiş istiyor ve bunu kendisi söylüyor, sessizce anlamsız sayı üretmiyor. | koordinatör, yükleyiciden sonra |
 
 ### D1'in sonucu — canlı Keycloak, 2026-08-20
 
@@ -161,43 +178,71 @@ tablosu boşken kullanıcı giriş yapıyor ama `sees_nothing: true` dönüyor v
 sebebini söylüyor — *"Hiçbir gruba eşlenmediğiniz için veri göremiyorsunuz…
 yöneticinize başvurun."*
 
-## 5 · Ticket durumları (dosyalardaki `status` ile aynı)
+## 4 · Ticket durumları — **dosyalar bayat** (B15)
 
 `0` yapılacak · `1` sürüyor · `2` bitti
 
+Bu tablo **koddan** çıkarıldı. Ticket dosyalarındaki `status` alanları üç yerde
+kodla çelişiyor; düzeltmek koordinatörün defter işi, envanterin değil — burada
+yalnızca **fark kayda geçiriliyor**:
+
+| Ticket | Dosya diyor | Kod diyor | Kanıt |
+| --- | --- | --- | --- |
+| T20 katalog ekranı | `1` | bitti | `f75bfa9` main'de |
+| T25 change connector | `1` | bitti | `c193f83` — eksik olan UI testleri geldi |
+| T26 config diff | `1` | bitti | `1ae0e93` main'de |
+
+Dosyalardaki hâl (yukarıdaki üç satır hariç, **çapraz kontrol edilmedi** —
+"kod birleşti" ile "ticket bitti" aynı şey değil ve o kararı ticket'ın sahibi
+verir):
+
 | Durum | Ticket'lar |
 | --- | --- |
-| **2 — bitti** | T13, T14, T15, T16, T17, T18, T19, T21, T22, T23, T24, T29, T34 |
-| **1 — sürüyor** | T20 (katalog), T25 (connector), T26 (config diff), T28 (UI/UX denetimi) |
-| **0 — yapılacak** | T27 (F2 doğrulaması), T30–T33, T35–T38 (F3) |
+| **2 — bitti** | T13, T14, T15, T16, T18, T19, T21, T22, T23, T24, T29, T34 |
+| **1 — sürüyor** | T20, T25, T26 *(üçü de kodla çelişiyor)*, T28 |
+| **0 — yapılacak** | T27, T30–T33, T35–T38 |
 
-**T25 ve T26 dosyada `1` ama işleri bitti** — kod main'de ve doğrulandı;
-`status` alanları bir sonraki tazelemede `2`'ye çekilmeli. T27 de fiilen
-yazıldı; `0` kalmasının tek sebebi `Pending`'in henüz boşalmaması (B5).
+Ayrıca `korelasyonlar` (T35) `status: 0` görünüyor ama `CorrelationReader`,
+`CorrelationMath` ve iki test dosyası `main`'de — bu da bir çelişki adayı,
+ticket sahibi doğrulamalı.
 
-## 6 · Kalan ticket'lar
+T32 (Sigma derleme hattı) T31'e, o da Sigma ölçümüne bağlı; ölçümün önkoşulu
+altın örneklerin ClickHouse'a yüklenmesi ve o ayrı bir ajanda.
+
+## 5 · Kalan ticket'lar
+
+F2'nin yedi ticket'ının kodu indi; kalan **T27**, yani fazın kendi
+doğrulaması.
 
 ```mermaid
 flowchart LR
-  T20["T20 · katalog<br/>sürüyor"] --> T27["T27 · F2 doğrulaması<br/>Pending'i bekliyor"]
-  T20 --> T28["T28 · UI/UX denetimi<br/>sürüyor"]
-  REPLAY["POST /v1/replay<br/>SAHİPSİZ"] -.->|F2'nin son kapısı| T27
-  T30["T30 · Sigma prototipi"] --> T31["T31 · Sigma derleme"]
-  T31 --> T32["T32 · Sigma pipeline"] --> T33["T33 · kural yönetimi"]
-  T34["T34 · kanıt sözleşmesi<br/>bitti"] --> T35["T35 · korelasyonlar"]
-  T35 --> T36["T36 · kanıt paketi"] --> T37["T37 · rapor ekranı"]
+  subgraph F2["F2 — kodu inmiş"]
+    T17["T17 · envanter + kapı"]
+    T19["T19 · parser editörü"]
+    T20["T20 · katalog"]
+    T25["T25 · connector"]
+    T26["T26 · config diff"]
+    T28["T28 · UI/UX denetimi"]
+  end
+  F2 --> T27["T27 · F2 doğrulaması<br/>SON KAPI"]
+  T27 -.->|"karar bekliyor"| R["POST /v1/replay<br/>sahipsiz izin listesi satırı"]
+  T29["T29 · signature_hash"] --> S["Sigma ölçümü<br/>(altın küme yüklemesi)"]
+  S --> T31["T31 · Sigma pipeline"] --> T32["T32 · Sigma derleme"]
 ```
 
-**F2'de kalan üç iş:** T20, T27, T28 — ve T27'nin tek engeli teknik değil,
-`POST /v1/replay`'in **sahibi olmaması**. Replay ekranının ticket'ı hiç
-açılmadı; uç ya bir ticket kazanacak ya kalıcı muafiyete geçecek. Karar
-verilmeden F2 "bitti" diyemiyor, çünkü kriterin kendisi `Pending`'in
-boşalması.
+T19 ile T20 parser uçlarını **yetki tablosuna göre** böldü — yazar/inceleyen
+ayrımı `ParserAuthoringEndpoints`'te zaten çizili: author uçları T19, admin ve
+okuma uçları T20. `GET /v1/parsers/drafts/{id}` sözleşmesi ikisine birden
+çivilendi (`yaml` alanı, `snake_case`) ki biri diğerini beklemesin. Merge'de
+o satırlardan hiçbiri iki kez silinmedi — bölünme tuttu.
 
-**F3:** T30–T38. İki iş (T30 Sigma prototipi, T29 `signature_hash`) kod değil
-**sayı** teslim ediyor; T29 bitti.
+**T27'nin önündeki tek açık karar:** izin listesindeki `POST /v1/replay`.
+Atfı yanlıştı ("T19 — replay ekranı"), oysa replay ekranının ticket'ı yok.
+Tüketicisi olmayan bir uca yanıt tipi yazmak listenin var olma sebebini boşa
+çıkarır; kalıcı muafiyete taşımak ise "hiç ekranı olmayacak" iddiası olur.
+İkisinden biri seçilmeden liste boşalmıyor.
 
-## 7 · Çalışma kuralları (2026-08-20'de konuldu)
+## 6 · Çalışma kuralları (2026-08-20'de konuldu)
 
 1. **Ajanlar Docker'a dokunmaz.** Entegrasyon testleri, Testcontainers, compose,
 canlı Keycloak, canlı sidecar — hepsi koordinatörde, **faz bitimlerinde**.
@@ -209,28 +254,7 @@ dar tutulur; geniş `pkill -f` bir keresinde oturumun kendi izleyicilerini öld�
 4. **Ağır işten önce** `~/.claude/scripts/machine-resources.sh check`; çıkış kodu
 1 ise başlanmaz, koordinatöre haber verilir.
 5. Ajanlar **push etmez**; birleştirme koordinatörde.
-6. **`git merge main` her turun ilk işi.** Paralel dört-beş ajan aynı dosyalara
-dokunuyor; geç birleştiren çakışmayı büyütüyor.
-7. **`package.json` değiştiyse `ui/` içinde `npm install`.** Worktree'nin
-`node_modules`'ü bayatlayınca `tsc` ve `npm test`, ajana ait olmayan bir hata
-gösteriyor (B14). İki kişi bu tuzağa düştü; ikisi de "benim değil" diye
-doğruladıktan sonra bildirdi — doğru refleks o, ama komut daha ucuz.
-
-## 8 · Bu fazda tekrarlanan hata sınıfı
-
-F1'in dersi *"doğrulanmamış her katman kırıktı ve hiçbiri kendini belli
-etmedi"* idi. F2'de aynı sınıf **dört kez** çıktı ve dördü de aynı şekle sahip:
-**belgelenmiş bir iddianın kodda karşılığı yok, ve sonuç sessizce yanlış.**
-
-| Bulgu | İddia | Gerçek |
-| --- | --- | --- |
-| D4 · replay | "`REPLACE PARTITION` atomik, canlı ingest bozulmuyor" | Anlık görüntüden sonra gelen satır siliniyor |
-| D6 · alarm bağlantısı | "Ekran kuralı kimliğinden okuyor" | Hiç okumuyor; alarm işaret ettiğinden geniş bir ekran açıyor |
-| T26 · bölüm adı | "Gizli değerler maskeleniyor" | Maskeleniyor ama sır **bölüm adının içinde** kalıyordu |
-| T24 · Jenkins | "İki faz aynı olguyu bildiriyor" | Post-build adımı durumu çevirebiliyor; erken ve yanlış durum kalıcı oluyordu |
-
-Dördü de **koşturarak değil, okuyarak ve test yazarken** bulundu. Ortak
-çıkarım: bir yorumun bir şeyi iddia etmesi, kodun onu yaptığı anlamına
-gelmiyor — ve iddia ile kod ayrıştığında belirti üretmiyor. Yeni bir bekçi
-yazarken sorulacak soru "bu davranış doğru mu" değil, **"bu yorumun söylediği
-şey gerçekten oluyor mu"**.
+6. **`git merge main`'den sonra `npm install`.** `package.json` başka bir dalda
+değiştiyse worktree'nin `node_modules`'ü bayat kalıyor ve `tsc` size ait
+olmayan bir hata gösteriyor. Bu tura kadar üç ajan aynı duvara tosladı; kural
+kusuru yok etmiyor, yalnızca teşhis süresini sıfırlıyor (B16).
