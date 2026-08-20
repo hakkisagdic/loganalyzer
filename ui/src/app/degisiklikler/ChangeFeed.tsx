@@ -3,32 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
-import { Badge, Card, Field } from "@/components/ui/Field";
-import { DataTable, type Column } from "@/components/ui/DataTable";
+import { Card, Field } from "@/components/ui/Field";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { api } from "@/lib/api/client";
 import { describeError } from "@/lib/api/errors";
+import { changeWriteRequest, screenState } from "@/lib/changes/connector";
+
+import { ChangeTable, type ChangeRow } from "./ChangeTable";
 
 import styles from "./changes.module.css";
-
-/**
- * `change_events` satırının UI karşılığı.
- *
- * <p>Alan adları `snake_case`: API'nin tamamı öyle konuşuyor (T15, `/auth/me`).
- * Tip üretilen şemadan geliyor; bu arayüz yalnızca okunurluk için duruyor.</p>
- */
-interface ChangeRow {
-  readonly change_id: string;
-  readonly timestamp: string;
-  readonly owner_group: string;
-  readonly target_kind: string;
-  readonly target_id: string;
-  readonly change_kind: string;
-  readonly actor: string;
-  readonly summary: string;
-  readonly source: string;
-  readonly external_ref: string;
-}
 
 const TARGET_KINDS = ["Device", "Service", "Config", "Inventory", "Maintenance"] as const;
 
@@ -65,59 +48,7 @@ export function ChangeFeed({ ownerGroups, unrestricted }: ChangeFeedProps) {
     void load();
   }, [load]);
 
-  const columns: readonly Column<ChangeRow>[] = [
-    {
-      key: "timestamp",
-      header: "Zaman",
-      width: "17ch",
-      render: (row) => <span>{formatInstant(row.timestamp)}</span>,
-    },
-    {
-      key: "target",
-      header: "Hedef",
-      width: "22ch",
-      // Hedef kimliği cihaz adı ya da depo yolu olabiliyor; serbest metin.
-      freeText: true,
-      render: (row) => (
-        <span>
-          <Badge>{row.target_kind}</Badge> {row.target_id}
-        </span>
-      ),
-    },
-    {
-      key: "changeKind",
-      header: "Tür",
-      width: "14ch",
-      render: (row) => <span>{row.change_kind}</span>,
-    },
-    {
-      key: "summary",
-      header: "Özet",
-      // Özet Türkçe, Arapça ya da Çince gelebiliyor — hizalama içeriğe bırakılıyor.
-      freeText: true,
-      render: (row) =>
-        row.external_ref ? (
-          <a href={row.external_ref} rel="noreferrer noopener" target="_blank">
-            {row.summary || row.external_ref}
-          </a>
-        ) : (
-          <span>{row.summary || "—"}</span>
-        ),
-    },
-    {
-      key: "actor",
-      header: "Kim",
-      width: "16ch",
-      freeText: true,
-      render: (row) => <span>{row.actor || "—"}</span>,
-    },
-    {
-      key: "source",
-      header: "Kaynak",
-      width: "12ch",
-      render: (row) => <Badge tone={row.source === "api" ? "neutral" : "accent"}>{row.source}</Badge>,
-    },
-  ];
+  const state = screenState(rows, loadError);
 
   return (
     <>
@@ -141,11 +72,13 @@ export function ChangeFeed({ ownerGroups, unrestricted }: ChangeFeedProps) {
         />
       ) : null}
 
-      {loadError ? <ErrorState title="Değişiklikler yüklenemedi." hint={loadError} /> : null}
+      {state === "error" ? (
+        <ErrorState title="Değişiklikler yüklenemedi." hint={loadError ?? undefined} />
+      ) : null}
 
-      {rows === null ? (
+      {state === "loading" ? (
         <LoadingState label="Değişiklikler yükleniyor" />
-      ) : rows.length === 0 && !loadError ? (
+      ) : state === "empty" ? (
         <Card padded={false}>
           <EmptyState
             title="Henüz değişiklik kaydı yok"
@@ -157,14 +90,9 @@ export function ChangeFeed({ ownerGroups, unrestricted }: ChangeFeedProps) {
             }
           />
         </Card>
-      ) : (
-        <DataTable
-          caption="Son değişiklikler"
-          columns={columns}
-          rows={rows}
-          rowKey={(row) => row.change_id}
-        />
-      )}
+      ) : state === "ready" ? (
+        <ChangeTable rows={rows ?? []} />
+      ) : null}
     </>
   );
 }
@@ -197,23 +125,17 @@ function ManualChangeForm({ ownerGroups, unrestricted, onSaved }: ManualChangeFo
     setSaving(true);
     setError(null);
 
-    const timestamp = String(form.get("timestamp") ?? "").trim();
-
     try {
       await api.post("/v1/changes", {
-        body: {
-          owner_group: String(form.get("ownerGroup") ?? ""),
-          target_kind: String(form.get("targetKind") ?? "Device"),
-          target_id: String(form.get("targetId") ?? "").trim(),
-          change_kind: String(form.get("changeKind") ?? "").trim(),
-          actor: String(form.get("actor") ?? "").trim(),
-          summary: String(form.get("summary") ?? "").trim(),
-          source: "manual",
-          // Boş bırakılırsa API "şimdi"yi kullanıyor. Tarayıcının yerel saatini
-          // gönderiyoruz; `datetime-local` saat dilimi taşımıyor ve UTC
-          // varsaymak kullanıcının girdiği saati sessizce kaydırırdı.
-          ...(timestamp ? { timestamp: new Date(timestamp).toISOString() } : {}),
-        },
+        body: changeWriteRequest({
+          ownerGroup: String(form.get("ownerGroup") ?? ""),
+          targetKind: String(form.get("targetKind") ?? "Device"),
+          targetId: String(form.get("targetId") ?? ""),
+          changeKind: String(form.get("changeKind") ?? ""),
+          actor: String(form.get("actor") ?? ""),
+          summary: String(form.get("summary") ?? ""),
+          timestamp: String(form.get("timestamp") ?? ""),
+        }),
       } as never);
 
       onSaved();
@@ -315,14 +237,3 @@ function ManualChangeForm({ ownerGroups, unrestricted, onSaved }: ManualChangeFo
   );
 }
 
-/**
- * Zaman damgası biçimi. `Intl` yerine sabit bir biçim: tabloda hizalanması
- * gereken bir sütun ve yerel biçim uzunluğu satırdan satıra değiştirirdi.
- */
-function formatInstant(value: string): string {
-  const date = new Date(value);
-
-  return Number.isNaN(date.getTime())
-    ? "—"
-    : date.toISOString().replace("T", " ").slice(0, 16);
-}
