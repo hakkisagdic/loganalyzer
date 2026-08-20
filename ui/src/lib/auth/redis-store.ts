@@ -32,6 +32,18 @@ export interface RedisClient {
   delete(key: string): Promise<void>;
   /** Bağlantının canlı olup olmadığı. Sağlık için değil, <b>hata ayırt etmek</b> için. */
   isReady(): boolean;
+  /**
+   * Bağlantıyı kapatıyor.
+   *
+   * <p>
+   * Arayüzde <b>zorunlu</b>, isteğe bağlı değil: isteğe bağlı olsaydı gerçek bir
+   * adaptör onu yazmayı unutabilir ve kimse fark etmezdi. Uygulama ömrü boyunca
+   * açık kalan bir istemci için gereksiz görünüyor ama testler için şart —
+   * kapatılmayan bir bağlantı, koşum bitince asılı kalan bir proses demek
+   * (protokol §3).
+   * </p>
+   */
+  close(): Promise<void>;
 }
 
 /** Anahtar öneki: aynı Redis'i paylaşan başka bir şey varsa çarpışmasın. */

@@ -61,5 +61,12 @@ export function createRedisClient(url: string): RedisClient {
     isReady() {
       return client.isReady;
     },
+    async close() {
+      // `destroy()` değil `close()`: bekleyen komutların bitmesine izin veriyor.
+      // Kapalı bir istemciyi tekrar kapatmak hata veriyor, o yüzden korumalı.
+      if (client.isOpen) {
+        await client.close();
+      }
+    },
   };
 }

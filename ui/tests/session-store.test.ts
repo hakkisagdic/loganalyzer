@@ -60,6 +60,11 @@ class FakeRedis implements RedisClient {
     return this.ready;
   }
 
+  async close(): Promise<void> {
+    // Sahtede kapatılacak bir şey yok; arayüz zorunlu kıldığı için var.
+    this.ready = false;
+  }
+
   #check(): void {
     if (this.throwOnCall) {
       throw new Error("bağlantı sıfırlandı");
