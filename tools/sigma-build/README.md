@@ -17,10 +17,11 @@ Tasarımın tamamı ve kararların gerekçeleri:
 | `compile.py` — tek komut (`--write` / `--check` / `--summary`) | ✅ |
 | `explain_gate.py` — Kapı 2: `EXPLAIN`, kendi CI işinde | ✅ **koşturuldu** — ilk koşum kapının kendi kusurunu buldu |
 | `ruleset.py` — kural seti çivisi, ağsız doğrulama | ✅ |
-| `golden_gate.py` — Kapı 3: altın örnek, ön kontrol + beyanlar | ✅ yazıldı, **koşturulmadı** |
+| `golden_gate.py` — Kapı 3: altın örnek, ön kontrol + beyanlar | ✅ **koşturuldu** — sekiz beyanın sekizi tuttu |
 | `clickhouse.py` — Kapı 2 ve 3'ün ortak HTTP yüzeyi | ✅ |
-| Kural setinin **yükseltme** yolu (ağ) | ⏳ kapsam kararını bekliyor |
-| Gerçek derleme | ⏳ T31'i bekliyor |
+| `ruleset --refresh` — çiviyi ağaçtan yeniden üretir | ✅ |
+| Gerçek derleme — T31'in pipeline'ına bağlı | ✅ 21 written · 3 gated · 0 failed |
+| Kural setinin **yükseltme** yolu (ağ, SigmaHQ) | ⏳ T30 kapsam kararını bekliyor |
 
 ## Kural seti depoda duruyor, indirilmiyor
 
@@ -30,7 +31,24 @@ CI **ağa çıkmıyor**; tek yaptığı kopyanın çiviye uyduğunu doğrulamak.
 ```bash
 python -m sigma_build.ruleset            # çivinin durumu
 python -m sigma_build.ruleset --verify   # CI kapısı, ağsız
+python -m sigma_build.ruleset --refresh  # çiviyi ağaçtan yeniden üret, ağsız
 ```
+
+**Bir kural düzenlediysen sıra şu:**
+
+```bash
+python -m sigma_build.ruleset --refresh   # çivi
+python -m sigma_build.compile --write     # üretilen SQL
+```
+
+`--refresh` üstveriyi (`source`, `commit`, `license`) **korur** — onlar kararlar,
+özet değil. Kural setini gerçekten yükseltmek (yeni `commit`) ayrı bir hareket ve
+ağ gerektiriyor; bu komut yalnızca yerel ağacı çiviyle hizalıyor.
+
+`compile --write` çivi bayatken **yazmıyor** ve `--refresh`'i adıyla söylüyor.
+Gerekçe ölçüldü: bir ajan kuralı düzeltti, çiviyi yenilemedi, `--write` hiçbir şey
+söylemeden yeni SQL üretti ve tutarsızlığı ancak bir sonraki koşumda çivi kapısı
+söyledi — CI kırmızı. Yarım hâl artık kaynağında engelleniyor.
 
 Üç gerekçe:
 
@@ -47,11 +65,14 @@ Doğrulama üç sürüklenme yönünü **ayrı** raporluyor, çünkü üçünün
 eksik dosya (kopyalama yarım), fazla dosya (çiviye girmemiş kural — derlenir ama
 nereden geldiği kayıtsız), değişmiş içerik (elle düzenlenmiş).
 
-Bugün çivi boş: `commit: null`, sıfır kural. Bu "kural yok" değil **"hangi
-sürümden alacağımıza karar verilmedi"** — T30'un kapsam ölçümünü bekliyor.
-Yükseltme yolu bilerek yazılmadı; var olmayan bir komutu mesajlarda anmak, bu
-turda bulunan hatanın (`unmapped_expression()` yazılmış, hiç çağrılmamış) aynısı
-olurdu.
+Çivi bugün **24 kurala bağlı** ve kaynağı `bizigo/prototip` — SigmaHQ değil, ve
+bunu bir test tutuyor (`assert "SigmaHQ" not in pin.source`). Kurallar T30
+örnekleminden terfi ettirildi; SigmaHQ'nun dağılımını temsil etmiyorlar, o yüzden
+kaynağın doğru söylenmesi kapsamın yanlış okunmasını engelliyor.
+
+**Ağ gerektiren yükseltme yolu** (gerçek SigmaHQ alt kümesini çekme) hâlâ
+yazılmadı ve T30'un kapsam kararını bekliyor. `--refresh` onun yerine geçmiyor:
+yerel ağacı çiviyle hizalıyor, `commit`'e dokunmuyor.
 
 ## Üç olay birbirinden ayrılıyor
 
@@ -70,9 +91,11 @@ tek diff'te saklanmıştır.
 
 ## Kapı 2 kendini sınıyor
 
-`detections/sigma/` bugün boş, yani Kapı 2 sıfır sorgu sorup sessizce yeşil
-kalırdı — ve "sessizce yeşil bekçi" bu deponun adını koyduğu sınıf. CI işi bu
-yüzden önce `--self-test` koşturuyor: sonucu **bilinen** üç sorgu, ikisi
+Kapı 2 bugün **hiçbir şey yakalamıyor** — T31 eşlenemeyen kuralları derleme
+aşamasında düşürdüğü için ClickHouse'a koşmayan SQL çarpmıyor. Boş dönen bir
+bekçinin iki sebebi olabilir: korunan şey sağlam, ya da bekçi kör. İkisini ayıran
+şey `--self-test`, ve o kip zaten bir kez kapının kendi körlüğünü buldu. CI işi bu
+yüzden önce onu koşturuyor: sonucu **bilinen** üç sorgu, ikisi
 reddedilmeli, biri kabul edilmeli.
 
 ```bash
