@@ -257,32 +257,102 @@ GOLDEN_SAMPLES: dict[str, str] = {
 }
 
 
-def _repo_root() -> Path:
+def _repo_root() -> Path | None:
+    """Depo kökü, ya da bulunamadıysa **None**.
+
+    Eskiden bulunamadığında `here.parent` dönüyordu. O sessiz geri çekilme
+    ölçümü bir kez bozdu: dosya depo dışına kopyalanıp koşturulunca kök yanlış
+    çözüldü, altın örnek dizinleri bulunamadı, sonda listesi boş kaldı ve **ön
+    kontrol kendini kapattı**. `None` dönmek o durumu bir cevaba değil bir
+    hataya çeviriyor.
+    """
     here = Path(__file__).resolve()
 
     for parent in here.parents:
         if (parent / "Bizigo.sln").exists():
             return parent
 
-    return here.parent
+    return None
 
 
-def golden_probes() -> dict[str, str]:
-    """Vendor → altın örnekten türetilmiş ayırt edici bir dizge.
+#: Sondanın İÇİNE ALMAYACAĞI bölgeler: yükleyici bunları yeniden yazıyor.
+#:
+#: Örnekler 2015–2024 tarihleri taşıyor; yükleyici onları ölçüm penceresine
+#: taşımak için damgayı **yeniden yazıyor**. Damgayla kesişen bir sonda, veri
+#: doğru yüklenmiş olsa bile tutmaz — bekçi doğru veriyi reddeder.
+_VOLATILE = re.compile(
+    r"\d{4}-\d{2}-\d{2}[T ]?\d{2}:\d{2}:\d{2}"          # 2019-05-10 11:37:47
+    r"|date=\d{4}-\d{2}-\d{2}|time=\d{2}:\d{2}:\d{2}"    # date=... time=...
+    r"|eventtime=\d+"                                    # epoch nanosaniye
+    r"|\d{2}/[A-Z][a-z]{2}/\d{4}:\d{2}:\d{2}:\d{2}"      # 09/Jun/2020:12:15:39
+    r"|[A-Z][a-z]{2}\s{1,2}\d{1,2}\s\d{2}:\d{2}:\d{2}"   # May  5 19:02:25
+    r"|\d{2}:\d{2}:\d{2}"                                # çıplak saat
+    r"|\d{10,}"                                          # epoch / uzun sayı
+)
 
-    İki tercih, ikisi de ayırt ediciliği artırmak için:
+#: Vendor başına kaç sonda türetiliyor.
+#:
+#: Tek sonda kırılgan: yükleyici satırları tekilleştiriyor ya da bir alt küme
+#: yüklüyorsa, seçtiğimiz **o** satır tabloda olmayabilir — ve yokluğu "veri
+#: yanlış" diye okunur. Birkaç farklı satırdan sonda alıp "herhangi biri
+#: tutsun" demek bu yanlış negatifi kapatıyor.
+PROBES_PER_VENDOR = 5
 
-    * **En uzun satır** seçiliyor — en çok alan taşıyan, dolayısıyla içinde
-      benzersiz değer (IP, port, oturum kimliği) bulunma olasılığı en yüksek olan.
-    * Satırın **ortasından 60 karakter** alınıyor, tamamı değil: başındaki syslog
-      önceliği (`<188>`) ve sondaki alanlar boru hattında kırpılabiliyor.
+#: Sonda uzunluğu. Kısa sonda ayırt etmiyor: sentetik benchmark verisi de aynı
+#: vendor'ın söz dizimini taşıyor ve `level="notice"` gibi bir parça onda da var.
+PROBE_LENGTH = 44
 
-    Kısa ya da jenerik bir sonda işe yaramaz: sentetik benchmark verisi de aynı
-    vendor'ın söz dizimini taşıyor ve `level="notice"` gibi bir parça onda da
-    bulunur. Kontrolün anlamı, sondanın **o dosyadaki o satıra** ait olmasında.
+
+def _stable_window(line: str, width: int) -> str:
+    """Satırın, damga taşımayan `width` karakterlik bir dilimi (yoksa "").
+
+    Pencere ortadan başlayıp iki yana taranıyor: satırın ortası en çok alan
+    taşıyan, dolayısıyla benzersiz değer (IP, port, oturum kimliği) bulunma
+    olasılığı en yüksek bölge.
     """
-    probes: dict[str, str] = {}
+    forbidden = [match.span() for match in _VOLATILE.finditer(line)]
+    middle = max(0, (len(line) - width) // 2)
+
+    # Ortadan dışa doğru: önce ortaya en yakın pencereler denensin.
+    starts = sorted(range(0, len(line) - width + 1), key=lambda i: abs(i - middle))
+
+    for start in starts:
+        end = start + width
+
+        if not any(begin < end and start < finish for begin, finish in forbidden):
+            return line[start:end]
+
+    return ""
+
+
+def golden_probes() -> dict[str, list[str]]:
+    """Vendor → altın örneklerden türetilmiş **birkaç** ayırt edici dizge.
+
+    Neden birden çok, ve neden damgasız
+    -----------------------------------
+    İlk hâli vendor başına **tek** sonda üretiyordu: en uzun satırın
+    ortasından 60 karakter. İki yönden kırılgandı ve ikisi de yaşandı.
+
+    * **Damga.** Yükleyici örneklerin 2015–2024 tarihlerini ölçüm penceresine
+      taşımak için damgayı yeniden yazıyor. Sonda o bölgeyle kesişirse veri
+      doğru yüklenmiş olsa bile tutmaz. Artık `_stable_window()` damga
+      taşımayan bir dilim seçiyor.
+    * **Tek satıra bağlılık.** Yükleyici satırları tekilleştiriyor ya da bir
+      alt küme yüklüyorsa, seçtiğimiz *o* satır tabloda olmayabilir — ve
+      yokluğu "veri yanlış" diye okunur. Artık farklı satırlardan
+      `PROBES_PER_VENDOR` sonda alınıyor ve **herhangi birinin** tutması yetiyor.
+
+    Uzun satırlar önce deneniyor: en çok alan taşıyan, dolayısıyla içinde
+    benzersiz değer (IP, port, oturum kimliği) bulunma olasılığı en yüksek olan.
+
+    Boş dönmek bir cevap değil bir **arıza**: çağıran tarafın ölçümü
+    reddetmesi gerekiyor, geçirmesi değil.
+    """
+    probes: dict[str, list[str]] = {}
     root = _repo_root()
+
+    if root is None:
+        return {}
 
     for vendor, relative in GOLDEN_SAMPLES.items():
         directory = root / relative
@@ -290,18 +360,28 @@ def golden_probes() -> dict[str, str]:
         if not directory.is_dir():
             continue
 
-        longest = ""
+        lines: list[str] = []
 
         for path in sorted(directory.glob("*.log")):
             for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
                 line = raw.strip()
 
-                if len(line) > len(longest):
-                    longest = line
+                if len(line) >= PROBE_LENGTH + 20:
+                    lines.append(line)
 
-        if len(longest) >= 100:
-            start = (len(longest) - 60) // 2
-            probes[vendor] = longest[start : start + 60]
+        found: list[str] = []
+
+        for line in sorted(lines, key=len, reverse=True):
+            window = _stable_window(line, PROBE_LENGTH)
+
+            if window and window not in found:
+                found.append(window)
+
+            if len(found) == PROBES_PER_VENDOR:
+                break
+
+        if found:
+            probes[vendor] = found
 
     return probes
 
@@ -317,6 +397,10 @@ class Preflight:
 
     #: Vendor → altın örnek sondası tablo içinde bulundu mu.
     golden: dict[str, bool] = field(default_factory=dict)
+
+    #: Vendor → aranan sondalar. Reddedilen bir koşumda basılıyor: bekçinin
+    #: "bulamadım" demesi ile operatörün elle doğrulayabilmesi arasındaki fark.
+    probes: dict[str, list[str]] = field(default_factory=dict)
 
 
 def preflight(url: str, user: str, password: str, timeout: float) -> Preflight:
@@ -384,32 +468,96 @@ def preflight(url: str, user: str, password: str, timeout: float) -> Preflight:
     # Bu yüzden kontrol artık bir YOKLUK kanıtı değil VARLIK kanıtı arıyor:
     # altın örnek satırının kendisi gövdede duruyor mu.
     probes = golden_probes()
+
+    # Sonda türetilemediyse ölçüm YAPILMAZ.
+    #
+    # Eski kapı `if probes and not any(...)` yazıyordu ve o `probes and`
+    # bekçiyi kendi eliyle kapatıyordu: sonda listesi boşsa koşul her zaman
+    # False, ölçüm geçiyor, üstelik dört vendor da "altın örnek YOK" bayrağı
+    # alıyor — çünkü boş sözlükte `.get()` None dönüyor. Bekçi hem yanlış
+    # konuşuyor hem sözünü tutmuyordu. Bir kez tam olarak böyle oldu.
+    #
+    # Bu, deponun §7'sindeki desenin aynısı: bekçinin sessizce atlaması,
+    # bekçinin kendisinden tehlikeli.
+    if not probes:
+        root = _repo_root()
+        looked = (
+            f"kök `{root}` altında " if root else "depo kökü BULUNAMADI (`Bizigo.sln` yok), "
+        )
+        return Preflight(
+            ok=False,
+            rows=total,
+            vendors=vendors,
+            reason=(
+                "Altın örnek sondası TÜRETİLEMEDİ, dolayısıyla verinin doğru olduğu "
+                f"kanıtlanamıyor. {looked}şu dizinlere bakıldı: "
+                f"{', '.join(sorted(GOLDEN_SAMPLES.values()))}. "
+                "Bu bir veri sorunu değil KURULUM sorunu: `measure.py` depo ağacının "
+                "içinden koşmalı. Sonda üretilemeden yapılan ölçüm, verisi doğrulanmamış "
+                "bir ölçümdür ve sayısı kapsam kararına dayanak olamaz."
+            ),
+        )
+
     golden: dict[str, bool] = {}
 
-    for vendor, probe in probes.items():
-        escaped = probe.replace("\\", "\\\\").replace("'", "''")
-        hits, _ = run_on_clickhouse(
-            f"SELECT * FROM events_ocsf WHERE position(raw_data, '{escaped}') > 0",
-            url, user, password, timeout,
-        )
-        golden[vendor] = hits > 0
+    for vendor, candidates in probes.items():
+        found = False
 
-    if probes and not any(golden.values()):
+        for probe in candidates:
+            escaped = probe.replace("\\", "\\\\").replace("'", "''")
+            hits, error = run_on_clickhouse(
+                f"SELECT * FROM events_ocsf WHERE position(raw_data, '{escaped}') > 0",
+                url, user, password, timeout,
+            )
+
+            # Sorgu hatası "bulamadım" DEĞİL. Eskiden hata yutuluyordu ve
+            # kırık bir sorgu ile yüklenmemiş veri aynı görünüyordu.
+            if error:
+                return Preflight(
+                    ok=False,
+                    rows=total,
+                    vendors=vendors,
+                    probes=probes,
+                    reason=(
+                        f"Altın örnek sondası SORGULANAMADI ({vendor}). Bu bir veri "
+                        f"sorunu değil; ön kontrol kendi sorgusunu koşturamıyor. "
+                        f"ClickHouse yanıtı: {error}"
+                    ),
+                )
+
+            if hits > 0:
+                found = True
+                break
+
+        golden[vendor] = found
+
+    # Satırı OLAN ama altın örneği OLMAYAN vendor: veri yabancı.
+    #
+    # Eskiden yalnızca "hiçbiri bulunamadı" reddediliyordu; bir vendor'ın
+    # yabancı veriyle dolu olması uyarıyla geçiyordu. O uyarı, tam da
+    # engellemek için yazıldığı şeyi üretir: o vendor'ın kuralları
+    # `matches=false` verir ve sıfır "kapsam düşük" diye okunur.
+    foreign = sorted(v for v, rows in vendors.items() if rows and not golden.get(v))
+
+    if foreign:
         return Preflight(
             ok=False,
             rows=total,
             vendors=vendors,
             golden=golden,
+            probes=probes,
             reason=(
-                f"`events_ocsf` {total} satır taşıyor ama **hiçbiri altın örnek değil**. "
-                "Hiçbir vendor'ın örnek satırı gövdede bulunamadı; tablodaki veri başka "
-                "bir turdan kalmış olabilir (ör. sentetik benchmark verisi). "
-                "Bu hâlde ölçüm `%0` eşleşme üretir ve o sıfır eşlemenin değil VERİNİN "
-                "sonucudur. Önce altın örnekleri yükleyin."
+                f"Şu vendor'ların satırı VAR ama hiçbiri altın örnek değil: "
+                f"{', '.join(foreign)}. Tablodaki veri başka bir turdan kalmış olabilir "
+                "(ör. sentetik benchmark verisi). Bu hâlde o vendor'ın kuralları "
+                "`matches=false` verir ve o sıfır eşlemenin değil VERİNİN sonucudur. "
+                "Önce tabloyu temizleyip altın örnekleri yükleyin. "
+                "Aranan sondalar aşağıda; elle doğrulamak için "
+                "`SELECT count() FROM events_ocsf WHERE position(raw_data, '<sonda>') > 0`."
             ),
         )
 
-    return Preflight(ok=True, rows=total, vendors=vendors, golden=golden)
+    return Preflight(ok=True, rows=total, vendors=vendors, golden=golden, probes=probes)
 
 
 #: `events_ocsf` görünümünün kolonları (db/clickhouse/0003, 0004).
@@ -647,15 +795,33 @@ def main() -> int:
         if not checked.ok:
             print("ÖLÇÜM YAPILMADI.", file=sys.stderr)
             print(checked.reason, file=sys.stderr)
+
+            if checked.vendors:
+                print("\nVendor dağılımı:", file=sys.stderr)
+
+                for vendor, rows in sorted(checked.vendors.items()):
+                    mark = "altın örnek bulundu" if checked.golden.get(vendor) else "BULUNAMADI"
+                    print(f"  {vendor:<10} {rows:>8}   {mark}", file=sys.stderr)
+
+            # Sondaları basmak, "bulamadım" ile "yanlış yerde aradım" arasını
+            # operatörün elle ayırabilmesi için. Aksi hâlde bekçinin reddi
+            # teşhis edilemez bir çıkmaz sokak.
+            if checked.probes:
+                print("\nAranan sondalar (herhangi birinin tutması yeterliydi):", file=sys.stderr)
+
+                for vendor, candidates in sorted(checked.probes.items()):
+                    for probe in candidates:
+                        print(f"  {vendor:<10} |{probe}|", file=sys.stderr)
+
             return 3
 
         print(f"Ön kontrol: events_ocsf {checked.rows} satır")
 
         for vendor, rows in sorted(checked.vendors.items()):
+            # Satırı olup altın örneği olmayan vendor buraya gelemiyor:
+            # ön kontrol onu reddediyor. Kalan tek belirsizlik "hiç veri yok".
             if checked.golden.get(vendor):
                 flag = "   altın örnek bulundu"
-            elif rows:
-                flag = "   ← satır var ama altın örnek YOK (başka bir turdan kalmış olabilir)"
             else:
                 flag = "   ← veri yok, bu vendor'ın kuralları ölçülemez"
 

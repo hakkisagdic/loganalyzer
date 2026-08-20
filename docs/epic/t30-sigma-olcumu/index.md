@@ -142,6 +142,77 @@ geçmeden önce eşlemenin kendisi ele alınmalı. On kural var olmayan kolonlar
 gidiyor ve bu kapsam daraltılarak çözülmez: daraltılan kapsamdaki kurallar da
 aynı kolonlara gidiyor.
 
+## İkinci koşum — **yine geçersiz**, ve bu sefer bekçi kendi kendini kapattı
+
+Altın örnekler yüklendi, koşum yapıldı, `compiled 24 / runs 14 / matches 2`
+çıktı. Ama ön kontrol dört vendor için de *"satır var ama altın örnek YOK"*
+dedi — **ve buna rağmen ölçümü yaptı.**
+
+İkisi birden imkânsız görünüyor; imkânsız olmayan tek açıklaması kapının
+kendisiydi:
+
+```python
+if probes and not any(golden.values()):   # ← `probes and` bekçiyi kapatıyor
+```
+
+Sonda listesi boşsa `probes and ...` her zaman `False`; ölçüm geçiyor. Üstelik
+boş sözlükte `.get(vendor)` `None` döndüğü için ekran dört vendor'a da "YOK"
+basıyor. **Bekçi hem yanlış konuşuyor hem sözünü tutmuyor** — "geçemezse ölçüm
+hiç yapılmaz" yazılmıştı, yapıldı.
+
+Çıktının kendisi bunu kanıtlıyor: sondalar türetilmiş olsaydı ve hiçbiri
+tutmasaydı `not any(...)` doğru olur, koşum çıkış kodu 3 ile ölürdü. Ölmedi.
+Öyleyse `probes` boştu. Sondaların neden türetilemediği ikincil: `measure.py`
+depo ağacının dışından koşturulduğunda `_repo_root()` sessizce `here.parent`'a
+geri çekiliyordu ve altın örnek dizinleri bulunamıyordu.
+
+**Bu, ilk koşumdaki hatadan daha tehlikeli bir sınıf.** İlki sahte veriyi
+kabul ediyordu — yanlış pozitif. İkincisi **doğru veriyi reddediyor** görünüp
+yine de geçiyor: yanlış negatif *ve* atlanan kapı, bir arada.
+
+Deponun §7'si bunu zaten yazıyor: *"bir bekçinin sessizce atlaması, bekçinin
+kendisinden tehlikelidir."* `Produces<T>` kapısının elle yazılmış listeden
+beslenmesiyle aynı desen — orada üç test yeşildi ve on altı uç kapıya hiç
+görünmüyordu.
+
+### Ne düzeltildi
+
+| Eski davranış | Yeni davranış |
+| --- | --- |
+| Sonda listesi boşsa kapı atlanıyor | **Reddediyor** — boş liste cevap değil arıza; kurulum bozuk demek |
+| `_repo_root()` bulamayınca `here.parent` | `None` dönüyor; sessiz geri çekilme yok |
+| Sonda sorgusu hatası yutuluyor | **Reddediyor** — kırık sorgu ile yüklenmemiş veri ayrı şeyler |
+| Yalnızca "hiçbiri bulunamadı" reddediliyor | **Satırı olup altın örneği olmayan her vendor** reddediliyor |
+| Vendor başına tek sonda, en uzun satırın ortası | Beş sonda, farklı satırlardan, **herhangi biri** tutsun |
+| Sonda damgayla kesişebiliyor | Damga taşımayan pencere seçiliyor (`_VOLATILE`) |
+| Reddedince sebep yok | **Aranan sondalar basılıyor** — operatör elle doğrulayabilsin |
+
+Son iki satır koordinatörün damga hipotezinin karşılığı. Bu koşumun sebebi
+damga değildi (kapı zaten kapalıydı), ama hipotez geçerli: yükleyici damgayı
+yeniden yazıyor ve eski sonda seçimi ona düşebilirdi. İkisi ayrı ayrı
+kapatıldı.
+
+### Bekçilerin kırmızı yanabildiği ölçüldü
+
+Dört düzeltmenin dördü de tek tek geri alındı ve ilgili test kırmızı yandı.
+Beşincisi — *"sondalar damga taşımıyor"* — geri alındığında **yeşil kaldı**:
+bugünkü örnek dosyalarında en uzun satırların ortası zaten damgasız, yani o
+test filtreyi değil verinin şansını ölçüyordu. §6'nın "geçen test geçtiğini
+kanıtlamaz" durumu. Ortası bilerek damga olan bir satırla ikinci bir test
+yazıldı; o kırmızı yanıyor.
+
+Ölçüm aracının test sayısı 13 → **19**.
+
+### `compiled 24 / runs 14 / matches 2` ne söylüyor
+
+`runs = 14` **birinci koşumla birebir aynı**. Veri tamamen değiştiği hâlde
+değişmemesi, "kolon varlığı veriden bağımsızdır" iddiasını doğruluyor —
+yukarıdaki statik boşluk analizinin canlı karşılığı.
+
+`matches` 0'dan 2'ye çıktı, yani veri gerçekten değişti. Ama **%8 kapsam
+kararına dayanak değil**: ön kontrol kendi verisini tanımadığı sürece o sayının
+arkasında duran bir şey yok.
+
 ### Düzeltme: `runs = 14`'ün bir kısmı prototipin kendi kusuru
 
 İlk yorumum yanlıştı. *"Sorun eşlemenin atlanması değil, ürettiği adların bizde

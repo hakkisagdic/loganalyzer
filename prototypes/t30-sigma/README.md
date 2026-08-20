@@ -46,8 +46,10 @@ Canlı kip, ölçmeye başlamadan önce `events_ocsf`'e bakıyor ve **geçemezse
 | --- | --- |
 | Sorgu hata veriyor | Reddediyor — görünüm yok ya da kimlik yanlış |
 | Tablo boş | Reddediyor — statik kipi öneriyor |
-| **Satır var ama altın örnek yok** | **Reddediyor** — veri başka bir turdan kalmış |
-| Altın örnek bulundu | Geçiyor, vendor dağılımını basıyor |
+| **Sonda türetilemedi** | **Reddediyor** — kurulum sorunu; kapının kendisi çalışmıyor |
+| Sonda sorgusu hata verdi | Reddediyor — "bulamadım" ile karıştırılmıyor |
+| **Bir vendor'ın satırı var, altın örneği yok** | **Reddediyor** — o vendor'ın verisi yabancı |
+| Her yüklü vendor'ın altın örneği bulundu | Geçiyor, vendor dağılımını basıyor |
 
 Üçüncü satır bir koşumda **gerçekten yaşandı**: tabloda önceki bir turdan kalma
 1.000.000 satırlık tek-vendor'lu sentetik benchmark verisi vardı. Kontrol
@@ -55,10 +57,23 @@ Canlı kip, ölçmeye başlamadan önce `events_ocsf`'e bakıyor ve **geçemezse
 O sıfır eşlemenin değil **verinin** sonucuydu.
 
 Kontrol bu yüzden artık bir **yokluk** kanıtı değil **varlık** kanıtı arıyor:
-altın örnek dosyalarının en uzun satırından türetilen 60 karakterlik bir sonda
-gövdede (`raw_data`) gerçekten duruyor mu. Sonda çalışma anında dosyadan
-türetiliyor — sabit yazılsaydı örnekler değiştiği gün kontrol sessizce yalan
-söylemeye başlardı.
+altın örnek dosyalarından türetilen bir sonda gövdede (`raw_data`) gerçekten
+duruyor mu. Sonda çalışma anında dosyadan türetiliyor — sabit yazılsaydı
+örnekler değiştiği gün kontrol sessizce yalan söylemeye başlardı.
+
+**Sonda tasarımı iki kez düzeltildi, ikisi de gerçek bir yanlış negatiften
+sonra.** Vendor başına **beş** sonda türetiliyor, her biri **damga taşımayan**
+bir bölgeden alınıyor, ve **herhangi birinin** tutması yetiyor:
+
+- Yükleyici örneklerin 2015–2024 tarihlerini ölçüm penceresine taşımak için
+  damgayı yeniden yazıyor. Damgayla kesişen bir sonda, veri doğru yüklenmiş
+  olsa bile tutmaz.
+- Tek satıra bağlı sonda kırılgan: yükleyici satırları tekilleştiriyorsa ya da
+  bir alt küme yüklüyorsa, seçilen *o* satır tabloda olmayabilir.
+
+Reddedildiğinde **aranan sondalar basılıyor**. Aksi hâlde bekçinin reddi
+teşhis edilemez bir çıkmaz sokak olur; operatör aynı sorguyu elle koşturup
+bekçinin mi yoksa verinin mi yanlış olduğunu ayırabilmeli.
 
 Sebep: boş bir görünüme karşı koşulan ölçüm her kural için `matches=false`
 üretir ve o tablo "kapsam düşük" diye okunur. Sıfırı sonuç sanmak, bu ticket'ın
