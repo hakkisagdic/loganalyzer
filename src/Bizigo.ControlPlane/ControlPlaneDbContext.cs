@@ -37,6 +37,8 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
     // model koşturup karşılaştırabilsin.
     public DbSet<EvidenceBundleEntity> EvidenceBundles => Set<EvidenceBundleEntity>();
 
+    public DbSet<GoldenReviewEntity> GoldenReviews => Set<GoldenReviewEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -116,6 +118,11 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
         {
             e.HasIndex(x => new { x.RuleId, x.FiredAt });
             e.HasIndex(x => x.FiredAt);
+
+            // "Bakılmayı bekleyen alarmlar" (T38). Durum iki değerli, yani tek
+            // başına seçici değil — zamanla birlikte indeksleniyor ki açık
+            // olanların en yenisi sabit maliyetle gelsin.
+            e.HasIndex(x => new { x.State, x.FiredAt });
         });
 
         modelBuilder.Entity<MaintenanceWindowEntity>(e =>
@@ -156,6 +163,22 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
 
             // "Şu zaman aralığına ait paketler".
             e.HasIndex(x => new { x.WindowFrom, x.WindowTo });
+        });
+
+        modelBuilder.Entity<GoldenReviewEntity>(e =>
+        {
+            // Kalite göstergesinin tek sorgusu: kapsam altında karar dağılımı.
+            // Grup önde çünkü filtre daima grupla başlıyor (K17) — kapsamsız
+            // gösterge diye bir şey yok.
+            e.HasIndex(x => new { x.OwnerGroup, x.ReviewedAt });
+
+            // Bir paketin incelemesi var mı. Tekil DEĞİL: aynı paket için iki
+            // kişinin ayrı kararı meşru bir veri ve F4'ün ölçmek isteyeceği bir
+            // şey — insanlar birbiriyle ne kadar anlaşıyor.
+            e.HasIndex(x => x.BundleId);
+
+            // Tetiklenmeden incelemeye gidiş; kapalı alarmın kaydını açar.
+            e.HasIndex(x => x.TriggerId);
         });
     }
 }

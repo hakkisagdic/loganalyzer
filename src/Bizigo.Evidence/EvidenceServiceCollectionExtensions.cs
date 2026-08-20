@@ -52,7 +52,19 @@ public static class EvidenceServiceCollectionExtensions
         // ama scoped bırakıldı: fabrika ile aynı ömürde durmaları, ileride
         // ikisinin arasına bir denetim kaydı girdiğinde sürpriz çıkarmıyor.
         services.AddScoped<EvidenceBundleFactory>();
+
+        // Aynı örnek, iki isim. Arayüz T38'in kapatma yolunun üretimi
+        // ÇAĞIRDIĞINI sınayabilmesi için var; ikinci bir uygulama yok ve
+        // olmamalı (§9).
+        services.AddScoped<IEvidenceBundleSource>(sp => sp.GetRequiredService<EvidenceBundleFactory>());
         services.AddScoped<EvidenceBundleStore>();
+
+        // Altın küme ve alarm kapatma (T38). Kapatma servisi kanıt fabrikasını
+        // tutuyor — o da `IScopedQuery` taşıyor — dolayısıyla scoped olmak
+        // ZORUNDA. Singleton yapılsaydı `ArchitectureTests`'in ömür bekçisi
+        // kırmızı yanardı; T26'da tam olarak bu kusur sessizce yaşamıştı.
+        services.AddScoped<GoldenReviewStore>();
+        services.AddScoped<AlertClosureService>();
 
         return services;
     }
