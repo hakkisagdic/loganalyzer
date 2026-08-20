@@ -1,5 +1,7 @@
+using Bizigo.ControlPlane;
 using Bizigo.Evidence;
 using Bizigo.Query;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -28,6 +30,12 @@ public sealed class EvidenceCompositionTests
 
         // Üretimdeki ömürle aynı: scoped.
         services.AddScoped<IScopedQuery, RecordingScopedQuery>();
+
+        // Kanıt paketi deposu (T36) kontrol düzlemine yazıyor. Bellek içi bir
+        // fabrika yetiyor: sınanan şey bağlantı değil, grafiğin kurulabilmesi.
+        services.AddSingleton<IDbContextFactory<ControlPlaneDbContext>>(
+            _ => new InMemoryControlPlaneFactory());
+
         services.AddBizigoEvidence();
 
         // `ValidateScopes` bu testin tamamı: esir bağımlılığı yakalayan şey bu.

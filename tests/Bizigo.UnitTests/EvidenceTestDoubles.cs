@@ -72,8 +72,20 @@ internal class RecordingScopedQuery : IScopedQuery
         Guid eventId, EventViewKind view, AccessScope scope, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<EventFieldView>>([]);
 
-    public Task<long> CountEventsAsync(EventQuery query, AccessScope scope, CancellationToken cancellationToken = default) =>
-        Task.FromResult((long)Events.Count);
+    /// <summary>
+    /// Sayım sorguları — T36'nın zaman güvenilirliği ölçümü <b>filtreli ve
+    /// filtresiz</b> iki sayım yapıyor ve testin ikisini ayırt etmesi gerekiyor.
+    /// </summary>
+    public List<EventQuery> CountQueries { get; } = [];
+
+    /// <summary>Sayımı sorguya göre üreten kanca; verilmezse olay sayısı dönüyor.</summary>
+    public Func<EventQuery, long>? CountOverride { get; set; }
+
+    public virtual Task<long> CountEventsAsync(EventQuery query, AccessScope scope, CancellationToken cancellationToken = default)
+    {
+        CountQueries.Add(query);
+        return Task.FromResult(CountOverride?.Invoke(query) ?? Events.Count);
+    }
 
     public Task<bool> CanReadRawObjectAsync(string objectKey, AccessScope scope, CancellationToken cancellationToken = default) =>
         Task.FromResult(false);
