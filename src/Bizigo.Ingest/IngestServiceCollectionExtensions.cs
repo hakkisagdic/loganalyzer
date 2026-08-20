@@ -49,6 +49,7 @@ public static class IngestServiceCollectionExtensions
         // Varsayılan sayaç yalnızca ingest tek başına barındırıldığında devreye
         // girer; API bileşiminde ClickHouse yazıcısı (T07) önce kaydediliyor.
         services.TryAddSingleton<IParsedEventSink, CountingParsedEventSink>();
+        services.TryAddSingleton<EventComposer>();
         services.TryAddSingleton<IIngestSink, ParsingSink>();
 
         services.AddHostedService<IngestPipeline>();

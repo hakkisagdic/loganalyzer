@@ -496,6 +496,71 @@ namespace Bizigo.ControlPlane.Migrations
                     b.ToTable("change_webhook_deliveries", "bizigo");
                 });
 
+            modelBuilder.Entity("Bizigo.ControlPlane.EvidenceBundleEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("BaselineFrom")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("baseline_from");
+
+                    b.Property<DateTimeOffset>("BaselineTo")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("baseline_to");
+
+                    b.Property<string>("ContentHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("content_hash");
+
+                    b.Property<DateTimeOffset>("GatheredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("gathered_at");
+
+                    b.Property<bool>("IsPartial")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_partial");
+
+                    b.Property<long>("OutOfScopeCount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("out_of_scope_count");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("schema_version");
+
+                    b.Property<DateTimeOffset>("WindowFrom")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("window_from");
+
+                    b.Property<DateTimeOffset>("WindowTo")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("window_to");
+
+                    b.HasKey("Id")
+                        .HasName("pk_evidence_bundles");
+
+                    b.HasIndex("ContentHash")
+                        .HasDatabaseName("ix_evidence_bundles_content_hash");
+
+                    b.HasIndex("GatheredAt")
+                        .HasDatabaseName("ix_evidence_bundles_gathered_at");
+
+                    b.HasIndex("WindowFrom", "WindowTo")
+                        .HasDatabaseName("ix_evidence_bundles_window_from_window_to");
+
+                    b.ToTable("evidence_bundles", "bizigo");
+                });
+
             modelBuilder.Entity("Bizigo.ControlPlane.IdpGroupMappingEntity", b =>
                 {
                     b.Property<string>("IdpGroup")

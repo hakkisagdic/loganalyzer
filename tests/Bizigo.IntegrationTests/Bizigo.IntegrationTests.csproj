@@ -31,6 +31,15 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bizigo.Authoring\Bizigo.Authoring.csproj" />
     <ProjectReference Include="..\..\src\Bizigo.Alerting\Bizigo.Alerting.csproj" />
+    <!-- Kanıt paketi gerçek Postgres'e karşı (T36): bellek içi sağlayıcıda jsonb yok. -->
+    <ProjectReference Include="..\..\src\Bizigo.Evidence\Bizigo.Evidence.csproj" />
+
+    <!--
+      T39: altın örnek yükleyicisi CLI'da duruyor ve `GoldenSeedClickHouseTests`
+      onu canlı ClickHouse'a karşı koşturuyor. Yükleyiciyi test için ikinci kez
+      yazmak, ölçüm verisini üreten yolun kendisini sınamamak olurdu.
+    -->
+    <ProjectReference Include="..\..\src\Bizigo.Cli\Bizigo.Cli.csproj" />
   </ItemGroup>
 
 </Project>

@@ -72,7 +72,16 @@ export function DataTable<TRow>({ caption, columns, rows, rowKey }: DataTablePro
                   // Türkçe gövde soldan sağa. Sabit `ltr` Arapçayı okunamaz kılar.
                   dir={column.freeText ? "auto" : undefined}
                 >
-                  {column.render(row)}
+                  {/*
+                    Serbest metin ayrı bir öğede: kırpma kuralları hücreye
+                    uygulanınca `<td>` tablo hücresi olmaktan çıkıyor ve satır
+                    yüksekliği yanlış hesaplanıyor (bkz. ui.module.css).
+                  */}
+                  {column.freeText ? (
+                    <span className={styles.cellBodyText}>{column.render(row)}</span>
+                  ) : (
+                    column.render(row)
+                  )}
                 </td>
               ))}
             </tr>

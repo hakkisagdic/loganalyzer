@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Bizigo.Cli;
+using Bizigo.Cli.Seeding;
 using Bizigo.Storage.ClickHouse;
 
 var patternsOption = new Option<DirectoryInfo?>("--patterns")
@@ -118,9 +119,135 @@ migrateCommand.SetAction(async (parse, cancellationToken) =>
 var schemaCommand = new Command("schema", "Depolama şeması işlemleri.");
 schemaCommand.Subcommands.Add(migrateCommand);
 
+// ── seed golden (T39) ───────────────────────────────────────────────────────
+// İki F3 ölçümü de gerçek veri istiyor: Sigma kapsamı (T30) vendor başına
+// sayıyor, baseline penceresi (T35) tabanı 1 saatten 30 güne süpürüyor. İkisinin
+// de ön kontrolü sentetik kıyaslama verisini reddediyor ve doğru yapıyor.
+var seedCatalogArgument = new Argument<DirectoryInfo>("dizin")
+{
+    Description = "Parser kataloğu dizini (altın örnekler `<id>/samples/*.log` altında).",
+    DefaultValueFactory = _ => new DirectoryInfo(Path.Combine("catalog", "parsers")),
+};
+
+var masksOption = new Option<FileInfo?>("--masks")
+{
+    Description = "Maskeleme sözlüğü (varsayılan: catalog/masks/bizigo-masks.yaml).",
+};
+
+var clickHouseOption = new Option<string?>("--clickhouse")
+{
+    Description = "ClickHouse bağlantı dizesi (varsayılan: BIZIGO_CLICKHOUSE ortam değişkeni).",
+};
+
+var ownerGroupOption = new Option<string>("--owner-group")
+{
+    Description = "Yükleyicinin yazdığı TEK kapsam grubu.",
+    DefaultValueFactory = _ => "golden",
+};
+
+var spanOption = new Option<int>("--span-days")
+{
+    Description = "Zaman yayılımının uzunluğu (gün). Baseline ölçümü 30 güne kadar süpürüyor.",
+    DefaultValueFactory = _ => 30,
+};
+
+var eventsOption = new Option<int>("--events")
+{
+    Description = "Hedeflenen toplam olay sayısı.",
+    DefaultValueFactory = _ => 120_000,
+};
+
+var zipfOption = new Option<double>("--zipf")
+{
+    Description = "Sıklık yasasının üssü; büyüdükçe kuyruk seyrekleşir ve eğrinin dirseği uzaklaşır.",
+    DefaultValueFactory = _ => 2.0,
+};
+
+var seedOption = new Option<int>("--seed")
+{
+    Description = "Deterministik üretim tohumu.",
+    DefaultValueFactory = _ => 39,
+};
+
+var anchorOption = new Option<DateTimeOffset?>("--anchor")
+{
+    Description = "Yayılımın sağ ucu (varsayılan: şimdi, UTC).",
+};
+
+var batchRowsOption = new Option<int>("--batch-rows")
+{
+    Description = "Tek INSERT'e giden satır sayısı.",
+    DefaultValueFactory = _ => 20_000,
+};
+
+var replaceOption = new Option<bool>("--replace")
+{
+    Description = "Kapsam grubunun mevcut satırlarını sil ve yeniden yaz. YALNIZCA o grubu etkiler.",
+};
+
+var dryRunOption = new Option<bool>("--dry-run")
+{
+    Description = "ClickHouse'a hiç dokunma: üret, zaman damgası bekçisini koştur, raporla.",
+};
+
+var seedGoldenCommand = new Command(
+    "golden",
+    "Altın örnekleri gerçek boru hattından geçirip ClickHouse'a yazar (T39).");
+seedGoldenCommand.Arguments.Add(seedCatalogArgument);
+seedGoldenCommand.Options.Add(masksOption);
+seedGoldenCommand.Options.Add(clickHouseOption);
+seedGoldenCommand.Options.Add(ownerGroupOption);
+seedGoldenCommand.Options.Add(spanOption);
+seedGoldenCommand.Options.Add(eventsOption);
+seedGoldenCommand.Options.Add(zipfOption);
+seedGoldenCommand.Options.Add(seedOption);
+seedGoldenCommand.Options.Add(anchorOption);
+seedGoldenCommand.Options.Add(batchRowsOption);
+seedGoldenCommand.Options.Add(replaceOption);
+seedGoldenCommand.Options.Add(dryRunOption);
+seedGoldenCommand.Options.Add(patternsOption);
+seedGoldenCommand.Options.Add(mappingsOption);
+seedGoldenCommand.SetAction((parse, cancellationToken) =>
+{
+    var catalog = parse.GetValue(seedCatalogArgument)!;
+
+    // Saniyeye indiriliyor: örnek biçimlerin çoğu saniyenin altını taşımıyor ve
+    // ekilen an ile yeniden yazılan satır birbirini tutmak zorunda.
+    var anchor = parse.GetValue(anchorOption) ?? DateTimeOffset.UtcNow;
+    anchor = new DateTimeOffset(anchor.Ticks - (anchor.Ticks % TimeSpan.TicksPerSecond), anchor.Offset)
+        .ToUniversalTime();
+
+    var request = new SeedGoldenRequest(
+        Catalog: catalog.FullName,
+        MaskFile: parse.GetValue(masksOption)?.FullName
+            ?? Path.Combine(catalog.Parent?.FullName ?? ".", "masks", "bizigo-masks.yaml"),
+        ConnectionString: parse.GetValue(clickHouseOption)
+            ?? Environment.GetEnvironmentVariable("BIZIGO_CLICKHOUSE")
+            ?? "Host=localhost;Port=8123;Database=bizigo;Username=bizigo;Password=bizigo",
+        OwnerGroup: parse.GetValue(ownerGroupOption)!,
+        Plan: new SeedPlanOptions(
+            Anchor: anchor,
+            Span: TimeSpan.FromDays(parse.GetValue(spanOption)),
+            TotalEvents: parse.GetValue(eventsOption),
+            ZipfExponent: parse.GetValue(zipfOption),
+            Seed: parse.GetValue(seedOption)),
+        BatchRows: parse.GetValue(batchRowsOption),
+        Replace: parse.GetValue(replaceOption),
+        DryRun: parse.GetValue(dryRunOption));
+
+    return SeedCommandHandlers.Golden(
+        request,
+        Toolbox(parse.GetValue(patternsOption), parse.GetValue(mappingsOption)),
+        cancellationToken);
+});
+
+var seedCommand = new Command("seed", "Ölçüm ve geliştirme verisi yükler.");
+seedCommand.Subcommands.Add(seedGoldenCommand);
+
 var root = new RootCommand("bizigo — log analyzer CLI");
 root.Subcommands.Add(parserCommand);
 root.Subcommands.Add(schemaCommand);
+root.Subcommands.Add(seedCommand);
 
 return await root.Parse(args).InvokeAsync().ConfigureAwait(false);
 

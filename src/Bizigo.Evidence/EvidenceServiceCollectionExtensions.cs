@@ -36,7 +36,23 @@ public static class EvidenceServiceCollectionExtensions
         services.AddScoped<IEvidenceProvider, LogWindowProvider>();
         services.AddScoped<IEvidenceProvider, ChangeFeedProvider>();
 
+        // F3'ün beş deterministik korelasyonu (T35). Beşi de ayrı sağlayıcı ve
+        // toplayıcı hiçbirini tanımıyor — T34'ün taşıyıcı iddiasının karşılığı:
+        // bu beş satır eklendiğinde `EvidenceCollector` değişmedi.
+        services.AddScoped<IEvidenceProvider, FirstSeenSignatureProvider>();
+        services.AddScoped<IEvidenceProvider, VolumeDeviationProvider>();
+        services.AddScoped<IEvidenceProvider, SilenceProvider>();
+        services.AddScoped<IEvidenceProvider, AttributeLiftProvider>();
+        services.AddScoped<IEvidenceProvider, PropagationProvider>();
+
         services.AddScoped<EvidenceCollector>();
+
+        // Kanıt paketi (T36). Fabrika scoped — `IScopedQuery`'yi tutuyor.
+        // Depo, `IDbContextFactory` üzerinden çalıştığı için singleton olabilirdi
+        // ama scoped bırakıldı: fabrika ile aynı ömürde durmaları, ileride
+        // ikisinin arasına bir denetim kaydı girdiğinde sürpriz çıkarmıyor.
+        services.AddScoped<EvidenceBundleFactory>();
+        services.AddScoped<EvidenceBundleStore>();
 
         return services;
     }

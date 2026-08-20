@@ -1,7 +1,7 @@
 ---
 title: "T20 — Katalog yönetim ekranı"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # T20 — Katalog yönetim ekranı

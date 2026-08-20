@@ -133,3 +133,75 @@ public sealed record ChangeQuery
     public IReadOnlyList<string> ChangeKinds { get; init; } = [];
     public int Limit { get; init; } = 500;
 }
+
+/// <summary>
+/// F3'ün deterministik korelasyonlarının ortak girdisi (T35): olay penceresi ve
+/// karşılaştırma tabanı.
+///
+/// <para>
+/// <b>Baseline uzunluğunun varsayılanı yok — bilerek.</b> Çok kısa seçilirse her
+/// yeni şey "ilk-görülen" olur ve ürün gürültü makinesine döner; çok uzun
+/// seçilirse gerçek yenilik gürültüde kaybolur. İkisi de tahminle karar
+/// verilecek şey değil, ve ikisinin de belirtisi yok: yanlış seçilmiş bir taban
+/// hata vermez, yalnızca sinyali sessizce işe yaramaz kılar.
+/// </para>
+/// </summary>
+public sealed record CorrelationWindow
+{
+    public required DateTimeOffset From { get; init; }
+    public required DateTimeOffset To { get; init; }
+    public required DateTimeOffset BaselineFrom { get; init; }
+    public required DateTimeOffset BaselineTo { get; init; }
+
+    /// <summary>Kapsam <b>daraltması</b>; kapsamı genişletemez.</summary>
+    public IReadOnlyList<string> OwnerGroups { get; init; } = [];
+
+    public IReadOnlyList<string> SourceIds { get; init; } = [];
+}
+
+/// <param name="SignatureHash">
+/// <c>0</c> asla dönmüyor: imzasız satırlar (16 KB maskeleme sınırını aşanlar)
+/// sorgu tarafında eleniyor. Elenmeselerdi hepsi tek bir sahte imzada toplanır
+/// ve "hacim sapması" o uydurma kümede patlardı.
+/// </param>
+/// <param name="SampleBody">Kanıt satırının okunabilir olması için bir örnek gövde.</param>
+public sealed record SignatureCount(
+    ulong SignatureHash,
+    long EventCount,
+    DateTimeOffset FirstSeenAt,
+    int SourceCount,
+    string SampleBody);
+
+/// <param name="BaselineCount">
+/// Taban penceresindeki <b>ham</b> sayım. Orana çevirme burada değil çağıran
+/// tarafta: iki pencerenin uzunluğu farklı ve bölmeyi SQL'e gömmek, düzeltmenin
+/// yapılıp yapılmadığını görünmez kılardı.
+/// </param>
+public sealed record SignatureVolume(
+    ulong SignatureHash,
+    long WindowCount,
+    long BaselineCount,
+    string SampleBody);
+
+/// <param name="Field">Kolon adı — izin listesinden, çağırandan gelen dizgi değil.</param>
+public sealed record FieldValueCount(
+    string Field,
+    string Value,
+    long WindowCount,
+    long BaselineCount);
+
+/// <param name="FirstDegradedAt">
+/// Kaynağın penceredeki <b>ilk bozulma</b> anı. "Bozulma"nın tanımı sorguda:
+/// ayrıştırması başarısız olan ya da önem derecesi eşiğin altına inen olay.
+/// </param>
+/// <param name="UnreliableTimeCount">
+/// Bu kaynağın penceredeki olaylarından kaçının zamanı <c>parsed</c> değil.
+/// Sıfırdan büyükse sıralama <b>kaymış olabilir</b>: gözlem zamanına düşmüş bir
+/// olayın gerçek zamanı dakikalarca önce olabilir.
+/// </param>
+public sealed record SourceOnset(
+    string OwnerGroup,
+    string SourceId,
+    DateTimeOffset FirstDegradedAt,
+    long DegradedCount,
+    long UnreliableTimeCount);

@@ -1,5 +1,7 @@
+using Bizigo.ControlPlane;
 using Bizigo.Evidence;
 using Bizigo.Query;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -28,6 +30,12 @@ public sealed class EvidenceCompositionTests
 
         // Üretimdeki ömürle aynı: scoped.
         services.AddScoped<IScopedQuery, RecordingScopedQuery>();
+
+        // Kanıt paketi deposu (T36) kontrol düzlemine yazıyor. Bellek içi bir
+        // fabrika yetiyor: sınanan şey bağlantı değil, grafiğin kurulabilmesi.
+        services.AddSingleton<IDbContextFactory<ControlPlaneDbContext>>(
+            _ => new InMemoryControlPlaneFactory());
+
         services.AddBizigoEvidence();
 
         // `ValidateScopes` bu testin tamamı: esir bağımlılığı yakalayan şey bu.
@@ -46,7 +54,11 @@ public sealed class EvidenceCompositionTests
 
         var collector = scope.ServiceProvider.GetRequiredService<EvidenceCollector>();
 
-        Assert.Equal(2, collector.Providers.Count);
+        // T34'te iki, T35'in beş korelasyonuyla yedi. Sayının burada yazılı
+        // olması bilinçli: bir sağlayıcı sessizce düşerse rapor onu hiç
+        // aramaz ve eksikliği yalnızca bir RCA raporunun zayıflığı olarak,
+        // aylar sonra görünür.
+        Assert.Equal(7, collector.Providers.Count);
     }
 
     /// <summary>
@@ -64,7 +76,7 @@ public sealed class EvidenceCompositionTests
 
         Assert.Equal(
             [EvidenceKind.Log, EvidenceKind.Change],
-            collector.Providers.Select(p => p.Kind).Order());
+            collector.Providers.Select(p => p.Kind).Distinct().Order());
 
         Assert.Equal(
             [EvidenceKind.Metric, EvidenceKind.Trace, EvidenceKind.Topology],
@@ -85,7 +97,17 @@ public sealed class EvidenceCompositionTests
         var ids = scope.ServiceProvider.GetRequiredService<EvidenceCollector>()
             .Providers.Select(p => p.Id).Order().ToArray();
 
-        Assert.Equal(["change.feed", "logs.window"], ids);
+        Assert.Equal(
+            [
+                "change.feed",
+                "logs.attribute-lift",
+                "logs.first-seen",
+                "logs.propagation",
+                "logs.silence",
+                "logs.volume",
+                "logs.window",
+            ],
+            ids);
         Assert.Equal(ids.Length, ids.Distinct(StringComparer.Ordinal).Count());
     }
 }

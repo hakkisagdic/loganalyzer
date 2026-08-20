@@ -51,6 +51,7 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
         _query = new ScopedQuery(
             new EventReader(_context),
             new ChangeEventReader(_context),
+            new CorrelationReader(_context),
             writer,
             await _factory.CreateDbContextAsync(TestContext.Current.CancellationToken),
             new NoOpAuditSink());

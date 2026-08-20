@@ -100,6 +100,16 @@ jobs:
         working-directory: ui
         run: npm run typecheck
 
+      # Ekran görüntüsü bekçileri gerçek bir tarayıcı istiyor (T28). Kurulum
+      # olmadan `beforeAll` içindeki `chromium.launch()` düşer ve paket kırmızı
+      # yanar — bu doğru davranış: testi kendini sessizce atlayacak hâle
+      # getirmek, bekçinin kendisinden tehlikeli olurdu. Görüntüler bu turda
+      # hiçbir birim testinin bulamayacağı iki yerleşim kusuru buldu; bedeli
+      # bir chromium indirmesi.
+      - name: Tarayıcı (ekran görüntüsü bekçileri için)
+        working-directory: ui
+        run: npx playwright install --with-deps chromium
+
       # BFF deseninin kanıtı burada koşuyor: erişim token'ı tarayıcıya ulaşmıyor.
       - name: Testler
         working-directory: ui
@@ -108,6 +118,125 @@ jobs:
       - name: Derleme
         working-directory: ui
         run: npm run build
+
+  sigma-build:
+    name: Sigma derleme hattı — kapılar ve testler
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      # Backend `requires-python >=3.13`; sidecar imajı da `python:3.13-slim`.
+      # Derleme hattı üretimde kurulacak olandan başka bir sürümde koşmamalı.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      # `tools/sigma-build/requirements.txt` BİLEREK kurulmuyor: o dosya
+      # sidecar'ınkine işaret ediyor ve drain3'ü bir git SHA'sından çekiyor.
+      # Bu işteki iki adımın ikisi de saf metin işi — `view_columns.py` pySigma
+      # istemiyor. Gerçek derleme adımı geldiğinde (T32 sırası §5, madde 6) tam
+      # bağımlılık kurulumu o adımla birlikte gelir.
+      - name: Test bağımlılıkları
+        run: pip install pytest==9.1.1
+
+      - name: Derleme hattı birim testleri
+        working-directory: tools/sigma-build
+        run: python -m pytest
+
+      # KAPI: görünüm kolon kümesi `db/clickhouse/*.sql`'den türetiliyor ve
+      # `detections/schema/view-columns.json` içinde duruyor. Bir göç görünümü
+      # değiştirir de bu dosya güncellenmezse kapı düşer.
+      #
+      # Sürüklenmenin tehlikeli yönü sessiz olan: görünümden çıkmış bir kolon
+      # listede kalırsa, o kolona giden Sigma kuralı derleme kapısından GEÇER ve
+      # ancak çalışma zamanında kırılır.
+      - name: Görünüm kolon kümesi güncel mi
+        working-directory: tools/sigma-build
+        run: python -m sigma_build.view_columns --check
+
+      # KAPI: üretilen SQL ve manifest depodakiyle birebir aynı değilse düşer.
+      # Aksi hâlde bir kural değişir ve kimse fark etmez (ticket'ın kendi cümlesi).
+      #
+      # Bugün sıfır kural derleniyor — kural seti ve pipeline T31'i bekliyor —
+      # ve kapı yine de KOŞUYOR. Bilerek: bu turda tam bu sınıftan bir hata
+      # bulundu (`UNMAPPED_FIELDS` tanımlanmış ama hiçbir dönüşüme verilmemiş,
+      # `unmapped_expression()` yazılmış ama hiç çağrılmamış — hazırlanmış ama
+      # bağlanmamış, ve bağlanmamış olması hiçbir yerde belirti üretmiyor).
+      # Kapıyı "hat bitince bağlarız" diye bekletmek aynı deseni kurardı.
+      - name: Üretilen kural SQL'i güncel mi
+        working-directory: tools/sigma-build
+        run: python -m sigma_build.compile --check
+
+  sigma-explain:
+    name: Kapı 2 — ClickHouse üretilen SQL'i kabul ediyor mu
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # AYRI İŞ, `integration`'ın içinde DEĞİL — bilinçli. `integration` zaten
+    # Testcontainers kaldırıyor ve oraya eklemek ek konteyner maliyeti
+    # getirmezdi. Ama derleme kapısını entegrasyon işine bağlamak, o iş
+    # ilgisiz bir sebeple düştüğünde derleme kapısının da körleşmesi demek.
+    # Bu depoda "başkasının hatası yüzünden sessizleşen bekçi" deseninin
+    # bedeli ödendi; konteyner maliyeti kapının kendi ayakları üstünde
+    # durmasından ucuz.
+    services:
+      clickhouse:
+        # Sürüm `deploy/docker-compose.yml` ile aynı: kapı, üretimde koşacak
+        # olandan başka bir ClickHouse'a soru sorarsa cevabı da başka olur.
+        image: clickhouse/clickhouse-server:26.7
+        ports:
+          - 8123:8123
+        env:
+          CLICKHOUSE_DB: bizigo
+          CLICKHOUSE_USER: bizigo
+          CLICKHOUSE_PASSWORD: bizigo
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # Göçler ürünün KENDİ migrator'ı ile uygulanıyor, elle `.sql` çalıştırarak
+      # değil. Kapı 2'nin bütün değeri "ClickHouse gerçekte ne diyor" olduğuna
+      # göre, şema da üretimin kurduğu şekilde kurulmalı. İkinci bir göç
+      # uygulayıcı yazmak, sorduğumuz sorunun cevabını değiştirirdi.
+      - name: .NET SDK kur
+        run: |
+          curl -fsSL --retry 5 --retry-all-errors https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"
+          echo "$HOME/.dotnet" >> "$GITHUB_PATH"
+
+      - name: ClickHouse hazır mı
+        run: |
+          for _ in $(seq 1 60); do
+            if curl -sf "http://localhost:8123/ping" >/dev/null; then echo "hazır"; exit 0; fi
+            sleep 2
+          done
+          echo "ClickHouse 120 sn içinde ayağa kalkmadı" >&2
+          exit 1
+
+      - name: Şemayı uygula
+        env:
+          BIZIGO_CLICKHOUSE: "Host=localhost;Port=8123;Database=bizigo;Username=bizigo;Password=bizigo"
+        run: dotnet run --project src/Bizigo.Cli --configuration Release -- schema migrate db/clickhouse
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      # KAPININ KENDİ SINAVI. Bugün `detections/sigma/` boş — kural seti T31'i
+      # bekliyor — yani aşağıdaki adım sıfır sorgu sorup sessizce yeşil kalırdı.
+      # "Sessizce yeşil bekçi" bu deponun adını koyduğu hata sınıfı, o yüzden
+      # kapı önce sonucu BİLİNEN üç sorguyla sınanıyor: ikisi reddedilmeli
+      # (tip uyuşmazlığı), biri kabul edilmeli. Kırmızı yanabildiği her koşumda
+      # ölçülüyor, bir kez değil.
+      - name: Kapı 2 kırmızı yanabiliyor mu
+        working-directory: tools/sigma-build
+        run: python -m sigma_build.explain_gate --self-test --clickhouse-url http://localhost:8123
+
+      - name: Üretilen SQL'i ClickHouse kabul ediyor mu
+        working-directory: tools/sigma-build
+        run: python -m sigma_build.explain_gate --clickhouse-url http://localhost:8123
 
   integration:
     name: Entegrasyon testleri (Testcontainers)

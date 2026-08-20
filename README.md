@@ -7,9 +7,15 @@ logları birincil alan; agentic katmanla proaktif araştırma ve kök neden anal
 boru hattı, T04 ham arşiv, T05 parser motoru, T06 dispatcher, T07 normalizasyon,
 T08 vendor kataloğu, T09 kimlik, T10 API uçları, T11 replay ve T12 sidecar.
 
-**F2 (görünürlük) sürüyor:** T13 Next.js iskeleti ve BFF, T14 OpenAPI tip
-üretimi, T15 log arama ekranı, T16 olay detayı ve ham görünüm, T17 kaynak envanteri,
-T18 parser yayın akışı.
+**F2 (görünürlük) kapandı** — T13 Next.js iskeleti ve BFF, T14 OpenAPI tip
+üretimi, T15 log arama, T16 olay detayı ve ham görünüm, T17 kaynak envanteri,
+T18–T19 parser yayın akışı ve editör, T20 katalog, T21–T23 alarm motoru,
+bildirim kanalları ve yönetim ekranı, T24–T26 değişiklik beslemesinin üç
+kaynağı, T27 doğrulama, T28 UI/UX denetimi.
+
+Kapanış belgesi: **`docs/epic/f2-kapanis/`** — ölçülen kısıtlar, yanlış çıkan
+altı iddia, kapanmayan kalemler gerekçeleriyle, bekçilerin durumu ve F3'e
+devredilen sorular. F3'e başlarken okunacak belge odur.
 
 Planlama belgeleri Traycer epic'inde:
 `mimari-kararlar` · `f1-teknik-plan` · `rca-raporu-ozelligi` · `tickets/`
@@ -361,14 +367,92 @@ npm run api:check      # CI kapısı: üretilenler depodakiyle aynı mı
 ```
 
 **Kimlik akışı Next'te (K31).** Tarayıcıya yalnızca oturum çerezi gidiyor; erişim
-ve yenileme token'ları Next sunucusunun belleğindeki oturum deposunda duruyor ve
-API'ye sunucudan sunucuya `Authorization: Bearer` ile taşınıyor. `Bizigo.Api`
-saf kaynak sunucusu: cookie ve OIDC işleyicisi taşımıyor.
+ve yenileme token'ları sunucudaki oturum deposunda duruyor ve API'ye sunucudan
+sunucuya `Authorization: Bearer` ile taşınıyor. `Bizigo.Api` saf kaynak
+sunucusu: cookie ve OIDC işleyicisi taşımıyor.
 
-⚠️ Oturum deposu **bellek içi**: Next sunucusu yeniden başlarsa herkes yeniden
-giriş yapıyor ve birden çok kopya çalıştırılırsa oturumlar kopyalar arasında
-paylaşılmıyor. `SessionStore` arayüzü paylaşılan bir depo (Redis) eklenebilsin
-diye ayrıldı; dağıtım çok kopyaya çıkmadan önce doldurulmalı.
+**Oturum deposu seçilebilir** (B7). Varsayılan `memory`, çok kopyalı kurulum
+için `redis`:
+
+```bash
+BFF_SESSION_STORE=memory                 # tek süreç — geliştirmenin varsayılanı
+BFF_SESSION_STORE=redis                  # çok kopya
+BFF_REDIS_URL=redis://localhost:6379     # `redis` seçildiyse ZORUNLU
+```
+
+Bellek içi hâl bilerek duruyor: Redis zorunlu olsaydı yerel ortam tek komutla
+ayağa kalkmazdı. Ama sınırı da yerinde — Next sunucusu yeniden başlarsa herkes
+yeniden giriş yapıyor ve **ikinci bir kopya açıldığında oturumlar paylaşılmıyor**.
+
+Üç şey depo değişse de değişmiyor:
+
+- **Çerez hâlâ opak bir anahtar.** İçinde token yok, çözülebilecek bir şey yok.
+`ui/tests/redis-session.test.ts` aynı sızıntı iddialarını Redis deposuyla da
+koşturuyor.
+- **TTL tek kaynaktan.** Redis `EXPIRE`'ı kaydın kendi ömründen türüyor, o da
+`BFF_SESSION_TTL_SECONDS`'ten. İkinci bir ömür değeri, oturumun ya erken
+ölmesi ya Redis'te sızıntı olarak kalması demekti.
+- **Ulaşılamayan depo, oturumsuz kullanıcı DEĞİL.** Redis düşerse vekil `503`
+dönüyor, `401` değil: `401` istemciye "yeniden giriş yap" dedirtir, giriş de
+aynı depoya yazmayı dener ve düşer — kullanıcı hiçbir hata görmeden sonsuz
+döngüye girer. `currentUser()`'ın üç durumlu olmasının sebebi de buydu.
+
+`redis` servisi `deploy/docker-compose.yml` içinde; kalıcılığı **kapalı**, çünkü
+oturum verisi geçici ve diske yazmak token'ları diske yazmak olurdu.
+
+### Ölçüm verisi — `bizigo seed golden` (T39)
+
+F3'ün iki ölçümü de **gerçek** veri istiyor: Sigma kapsam ölçümü
+(`prototypes/t30-sigma/measure.py`) vendor başına sayıyor, baseline penceresi
+ölçümü (`BaselineWindowMeasurement`) tabanı 1 saatten 30 güne süpürüyor. İkisinin
+de ön kontrolü sentetik kıyaslama verisini **reddediyor** ve doğru yapıyor.
+
+```bash
+export DOTNET_ROOT="$HOME/.dotnet"
+BIN=src/Bizigo.Cli/bin/Debug/net10.0/bizigo
+
+# Docker'sız: üret, zaman damgası bekçisini koştur, raporla.
+$BIN seed golden --dry-run
+
+# Yükle. Bağlantı --clickhouse ya da BIZIGO_CLICKHOUSE'tan geliyor.
+$BIN seed golden --clickhouse 'Host=localhost;Port=8123;Database=bizigo;Username=bizigo;Password=bizigo'
+
+# Yeniden yükleme: yalnızca kendi kapsam grubunu siler, tablodaki diğer veriye
+# DOKUNMAZ. Bayraksız koşum, grup doluysa hata verip durur.
+$BIN seed golden --replace
+```
+
+**Doğrudan `INSERT` yok.** Satırlar `EncodingDetector` → `EventComposer`
+(dispatch + imza + şablon) → `EventNormalizer` → `EventWriter` yolundan geçiyor,
+yani `signature_hash`, `template_id`, `attrs` (OCSF/OTel görünümlerinin girdisi),
+`time_source` ve `parse_status` üretimdekiyle **aynı** üretiliyor. Elle yazılan
+bir satır bunların hepsinde ayrışabilir ve ayrıştığı hiçbir yerde görünmez.
+
+**Zaman damgaları yeniden yazılıyor, gövde değil.** Örnek dosyalar 2015–2024
+tarihleri taşıyor; olduğu gibi yüklenirse baseline ölçümü hiçbir şey göremez.
+`SampleTimeRewriter` yalnızca damga tokenını hedef ana taşıyor — aynı olayı
+yarın basan cihaz da aynı şeyi yapar. Damga biçimi bilgisi böylece **ikinci kez**
+yazılmış oluyor (birincisi parser YAML'ının `date` adımı); ayrışma sessiz kalmasın
+diye yükleyici her olayda normalize edilmiş `ts`'nin ektiği ana eşit olduğunu
+**doğruluyor** ve tutmazsa durup satırı basıyor.
+
+**Yayılım kararı ölçülen sayıyı belirliyor**, o yüzden `GoldenSamplePlan` içinde
+yazılı: sıklık yasası Zipf (`--zipf`, varsayılan 2.0), sıra **imza** üzerinden ve
+vendor'lar arasında sırayla dağıtılmış, varış zamanları düzgün (uniform) — günlük
+ritim bilerek modellenmedi, çünkü ritim 45 dakikalık olay penceresinin
+yoğunluğunu yükleyicinin koşturulduğu saate bağlardı.
+
+> ⚠️ Baseline eğrisinin **dirseği bu fixture'ın özelliğidir**, üretimin değil:
+> yaklaşık `1/λ_min` civarında oluşuyor, yani seçilen `--zipf` ve
+> `--events`/`--span-days` oranının sonucu. Bağlayıcı sayı için ölçümü farklı
+> `--zipf` ile tekrarlayın; dirsek kayıyorsa ölçülen şey fixture'dır.
+
+> ⚠️ **Maskeleme sözlüğünde ay *adı* için maske yok.** `NUMBER` günü ve saati
+> yutuyor ama `May`/`Oct` imzada kalıyor, yani syslog biçimli vendor'larda
+> (Cisco ASA, MikroTik, nginx) aynı şablon **her ay yeni bir `signature_hash`**
+> alıyor. Ölçüldü: 87 örnek satırın 38'i bu davranışı gösteriyor; 5 günlük
+> yayılımda 81 ayrı imza, 30 günlükte 92, 90 günlükte 102. Yükleyici bunu her
+> koşumda basıyor. F3'ün "ilk-görülen imza" sinyali için gerçek bir kalem.
 
 ### Parser CLI
 

@@ -241,4 +241,63 @@ public sealed class ReplayDiffTests
         Assert.Equal("accept", change.Before);
         Assert.Equal("deny", change.After);
     }
+
+    // ------------------------------------------- atlanan açık bölüm
+
+    /// <summary>
+    /// <b>Atlanan açık bölümün kayıtları karşılaştırmaya girmiyor.</b>
+    ///
+    /// <para>
+    /// Açık bölüm replay'e alınmıyor, dolayısıyla mevcut satırları da
+    /// okunmuyor; arşivden yeniden kurulan karşılıkları elde kalırsa
+    /// <see cref="ReplayDiff.Compare"/> onları "karşılığı yok" görüp
+    /// <c>NewRows</c> sayıyor. Rapor "şu kadar yeni satır eklenecek" diyor,
+    /// uygulama o bölüme hiç dokunmuyor, satırlar zaten oradaydı.
+    /// </para>
+    ///
+    /// <para>
+    /// Bu testin ölçtüğü şey, filtrenin <b>doğru</b> kaydı çıkarması: aynı
+    /// aralıktaki kapalı bölüm kaydı yerinde kalıyor. Hepsini atan bir filtre
+    /// de <c>NewRows == 0</c> verirdi ve o yanlış olurdu.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Atlanan_acik_bolumun_kayitlari_yeni_satir_sayilmiyor()
+    {
+        var closed = Guid.CreateVersion7();
+        var open = Guid.CreateVersion7();
+
+        var rebuilt = new Dictionary<Guid, LogEvent>
+        {
+            [closed] = Event(closed, action: "deny"),
+            [open] = Event(open, action: "deny") with { Timestamp = Now.AddDays(1) },
+        };
+
+        // Motorun `LoadExistingAsync`'i yalnızca replay edilebilir bölümleri
+        // okuyor; açık bölümün satırı burada YOK — testin taklit ettiği durum bu.
+        var existing = new Dictionary<Guid, LogEvent> { [closed] = Event(closed, action: "accept") };
+
+        var filtered = ReplayEngine.ExcludeSkipped(rebuilt, ["20260818"]);
+
+        Assert.Equal([closed], filtered.Keys);
+
+        var result = ReplayDiff.Compare(filtered, existing, 10);
+
+        Assert.Equal(0, result.NewRows);
+        Assert.Equal(1, result.Changed);
+        Assert.Equal(1, result.RecordsReplayed);
+    }
+
+    /// <summary>
+    /// Atlanan bölüm yoksa sözlük <b>olduğu gibi</b> dönüyor — filtre, açık
+    /// bölüm olmayan olağan koşumda hiçbir şeyi değiştirmemeli.
+    /// </summary>
+    [Fact]
+    public void Atlanan_bolum_yokken_hicbir_kayit_dusmuyor()
+    {
+        var id = Guid.CreateVersion7();
+        var rebuilt = new Dictionary<Guid, LogEvent> { [id] = Event(id) };
+
+        Assert.Same(rebuilt, ReplayEngine.ExcludeSkipped(rebuilt, []));
+    }
 }

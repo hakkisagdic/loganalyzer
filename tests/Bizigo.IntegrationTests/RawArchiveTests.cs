@@ -23,34 +23,19 @@ public sealed class RawArchiveTests(DevStackFixture stack) : IAsyncLifetime
     private static readonly DateTimeOffset Now = new(2026, 8, 16, 12, 30, 0, TimeSpan.Zero);
 
     private IDbContextFactory<ControlPlaneDbContext> _factory = null!;
-    private string _schemaBucket = string.Empty;
+    private RawStoreOptions _options = null!;
 
     public async ValueTask InitializeAsync()
     {
-        _factory = new ControlPlaneFactory(stack.PostgresConnectionString);
-
-        await using var db = await _factory.CreateDbContextAsync(TestContext.Current.CancellationToken);
-        await db.Database.MigrateAsync(TestContext.Current.CancellationToken);
-
-        // Testler aynı Postgres'i paylaşıyor; her koşu kendi segment kimliğini
-        // kullanıyor, ama manifest artıkları sızmasın diye temizleniyor.
-        await db.RawManifest.ExecuteDeleteAsync(TestContext.Current.CancellationToken);
-        await db.Sources.ExecuteDeleteAsync(TestContext.Current.CancellationToken);
-
-        _schemaBucket = "bizigo-raw-" + Guid.NewGuid().ToString("N")[..8];
+        // Göç, temizlik ve kova adı ortak kurulum yüzeyinde (`DevStackSetup`):
+        // aynı hazırlık üç test sınıfında tekrarlanıyordu.
+        _factory = await DevStackSetup.ControlPlaneAsync(stack, TestContext.Current.CancellationToken);
+        _options = DevStackSetup.RawOptions(stack);
     }
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
-    private RawStoreOptions Options() => new()
-    {
-        ServiceUrl = stack.S3ServiceUrl,
-        Bucket = _schemaBucket,
-        AccessKey = "bizigoadmin",
-        SecretKey = "bizigoadmin",
-        ForcePathStyle = true,
-        SegmentRetention = TimeSpan.FromHours(48),
-    };
+    private RawStoreOptions Options() => _options;
 
     private static RawRecord Record(string body, string sourceKey) => new()
     {

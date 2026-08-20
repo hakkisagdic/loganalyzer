@@ -72,21 +72,17 @@ public sealed class ProducesContractTests
     /// </summary>
     private static readonly Dictionary<string, string> Pending = new(StringComparer.Ordinal)
     {
-        // T19'un yazar yüzeyi dört ucu tüketti ve dördü buradan ÇIKTI:
-        // `POST /v1/parsers/try`, `POST /v1/parsers/drafts`,
-        // `PUT /v1/parsers/drafts/{id}`, `POST /v1/parsers/drafts/{id}/submit`.
-        // Okuma uçları ve yayın/geri alma T20 ile birlikte tiplendi.
+        // BOŞ — ve F2'nin bitiş şartlarından biri buydu (T27).
         //
-        // Geriye TEK satır kaldı ve atfı yanlıştı: `POST /v1/replay`'in
-        // karşısında "T19 — replay ekranı" yazıyordu, oysa T19 parser editörü
-        // ve kapsamında replay yok. Tüketicisi olmayan bir uca yanıt tipi
-        // yazmak, bu listenin var olma sebebini boşa çıkarırdı — hangi
-        // alanların sözleşmeye girdiğine ekran karar vermeli. Muafiyete
-        // taşımak da yanlış olurdu: replay'in bir gün ekranı olacak, "hiç
-        // tüketicisi olmayacak" diyemeyiz. Sahibi belli olana kadar burada
-        // duruyor ve F2'nin kapanışında (T27) karar verilmesi gereken tek
-        // kalem bu.
-        ["POST /v1/replay"] = "sahipsiz — replay ekranının ticket'ı yok (T27 kararı)",
+        // Yirmi bir satırdan sıfıra indi; her satır, o ucu tüketen ekranla
+        // birlikte gitti. Son satır `POST /v1/replay`'di ve sahipsizdi:
+        // muafiyete taşımak "hiç tüketicisi olmayacak" demek olurdu ve
+        // replay'in bir gün ekranı olacak, tiplendirmek ise tahmin değildi —
+        // uç zaten `ReplayReport`'u döndürüyordu, yani domain tipi fiilen tel
+        // sözleşmesiydi.
+        //
+        // Buraya satır eklemek serbest ama bedeli görünür:
+        // `Izin_listesi_bosaldi_mi` kırmızı yanıyor.
     };
 
     /// <summary>
@@ -360,6 +356,36 @@ public sealed class ProducesContractTests
     }
 
     /// <summary>
+    /// <b>F2'nin son kapısı</b> (T27 kabul kriteri): bekleme listesi boşaldı mı.
+    ///
+    /// <para>
+    /// Liste "henüz tipsiz, ekran indikçe çıkacak" diyen uçları taşıyordu ve
+    /// ticket'ın kendi ifadesiyle <b>boşalmadan F2 bitmiş sayılmıyor</b>.
+    /// Kapatılması yirmi bir satırdan sıfıra indi: her satır, o ucu tüketen
+    /// ekranla birlikte gitti — çünkü tüketicisi olmadan yazılan bir yanıt tipi
+    /// tahmindir.
+    /// </para>
+    ///
+    /// <para>
+    /// <see cref="Exempt"/> <b>kapsam dışı</b>: onun boşalması beklenmiyor ve
+    /// büyümesi <see cref="ExpectedExemptCount"/> ile ayrıca korunuyor. İkisini
+    /// tek listede tutmak, "boşaldı mı" sorusunun cevabını asla evet
+    /// yapamıyordu — T17 bu yüzden ayırdı.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Izin_listesi_bosaldi_mi()
+    {
+        Assert.True(
+            Pending.Count == 0,
+            "F2'nin bitiş şartlarından biri bu listenin boşalması. Kalan:\n  " +
+            string.Join("\n  ", Pending.Select(entry => $"{entry.Key} — {entry.Value}")) +
+            "\n\nBir ucu buraya eklemek yerine `.Produces<T>()` yazmayı deneyin: " +
+            "sunucunun ne gönderdiği belliyse, sözleşmeye neyin gireceği " +
+            "tüketicinin değil sunucunun kararıdır.");
+    }
+
+    /// <summary>
     /// <b>Kapı denetlediği kümeyi kendisi buluyor mu</b> (T27).
     ///
     /// <para>
@@ -600,21 +626,40 @@ public sealed class ProducesContractTests
     }
 
     /// <summary>
-    /// <b>Liste tek satıra indi.</b> T19'un dört ucu çıkınca geriye yalnızca
-    /// <c>POST /v1/replay</c> kaldı ve o da sahipsiz — replay ekranının ticket'ı
-    /// yok.
+    /// Replay ucu <b>tiplendi</b> — sahipsiz kalan son satır böyle kapandı.
     ///
     /// <para>
-    /// Sayı sabitlendi ki listeye sessizce satır eklenmesin: yeni bir uç
-    /// tüketicisiz iniyorsa bu ayrı ve görünür bir karar olmalı. Sahipsiz
-    /// kalemin ne olacağına F2'nin kapanışı (T27) karar veriyor; bir ekran
-    /// gelirse satır düşer, gelmeyeceği kesinleşirse <see cref="Exempt"/>'e
-    /// taşınır ve <see cref="ExpectedExemptCount"/> de artar.
+    /// Muafiyete taşımak yanlış olurdu: muafiyet "hiç tüketicisi olmayacak"
+    /// demek ve replay'in bir gün ekranı olacak. Tiplendirmek de tahmin
+    /// değildi, çünkü uç <b>zaten</b> <c>ReplayReport</c>'u döndürüyordu —
+    /// yani domain tipi fiilen tel sözleşmesiydi ve bu, tiplenmemiş olmaktan
+    /// kötüydü: tip yok ama sızıntı var.
+    /// </para>
+    ///
+    /// <para>
+    /// Hata yolları da tiplendi. Bir ucun başarı yolunun sözleşmesi olup hata
+    /// yolunun olmaması, ekranın hatayı elle ayrıştırması demek — ve elle
+    /// yazılan tip, T14'ün var olma sebebine aykırı.
     /// </para>
     /// </summary>
     [Fact]
-    public void Bekleyen_listede_yalnizca_sahipsiz_replay_kaldi()
+    public void Replay_ucu_her_yolunda_yanit_tipi_tasiyor()
     {
-        Assert.Equal(["POST /v1/replay"], Pending.Keys.Order(StringComparer.Ordinal));
+        var (_, endpoint) = Assert.Single(ProductEndpoints(), pair => pair.Key == "POST /v1/replay");
+
+        Assert.True(DeclaresResponseType(endpoint), "POST /v1/replay yanıt tipi bildirmiyor.");
+        Assert.DoesNotContain("POST /v1/replay", Pending.Keys);
+        Assert.DoesNotContain("POST /v1/replay", Exempt.Keys);
+
+        // Başarı, geçersiz istek ve duruş: üçü de bildirilmiş olmalı.
+        var declared = endpoint.Metadata
+            .GetOrderedMetadata<IProducesResponseTypeMetadata>()
+            .Where(m => m.Type is not null && m.Type != typeof(void))
+            .Select(m => m.StatusCode)
+            .ToHashSet();
+
+        Assert.Contains(StatusCodes.Status200OK, declared);
+        Assert.Contains(StatusCodes.Status400BadRequest, declared);
+        Assert.Contains(StatusCodes.Status409Conflict, declared);
     }
 }

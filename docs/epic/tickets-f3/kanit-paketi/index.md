@@ -1,12 +1,16 @@
 ---
 title: "T36 — Kanıt paketi ve deterministik rapor"
 kind: ticket
-status: 0
+status: 2
 ---
 
 # T36 — Kanıt paketi ve deterministik rapor
 
 **Bağımlılık:** T35 · **Sonraki:** T37 · **Yöneten karar:** K22
+
+> Sevk edildi — `t36-kanit-paketi` dalı. Ağırlık normalleştirme kararı ve
+> gerekçeleri, paketin donan sözleşmesi, ve T35'te bulunup düzeltilen
+> determinizm açığı: [T36 kanıt paketi](../../t36-kanit-paketi/index.md).
 
 ## Amaç
 

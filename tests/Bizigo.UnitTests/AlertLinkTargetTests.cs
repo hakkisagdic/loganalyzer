@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Bizigo.Alerting;
 using Bizigo.Alerting.Notifications;
+using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 
 namespace Bizigo.UnitTests;
@@ -35,13 +36,40 @@ public sealed partial class AlertLinkTargetTests
         SearchPath = "/olaylar",
     };
 
-    private static AlertRuleEntity Rule() => new()
+    private static AlertRuleEntity Rule(AlertSearch? search = null) => new()
     {
         Id = Guid.Parse("0198f0c2-1a2b-7c3d-8e4f-5a6b7c8d9e01"),
         Name = "fw-core-01 sessiz",
         OwnerSubject = "esra",
         OwnerGroups = "network/core",
+        SearchJson = AlertSearchCodec.Serialize(search ?? new AlertSearch()),
     };
+
+    private static string LinkFor(AlertSearch search) =>
+        AlertLinkBuilder.Build(Options(), Rule(search), From, To)
+            ?? throw new InvalidOperationException("Bağlantı üretilemedi.");
+
+    private static Dictionary<string, List<string>> QueryOf(string link)
+    {
+        var map = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+
+        foreach (var pair in new Uri(link).Query.TrimStart('?')
+            .Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            var name = Uri.UnescapeDataString(parts[0]);
+
+            if (!map.TryGetValue(name, out var values))
+            {
+                values = [];
+                map[name] = values;
+            }
+
+            values.Add(parts.Length > 1 ? Uri.UnescapeDataString(parts[1]) : string.Empty);
+        }
+
+        return map;
+    }
 
     private static string Link(string? sourceId = null) =>
         AlertLinkBuilder.Build(Options(), Rule(), From, To, sourceId)
@@ -104,10 +132,12 @@ public sealed partial class AlertLinkTargetTests
 
         Assert.NotEmpty(carried);
 
-        // `kural` ekranın filtre sözlüğünde değil ve olmamalı: kaydedilmiş
-        // aramanın filtrelerini URL'e kodlamak yerine kural KİMLİĞİ taşınıyor
-        // (AlertLinkBuilder'ın gerekçesi). Ekran onu ayrıca ele alıyor.
-        var filters = carried.Where(name => name != "kural").ToArray();
+        // İkisi filtre değil ve `PARAM` sözlüğünde olmamalı: `kural` kaynak
+        // göstergesi, `eksik` ise taşınamayan filtrelerin bildirimi. Ekran
+        // ikisini de ayrıca ele alıyor.
+        var filters = carried
+            .Where(name => name is not ("kural" or AlertLinkBuilder.UnsupportedParam))
+            .ToArray();
 
         var unknown = filters.Where(name => !known.Contains(name)).Order(StringComparer.Ordinal).ToArray();
 
@@ -118,44 +148,139 @@ public sealed partial class AlertLinkTargetTests
     }
 
     /// <summary>
-    /// Bağlantı kural kimliğini <b>taşıyor</b>.
+    /// <c>kural</c> yalnızca <b>kaynak göstergesi</b> — filtrenin taşıyıcısı
+    /// değil.
     ///
     /// <para>
-    /// <b>Zincirin açık halkası burada</b> (T27 bulgusu): kimlik taşınıyor ama
-    /// arama ekranı onu <b>okumuyor</b>. <c>AlertLinkBuilder</c>'ın kendi
-    /// yorumu "ekran kuralı kimliğinden okuyor" diyor; bu, yazıldığı gün
-    /// planlanmış ama hiç bağlanmamış.
+    /// İlk tasarım ekranın kuralı kimliğinden okumasını öngörüyordu ve bu iki
+    /// kere yanlıştı. Birincisi hiç bağlanmamıştı: kullanıcı doğru ekrana ve
+    /// doğru aralığa gidiyor ama kuralın alan filtreleri olmadan. İkincisi
+    /// bağlansaydı da yanlış olurdu: bağlantı bir kez üretilip bildirime
+    /// gömülüyor, kullanıcı günler sonra tıklıyor ve kimliği çözen ekran
+    /// <b>bugünkü</b> kuralı gösterirdi — tetiklenme anındakini değil.
     /// </para>
     ///
     /// <para>
-    /// Sonucu 404 değil, daha sinsisi: kullanıcı doğru ekrana ve doğru zaman
-    /// aralığına gidiyor ama kuralın <b>alan filtreleri olmadan</b>. "5 dakikada
-    /// <c>action=deny</c> &gt; 100" alarmı, o beş dakikanın <b>bütün</b>
-    /// olaylarını gösteren bir ekran açıyor. Alarm "şuna bak" diyor, ekran daha
-    /// geniş bir şey gösteriyor.
-    /// </para>
-    ///
-    /// <para>
-    /// Bu test kimliğin taşındığını sabitliyor; tüketilmesi
-    /// <c>F2FlowTests</c>'in zincir haritasında <b>açık halka</b> olarak
-    /// kayıtlı. Kapatan kişi burayı da genişletmeli.
+    /// Artık filtreleri bağlantının kendisi taşıyor, yani bağlantı o anın
+    /// fotoğrafı. Kimlik "bu aramayı hangi kural açtı" sorusunun cevabı olarak
+    /// kalıyor.
     /// </para>
     /// </summary>
     [Fact]
-    public void Kural_kimligi_baglantida_tasiniyor()
+    public void Kural_kimligi_kaynak_gostergesi_olarak_tasiniyor()
     {
         Assert.Contains(
             "kural=0198f0c2-1a2b-7c3d-8e4f-5a6b7c8d9e01", Link(), StringComparison.Ordinal);
+    }
 
-        // Ekranın okumadığını da sabitliyoruz: bu satır düştüğü gün halka
-        // kapanmış demektir ve zincir haritası güncellenmeli.
+    // ------------------------------------------------ filtreler taşınıyor mu
+
+    [Fact]
+    public void Kuralin_filtreleri_baglantiya_giriyor()
+    {
+        // Kapatılan kusur: bu filtreler taşınmayınca "5 dakikada action=deny
+        // > 100" alarmı, o beş dakikanın BÜTÜN olaylarını gösteren bir ekran
+        // açıyordu.
+        var query = QueryOf(LinkFor(new AlertSearch
+        {
+            FullText = "kullanıcı oturum",
+            Filters =
+            [
+                FieldFilter.Eq("action", "deny"),
+                FieldFilter.Eq("vendor", "fortinet"),
+                FieldFilter.Eq("proto", "tcp"),
+            ],
+            SourceIds = ["fg-ankara-01"],
+            ParseStatuses = [ParseStatus.Failed],
+        }));
+
+        Assert.Equal("deny", Assert.Single(query["action"]));
+        Assert.Equal("fortinet", Assert.Single(query["vendor"]));
+        Assert.Equal("tcp", Assert.Single(query["proto"]));
+        Assert.Equal("kullanıcı oturum", Assert.Single(query["q"]));
+        Assert.Equal("fg-ankara-01", Assert.Single(query["source_id"]));
+        Assert.Equal("failed", Assert.Single(query["parse_status"]));
+
+        // Kapsam da taşınıyor: `criteria-bridge` ileri yönde bunu "filtre değil
+        // kapsam" diye işaretliyor, ters yönde ekranın parametresine denk geliyor.
+        Assert.Equal("network/core", Assert.Single(query["owner_group"]));
+    }
+
+    [Fact]
+    public void Siddet_esigi_ceviriden_kayiksiz_donuyor()
+    {
+        // İleri yönde ekranın "n ve üzeri"si `gt n-1`'e çevriliyor (operatör
+        // kümesinde `gte` yok). Geri yönde 1 eklenmezse alarm bir kademe kayık
+        // bir ekran açar — ve sapma tek kademe olduğu için kimse fark etmez.
+        var query = QueryOf(LinkFor(new AlertSearch
+        {
+            Filters = [new FieldFilter("severity_num", FilterOperator.GreaterThan, ["6"])],
+        }));
+
+        Assert.Equal("7", Assert.Single(query["severity_min"]));
+    }
+
+    [Fact]
+    public void Acikca_verilen_kaynak_kuralinkini_eziyor()
+    {
+        // Sessizlik alarmı TEK bir kaynağı işaret ediyor; kuralın listesi değil
+        // o kaynak gösterilmeli.
+        var link = AlertLinkBuilder.Build(
+            Options(),
+            Rule(new AlertSearch { SourceIds = ["fg-ankara-01", "fg-ankara-02"] }),
+            From,
+            To,
+            "fg-ankara-02")!;
+
+        Assert.Equal("fg-ankara-02", Assert.Single(QueryOf(link)["source_id"]));
+    }
+
+    // --------------------------------------- taşınamayan filtre sessiz düşmüyor
+
+    [Fact]
+    public void Ekranda_karsiligi_olmayan_filtre_bildiriliyor()
+    {
+        // Sessizce düşmesi, kullanıcının alarmın izlediğinden GENİŞ bir kümeye
+        // bakıp onu alarmın kümesi sanması demek. Ekran bunu söylüyor.
+        var query = QueryOf(LinkFor(new AlertSearch
+        {
+            Filters =
+            [
+                FieldFilter.Eq("action", "deny"),
+                FieldFilter.Eq("src_ip", "10.0.0.1"),
+                FieldFilter.Eq("user_name", "esra"),
+            ],
+        }));
+
+        Assert.Equal("deny", Assert.Single(query["action"]));
+
+        // Ad sırası belirli: iki farklı çekimde farklı sıralı bir bağlantı,
+        // aynı alarmın iki farklı bağlantısı gibi görünürdü.
+        Assert.Equal("src_ip,user_name", Assert.Single(query[AlertLinkBuilder.UnsupportedParam]));
+    }
+
+    [Fact]
+    public void Tasinamayan_filtre_yoksa_isaret_de_yok()
+    {
+        var query = QueryOf(LinkFor(new AlertSearch { Filters = [FieldFilter.Eq("action", "deny")] }));
+
+        Assert.False(query.ContainsKey(AlertLinkBuilder.UnsupportedParam));
+    }
+
+    [Fact]
+    public void Eksik_isaretini_ekran_okuyor()
+    {
+        // Diğer parametrelerle aynı kural: ekranın tanımadığı bir işaret koymak,
+        // filtreyi sessizce düşürmekle aynı sonucu verirdi.
+        var criteria = File.ReadAllText(
+            Path.Combine(RepositoryLayout.Root, "ui", "src", "lib", "events", "criteria.ts"));
+
+        Assert.Contains($"\"{AlertLinkBuilder.UnsupportedParam}\"", criteria, StringComparison.Ordinal);
+
         var page = File.ReadAllText(
             Path.Combine(RepositoryLayout.Root, "ui", "src", "app", "olaylar", "page.tsx"));
 
-        Assert.False(
-            page.Contains("kural", StringComparison.Ordinal),
-            "Arama ekranı artık `kural` parametresini okuyor gibi görünüyor — " +
-            "F2FlowTests'teki zincir haritasında bu halkayı 'açık' bırakmayın.");
+        Assert.Contains("unsupportedFilters", page, StringComparison.Ordinal);
     }
 
     [Fact]

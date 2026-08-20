@@ -18,6 +18,26 @@ koşturur**. Kod yazması istisnadır.
 **Uygulayıcı ajan** tek bir ticket'ı kendi git worktree'sinde yazar, kendi hafif
 testlerini koşturur, commit eder, raporlar. **Push etmez, birleştirmez.**
 
+### Koordinatör önde boş durur
+
+Koordinatörün birinci işi **kullanıcıya açık olmak**. Uzun süren hiçbir şey onun
+turunu tıkamamalı:
+
+- Derleme, test paketi, Docker koşumu, ölçüm — hepsi **arka plan prosesi**
+olarak başlatılır, sonuç geldiğinde okunur. Öndeki tur beklemez.
+- Yapılabilecek her iş **bir ajana verilir**. Koordinatörün kendi eliyle kod
+yazması istisnadır; ölçümü koşturmak ile ölçüm aracını yazmak farklı işlerdir ve
+ikincisi ajanındır.
+- Bir ajan Docker gerektiren bir şeye ihtiyaç duyuyorsa, **aracı ajan yazar,
+koordinatör koşturur** — arka planda. Bu, §2'nin bölünmesini bozmadan
+koordinatörü serbest tutuyor.
+- Kullanıcı bir şey sorduğunda cevap, koşan bir işin bitmesini beklememeli.
+Ne koştuğunu ve ne beklediğini söyle, devam et.
+
+Gerekçe: koordinatör tıkandığında beş ajan da tıkanıyor — birleştirmeyi,
+kararları ve ölçümleri o veriyor. Bir oturumda dokuz dakikalık bir ölçüm turu
+kapattı ve o sırada dört ajan boşta bekledi.
+
 ---
 
 ## 2 · Test bölünmesi — bu kural pazarlığa açık değil
@@ -147,6 +167,14 @@ sessizce siliniyor.
 Ortak nokta: hata yok, sayaç yok, belirti yok. Bir şey ölçülmediyse **çalıştığı
 varsayılmaz**.
 
+**Dış bir ikili gerektiren test ya CI'da o ikiliyle koşmalı ya koşumdan açıkça
+dışlanmalı.** Üçüncü hâl — *"koşuma giriyor ama ortam hazır değil"* — sessizce
+kırmızı yanan bir CI. Ekran görüntüsü bekçileri korumasız `chromium.launch()`
+yapıyordu; yazan ajan raporuna "varsayılan pakete koymadım" yazmıştı ama
+`vitest.config`'in `include` deseni dosyayı alıyordu. Kimse ikisinin
+ayrıştığını okumadı. İhlali bir kişi değil **yapılandırma** yapıyor, o yüzden
+kural burada duruyor: testle kovalamak CI yapılandırmasını test etmek olurdu.
+
 **Bir bekçinin sessizce atlaması, bekçinin kendisinden tehlikelidir.**
 `Produces<T>` kapısı uçları elle yazılmış bir listeden topluyordu; üç uç dosyası
 listede olmadığı için **16 uç kapıya hiç görünmüyordu ve üç test de yeşildi.**
@@ -215,14 +243,21 @@ Planlama artifact'larının kanonik yeri Traycer epic dizini
 (`~/.traycer/epics/<id>/artifacts`), ama ajanlar ayrı worktree'lerde çalıştığı
 için oradan **okuyamıyorlar**. Depodaki kopya `docs/epic/`.
 
+**Senkron yönü depodan epic dizinine.** Ters yön veri kaybettiriyor:
+
 ```bash
-rsync -a --delete ~/.traycer/epics/<id>/artifacts/ docs/epic/
+rsync -a --delete docs/epic/ ~/.traycer/epics/<id>/artifacts/
 ```
 
-**Bu bir anlık görüntüdür.** Ajanlar epic dizinine yazmaya devam ediyor;
-kopyayı **faz bitimlerinde ve büyük birleştirmelerden sonra** koordinatör
-tazeler. Bayat kalırsa iki gerçek kaynak doğar — ve bu depoda o desenin bedeli
-zaten ödendi (webhook defteri, katalog kaynağı).
+Gerekçe ölçüldü. Ajanlar epic dizinine **erişemiyor** — ayrı worktree'lerdeler —
+dolayısıyla yazdıkları tek yer depo kopyası. Koordinatör "kanonik olan epic
+dizini" diye ters yönde rsync çalıştırınca ajanın yazdığının üstüne yazıyor.
+Bir kez oldu: T27'nin 233 satırlık envanteri 148 satıra düştü ve yeni yazdığı
+bölüm tamamen kayboldu. `git checkout <commit> -- <dosya>` ile geri alındı,
+ama fark edilmeseydi sessizce kaybolacaktı.
+
+Kural: **depo yazılabilir kaynak, epic dizini görüntü.** Ters yönde
+çalıştırman gereken bir durum varsa önce `diff -rq` ile ne kaybedeceğini gör.
 
 `.gitignore`'daki `artifacts/` satırı .NET derleme çıktısı içindir; `docs/epic/`
 onu etkilemez.

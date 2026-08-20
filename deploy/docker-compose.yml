@@ -38,6 +38,31 @@ services:
   # Kontrol düzlemi — PostgreSQL (K23)
   # İki veritabanı: `bizigo` (envanter/katalog/audit) ve `keycloak`.
   # --------------------------------------------------------------------------
+  # --------------------------------------------------------------------------
+  # Oturum deposu — Redis (B7)
+  #
+  # BFF'in oturumları T13'te bellek içindeydi ve bu TEK SÜREÇTE doğruydu.
+  # İkinci bir Next kopyası açıldığı gün oturumlar kopyalar arasında
+  # paylaşılmaz, kullanıcılar rastgele düşer ve sebebi Keycloak sanılır.
+  #
+  # Geliştirmede ZORUNLU DEĞİL: `BFF_SESSION_STORE=memory` varsayılan ve öyle
+  # kalıyor. Bu servis, çok kopyalı kurulumu yerelde deneyebilmek ve
+  # `ui/tests/redis-live.test.ts`'i koşturabilmek için.
+  #
+  # Kalıcılık YOK ve bilinçli: oturum verisi zaten geçici, TTL'i uygulama
+  # veriyor. Disk yedeği almak, token'ları diske yazmak demek olurdu.
+  # --------------------------------------------------------------------------
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   postgres:
     image: postgres:18-alpine
     environment:

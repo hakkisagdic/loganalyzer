@@ -1,7 +1,7 @@
 ---
 title: "T27 — F2 doğrulaması"
 kind: ticket
-status: 0
+status: 1
 ---
 
 # T27 — F2 doğrulaması

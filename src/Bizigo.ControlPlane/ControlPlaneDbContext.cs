@@ -33,6 +33,10 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
     public DbSet<AlertRuleChannelEntity> AlertRuleChannels => Set<AlertRuleChannelEntity>();
     public DbSet<NotificationDeliveryEntity> NotificationDeliveries => Set<NotificationDeliveryEntity>();
 
+    // RCA kanıt paketleri (T36). Saklanıyorlar ki F4 aynı kanıt üzerinde farklı
+    // model koşturup karşılaştırabilsin.
+    public DbSet<EvidenceBundleEntity> EvidenceBundles => Set<EvidenceBundleEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -138,6 +142,20 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
             // Gönderici turunun tek sorgusu: "vadesi gelmiş bekleyen teslimler".
             e.HasIndex(x => new { x.State, x.NextAttemptAt });
             e.HasIndex(x => x.TriggerId);
+        });
+
+        modelBuilder.Entity<EvidenceBundleEntity>(e =>
+        {
+            // "Son toplanan paketler" — liste ekranının tek sorgusu (T37).
+            e.HasIndex(x => x.GatheredAt);
+
+            // "Bu kanıt daha önce toplanmış mı" — F4'ün karşılaştırma akışı aynı
+            // pencereyi tekrar toplamadan önce buna bakıyor. Tekil DEĞİL: aynı
+            // pencerenin iki kez toplanması meşru ve ikisi de saklanmalı.
+            e.HasIndex(x => x.ContentHash);
+
+            // "Şu zaman aralığına ait paketler".
+            e.HasIndex(x => new { x.WindowFrom, x.WindowTo });
         });
     }
 }

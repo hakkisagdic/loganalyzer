@@ -1,0 +1,104 @@
+{
+  "_comment": "ÜRETİLMİŞ ÖRNEKLEM — T30 prototipinin 24 kuralı, prototip pipeline'ı ve pySigma 1.5.0 + pysigma-backend-clickhouse 1.1.1 ile derlendi. Kapı 1 testleri bu SQL'lere karşı koşuyor: gerçek backend çıktısı, ama test anında pySigma gerektirmiyor. Prototip atılabilir olduğu için çıktı buraya donduruldu; T31'in kalıcı pipeline'ı geldiğinde yenilenir.",
+  "pysigma": "1.5.0",
+  "backend": "pysigma-backend-clickhouse 1.1.1",
+  "pipeline": "prototypes/t30-sigma/bizigo_pipeline.py",
+  "rules": [
+    {
+      "rule_file": "asa_acl_hit.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='Cisco' AND (class_uid=4001 AND (raw_data ILIKE '%access-list%' AND activity_name='denied'))"
+    },
+    {
+      "rule_file": "asa_deny_inbound.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='Cisco' AND (class_uid=4001 AND (activity_name='Deny' AND dst_endpoint_port=445))"
+    },
+    {
+      "rule_file": "asa_icmp_flood.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='Cisco' AND (class_uid=4001 AND connection_info_protocol_name='ICMP')"
+    },
+    {
+      "rule_file": "asa_outbound_built.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='Cisco' AND (class_uid=4001 AND (activity_name='Built' AND connection_info_protocol_name='TCP'))"
+    },
+    {
+      "rule_file": "asa_teardown_rst.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='Cisco' AND (class_uid=4001 AND raw_data ILIKE '%RST%')"
+    },
+    {
+      "rule_file": "asa_vpn_login.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='Cisco' AND (class_uid=4001 AND (raw_data ILIKE '%Group User%' AND actor_user_name ILIKE '%@%'))"
+    },
+    {
+      "rule_file": "fortigate_admin_from_wan.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='Fortinet' AND (class_uid=4001 AND ((dst_endpoint_port IN (22, 443)) AND src_endpoint_ip ILIKE '203.0.113.%'))"
+    },
+    {
+      "rule_file": "fortigate_blocked_category.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='Fortinet' AND (class_uid=4001 AND (activity_name='blocked' AND url ILIKE '%/config/%'))"
+    },
+    {
+      "rule_file": "fortigate_denied_burst.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='Fortinet' AND (class_uid=4001 AND (activity_name='blocked' AND dst_endpoint_port=443))"
+    },
+    {
+      "rule_file": "fortigate_dns_tunnel.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='Fortinet' AND (class_uid=4003 AND dns_query_name ILIKE '%.tunnel.%')"
+    },
+    {
+      "rule_file": "fortigate_high_port_scan.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='Fortinet' AND (class_uid=4001 AND (connection_info_protocol_name=6 AND dst_endpoint_port >= 30000))"
+    },
+    {
+      "rule_file": "fortigate_user_auth_fail.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='Fortinet' AND (class_uid=4001 AND (status='failure' AND actor_user_name ILIKE '%admin%'))"
+    },
+    {
+      "rule_file": "nginx_5xx_burst.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE metadata_product_name='nginx' AND (class_uid=4001 AND status ILIKE '5%')"
+    },
+    {
+      "rule_file": "nginx_admin_path.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE metadata_product_name='nginx' AND (class_uid=4001 AND url ILIKE '/admin%')"
+    },
+    {
+      "rule_file": "nginx_dns_rebind.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE metadata_product_name='nginx' AND (class_uid=4003 AND query ILIKE '%localhost%')"
+    },
+    {
+      "rule_file": "nginx_large_upload.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE metadata_product_name='nginx' AND (class_uid=4001 AND (http_method='POST' AND url ILIKE '%/upload%'))"
+    },
+    {
+      "rule_file": "nginx_scanner_agent.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE metadata_product_name='nginx' AND (class_uid=4001 AND (user_agent ILIKE '%sqlmap%' OR user_agent ILIKE '%nikto%'))"
+    },
+    {
+      "rule_file": "nginx_sqli_probe.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE metadata_product_name='nginx' AND (class_uid=4001 AND (url ILIKE '%UNION SELECT%' OR url ILIKE '%'' OR ''1''=''1%'))"
+    },
+    {
+      "rule_file": "routeros_dhcp_offer.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='MikroTik' AND (class_uid=4001 AND (connection_info_protocol_name='udp' AND dst_endpoint_port=68))"
+    },
+    {
+      "rule_file": "routeros_dns_request.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='MikroTik' AND (class_uid=4003 AND dns_query_name ILIKE '%.ru')"
+    },
+    {
+      "rule_file": "routeros_drop_input.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='MikroTik' AND (class_uid=4001 AND (activity_name='drop' AND dst_endpoint_port=8291))"
+    },
+    {
+      "rule_file": "routeros_forward_new.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='MikroTik' AND (class_uid=4001 AND (connection_info_protocol_name='tcp' AND activity_name='forward'))"
+    },
+    {
+      "rule_file": "routeros_login_failure.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='MikroTik' AND (class_uid=4001 AND raw_data ILIKE '%login failure%')"
+    },
+    {
+      "rule_file": "routeros_winbox_access.yml",
+      "sql": "SELECT * FROM events_ocsf WHERE device_vendor_name='MikroTik' AND (class_uid=4001 AND dst_endpoint_port=8291)"
+    }
+  ]
+}

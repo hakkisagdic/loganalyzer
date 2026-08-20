@@ -16,8 +16,17 @@ export interface BffConfig {
   readonly apiBaseUrl: string;
   /** Oturum çerezinin adı. */
   readonly cookieName: string;
-  /** Oturumun sunucudaki ömrü. */
+  /** Oturumun sunucudaki ömrü. **TTL'in tek kaynağı** — Redis `EXPIRE` bundan türüyor. */
   readonly sessionTtlSeconds: number;
+  /**
+   * Oturum deposu: `memory` (tek süreç) ya da `redis` (çok kopya).
+   *
+   * <p>Bellek içi hâl geliştirmenin varsayılanı ve kaldırılmadı: Redis zorunlu
+   * olsaydı yerel ortam tek komutla ayağa kalkmazdı.</p>
+   */
+  readonly sessionStore: "memory" | "redis";
+  /** `sessionStore === "redis"` iken zorunlu. */
+  readonly redisUrl: string | undefined;
 }
 
 function required(name: string): string {
@@ -43,6 +52,8 @@ export function readBffConfig(): BffConfig {
     apiBaseUrl: (process.env.BIZIGO_API_URL ?? "http://localhost:5080").replace(/\/+$/, ""),
     cookieName: process.env.BFF_COOKIE_NAME ?? "bizigo.sid",
     sessionTtlSeconds: Number(process.env.BFF_SESSION_TTL_SECONDS ?? 60 * 60 * 8),
+    sessionStore: process.env.BFF_SESSION_STORE === "redis" ? "redis" : "memory",
+    redisUrl: process.env.BFF_REDIS_URL,
   };
 }
 

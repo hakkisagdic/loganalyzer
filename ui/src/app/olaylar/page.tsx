@@ -13,6 +13,7 @@ import {
   advisePagination,
   judgeQuery,
   readCriteria,
+  unsupportedFilters,
   toSearchBody,
   toSearchParams,
 } from "@/lib/events/criteria";
@@ -49,6 +50,7 @@ export default async function EventSearchPage({
   searchParams: Promise<RawParams>;
 }) {
   const params = await searchParams;
+  const missing = unsupportedFilters(params);
   const identity = await currentUser();
 
   if (identity.status === "anonymous") {
@@ -107,6 +109,19 @@ export default async function EventSearchPage({
       ) : null}
 
       <SavedSearches currentHref={currentHref(params)} />
+
+      {missing.length > 0 ? (
+        // Alarmdan gelindiğinde, kuralın bu ekranda karşılığı olmayan
+        // filtreleri sessizce düşmüyor: kullanıcı gördüğü kümenin alarmın
+        // kümesinden GENİŞ olduğunu biliyor.
+        <p className={styles.noticeWarning} role="status">
+          <b>Bu alarmın {missing.length} filtresi burada gösterilemiyor</b> (
+          {missing.map((name) => (
+            <code key={name}>{name} </code>
+          ))}
+          ). Aşağıdaki sonuçlar alarmın izlediğinden <b>daha geniş</b> bir küme.
+        </p>
+      ) : null}
 
       {verdict.kind === "too-short" ? (
         <ShortQueryNotice length={verdict.length} params={params} />
