@@ -95,6 +95,36 @@ const fallbackMessages: Record<number, ApiProblem> = {
   429: { error: "Çok fazla istek.", hint: "Sorgu bitmeden yenisini başlatmayı deneyin." },
 };
 
+/**
+ * Bir hatayı kullanıcıya gösterilebilecek metne çeviriyor.
+ *
+ * <p>
+ * <c>ApiError</c> zaten sunucunun cümlesini taşıyor; onu yeniden yazmak,
+ * sunucudaki gerekçeyi (hangi grup kapsam dışında, hangi sınır aşıldı) atıp
+ * yerine genel bir cümle koymak olurdu. Yalnızca <b>tanınmayan</b> hata
+ * biçimleri için genel bir metin üretiliyor — çıplak <c>String(cause)</c> çoğu
+ * zaman <c>[object Object]</c> basar.
+ * </p>
+ *
+ * <p>
+ * T23'te alarm ekranının içinde doğdu; T19'da buraya taşındı. Ekranların
+ * hatayı <b>aynı</b> biçimde göstermesi bir tutarlılık tercihi değil,
+ * doğruluk meselesi: iki ekranın iki farklı özeti, aynı 403'ü iki farklı
+ * sebep gibi gösterirdi (T28 bunu denetleyecek).
+ * </p>
+ */
+export function describeError(cause: unknown): string {
+  if (cause instanceof ApiError) {
+    return [cause.problem.error, cause.hint].filter(Boolean).join(" ");
+  }
+
+  if (cause instanceof TransportError) {
+    return cause.message;
+  }
+
+  return cause instanceof Error ? cause.message : "Beklenmeyen bir hata oluştu.";
+}
+
 function normalizeProblem(status: number, body: unknown): ApiProblem {
   if (body && typeof body === "object" && "error" in body && typeof body.error === "string") {
     const hint = "hint" in body && typeof body.hint === "string" ? body.hint : undefined;

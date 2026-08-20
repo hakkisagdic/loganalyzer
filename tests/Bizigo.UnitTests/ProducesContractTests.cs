@@ -65,16 +65,17 @@ public sealed class ProducesContractTests
         ["POST /v1/changes"] = "T24 — değişiklik akışı formu",
         ["GET /v1/health/pipeline"] = "T20 — boru hattı sağlık ekranı",
         ["POST /v1/replay"] = "T19 — replay ekranı",
-        ["GET /v1/parsers"] = "T18 — parser editörü",
-        ["GET /v1/parsers/{id}"] = "T18 — parser editörü",
-        ["POST /v1/parsers/try"] = "T18 — parser editörü",
-        ["GET /v1/parsers/drafts"] = "T18 — parser editörü",
-        ["POST /v1/parsers/drafts"] = "T18 — parser editörü",
-        ["PUT /v1/parsers/drafts/{id}"] = "T18 — parser editörü",
-        ["POST /v1/parsers/drafts/{id}/submit"] = "T18 — parser editörü",
-        ["POST /v1/parsers/drafts/{id}/return"] = "T18 — parser editörü",
-        ["POST /v1/parsers/drafts/{id}/publish"] = "T18 — parser editörü",
-        ["POST /v1/parsers/{parserId}/rollback"] = "T18 — parser editörü",
+        // T19'un editörü dört ucu tüketti ve dördü listeden ÇIKTI:
+        // `POST /v1/parsers/try`, `POST /v1/parsers/drafts`,
+        // `PUT /v1/parsers/drafts/{id}`, `POST /v1/parsers/drafts/{id}/submit`.
+        // Kalan altısı T20'nin katalog yönetim ekranıyla birlikte tipleniyor —
+        // okuma uçları ve inceleme/yayın/geri alma orada tüketiliyor.
+        ["GET /v1/parsers"] = "T20 — katalog yönetim ekranı",
+        ["GET /v1/parsers/{id}"] = "T20 — katalog yönetim ekranı",
+        ["GET /v1/parsers/drafts"] = "T20 — inceleme kuyruğu",
+        ["POST /v1/parsers/drafts/{id}/return"] = "T20 — inceleme kuyruğu",
+        ["POST /v1/parsers/drafts/{id}/publish"] = "T20 — katalog yönetim ekranı",
+        ["POST /v1/parsers/{parserId}/rollback"] = "T20 — katalog yönetim ekranı",
 
         // Alarm uçlarının on ikisi T23'te tipini kazandı ve bu listeden çıktı —
         // ekran indi, tip artık tahmin değil. Kalan üçü gövdesiz 204: uydurulmuş
@@ -104,6 +105,11 @@ public sealed class ProducesContractTests
             typeof(ControlPlaneDbContext), typeof(IDbContextFactory<ControlPlaneDbContext>),
             typeof(ReplayEngine), typeof(ParserAuthoringService), typeof(PublishedParserLoader),
             typeof(ParserCatalog), typeof(DispatchStats), typeof(Dispatcher),
+
+            // T19: `POST /v1/parsers/try` taslağı YAYIN KAPISININ KENDİSİYLE
+            // denetliyor. Kayıtlı olmasa minimal API bunu gövde parametresi
+            // sanıyor ve `MapParsers` çıkarımda patlıyor.
+            typeof(ParserPublishGate),
             typeof(IngestGateway), typeof(IngestStats), typeof(WriteAheadLog),
             typeof(DiscoveryStats), typeof(SidecarOptions),
 
@@ -240,6 +246,56 @@ public sealed class ProducesContractTests
         {
             Assert.True(DeclaresResponseType(endpoint), $"{key} yanıt tipi bildirmiyor.");
             Assert.DoesNotContain(key, Pending.Keys);
+        }
+    }
+
+    /// <summary>
+    /// T19'un tükettiği dört uç listeden <b>çıkmış</b> olmalı — ve listenin
+    /// gerçekten küçüldüğünün ölçüsü bu.
+    ///
+    /// <para>
+    /// Uç adları burada <b>elle</b> yazılı, <c>Pending</c>'den türetilmiyor:
+    /// türetilseydi test kendi kendini onaylar, dört satır listeye geri
+    /// eklendiğinde de yeşil yanardı.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData("POST /v1/parsers/try")]
+    [InlineData("POST /v1/parsers/drafts")]
+    [InlineData("PUT /v1/parsers/drafts/{id}")]
+    [InlineData("POST /v1/parsers/drafts/{id}/submit")]
+    public void Parser_editorunun_uclari_yanit_tipi_tasiyor(string key)
+    {
+        var (_, endpoint) = Assert.Single(V1Endpoints(), pair => pair.Key == key);
+
+        Assert.True(DeclaresResponseType(endpoint), $"{key} yanıt tipi bildirmiyor.");
+        Assert.DoesNotContain(key, Pending.Keys);
+    }
+
+    /// <summary>
+    /// T20'nin uçları <b>hâlâ</b> listede. İki ajanın aynı satırı silmesi
+    /// çakışma üretiyordu; bu test sınırı koda yazıyor, mesajlaşmaya değil.
+    /// Satırlar T20'nin ekranıyla birlikte silinecek ve o zaman bu test de
+    /// düşecek — düşmesi doğru, çünkü liste boşalmadan F2 bitmiş sayılmıyor.
+    /// </summary>
+    [Fact]
+    public void Katalog_ekraninin_uclari_T20_ye_atifla_bekliyor()
+    {
+        string[] deferred =
+        [
+            "GET /v1/parsers",
+            "GET /v1/parsers/{id}",
+            "GET /v1/parsers/drafts",
+            "POST /v1/parsers/drafts/{id}/return",
+            "POST /v1/parsers/drafts/{id}/publish",
+            "POST /v1/parsers/{parserId}/rollback",
+        ];
+
+        foreach (var key in deferred)
+        {
+            Assert.True(
+                Pending.TryGetValue(key, out var owner) && owner.StartsWith("T20", StringComparison.Ordinal),
+                $"{key} ya tipini kazandı ya da atfı değişti — izin listesini güncelleyin.");
         }
     }
 }

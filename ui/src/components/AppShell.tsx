@@ -25,6 +25,12 @@ export interface AppShellProps {
 const NAV = [
   { href: "/", label: "Genel bakış" },
   { href: "/olaylar", label: "Log arama" },
+  { href: "/alarmlar", label: "Alarmlar" },
+  // Ekran `author` rolü istiyor ve kapı sunucuda (layout). Bağlantının herkese
+  // görünmesi bilinçli: gizlemek, yetkisi olmayan birine ekranın VAR OLDUĞUNU
+  // saklardı ve "neden ben göremiyorum" sorusu hiç sorulamazdı. Girildiğinde
+  // sebebi açıkça yazan bir ekran çıkıyor.
+  { href: "/parserlar", label: "Parser editörü" },
 ] as const;
 
 export function AppShell({ username, children }: AppShellProps) {

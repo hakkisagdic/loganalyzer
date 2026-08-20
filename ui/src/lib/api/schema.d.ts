@@ -952,13 +952,104 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
         };
+        ParseIssueResponse: {
+            step: string;
+            message: string;
+        };
+        ParseOutcomeResponse: {
+            parser_id: string;
+            parser_version: string;
+            status: string;
+            timed_out: boolean;
+            /** Format: date-time */
+            timestamp: null | string;
+            tags: string[];
+            fields: {
+                [key: string]: string;
+            };
+            core: {
+                [key: string]: string;
+            };
+            ocsf: {
+                [key: string]: string;
+            };
+            otel: {
+                [key: string]: string;
+            };
+            issues: components["schemas"]["ParseIssueResponse"][];
+        };
+        ParserDispatchResponse: {
+            tier: string;
+            reason: string;
+            /** Format: int32 */
+            attempts: number | string;
+            result: components["schemas"]["ParseOutcomeResponse"];
+        };
         ParserDraftRequest: {
             yaml: string;
         };
+        ParserDraftResponse: {
+            /** Format: uuid */
+            id: null | string;
+            parser_id: string;
+            version: string;
+            state: string;
+            error: string;
+            gate: null | components["schemas"]["ParserGateResponse"];
+        };
+        ParserExpectationResponse: {
+            key: string;
+            expected: string;
+            actual: string;
+            passed: boolean;
+        };
+        ParserGateResponse: {
+            ok: boolean;
+            stage: string;
+            parser_id: string;
+            version: string;
+            /** Format: int32 */
+            passing_tests: number | string;
+            schema_errors: components["schemas"]["ParserSchemaErrorResponse"][];
+            redos: components["schemas"]["ParserRedosFindingResponse"][];
+            tests: components["schemas"]["ParserTestCaseResponse"][];
+            errors: string[];
+            warnings: string[];
+        };
+        ParserRedosFindingResponse: {
+            code: string;
+            severity: string;
+            blocking: boolean;
+            message: string;
+            fragment: string;
+        };
+        ParserSchemaErrorResponse: {
+            /** Format: int32 */
+            line: number | string;
+            /** Format: int32 */
+            column: number | string;
+            message: string;
+        };
+        ParserTestCaseResponse: {
+            name: string;
+            /** Format: int32 */
+            line: number | string;
+            passed: boolean;
+            expectations: components["schemas"]["ParserExpectationResponse"][];
+        };
         ParserTryRequest: {
+            /** @default  */
             line: string;
             /** @default  */
-            parserId: string;
+            parser_id: string;
+            /** @default  */
+            yaml: string;
+        };
+        ParserTryResponse: {
+            mode: string;
+            result: null | components["schemas"]["ParseOutcomeResponse"];
+            draft: null | components["schemas"]["ParserGateResponse"];
+            dispatch: null | components["schemas"]["ParserDispatchResponse"];
         };
         PreviewPointResponse: {
             /** Format: date-time */
@@ -1400,6 +1491,22 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "application/json": components["schemas"]["ParserTryResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
             };
         };
@@ -1440,6 +1547,15 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "application/json": components["schemas"]["ParserDraftResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
             };
         };
@@ -1464,6 +1580,15 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "application/json": components["schemas"]["ParserDraftResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
             };
         };
@@ -1484,7 +1609,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ParserDraftResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParserDraftResponse"];
+                };
             };
         };
     };

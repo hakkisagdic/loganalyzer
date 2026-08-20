@@ -1,24 +1,10 @@
-import { ApiError, TransportError } from "@/lib/api/errors";
-
 /**
- * Bir hatayı kullanıcıya gösterilebilecek metne çeviriyor.
+ * `describeError` artık ortak katmanda (`@/lib/api/errors`).
  *
  * <p>
- * <c>ApiError</c> zaten sunucunun cümlesini taşıyor; onu yeniden yazmak,
- * sunucudaki gerekçeyi (hangi grup kapsam dışında, hangi sınır aşıldı) atıp
- * yerine genel bir cümle koymak olurdu. Yalnızca <b>tanınmayan</b> hata
- * biçimleri için genel bir metin üretiliyor — çıplak `String(cause)` çoğu
- * zaman `[object Object]` basar.
+ * T23'te burada doğmuştu; T19 ikinci bir ekran getirince ortaklaştırıldı —
+ * ikinci bir kopya, aynı 403'ü iki ekranda iki farklı sebep gibi gösterirdi.
+ * Bu dosya alarm ekranlarının içeri aktarımlarını kırmamak için duruyor.
  * </p>
  */
-export function describeError(cause: unknown): string {
-  if (cause instanceof ApiError) {
-    return [cause.problem.error, cause.hint].filter(Boolean).join(" ");
-  }
-
-  if (cause instanceof TransportError) {
-    return cause.message;
-  }
-
-  return cause instanceof Error ? cause.message : "Beklenmeyen bir hata oluştu.";
-}
+export { describeError } from "@/lib/api/errors";

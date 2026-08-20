@@ -1,0 +1,176 @@
+/*
+  Parser editörünün stilleri.
+
+  Hepsi T13'ün jetonlarından besleniyor — ham renk, ham boşluk ya da ham font
+  boyutu YOK. Bir ekranın kendi değerini yazması, F2 sonunda toparlanamayan
+  tutarsızlığın başladığı yer (T28 bunu denetleyecek).
+*/
+
+/*
+  İki sütun: solda yazılan şey, sağda o şeyin sonucu.
+
+  Alt alta dizilseydi kullanıcı YAML'ı değiştirip sonucu görmek için her
+  seferinde kaydırırdı — oysa editörün bütün değeri ikisini AYNI ANDA
+  görebilmekte. Dar ekranda tek sütuna düşüyor; orada kaydırma kaçınılmaz.
+*/
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (min-width: 80rem) {
+  .layout {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  }
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.toolbar h1,
+.toolbar h2 {
+  margin: 0;
+  margin-inline-end: auto;
+  font-size: var(--text-lg);
+}
+
+.sectionTitle {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-2);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-4);
+}
+
+.inlineActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.muted {
+  color: var(--text-2);
+  font-size: var(--text-xs);
+}
+
+.notice {
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-2);
+  border-inline-start: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  color: var(--text-1);
+  font-size: var(--text-sm);
+}
+
+/* --- Kapı raporu ---------------------------------------------------------- */
+
+.gateDetail {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-1);
+  max-inline-size: var(--prose-width);
+}
+
+.issueList {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-1);
+}
+
+.issueList code,
+.fragment {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  /* Pattern parçaları uzun ve boşluksuz olabiliyor; satır taşırmasın. */
+  overflow-wrap: anywhere;
+}
+
+/*
+  Satıra gitme bağlantısı DÜĞME, `<a>` değil: sayfa değiştirmiyor, editördeki
+  imleci taşıyor. `<a href="#">` ekran okuyucuya "bağlantı" der ve kullanıcı
+  başka bir yere gideceğini sanır.
+*/
+.lineLink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-strong);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.lineLink:hover {
+  color: var(--accent);
+}
+
+.expectationList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+}
+
+.expectationFailed {
+  color: var(--danger);
+}
+
+/* --- Deneme sonucu -------------------------------------------------------- */
+
+.statusRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+/*
+  Zaman aşımı uyarısı rozet DEĞİL, tam paragraf.
+
+  Sebep: "uymadı" ile "ölçülemedi" karıştırıldığında sağlıklı bir parser
+  karantinaya giriyor. Bir rozet bu ayrımı taşıyamaz; kullanıcının cümleyi
+  okuması gerekiyor (T08 raporu #10).
+*/
+.timeout {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--warning-soft);
+  border-inline-start: 3px solid var(--warning);
+  border-radius: var(--radius-md);
+  color: var(--text-1);
+  font-size: var(--text-sm);
+  max-inline-size: var(--prose-width);
+}

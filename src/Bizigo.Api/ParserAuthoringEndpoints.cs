@@ -28,17 +28,29 @@ public static class ParserAuthoringEndpoints
             .RequireAuthorization(BizigoAuthPolicies.Author)
             .WithName("ListParserDrafts");
 
+        // `Produces<T>` yalnızca belge süsü değil: T14'ün ürettiği TypeScript'te
+        // gövde `unknown` kalmasın diye. Bu üçünün tüketicisi T19'un editörü;
+        // okuma uçları ve yayın/geri alma T20'nin ekranıyla birlikte tipleniyor.
         group.MapPost("/", CreateAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("CreateParserDraft");
+            .WithName("CreateParserDraft")
+            .Produces<ParserDraftResponse>()
+            .Produces(StatusCodes.Status400BadRequest);
 
         group.MapPut("/{id:guid}", UpdateAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("UpdateParserDraft");
+            .WithName("UpdateParserDraft")
+            .Produces<ParserDraftResponse>()
+            .Produces(StatusCodes.Status400BadRequest);
 
+        // 422 de aynı tipi taşıyor: kapıdan geçemeyen taslağın cevabı, geçenle
+        // aynı gövde — farkı `gate.ok`. Ayrı bir hata tipi, ekranı aynı bilgiyi
+        // iki kez ele almaya zorlardı.
         group.MapPost("/{id:guid}/submit", SubmitAsync)
             .RequireAuthorization(BizigoAuthPolicies.Author)
-            .WithName("SubmitParserDraft");
+            .WithName("SubmitParserDraft")
+            .Produces<ParserDraftResponse>()
+            .Produces<ParserDraftResponse>(StatusCodes.Status422UnprocessableEntity);
 
         group.MapPost("/{id:guid}/return", ReturnAsync)
             .RequireAuthorization(BizigoAuthPolicies.Admin)
@@ -112,8 +124,12 @@ public static class ParserAuthoringEndpoints
         var result = await authoring.SaveDraftAsync(
             id, request.Yaml, user.Scope.Subject, cancellationToken);
 
+        // Kaydetme kapıya TAKILMIYOR — taslak bozuk hâlde de saklanabilmeli,
+        // yoksa yarım kalmış bir parser kaydedilemez ve kullanıcı işini
+        // kaybeder. Kapı kararı yine de gövdede (`gate`): editör "şu an
+        // yayınlanabilir miyim" sorusunu ikinci bir istek atmadan cevaplıyor.
         return result.Ok
-            ? Results.Ok(Describe(result))
+            ? Results.Ok(ParserDraftResponse.From(result))
             : Results.BadRequest(new { error = result.Error });
     }
 
@@ -127,8 +143,8 @@ public static class ParserAuthoringEndpoints
         // Kapıdan geçemeyen taslak 422: istek biçimsel olarak doğru, içeriği
         // kabul edilebilir değil. 400 bunu "yanlış yazdın" gibi gösterirdi.
         return result.Ok
-            ? Results.Ok(Describe(result))
-            : Results.UnprocessableEntity(Describe(result));
+            ? Results.Ok(ParserDraftResponse.From(result))
+            : Results.UnprocessableEntity(ParserDraftResponse.From(result));
     }
 
     private static async Task<IResult> ReturnAsync(

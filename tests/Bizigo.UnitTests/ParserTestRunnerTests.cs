@@ -110,6 +110,103 @@ public sealed class ParserTestRunnerTests
         Assert.True(ParserTestRunner.ValuesMatch(true, true));
     }
 
+    /// <summary>
+    /// <b>T08 raporu #6.</b> "Bu alan hiç olmamalı" beklentisi — düz
+    /// <c>null</c>/<c>~</c> skaleri gerçek <c>null</c>'a dönüyor.
+    ///
+    /// <para>
+    /// Üç durum <b>ayrı ayrı</b> sınanıyor ve ayrı kalmak zorundalar:
+    /// <c>null</c> (alan yok), <c>~</c> (aynısının öbür yazımı) ve tırnaklı
+    /// <c>"null"</c> (alanın değeri <c>null</c> <b>metni</b>). Üçünü tek testte
+    /// toplamak, altı ay sonra birinin <c>"null"</c> metnini bekleyip alan
+    /// yokluğunu ölçtüğünü sanmasına yol açardı.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData("null")]
+    [InlineData("~")]
+    public void Duz_null_skaleri_alan_yoklugunu_dogruluyor(string nullForm)
+    {
+        // Şablon sözdizimi (`{{ user }}`) ile C# ilişimi çakışıyor; YAML düz
+        // metin bırakılıp yalnızca null yazımı yerine konuyor.
+        var report = ParserTestRunner.Run(Compile("""
+            apiVersion: bizigo.dev/v1
+            kind: Parser
+            metadata: { id: test.runner.absent, version: 1.0.0 }
+            pipeline:
+              - kv: { field: message }
+            map:
+              core: { user_name: "{{ user }}" }
+            tests:
+              - name: kullanici_adi_yok
+                input: 'a=1'
+                expect:
+                  core.user_name: NULL_FORM
+            """.Replace("NULL_FORM", nullForm, StringComparison.Ordinal)));
+
+        Assert.True(
+            report.Passed,
+            string.Join("; ", report.Tests.SelectMany(t => t.Failures).Select(f => f.Describe())));
+    }
+
+    /// <summary>
+    /// Aynı beklenti, alan <b>varken</b> düşüyor. Bu olmadan yukarıdaki test
+    /// "her şeye yeşil yanan" bir beklenti de olabilirdi — `null` beklentisinin
+    /// değeri, reddedebilmesinde.
+    /// </summary>
+    [Fact]
+    public void Alan_atanmissa_null_beklentisi_dusuyor()
+    {
+        var report = ParserTestRunner.Run(Compile("""
+            apiVersion: bizigo.dev/v1
+            kind: Parser
+            metadata: { id: test.runner.present, version: 1.0.0 }
+            pipeline:
+              - kv: { field: message }
+            map:
+              core: { user_name: "{{ user }}" }
+            tests:
+              - name: kullanici_adi_var
+                input: 'user=admin'
+                expect:
+                  core.user_name: null
+            """));
+
+        Assert.False(report.Passed);
+
+        var failure = Assert.Single(report.Tests[0].Failures);
+        Assert.Contains("beklenen: <yok>", failure.Describe(), StringComparison.Ordinal);
+        Assert.Contains("gerçek  : \"admin\"", failure.Describe(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Tırnaklı <c>"null"</c> hâlâ <b>metin</b>. Bu ayrım kaybolursa, değeri
+    /// gerçekten <c>null</c> metni olan bir alanı sınamanın yolu kalmazdı.
+    /// </summary>
+    [Fact]
+    public void Tirnakli_null_metin_olarak_kaliyor()
+    {
+        var report = ParserTestRunner.Run(Compile("""
+            apiVersion: bizigo.dev/v1
+            kind: Parser
+            metadata: { id: test.runner.literal, version: 1.0.0 }
+            pipeline:
+              - kv: { field: message }
+            tests:
+              - name: null_metni_esleşiyor
+                input: 'user=null'
+                expect:
+                  fields.user: "null"
+              - name: null_metni_alan_yoklugu_degil
+                input: 'user=null'
+                expect:
+                  fields.user: null
+            """));
+
+        Assert.True(report.Tests[0].Passed, "Tırnaklı \"null\" metin olarak eşleşmeli.");
+        Assert.False(report.Tests[1].Passed, "Değeri \"null\" metni olan alan, YOK sayılmamalı.");
+    }
+
     [Fact]
     public void Etiketler_dizi_olarak_dogrulanir()
     {
