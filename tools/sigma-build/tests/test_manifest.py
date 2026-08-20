@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from sigma_build.gate import KIND_UNKNOWN_COLUMN, Blocker
+from sigma_build.gate import KIND_UNKNOWN_COLUMN, REMEDY_UPSTREAM, Blocker
 from sigma_build.manifest import (
     MANIFEST_NAME,
     STATUS_FAILED,
@@ -123,7 +123,42 @@ def test_tehlikeli_kural_kimligi_reddediliyor(rule_id):
 
 def test_sayilar_durumlara_gore_bolunuyor():
     document = json.loads(build_manifest([written(), gated()], HEADER))
-    assert document["counts"] == {"total": 2, "written": 1, "gated": 1, "failed": 0}
+    assert document["counts"] == {
+        "total": 2, "written": 1, "gated": 1,
+        "gated_closeable": 1, "gated_upstream": 0, "failed": 0,
+    }
+
+
+def test_kapanabilir_ve_kapanamaz_ayri_sayiliyor():
+    """"Liste boşaldı mı" sorusu, içinde hiç kapanmayacak kalem varken asla
+    evet olamaz — `Pending` ile `Exempt` tek listede durunca ne oluyorsa o (§8)."""
+    kapanamaz = RuleOutcome(
+        rule_id="rule-c", title="Yukarı akış", source_path="rules/c.yml", source_sha="sha256:cccc",
+        status=STATUS_GATED, gate="explain",
+        blockers=(Blocker(kind="unsupported_construct", message="backend desteklemiyor",
+                          remedy=REMEDY_UPSTREAM),),
+    )
+    counts = json.loads(build_manifest([gated(), kapanamaz], HEADER))["counts"]
+    assert counts["gated"] == 2
+    assert counts["gated_closeable"] == 1
+    assert counts["gated_upstream"] == 1
+
+
+def test_tek_kapanamaz_engel_kurali_kapanamaz_yapiyor():
+    """Kural açılmak için engellerinin HEPSİNİN kapanmasını istiyor.
+
+    "En az biri kapanabiliyor" demek iyimser tarafa yanılmak olurdu ve o sayı
+    yol haritası olarak kullanılacak.
+    """
+    karma = RuleOutcome(
+        rule_id="rule-d", title="Karma", source_path="rules/d.yml", source_sha="sha256:dddd",
+        status=STATUS_GATED, gate="explain",
+        blockers=(BLOCKER, Blocker(kind="unsupported_construct", message="backend",
+                                   remedy=REMEDY_UPSTREAM)),
+    )
+    counts = json.loads(build_manifest([karma], HEADER))["counts"]
+    assert counts["gated_closeable"] == 0
+    assert counts["gated_upstream"] == 1
 
 
 def test_gated_kayit_eyleme_cevrilebilir_sebep_tasiyor():

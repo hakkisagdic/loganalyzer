@@ -12,6 +12,8 @@
     "total": 0,
     "written": 0,
     "gated": 0,
+    "gated_closeable": 0,
+    "gated_upstream": 0,
     "failed": 0
   },
   "rules": []

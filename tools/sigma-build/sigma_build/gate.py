@@ -51,6 +51,13 @@ __all__ = [
     "KIND_TYPE_MISMATCH",
     "KIND_UNSUPPORTED_CONSTRUCT",
     "KIND_NO_GOLDEN_SAMPLE",
+    "REMEDY_PIPELINE",
+    "REMEDY_SCHEMA",
+    "REMEDY_PIPELINE_OR_SCHEMA",
+    "REMEDY_UPSTREAM",
+    "REMEDY_UNKNOWN",
+    "REMEDY_DATA",
+    "CLOSEABLE_REMEDIES",
     "GATE_COLUMN_EXISTENCE",
     "GATE_EXPLAIN",
     "GATE_GOLDEN_SAMPLE",
@@ -73,7 +80,28 @@ GATE_GOLDEN_SAMPLE = "golden_sample"
 #: yazmak, bilinmeyeni veri gibi göstermek olurdu.
 REMEDY_PIPELINE_OR_SCHEMA = "pipeline_or_schema"
 REMEDY_PIPELINE = "pipeline"
+REMEDY_SCHEMA = "schema"
 REMEDY_DATA = "data"
+
+#: **Kimsenin yapamayacağı iş.** Yukarı akış ya da backend değişmeden kapanmayan
+#: engel. Diğer bütün değerler "birinin yapabileceği bir iş" adlandırıyor; bu
+#: ayrım olmazsa `gated` listesinin tamamı kapanabilir görünür ve hiç kapanmaz —
+#: `Pending` ile `Exempt`'in tek listede durması hâli (§8).
+#:
+#: Hiçbir sınıflandırıcı bunu **kendiliğinden** atamıyor: muafiyet gibi, bilinçli
+#: bir hareketle konuluyor ve sayısı ayrıca sabitleniyor.
+REMEDY_UPSTREAM = "upstream"
+
+#: Sınıflandırıcı karar veremedi. `upstream` ile karıştırılmamalı: "kapanamaz"
+#: demek değil, "kapanır mı bilmiyoruz" demek. Sayımda **kapanabilirler**
+#: tarafında duruyor — bilinmeyeni muafiyete yazmak, işi listeden gizlerdi.
+REMEDY_UNKNOWN = "unknown"
+
+#: Azalması **beklenen** engeller. `upstream` dışındaki her şey burada:
+#: bilinmeyen dahil, çünkü bilinmeyeni muafiyete yazmak işi gizlemek olurdu.
+CLOSEABLE_REMEDIES = frozenset(
+    {REMEDY_PIPELINE, REMEDY_SCHEMA, REMEDY_PIPELINE_OR_SCHEMA, REMEDY_DATA, REMEDY_UNKNOWN}
+)
 
 
 @dataclass(frozen=True)
