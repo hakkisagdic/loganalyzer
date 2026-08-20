@@ -8,24 +8,40 @@ import type { SessionRecord } from "@/lib/auth/store";
  * **Gerçek Redis'e karşı** oturum deposu (B7).
  *
  * <p>
- * <b>Bu dosya varsayılan koşumda atlanıyor</b> ve sebebi yazılı: ajanlar
- * Docker'a dokunmuyor (protokol §2), makine 16 GB ve paralel konteyner koşumu
- * onu swap'e sürüklüyor. Testi <b>yazmak</b> ajanın işi, <b>koşturmak</b>
- * koordinatörün.
+ * <b>Bu dosya varsayılan koşumun dışında</b> ve sebebi yazılı: ajanlar Docker'a
+ * dokunmuyor (protokol §2), makine 16 GB ve paralel konteyner koşumu onu swap'e
+ * sürüklüyor. Testi <b>yazmak</b> ajanın işi, <b>koşturmak</b> koordinatörün.
  * </p>
  *
  * <p>
- * Atlama <b>sessiz değil</b>: koşum çıktısında "skipped" olarak görünüyor ve
- * neden atlandığı burada duruyor. Sessizce atlayan bir bekçi, bekçinin
- * kendisinden tehlikeli — bu depoda o desenin bedeli üç kez ödendi.
+ * <b>Dışlama artık yapılandırmada, bu dosyada değil</b> (T27):
+ * <c>vitest.live-tests.ts</c> tek liste, <c>vitest.config.ts</c> onu dışlıyor,
+ * <c>vitest.live.config.ts</c> yalnızca onu topluyor. Eskiden burada bir
+ * <c>describe.skip</c> vardı ve iki bedeli vardı — koşturmak için dosyayı
+ * <b>düzenlemek</b> gerekiyordu (düzenlenmesi gereken bir test, koşturulmayan
+ * bir testtir), ve niyet dosyada dururken gerçek yapılandırmadaydı; bu depoda
+ * o ayrışmanın bedeli bir kez ödendi.
+ * </p>
+ *
+ * <p>
+ * Sessiz değil: <c>tests/test-config.test.ts</c> her koşumda listenin iki
+ * yapılandırmayla da uyuştuğunu sınıyor, yani dosya sessizce hiçbir kümede
+ * kalmıyor.
  * </p>
  *
  * <h3>Koşturmak için</h3>
  *
  * <pre>
  * docker compose -f deploy/docker-compose.yml up -d redis-session
- * BFF_REDIS_URL=redis://localhost:6379 npx vitest run tests/redis-live.test.ts
+ * npm run test:live
  * </pre>
+ *
+ * <p>
+ * Redis ayakta değilse test <b>kırmızı yanıyor</b> — kendini atlamıyor.
+ * Protokol §7 üç hâlden ikisine izin veriyor ("o bileşenle koş" ya da "açıkça
+ * dışla"); bu dosya varsayılan koşumda ikincisinde, <c>test:live</c>'da
+ * birincisinde.
+ * </p>
  *
  * <p>
  * Servis adı <b>`redis-session`</b>, düz `redis` değil: compose'da iki Redis
@@ -34,9 +50,10 @@ import type { SessionRecord } from "@/lib/auth/store";
  * </p>
  *
  * <p>
- * <c>describe.skip</c> yerine adres değişkenine bakmıyor olmamız bilinçli:
- * değişkene bağlansaydı, değişken unutulduğunda test <b>sessizce</b> hiç
- * koşmazdı ve yeşil görünürdü.
+ * Koşup koşmayacağı <b>adres değişkenine bağlı değil</b> ve bu bilinçli:
+ * <c>BFF_REDIS_URL</c> tanımlıysa koş deseydik, değişken unutulduğunda test
+ * <b>sessizce</b> hiç koşmaz ve yeşil görünürdü. Karar yapılandırmada, ortam
+ * değişkeninde değil.
  * </p>
  *
  * <h3>Koşturulduğunda ne kanıtlıyor</h3>
@@ -52,7 +69,7 @@ import type { SessionRecord } from "@/lib/auth/store";
 
 const URL = process.env.BFF_REDIS_URL ?? "redis://localhost:6379";
 
-describe.skip("gerçek Redis (koordinatör koşturur)", () => {
+describe("gerçek Redis (koordinatör koşturur)", () => {
   let store: RedisSessionStore;
   let second: RedisSessionStore;
   let clients: RedisClient[];

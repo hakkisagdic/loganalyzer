@@ -9,6 +9,7 @@
     "start": "next start --port 3000",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:live": "vitest run --config vitest.live.config.ts",
     "test:watch": "vitest",
     "api:generate": "./scripts/generate-api-types.sh",
     "api:check": "./scripts/generate-api-types.sh --check"
