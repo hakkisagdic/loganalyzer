@@ -33,13 +33,40 @@ kimseye görünmeyecekti; kapının kendi kusurunu kapının kendisi bildirdi.
 Aynı koşum `0001_events.sql`'den okunan tipleri de doğruladı: `toTypeName` →
 `LowCardinality(String)` ve `IPv6`.
 
-Hangi biçim
------------
-Varsayılan `EXPLAIN` (yani `EXPLAIN PLAN`), çünkü **ölçülen tek doğru biçim o**.
-Biçim `--explain-form` ile değiştirilebilir ve `--probe-forms` adayları yan yana
-ölçüyor: hangisi tip hatasını görüyor, hangisi ne kadar sürüyor. Karar tahminle
-değil o çıktıyla verilecek — `EXPLAIN SYNTAX`'in seçilmiş olması zaten tahminin
-bedeliydi.
+Hangi biçim — ölçüldü
+---------------------
+Canlı ClickHouse 26.7.3, üç sorgu, üç tur:
+
+| Biçim | Ayırt ediyor mu | Sonuçlar |
+| --- | --- | --- |
+| `EXPLAIN` | ✓ | `red, red, kabul` |
+| `EXPLAIN PLAN` | ✓ | `red, red, kabul` |
+| `EXPLAIN ESTIMATE` | ✓ | `red, red, kabul` |
+| `EXPLAIN QUERY TREE` | ✗ | `kabul, red, kabul` — **kısmen** |
+| `EXPLAIN SYNTAX` | ✗ | `kabul, kabul, kabul` |
+
+**Maliyet ayırt edici değil.** Isınma çıkarıldığında üç doğru biçim de
+~12–13 ms/sorgu bandında; 269 kural × ~13 ms ≈ **3,5 saniye**. CI'da bir kalem
+değil. Geriye tek ölçüt olarak doğruluk kalıyor, o da üçünde eşit — bu yüzden en
+açık olanı, `EXPLAIN`, duruyor. **Biçim seçimi maliyetle gerekçelendirilemez.**
+
+⚠️ İlk ölçüm ısınmasızdı ve `EXPLAIN`'i `EXPLAIN PLAN`'in 2,3 katı gösterdi.
+Çıplak `EXPLAIN` zaten `EXPLAIN PLAN`'in kendisi olduğu için bu imkânsız; ölçülen
+şey biçim değil **listedeki sıraydı**. Sıra ters çevrildiğinde fark biçimi değil
+ilk sırayı takip etti. `probe_forms` artık her biçimden önce sayılmayan bir
+ısınma turu atıyor.
+
+`EXPLAIN QUERY TREE` tablodaki en değerli satır
+------------------------------------------------
+`ILIKE ↔ IPv6`'yı **yakalıyor**, `tamsayı ↔ LowCardinality(String)`'i
+**kaçırıyor**. Yani kısmen çalışıyor — ve **kısmen çalışan bir kapı hiç
+çalışmayandan tehlikeli**. Biri bir gün "daha ucuz ve tip hatasını yakalıyor"
+diye ona geçseydi kapı `ILIKE` hatalarını yakalamaya devam edeceği için
+**çalışıyor görünürdü**; sessizce geçen tek sınıf tamsayı uyuşmazlıkları olurdu.
+`EXPLAIN SYNTAX` en azından her şeye "kabul" diyerek kendini ele veriyordu.
+
+Bu yüzden `probe_forms`'un ölçütü "üç sonucun **üçü de** beklenen mi" — "en az
+bir red üretti mi" değil. Gevşek kriter tam bu satırı kaçırırdı.
 
 Neden kendi CI işinde
 ---------------------
@@ -274,31 +301,65 @@ SELF_TEST_QUERIES: tuple[tuple[str, bool, str], ...] = (
 )
 
 
-def probe_forms(*, forms: tuple[str, ...] = CANDIDATE_FORMS, **kwargs: object) -> list[dict[str, object]]:
+def probe_forms(
+    *,
+    forms: tuple[str, ...] = CANDIDATE_FORMS,
+    rounds: int = 3,
+    **kwargs: object,
+) -> list[dict[str, object]]:
     """Aday `EXPLAIN` biçimlerini yan yana ölçer: hangisi ayırt ediyor, ne kadar sürüyor.
 
     Biçim seçimi tahminle yapılmamalı — `EXPLAIN SYNTAX`'in seçilmiş olması zaten
-    tahminin bedeliydi. `discriminates` alanı "bilinen iki kırık sorguyu
-    reddedip sağlam olanı kabul etti mi" sorusunun cevabı; `seconds` üç sorgunun
-    toplam süresi, yani 269 kuralın maliyetinin kaba ölçeği.
+    tahminin bedeliydi.
+
+    Isınma turu neden var
+    ---------------------
+    İlk sürüm ısınmasızdı ve **yanıltıcı bir tablo üretti**: `EXPLAIN` üç turda da
+    `EXPLAIN PLAN`'in ~2,3 katı çıktı. ClickHouse'ta çıplak `EXPLAIN` zaten
+    `EXPLAIN PLAN`'in kendisi, yani aynı şeyin kendinden 2,3 kat pahalı olması
+    imkânsız — ölçülen şey biçim değil **listedeki sıra** idi. Sıra ters
+    çevrildiğinde fark biçimi değil ilk sırayı takip etti.
+
+    `CLAUDE.md` §6'nın kuralı: bir ölçümün sonucunun duvar saatiyle ya da koşum
+    sırasıyla ilgisi olmamalı. Her biçim önce **sayılmayan** bir tur atıyor;
+    bağlantı ve önbellek ısınmasının bedelini ölçüm değil o tur ödüyor.
+
+    `discriminates` alanı "üç sorgunun **üçü de** beklenen sonucu verdi mi"
+    sorusunun cevabı — "en az bir red üretti mi" değil. Fark ölçüldü:
+    `EXPLAIN QUERY TREE` `ILIKE ↔ IPv6`'yı yakalıyor ama tamsayı uyuşmazlığını
+    kaçırıyor, yani **kısmen** çalışıyor. Gevşek bir kriter onu yeşil gösterirdi
+    ve kısmen çalışan bir kapı hiç çalışmayandan tehlikeli: `EXPLAIN SYNTAX` her
+    şeye "kabul" diyerek kendini ele veriyordu, `QUERY TREE` ise çalışıyor
+    görünüp tek bir sınıfı sessizce geçirirdi.
     """
     import time
 
+    expected = [ok for _, ok, _ in SELF_TEST_QUERIES]
     report: list[dict[str, object]] = []
+
     for form in forms:
-        verdicts: list[bool] = []
-        started = time.perf_counter()
-        for sql, _, _ in SELF_TEST_QUERIES:
-            verdicts.append(explain_sql(sql, form=form, **kwargs).passed)  # type: ignore[arg-type]
-        elapsed = time.perf_counter() - started
+        # Isınma turu — SAYILMIYOR.
+        verdicts = [explain_sql(sql, form=form, **kwargs).passed for sql, _, _ in SELF_TEST_QUERIES]  # type: ignore[arg-type]
+
+        durations: list[float] = []
+        for _ in range(rounds):
+            started = time.perf_counter()
+            for sql, _, _ in SELF_TEST_QUERIES:
+                explain_sql(sql, form=form, **kwargs)  # type: ignore[arg-type]
+            durations.append(time.perf_counter() - started)
+
+        # Turların **en hızlısı**: ortalama, arada geçen bir yavaşlamayı ölçüme
+        # katardı ve ölçtüğümüz şey makinenin o anki yükü değil biçimin maliyeti.
+        best = min(durations)
 
         report.append(
             {
                 "form": form,
-                "discriminates": verdicts == [expected for _, expected, _ in SELF_TEST_QUERIES],
+                "discriminates": verdicts == expected,
                 "results": ["kabul" if ok else "red" for ok in verdicts],
-                "seconds": round(elapsed, 4),
-                "per_query_ms": round(elapsed * 1000 / len(SELF_TEST_QUERIES), 2),
+                "seconds": round(best, 4),
+                "per_query_ms": round(best * 1000 / len(SELF_TEST_QUERIES), 2),
+                "rounds": rounds,
             }
         )
     return report

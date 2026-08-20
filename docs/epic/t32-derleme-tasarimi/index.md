@@ -149,6 +149,58 @@ kapısının da körleşmesi demek. Bu depoda "başkasının hatası yüzünden 
 bekçi" deseninin bedeli zaten ödendi. Konteyner maliyeti, kapının kendi ayakları
 üstünde durmasından ucuz.
 
+### KARAR · Kapı 2 `EXPLAIN` soruyor — ve ilk hâli kapıyı sessizce yeşil bırakıyordu
+
+İlk yazımda `EXPLAIN SYNTAX` seçilmişti. **Ölçüldü, yanlıştı:** o biçim tip
+denetimi yapmıyor, yalnızca AST'yi yeniden yazıyor. Bilinen iki kırık sorgunun
+ikisine de 200 dönüyordu, yani kapı 24 kuralın hepsini geçirecek ve ikisi
+üretimde patlayacaktı — `KIND_TYPE_MISMATCH` kolu o yoldan **asla**
+tetiklenemezdi. Kapı 2'nin kapatmak için var olduğu sınıf, kapının içinde.
+
+Bunu `--self-test` buldu. Kip olmasaydı kusur, kural seti üretime çıkana kadar
+görünmeyecekti — ve "sıfır sorgu soran kapı" her iki hâlde de yeşil yanardı.
+
+#### Ölçülen tablo — canlı 26.7.3, üç sorgu, üç tur
+
+| Biçim | Ayırt ediyor mu | Sonuçlar |
+| --- | --- | --- |
+| `EXPLAIN` | ✓ | `red, red, kabul` |
+| `EXPLAIN PLAN` | ✓ | `red, red, kabul` |
+| `EXPLAIN ESTIMATE` | ✓ | `red, red, kabul` |
+| `EXPLAIN QUERY TREE` | ✗ | `kabul, red, kabul` — **kısmen** |
+| `EXPLAIN SYNTAX` | ✗ | `kabul, kabul, kabul` |
+
+**Maliyet ayırt edici değil.** Isınma çıkarıldığında üç doğru biçim de
+~12–13 ms/sorgu bandında; 269 kural × ~13 ms ≈ **3,5 saniye**. Geriye tek ölçüt
+olarak doğruluk kalıyor ve o da üçünde eşit — bu yüzden en açık olanı, `EXPLAIN`,
+duruyor. **Biçim seçimi maliyetle gerekçelendirilemez** ve bunu bilmek de bir
+ölçüm sonucu.
+
+⚠️ **Süre sütunu bir kez yalan söyledi.** İlk ölçüm ısınmasızdı ve `EXPLAIN`'i
+`EXPLAIN PLAN`'in 2,3 katı gösterdi. Çıplak `EXPLAIN` zaten `EXPLAIN PLAN`'in
+kendisi olduğu için bu fiziksel olarak imkânsız — K35'te "yalnız ayrıştırma,
+ayrıştırma+etiketlemeden yavaş" çıktığındaki durumun aynısı. Ölçülen şey biçim
+değil **listedeki sıraydı**; sıra ters çevrildiğinde fark biçimi değil ilk sırayı
+takip etti. `probe_forms` artık her biçimden önce sayılmayan bir ısınma turu
+atıyor ve turların en hızlısını raporluyor (§6).
+
+#### `EXPLAIN QUERY TREE` — tablodaki en değerli satır
+
+`ILIKE ↔ IPv6`'yı **yakalıyor**, `tamsayı ↔ LowCardinality(String)`'i
+**kaçırıyor**. Kısmen çalışıyor, ve **kısmen çalışan bir kapı hiç çalışmayandan
+tehlikeli**: biri "daha ucuz ve tip hatasını yakalıyor" diye ona geçseydi kapı
+`ILIKE` hatalarını yakalamaya devam edeceği için *çalışıyor görünürdü* ve
+sessizce geçen tek sınıf tamsayı uyuşmazlıkları olurdu. `EXPLAIN SYNTAX` en
+azından her şeye "kabul" diyerek kendini ele veriyordu.
+
+Bu yüzden probe'un ölçütü *"üç sonucun **üçü de** beklenen mi"* — *"en az bir red
+üretti mi"* değil. Gevşek kriter tam bu satırı kaçırırdı.
+
+İki başarısız biçim de aday listesinde **duruyor**: "denedik, olmadı" bilgisini
+silmek, bir sonraki kişinin aynı seçimi aynı gerekçeyle yapmasına kapı açardı.
+Probe CI'da kapı değil **ölçüm** olarak koşuyor — bir ClickHouse yükseltmesi
+`QUERY TREE`'yi düzeltebilir ya da `PLAN`'i bozabilir, ve o gün bu tablo söyler.
+
 ### KARAR · Kapı 1'den geçemeyen kural dosya üretmez
 
 Manifest'e `gated` olarak sebebiyle yazılır (`unknown_column: url`). Böylece
