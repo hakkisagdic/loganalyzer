@@ -49,5 +49,11 @@
       "expect": "at_least_one",
       "why": "asa_outbound_built — catalog/parsers/cisco.asa/samples/network.log içinde `Built` ve `TCP` AYNI satırda 4 kez geçiyor (ör. `Built outbound TCP connection ...`). Kural `activity_name='Built' AND connection_info_protocol_name='tcp'` arıyor; ikisi de aynı olaydan geliyor."
     }
+  ],
+  "undeclared": [
+    {
+      "rule_id": "14644215-0000-4000-8000-000000000000",
+      "why": "nginx_dns_rebind — kural `hostname|contains: localhost/127.0.0.1/169.254.169.254` arıyor. catalog/parsers/nginx.access/samples/combined.log içinde `localhost` YALNIZCA referrer alanında (`\"http://localhost:8080/\"`), `127.0.0.1` YALNIZCA remote_ip konumunda; combined format zaten Host başlığı taşımıyor. Yani `device_hostname`'in bu satırlarda ne olduğu örnek dosyadan okunamıyor ve tahminle beyan yazmak kapıyı yanlış sebeple kırmızı yakardı. `--discover` kuralı boş buldu; okuma ölçümle örtüştü. Beyan, kuralın `access-json.log`'a mı bakması gerektiği kararından sonra yazılacak."
+    }
   ]
 }
