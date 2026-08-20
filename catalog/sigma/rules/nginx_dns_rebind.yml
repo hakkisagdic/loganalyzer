@@ -1,0 +1,31 @@
+title: "nginx: şüpheli Host başlığı (DNS rebinding)"
+id: 14644215-0000-4000-8000-000000000000
+status: experimental
+description: >-
+  T30 ölçüm örneklemi. Kuralın ilk hâli `category: dns` altında
+  `query|contains: 'localhost'` yazıyordu ve İKİ ayrı sebeple hiçbir zaman
+  eşleşemezdi — ikisi de sessizdi.
+
+  Birincisi: nginx bir web sunucusu, DNS sorgusu üretmiyor. `query` diye bir
+  alan hiçbir parser'da yok, dolayısıyla T31 bekçisi kuralı düşürüyordu.
+
+  İkincisi ve daha sinsisi: `category: dns` pipeline'da `class_uid=4003`
+  koşuluna dönüşüyor, oysa nginx parser'ı `ocsf.class_uid: 4002` yazıyor.
+  Yani `query` alanı VAR OLSAYDI bile sorgu derlenir, koşar ve sıfır satır
+  döndürürdü. Birinci hata ikincisini gizliyordu.
+
+  Başlık en baştan "Host başlığı" diyordu; niyet doğruydu, kodlaması yanlıştı.
+  DNS rebinding'in nginx erişim kaydındaki izi, kurbanın tarayıcısının
+  gönderdiği Host başlığının iç ağa/loopback'e işaret etmesidir — parser onu
+  `core.host` üzerinden `device_hostname` kolonuna yazıyor.
+logsource:
+  category: webserver
+  product: nginx
+detection:
+  selection:
+    hostname|contains:
+      - 'localhost'
+      - '127.0.0.1'
+      - '169.254.169.254'
+  condition: selection
+level: medium
