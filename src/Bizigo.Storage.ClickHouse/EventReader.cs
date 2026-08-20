@@ -33,6 +33,10 @@ public sealed class EventReader(ClickHouseContext context)
         ["parser_id"] = "String",
         ["parser_version"] = "String",
         ["template_id"] = "String",
+        // "Bu imzadan başka nerede var?" — kanıt satırından ham loga inen yol
+        // (RCA raporunun `drilldown_query`'si). Değer ondalık UInt64 olarak
+        // veriliyor; kolonun tanımı 0006 göçünde.
+        ["signature_hash"] = "UInt64",
         ["proto"] = "String",
         ["action"] = "String",
         ["outcome"] = "String",
@@ -69,7 +73,7 @@ public sealed class EventReader(ClickHouseContext context)
     internal const string SelectColumns = """
         ts, ingested_at, time_source, event_id, owner_group, source_id, host, vendor, product,
         parser_id, parser_version, toUInt8(parse_status) AS parse_status_num, parse_generation,
-        encoding_detected, template_id, severity_num, ocsf_class_uid, ocsf_activity_id,
+        encoding_detected, template_id, signature_hash, severity_num, ocsf_class_uid, ocsf_activity_id,
         toString(src_ip) AS src_ip_s, toString(dst_ip) AS dst_ip_s, src_port, dst_port,
         proto, action, outcome, user_name,
         mapKeys(attrs) AS attr_keys, mapValues(attrs) AS attr_values,
@@ -544,6 +548,7 @@ public sealed class EventReader(ClickHouseContext context)
             ParseGeneration = Convert.ToUInt32(reader["parse_generation"], CultureInfo.InvariantCulture),
             EncodingDetected = (string)reader["encoding_detected"],
             TemplateId = (string)reader["template_id"],
+            SignatureHash = Convert.ToUInt64(reader["signature_hash"], CultureInfo.InvariantCulture),
             SeverityNum = Convert.ToByte(reader["severity_num"], CultureInfo.InvariantCulture),
             OcsfClassUid = Convert.ToUInt32(reader["ocsf_class_uid"], CultureInfo.InvariantCulture),
             OcsfActivityId = Convert.ToUInt16(reader["ocsf_activity_id"], CultureInfo.InvariantCulture),

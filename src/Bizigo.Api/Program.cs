@@ -194,6 +194,14 @@ app.MapGet("/internal/discovery/stats", (
             version = masks?.Version ?? 0,
             count = masks?.Masks.Count ?? 0,
             source = masks?.SourcePath,
+
+            // K35'ten sonra bu sayaç operasyonel: maskeleme her olayda koşuyor
+            // ve sınırı aşan satırın `signature_hash`'i boş kalıyor, yani o
+            // satırlar RCA'nın "ilk-görülen imza" sinyalinde **görünmüyor**.
+            // Sıfırdan büyük olması arıza değil ama raporun söylemesi gereken
+            // bir şey; hiçbir yerde okunamıyor olması, kaldırılan zaman
+            // aşımının sessizliğini geri getirirdi.
+            skipped_too_long = masks?.SkippedTooLong ?? 0,
         },
         queue = new
         {

@@ -79,6 +79,46 @@ public sealed class ReplayDiffTests
         Assert.Equal(1, result.Unchanged);
     }
 
+    /// <summary>
+    /// İmza değişmesi raporlanan bir fark (T29 kabul kriteri).
+    ///
+    /// <para>
+    /// Maskeleme sözlüğü güncellendiyse ya da kodlama tespiti düzeldiyse aynı ham
+    /// satır başka bir imzaya düşüyor — ve o satırlar RCA'nın gözünde "ilk kez
+    /// görülen" oluyor. Rapor sessiz kalsaydı replay sonrası tek seferlik bir
+    /// ilk-görülen dalgası doğar ve sebebi hiçbir yerde yazılı olmazdı.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Imza_degismesi_fark_olarak_raporlaniyor()
+    {
+        var id = Guid.CreateVersion7();
+        var (rebuilt, existing) = Pair(
+            Event(id) with { SignatureHash = 111 },
+            Event(id) with { SignatureHash = 222 });
+
+        var result = ReplayDiff.Compare(rebuilt, existing, 10);
+
+        Assert.Equal(1, result.Changed);
+        Assert.Equal(1, result.ChangesByField["signature_hash"]);
+    }
+
+    /// <summary>
+    /// Aynı imza fark <b>değil</b> — yukarıdaki bekçinin kırmızı yanmasının
+    /// kazara olmadığının kanıtı. Replay'lerin ezici çoğunluğunda imza
+    /// değişmiyor ve her satırı "değişti" saymak raporu kullanılamaz yapardı.
+    /// </summary>
+    [Fact]
+    public void Ayni_imza_fark_sayilmiyor()
+    {
+        var id = Guid.CreateVersion7();
+        var (rebuilt, existing) = Pair(
+            Event(id) with { SignatureHash = 111 },
+            Event(id) with { SignatureHash = 111 });
+
+        Assert.Equal(1, ReplayDiff.Compare(rebuilt, existing, 10).Unchanged);
+    }
+
     [Fact]
     public void Failed_to_ok_ayrica_sayiliyor()
     {

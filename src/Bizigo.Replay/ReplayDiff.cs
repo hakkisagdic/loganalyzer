@@ -105,6 +105,16 @@ public static class ReplayDiff
         Check("ocsf_class_uid", before.OcsfClassUid.ToString(CultureInfo.InvariantCulture), after.OcsfClassUid.ToString(CultureInfo.InvariantCulture));
         Check("ts", before.Timestamp.UtcDateTime.ToString("O", CultureInfo.InvariantCulture), after.Timestamp.UtcDateTime.ToString("O", CultureInfo.InvariantCulture));
 
+        // İmza değişmesi replay'in **raporlaması gereken** bir fark: maskeleme
+        // sözlüğü güncellendiyse ya da kodlama tespiti düzeldiyse aynı ham satır
+        // başka bir imzaya düşer, ve o satırlar RCA'nın gözünde "ilk kez görülen"
+        // olur. Sessiz kalırsa replay sonrası tek seferlik bir ilk-görülen
+        // dalgası doğar ve sebebi hiçbir yerde yazılı olmaz.
+        Check(
+            "signature_hash",
+            before.SignatureHash.ToString(CultureInfo.InvariantCulture),
+            after.SignatureHash.ToString(CultureInfo.InvariantCulture));
+
         // `ingested_at`in aksine bu KARŞILAŞTIRILIYOR: replay'in en değerli
         // kazançlarından biri, önce zamanı çözemeyen bir parser'ın düzeltilip
         // `observed` → `parsed` geçişi yapması. Rapor bunu göstermeli.

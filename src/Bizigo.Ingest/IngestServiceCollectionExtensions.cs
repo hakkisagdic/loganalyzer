@@ -82,15 +82,21 @@ public static class IngestServiceCollectionExtensions
         services.AddSingleton(options);
         services.AddSingleton<DiscoveryStats>();
 
+        // Maskeleme sözlüğü grok kütüphanesiyle aynı statüde: **veri**. Bulunamazsa
+        // sessizce devam etmek, keşfin neden hiç çalışmadığını günlerce gizler.
+        //
+        // K35'ten sonra bu kayıt `Enabled` kontrolünün **üstünde**: maskeleme artık
+        // keşfin özel işi değil, sıcak yolun her olayda koştuğu adım. Sidecar kapalı
+        // olsa bile `signature_hash` dolmak zorunda — RCA'nın en güçlü iki sinyalini
+        // sidecar'dan kurtarmanın tamamı bu. Sözlük yoksa boru hattı **açılışta**
+        // patlıyor; sessizce imzasız akmak, ticket'ın önlemek için var olduğu hata.
+        services.AddSingleton(_ => MaskCatalog.LoadFromFile(options.MaskFile));
+
         if (!options.Enabled)
         {
             services.TryAddSingleton<ITemplateAnnotator, NullTemplateAnnotator>();
             return services;
         }
-
-        // Maskeleme sözlüğü grok kütüphanesiyle aynı statüde: **veri**. Bulunamazsa
-        // sessizce devam etmek, keşfin neden hiç çalışmadığını günlerce gizler.
-        services.AddSingleton(_ => MaskCatalog.LoadFromFile(options.MaskFile));
 
         services.AddSingleton(new TemplateCache(options.TemplateCacheCapacity));
         services.AddSingleton<DiscoveryQueue>();

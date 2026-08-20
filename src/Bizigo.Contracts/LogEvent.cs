@@ -85,6 +85,26 @@ public sealed record LogEvent
     public string EncodingDetected { get; init; } = string.Empty;
     public string TemplateId { get; init; } = string.Empty;
 
+    /// <summary>
+    /// Maskelenmiş imzanın kimliği (K35) — <c>0</c> ise imza yok.
+    ///
+    /// <para>
+    /// <see cref="TemplateId"/> ile <b>farklı iş yapıyor</b> ve onun yerine
+    /// geçmiyor. <c>template_id</c> insan-okunur kümeleme ve F4'ün grok
+    /// taslağı için; sidecar'dan geliyor, örneklemeye tabi ve bir imzanın ilk
+    /// görülüşünde tanım gereği boş. <c>signature_hash</c> ise <b>her</b> olayda,
+    /// yazma anında, sidecar'a hiç sorulmadan doluyor — F3'ün "ilk-görülen imza"
+    /// ve "hacim sapması" korelasyonları bunun üstüne kuruluyor ve saf SQL
+    /// kalıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Tanımı <c>Bizigo.Parsing.Grok.SignatureHash</c>'te: maskelenmiş metnin
+    /// UTF-8 baytları üzerinde XXH64. Kaynak, vendor ve host <b>dahil değil</b>.
+    /// </para>
+    /// </summary>
+    public ulong SignatureHash { get; init; }
+
     public byte SeverityNum { get; init; }
     public uint OcsfClassUid { get; init; }
     public ushort OcsfActivityId { get; init; }

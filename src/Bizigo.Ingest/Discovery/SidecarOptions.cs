@@ -51,6 +51,17 @@ public sealed class SidecarOptions
     /// <summary>İmza → <c>template_id</c> önbelleğinin üst sınırı.</summary>
     public int TemplateCacheCapacity { get; set; } = 50_000;
 
-    /// <summary>Maskeleme sözlüğü — sidecar'ın okuduğu <b>aynı</b> dosya.</summary>
+    /// <summary>
+    /// Maskeleme sözlüğü — sidecar'ın okuduğu <b>aynı</b> dosya.
+    ///
+    /// <para>
+    /// ⚠️ Bu ayar bölümünü aştı: K35'ten sonra sözlük <b>sıcak yolun</b> girdisi
+    /// (<c>signature_hash</c> her olayda ondan üretiliyor) ve
+    /// <see cref="Enabled"/> kapalıyken bile yükleniyor. Anahtar
+    /// <c>Sidecar:MaskFile</c> olarak bırakıldı: ikinci bir anahtar açmak iki
+    /// gerçek kaynak demek olurdu ve yanlış olanı düzenleyen kişi hiçbir hata
+    /// görmezdi. Taşınacaksa tek seferde ve dağıtım notuyla.
+    /// </para>
+    /// </summary>
     public string MaskFile { get; set; } = "catalog/masks/bizigo-masks.yaml";
 }

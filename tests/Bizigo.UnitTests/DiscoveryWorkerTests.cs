@@ -84,7 +84,7 @@ public sealed class DiscoveryWorkerTests
                 options, queue, client, breaker, cache, stats,
                 NullLogger<DiscoveryWorker>.Instance),
             queue,
-            new DiscoveryAnnotator(options, Masks, cache, queue, stats),
+            new DiscoveryAnnotator(options, cache, queue, stats),
             stats,
             breaker,
             cache,
@@ -102,7 +102,7 @@ public sealed class DiscoveryWorkerTests
         {
             Assert.Equal(
                 string.Empty,
-                harness.Annotator.Annotate("firewall", $"deny tcp 10.0.0.{index % 255}", parseFailed: true));
+                harness.Annotator.Annotate(Masks, "firewall", $"deny tcp 10.0.0.{index % 255}", parseFailed: true));
         }
     }
 
@@ -206,7 +206,7 @@ public sealed class DiscoveryWorkerTests
                 "application/json"),
         }));
 
-        harness.Annotator.Annotate("linux", Line, parseFailed: true);
+        harness.Annotator.Annotate(Masks, "linux", Line, parseFailed: true);
 
         Assert.Equal(DiscoveryTurn.Processed, await harness.Worker.RunTurnAsync(TestContext.Current.CancellationToken));
 
@@ -219,7 +219,7 @@ public sealed class DiscoveryWorkerTests
         Assert.Equal(
             "linux:5",
             harness.Annotator.Annotate(
-                "linux", "Failed password for admin from 172.16.0.1 port 22 ssh2", parseFailed: true));
+                Masks, "linux", "Failed password for admin from 172.16.0.1 port 22 ssh2", parseFailed: true));
     }
 
     [Fact]
@@ -239,7 +239,7 @@ public sealed class DiscoveryWorkerTests
                 "application/json"),
         }));
 
-        harness.Annotator.Annotate("linux", "deny tcp 10.0.0.1 -> 10.0.0.2", parseFailed: true);
+        harness.Annotator.Annotate(Masks, "linux", "deny tcp 10.0.0.1 -> 10.0.0.2", parseFailed: true);
 
         Assert.Equal(DiscoveryTurn.Processed, await harness.Worker.RunTurnAsync(TestContext.Current.CancellationToken));
 
@@ -258,7 +258,7 @@ public sealed class DiscoveryWorkerTests
                 "application/json"),
         }));
 
-        harness.Annotator.Annotate("linux", "deny tcp 10.0.0.1", parseFailed: true);
+        harness.Annotator.Annotate(Masks, "linux", "deny tcp 10.0.0.1", parseFailed: true);
 
         Assert.Equal(DiscoveryTurn.Failed, await harness.Worker.RunTurnAsync(TestContext.Current.CancellationToken));
 
@@ -300,7 +300,7 @@ public sealed class DiscoveryWorkerTests
 
         try
         {
-            harness.Annotator.Annotate("linux", Line, parseFailed: true);
+            harness.Annotator.Annotate(Masks, "linux", Line, parseFailed: true);
             await WaitUntilAsync(() => harness.Cache.Count > 0, "Başlatılan işçi kuyruğu tüketmedi.");
 
             Assert.True(harness.Cache.TryGet(signature, out var templateId));
