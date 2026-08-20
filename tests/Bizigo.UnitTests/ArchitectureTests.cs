@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Bizigo.Alerting;
 using Bizigo.Api.Connectors;
 using Bizigo.Api.Webhooks;
@@ -120,6 +121,170 @@ public sealed class ArchitectureTests
     [Fact]
     public void Uretim_DI_grafi_kapsam_dogrulamasindan_geciyor()
     {
+        var builder = ProductionServices(out var registrars);
+
+        // Keşfin gerçekten iş gördüğü burada da sınanıyor: çağrılar bir yerde
+        // yutulsaydı grafik boş kalır ve test anlamsız yere geçerdi.
+        Assert.NotEmpty(registrars);
+        Assert.True(builder.Services.Count > 50, "Servis grafiği beklenmedik biçimde küçük.");
+
+        // `Build()` doğrulamayı kendisi koşuyor: Development ortamında
+        // `ValidateScopes` ve `ValidateOnBuild` açık. Hiçbir bağlantı
+        // kurulmuyor — yalnızca grafik inşa ediliyor.
+        var exception = Record.Exception(() => builder.Build());
+
+        Assert.True(
+            exception is null,
+            "Üretim servis grafiği kapsam doğrulamasından geçmiyor — büyük ihtimalle bir singleton "
+            + "scoped bir servisi tutuyor (captive dependency):\n" + exception?.Message);
+    }
+
+    /// <summary>
+    /// <b>Bekçinin kendisinin bekçisi.</b> Bugün bilinen kayıt uzantılarının
+    /// hepsi bulunuyor mu?
+    ///
+    /// <para>
+    /// Elle yazılmış olan artık <b>denetlenen küme</b> değil, <b>beklenen
+    /// küme</b>: keşif bunlardan azını bulursa bir katman sessizce doğrulama
+    /// dışında kalmış demektir, fazlasını bulursa yeni bir katman gelmiş ve
+    /// bilinçli olarak buraya yazılması gerekiyor. Aradaki fark önemli —
+    /// birincisi kapının neyi denetlediğini belirliyordu, bu ise kapının
+    /// gördüğünü <i>doğruluyor</i>.
+    /// </para>
+    ///
+    /// <para>
+    /// Liste yazılırken <c>AddBizigoAuthentication</c> ve
+    /// <c>AddBizigoDiscovery</c> elle tutulan sürümde <b>yoktu</b>: ilki
+    /// <c>Program.cs</c>'te çağrılıyor ama doğrulamaya hiç girmiyordu, ikincisi
+    /// <c>AddBizigoIngest</c>'in içinden çağrılıyor. Yani liste zaten iki
+    /// eksikti ve bunu kimse görmüyordu.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Kapsam_bekcisi_butun_kayit_uzantilarini_kendisi_buluyor()
+    {
+        ProductionServices(out var registrars);
+
+        Assert.Equal(
+            [
+                "AddBizigoAlerting", "AddBizigoAuthentication", "AddBizigoAuthoring",
+                "AddBizigoDataPlane", "AddBizigoDiscovery", "AddBizigoEvidence",
+                "AddBizigoIngest", "AddBizigoParsing", "AddBizigoRawArchive",
+                "AddBizigoReplay", "AddChangeConnectors", "AddChangeWebhooks",
+                "AddControlPlane",
+
+                // Bizim yazdığımız bir uzantı DEĞİL: OpenAPI paketinin XML
+                // yorum desteği bunu `Bizigo.Api` derlemesinin İÇİNE üretiyor
+                // (`Microsoft.AspNetCore.OpenApi.Generated`, tip adı bir içerik
+                // özetini taşıyor). Dışlamak yerine kabul ediliyor, çünkü
+                // `Program.cs` gerçekten `AddOpenApi()` çağırıyor — yani üretim
+                // grafiğinin parçası ve doğrulanması bir kayıp değil kazanç.
+                // Dışlama kuralı yazmak ise listeleri yeniden körleştirmenin
+                // yoluydu; burada dışlanan hiçbir şey yok.
+                "AddOpenApi",
+            ],
+            registrars.Select(static m => m.Name).ToArray());
+
+    }
+
+    /// <summary>
+    /// <c>Bizigo.*</c> derlemelerindeki <b>bütün</b> <c>IServiceCollection</c>
+    /// uzantıları — yansımayla.
+    ///
+    /// <para>
+    /// Elle yazılmış bir liste yerine burayı kullanmanın tek sebebi var: bu
+    /// depoda aynı yapısal delik <b>üç kez</b> ısırdı. <c>Produces&lt;T&gt;</c>
+    /// kapısı uçları elle yazılmış bir <c>Map*</c> listesinden topluyordu ve 16
+    /// uç kapıya hiç görünmeden üç test yeşil yanıyordu; bu bekçi <c>Add*</c>
+    /// çağrılarını elle tutuyordu ve <c>AddBizigoEvidence</c> listede yokken
+    /// kanıt sağlayıcıları tam da bu doğrulamanın yakalaması gereken hatayı
+    /// taşıyordu. Elle tutulan liste er ya da geç bekçiyi kör ediyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Derlemeler de elle sayılmıyor: <b>kompozisyon kökünden</b>
+    /// (<c>Bizigo.Api</c>) başlanıp <c>Bizigo.*</c> referansları geçişli olarak
+    /// yükleniyor. Test projesinin referans listesinden gitmek yanlış olurdu —
+    /// o listede üretimde olmayan şeyler bulunabilir ve üretimde olan bir şey
+    /// eksik kalabilir.
+    /// </para>
+    /// </summary>
+    private static IReadOnlyList<MethodInfo> Registrars() =>
+        [.. ProductAssemblies()
+            .SelectMany(static a => a.GetTypes())
+            // Statik sınıf = sealed + abstract.
+            .Where(static t => t is { IsSealed: true, IsAbstract: true })
+            .SelectMany(static t => t.GetMethods(BindingFlags.Public | BindingFlags.Static))
+            .Where(static m => m.IsDefined(typeof(ExtensionAttribute), inherit: false))
+            .Where(static m => m.Name.StartsWith("Add", StringComparison.Ordinal))
+            .Where(static m => m.GetParameters() is [{ } first, ..]
+                && first.ParameterType == typeof(IServiceCollection))
+            .OrderBy(static m => m.Name, StringComparer.Ordinal)];
+
+    /// <summary>
+    /// Kompozisyon kökünden geçişli olarak yüklenen <c>Bizigo.*</c> derlemeleri.
+    ///
+    /// <para><c>AppDomain.GetAssemblies()</c> yeterli değil: bir derleme henüz
+    /// hiç dokunulmadıysa yüklü olmuyor ve keşif onu sessizce atlıyor —
+    /// kapatmaya çalıştığımız delik tam olarak bu.</para>
+    /// </summary>
+    private static IReadOnlyList<Assembly> ProductAssemblies()
+    {
+        var found = new Dictionary<string, Assembly>(StringComparer.Ordinal);
+        var pending = new Queue<Assembly>([typeof(global::Program).Assembly]);
+
+        while (pending.TryDequeue(out var assembly))
+        {
+            if (!found.TryAdd(assembly.GetName().Name!, assembly))
+            {
+                continue;
+            }
+
+            foreach (var reference in assembly.GetReferencedAssemblies())
+            {
+                if (reference.Name?.StartsWith("Bizigo.", StringComparison.Ordinal) == true
+                    && !found.ContainsKey(reference.Name))
+                {
+                    pending.Enqueue(Assembly.Load(reference));
+                }
+            }
+        }
+
+        return [.. found.Values];
+    }
+
+    /// <summary>
+    /// Keşfedilen her kayıt uzantısını çağırıp üretim grafiğini kuruyor.
+    /// </summary>
+    ///
+    /// <para>
+    /// <b>İmza çeşitliliği.</b> Uzantıların üç ayrı şekli var:
+    /// yalnızca <c>IServiceCollection</c> (<c>AddBizigoReplay</c>),
+    /// <c>+ IConfiguration</c> (çoğunluk), <c>+ string connectionString</c>
+    /// (<c>AddControlPlane</c>) ve <c>+ ClickHouseOptions</c>
+    /// (<c>AddBizigoDataPlane</c>). Argüman üretimi <b>tip başına</b> yapılıyor,
+    /// <c>string</c> ise ayrıca <b>parametre adına</b> bakıyor: adı
+    /// <c>connectionString</c> olmayan bir <c>string</c>'e bağlantı dizesi
+    /// vermek, testin sessizce yanlış bir şeyi kurması olurdu.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Tanınmayan imza atlanmıyor, testi düşürüyor.</b> Atlamak bu bekçiyi
+    /// yeniden kör ederdi — hem de en sinsi biçimde, çünkü keşif çalışıyor
+    /// görünürken bir katman doğrulama dışında kalırdı. Yeni bir şekil geldiğinde
+    /// doğru hareket burayı öğretmek.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Çağrı sırası ada göre</b>, <c>Program.cs</c>'teki sıra değil. Sıra
+    /// yalnızca <c>TryAdd</c> semantiğinde hangi kaydın kazandığını değiştiriyor
+    /// (<c>AddChangeConnectors</c> ↔ <c>AddChangeWebhooks</c>); ömür doğrulaması
+    /// <b>her</b> tanımlayıcıya bakıyor, dolayısıyla ikisi de denetleniyor.
+    /// Kompozisyon sırasının doğruluğu <c>Program.cs</c>'in işi ve orada
+    /// gerekçesiyle yazılı.
+    /// </para>
+    private static WebApplicationBuilder ProductionServices(out IReadOnlyList<MethodInfo> registrars)
+    {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
             EnvironmentName = Environments.Development,
@@ -134,39 +299,51 @@ public sealed class ArchitectureTests
             ["ConnectionStrings:ClickHouse"] = "Host=localhost;Port=8123;Database=bizigo",
         });
 
-        builder.Services.AddControlPlane(builder.Configuration.GetConnectionString("ControlPlane")!);
-        builder.Services.AddBizigoDataPlane(new ClickHouseOptions
+        registrars = Registrars();
+
+        foreach (var registrar in registrars)
         {
-            ConnectionString = builder.Configuration.GetConnectionString("ClickHouse")!,
-        });
-        builder.Services.AddBizigoParsing(builder.Configuration);
-        builder.Services.AddBizigoIngest(builder.Configuration);
-        builder.Services.AddBizigoRawArchive(builder.Configuration);
-        builder.Services.AddBizigoReplay();
-        builder.Services.AddBizigoAuthoring();
-        builder.Services.AddChangeWebhooks(builder.Configuration);
-        builder.Services.AddChangeConnectors(builder.Configuration);
-        builder.Services.AddBizigoAlerting(builder.Configuration);
+            var arguments = registrar.GetParameters()
+                .Select(p => ArgumentFor(p, builder))
+                .ToArray();
 
-        // T34. Bu satır **Program.cs ile elle eşleşiyor** ve listeden düşen bir
-        // `Add*` çağrısı bekçiyi o katmana sessizce kör bırakıyor — bu depoda
-        // aynı yapısal delik `Produces<T>` kapısında zaten yaşandı: uçlar elle
-        // yazılmış bir listeden toplanıyordu ve 16 uç kapıya hiç görünmeden üç
-        // test yeşil yanıyordu. Kanıt katmanı eklendiğinde liste güncellenmezse
-        // aynı şey burada olurdu; nitekim kanıt sağlayıcıları ilk yazımda
-        // singleton'dı ve tam da bu doğrulamanın yakalaması gereken hatayı
-        // taşıyorlardı.
-        builder.Services.AddBizigoEvidence();
+            registrar.Invoke(null, arguments);
+        }
 
-        // `Build()` doğrulamayı kendisi koşuyor: Development ortamında
-        // `ValidateScopes` ve `ValidateOnBuild` açık. Hiçbir bağlantı
-        // kurulmuyor — yalnızca grafik inşa ediliyor.
-        var exception = Record.Exception(() => builder.Build());
+        return builder;
+    }
 
-        Assert.True(
-            exception is null,
-            "Üretim servis grafiği kapsam doğrulamasından geçmiyor — büyük ihtimalle bir singleton "
-            + "scoped bir servisi tutuyor (captive dependency):\n" + exception?.Message);
+    private static object ArgumentFor(ParameterInfo parameter, WebApplicationBuilder builder)
+    {
+        if (parameter.ParameterType == typeof(IServiceCollection))
+        {
+            return builder.Services;
+        }
+
+        if (parameter.ParameterType == typeof(IConfiguration))
+        {
+            return builder.Configuration;
+        }
+
+        if (parameter.ParameterType == typeof(ClickHouseOptions))
+        {
+            return new ClickHouseOptions
+            {
+                ConnectionString = builder.Configuration.GetConnectionString("ClickHouse")!,
+            };
+        }
+
+        if (parameter.ParameterType == typeof(string) && parameter.Name == "connectionString")
+        {
+            return builder.Configuration.GetConnectionString("ControlPlane")!;
+        }
+
+        throw new NotSupportedException(
+            $"Kayıt uzantısı '{parameter.Member.Name}' tanınmayan bir parametre taşıyor: "
+            + $"{parameter.ParameterType.Name} {parameter.Name}. "
+            + "Bu parametreyi `ArgumentFor` içinde tanıtın — ATLAMAYIN. Atlanan bir imza, "
+            + "o katmanı kapsam doğrulamasının dışında bırakır ve bekçi çalışıyor görünürken "
+            + "kör olur; bu deponun aynı hatayı üçüncü kez yapmaması için burası patlıyor.");
     }
 
     [Fact]
