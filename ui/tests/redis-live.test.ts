@@ -74,12 +74,30 @@ describe("gerçek Redis (koordinatör koşturur)", () => {
   let second: RedisSessionStore;
   let clients: RedisClient[];
 
-  beforeAll(() => {
+  beforeAll(async () => {
     // İKİ bağlantı: uygulamanın iki kopyası. Paylaşılan depoya geçmenin bütün
     // sebebi bu — birinin yazdığını öbürü görmeli.
     clients = [createRedisClient(URL), createRedisClient(URL)];
     store = new RedisSessionStore(clients[0]!);
     second = new RedisSessionStore(clients[1]!);
+
+    // Bağlantı arka planda kuruluyor. Beklemeden `set` çağırmak, ilk koşumda
+    // tam olarak ÜRÜNÜN kusurunu tekrarlıyordu — ve o kusur artık düzeldi
+    // (`RedisSessionStore` soğuk açılışta bekliyor). Burada yine de açıkça
+    // bekleniyor, çünkü bir bağlantı kurulamadıysa bunun testin ilk
+    // iddiasında değil KURULUMDA görünmesi gerekiyor: "EXPIRE uygulanmıyor"
+    // diyen bir hata, aslında "Redis ayakta değil" demekse yanlış yeri
+    // işaret eder.
+    for (const [index, client] of clients.entries()) {
+      const ready = await client.waitUntilReady(5_000);
+
+      if (!ready) {
+        throw new Error(
+          `Redis'e bağlanılamadı (${index + 1}. istemci, ${URL}). ` +
+            "Ayakta mı? `docker compose -f deploy/docker-compose.yml up -d redis-session`",
+        );
+      }
+    }
   });
 
   afterAll(async () => {

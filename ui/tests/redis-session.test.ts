@@ -51,6 +51,11 @@ class FakeRedis implements RedisClient {
     return this.ready;
   }
 
+  async waitUntilReady(): Promise<boolean> {
+    // Sahte anında bağlanıyor; soğuk açılış davranışı `session-store.test.ts`'te.
+    return this.ready;
+  }
+
   async close(): Promise<void> {
     this.ready = false;
   }
