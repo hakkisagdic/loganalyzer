@@ -405,9 +405,10 @@ tasarım **iki** tanımlıyor (§4). `pipeline_sha` değişip `source_sha` aynı
 kaldığında kullanıcının **etkin** kuralının anlamı oynuyor ve o kriter sessiz
 kalıyor.
 
-Manifest'te veri zaten var: `output_sha` değişmiş ama `source_sha` değişmemiş
-kayıtlar tam olarak bu kümeyi veriyor. Düzeltme T33 tarafında; buraya not
-düşülüyor ki iki belge birbirine bağlansın.
+Manifest'te veri zaten var **ve artık hesaplanıyor**: `transition_summary`'nin
+`output_changed_without_source_change` alanı tam olarak bu kümeyi veriyor
+(`python -m sigma_build.compile --summary`). Düzeltme T33 tarafında; veri
+buradan geliyor.
 
 ### Ürün tarafı — T33'ün alanı, buradan gelen kısıtlar
 
@@ -440,6 +441,55 @@ bir günde düşen bir kapı, kısa sürede görmezden gelinen bir kapıdır.
 
 Yükseltme elle ve tek satır: kural setinin SHA'sı değişir, hat koşar, üretilen
 diff incelenir. Sürüklenme o an görünür — bir sabah değil, bir commit'te.
+
+### KARAR · Kurallar depoya kopyalanıyor, koşum anında indirilmiyor
+
+Çivi tek başına yetmiyor: çivilenmiş bir SHA'dan **her koşumda indirmek** de
+mümkündü. Kopyalama seçildi, üç gerekçeyle:
+
+1. **Ağ, kapının gerekçesi olamaz.** `ci.yml` bunu zaten anlatıyor:
+   `actions/setup-dotnet` `codeload.github.com`'dan iniyordu ve GitHub orayı
+   sınırlandırdığında iş **kurulumda** ölüyordu — tek test koşmadan, ilgisiz bir
+   hata mesajıyla, tek oturumda üç kez. Kural setini indiren bir kapı aynı şeyi
+   yapar.
+2. **Ticket'ın kendi gerekçesi yarım kalırdı.** Build-time derlemenin üçüncü
+   sebebi "proje terk edilse bile mevcut kurallar çalışmaya devam eder" idi.
+   Kaynak kurallar yalnızca yukarı akıştaysa SQL depoda kalır ama **yeniden
+   üretilemez** — yani sürüklenme kapısı da koşamaz.
+3. **Kapsam bir liste olmalı, bir filtre değil.** Yukarı akışa karşı
+   değerlendirilen bir filtre, yukarı akış kural eklediğinde korpusu **sessizce**
+   değiştirir. Kopyalanmış listede kural eklemek bir commit.
+
+Yerleşim: `catalog/sigma/rules/` (girdi, `catalog/patterns/` ile aynı desen —
+kopyalanmış üçüncü taraf içerik) ve `catalog/sigma/ruleset.json` (çivi).
+`detections/` yalnızca çıktı için.
+
+Ağ **yalnızca yükseltmede**, elle. CI'nın yaptığı tek şey kopyanın çiviye
+uyduğunu doğrulamak, ve doğrulama üç sürüklenme yönünü ayrı raporluyor: eksik
+dosya (kopyalama yarım), fazla dosya (**çiviye girmemiş kural — derlenir ama
+nereden geldiği kayıtsız**), değişmiş içerik (elle düzenlenmiş).
+
+**Lisans:** SigmaHQ kuralları Detection Rule License altında. `catalog/patterns/`
+zaten aynı deseni izliyor ve `THIRD-PARTY-NOTICES.md`'de kayıtlı; kural seti
+çivilendiğinde oraya bir bölüm daha gerekiyor.
+
+### KARAR · Yükseltme de bir olay — ve üç olay birbirinden ayrılıyor
+
+`ruleset_commit` değiştiğinde `output_sha`'ların çoğu değişiyor. Bu, "pipeline
+değişti, kaynak değişmedi" olayının kardeşi ve ikisi karışmamalı. Manifest
+üçünü ayırıyor:
+
+| Olay | Manifest'te | Gözden geçirenin sorusu |
+| --- | --- | --- |
+| Kural seti yükseltildi | `ruleset_changed`, `source_changed` dolu | "Hangi kuralların kaynağı oynadı?" |
+| Pipeline değişti | `pipeline_changed`, `source_changed` **boş** | "Hangi kuralın anlamı oynadı?" |
+| İkisi de değişmedi ama çıktı değişti | `output_changed_without_source_change` | **"Ne oldu?"** |
+
+Üçüncü satır asıl bekçi. Bir kural seti yükseltmesinde o kümenin **boş olması
+beklenir**; dolu çıkarsa yükseltmeyle birlikte başka bir şey daha değişmiş
+demektir ve iki değişiklik tek diff'in içinde saklanmıştır.
+
+Aynı küme T33'ün kriter boşluğunu da kapatıyor (aşağıdaki not).
 
 ### `.gitignore` tuzağı — yol seçimi bilinçli
 
