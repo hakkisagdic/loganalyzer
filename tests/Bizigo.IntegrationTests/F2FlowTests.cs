@@ -304,11 +304,13 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
     /// aynı yanlışı da söyleyebilir, çünkü ikisi aynı kodu koşuyor. Asıl kanıt
     /// uygulamadan sonraki ikinci kuru koşu: yapacak iş kalmamış olmalı.
     /// </para>
-    /// <summary>
+    ///
+    /// <para>
     /// <b>Açık bölüm testin içinde.</b> Aralık iki günü kapsıyor: 17 Ağustos
     /// kapalı, 18 Ağustos motorun saatine göre <b>hâlâ yazılan</b> bölüm.
     /// Varsayılan davranış onu dışarıda bırakıyor ve test bunun içinde koşuyor —
     /// yalnızca kapalı bölümü sınayan bir test, zaten güvenli olan yolu sınardı.
+    /// </para>
     /// </summary>
     [Fact]
     [Trait("Category", "Integration")]
