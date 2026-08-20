@@ -8,9 +8,11 @@ import { api } from "@/lib/api/client";
 import { describeError } from "@/lib/api/errors";
 import { drilldownLosesFilters, toEventsHref } from "@/lib/rca/drilldown";
 import {
+  CONTRADICTING_CHOICES,
   honestyLines,
   presentStatus,
   REVIEW_STATES,
+  reviewRequest,
   type RcaFinding,
   type RcaReport,
   type RcaReview,
@@ -52,6 +54,9 @@ export function ReportView({ report }: ReportViewProps) {
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [rootCause, setRootCause] = useState("");
+  // Varsayılan `unknown`: ekran bu boyutu bilemiyor ve kullanıcı adına
+  // çıkarım yapmıyor (bkz. CONTRADICTING_CHOICES).
+  const [contradicting, setContradicting] = useState<string>("unknown");
 
   const warnings = honestyLines(report);
 
@@ -60,9 +65,12 @@ export function ReportView({ report }: ReportViewProps) {
     setReviewError(null);
 
     try {
+      // Çelişen-kanıt kararı karara **bağlı değil**: hangi düğmeye basılırsa
+      // basılsın seçilen değer onunla birlikte gidiyor. Tek tık korunuyor,
+      // ikinci boyut yine de her incelemede soruluyor.
       const saved = (await api.post("/v1/rca/{id}/review", {
         path: { id: report.bundle_id },
-        body: { verdict, actual_root_cause: rootCause, note: "" },
+        body: reviewRequest(verdict, contradicting, rootCause),
       })) as RcaReview;
 
       setReview(saved);
@@ -193,6 +201,35 @@ export function ReportView({ report }: ReportViewProps) {
             placeholder="&quot;Yanlış&quot; demek modeli düzeltmiyor; doğrusunun ne olduğu düzeltiyor."
           />
         </label>
+
+        {/*
+          Çelişen kanıt AYRI bir soru ve "yanlış/eksik" seçilince açılan bir alt
+          soru DEĞİL: tiyatronun en tehlikeli hâli raporun bütün olarak doğru
+          olduğu hâl, ve karara bağlansaydı ölçüm tam da o durumu hiç
+          örneklemezdi. Ama ikinci bir düğme grubu da değil — kararı iki tıka
+          çıkarmak inceleme yorgunluğunu büyütürdü. Seçim tek tıkı bozmadan
+          yanında duruyor.
+        */}
+        <label className={styles.contradicting}>
+          Çelişen kanıt bölümü
+          <select
+            value={contradicting}
+            onChange={(event) => setContradicting(event.target.value)}
+            aria-describedby="celisen-notu"
+            data-testid="contradicting-evidence"
+          >
+            {CONTRADICTING_CHOICES.map((choice) => (
+              <option key={choice.value} value={choice.value}>
+                {choice.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <p className={styles.quiet} id="celisen-notu">
+          Model bu bölümü doldurmak için önemsiz bir şey uydurmuş olabilir ve
+          rapor bütün olarak yine de doğru görünebilir. Bu yüzden ayrı soruluyor.
+        </p>
 
         <div className={styles.reviewButtons}>
           {REVIEW_STATES.map((state) => (

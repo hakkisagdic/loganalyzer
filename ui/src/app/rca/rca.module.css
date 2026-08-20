@@ -249,6 +249,19 @@
   margin-block: var(--space-3);
 }
 
+/*
+  Çelişen kanıt seçimi karar düğmelerinin YANINDA duruyor, arkasında değil:
+  her incelemede soruluyor ama tek tıkı bozmuyor.
+*/
+.contradicting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  margin-block: var(--space-3) var(--space-1);
+  max-width: 22rem;
+}
+
 .reviewButtons {
   display: flex;
   gap: var(--space-2);
