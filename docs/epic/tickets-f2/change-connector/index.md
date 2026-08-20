@@ -1,7 +1,7 @@
 ---
 title: "T25 — Change: connector yapılandırma"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # T25 — Change: connector yapılandırma

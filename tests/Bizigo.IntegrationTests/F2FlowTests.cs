@@ -45,7 +45,7 @@ namespace Bizigo.IntegrationTests;
 ///
 /// <item><term>3 · sessizlik alarmı</term><description><c>AlertEvaluatorTests</c>, <c>AlertingTests</c></description></item>
 /// <item><term>3 · bildirim kanala ulaşıyor</term><description><c>NotificationDispatcherTests</c></description></item>
-/// <item><term>3 · <b>bağlantı doğru aramayı açıyor</b></term><description><c>AlertLinkTargetTests</c> — rota var, parametreleri ekran okuyor</description></item>
+/// <item><term>3 · <b>bağlantı doğru aramayı açıyor</b></term><description><c>AlertLinkTargetTests</c> — rota var, kuralın filtreleri taşınıyor, taşınamayan sessizce düşmüyor</description></item>
 ///
 /// <item><term>4 · üç kaynak birlikte</term><description><b>bu dosyada</b> <c>Uc_degisiklik_kaynagi_ayni_zaman_cizelgesinde_bulusuyor</c></description></item>
 ///
@@ -54,14 +54,22 @@ namespace Bizigo.IntegrationTests;
 /// </list>
 ///
 /// <para>
-/// <b>AÇIK HALKA (T27 bulgusu).</b> Akış 3'te alarm bağlantısı kural kimliğini
-/// (<c>kural=&lt;guid&gt;</c>) taşıyor ama arama ekranı onu <b>okumuyor</b>.
-/// <c>AlertLinkBuilder</c>'ın yorumu "ekran kuralı kimliğinden okuyor" diyor;
-/// bağlanmamış. Sonuç 404 değil: kullanıcı doğru ekrana ve doğru aralığa gidiyor
-/// ama kuralın alan filtreleri olmadan — yani alarmın işaret ettiğinden daha
-/// geniş bir şey görüyor. <c>AlertLinkTargetTests.Kural_kimligi_baglantida_tasiniyor</c>
-/// hem taşımayı hem de tüketilmediğini sabitliyor; halka kapandığında o test
-/// düşecek ve bu satır güncellenecek.
+/// <b>KAPANAN HALKA.</b> T27 bulgusu şuydu: alarm bağlantısı yalnızca kural
+/// kimliğini taşıyor, arama ekranı onu okumuyor ve kullanıcı alarmın işaret
+/// ettiğinden <b>daha geniş</b> bir kümeye bakıyordu. Kapatma biçimi kimliği
+/// çözdürmek DEĞİL — bağlantı bir kez üretilip bildirime gömülüyor ve kullanıcı
+/// günler sonra tıklıyor, yani kimliği çözen ekran bugünkü kuralı gösterirdi.
+/// Bunun yerine <b>filtreler bağlantının kendisine gömüldü</b>
+/// (<c>criteria-bridge.ts</c>'in ters yönü) ve bağlantı o anın fotoğrafı oldu.
+/// <c>kural=&lt;guid&gt;</c> kaynak göstergesi olarak kaldı.
+/// </para>
+///
+/// <para>
+/// Ekranda karşılığı olmayan filtreler (<c>src_ip</c>, <c>user_name</c> gibi)
+/// <b>sessizce düşmüyor</b>: <c>eksik</c> parametresiyle bildiriliyor ve ekran
+/// kullanıcıya "bu alarmın N filtresi burada gösterilemiyor, aşağıdaki sonuçlar
+/// daha geniş" diyor. Sessizce düşseydi kullanıcı gördüğü kümeyi alarmın kümesi
+/// sanardı — kapatılan kusurun kılık değiştirmiş hâli.
 /// </para>
 /// </summary>
 [Collection(DevStackCollection.Name)]

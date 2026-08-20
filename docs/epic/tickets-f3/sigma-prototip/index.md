@@ -1,7 +1,7 @@
 ---
 title: "T30 — Sigma pipeline prototipi"
 kind: ticket
-status: 0
+status: 1
 ---
 
 # T30 — Sigma pipeline prototipi
