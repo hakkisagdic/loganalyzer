@@ -374,6 +374,41 @@ kapanan kuralları basıyor.
 Bu, tasarımın "iki olay iki farklı görünüm" ilkesinin (§4) `gated` tarafındaki
 karşılığı: kapsamın büyümesi de küçülmesi de bir commit'te görünüyor.
 
+### KARAR · `gated` tek sayı değil, iki sayı
+
+T36 ajanının bulduğu boşluk: `remedy`'nin bütün değerleri *"birinin
+yapabileceği bir iş"* adlandırıyordu ama **"kimse yapamaz"** için değer yoktu.
+Yukarı akış ya da backend değişmeden derlenmeyecek bir kural zorla `pipeline`'a
+yazılırsa, `gated` listesinin **%100'ü kapanabilir görünür ve hiç kapanmaz** —
+`Pending` ile `Exempt`'in tek listede durması hâli (§8).
+
+İki yeni `remedy` değeri ve iki sayı:
+
+| Değer | Anlamı | Sayıda |
+| --- | --- | --- |
+| `upstream` | Yukarı akış/backend değişmeden kapanmaz | `gated_upstream` |
+| `unknown` | Sınıflandırıcı karar veremedi | `gated_closeable` |
+
+`unknown`'ın kapanabilirler tarafında durması bilinçli: *"kapanamaz"* ile
+*"kapanır mı bilmiyoruz"* aynı şey değil, ve bilinmeyeni muafiyete yazmak işi
+listeden gizlerdi. `upstream` hiçbir sınıflandırıcı tarafından
+**kendiliğinden** atanmıyor — muafiyet gibi, bilinçli bir hareketle konuluyor.
+
+Bir kural, engellerinden **hepsi** kapanabiliyorsa kapanabilir sayılıyor.
+"En az biri" demek iyimser tarafa yanılmak olurdu ve bu sayı yol haritası
+olarak kullanılacak.
+
+### Not · T33'ün kriterinde bir olay eksik
+
+T33'ün *"kaynak kural sürümü değiştiğinde"* kriteri **bir** olay tanıyor; bu
+tasarım **iki** tanımlıyor (§4). `pipeline_sha` değişip `source_sha` aynı
+kaldığında kullanıcının **etkin** kuralının anlamı oynuyor ve o kriter sessiz
+kalıyor.
+
+Manifest'te veri zaten var: `output_sha` değişmiş ama `source_sha` değişmemiş
+kayıtlar tam olarak bu kümeyi veriyor. Düzeltme T33 tarafında; buraya not
+düşülüyor ki iki belge birbirine bağlansın.
+
 ### Ürün tarafı — T33'ün alanı, buradan gelen kısıtlar
 
 Üç karar onaylandı: **ayrı görünüm** (listeye karışmıyor), **etkinleştirme

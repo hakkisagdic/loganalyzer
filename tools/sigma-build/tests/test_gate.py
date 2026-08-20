@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from sigma_build.gate import (
+    CLOSEABLE_REMEDIES,
     GATE_COLUMN_EXISTENCE,
     KIND_UNKNOWN_COLUMN,
     check_columns,
@@ -135,11 +136,19 @@ def test_engeller_liste_tekil_alan_degil():
 # Gerçek örneklem — 24 kural
 # --------------------------------------------------------------------------- #
 
-#: Bu örneklemde kapıya takılan kural sayısı. **Eşik değil sabit**: artış da
-#: azalış da bu testi kırar ve incelemede tek başına göze çarpar. Eşik olsaydı
-#: "şu kadara kadar normal" derdi ve bir gün kimsenin bakmadığı bir rakama
-#: dönüşürdü (§8, `ExpectedExemptCount` deseni).
-EXPECTED_GATED_COUNT = 8
+#: Bu örneklemde kapıya takılan kural sayısı — **iki sabit, tek değil.**
+#:
+#: Eşik değil sabit: artış da azalış da bu testi kırar ve incelemede tek başına
+#: göze çarpar. Eşik olsaydı "şu kadara kadar normal" derdi ve bir gün kimsenin
+#: bakmadığı bir rakama dönüşürdü (§8, `ExpectedExemptCount` deseni).
+#:
+#: İkiye bölünmesinin sebebi de §8: azalması beklenen kalemlerle hiç
+#: kapanmayacak olanlar tek sayıda toplanırsa, "liste boşaldı mı" sorusunun
+#: cevabı asla evet olamaz. Bugün ikincisi sıfır — Kapı 1'in ürettiği tek engel
+#: türü `unknown_column` ve o kapanabilir bir iş kalemi.
+EXPECTED_GATED_CLOSEABLE = 8
+EXPECTED_GATED_UPSTREAM = 0
+EXPECTED_GATED_COUNT = EXPECTED_GATED_CLOSEABLE + EXPECTED_GATED_UPSTREAM
 
 #: Hangi kuralın hangi alan yüzünden takıldığı. Sayının yanına bu tablo
 #: gerekiyor çünkü sayı sabit kalırken içeriği değişebilir.
@@ -162,6 +171,19 @@ def test_orneklem_yirmi_dort_kural():
 def test_orneklemde_gated_sayisi_sabit():
     gated = [rule for rule in sample_rules() if not check_columns(rule["sql"], OCSF, view="events_ocsf").passed]
     assert len(gated) == EXPECTED_GATED_COUNT
+
+
+def test_orneklemde_kapanabilir_ve_kapanamaz_ayri_sabit():
+    kapanabilir = kapanamaz = 0
+    for rule in sample_rules():
+        verdict = check_columns(rule["sql"], OCSF, view="events_ocsf")
+        if verdict.passed:
+            continue
+        if all(blocker.remedy in CLOSEABLE_REMEDIES for blocker in verdict.blockers):
+            kapanabilir += 1
+        else:
+            kapanamaz += 1
+    assert (kapanabilir, kapanamaz) == (EXPECTED_GATED_CLOSEABLE, EXPECTED_GATED_UPSTREAM)
 
 
 def test_orneklemde_hangi_kural_hangi_alan_yuzunden():

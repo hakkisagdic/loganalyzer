@@ -168,6 +168,76 @@ jobs:
         working-directory: tools/sigma-build
         run: python -m sigma_build.compile --check
 
+  sigma-explain:
+    name: Kapı 2 — ClickHouse üretilen SQL'i kabul ediyor mu
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # AYRI İŞ, `integration`'ın içinde DEĞİL — bilinçli. `integration` zaten
+    # Testcontainers kaldırıyor ve oraya eklemek ek konteyner maliyeti
+    # getirmezdi. Ama derleme kapısını entegrasyon işine bağlamak, o iş
+    # ilgisiz bir sebeple düştüğünde derleme kapısının da körleşmesi demek.
+    # Bu depoda "başkasının hatası yüzünden sessizleşen bekçi" deseninin
+    # bedeli ödendi; konteyner maliyeti kapının kendi ayakları üstünde
+    # durmasından ucuz.
+    services:
+      clickhouse:
+        # Sürüm `deploy/docker-compose.yml` ile aynı: kapı, üretimde koşacak
+        # olandan başka bir ClickHouse'a soru sorarsa cevabı da başka olur.
+        image: clickhouse/clickhouse-server:26.7
+        ports:
+          - 8123:8123
+        env:
+          CLICKHOUSE_DB: bizigo
+          CLICKHOUSE_USER: bizigo
+          CLICKHOUSE_PASSWORD: bizigo
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # Göçler ürünün KENDİ migrator'ı ile uygulanıyor, elle `.sql` çalıştırarak
+      # değil. Kapı 2'nin bütün değeri "ClickHouse gerçekte ne diyor" olduğuna
+      # göre, şema da üretimin kurduğu şekilde kurulmalı. İkinci bir göç
+      # uygulayıcı yazmak, sorduğumuz sorunun cevabını değiştirirdi.
+      - name: .NET SDK kur
+        run: |
+          curl -fsSL --retry 5 --retry-all-errors https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"
+          echo "$HOME/.dotnet" >> "$GITHUB_PATH"
+
+      - name: ClickHouse hazır mı
+        run: |
+          for _ in $(seq 1 60); do
+            if curl -sf "http://localhost:8123/ping" >/dev/null; then echo "hazır"; exit 0; fi
+            sleep 2
+          done
+          echo "ClickHouse 120 sn içinde ayağa kalkmadı" >&2
+          exit 1
+
+      - name: Şemayı uygula
+        env:
+          BIZIGO_CLICKHOUSE: "Host=localhost;Port=8123;Database=bizigo;Username=bizigo;Password=bizigo"
+        run: dotnet run --project src/Bizigo.Cli --configuration Release -- schema migrate db/clickhouse
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      # KAPININ KENDİ SINAVI. Bugün `detections/sigma/` boş — kural seti T31'i
+      # bekliyor — yani aşağıdaki adım sıfır sorgu sorup sessizce yeşil kalırdı.
+      # "Sessizce yeşil bekçi" bu deponun adını koyduğu hata sınıfı, o yüzden
+      # kapı önce sonucu BİLİNEN üç sorguyla sınanıyor: ikisi reddedilmeli
+      # (tip uyuşmazlığı), biri kabul edilmeli. Kırmızı yanabildiği her koşumda
+      # ölçülüyor, bir kez değil.
+      - name: Kapı 2 kırmızı yanabiliyor mu
+        working-directory: tools/sigma-build
+        run: python -m sigma_build.explain_gate --self-test --clickhouse-url http://localhost:8123
+
+      - name: Üretilen SQL'i ClickHouse kabul ediyor mu
+        working-directory: tools/sigma-build
+        run: python -m sigma_build.explain_gate --clickhouse-url http://localhost:8123
+
   integration:
     name: Entegrasyon testleri (Testcontainers)
     runs-on: ubuntu-latest

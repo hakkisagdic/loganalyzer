@@ -49,7 +49,7 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from sigma_build.gate import Blocker
+from sigma_build.gate import CLOSEABLE_REMEDIES, Blocker
 
 __all__ = [
     "STATUS_WRITTEN",
@@ -197,10 +197,24 @@ def build_manifest(outcomes: list[RuleOutcome] | tuple[RuleOutcome, ...], header
     if duplicates:
         raise ValueError(f"Aynı kural kimliği birden fazla kez: {duplicates}")
 
+    gated = [o for o in ordered if o.status == STATUS_GATED]
+
+    # `gated` tek sayı olarak yeterli değil: "liste boşaldı mı" sorusunun cevabı,
+    # içinde hiç kapanmayacak kalemler varken **asla evet olamaz** — `Pending` ile
+    # `Exempt`'in tek listede durması hâli (§8). Bu yüzden iki sayı: azalması
+    # beklenen ve sabit kalması beklenen.
+    #
+    # Bir kural, engellerinden **en az biri** kapanabiliyorsa kapanabilir
+    # sayılmıyor: açılması için hepsinin kapanması gerekiyor, yani hepsi
+    # kapanabilir olmalı. Ters kural iyimser tarafa yanılırdı.
+    upstream_only = [o for o in gated if not all(b.remedy in CLOSEABLE_REMEDIES for b in o.blockers)]
+
     counts = {
         "total": len(ordered),
         STATUS_WRITTEN: sum(1 for o in ordered if o.status == STATUS_WRITTEN),
-        STATUS_GATED: sum(1 for o in ordered if o.status == STATUS_GATED),
+        STATUS_GATED: len(gated),
+        "gated_closeable": len(gated) - len(upstream_only),
+        "gated_upstream": len(upstream_only),
         STATUS_FAILED: sum(1 for o in ordered if o.status == STATUS_FAILED),
     }
 
