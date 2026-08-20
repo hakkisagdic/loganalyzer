@@ -40,7 +40,7 @@
       "file_name": "14644215-0000-4000-8000-000000000000.sql",
       "expect": "none",
       "kind": "corpus_gap",
-      "why": "nginx_dns_rebind — kural `hostname|contains: localhost/127.0.0.1/169.254.169.254` arıyor ve **kural kırık değil**: catalog/parsers/nginx.access/combined.yaml `core.host`'u `{{ http_vhost }}` üzerinden dolduruyor, yani alan combined biçimde gerçekten yazılıyor. Eksik olan veri: combined.log satırları standart combined biçiminde ve o biçim vhost TAŞIMIYOR (`198.51.100.13 - - [tarih] \"GET / HTTP/1.1\" ...`), json biçimi ise `core.host`'u hiç doldurmuyor. Örneklerde `localhost` yalnızca referrer'da, `127.0.0.1` yalnızca remote_ip konumunda — ikisi de `device_hostname` değil. vhost taşıyan bir nginx örneği gelirse bu beyan kırmızı yanar."
+      "why": "nginx_dns_rebind — kural `hostname|contains: localhost/127.0.0.1/169.254.169.254` arıyor ve **kural kırık değil**: catalog/parsers/nginx.access/combined.yaml `core.host`'u `{{ http_vhost }}` üzerinden dolduruyor. ⚠️ İlk gerekçem YANLIŞTI — 'combined örneklerimiz vhost taşımıyor' demiştim; combined.log'un 14 satırından **2'si vhost önekli** ve `core.host` onlarda gerçekten doluyor. Dosyanın ilk üç satırına bakıp genellemiştim. Doğru sebep: o iki satırın vhost'u `lessons.example.com`, yani kuralın aradığı loopback/link-local adreslerden hiçbiri değil; kalan 12 satır standart combined biçiminde (vhost alanı yok) ve access-json.log `core.host`'u hiç doldurmuyor. Örneklerdeki `localhost` yalnızca referrer'da, `127.0.0.1` yalnızca remote_ip konumunda. Loopback'e işaret eden bir vhost taşıyan satır gelirse kırmızı yanar."
     },
     {
       "rule_id": "17828938-0000-4000-8000-000000000000",

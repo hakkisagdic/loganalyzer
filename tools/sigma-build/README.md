@@ -30,7 +30,24 @@ CI **ağa çıkmıyor**; tek yaptığı kopyanın çiviye uyduğunu doğrulamak.
 ```bash
 python -m sigma_build.ruleset            # çivinin durumu
 python -m sigma_build.ruleset --verify   # CI kapısı, ağsız
+python -m sigma_build.ruleset --refresh  # çiviyi ağaçtan yeniden üret, ağsız
 ```
+
+**Bir kural düzenlediysen sıra şu:**
+
+```bash
+python -m sigma_build.ruleset --refresh   # çivi
+python -m sigma_build.compile --write     # üretilen SQL
+```
+
+`--refresh` üstveriyi (`source`, `commit`, `license`) **korur** — onlar kararlar,
+özet değil. Kural setini gerçekten yükseltmek (yeni `commit`) ayrı bir hareket ve
+ağ gerektiriyor; bu komut yalnızca yerel ağacı çiviyle hizalıyor.
+
+`compile --write` çivi bayatken **yazmıyor** ve `--refresh`'i adıyla söylüyor.
+Gerekçe ölçüldü: bir ajan kuralı düzeltti, çiviyi yenilemedi, `--write` hiçbir şey
+söylemeden yeni SQL üretti ve tutarsızlığı ancak bir sonraki koşumda çivi kapısı
+söyledi — CI kırmızı. Yarım hâl artık kaynağında engelleniyor.
 
 Üç gerekçe:
 
