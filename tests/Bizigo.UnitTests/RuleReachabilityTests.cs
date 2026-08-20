@@ -14,12 +14,15 @@ namespace Bizigo.UnitTests;
 /// </summary>
 public sealed class RuleReachabilityTests
 {
+    private const string RawText = "raw_data";
+
     private static readonly IReadOnlyDictionary<string, string> FieldMap =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["status"] = "status",
             ["action"] = "activity_name",
             ["srcip"] = "src_endpoint_ip",
+            ["message"] = RawText,
         };
 
     private static VendorValueSpace Vendor(params (string Alias, ColumnValueSpace Space)[] columns) =>
@@ -42,7 +45,7 @@ public sealed class RuleReachabilityTests
         var space = Vendor(("status",
             new ColumnValueSpace("status", "outcome", ValueSpaceKind.Closed, ["failure", "success"], ["t"], [])));
 
-        var result = Assert.Single(RuleReachability.Join([Rule("status", "startswith", "5")], [space], FieldMap));
+        var result = Assert.Single(RuleReachability.Join([Rule("status", "startswith", "5")], [space], FieldMap, RawText));
 
         Assert.Equal(ReachVerdict.Unreachable, result.Verdict);
         Assert.Contains("kapalı bir değer uzayı", result.Reason, StringComparison.Ordinal);
@@ -60,7 +63,7 @@ public sealed class RuleReachabilityTests
         var space = Vendor(("activity_name",
             new ColumnValueSpace("activity_name", "action", ValueSpaceKind.Open, [], ["t"], ["nginx.access.json"])));
 
-        var result = Assert.Single(RuleReachability.Join([Rule("action", "", "drop")], [space], FieldMap));
+        var result = Assert.Single(RuleReachability.Join([Rule("action", "", "drop")], [space], FieldMap, RawText));
 
         Assert.Equal(ReachVerdict.ParserGap, result.Verdict);
         Assert.Contains("nginx.access.json", result.Reason, StringComparison.Ordinal);
@@ -81,7 +84,7 @@ public sealed class RuleReachabilityTests
             new ColumnValueSpace("status", "outcome", ValueSpaceKind.Closed, ["failure", "success"], ["t"], [])));
 
         var result = Assert.Single(RuleReachability.Join(
-            [Rule("status", "", "failure", verdict: "absent")], [space], FieldMap));
+            [Rule("status", "", "failure", verdict: "absent")], [space], FieldMap, RawText));
 
         Assert.Equal(ReachVerdict.Reachable, result.Verdict);
         Assert.True(result.TextAxisWrong);
@@ -101,7 +104,7 @@ public sealed class RuleReachabilityTests
             new ColumnValueSpace("src_endpoint_ip", "src_ip", ValueSpaceKind.Open, [], ["t"], [])));
 
         var result = Assert.Single(RuleReachability.Join(
-            [Rule("srcip", "startswith", "10.")], [space], FieldMap));
+            [Rule("srcip", "startswith", "10.")], [space], FieldMap, RawText));
 
         Assert.Equal(ReachVerdict.Unknown, result.Verdict);
         Assert.DoesNotContain("kolona bağlı değil", result.Reason, StringComparison.Ordinal);
@@ -114,7 +117,8 @@ public sealed class RuleReachabilityTests
         var result = Assert.Single(RuleReachability.Join(
             [new RuleEntry("x.yml", "paloalto", "present", [new RuleLiteral("status", "", "success", "present")])],
             [Vendor()],
-            FieldMap));
+            FieldMap,
+            RawText));
 
         Assert.Equal(ReachVerdict.Unknown, result.Verdict);
         Assert.Contains("parser yok", result.Reason, StringComparison.Ordinal);
@@ -154,6 +158,56 @@ public sealed class RuleReachabilityTests
         {
             File.Delete(file);
         }
+    }
+
+    /// <summary>
+    /// Ham gövdeye vuran kural ayrı sınıf: değer uzayı sorusu anlamsız ama
+    /// sayısı bir kapsam göstergesi — tam metin taraması indeksten
+    /// yararlanmıyor. "Uzay açık, söylenemez" ile aynı kutuda durması, bir
+    /// tasarım tercihini bir iş kalemiyle karıştırırdı.
+    /// </summary>
+    [Fact]
+    public void Ham_govdeye_vuran_kural_ayri_siniflaniyor()
+    {
+        var result = Assert.Single(RuleReachability.Join(
+            [Rule("message", "contains", "Teardown")], [Vendor()], FieldMap, RawText));
+
+        Assert.Equal(ReachVerdict.RawText, result.Verdict);
+        Assert.Contains("indeksin kullanılamaması", result.Reason, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Görünümde kolonu olmayan ad <c>unmapped['…']</c>'e çevriliyor: alan
+    /// olarak adreslenmiş ama Map araması, yine indekssiz. Ham metinden farklı
+    /// bir kalem.
+    /// </summary>
+    [Fact]
+    public void Gorunumde_kolonu_olmayan_ad_unmapped_erisimi()
+    {
+        var result = Assert.Single(RuleReachability.Join(
+            [Rule("dns_query_name", "contains", "example")], [Vendor()], FieldMap, RawText));
+
+        Assert.Equal(ReachVerdict.UnmappedAccess, result.Verdict);
+        Assert.Contains("unmapped", result.Reason, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <b>"Metin ekseni yanılıyor" iddiası modellenmiş operatör istiyor.</b>
+    /// <c>CanSatisfy</c> modellenmemiş operatörde güvenli tarafa düşüp
+    /// <c>true</c> dönüyor; o <c>true</c>'yu "değer kolonda VAR" diye okumak,
+    /// aracın bilmediğini bildiği gibi göstermesi olurdu.
+    /// </summary>
+    [Fact]
+    public void Modellenmemis_operatorde_metin_ekseni_yanildi_denmiyor()
+    {
+        var space = Vendor(("status",
+            new ColumnValueSpace("status", "outcome", ValueSpaceKind.Closed, ["failure", "success"], ["t"], [])));
+
+        var result = Assert.Single(RuleReachability.Join(
+            [Rule("status", "re", "^fail", verdict: "absent")], [space], FieldMap, RawText));
+
+        Assert.Equal(ReachVerdict.Reachable, result.Verdict);
+        Assert.False(result.TextAxisWrong);
     }
 
     /// <summary>Boş kural listesi "0 erişilemez" diye okunmasın diye reddediliyor.</summary>

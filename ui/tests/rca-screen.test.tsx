@@ -387,3 +387,67 @@ describe("inceleme kararları", () => {
     ]);
   });
 });
+
+/**
+ * <b>Dürüstlük satırları — ekran ile export aynı şeyi söylüyor mu.</b>
+ *
+ * <p>
+ * Satırları iki ayrı uygulama üretiyor: ekranda <c>honestyLines</c>, export'ta
+ * sunucunun <c>AppendHonesty</c>'si. Aynı raporu anlatan iki metin ve aralarında
+ * derleyicinin kovaladığı bir bağ <b>yok</b> — tel adlarındaki durumun aynısı.
+ * </p>
+ *
+ * <p>
+ * Ayrışmanın bedeli sessiz ve tek yönlü kötü: ekranı okuyan kısıtı görür,
+ * PDF'i okuyan görmez. Olay sonrası paylaşılan şey rapor, ekran değil.
+ * C# tarafındaki ikizi <c>RcaHonestyParityTests</c>.
+ * </p>
+ */
+describe("dürüstlük satırları", () => {
+  /**
+   * <b>Dört uyarı cinsi ve sayısı sabit.</b> Sunucu beşincisini eklerse ve
+   * ekran onu tanımazsa, export'ta görünen bir kısıt ekranda kaybolur — ve
+   * eksik olanı kimse fark etmez. C# tarafı da aynı dördü çiviliyor.
+   */
+  it("Uyari_cinsleri_sabit", () => {
+    const all = honestyLines(
+      report({
+        out_of_scope_count: 342,
+        is_partial: true,
+        trust: { measured: false, total_events: 0, unreliable_time_events: 0, unreliable_ratio: null },
+      }),
+    ).map((line) => line.id);
+
+    expect(all).toEqual(["out_of_scope", "trust_unmeasured", "partial"]);
+
+    // Dördüncüsü üçüncüyle **dışlayan**: ölçüldüyse ya güvenilir ya değil.
+    const measured = honestyLines(
+      report({
+        trust: { measured: true, total_events: 10, unreliable_time_events: 2, unreliable_ratio: 0.2 },
+      }),
+    ).map((line) => line.id);
+
+    expect(measured).toEqual(["trust_unreliable"]);
+  });
+
+  /**
+   * <b>Sıfır kapsam dışı kayıtta satır hiç yazılmıyor.</b> Her raporda duran
+   * bir uyarı hiçbir şey söylemez — ve bir gün gerçekten 342 olduğunda okuyan
+   * kişi onu her zamanki gürültü sanar.
+   */
+  it("Kapsam_disi_sifirken_satir_yok", () => {
+    const ids = honestyLines(report({ out_of_scope_count: 0 })).map((line) => line.id);
+
+    expect(ids).not.toContain("out_of_scope");
+  });
+
+  /**
+   * Kapsam dışı satırı sayıyı <b>olduğu gibi</b> taşıyor: ekranda yuvarlanan
+   * bir sayı, export'takiyle ayrışmanın en sessiz yolu olurdu.
+   */
+  it("Kapsam_disi_sayisi_yuvarlanmiyor", () => {
+    const text = honestyLines(report({ out_of_scope_count: 1_204_337 }))[0]?.text ?? "";
+
+    expect(text).toContain("1204337");
+  });
+});

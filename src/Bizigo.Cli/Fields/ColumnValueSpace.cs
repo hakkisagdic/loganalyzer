@@ -210,6 +210,19 @@ public static class ColumnValueSpaces
     /// <c>tr-TR</c>'de <c>I</c> harfi sessizce kayıyor.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Operatör modellenmiş mi.
+    ///
+    /// <para>
+    /// <b>"Metin ekseni yanılıyor" iddiası bunu gerektiriyor.</b> Modellenmemiş
+    /// bir operatörde <see cref="CanSatisfy"/> güvenli tarafa düşüp <c>true</c>
+    /// dönüyor; o <c>true</c>'yu "değer kolonda VAR" diye okumak, aracın
+    /// bilmediğini bildiği gibi göstermek olurdu.
+    /// </para>
+    /// </summary>
+    public static bool IsModelled(string @operator) =>
+        @operator is "" or "equals" or "startswith" or "endswith" or "contains";
+
     public static bool CanSatisfy(ColumnValueSpace space, string @operator, string value)
     {
         ArgumentNullException.ThrowIfNull(space);

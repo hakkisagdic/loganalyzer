@@ -195,7 +195,7 @@ public sealed class RawArchiveUploader(
             var rows = await db.RawManifest
                 .AsNoTracking()
                 .Where(m => m.WalSegment == segment.Id)
-                .Select(m => new { m.VerifiedAt })
+                .Select(m => new { m.VerifiedAt, m.State })
                 .ToListAsync(cancellationToken);
 
             // Hiç satır yoksa segment henüz yüklenmemiş demektir — silinmez.
@@ -206,6 +206,22 @@ public sealed class RawArchiveUploader(
 
             if (rows.Any(r => r.VerifiedAt is null || r.VerifiedAt > cutoff))
             {
+                continue;
+            }
+
+            // DURUM da bakılıyor, yalnızca damga değil (T40).
+            //
+            // Önce doğrulanıp sonra kaybolan bir nesnenin `VerifiedAt`'i dolu
+            // kalıyor; yalnızca damgaya bakan kapı o satırı "doğrulanmış ve
+            // süresi dolmuş" sayıp segmenti siliyordu. Yani kaybın TESPİT
+            // EDİLMİŞ olması kurtarma kaynağını korumuyordu ve kurtarma
+            // mekanizması kendi kaynağını sildirebilirdi.
+            if (rows.Any(r => r.State is RawObjectState.Missing or RawObjectState.ChecksumMismatch))
+            {
+                logger.LogWarning(
+                    "Segment {Segment} silinmiyor: bağlı nesnelerden biri kayıp ya da bozuk, " +
+                    "kurtarmanın kaynağı bu segment.",
+                    segment.Id);
                 continue;
             }
 

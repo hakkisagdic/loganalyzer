@@ -89,6 +89,7 @@ kalıcı pipeline'ı yazılırken çıktı** — ve son üçü ancak üretilen S
 | 6 | **`attrs` anahtarları ad alanlı** | **Yeni, T31'de çıktı.** `unmapped['url']` yazmak plandı ve yanlıştı: `EventNormalizer` parser'ın `otel:` bloğunu `otel.` önekiyle yazıyor, gerçek anahtar `otel.url.path`. Düz ad **hata vermez** — eksik Map anahtarı boş dizge döner, sorgu koşar, sonsuza kadar sıfır döndürür |
 | 7 | **`IPv6` kolonunda metin operatörü** | **Yeni, T31'de çıktı.** `src_endpoint_ip ILIKE '10.%'` tip hatası verir; ama düz `toString()` **daha kötü**: ClickHouse IPv4'ü `::ffff:10.0.0.1` saklıyor, sorgu koşar ve hiçbir zaman tutmaz. Önek sökülüyor |
 | 9 | **Vendor'a göre boş kalan kolon** | **Yeni.** `action` → `activity_name` doğru eşleme, kolon var, SQL makul — ama RouterOS'ta o kolon **bilinçli olarak boş**. Ne sözlüğe ne SQL'e bakarak görülür; yalnızca **veriye sorularak**. `VENDOR_EMPTY_COLUMNS` |
+| 11 | **Kolonun değeri ham satırda hiç geçmiyor** | **Yeni.** Bir eşleme tablosu cihazın sözcüğünü normalleştiriyorsa (`failed → failure`), kuralın aradığı değer ham satırda **hiç** bulunmaz. Metin ekseninde bakan ölçüm "örneklem boşluğu" der; doğru kural bu sebeple bir kez **bozuldu**. Kolonun kapalı değer uzayına bakmak gerekiyor |
 | 10 | **Kural, vendor'ın sözlüğünü kullanmıyor** | **Yeni, ve üç kez görüldü.** Üretilen SQL doğru, kolon doğru, veri de var — yalnızca **dizge** yanlış. Aşağıya bakınız |
 | 8 | **Backend ifadeleri backtick'liyor** | **Yeni, T31'de çıktı.** `field_quote_pattern` varsayılanı `^[a-zA-Z0-9_]*$`; `unmapped['otel.url.path']` backtick'lenip kolon adı sanılıyordu. Yalnızca üretilen SQL okununca görüldü |
 
@@ -354,11 +355,22 @@ eşleşemezdi; `matches=false` olmaları eşlemenin değil örneklemin sonucu.
 | 24 (hepsi) | %25 | — **hiçbir şey**; iki farklı sebebi tek sayıda topluyor |
 | **14** (deseni olanlar) | **≈%43** | **Eşlemenin kapsamı** — kapsam kararının dayanağı |
 
-⚠️ Payda **15**'e çıktı: `fortigate_user_auth_fail` düzeltildi (`failure` →
-`failed`, 10. tuzak). Yani "deseni yok" sayılan bir kural aslında **düzeltilebilir
-bir kural hatasıydı**. Yeni oran canlı koşumla ölçülecek; dal değişmiyor
-(`%40–%70`) ama sayı bu belgede çivilenmemeli — düzeltme kurala girdi, koşum
-henüz yapılmadı.
+⚠️ **Bu payda hâlâ kesin değil ve sebebi 11. tuzak.** `absent` kutusu bir
+**üst sınır**: her elemanı örneklem boşluğu değil.
+
+`fortigate_user_auth_fail` bunu gösterdi. Kural `status: 'failure'` arıyor, ham
+FortiGate satırı `status="failed"` yazıyor — metin ekseni "yok" dedi ve kural
+`failed`'a **çevrildi**. Düzeltme kuralı **bozdu**: `catalog/mappings/
+auth_outcome.yaml` ingest sırasında `failed → failure` çeviriyor, yani kolonda
+duran değer zaten `failure`'dı. Kural baştan doğruydu; geri alındı.
+
+Araç artık kolonun **kapalı değer uzayına** da bakıyor (görünüm → parser →
+sözlük zinciri). Ama kalan 9 `absent` kuralın kaçının aynı sebeple orada
+olduğu **ölçülmedi** — `catalog/mappings/` altında birden çok sözlük var ve
+her biri bir kolonun değer uzayını çeviriyor.
+
+**Kapsam oranı bu yüzden çivilenmiyor.** Dalın `%40–%70` olarak kalması
+muhtemel ama payda kesinleşmeden sayı yazılmamalı.
 
 `no_data` paydadan düşülüyordu; **`absent` de düşülmeliydi** ve aynı gerekçeyle:
 ikisi de *"ölçülemedi"*, *"eşleşmedi"* değil. Fark kozmetik değil — `%25`
@@ -385,6 +397,22 @@ aynı kalıyor, gerekçesi değişerek:
 **Kararı geçersiz kılacak tek bulgu:** deseni olan 14 kuraldan 8'inin neden
 eşleşmediği hâlâ ölçülmedi. Hepsinin sebebi eşleme kusuru çıkarsa oran
 düşmez ama *"eşlemeyi düzelt"* önceliği kapsamın önüne geçer.
+
+## Korpus tasarımı kalemi — tuzak değil
+
+`nginx_dns_rebind` bugün eşleşmiyor ve **kural doğru**. `nginx.access` parser'ı
+iki biçim tanıyor: `combined` `core.host`'u `http_vhost`'tan dolduruyor, `json`
+doldurmuyor. Kural combined satırlara vurur ve doğru sonuç verir; altın
+örneklerimizin ağırlıklı json olması bir **korpus** özelliği.
+
+9. tuzakla karıştırılmamalı: orada kolon o vendor'da **hiç** dolmuyordu, burada
+doluyor. `logsource` ile daraltmak şemamızın sınırını kuralın içine gömmek
+olurdu — kurallar dışarıdan geliyor ve bizim biçim ayrımımıza göre yeniden
+yazılmamalı (T31'de CIDR'ın reddedilme gerekçesinin aynısı).
+
+**Kalem:** altın örneklerimiz bir vendor'ın iki biçiminden yalnızca birini
+temsil ediyor. Kapsam ölçümü bunu bilmeden okunursa, korpusun darlığı kuralın
+kusuru sanılır.
 
 ## Hâlâ ölçülmedi
 

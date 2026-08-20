@@ -236,6 +236,81 @@ def test_serbest_metin_alanlari_URUNDEN_tureiyor() -> None:
     assert "action" not in fields
 
 
+def test_kapali_deger_uzayindaki_deger_ABSENT_degil() -> None:
+    """**Bu kör nokta doğru bir kuralı bozdu ve ölçüldükten sonra geri alındı.**
+
+    `fortigate_user_auth_fail` `status: 'failure'` arıyor. Ham FortiGate satırı
+    `status="failed"` yazıyor, dolayısıyla metin ekseni `failure`'ı bulamıyor
+    ve "örneklem boşluğu" diyor.
+
+    Ama `catalog/mappings/auth_outcome.yaml` ingest sırasında
+    `failed → failure` ÇEVİRİYOR: kolonda duran değer `failure`. Kural baştan
+    doğruydu ve `failed`'a çevrilmesi onu kolonun hiç taşımadığı bir değere
+    bağladı.
+
+    Yani `absent` kutusu bir ÜST SINIR: her elemanı örneklem boşluğu değil.
+    """
+    root = em.repo_root()
+    spaces = em.column_value_spaces(root)
+
+    assert "status" in spaces, "`status` kolonunun değer uzayı çözülemedi"
+    assert "failure" in spaces["status"]
+    # Cihazın kendi sözcüğü ANAHTAR, kolona yazılan DEĞER. Kural değeri arıyor.
+    assert "failed" not in spaces["status"]
+
+    report = em.examine(
+        "logsource:\n  product: fortigate\n"
+        "detection:\n  selection:\n    status: 'failure'\n  condition: selection\n",
+        "x.yml",
+        'type="event" status="failed" user="admin"',
+        "fortigate",
+        frozenset(),
+        spaces,
+        {"status": "status"},
+    )
+
+    assert report.verdict == em.PRESENT
+    assert report.literals[0].in_value_space
+
+
+def test_deger_uzayi_bulunamayan_alan_ABSENT_kaliyor() -> None:
+    """Bekçinin ölçüsü: her `absent`'i "çevrilmiştir" saysaydı kutu boşalırdı.
+
+    `url` bir kapalı uzay taşımıyor — serbest bir dizge. Örneklerde yoksa
+    gerçekten yok.
+    """
+    root = em.repo_root()
+    spaces = em.column_value_spaces(root)
+
+    report = em.examine(
+        "logsource:\n  product: nginx\n"
+        "detection:\n  selection:\n    url|contains: '/admin'\n  condition: selection\n",
+        "y.yml",
+        '198.51.100.13 - - "GET /test1 HTTP/1.1" 404',
+        "nginx",
+        frozenset(),
+        spaces,
+        {"url": "unmapped['otel.url.path']"},
+    )
+
+    assert report.verdict == em.ABSENT
+    assert not report.literals[0].in_value_space
+
+
+def test_deger_uzaylari_UC_kaynaktan_zincirleniyor() -> None:
+    """Zincir elle yazılmıyor: görünüm → parser → sözlük. Üçü de tek kaynak.
+
+    Elle yazılsaydı yeni bir sözlük eklendiği gün sessizce eksik kalırdı — bu
+    depoda elle liste dört kez patladı.
+    """
+    spaces = em.column_value_spaces(em.repo_root())
+
+    # `outcome AS status` (görünüm) + `outcome: {table: auth_outcome}` (parser)
+    assert "failure" in spaces["status"] and "success" in spaces["status"]
+    # `proto AS connection_info_protocol_name` + `ip_proto_name`
+    assert "tcp" in spaces["connection_info_protocol_name"]
+
+
 def main() -> int:
     """Koşucu.
 
