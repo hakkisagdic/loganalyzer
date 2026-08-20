@@ -7,9 +7,15 @@ logları birincil alan; agentic katmanla proaktif araştırma ve kök neden anal
 boru hattı, T04 ham arşiv, T05 parser motoru, T06 dispatcher, T07 normalizasyon,
 T08 vendor kataloğu, T09 kimlik, T10 API uçları, T11 replay ve T12 sidecar.
 
-**F2 (görünürlük) sürüyor:** T13 Next.js iskeleti ve BFF, T14 OpenAPI tip
-üretimi, T15 log arama ekranı, T16 olay detayı ve ham görünüm, T17 kaynak envanteri,
-T18 parser yayın akışı.
+**F2 (görünürlük) kapandı** — T13 Next.js iskeleti ve BFF, T14 OpenAPI tip
+üretimi, T15 log arama, T16 olay detayı ve ham görünüm, T17 kaynak envanteri,
+T18–T19 parser yayın akışı ve editör, T20 katalog, T21–T23 alarm motoru,
+bildirim kanalları ve yönetim ekranı, T24–T26 değişiklik beslemesinin üç
+kaynağı, T27 doğrulama, T28 UI/UX denetimi.
+
+Kapanış belgesi: **`docs/epic/f2-kapanis/`** — ölçülen kısıtlar, yanlış çıkan
+altı iddia, kapanmayan kalemler gerekçeleriyle, bekçilerin durumu ve F3'e
+devredilen sorular. F3'e başlarken okunacak belge odur.
 
 Planlama belgeleri Traycer epic'inde:
 `mimari-kararlar` · `f1-teknik-plan` · `rca-raporu-ozelligi` · `tickets/`

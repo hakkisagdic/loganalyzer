@@ -72,20 +72,17 @@ public sealed class ProducesContractTests
     /// </summary>
     private static readonly Dictionary<string, string> Pending = new(StringComparer.Ordinal)
     {
-        // T19'un yazar yüzeyi dört ucu tüketti ve dördü buradan ÇIKTI:
-        // `POST /v1/parsers/try`, `POST /v1/parsers/drafts`,
-        // `PUT /v1/parsers/drafts/{id}`, `POST /v1/parsers/drafts/{id}/submit`.
-        // Okuma uçları ve yayın/geri alma T20 ile birlikte tiplendi.
+        // BOŞ — ve F2'nin bitiş şartlarından biri buydu (T27).
         //
-        // Geriye TEK satır kaldı ve atfı yanlıştı: `POST /v1/replay`'in
-        // karşısında "T19 — replay ekranı" yazıyordu, oysa T19 parser editörü
-        // ve kapsamında replay yok. Tüketicisi olmayan bir uca yanıt tipi
-        // yazmak, bu listenin var olma sebebini boşa çıkarırdı — hangi
-        // alanların sözleşmeye girdiğine ekran karar vermeli. Muafiyete
-        // taşımak da yanlış olurdu: replay'in bir gün ekranı olacak, "hiç
-        // tüketicisi olmayacak" diyemeyiz. Sahibi belli olana kadar burada
-        // duruyor ve F2'nin kapanışında (T27) karar verilmesi gereken tek
-        // kalem bu.
+        // Yirmi bir satırdan sıfıra indi; her satır, o ucu tüketen ekranla
+        // birlikte gitti. Son satır `POST /v1/replay`'di ve sahipsizdi:
+        // muafiyete taşımak "hiç tüketicisi olmayacak" demek olurdu ve
+        // replay'in bir gün ekranı olacak, tiplendirmek ise tahmin değildi —
+        // uç zaten `ReplayReport`'u döndürüyordu, yani domain tipi fiilen tel
+        // sözleşmesiydi.
+        //
+        // Buraya satır eklemek serbest ama bedeli görünür:
+        // `Izin_listesi_bosaldi_mi` kırmızı yanıyor.
     };
 
     /// <summary>
