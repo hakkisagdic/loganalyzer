@@ -345,6 +345,139 @@ describe("aynı işi yapan iki yardımcı yok", () => {
   });
 });
 
+// ------------------------------------------------------------ zaman biçimi
+
+describe("zaman biçimi tek yerde", () => {
+  /**
+   * Denetimin en ciddi bulgusu üç ayrı zaman biçimlendiricisiydi ve biri
+   * <b>yerel saat</b> gösteriyordu — bir alarmı log satırıyla eşleştiren
+   * kullanıcı saat farkı kadar sapmış iki zaman görüyordu.
+   *
+   * <p>
+   * Yinelenen ad bekçisi o bulguyu <b>yakalayamazdı</b>: üç kopyadan ikisinin
+   * adı aynıydı, üçüncüsü <c>formatTimestamp</c> idi — aynı iş, başka ad. Bu
+   * test o kör noktayı kapatıyor.
+   * </p>
+   *
+   * <p>
+   * <b>Kural "her <c>format*</c> ortak kitte" DEĞİL.</b> Ölçtüm:
+   * <c>formatSeverity</c> ve <c>formatParseStatus</c> alana özgü etiket
+   * tabloları ve onları ortak kite taşımak daha kötü olurdu. Yasaklanan şey
+   * <b>zaman görüntüleme</b>.
+   * </p>
+   *
+   * <p>
+   * <b>Tel serileştirmesi serbest.</b> Bir form değerini API gövdesine ISO
+   * olarak yazmak (<c>new Date(x).toISOString()</c>) sözleşme gereği ve üç
+   * yerde meşru olarak yapılıyor. Ayrım şu: çıplak <c>toISOString()</c>
+   * serileştirme, <c>slice</c>/<c>replace</c> ile parçalanmışı görüntüleme.
+   * </p>
+   */
+  const HOME = "lib/ui/time.ts";
+
+  /** Tartışmasız tarih görüntüleme API'leri. */
+  const DATE_DISPLAY = /\.toLocaleDateString\s*\(|\.toLocaleTimeString\s*\(|Intl\.DateTimeFormat/;
+
+  /** Tarih seçenekleriyle çağrılan `toLocaleString` — sayı biçimlemesi değil. */
+  const DATE_OPTIONS =
+    /\.toLocaleString\s*\([^)]*(dateStyle|timeStyle|year|month|day|hour|minute|second|timeZone)/;
+
+  /** `toISOString()` sonrası kesme/değiştirme: görüntü için biçimleme. */
+  const ISO_SLICING = /\.toISOString\s*\(\s*\)\s*\.\s*(slice|replace|substring|substr)\s*\(/;
+
+  it("tarih görüntüleme yalnızca ortak zaman modülünde", () => {
+    const offenders = CODE.map((f) => ({ file: rel(f), source: stripComments(read(f)) }))
+      .filter(({ file }) => file !== HOME)
+      .filter(
+        ({ source }) =>
+          DATE_DISPLAY.test(source) || DATE_OPTIONS.test(source) || ISO_SLICING.test(source),
+      )
+      .map(({ file }) => file)
+      .sort();
+
+    expect(
+      offenders,
+      `Zaman görüntüleme biçimlendirmesi \`${HOME}\` dışında. Aynı anın iki ekranda ` +
+        "farklı görünmesi — özellikle biri yerel saatse — kullanıcıyı yanlış sonuca " +
+        "götürüyor. API gövdesine ISO yazmak serbest; kesip biçimlendirmek değil.",
+    ).toEqual([]);
+  });
+});
+
+// ------------------------------------------------------------ hücre yerleşimi
+
+describe("tablo hücresi tablo hücresi kalıyor", () => {
+  /**
+   * Bu turun ekran görüntüsüyle bulunan kusuru: kırpma kuralları doğrudan
+   * <c>&lt;td&gt;</c>'ye uygulanmıştı ve <c>display: -webkit-box</c> bir hücreye
+   * verilince <b>hücre tablo hücresi olmaktan çıkıyor</b> — satır ona göre
+   * boyutlanmıyor ve uzun bir gövdenin son satırı tablodan taşıyor.
+   *
+   * <p>
+   * Bekçi yerleşimi <b>simüle etmiyor</b>; kusurun mekanizmasını yasaklıyor.
+   * <c>DataTable</c> hücrelere yalnızca aşağıdaki iki sınıfı veriyor, dolayısıyla
+   * "bu sınıflar <c>display</c> tanımlayamaz" demek yeterli ve kesin.
+   * </p>
+   *
+   * <p>
+   * Görüntüler kusuru <b>buldu</b> ama <b>tutmuyor</b>: bir görüntü yakalamadır,
+   * iddia değil. Kural yarın geri gelse görüntü değişir ve hiçbir test düşmezdi.
+   * Bu test o boşluğu kapatıyor.
+   * </p>
+   */
+  const CELL_CLASSES = ["cellBody", "cellNumeric"] as const;
+
+  const UI_MODULE = "components/ui/ui.module.css";
+
+  /** Bir sınıf bloğunun gövdesi. */
+  function block(source: string, className: string): string | undefined {
+    const start = source.indexOf(`.${className} {`);
+
+    if (start === -1) {
+      return undefined;
+    }
+
+    const end = source.indexOf("}", start);
+    return end === -1 ? undefined : source.slice(start, end);
+  }
+
+  it("hücreye verilen sınıflar `display` tanımlamıyor", () => {
+    const source = STYLES.map((f) => ({ file: rel(f), text: read(f) })).find(
+      ({ file }) => file === UI_MODULE,
+    );
+
+    expect(source, `${UI_MODULE} bulunamadı`).toBeDefined();
+
+    const offenders = CELL_CLASSES.filter((name) => {
+      const body = block(source!.text, name);
+      return body !== undefined && /(^|\n)\s*display\s*:/.test(body);
+    });
+
+    expect(
+      offenders,
+      "Hücreye verilen bir sınıf `display` tanımlıyor. `display` bir `<td>`'yi " +
+        "tablo hücresi olmaktan çıkarıyor: satır ona göre boyutlanmıyor ve içerik " +
+        "tablodan taşıyor. Kırpma/yerleşim kurallarını hücrenin İÇİNDEKİ öğeye " +
+        "verin (`cellBodyText` gibi).",
+    ).toEqual([]);
+  });
+
+  it("bu iki sınıf gerçekten hücreye veriliyor — bekçi doğru yeri koruyor", () => {
+    // Sınıflar bir gün `<td>` yerine başka bir yere taşınırsa bu bekçi anlamsız
+    // hâle gelir ve bunu fark etmemiz gerekir.
+    const table = CODE.find((f) => rel(f) === "components/ui/DataTable.tsx");
+
+    expect(table).toBeDefined();
+
+    const source = read(table!);
+    const tdBlock = source.slice(source.indexOf("<td"), source.indexOf("</td>"));
+
+    for (const name of CELL_CLASSES) {
+      expect(tdBlock, `${name} artık hücreye verilmiyor`).toContain(`styles.${name}`);
+    }
+  });
+});
+
 // ------------------------------------------------------------ tablo ve yazı yönü
 
 describe("tablolar ortak bileşenden geçiyor", () => {
