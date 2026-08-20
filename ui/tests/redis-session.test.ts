@@ -50,6 +50,10 @@ class FakeRedis implements RedisClient {
   isReady(): boolean {
     return this.ready;
   }
+
+  async close(): Promise<void> {
+    this.ready = false;
+  }
 }
 
 let fake: FakeIdp;

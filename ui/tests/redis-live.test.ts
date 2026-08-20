@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { RedisSessionStore } from "@/lib/auth/redis-store";
+import { RedisSessionStore, type RedisClient } from "@/lib/auth/redis-store";
 import { createRedisClient } from "@/lib/auth/redis-client";
 import type { SessionRecord } from "@/lib/auth/store";
 
@@ -49,21 +49,23 @@ const URL = process.env.BFF_REDIS_URL ?? "redis://localhost:6379";
 describe.skip("gerçek Redis (koordinatör koşturur)", () => {
   let store: RedisSessionStore;
   let second: RedisSessionStore;
+  let clients: RedisClient[];
 
   beforeAll(() => {
-    store = new RedisSessionStore(createRedisClient(URL));
-    // İKİNCİ bağlantı: uygulamanın ikinci kopyası. Paylaşılan depoya geçmenin
-    // bütün sebebi bu — birinin yazdığını öbürü görmeli.
-    second = new RedisSessionStore(createRedisClient(URL));
+    // İKİ bağlantı: uygulamanın iki kopyası. Paylaşılan depoya geçmenin bütün
+    // sebebi bu — birinin yazdığını öbürü görmeli.
+    clients = [createRedisClient(URL), createRedisClient(URL)];
+    store = new RedisSessionStore(clients[0]!);
+    second = new RedisSessionStore(clients[1]!);
   });
 
   afterAll(async () => {
-    // Protokol §3: açtığın bağlantıyı kapat. `createRedisClient` istemciyi
-    // döndürmüyor, dolayısıyla burada kapatacak bir tutamak yok — bu testi
-    // etkinleştiren kişi adaptöre bir `close()` eklemeli.
-    //
-    // Bilerek yazılı: koşturulmayan bir testin eksiğini gizlemek, testin
-    // kendisinden kötü.
+    // Protokol §3: açtığın bağlantıyı kapat — hata alsan bile. `Promise.all`
+    // yerine tek tek: biri patlarsa öbürü yine kapanmalı, yoksa koşum bitince
+    // asılı bir soket kalır.
+    for (const client of clients) {
+      await client.close().catch(() => undefined);
+    }
   });
 
   function record(ttlMs: number): SessionRecord {
