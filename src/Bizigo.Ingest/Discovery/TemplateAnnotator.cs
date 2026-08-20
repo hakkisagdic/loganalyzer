@@ -17,12 +17,18 @@ public interface ITemplateAnnotator
     /// Olayın <c>template_id</c>'si — bilinmiyorsa boş string.
     /// <b>Asla bloklamaz, asla istisna fırlatmaz.</b>
     /// </summary>
-    string Annotate(string sourceClass, string body, bool parseFailed);
+    /// <param name="signature">
+    /// Sıcak yolda <b>zaten hesaplanmış</b> maskelenmiş imza (K35). Annotator
+    /// artık kendi maskelemesini yapmıyor: maskeleme her olayda koşuyor ve
+    /// ikinci bir geçiş maliyeti iki katına çıkarırdı.
+    /// </param>
+    string Annotate(string sourceClass, string body, EventSignature signature, bool parseFailed);
 }
 
 public sealed class NullTemplateAnnotator : ITemplateAnnotator
 {
-    public string Annotate(string sourceClass, string body, bool parseFailed) => string.Empty;
+    public string Annotate(string sourceClass, string body, EventSignature signature, bool parseFailed) =>
+        string.Empty;
 }
 
 /// <summary>
@@ -30,29 +36,48 @@ public sealed class NullTemplateAnnotator : ITemplateAnnotator
 ///
 /// <para>
 /// <b>Sidecar burada çağrılmıyor.</b> Yazma anında sidecar'a sormak onu sıcak
-/// yola sokardı; onun yerine aynı maskeleme sözlüğüyle
-/// (<see cref="MaskCatalog"/>) yerel bir imza üretilip önbelleğe bakılıyor.
-/// Bir imzanın karşılığı ilk kez sorulduğunda boş dönüyor; sidecar cevabı
-/// geldiğinde önbelleğe giriyor ve <b>aynı imzalı sonraki olaylar</b>
-/// etiketleniyor. Yani ilk örnek keşfin kendisi, sonrakiler ücretsiz.
+/// yola sokardı; onun yerine sıcak yolda üretilmiş imzayla
+/// (<see cref="EventSignature"/>) önbelleğe bakılıyor. Bir imzanın karşılığı ilk
+/// kez sorulduğunda boş dönüyor; sidecar cevabı geldiğinde önbelleğe giriyor ve
+/// <b>aynı imzalı sonraki olaylar</b> etiketleniyor. Yani ilk örnek keşfin
+/// kendisi, sonrakiler ücretsiz.
+/// </para>
+///
+/// <para>
+/// <b>K35'ten sonra ne değişti:</b> imzayı artık bu sınıf üretmiyor,
+/// <see cref="MaskCatalog.Compute"/> her olayda sıcak yolda üretiyor. Bunun
+/// doğrudan sonucu, örneklemenin anlamının daralması — aşağıda.
 /// </para>
 /// </summary>
 public sealed class DiscoveryAnnotator(
     SidecarOptions options,
-    MaskCatalog masks,
     TemplateCache cache,
     DiscoveryQueue queue,
     DiscoveryStats stats) : ITemplateAnnotator
 {
-    public string Annotate(string sourceClass, string body, bool parseFailed)
+    public string Annotate(string sourceClass, string body, EventSignature signature, bool parseFailed)
     {
-        if (!options.Enabled || masks.Masks.Count == 0 || string.IsNullOrEmpty(body))
+        if (!options.Enabled || signature.IsEmpty || string.IsNullOrEmpty(body))
         {
             return string.Empty;
         }
 
-        // Örnekleme yalnızca *başarılı* olaylar için. `failed` olanlar
-        // örneklenmiyor: keşfin asıl konusu onlar.
+        // Önbellek araması artık **her** olayda yapılıyor. Eskiden örnekleme
+        // aramadan da önce geliyordu, çünkü aramanın önkoşulu maskelemeydi ve
+        // maskeleme pahalıydı. K35 maskelemeyi zaten ödediğimiz bir maliyete
+        // çevirdi; geriye kalan bir sözlük araması ve onu zar atarak atlamak
+        // başarılı olayların %99'unu bilinen bir şablondan mahrum bırakıyordu.
+        if (cache.TryGet(signature.Text, out var templateId))
+        {
+            stats.CacheHit();
+            return templateId;
+        }
+
+        stats.CacheMiss();
+
+        // Örnekleme burada duruyor ve **yalnızca sidecar'ın yükünü** koruyor:
+        // kuyruğa girmek keşif isteği demek. Yalnızca *başarılı* olaylar
+        // örnekleniyor; `failed` olanlar keşfin asıl konusu.
         var sampled = !parseFailed && options.SampleRate > 0
             && Random.Shared.NextDouble() < options.SampleRate;
 
@@ -61,20 +86,7 @@ public sealed class DiscoveryAnnotator(
             return string.Empty;
         }
 
-        var signature = masks.Signature(body);
-        if (signature.Length == 0)
-        {
-            return string.Empty;
-        }
-
-        if (cache.TryGet(signature, out var templateId))
-        {
-            stats.CacheHit();
-            return templateId;
-        }
-
-        stats.CacheMiss();
-        queue.TryEnqueue(new DiscoveryItem(sourceClass, signature, body));
+        queue.TryEnqueue(new DiscoveryItem(sourceClass, signature.Text, body));
         return string.Empty;
     }
 }

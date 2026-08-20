@@ -264,6 +264,42 @@ public sealed class MaskCatalog
         return text;
     }
 
+    /// <summary>
+    /// Sıcak yolun <b>tek</b> maskeleme çağrısı (K35): maskelenmiş metin ve onun
+    /// hash'i birlikte dönüyor.
+    ///
+    /// <para>
+    /// Ayrı iki çağrı olmamasının sebebi maliyet: K35 maskelemeyi olayların
+    /// %1'inden %100'üne çıkarıyor, dolayısıyla satır başına <b>bir</b> maskeleme
+    /// geçişi bütçenin tamamı. Keşif yolu (T12) da artık kendi imzasını üretmiyor,
+    /// buradan çıkan metni alıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Uzunluk sınırını aşan satır <see cref="EventSignature.None"/> dönüyor ve
+    /// <see cref="SkippedTooLong"/> artıyor — o satırlar RCA'nın "ilk-görülen"
+    /// sinyalinde görünmez ve rapor bunu söylemek zorunda.
+    /// </para>
+    /// </summary>
+    public EventSignature Compute(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        // Maskesiz katalog imza üretemez. Ham satırı hash'lemek en kötü sonucu
+        // verirdi: her olay benzersiz bir hash alır, "ilk-görülen imza" her satır
+        // için ateşler ve bozukluk yalnızca RCA raporunda, aylar sonra görünür.
+        if (_masks.Length == 0)
+        {
+            return EventSignature.None;
+        }
+
+        var masked = Signature(text);
+
+        return masked.Length == 0
+            ? EventSignature.None
+            : new EventSignature(masked, SignatureHash.Of(masked));
+    }
+
     /// <summary>Şablonda geçen maske adları — F4'te grok taslağının iskeleti.</summary>
     public IReadOnlyList<string> MaskNamesIn(string template)
     {

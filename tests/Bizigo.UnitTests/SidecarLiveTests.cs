@@ -68,10 +68,17 @@ public sealed class SidecarLiveTests : IDisposable
         Environment.GetEnvironmentVariable("BIZIGO_SIDECAR_LIVE") == "1" && File.Exists(VenvPython);
 
     /// <summary>
-    /// Sıcak yolun <b>sidecar'sız</b> taban maliyeti: yalnızca maskeleme +
-    /// önbellek araması. Canlı ölçümde faz farkları buna göre okunuyor —
-    /// bu sayı bilinmeden "sidecar arızası yavaşlattı" demek mümkün değil,
-    /// çünkü tabanın kendisi zaten yüksek olabilir.
+    /// Sıcak yolun <b>sidecar'sız</b> taban maliyeti: imza + önbellek araması.
+    /// Canlı ölçümde faz farkları buna göre okunuyor — bu sayı bilinmeden
+    /// "sidecar arızası yavaşlattı" demek mümkün değil, çünkü tabanın kendisi
+    /// zaten yüksek olabilir.
+    ///
+    /// <para>
+    /// K35'in kendi maliyet ölçümü burada <b>değil</b>:
+    /// <see cref="HotPathCostMeasurement"/> ayrı bir sınıfta ve canlı sidecar
+    /// gerektirmiyor. Maskeleme maliyeti saf CPU işi; onu Python venv'ine bağlamak
+    /// ölçümün hiç koşulmamasının en kolay yolu olurdu.
+    /// </para>
     /// </summary>
     [Fact]
     public void Etiketleme_taban_maliyeti()
@@ -82,19 +89,19 @@ public sealed class SidecarLiveTests : IDisposable
         var options = new SidecarOptions { QueueCapacity = 64, SampleRate = 0 };
         var stats = new DiscoveryStats();
         var annotator = new DiscoveryAnnotator(
-            options, masks, new TemplateCache(50_000), new DiscoveryQueue(options, stats), stats);
+            options, new TemplateCache(50_000), new DiscoveryQueue(options, stats), stats);
 
         // Isınma: `RegexOptions.Compiled` ilk kullanımda kod üretiyor.
         for (var index = 0; index < 2_000; index++)
         {
-            annotator.Annotate("bench", Line(index), parseFailed: true);
+            annotator.Annotate(masks, "bench", Line(index), parseFailed: true);
         }
 
         const int Count = 50_000;
         var clock = Stopwatch.StartNew();
         for (var index = 0; index < Count; index++)
         {
-            annotator.Annotate("bench", Line(index + 9_000_000), parseFailed: true);
+            annotator.Annotate(masks, "bench", Line(index + 9_000_000), parseFailed: true);
         }
 
         clock.Stop();
@@ -103,7 +110,7 @@ public sealed class SidecarLiveTests : IDisposable
         var signatureOnly = Stopwatch.StartNew();
         for (var index = 0; index < Count; index++)
         {
-            masks.Signature(Line(index + 8_000_000));
+            masks.Compute(Line(index + 8_000_000));
         }
 
         signatureOnly.Stop();
@@ -112,7 +119,7 @@ public sealed class SidecarLiveTests : IDisposable
             CultureInfo.InvariantCulture,
             $"TABAN · etiketleme {perEventNs:N0} ns/olay " +
             $"({Count / clock.Elapsed.TotalSeconds:N0} olay/sn) · " +
-            $"yalnız maskeleme {signatureOnly.Elapsed.TotalMilliseconds * 1_000_000 / Count:N0} ns/olay"));
+            $"yalnız imza {signatureOnly.Elapsed.TotalMilliseconds * 1_000_000 / Count:N0} ns/olay"));
     }
 
     [Fact]
@@ -140,7 +147,7 @@ public sealed class SidecarLiveTests : IDisposable
         var cache = new TemplateCache(options.TemplateCacheCapacity);
         var breaker = new SidecarCircuitBreaker(options, TimeProvider.System);
         using var client = new SidecarClient(options);
-        var annotator = new DiscoveryAnnotator(options, masks, cache, queue, stats);
+        var annotator = new DiscoveryAnnotator(options, cache, queue, stats);
         var worker = new DiscoveryWorker(
             options, queue, client, breaker, cache, stats, NullLogger<DiscoveryWorker>.Instance);
 
@@ -150,7 +157,7 @@ public sealed class SidecarLiveTests : IDisposable
         try
         {
             // --- A: sağlıklı ------------------------------------------------
-            var healthy = Measure(annotator, Events, "A · sağlıklı", phase: 1);
+            var healthy = Measure(annotator, masks, Events, "A · sağlıklı", phase: 1);
             await Task.Delay(2_000, TestContext.Current.CancellationToken);
             Report($"    öğrenilen şablon: {stats.NewTemplates}, önbellek: {cache.Count}");
 
@@ -162,7 +169,7 @@ public sealed class SidecarLiveTests : IDisposable
             var beforeDead = breaker.OpenedCount;
             KillSidecar();
             var openedAt = Stopwatch.StartNew();
-            var dead = Measure(annotator, Events, "B · ölü (SIGKILL)", phase: 2);
+            var dead = Measure(annotator, masks, Events, "B · ölü (SIGKILL)", phase: 2);
             await WaitForAsync(() => breaker.OpenedCount > beforeDead, TimeSpan.FromSeconds(30));
             openedAt.Stop();
             Report(
@@ -170,13 +177,13 @@ public sealed class SidecarLiveTests : IDisposable
                 $"devre-açık düşen: {stats.DroppedCircuitOpen}");
 
             // --- C: asılı (SIGSTOP) — asıl merak edilen sayı -----------------
-            await RestartAndCloseCircuitAsync(annotator, breaker, cache);
+            await RestartAndCloseCircuitAsync(annotator, masks, breaker, cache);
             var beforeOpen = breaker.OpenedCount;
             var timeoutsBefore = stats.Timeouts;
             StopSidecar();
 
             var hangClock = Stopwatch.StartNew();
-            var hung = Measure(annotator, Events, "C · asılı (SIGSTOP)", phase: 3);
+            var hung = Measure(annotator, masks, Events, "C · asılı (SIGSTOP)", phase: 3);
             await WaitForAsync(() => breaker.OpenedCount > beforeOpen, TimeSpan.FromSeconds(60));
             hangClock.Stop();
             var hangTimeouts = stats.Timeouts - timeoutsBefore;
@@ -189,7 +196,7 @@ public sealed class SidecarLiveTests : IDisposable
             await WaitForAsync(() => breaker.State == CircuitState.HalfOpen, TimeSpan.FromSeconds(40));
             Report("D · geri geliyor: yarı açık'a geçti");
 
-            annotator.Annotate("live", "recovery probe 10.0.0.1 port 22", parseFailed: true);
+            annotator.Annotate(masks, "live", "recovery probe 10.0.0.1 port 22", parseFailed: true);
             await WaitForAsync(() => breaker.State == CircuitState.Closed, TimeSpan.FromSeconds(30));
             Report("    yoklama başarılı → devre kapandı");
 
@@ -226,7 +233,8 @@ public sealed class SidecarLiveTests : IDisposable
     /// kuyruğa yazma denemesi.
     /// </para>
     /// </summary>
-    private double Measure(DiscoveryAnnotator annotator, int events, string label, int phase)
+    private double Measure(
+        DiscoveryAnnotator annotator, MaskCatalog masks, int events, string label, int phase)
     {
         var latencies = new long[events];
         var total = Stopwatch.StartNew();
@@ -235,7 +243,7 @@ public sealed class SidecarLiveTests : IDisposable
         {
             var line = Line(index + (phase * 1_000_000));
             var start = Stopwatch.GetTimestamp();
-            annotator.Annotate("live", line, parseFailed: true);
+            annotator.Annotate(masks, "live", line, parseFailed: true);
             latencies[index] = Stopwatch.GetTimestamp() - start;
         }
 
@@ -267,6 +275,7 @@ public sealed class SidecarLiveTests : IDisposable
 
     private async Task RestartAndCloseCircuitAsync(
         DiscoveryAnnotator annotator,
+        MaskCatalog masks,
         SidecarCircuitBreaker breaker,
         TemplateCache cache)
     {
@@ -278,7 +287,7 @@ public sealed class SidecarLiveTests : IDisposable
         {
             // `-a{n}` bilinçli: sayı bir kelimenin içinde kaldığı için maskelenmiyor,
             // yani her yoklama ayrı bir imza ve gerçekten kuyruğa giriyor.
-            annotator.Annotate("live", $"warmup-a{attempt} from 10.0.0.{attempt}", parseFailed: true);
+            annotator.Annotate(masks, "live", $"warmup-a{attempt} from 10.0.0.{attempt}", parseFailed: true);
             await Task.Delay(500, TestContext.Current.CancellationToken);
         }
 

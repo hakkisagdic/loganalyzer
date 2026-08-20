@@ -4,6 +4,7 @@ using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Bizigo.Normalization;
 using Bizigo.Parsing.Dispatch;
+using Bizigo.Parsing.Grok;
 using Bizigo.Storage.ClickHouse;
 using Bizigo.Storage.Raw;
 using Microsoft.EntityFrameworkCore;
@@ -35,6 +36,7 @@ public sealed class ReplayEngine(
     EventNormalizer normalizer,
     EventWriter writer,
     ReplayStore replayStore,
+    MaskCatalog masks,
     ILogger<ReplayEngine> logger,
     TimeProvider? timeProvider = null)
 {
@@ -183,13 +185,24 @@ public sealed class ReplayEngine(
                     ? dispatcher.Dispatch(decoded, resolved.ParserId).Result
                     : ParseWithPinned(plan, decoded);
 
+                // İmza replay'de de yeniden üretiliyor — sıcak yoldakiyle aynı
+                // fonksiyondan (K35). Boş bırakmak, her replay'in `signature_hash`
+                // kolonunu sıfırlaması demek olurdu: RCA'nın en güçlü iki sinyali
+                // düzeltilmiş bir parser'ın **yan etkisi** olarak silinirdi ve
+                // rapor bunu "değişiklik yok" diye gösterirdi.
+                //
+                // `template_id`'nin aksine bu değer yeniden üretilebilir: sidecar
+                // gerekmiyor, sözlük ve satır yetiyor.
+                var signature = masks.Compute(decoded);
+
                 var normalized = normalizer.Normalize(new ParsedEvent(
                     record with { OwnerGroup = resolved.OwnerGroup, SourceId = resolved.SourceId },
                     decoded,
                     record.EncodingDeclared is { Length: > 0 } enc ? enc : "utf-8",
                     resolved,
                     result,
-                    DispatchTier.InventoryBound));
+                    DispatchTier.InventoryBound,
+                    SignatureHash: signature.Hash));
 
                 // `parse_generation` hangi satırın kaçıncı kuşaktan geldiğini
                 // denetlenebilir kılıyor — replay sonrası "bu satır eski mi yeni
