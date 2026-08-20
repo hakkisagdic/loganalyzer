@@ -221,8 +221,23 @@ tarihi yazarsak her koşum farklı bayt üretir; kapı **yapısal olarak** bireb
 karşılaştırma yapamaz hâle gelir ve ya kaldırılır ya da tarihi görmezden gelen
 bir istisnayla yumuşatılır. İkisi de kapıyı öldürür.
 
-Tarih **manifest'in koşum başlığında** durur — orada tek bir satır olur, 269
-dosyada 269 satır değil.
+**Düzeltme (uygulama sırasında bulundu):** ilk hâli "tarih manifest'in koşum
+başlığında dursun" diyordu. Yanlıştı — **manifest de karşılaştırılan çıktının
+parçası**, yani tarihi oraya koymak manifest'in kendi kapısını öldürüyor. Kalan
+tek yol kapının o alanı görmezden gelmesi, yani yumuşatmak.
+
+Tarih **hiçbir yerde yok**. Kaybedilen bilgi de yok: manifest commit'li, yani
+`git log detections/sigma/manifest.json` "ne zaman derlendi" sorusunun cevabı ve
+git bunu daha güvenilir tutuyor. Kaybedilen tek şey aynı bilginin ikinci,
+sürüklenebilir kopyası.
+
+Ticket'ın "derleme tarihi" maddesi **yanlış değil, eksik düşünülmüş**: yazıldığı
+sırada sürüklenme kapısı henüz tasarımda yoktu. İkisi aynı anda var olamıyor ve
+kapı daha değerli.
+
+Girdinin parçası olan sürümler duruyor: `ruleset_commit`, `pipeline_version`,
+`pipeline_sha`. Onlar koşumun değil girdinin özelliği, ve değiştiklerinde çıktı
+da değişiyor.
 
 ### `manifest.json` — iki katmanlı
 
