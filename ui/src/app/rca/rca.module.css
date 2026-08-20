@@ -277,3 +277,54 @@
   font-size: var(--text-sm);
   margin-block-start: var(--space-3);
 }
+
+/*
+  Gösterge başlığın yanında ("köşe"): kullanıcının ekrana her gelişinde
+  görmesi gereken tek sayı bu.
+*/
+.headRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.quality {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  min-width: 18rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.qualityTitle {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.qualityGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+}
+
+.qualityGrid div {
+  display: flex;
+  flex-direction: column;
+}
+
+.qualityGrid dt {
+  font-size: var(--text-xs);
+  color: var(--text-dim);
+}
+
+.qualityGrid dd {
+  margin: 0;
+  font-size: var(--text-sm);
+}

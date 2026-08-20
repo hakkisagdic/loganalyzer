@@ -109,4 +109,50 @@ public sealed class RcaReviewWireTests
         Assert.Equal(verdicts.Length, verdicts.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(contradicting.Length, contradicting.Distinct(StringComparer.Ordinal).Count());
     }
+
+    /// <summary>
+    /// <b>İnceleme ucu tel dizgilerini kendisi çözmüyor.</b>
+    ///
+    /// <para>
+    /// <c>ReviewWireTests</c> <see cref="ReviewWire"/>'ın kendisini kapsamlı
+    /// sınıyor — ama uç onu <b>çağırmayı bırakırsa o testler yeşil kalır</b>.
+    /// Tam olarak bu oldu: uçta bir süre <c>Enum.TryParse(ignoreCase: true)</c>
+    /// + <c>Replace("_", "")</c> duruyordu, <c>"CORRECT"</c> ve
+    /// <c>"notpresent"</c> geçiyordu, ve hiçbir bekçi bunu görmüyordu çünkü
+    /// hepsi yardımcıya bakıyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// Asıl tehlike büyük/küçük harf değil: <c>Enum.TryParse</c> enum'a
+    /// eklenen bir değeri <b>telde kendiliğinden kabul eder</b>, yani sözleşme
+    /// kimse karar vermeden büyür. Açık eşleme tablosunda aynı ekleme
+    /// derlenir ama tanınmaz — telde görünmesi ayrı ve bilinçli bir hareket
+    /// olur.
+    /// </para>
+    ///
+    /// <para>
+    /// Kaynağa bakmak kaba ama tuttuğu şey tam olarak bu: <b>bu dosya kendi
+    /// çözümleyicisini yeniden yetiştirmesin.</b> Aynı kalıp <c>CiCoverageTests</c>
+    /// ve <c>ui-consistency</c>'de de var.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Inceleme_ucu_kendi_cozumleyicisini_yazmiyor()
+    {
+        var path = Path.Combine(RepositoryLayout.Root, "src", "Bizigo.Api", "EvidenceEndpoints.cs");
+        var source = File.ReadAllText(path);
+
+        // Kural **koda** ait, düzyazıya değil: dosyadaki açıklama yorumu neden
+        // böyle yapılmadığını anlatmak için o çağrının adını anmak zorunda ve
+        // yorumu yasaklamak, gerekçeyi silmeye zorlardı. İlk hâli tam olarak
+        // kendi belgelendirmesini yakaladı.
+        var code = string.Join(
+            '\n',
+            source.Split('\n').Where(line => !line.TrimStart().StartsWith("//", StringComparison.Ordinal)));
+
+        Assert.DoesNotContain("Enum.TryParse", code, StringComparison.Ordinal);
+
+        Assert.Contains("ReviewWire.TryParseVerdict", code, StringComparison.Ordinal);
+        Assert.Contains("ReviewWire.TryParseContradicting", code, StringComparison.Ordinal);
+    }
 }
