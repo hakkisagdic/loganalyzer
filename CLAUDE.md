@@ -57,6 +57,18 @@ yüklü makinede **yanlış sayı** üretiyor (bkz. §6).
 **Koşturamadığın bir testi "yazdım" diye yeşil gösterme.** `Skip` ile iskelet
 bırakmak dürüst; sahte yeşil değil.
 
+**Yeni bir test paketi eklerken bekçinin tanıdığı bir işaret dosyası bırak ya
+da bekçiyi genişlet.** `CiCoverageTests` depodaki test köklerini işaret
+dosyalarından buluyor (`pytest.ini`/`conftest.py`, `vitest.config.*`, test
+SDK'sı referanslayan `*.csproj`) ve her birinin `ci.yml`'da **onu koşturan** bir
+adımı olduğunu sınıyor. Tanımadığı bir konvansiyonla gelen paket görünmez
+kalır.
+
+Bu satır bir mekanizma değil, **mekanizmanın kapsama notu** — unutulduğunda
+kırmızı yanan hâlâ bekçi. Gerekçe ölçüldü: `sidecar/tests/` altında dört pytest
+dosyası vardı, yapılandırma yerindeydi, ve CI onları **hiç koşturmuyordu**.
+Yazan kişi doğru şeyi yapmıştı; eksik olan disiplin değil bir bağdı.
+
 ---
 
 ## 3 · Proses hijyeni
