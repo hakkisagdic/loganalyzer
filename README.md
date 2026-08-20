@@ -266,10 +266,42 @@ ama açılamıyor. Alternatif — zamanlayıcının her turda "bu tip için topl
 yok" diye hata yazması — çalışma geçmişini gerçek arızalarla sahtelerinin
 karıştığı bir yığına çevirirdi.
 
-**Saklama tek politika, iki tablo:** `change_webhook_deliveries` ve
-`change_connector_runs` 90 gün sonra siliniyor (`Changes:Connectors:Retention`).
-`change_events` bunun **dışında** — RCA'nın F3'te arayacağı geçmiş hiç
-silinmiyor.
+**Saklama tek politika, üç tablo:** `change_webhook_deliveries`,
+`change_connector_runs` ve `change_config_snapshots` 90 gün sonra siliniyor
+(`Changes:Connectors:Retention`). İki istisna var ve ikisi de bilinçli:
+`change_events` politikanın **dışında** — RCA'nın F3'te arayacağı geçmiş hiç
+silinmiyor; ve her connector'ın **en yeni** anlık görüntüsü kesimin gerisinde
+kalsa bile korunuyor, yoksa hiç değişmeyen bir cihazın taban çizgisi silinir ve
+bir sonraki çekim config'in tamamını sahte bir değişiklik olarak raporlar.
+
+**Cihaz config farkı (T26).** `Bizigo.Devices` ürünün cihazlara **bağlanan**
+tek derlemesi; SSH bağımlılığı yalnızca orada ve arayüzün yüzeyinde yazma diye
+bir şey yok — bu ürün config okuyor, değiştirmiyor. FortiGate, Cisco ASA ve
+MikroTik: üçü de SSH konuşuyor, komutları vendor başına yazıldı (`show`,
+`more system:running-config`, `/export terse` — hepsi sayfalama kapalı ve
+satır kaydırması olmayan biçimler, çünkü yarım ya da farklı bölünmüş bir çıktı
+silinmiş yüzlerce satır gibi görünür).
+
+**Gürültü elenmezse tablo işe yaramaz.** Cihazlar her çekimde değişen satırlar
+basıyor: FortiGate config dosyası sürümünü, ASA `Cryptochecksum`'ı, MikroTik
+export başlığına o anın tarihini. `ConfigNormalizer` bunları eliyor ve
+**gizli değerleri silmiyor, maskeliyor**: `set psksecret ENC …` →
+`set psksecret ENC <gizli:a3f21c08>`. Silmek dönen bir anahtarı görünmez
+yapardı; oysa rotasyon gerçek bir değişiklik. Özet değişince fark yakalanıyor,
+değer hiçbir yere yazılmıyor.
+
+**Fark bölüm başına çoklu-küme farkı, LCS değil.** Ağ config'i bildirimsel:
+aynı bölümdeki iki ayarın sırası anlam taşımıyor ve cihazlar yeniden yazımda
+sırayı değiştirebiliyor. LCS her yeniden yazımda yüzlerce sahte değişiklik
+üretirdi, üstelik maliyeti iki tarafın çarpımı kadar. Bu yöntem girdi
+uzunluğunda doğrusal. Bedeli açık: bölüm **içinde** yer değiştiren satır fark
+üretmiyor — bildirimsel bir config'te zaten bir değişiklik değil.
+
+**Saklanan anlık görüntü ham config değil.** Normalize + maskelenmiş metin,
+üstüne şifreli. Bu ürün config yedeklemiyor: RCA'nın ihtiyacı "ne değişti",
+config'in kopyası değil — ve kopya tutulduğu an saklama, erişim ve sızıntı
+sorumluluğu da doğar. `change_events`'e yazılan kayıt da bölüm **adlarını**
+taşıyor, satır içeriklerini değil.
 
 ## Proje düzeni
 

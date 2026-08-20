@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Bizigo.Query\Bizigo.Query.csproj" />
+    <ProjectReference Include="..\Bizigo.Devices\Bizigo.Devices.csproj" />
     <ProjectReference Include="..\Bizigo.Ingest\Bizigo.Ingest.csproj" />
     <ProjectReference Include="..\Bizigo.Replay\Bizigo.Replay.csproj" />
     <ProjectReference Include="..\Bizigo.Authoring\Bizigo.Authoring.csproj" />

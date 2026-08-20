@@ -23,6 +23,7 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
     // Değişiklik connector'ları ve çalışma geçmişi (T25).
     public DbSet<ChangeConnectorEntity> ChangeConnectors => Set<ChangeConnectorEntity>();
     public DbSet<ChangeConnectorRunEntity> ChangeConnectorRuns => Set<ChangeConnectorRunEntity>();
+    public DbSet<ChangeConfigSnapshotEntity> ChangeConfigSnapshots => Set<ChangeConfigSnapshotEntity>();
 
     // Alarm motoru ve bildirim kanalları (T21, T22).
     public DbSet<AlertRuleEntity> AlertRules => Set<AlertRuleEntity>();
@@ -86,6 +87,12 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
             // "Bu connector'ın son N koşusu" ve saklama temizliği.
             e.HasIndex(x => new { x.ConnectorId, x.StartedAt });
             e.HasIndex(x => x.StartedAt);
+        });
+
+        modelBuilder.Entity<ChangeConfigSnapshotEntity>(e =>
+        {
+            // Fark almanın tek sorgusu: "bu connector'ın EN SON anlık görüntüsü".
+            e.HasIndex(x => new { x.ConnectorId, x.CapturedAt });
         });
 
         modelBuilder.Entity<AuditLogEntity>(e =>

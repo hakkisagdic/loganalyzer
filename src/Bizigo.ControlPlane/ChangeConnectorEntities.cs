@@ -156,3 +156,55 @@ public sealed class ChangeConnectorRunEntity
     [MaxLength(1024)]
     public string Error { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// Cihaz config anlık görüntüsü (T26).
+///
+/// <para>
+/// <b>Saklanan şey cihazın ham config'i DEĞİL:</b> normalize edilmiş, gürültüsü
+/// elenmiş ve gizli değerleri maskelenmiş hâli. İki sebep, ikisi de bilinçli.
+/// </para>
+///
+/// <list type="number">
+/// <item>
+/// Bu ürün config <b>yedeklemiyor</b>. RCA'nın ihtiyacı "ne değişti"; config'in
+/// kopyası ayrı bir üründür ve tutulduğu an saklama, erişim ve sızıntı sorumluluğu
+/// da doğar.
+/// </item>
+/// <item>
+/// Ham config ön-paylaşımlı anahtar, SNMP community'si ve özetlenmiş parola
+/// taşıyor. Maskelenmiş metinde bunların yerinde kısa bir özet var: değer
+/// değişince özet de değişiyor, yani <b>rotasyon fark olarak görünüyor ama sır
+/// hiçbir yere yazılmıyor</b>.
+/// </item>
+/// </list>
+///
+/// <para>
+/// Üstüne <see cref="Body"/> şifreli duruyor — gizli bilgilerin şifrelendiği
+/// aynı anahtarla (T22/T25). Maskeleme zaten sırları çıkardığı için bu ikinci
+/// katman; ama config'in kendisi de altyapı bilgisi ve veritabanına erişen
+/// birinin ağ topolojisini düz metin okuması gerekmiyor.
+/// </para>
+/// </summary>
+[Table("change_config_snapshots")]
+public sealed class ChangeConfigSnapshotEntity
+{
+    [Key]
+    public long Id { get; set; }
+
+    public Guid ConnectorId { get; set; }
+
+    public DateTimeOffset CapturedAt { get; set; }
+
+    /// <summary>
+    /// Normalize metnin sha256'sı. Fark almadan önce buna bakılıyor: aynı özet,
+    /// aynı config — satır satır karşılaştırmaya hiç girilmiyor.
+    /// </summary>
+    [MaxLength(64)]
+    public required string Sha256 { get; set; }
+
+    /// <summary>Şifreli (AES-256-GCM, base64) normalize config metni.</summary>
+    public required string Body { get; set; }
+
+    public int LineCount { get; set; }
+}
