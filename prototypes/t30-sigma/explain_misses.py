@@ -64,6 +64,61 @@ PRESENT = "present"
 SUBSTRING_ONLY = "substring_only"
 
 
+def free_text_fields() -> frozenset[str]:
+    """`raw_data`'ya inen Sigma alanları — kutu 2'nin **tek** geçerli alanı.
+
+    Neden alan türü önemli
+    ----------------------
+    Kutu 2 (*"yalnızca daha uzun sözcüğün içinde"*) `asa_teardown_rst`'ten
+    doğdu: `message|contains: 'RST'` serbest metinde `burst`'ün içine denk
+    geliyordu ve bu gürültüydü.
+
+    Ama ölçüm bir **yanlış pozitif** üretti: `fortigate_admin_from_wan`
+    `srcip|startswith: '203.0.113.'` yazıyor ve bu tam olarak istenen şey —
+    `203.0.113.7` ile eşleşiyor. Ham metinde bakınca "daha uzun bir sözcüğün
+    içinde" görünüyor, çünkü IP'lerde nokta sözcük sınırı değil.
+
+    Ayrım alanın **türünde**: serbest metinde içinde-geçmek gürültü, yapısal
+    bir alanda önek eşleşmesi **anlam**. Yapısal alan zaten kolonun kendisinde
+    karşılaştırılıyor; ham gövdedeki komşuluğu bir şey söylemiyor.
+
+    Liste ürünün eşleme tablosundan türetiliyor, elle yazılmıyor: `message`
+    bir gün başka bir kolona giderse burası kendiliğinden izliyor.
+    """
+    shipping = _shipping()
+
+    if shipping is None:
+        # Sessizce boş küme dönmek, kutu 2'yi bütün alanlarda çalıştırırdı —
+        # yani bugünkü yanlış pozitifi geri getirirdi. Bilinmiyorsa ölçüm
+        # yapılmamalı; çağıran bunu bir arıza olarak görüyor.
+        raise RuntimeError(
+            "`sidecar/app/sigma_pipeline` import edilemedi; serbest metin alanları "
+            "bilinemiyor. Araç depo ağacından koşmalı."
+        )
+
+    return frozenset(
+        field for field, column in shipping.FIELD_MAP.items() if column == "raw_data"
+    )
+
+
+def _shipping():
+    """Ürünün eşleme modülü. Kopyalanmıyor — kopya sessizce ayrışır."""
+    import importlib
+    import sys
+
+    root = repo_root()
+
+    if root is None:
+        return None
+
+    sidecar = str(root / "sidecar")
+
+    if sidecar not in sys.path:
+        sys.path.insert(0, sidecar)
+
+    return importlib.import_module("app.sigma_pipeline")
+
+
 def repo_root() -> Path | None:
     """Depo kökü, bulunamadıysa **None**.
 
@@ -201,12 +256,17 @@ def rule_literals(rule_text: str) -> list[Literal]:
     return found
 
 
-def classify(value: str, corpus: str) -> tuple[str, list[str], int]:
+def classify(value: str, corpus: str, free_text: bool = True) -> tuple[str, list[str], int]:
     """Dizgenin örnek gövdesindeki durumu: (karar, yutan sözcükler, satır sayısı).
 
     Ölçüt **sözcük sınırı**. `RST` örneklerde geçiyordu ama yalnızca `first` ve
     `burst` içinde; bir varlık kontrolü onu "var" der ve kuralı sağlam sanardı.
     Aranan şey dizgenin kendi başına durup durmadığı.
+
+    `free_text=False` ise sözcük sınırı **aranmıyor**: yapısal bir alanda
+    (IP, port, eşlenmiş kolon) önek eşleşmesi kuralın kastettiği şeyin ta
+    kendisi. `srcip|startswith: '203.0.113.'` ham gövdede `203.0.113.7`'nin
+    içinde görünüyor ve bu bir kusur değil, **doğru davranış**.
     """
     if not value:
         return PRESENT, [], 0
@@ -226,7 +286,7 @@ def classify(value: str, corpus: str) -> tuple[str, list[str], int]:
         r"(?<![A-Za-z0-9])" + re.escape(needle) + r"(?![A-Za-z0-9])"
     )
 
-    if bounded.search(lowered):
+    if bounded.search(lowered) or not free_text:
         return PRESENT, [], lines
 
     # Yalnızca daha uzun sözcüklerin içinde. Yutanları topluyoruz: iddia değil
@@ -287,11 +347,15 @@ def load_samples(root: Path, product: str) -> str:
     )
 
 
-def examine(rule_text: str, name: str, samples: str, product: str) -> RuleReport:
+def examine(
+    rule_text: str, name: str, samples: str, product: str, text_fields: frozenset[str]
+) -> RuleReport:
     report = RuleReport(name=name, product=product)
 
     for literal in rule_literals(rule_text):
-        literal.verdict, literal.swallowed_by, literal.lines = classify(literal.value, samples)
+        literal.verdict, literal.swallowed_by, literal.lines = classify(
+            literal.value, samples, free_text=literal.field in text_fields
+        )
 
         if literal.verdict == ABSENT:
             literal.near_misses = near_misses(literal.value, samples)
@@ -335,6 +399,7 @@ def main(argv: list[str] | None = None) -> int:
 
     cache: dict[str, str] = {}
     reports: list[RuleReport] = []
+    text_fields = free_text_fields()
 
     for path in rules:
         text = path.read_text(encoding="utf-8")
@@ -348,7 +413,7 @@ def main(argv: list[str] | None = None) -> int:
         if product not in cache:
             cache[product] = load_samples(root, product)
 
-        reports.append(examine(text, path.name, cache[product], product))
+        reports.append(examine(text, path.name, cache[product], product, text_fields))
 
     buckets = {ABSENT: [], SUBSTRING_ONLY: [], PRESENT: []}
 

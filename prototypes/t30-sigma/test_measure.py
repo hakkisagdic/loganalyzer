@@ -499,7 +499,28 @@ _PATCHED = ("run_on_clickhouse", "golden_probes")
 
 
 def main() -> int:
+    import re as _re
+    from pathlib import Path as _Path
+
     tests = [value for name, value in sorted(globals().items()) if name.startswith("test_")]
+
+    # Dosyada tanımlı test sayısı ile toplanan sayı aynı mı.
+    #
+    # Bekçi değil kolaylık gibi görünüyor ama değil: koşucunun altına eklenen
+    # bir test `globals()` dolduğunda henüz tanımlı olmuyor ve **hiç koşmadan**
+    # paket yeşil kalıyor. Kardeş dosyada iki kez oldu ve ikisinde de sayıya
+    # bakıp geçilebilirdi.
+    declared = len(
+        _re.findall(r"^def (test_\w+)", _Path(__file__).read_text(encoding="utf-8"), _re.M)
+    )
+
+    if declared != len(tests):
+        print(
+            f"✗ KOŞUM EKSİK: dosyada {declared} test tanımlı, {len(tests)} tanesi toplandı.",
+            file=sys.stderr,
+        )
+        return 1
+
     failed = 0
     pristine = {name: getattr(measure, name) for name in _PATCHED}
 
