@@ -214,7 +214,12 @@ public sealed class CorrelationReader(ClickHouseContext context)
                 OR (ts >= {base_from:DateTime64(3)} AND ts < {base_to:DateTime64(3)}))
             GROUP BY value
             HAVING window_count > 0 AND value != ''
-            ORDER BY window_count DESC
+            -- `value` bir EŞİTLİK BOZUCU, süs değil: kanıt paketi saklanıyor ve
+            -- aynı girdiden aynı paketi üretmek zorunda (T36). Eşit
+            -- `window_count`'lu iki değerin sırası sunucunun insafına kalırsa
+            -- satır sırası koşumdan koşuma değişir, içerik hash'i kayar ve
+            -- "aynı paket mi" sorusu sessizce hep hayır cevaplanır.
+            ORDER BY window_count DESC, value
             LIMIT {{perField}}
             """);
 

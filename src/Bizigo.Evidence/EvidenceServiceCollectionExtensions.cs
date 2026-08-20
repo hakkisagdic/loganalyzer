@@ -47,6 +47,13 @@ public static class EvidenceServiceCollectionExtensions
 
         services.AddScoped<EvidenceCollector>();
 
+        // Kanıt paketi (T36). Fabrika scoped — `IScopedQuery`'yi tutuyor.
+        // Depo, `IDbContextFactory` üzerinden çalıştığı için singleton olabilirdi
+        // ama scoped bırakıldı: fabrika ile aynı ömürde durmaları, ileride
+        // ikisinin arasına bir denetim kaydı girdiğinde sürpriz çıkarmıyor.
+        services.AddScoped<EvidenceBundleFactory>();
+        services.AddScoped<EvidenceBundleStore>();
+
         return services;
     }
 }
