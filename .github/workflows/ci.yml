@@ -100,6 +100,16 @@ jobs:
         working-directory: ui
         run: npm run typecheck
 
+      # Ekran görüntüsü bekçileri gerçek bir tarayıcı istiyor (T28). Kurulum
+      # olmadan `beforeAll` içindeki `chromium.launch()` düşer ve paket kırmızı
+      # yanar — bu doğru davranış: testi kendini sessizce atlayacak hâle
+      # getirmek, bekçinin kendisinden tehlikeli olurdu. Görüntüler bu turda
+      # hiçbir birim testinin bulamayacağı iki yerleşim kusuru buldu; bedeli
+      # bir chromium indirmesi.
+      - name: Tarayıcı (ekran görüntüsü bekçileri için)
+        working-directory: ui
+        run: npx playwright install --with-deps chromium
+
       # BFF deseninin kanıtı burada koşuyor: erişim token'ı tarayıcıya ulaşmıyor.
       - name: Testler
         working-directory: ui
