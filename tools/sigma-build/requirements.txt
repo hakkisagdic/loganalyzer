@@ -1,0 +1,12 @@
+# Derleme hattının bağımlılıkları.
+#
+# pySigma ve ClickHouse backend'i BURADA SABİTLENMİYOR — sidecar'ınkiler
+# kullanılıyor. Gerekçe: sidecar imajı `/v1/sigma/compile` ucuyla aynı kuralı
+# çalışma zamanında derliyor. İki taraf ayrı sürüm sabitlerse, UI'daki
+# "bu kuralı derle ve önizle" akışı build-time üretilen SQL'den BAŞKA bir SQL
+# gösterir — ve ikisi ayrıştığında hiçbir şey kırmızı yanmaz.
+-r ../../sidecar/requirements.txt
+
+# ⚠️ `view_columns.py` bu bağımlılıkların HİÇBİRİNİ istemiyor; saf metin işi.
+#    Kapı 1'in ClickHouse'suz ve pySigma'sız koşabilmesinin sebebi bu, ve
+#    testleri de çıplak bir Python 3.11+ ile koşuyor.

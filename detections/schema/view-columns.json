@@ -1,0 +1,55 @@
+{
+  "_comment": "ÜRETİLMİŞ DOSYA — elle düzenlemeyin. Kaynak: db/clickhouse/*.sql, üretici: tools/sigma-build/sigma_build/view_columns.py. Yeniden üretmek için: python -m sigma_build.view_columns --write",
+  "views": {
+    "events_ocsf": {
+      "source_file": "0003_ocsf_otel_views.sql",
+      "columns": [
+        "time",
+        "uid",
+        "owner_group",
+        "class_uid",
+        "activity_id",
+        "severity_id",
+        "src_endpoint_ip",
+        "src_endpoint_port",
+        "dst_endpoint_ip",
+        "dst_endpoint_port",
+        "connection_info_protocol_name",
+        "activity_name",
+        "status",
+        "actor_user_name",
+        "device_hostname",
+        "device_vendor_name",
+        "metadata_product_name",
+        "metadata_version",
+        "unmapped",
+        "raw_data",
+        "raw_ref"
+      ]
+    },
+    "events_otel": {
+      "source_file": "0004_fix_otel_severity_scale.sql",
+      "columns": [
+        "Timestamp",
+        "ObservedTimestamp",
+        "LogRecordUID",
+        "owner_group",
+        "SeverityNumber",
+        "bizigo.ocsf_severity_id",
+        "Body",
+        "host.name",
+        "service.instance.id",
+        "service.name",
+        "device.manufacturer",
+        "source.address",
+        "source.port",
+        "destination.address",
+        "destination.port",
+        "network.transport",
+        "user.name",
+        "Attributes",
+        "raw_ref"
+      ]
+    }
+  }
+}
