@@ -4,8 +4,11 @@ import { describe, expect, it } from "vitest";
 import { ReportView } from "@/app/rca/[id]/ReportView";
 import { drilldownLosesFilters, toEventsHref } from "@/lib/rca/drilldown";
 import {
+  CONTRADICTING_CHOICES,
   honestyLines,
   presentStatus,
+  REVIEW_STATES,
+  reviewRequest,
   STATUS_PRESENTATION,
   type RcaReport,
   type RcaSlice,
@@ -291,3 +294,96 @@ function section(html: string, id: string): string {
   const next = html.indexOf("data-section=", start + 1);
   return next < 0 ? html.slice(start) : html.slice(start, next);
 }
+
+/**
+ * İnceleme — <b>dört karar</b> ve <b>çelişen kanıt</b> boyutu.
+ *
+ * <p>
+ * Bu blok bir kusurdan doğdu: dördüncü düğme (`unknown`) ekrana eklendi ve 299
+ * UI testinin hiçbiri onu sınamıyordu. Gönderilebildiğini hiçbir şey tutmuyorsa,
+ * bir gün gönderilemez hâle gelmesi de hiçbir yerde görünmez.
+ * </p>
+ */
+describe("inceleme kararları", () => {
+  /**
+   * <b>Dört karar değerinin hepsi gönderilebiliyor</b> — özellikle `unknown`.
+   *
+   * <p>
+   * `unknown` bir kaçış kapısı değil bir ölçüm: seçenek olmasaydı gerçekten
+   * bilmeyen kişi rastgele birini seçer ve altın küme <b>sessizce gürültüyle</b>
+   * dolardı — ölçülemez olmaktan kötü, çünkü ölçülüyormuş gibi görünürdü.
+   * </p>
+   */
+  it("Dort_karar_degeri_de_gonderilebiliyor", () => {
+    const verdicts = REVIEW_STATES.map((state) => state.value);
+
+    expect(verdicts).toEqual(["correct", "incomplete", "wrong", "unknown"]);
+
+    for (const verdict of verdicts) {
+      expect(reviewRequest(verdict, "unknown", "").verdict).toBe(verdict);
+    }
+  });
+
+  /** Dördüncü düğme gerçekten çiziliyor — liste doğru olsa da ekranda yoksa basılamaz. */
+  it("Bilmiyorum_dugmesi_ekranda", () => {
+    const html = renderToStaticMarkup(<ReportView report={report()} />);
+
+    for (const state of REVIEW_STATES) {
+      expect(html).toContain(state.label);
+    }
+  });
+
+  /**
+   * <b>Çelişen kanıt karara bağlı değil.</b> Seçim hangi karar düğmesine
+   * basılırsa basılsın aynı gövdeyle gidiyor.
+   *
+   * <p>
+   * Karara bağlansaydı ölçüm, tiyatronun en tehlikeli hâlini — raporun bütün
+   * olarak <b>doğru</b> olduğu hâli — sistematik olarak hiç örneklemezdi.
+   * </p>
+   */
+  it("Celisen_kanit_karara_bagli_degil", () => {
+    for (const verdict of REVIEW_STATES.map((s) => s.value)) {
+      expect(reviewRequest(verdict, "trivial", "").contradicting_evidence).toBe("trivial");
+    }
+  });
+
+  /** Dört çelişen-kanıt değeri de gönderilebiliyor. */
+  it("Dort_celisen_kanit_degeri_de_gonderilebiliyor", () => {
+    const values = CONTRADICTING_CHOICES.map((choice) => choice.value);
+
+    expect(new Set(values)).toEqual(new Set(["unknown", "not_present", "sound", "trivial"]));
+
+    for (const value of values) {
+      expect(reviewRequest("correct", value, "").contradicting_evidence).toBe(value);
+    }
+  });
+
+  /**
+   * <b>Varsayılan `unknown`, `not_present` değil.</b> Ekran bu boyutu bilemiyor
+   * — yanıt böyle bir alan taşımıyor — ve kullanıcı adına çıkarım yapmak, F4
+   * bölümü eklediğinde sessizce yanlış iddia etmeye devam etmek olurdu.
+   */
+  it("Celisen_kanit_varsayilani_unknown", () => {
+    expect(CONTRADICTING_CHOICES[0]?.value).toBe("unknown");
+
+    const html = renderToStaticMarkup(<ReportView report={report()} />);
+    expect(html).toContain('data-testid="contradicting-evidence"');
+  });
+
+  /** Kök neden kırpılıyor; yalnızca boşluk yazmak "biliyorum" saymamalı. */
+  it("Kok_neden_kirpiliyor", () => {
+    expect(reviewRequest("wrong", "unknown", "   ").actual_root_cause).toBe("");
+    expect(reviewRequest("wrong", "unknown", "  ACL push  ").actual_root_cause).toBe("ACL push");
+  });
+
+  /** İnceleyen gövdede yok — sunucu onu token'dan alıyor. */
+  it("Inceleyen_govdede_gonderilmiyor", () => {
+    expect(Object.keys(reviewRequest("correct", "unknown", "")).sort()).toEqual([
+      "actual_root_cause",
+      "contradicting_evidence",
+      "note",
+      "verdict",
+    ]);
+  });
+});
