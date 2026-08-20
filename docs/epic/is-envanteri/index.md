@@ -125,6 +125,68 @@ kendisi kadar önemli. İkincisi
 `ArchitectureTests.Uretim_DI_grafi_kapsam_dogrulamasindan_geciyor` ile
 kapatıldı: kapsam doğrulaması artık her birim testi koşumunda.
 
+### Bir bekçinin **adı ile gövdesinin ayrışması**
+
+Yukarıdaki iki bölüm aynı hastalığın iki belirtisiydi; hastalığın kendisi bu ve
+bir sözleşme kalemi değil, bir **ölçüm kültürü** kalemi.
+
+**Bir bekçinin adı bir iddia kurar. Gövdesi başka bir şey ölçüyorsa, o bekçi
+hiç yokmuş gibidir — ama yokluğu görünmez, çünkü yeşil yanıyor.** Hiç bekçi
+olmamasından tehlikeli olmasının sebebi bu: eksik bekçi bir boşluk bırakır,
+yanlış bekçi o boşluğu **doldurulmuş gösterir.**
+
+Bu turda dört örnek çıktı.
+
+| Bekçi | Adının kurduğu iddia | Gövdesinin ölçtüğü | Nasıl bulundu |
+| --- | --- | --- | --- |
+| `ProducesContractTests` | `/v1/*` altındaki her uç sözleşmeli | **Listedeki** uçlar — 16 uç listede yoktu | Keşif yansımaya çevrilince |
+| Ömür bekçisi | Üretim DI grafiği kapsam doğrulamasından geçiyor | `AddBizigoAuthentication` **hariç** grafik | Keşif yansımaya çevrilince |
+| `sigma_build` Kapı 2 | Tip uyuşmazlığı yakalanıyor | AST'nin **ayrıştırılabilirliği** | Yeni test yazılırken |
+| `Ayni_id_icin_en_yuksek_surum_kazaniyor` | Sürüm çözümlemesi | `specificity` **sıralaması** (iki farklı `id`) | Yeni test yazılırken |
+
+**Nasıl bulunduklarına dikkat** — arayan birine nereye bakacağını söyleyen kısım
+bu:
+
+- **Üçü, keşif elle tutulan bir listeden yansımaya çevrilince ortaya çıktı.**
+Liste kaldırıldığı an denetlenen küme büyüdü ve bekçinin daha önce neyi
+görmediği sayı olarak göründü. Yani: *bir bekçi elle tutulan bir listeden
+besleniyorsa, listeyi kaldırmak teşhis aracıdır.*
+- **Dördüncüsü, o bekçinin iddiasına dayanan yeni bir test yazılırken çıktı.**
+`Yayinlanan_parser_sonraki_olayi_ayristiriyor` "yeni sürüm kataloğa giriyor"
+varsayımına dayanıyordu; o varsayımı kim tutuyor diye bakınca, tutmadığı
+görüldü. Yani: *bir iddiaya dayanacaksan önce onu kimin tuttuğuna bak.*
+
+**En can sıkıcı ortak nokta:** dördüncüsünde bilgi zaten kayıtlıydı. Testin
+kendi yorumu *"`Replace` sürüm çözümlemesi yapmıyor; çözümleme dizinden
+yüklemede"* diyordu ve testin adı sürüm çözümlemesini iddia ediyordu. İki cümle
+yan yana duruyordu; kimse ikisini birden okumamıştı.
+
+#### Katalogda arandı — üç bulgu
+
+Aynı soru `catalog/parsers`'daki **62 gömülü teste** soruldu: adı ile beklentisi
+ayrışan var mı? Yöntem, her testin `name` alanıyla `expect` bloğunu yan yana
+dökmek oldu.
+
+| Test | Ad ne diyordu | Gövde ne ölçüyordu | Düzeltme |
+| --- | --- | --- | --- |
+| `cisco.asa.auth` — 611103 | "yıllı zarf ve **host yok**" | Zarf sınanıyordu, **host yokluğu sınanmıyordu** | `core.host: null` eklendi |
+| `nginx.access.combined` — sanal sunucu öneki | "**yüzde kodlu yol**" | Host, IP, durum, bayt — **yola hiç bakılmıyordu** | `otel.url.path` eklendi, kod çözülmemiş hâliyle |
+| `mikrotik.routeros.firewall` — kural öneki | "**boşluklu arayüz adlı** satır" | Girdide boşluklu arayüz **yok** (`ether1-gateway`); ad bir **sonraki** testin girdisini anlatıyordu | Ad gerçekten sınadığı şeye çevrildi |
+
+İlk ikisi ancak T08 raporu #6 kapandıktan sonra düzeltilebilirdi: "bu alan hiç
+olmamalı" beklentisi T19'a kadar ifade edilemiyordu. Yani bulgu yeni değil,
+**düzeltilebilir olması** yeni.
+
+**Ölçüldü:** iki yeni beklenti de kırmızı yanabiliyor. ASA zarfına host
+eklendiğinde `core.host` düşüyor, nginx yolu kod çözülmüş hâline çevrildiğinde
+`otel.url.path` düşüyor — `62 geçti` → `60 geçti, 2 kaldı`. Sonra geri alındı.
+
+**Geri kalan 59 testte ayrışma bulunmadı** — aradım, yok. Negatif testlerin
+tamamı (`negatif — … bu parser'a düşmemeli`) gerçekten `parse_status: failed`
+bekliyor; `302020 — zaman damgası olmayan zarf` iddiasını `tags:
+["_asa_no_timestamp"]` ile gerçekten ölçüyor ve doğru yapmanın örneği olarak
+duruyor.
+
 ## 3 · Doğrulanmamış olan
 
 | # | Ne | Kim |
