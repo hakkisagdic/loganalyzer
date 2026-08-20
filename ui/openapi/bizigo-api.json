@@ -2314,7 +2314,9 @@
           "comparison",
           "silence_seconds",
           "repeat_interval_seconds",
-          "enabled",
+          "status",
+          "source",
+          "gated_reason",
           "next_run_at",
           "last_run_at",
           "last_fired_at",
@@ -2386,8 +2388,14 @@
             ],
             "format": "int32"
           },
-          "enabled": {
-            "type": "boolean"
+          "status": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "gated_reason": {
+            "type": "string"
           },
           "next_run_at": {
             "type": [

@@ -71,7 +71,10 @@ function initialState(rule: AlertRule | null, channelIds: readonly string[]): Fo
     comparison: (rule?.comparison as Comparison) ?? "gt",
     silenceSeconds: rule ? toNumber(rule.silence_seconds) : 900,
     repeatIntervalSeconds: rule ? toNumber(rule.repeat_interval_seconds) : 3600,
-    enabled: rule?.enabled ?? true,
+    // `status` üç değerli; düzenleyicinin onay kutusu ikisini temsil ediyor.
+    // `gated` buradan verilemez ve alınamaz: yetenek sınırı, kullanıcının
+    // kararı değil — sunucu da o isteği yok sayıyor.
+    enabled: rule ? rule.status === "enabled" : true,
     channelIds: [...channelIds],
   };
 }
