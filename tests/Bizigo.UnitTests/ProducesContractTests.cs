@@ -193,11 +193,11 @@ public sealed class ProducesContractTests
             // çıkarımda patlıyor — yani uç dosyası kapıya hiç görünmüyor.
             typeof(EvidenceBundleFactory), typeof(EvidenceBundleStore),
 
-            // T37 incelemeyi T38'in altın küme deposuna yazıyor; ayrı bir
-            // inceleme tablosu yok. İki ajan bunu paralel yazınca iki tablo
-            // doğmuştu (§9 — kesişen sözleşme önceden çivilenmeli); tek kalan
-            // bu.
-            typeof(GoldenReviewStore),
+            // T38'in altın küme uçları, ve T37'nin incelemesi de buraya
+            // yazıyor: ayrı bir inceleme tablosu YOK. İkisi paralel yazılınca
+            // iki tablo doğmuştu (§9 — kesişen sözleşme önceden çivilenmeli);
+            // tek kalan bu.
+            typeof(GoldenReviewStore), typeof(AlertClosureService),
         })
         {
             var captured = type;
@@ -288,7 +288,7 @@ public sealed class ProducesContractTests
     ///
     /// <para>
     /// Bu test yansıma keşfinin gerçekten iş gördüğünü sabitliyor: bugün bilinen
-    /// on iki uzantının hepsi bulunuyor ve hepsi çağrıldığı için hepsinin uçları
+    /// on üç uzantının hepsi bulunuyor ve hepsi çağrıldığı için hepsinin uçları
     /// denetime giriyor. Yeni bir uç dosyası eklendiğinde burada bir şey
     /// güncellemek gerekmiyor — sayı kendiliğinden artıyor ve <b>uçları da
     /// otomatik denetime giriyor</b>; kapatılan delik tam olarak buydu.
@@ -304,7 +304,7 @@ public sealed class ProducesContractTests
         Assert.Equal(
             [
                 "MapAlerts", "MapAuth", "MapChangeConnectors", "MapChangeWebhooks", "MapChanges",
-                "MapEvents",
+                "MapEvents", "MapGoldenReviews",
                 "MapNotificationChannels", "MapOtlpLogs", "MapParserAuthoring", "MapParsers",
                 "MapPipelineHealth", "MapRca", "MapReplay", "MapSources",
             ],

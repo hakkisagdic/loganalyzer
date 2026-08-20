@@ -130,7 +130,15 @@ public sealed record AlertTriggerResponse(
     [property: JsonPropertyName("source_id")] string SourceId,
     [property: JsonPropertyName("owner_group")] string OwnerGroup,
     [property: JsonPropertyName("summary")] string Summary,
-    [property: JsonPropertyName("deliveries")] AlertDeliveryResponse[] Deliveries);
+    [property: JsonPropertyName("deliveries")] AlertDeliveryResponse[] Deliveries,
+
+    // Asgari yaşam döngüsü (T38). Ekran açık ile kapalıyı ayırt edebilmeli;
+    // ayrı bir uçtan çekilseydi liste satır başına bir istek atardı ve çoğu
+    // ekran bunu yapmayıp hepsini açık gösterirdi.
+    [property: JsonPropertyName("state")] string State,
+    [property: JsonPropertyName("closed_at")] DateTimeOffset? ClosedAt,
+    [property: JsonPropertyName("closed_by")] string? ClosedBy,
+    [property: JsonPropertyName("review_id")] Guid? ReviewId);
 
 public sealed record AlertTriggerListResponse(
     [property: JsonPropertyName("count")] int Count,
