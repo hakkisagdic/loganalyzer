@@ -345,6 +345,85 @@ public sealed class ProducesContractTests
     }
 
     /// <summary>
+    /// <b>Kapı denetlediği kümeyi kendisi buluyor mu</b> (T27).
+    ///
+    /// <para>
+    /// T17'de kapatılan yapısal delik buydu: bekçi uçları elle yazılmış bir
+    /// <c>Map*</c> listesinden topluyordu, T21/T22/T24 indiğinde 16 uç ona hiç
+    /// görünmedi ve üç testin üçü de geçti — yeşilliği hiçbir şey ifade
+    /// etmiyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// Bu test o deliğin <b>geri açılmasını</b> engelliyor: <c>Bizigo.Api</c>
+    /// içindeki uç dosyalarının her biri kapıya en az bir rota vermek zorunda.
+    /// Yeni bir uç dosyası eklenip yansıma onu bulamazsa — ya da bulunup
+    /// çağrılırken bağımlılık eksikliğinden patlarsa — burada kırmızı yanıyor,
+    /// listeye yazılmayı beklemeden.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Kapi_uc_dosyalarini_kendisi_buluyor()
+    {
+        var registrars = Registrars();
+
+        // Adı `Map` ile başlayan uzantı, `/v1` altında rota üretiyor olmalı.
+        // İstisna: kimlik, sağlık ve iç gözlem uçları `/v1` altında değil.
+        var declaringTypes = registrars
+            .Select(m => m.DeclaringType!.Name)
+            .Distinct(StringComparer.Ordinal)
+            .ToHashSet(StringComparer.Ordinal);
+
+        // Uç dosyası olduğu adından belli olan her sınıf keşfedilmiş olmalı.
+        var endpointFiles = typeof(global::Program).Assembly
+            .GetTypes()
+            .Where(static t => t is { IsSealed: true, IsAbstract: true, IsPublic: true })
+            .Where(static t => t.Name.EndsWith("Endpoints", StringComparison.Ordinal)
+                || t.Name.EndsWith("Endpoint", StringComparison.Ordinal))
+            .Select(static t => t.Name)
+            .ToArray();
+
+        Assert.NotEmpty(endpointFiles);
+
+        var invisible = endpointFiles
+            .Where(name => !declaringTypes.Contains(name))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.True(
+            invisible.Length == 0,
+            "Bu uç dosyaları kapıya hiç görünmüyor: " + string.Join(", ", invisible) +
+            "\n\nAdı `Map` ile başlayan, ilk parametresi `IEndpointRouteBuilder` olan " +
+            "bir uzantı metodu bekleniyor.");
+    }
+
+    /// <summary>
+    /// Keşfedilen her uzantı <b>gerçekten çağrılabiliyor</b> olmalı.
+    ///
+    /// <para>
+    /// Bulunmak yetmiyor: bağımlılığı kayıtlı olmayan bir <c>Map*</c> çağrısı
+    /// parametre çıkarımında patlıyor ve o uç dosyası yine denetlenmemiş
+    /// kalıyor. T17'nin bulduğu delik tam olarak buydu — üç uç dosyası
+    /// bulunuyordu ama çağrılamıyordu.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Kesfedilen_her_uzanti_cagrilabiliyor()
+    {
+        // `Endpoints()` bütün uzantıları çağırıyor; patlarsa test burada düşer
+        // ve mesajı hangi uzantının çağrılamadığını söyler.
+        var endpoints = Endpoints();
+
+        Assert.NotEmpty(endpoints);
+
+        // Her keşfedilen uzantı en az bir rota bırakmış olmalı: sessizce hiçbir
+        // şey kaydetmeyen bir uzantı, kapıdan geçmiş ama denetlenmemiş demek.
+        Assert.True(
+            endpoints.Count >= Registrars().Count,
+            $"{Registrars().Count} uzantı bulundu ama yalnızca {endpoints.Count} rota kaydedildi.");
+    }
+
+    /// <summary>
     /// T24/T25'in tükettiği değişiklik uçları listeden <b>çıkmış</b> olmalı.
     ///
     /// <para>

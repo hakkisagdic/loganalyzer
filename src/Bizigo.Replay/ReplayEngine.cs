@@ -58,7 +58,22 @@ public sealed class ReplayEngine(
         var watch = Stopwatch.StartNew();
         await sources.RefreshAsync(cancellationToken);
 
-        var partitions = await replayStore.ListPartitionsAsync(plan.From, plan.To, cancellationToken);
+        var found = await replayStore.ListPartitionsAsync(plan.From, plan.To, cancellationToken);
+
+        // Açık bölüm (bugünün bölümü) varsayılan olarak DIŞARIDA. Gerekçe
+        // `ReplayPlan.AllowOpenPartition`'da: `REPLACE PARTITION` atomik ama
+        // anlık görüntüden sonra gelen satırı korumuyor, yani hâlâ yazılan bir
+        // bölümü replay etmek canlı veriyi sessizce siliyor.
+        var (partitions, skippedOpen) = SplitOpenPartition(plan, found);
+
+        if (skippedOpen.Count > 0)
+        {
+            logger.LogWarning(
+                "Replay {Count} açık bölümü atladı: {Partitions}. " +
+                "Bu bölümlere hâlâ yazılıyor; dâhil etmek için AllowOpenPartition kullanın.",
+                skippedOpen.Count,
+                string.Join(", ", skippedOpen));
+        }
         var (objects, missing) = await ResolveObjectsAsync(plan, cancellationToken);
 
         if (missing.Count > 0 && !plan.ContinueOnMissingObjects)
@@ -77,6 +92,7 @@ public sealed class ReplayEngine(
                 MissingObjects = missing,
                 Duration = watch.Elapsed,
                 Applied = false,
+                SkippedOpenPartitions = skippedOpen,
             };
         }
 
@@ -87,7 +103,8 @@ public sealed class ReplayEngine(
 
         if (!apply)
         {
-            return comparison.ToReport(plan, partitions, missing, watch.Elapsed, applied: false, copied: 0);
+            return comparison.ToReport(
+                plan, partitions, missing, watch.Elapsed, applied: false, copied: 0, skippedOpen);
         }
 
         var copied = await ApplyPartitionsAsync(plan, partitions, rebuilt, existing, cancellationToken);
@@ -98,7 +115,8 @@ public sealed class ReplayEngine(
             comparison.Changed,
             comparison.FailedToOk);
 
-        return comparison.ToReport(plan, partitions, missing, watch.Elapsed, applied: true, copied);
+        return comparison.ToReport(
+            plan, partitions, missing, watch.Elapsed, applied: true, copied, skippedOpen);
     }
 
     /// <summary>
@@ -332,6 +350,43 @@ public sealed class ReplayEngine(
 
         return copied;
     }
+
+    /// <summary>
+    /// Bölümleri "replay edilebilir" ve "hâlâ yazılıyor" diye ayırır.
+    ///
+    /// <para>
+    /// <b>Saf, saatten besleniyor ve <c>public</c></b> — üçü de bilerek. Bu
+    /// karar veri kaybını önlüyor ve onu ancak konteyner kaldıran bir testle
+    /// sınayabilmek, F1'in bedelini ölçtüğü hatanın aynısı olurdu.
+    /// <c>LogsEndpoint.ReadBodyAsync</c> aynı gerekçeyle dışarı açık.
+    /// </para>
+    /// </summary>
+    public static (IReadOnlyList<PartitionInfo> Replayable, IReadOnlyList<string> SkippedOpen)
+        SplitOpen(ReplayPlan plan, IReadOnlyList<PartitionInfo> partitions, DateTimeOffset now)
+    {
+        if (plan.AllowOpenPartition)
+        {
+            return (partitions, []);
+        }
+
+        var open = PartitionOf(now);
+
+        // Bugünün bölümü ve (saat farkı yüzünden) sonrası açık sayılıyor:
+        // ikisine de yazılabilir.
+        var skipped = partitions
+            .Where(p => string.CompareOrdinal(p.Partition, open) >= 0)
+            .Select(p => p.Partition)
+            .ToArray();
+
+        return skipped.Length == 0
+            ? (partitions, [])
+            : ([.. partitions.Where(p => string.CompareOrdinal(p.Partition, open) < 0)], skipped);
+    }
+
+    private (IReadOnlyList<PartitionInfo>, IReadOnlyList<string>) SplitOpenPartition(
+        ReplayPlan plan,
+        IReadOnlyList<PartitionInfo> partitions) =>
+        SplitOpen(plan, partitions, _time.GetUtcNow());
 
     private static string PartitionOf(DateTimeOffset timestamp) =>
         timestamp.UtcDateTime.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
