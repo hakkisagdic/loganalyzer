@@ -155,15 +155,6 @@ jobs:
         working-directory: tools/sigma-build
         run: python -m sigma_build.view_columns --check
 
-      # KAPI: üretilen SQL ve manifest depodakiyle birebir aynı değilse düşer.
-      # Aksi hâlde bir kural değişir ve kimse fark etmez (ticket'ın kendi cümlesi).
-      #
-      # Bugün sıfır kural derleniyor — kural seti ve pipeline T31'i bekliyor —
-      # ve kapı yine de KOŞUYOR. Bilerek: bu turda tam bu sınıftan bir hata
-      # bulundu (`UNMAPPED_FIELDS` tanımlanmış ama hiçbir dönüşüme verilmemiş,
-      # `unmapped_expression()` yazılmış ama hiç çağrılmamış — hazırlanmış ama
-      # bağlanmamış, ve bağlanmamış olması hiçbir yerde belirti üretmiyor).
-      # Kapıyı "hat bitince bağlarız" diye bekletmek aynı deseni kurardı.
       # KAPI: kopyalanmış kural ağacı çivisine uyuyor mu. **Ağ kullanmıyor** —
       # kurallar `catalog/sigma/rules/` altında depoda duruyor, indirilmiyor.
       #
@@ -176,6 +167,15 @@ jobs:
         working-directory: tools/sigma-build
         run: python -m sigma_build.ruleset --verify
 
+      # KAPI: üretilen SQL ve manifest depodakiyle birebir aynı değilse düşer.
+      # Aksi hâlde bir kural değişir ve kimse fark etmez (ticket'ın kendi cümlesi).
+      #
+      # Bugün sıfır kural derleniyor — kural seti ve pipeline T31'i bekliyor —
+      # ve kapı yine de KOŞUYOR. Bilerek: bu turda tam bu sınıftan bir hata
+      # bulundu (`UNMAPPED_FIELDS` tanımlanmış ama hiçbir dönüşüme verilmemiş,
+      # `unmapped_expression()` yazılmış ama hiç çağrılmamış — hazırlanmış ama
+      # bağlanmamış, ve bağlanmamış olması hiçbir yerde belirti üretmiyor).
+      # Kapıyı "hat bitince bağlarız" diye bekletmek aynı deseni kurardı.
       - name: Üretilen kural SQL'i güncel mi
         working-directory: tools/sigma-build
         run: python -m sigma_build.compile --check
@@ -242,6 +242,17 @@ jobs:
       # kapı önce sonucu BİLİNEN üç sorguyla sınanıyor: ikisi reddedilmeli
       # (tip uyuşmazlığı), biri kabul edilmeli. Kırmızı yanabildiği her koşumda
       # ölçülüyor, bir kez değil.
+      # ÖLÇÜM (kapı değil): aday `EXPLAIN` biçimlerini yan yana koyup hangisinin
+      # tip hatasını gördüğünü ve sorgu başına kaç ms sürdüğünü basıyor.
+      # Yalnızca HİÇBİR biçim ayırt edemezse düşüyor.
+      #
+      # Neden her koşumda: ilk biçim seçimi (`EXPLAIN SYNTAX`) tahminle
+      # yapılmıştı ve kapıyı sessizce yeşil bırakıyordu. Bir ClickHouse
+      # yükseltmesi aynı şeyi tekrar yapabilir; o gün bu tablo söyler.
+      - name: Hangi EXPLAIN biçimi tip hatasını görüyor
+        working-directory: tools/sigma-build
+        run: python -m sigma_build.explain_gate --probe-forms --clickhouse-url http://localhost:8123
+
       - name: Kapı 2 kırmızı yanabiliyor mu
         working-directory: tools/sigma-build
         run: python -m sigma_build.explain_gate --self-test --clickhouse-url http://localhost:8123

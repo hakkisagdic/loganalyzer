@@ -7,8 +7,39 @@ bu boşluğa düşen iki kural var ve ikisi de Kapı 1'i geçiyor:
 * `connection_info_protocol_name=6` — kolon `LowCardinality(String)`
 * `src_endpoint_ip ILIKE '203.0.113.%'` — kolon `IPv6`, `ILIKE` String istiyor
 
-Burada soru ClickHouse'a **soruluyor**: `EXPLAIN SYNTAX <sql>`. Veri gerekmiyor,
-yalnızca şema — bu yüzden kapı altın örneklerden (Kapı 3) bağımsız koşabiliyor.
+Burada soru ClickHouse'a **soruluyor**. Veri gerekmiyor, yalnızca şema — bu
+yüzden kapı altın örneklerden (Kapı 3) bağımsız koşabiliyor.
+
+`EXPLAIN SYNTAX` tip denetimi YAPMIYOR — ölçüldü
+------------------------------------------------
+İlk hâli `EXPLAIN SYNTAX` soruyordu. Canlı ClickHouse 26.7.3'e karşı koşulduğunda
+çıktı: o biçim yalnızca AST'yi yeniden yazıp geri veriyor, **tip denetimi
+yapmıyor**. Bilinen iki kırık sorgunun ikisine de 200 dönüyor:
+
+| Sorgu | `EXPLAIN SYNTAX` | `EXPLAIN` |
+| --- | --- | --- |
+| `connection_info_protocol_name=6` | kabul | **red — Code 386 `NO_COMMON_TYPE`** |
+| `src_endpoint_ip ILIKE '203.0.113.%'` | kabul | **red — Code 43 `ILLEGAL_TYPE_OF_ARGUMENT`** |
+| (sağlam sorgu) | kabul | kabul |
+
+Yani kapı, kural seti geldiğinde 24 kuralın hepsini geçirecek ve ikisi üretimde
+patlayacaktı: `classify_error`'ın `KIND_TYPE_MISMATCH` kolu o yoldan **asla**
+tetiklenemezdi. §7'nin adını koyduğu şeyin tam kendisi — sessizce yeşil bekçi,
+ve tam olarak Kapı 2'nin kapatmak için var olduğu sınıf.
+
+Bunu `--self-test` buldu. Kip yazılmasaydı kusur, kural seti üretime çıkana kadar
+kimseye görünmeyecekti; kapının kendi kusurunu kapının kendisi bildirdi.
+
+Aynı koşum `0001_events.sql`'den okunan tipleri de doğruladı: `toTypeName` →
+`LowCardinality(String)` ve `IPv6`.
+
+Hangi biçim
+-----------
+Varsayılan `EXPLAIN` (yani `EXPLAIN PLAN`), çünkü **ölçülen tek doğru biçim o**.
+Biçim `--explain-form` ile değiştirilebilir ve `--probe-forms` adayları yan yana
+ölçüyor: hangisi tip hatasını görüyor, hangisi ne kadar sürüyor. Karar tahminle
+değil o çıktıyla verilecek — `EXPLAIN SYNTAX`'in seçilmiş olması zaten tahminin
+bedeliydi.
 
 Neden kendi CI işinde
 ---------------------
@@ -48,21 +79,60 @@ from sigma_build.gate import (
     GateVerdict,
 )
 
-__all__ = ["classify_error", "explain_sql", "check_directory", "ExplainResult"]
+__all__ = [
+    "classify_error",
+    "explain_sql",
+    "check_directory",
+    "run_self_test",
+    "probe_forms",
+    "ExplainResult",
+    "DEFAULT_EXPLAIN_FORM",
+    "CANDIDATE_FORMS",
+    "SELF_TEST_QUERIES",
+]
+
+#: Sorgunun önüne konan biçim. **Ölçülmüş varsayılan**: canlı 26.7.3'te
+#: `EXPLAIN` iki kırık sorguyu da reddediyor, `EXPLAIN SYNTAX` ikisini de
+#: geçiriyordu.
+DEFAULT_EXPLAIN_FORM = "EXPLAIN"
+
+#: `--probe-forms` bunları yan yana ölçüyor. `EXPLAIN SYNTAX` listede DURUYOR ve
+#: bu bilinçli: onu listeden çıkarmak "denedik, olmadı" bilgisini siler ve bir
+#: sonraki kişi aynı seçimi aynı gerekçeyle yeniden yapabilir.
+CANDIDATE_FORMS: tuple[str, ...] = (
+    "EXPLAIN",
+    "EXPLAIN PLAN",
+    "EXPLAIN QUERY TREE",
+    "EXPLAIN ESTIMATE",
+    "EXPLAIN SYNTAX",
+)
 
 
 #: ClickHouse hata metinlerinden `kind` çıkarımı.
 #:
-#: ⚠️ **Ölçülmedi.** Desenler ClickHouse'un bilinen hata biçimlerinden yazıldı;
-#: canlı koşum yapılana kadar doğrulanmış sayılmazlar. Yanlış eşleşmenin bedeli
-#: kaba bir `kind`, kaçırılmış bir kural değil — tanınmayan her şey yine engel
-#: üretiyor.
+#: İkisi **ölçüldü** (canlı 26.7.3, Kapı 2'nin ilk koşumu):
+#:
+#: * `Code: 43 … Illegal type IPv6 of argument of function ilike`
+#: * `Code: 386 … There is no supertype for types String, UInt8 …`
+#:
+#: İkincisi bir boşluk açığa çıkardı: `NO_COMMON_TYPE`'ın metni diğer hiçbir
+#: desene uymuyordu ve tip uyuşmazlığı `unsupported_construct` diye
+#: sınıflanıyordu. Güvenli tarafa bozulma çalışmıştı — kural yine engelleniyordu,
+#: yalnızca `kind` kabalaşıyordu — ama `remedy` de `unknown` çıkıyordu, yani
+#: **kapanabilir bir iş kalemi "kapanır mı bilmiyoruz" diye görünüyordu.**
+#: Desen eklendi.
+#:
+#: ⚠️ Kalanlar hâlâ ölçülmedi; sürüm değiştikçe metinler de değişebilir.
+#: Yanlış eşleşmenin bedeli kaba bir `kind`, kaçırılmış bir kural değil.
 _PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"Missing columns?:\s*'([^']+)'", re.IGNORECASE), KIND_UNKNOWN_COLUMN),
     (re.compile(r"Unknown (?:expression )?identifier\s*'?([^'\s]+)'?", re.IGNORECASE), KIND_UNKNOWN_COLUMN),
     (re.compile(r"There is no column with name\s*'?([^'\s]+)'?", re.IGNORECASE), KIND_UNKNOWN_COLUMN),
+    # ÖLÇÜLDÜ — Code 43, `src_endpoint_ip ILIKE …`
     (re.compile(r"Illegal type\s+(\S+)\s+of argument", re.IGNORECASE), KIND_TYPE_MISMATCH),
     (re.compile(r"Illegal types?\s+(\S+)\s+and\s+\S+\s+of arguments", re.IGNORECASE), KIND_TYPE_MISMATCH),
+    # ÖLÇÜLDÜ — Code 386 `NO_COMMON_TYPE`, `connection_info_protocol_name=6`
+    (re.compile(r"There is no supertype for types\s+([^,\s]+)", re.IGNORECASE), KIND_TYPE_MISMATCH),
     (re.compile(r"Cannot convert\s+(\S+)", re.IGNORECASE), KIND_TYPE_MISMATCH),
 )
 
@@ -144,12 +214,15 @@ def explain_sql(
     password: str = "bizigo",
     database: str = "bizigo",
     timeout: float = 20.0,
+    form: str = DEFAULT_EXPLAIN_FORM,
 ) -> GateVerdict:
     """Tek bir sorguyu ClickHouse'a sorar. Veri okunmuyor, yalnızca çözümleniyor."""
     if not url.startswith(("http://", "https://")):
         raise ValueError(f"Beklenen http(s) adresi: {url!r}")
+    if not form.upper().startswith("EXPLAIN"):
+        raise ValueError(f"Biçim EXPLAIN ile başlamalı: {form!r}")
 
-    ok, body = _post(url, f"EXPLAIN SYNTAX {sql.strip().rstrip(';')}", user=user, password=password,
+    ok, body = _post(url, f"{form} {sql.strip().rstrip(';')}", user=user, password=password,
                      database=database, timeout=timeout)
     if ok:
         return GateVerdict(gate=GATE_EXPLAIN, blockers=())
@@ -177,10 +250,11 @@ def check_directory(directory: Path, **kwargs: object) -> list[ExplainResult]:
 #: ikisi reddedilmeli, biri kabul edilmeli. Kapı ilk günden kırmızı
 #: yanabildiğini kanıtlıyor ve kural seti geldiğinde de kanıtlamaya devam ediyor.
 #:
-#: ⚠️ İlk iki sorgunun reddedileceği **çıkarım**, ölçüm değil: tipler
-#: `0001_events.sql`'den okundu (`proto LowCardinality(String)`, `src_ip IPv6`).
-#: Bu kip ilk koşturulduğunda o çıkarım ya doğrulanacak ya çürüyecek — ikisi de
-#: bilgi.
+#: İlk iki sorgunun reddedileceği artık **ölçüldü**, çıkarım değil: canlı 26.7.3
+#: `EXPLAIN` ile Code 386 (`NO_COMMON_TYPE`) ve Code 43
+#: (`ILLEGAL_TYPE_OF_ARGUMENT`) veriyor, `toTypeName` de
+#: `LowCardinality(String)` ve `IPv6` diyor. Kipin ilk koşumu bu tabloyu
+#: doğruladı **ve** kapının kendi kusurunu buldu (bkz. modül açıklaması).
 SELF_TEST_QUERIES: tuple[tuple[str, bool, str], ...] = (
     (
         "SELECT * FROM events_ocsf WHERE connection_info_protocol_name=6",
@@ -198,6 +272,36 @@ SELF_TEST_QUERIES: tuple[tuple[str, bool, str], ...] = (
         "kabul edilmeli (asa_deny_inbound)",
     ),
 )
+
+
+def probe_forms(*, forms: tuple[str, ...] = CANDIDATE_FORMS, **kwargs: object) -> list[dict[str, object]]:
+    """Aday `EXPLAIN` biçimlerini yan yana ölçer: hangisi ayırt ediyor, ne kadar sürüyor.
+
+    Biçim seçimi tahminle yapılmamalı — `EXPLAIN SYNTAX`'in seçilmiş olması zaten
+    tahminin bedeliydi. `discriminates` alanı "bilinen iki kırık sorguyu
+    reddedip sağlam olanı kabul etti mi" sorusunun cevabı; `seconds` üç sorgunun
+    toplam süresi, yani 269 kuralın maliyetinin kaba ölçeği.
+    """
+    import time
+
+    report: list[dict[str, object]] = []
+    for form in forms:
+        verdicts: list[bool] = []
+        started = time.perf_counter()
+        for sql, _, _ in SELF_TEST_QUERIES:
+            verdicts.append(explain_sql(sql, form=form, **kwargs).passed)  # type: ignore[arg-type]
+        elapsed = time.perf_counter() - started
+
+        report.append(
+            {
+                "form": form,
+                "discriminates": verdicts == [expected for _, expected, _ in SELF_TEST_QUERIES],
+                "results": ["kabul" if ok else "red" for ok in verdicts],
+                "seconds": round(elapsed, 4),
+                "per_query_ms": round(elapsed * 1000 / len(SELF_TEST_QUERIES), 2),
+            }
+        )
+    return report
 
 
 def run_self_test(**kwargs: object) -> list[str]:
@@ -222,14 +326,26 @@ def _main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(description="Kapı 2: ClickHouse üretilen SQL'i kabul ediyor mu.")
     parser.add_argument("--clickhouse-url", default="http://localhost:8123")
-    parser.add_argument("--user", default="bizigo")
-    parser.add_argument("--password", default="bizigo")
-    parser.add_argument("--database", default="bizigo")
+    # `--clickhouse-*` yazımı `--clickhouse-url`in yanında doğal duruyor ve elle
+    # koşarken ilk denenen o oluyor; iki yazım da kabul ediliyor.
+    parser.add_argument("--user", "--clickhouse-user", dest="user", default="bizigo")
+    parser.add_argument("--password", "--clickhouse-password", dest="password", default="bizigo")
+    parser.add_argument("--database", "--clickhouse-database", dest="database", default="bizigo")
     parser.add_argument("--output", type=Path, default=None)
+    parser.add_argument(
+        "--explain-form",
+        default=DEFAULT_EXPLAIN_FORM,
+        help=f"Sorgunun önüne konan biçim (varsayılan: {DEFAULT_EXPLAIN_FORM})",
+    )
     parser.add_argument(
         "--self-test",
         action="store_true",
         help="Sonucu bilinen üç sorguyla kapının kırmızı yanabildiğini ölçer",
+    )
+    parser.add_argument(
+        "--probe-forms",
+        action="store_true",
+        help="Aday EXPLAIN biçimlerini yan yana ölçer: hangisi ayırt ediyor, ne kadar sürüyor",
     )
     args = parser.parse_args(argv)
 
@@ -240,8 +356,17 @@ def _main(argv: list[str] | None = None) -> int:
         "database": args.database,
     }
 
+    if args.probe_forms:
+        report = probe_forms(**connection)
+        for row in report:
+            mark = "✓" if row["discriminates"] else "✗"
+            print(f"  {mark} {row['form']:<20} {row['results']}  {row['per_query_ms']} ms/sorgu")
+        ayirt_eden = [row["form"] for row in report if row["discriminates"]]
+        print(f"\nAyırt eden biçimler: {ayirt_eden or 'HİÇBİRİ'}")
+        return 0 if ayirt_eden else 1
+
     if args.self_test:
-        problems = run_self_test(**connection)
+        problems = run_self_test(form=args.explain_form, **connection)
         if problems:
             for problem in problems:
                 print(f"  {problem}", file=sys.stderr)
@@ -255,13 +380,7 @@ def _main(argv: list[str] | None = None) -> int:
         print(f"✗ Çıktı dizini yok: {directory}", file=sys.stderr)
         return 2
 
-    results = check_directory(
-        directory,
-        url=args.clickhouse_url,
-        user=args.user,
-        password=args.password,
-        database=args.database,
-    )
+    results = check_directory(directory, form=args.explain_form, **connection)
 
     rejected = [result for result in results if not result.verdict.passed]
 

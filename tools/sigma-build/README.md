@@ -15,7 +15,7 @@ Tasarımın tamamı ve kararların gerekçeleri:
 | `gate.py` — Kapı 1: kural SQL'i var olmayan kolona gidiyor mu | ✅ |
 | `manifest.py` — manifest, takaslı yazım, sürüklenme kapısı | ✅ |
 | `compile.py` — tek komut (`--write` / `--check` / `--summary`) | ✅ |
-| `explain_gate.py` — Kapı 2: `EXPLAIN`, kendi CI işinde | ✅ yazıldı, **koşturulmadı** |
+| `explain_gate.py` — Kapı 2: `EXPLAIN`, kendi CI işinde | ✅ **koşturuldu** — ilk koşum kapının kendi kusurunu buldu |
 | `ruleset.py` — kural seti çivisi, ağsız doğrulama | ✅ |
 | Kural setinin **yükseltme** yolu (ağ) | ⏳ kapsam kararını bekliyor |
 | Gerçek derleme | ⏳ T31'i bekliyor |
@@ -78,9 +78,39 @@ python -m sigma_build.explain_gate --self-test --clickhouse-url http://localhost
 python -m sigma_build.explain_gate --clickhouse-url http://localhost:8123
 ```
 
-Kırmızı yanabildiği **her koşumda** ölçülüyor, bir kez değil. Ve sınav aynı
-zamanda bir ölçüm: iki reddin gerçekleşeceği şu an `0001_events.sql`'den
-okunmuş bir **çıkarım**; ilk koşum onu ya doğrulayacak ya çürütecek.
+Kırmızı yanabildiği **her koşumda** ölçülüyor, bir kez değil.
+
+### İlk koşum kapının kendi kusurunu buldu
+
+Sınav ilk kez koşturulduğunda iki reddin de **kabul** geldiğini bildirdi. İlk
+okuyuşta "tipler tuttu, iddia çürüdü" gibi görünüyor. Değildi:
+
+| Sorgu | `EXPLAIN SYNTAX` | `EXPLAIN` |
+| --- | --- | --- |
+| `connection_info_protocol_name=6` | kabul | **red — Code 386 `NO_COMMON_TYPE`** |
+| `src_endpoint_ip ILIKE '203.0.113.%'` | kabul | **red — Code 43 `ILLEGAL_TYPE_OF_ARGUMENT`** |
+| sağlam sorgu | kabul | kabul |
+
+`EXPLAIN SYNTAX` **tip denetimi yapmıyor** — yalnızca AST'yi yeniden yazıyor.
+Yani kapı, kural seti geldiğinde 24 kuralın hepsini geçirecek ve ikisi üretimde
+patlayacaktı; `KIND_TYPE_MISMATCH` kolu o yoldan asla tetiklenemezdi. Kapı 2'nin
+kapatmak için var olduğu sınıfın kendisi, kapının içinde.
+
+Aynı koşum `0001_events.sql`'den okunan tipleri de doğruladı (`toTypeName` →
+`LowCardinality(String)`, `IPv6`) ve sınıflandırmada ikinci bir boşluk açtı:
+`NO_COMMON_TYPE`'ın metni hiçbir desene uymuyordu, yani tip uyuşmazlığı
+`remedy: unknown` diye etiketleniyordu — **kapanabilir bir iş kalemi "kapanır mı
+bilmiyoruz" kutusunda.** Desen eklendi, testi ölçülen metinle yazıldı.
+
+Varsayılan artık `EXPLAIN`. Biçim seçimi bir daha tahminle yapılmasın diye
+`--probe-forms` adayları yan yana ölçüyor ve CI her koşumda basıyor:
+
+```bash
+python -m sigma_build.explain_gate --probe-forms --clickhouse-url http://localhost:8123
+```
+
+`EXPLAIN SYNTAX` aday listesinde **duruyor** — "denedik, olmadı" bilgisini
+silmek, bir sonraki kişinin aynı seçimi aynı gerekçeyle yapmasına kapı açardı.
 
 Hata sınıflandırması güvenli tarafa bozuluyor: desenler ClickHouse sürümüyle
 bayatlayabilir, ve bayatladıkları gün tanınmayan hata yine bir engel üretiyor —
