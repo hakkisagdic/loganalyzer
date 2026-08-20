@@ -15,6 +15,77 @@ public sealed class ChangeEventReader(ClickHouseContext context)
 
     private ClickHouseOptions _options => _context.Options;
 
+    /// <summary>
+    /// Kapsam <b>dışında</b> kaç değişiklik olduğunu sayar, içeriğini
+    /// döndürmez (K17, RCA §3.2) — olay tarafındaki
+    /// <see cref="EventReader.CountOutOfScopeAsync"/>'in ikizi.
+    ///
+    /// <para>
+    /// Kanıt sağlayıcısının bu sayıya ihtiyacı var çünkü alternatifi sessiz bir
+    /// yalan: sayamadığı için <c>0</c> dönen bir sağlayıcı, rapora "kapsamınız
+    /// dışında ilişkili değişiklik yok" cümlesini kurdurur. Kök neden başka
+    /// grubun cihazındaki bir config değişikliğiyse, rapor bunu <b>bilmeden</b>
+    /// yanlış sonuca varır.
+    /// </para>
+    /// </summary>
+    public async Task<long> CountOutOfScopeAsync(
+        ChangeQuery query,
+        ScopePredicate scope,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        // Sınırsız kapsamda "dışarısı" yok.
+        if (scope.IsUnrestricted)
+        {
+            return 0;
+        }
+
+        var conditions = new List<string>
+        {
+            "ts >= {ts_from:DateTime64(3)} AND ts < {ts_to:DateTime64(3)}",
+            scope.DeniesEverything ? "1" : "NOT (" + scope.ToSqlFragment() + ")",
+        };
+
+        if (query.TargetIds.Count > 0)
+        {
+            conditions.Add("target_id IN ({targets:Array(String)})");
+        }
+
+        if (query.ChangeKinds.Count > 0)
+        {
+            conditions.Add("change_kind IN ({kinds:Array(String)})");
+        }
+
+        await using var connection = _context.CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            $"SELECT count() FROM {_options.ChangeEventsTable} WHERE {string.Join(" AND ", conditions)}";
+        command.CommandTimeout = _options.QueryTimeoutSeconds;
+
+        command.AddParameter("ts_from", query.From.UtcDateTime);
+        command.AddParameter("ts_to", query.To.UtcDateTime);
+
+        if (!scope.DeniesEverything && scope.HasParameter)
+        {
+            command.AddParameter("scope_groups", scope.ParameterValue);
+        }
+
+        if (query.TargetIds.Count > 0)
+        {
+            command.AddParameter("targets", query.TargetIds.ToArray());
+        }
+
+        if (query.ChangeKinds.Count > 0)
+        {
+            command.AddParameter("kinds", query.ChangeKinds.ToArray());
+        }
+
+        return Convert.ToInt64(await command.ExecuteScalarAsync(cancellationToken), CultureInfo.InvariantCulture);
+    }
+
     public async Task<IReadOnlyList<ChangeEvent>> SearchAsync(
         ChangeQuery query,
         ScopePredicate scope,

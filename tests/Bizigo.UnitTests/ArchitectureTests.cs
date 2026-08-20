@@ -1,6 +1,7 @@
 using System.Reflection;
 using Bizigo.Contracts;
 using Bizigo.ControlPlane;
+using Bizigo.Evidence;
 using Bizigo.Ingest;
 using Bizigo.Normalization;
 using Bizigo.Parsing;
@@ -32,6 +33,14 @@ public sealed class ArchitectureTests
         typeof(ParserMarker).Assembly,         // Bizigo.Parsing
         typeof(NormalizationMarker).Assembly,  // Bizigo.Normalization
         typeof(IngestMarker).Assembly,         // Bizigo.Ingest
+
+        // RCA motoru ClickHouse'u DOĞRUDAN sorgulamıyor, sağlayıcılara soruyor
+        // (RCA özelliği §3) ve sağlayıcılar `IScopedQuery`den geçiyor. Kanıt
+        // yolu K17'nin en cazip kaçış deliği: bir korelasyon sorgusunu "tek
+        // seferlik" ham SQL olarak yazmak çok kolay, ve o sorgu kapsam
+        // filtresini taşımazsa bir ekip başka bir ekibin verisini kanıt olarak
+        // görür — üstelik rapor bunu doğru veri gibi sunar.
+        typeof(EvidenceMarker).Assembly,       // Bizigo.Evidence
     ];
 
     [Fact]

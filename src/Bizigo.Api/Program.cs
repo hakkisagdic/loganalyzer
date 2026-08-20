@@ -4,6 +4,7 @@ using Bizigo.Api.Connectors;
 using Bizigo.Api.Webhooks;
 using Bizigo.Authoring;
 using Bizigo.ControlPlane;
+using Bizigo.Evidence;
 using Bizigo.Ingest;
 using Bizigo.Ingest.Discovery;
 using Bizigo.Ingest.Pipeline;
@@ -57,6 +58,10 @@ builder.Services.AddChangeWebhooks(builder.Configuration);
 // Connector yapılandırması, zamanlayıcı ve saklama temizliği (T25).
 // AddChangeWebhooks'tan SONRA: kontrol düzlemi defteri onu yedek olarak tüketiyor.
 builder.Services.AddChangeConnectors(builder.Configuration);
+
+// Kanıt sağlayıcı sözleşmesi ve iki sağlayıcı (T34). Uç yok: kanıt paketi
+// deposu ve rapor T36'da, korelasyonlar T35'te.
+builder.Services.AddBizigoEvidence();
 
 // Alarm motoru ve bildirim kanalları (T21, T22).
 builder.Services.AddBizigoAlerting(builder.Configuration);
