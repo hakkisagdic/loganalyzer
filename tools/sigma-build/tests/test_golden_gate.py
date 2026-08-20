@@ -327,7 +327,7 @@ def test_kural_uretiliyorsa_bos_beyan_kirmizi():
 #: Aynı sorunun kardeşi T31 tarafında da var (bekçiyi tetikleyen kural sayısı
 #: 3'ten 2'ye indi); orada da ayrı bir test tutuyor.
 EXPECTED_AT_LEAST_ONE_COUNT = 9
-EXPECTED_NONE_COUNT = 8
+EXPECTED_NONE_COUNT = 10
 
 
 def repo_expectations():
@@ -397,7 +397,7 @@ def test_her_beyanin_gerekcesi_kanit_tasiyor():
 #: **Bilerek** beyansız kuralların sayısı — azalması beklenmeyen taraf.
 #: "Ölçüm bekleyen" listesiyle tek listede olsaydı, "beyan listesi tamamlandı mı"
 #: sorusunun cevabı asla evet olamazdı.
-EXPECTED_UNDECLARED_COUNT = 2
+EXPECTED_UNDECLARED_COUNT = 1
 
 
 def test_bilerek_beyansiz_sayisi_sabit():
@@ -475,7 +475,7 @@ def test_bilinmeyen_kind_reddediliyor():
 #: yanıp `at_least_one`'a dönüşecek. `invariant` ise sabit kalmalı — düşerse bir
 #: yanlış pozitif doğmuş demektir.
 EXPECTED_NONE_INVARIANT = 2
-EXPECTED_NONE_CORPUS_GAP = 6
+EXPECTED_NONE_CORPUS_GAP = 8
 
 
 def test_none_beyanlari_sinifa_gore_sabit():

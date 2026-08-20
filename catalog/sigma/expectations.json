@@ -2,6 +2,13 @@
   "_comment": "Kural başına beklenen altın örnek sonucu. Kapı 3 bunları canlı ClickHouse'a karşı doğruluyor. KAPSAM SAYISI BURADA DEĞİL: kapsam verinin şekline bağlı ve kapı yapılırsa bir vendor'ın payı kaydığında kırmızı yanar.",
   "expectations": [
     {
+      "rule_id": "03702803-0000-4000-8000-000000000000",
+      "file_name": "03702803-0000-4000-8000-000000000000.sql",
+      "expect": "none",
+      "kind": "corpus_gap",
+      "why": "fortigate_user_auth_fail — kural `status: 'failure'` VE `user|contains: 'admin'` istiyor. catalog/parsers/fortinet.fortigate/samples/event.log içinde `status=\"failed\"` 4 satırda, `user=\"admin\"` 2 satırda var — ama **KESİŞİM SIFIR**: başarısız satırların kullanıcıları `name.lastname`, `philipp` ve `${exploit_user_name`. `failed` → `failure` eşlemesi catalog/mappings/auth_outcome.yaml:16'da, yani kolonda duran değer `failure` ve kuralın dizgesi DOĞRU. Eksik olan kesişimi taşıyan bir satır; yönetici hesabıyla başarısız giriş içeren bir örnek gelirse bu beyan kırmızı yanar."
+    },
+    {
       "rule_id": "06977082-0000-4000-8000-000000000000",
       "file_name": "06977082-0000-4000-8000-000000000000.sql",
       "expect": "none",
@@ -27,6 +34,13 @@
       "expect": "none",
       "kind": "corpus_gap",
       "why": "asa_vpn_login — kural `message|contains: 'Group User'` arıyor; bu dizge catalog/parsers/cisco.asa/samples içindeki iki dosyada da 0 kez geçiyor. Desen örneklemde yok; korpus VPN kaydı taşıyan bir örnekle genişlerse bu beyan kırmızı yanar ve `at_least_one`'a dönüştürülür."
+    },
+    {
+      "rule_id": "14644215-0000-4000-8000-000000000000",
+      "file_name": "14644215-0000-4000-8000-000000000000.sql",
+      "expect": "none",
+      "kind": "corpus_gap",
+      "why": "nginx_dns_rebind — kural `hostname|contains: localhost/127.0.0.1/169.254.169.254` arıyor ve **kural kırık değil**: catalog/parsers/nginx.access/combined.yaml `core.host`'u `{{ http_vhost }}` üzerinden dolduruyor, yani alan combined biçimde gerçekten yazılıyor. Eksik olan veri: combined.log satırları standart combined biçiminde ve o biçim vhost TAŞIMIYOR (`198.51.100.13 - - [tarih] \"GET / HTTP/1.1\" ...`), json biçimi ise `core.host`'u hiç doldurmuyor. Örneklerde `localhost` yalnızca referrer'da, `127.0.0.1` yalnızca remote_ip konumunda — ikisi de `device_hostname` değil. vhost taşıyan bir nginx örneği gelirse bu beyan kırmızı yanar."
     },
     {
       "rule_id": "17828938-0000-4000-8000-000000000000",
@@ -113,10 +127,6 @@
     }
   ],
   "undeclared": [
-    {
-      "rule_id": "14644215-0000-4000-8000-000000000000",
-      "why": "nginx_dns_rebind — kural `hostname|contains: localhost/127.0.0.1/169.254.169.254` arıyor. catalog/parsers/nginx.access/samples/combined.log içinde `localhost` YALNIZCA referrer alanında (`\"http://localhost:8080/\"`), `127.0.0.1` YALNIZCA remote_ip konumunda; combined format zaten Host başlığı taşımıyor. Yani `device_hostname`'in bu satırlarda ne olduğu örnek dosyadan okunamıyor ve tahminle beyan yazmak kapıyı yanlış sebeple kırmızı yakardı. `--discover` kuralı boş buldu; okuma ölçümle örtüştü. Beyan, kuralın `access-json.log`'a mı bakması gerektiği kararından sonra yazılacak."
-    },
     {
       "rule_id": "21011482-0000-4000-8000-000000000000",
       "why": "nginx_5xx_burst — iki ayrı sebeple beyan yazılamıyor ve ikisi de ölçüldü. (1) Örneklemde HİÇ 5xx yok: combined.log 200/206/304/404, access-json.log 200/206/304/403/404. (2) Daha önemlisi, 5xx gelse bile kural eşleşemez: `status` kolonu `outcome`'dan geliyor ve catalog/mappings/http_status_outcome.yaml HTTP kodunu `success`/`failure` sözlüğüne çeviriyor — kolonda hiçbir zaman sayı durmuyor, yani `status|startswith: '5'` asla doğru olamaz. Bu bir korpus boşluğu DEĞİL kural kusuru: RST↔Reset-I, action↔fw_chain, failure↔failed ailesinin dördüncüsü. Ölçüm aracı bu kuralı `present` kutusuna koymuştu. Düzeltme kararı verilene kadar beyansız."
