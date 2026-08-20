@@ -234,4 +234,16 @@ public sealed record AlertingStatsResponse(
     [property: JsonPropertyName("timed_out")] long TimedOut,
     [property: JsonPropertyName("failed")] long Failed,
     [property: JsonPropertyName("scoped_queries")] long ScopedQueries,
-    [property: JsonPropertyName("notifications")] AlertingNotificationStats Notifications);
+    [property: JsonPropertyName("notifications")] AlertingNotificationStats Notifications,
+
+    /// <summary>
+    /// Son <c>ingested_at</c>'i değerlendiricinin şimdisinden ileride olan kaynak
+    /// sayısı (T27). Sıfırdan büyükse <b>sessizlik alarmları gecikiyor</b>.
+    ///
+    /// <para>
+    /// Tele çıkması bilinçli: sayaç yalnızca süreç içinde dursaydı, hiç kimsenin
+    /// bakmadığı bir sayı olurdu. Bu, kendini belli etmeyen arıza sınıfı —
+    /// <see cref="AlertingStats"/>'in var olma sebebiyle aynı.
+    /// </para>
+    /// </summary>
+    [property: JsonPropertyName("clock_skewed_sources")] long ClockSkewedSources);
