@@ -220,6 +220,77 @@
         }
       }
     },
+    "/v1/alerts/triggers/{triggerId}/close": {
+      "post": {
+        "tags": [
+          "alerts"
+        ],
+        "operationId": "CloseAlertTrigger",
+        "parameters": [
+          {
+            "name": "triggerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseTriggerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseTriggerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/rca/quality": {
+      "get": {
+        "tags": [
+          "rca"
+        ],
+        "operationId": "GetGoldenSetQuality",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldenSetQualityResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/internal/ingest/stats": {
       "get": {
         "tags": [
@@ -1922,146 +1993,6 @@
           }
         }
       }
-    },
-    "/v1/reviews": {
-      "post": {
-        "tags": [
-          "reviews"
-        ],
-        "operationId": "CreateReview",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReviewRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReviewResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "reviews"
-        ],
-        "operationId": "ListReviews",
-        "parameters": [
-          {
-            "name": "bundleId",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReviewListResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/reviews/quality": {
-      "get": {
-        "tags": [
-          "reviews"
-        ],
-        "operationId": "GetGoldenSetQuality",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GoldenSetQualityResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/reviews/triggers/{triggerId}/close": {
-      "post": {
-        "tags": [
-          "reviews"
-        ],
-        "operationId": "CloseAlertTrigger",
-        "parameters": [
-          {
-            "name": "triggerId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CloseTriggerRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CloseTriggerResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {
@@ -3072,6 +3003,9 @@
           "contradicting_evidence": {
             "type": "string"
           },
+          "actual_root_cause": {
+            "type": "string"
+          },
           "note": {
             "type": "string"
           }
@@ -3082,7 +3016,8 @@
           "trigger_id",
           "closed_at",
           "bundle_generated",
-          "review"
+          "review_id",
+          "owner_group"
         ],
         "type": "object",
         "properties": {
@@ -3097,8 +3032,12 @@
           "bundle_generated": {
             "type": "boolean"
           },
-          "review": {
-            "$ref": "#/components/schemas/ReviewResponse"
+          "review_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_group": {
+            "type": "string"
           }
         }
       },
@@ -5938,103 +5877,6 @@
           }
         }
       },
-      "ReviewListResponse": {
-        "required": [
-          "count",
-          "reviews"
-        ],
-        "type": "object",
-        "properties": {
-          "count": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "reviews": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ReviewResponse"
-            }
-          }
-        }
-      },
-      "ReviewRequest": {
-        "type": "object",
-        "properties": {
-          "bundle_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "verdict": {
-            "type": "string"
-          },
-          "contradicting_evidence": {
-            "type": "string"
-          },
-          "note": {
-            "type": "string"
-          },
-          "owner_group": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
-      },
-      "ReviewResponse": {
-        "required": [
-          "id",
-          "bundle_id",
-          "trigger_id",
-          "owner_group",
-          "verdict",
-          "contradicting_evidence",
-          "note",
-          "reviewer",
-          "reviewed_at"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "bundle_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "trigger_id": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "uuid"
-          },
-          "owner_group": {
-            "type": "string"
-          },
-          "verdict": {
-            "type": "string"
-          },
-          "contradicting_evidence": {
-            "type": "string"
-          },
-          "note": {
-            "type": "string"
-          },
-          "reviewer": {
-            "type": "string"
-          },
-          "reviewed_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
       "SourceActivityListResponse": {
         "required": [
           "from",
@@ -6307,19 +6149,16 @@
       "name": "parsers"
     },
     {
-      "name": "events"
-    },
-    {
-      "name": "sources"
-    },
-    {
       "name": "alerts"
     },
     {
       "name": "rca"
     },
     {
-      "name": "reviews"
+      "name": "events"
+    },
+    {
+      "name": "sources"
     }
   ]
 }
