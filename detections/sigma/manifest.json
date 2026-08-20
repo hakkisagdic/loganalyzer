@@ -1,0 +1,18 @@
+{
+  "_comment": "ÜRETİLMİŞ DOSYA — elle düzenlemeyin. Üretici: tools/sigma-build. Derleme tarihi BİLEREK yok: sürüklenme kapısı birebir bayt karşılaştırıyor ve her koşumda değişen bir alan kapıyı imkânsız kılar. 'Ne zaman derlendi' sorusunun cevabı `git log` bu dosyada.",
+  "run": {
+    "view": "events_ocsf",
+    "ruleset_commit": null,
+    "pipeline_version": null,
+    "pipeline_sha": null,
+    "pysigma_version": null,
+    "backend_version": null
+  },
+  "counts": {
+    "total": 0,
+    "written": 0,
+    "gated": 0,
+    "failed": 0
+  },
+  "rules": []
+}

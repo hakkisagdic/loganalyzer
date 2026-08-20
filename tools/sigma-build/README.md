@@ -12,10 +12,70 @@ Tasarımın tamamı ve kararların gerekçeleri:
 | --- | --- |
 | `view_columns.py` — görünüm kolon kümesini göçlerden türetir | ✅ |
 | `detections/schema/view-columns.json` — türetilmiş küme, versiyonlu | ✅ |
-| Kapı 1 — kural SQL'i var olmayan kolona gidiyor mu | ⏳ sırada |
+| `gate.py` — Kapı 1: kural SQL'i var olmayan kolona gidiyor mu | ✅ |
+| `manifest.py` — manifest, takaslı yazım, sürüklenme kapısı | ✅ |
+| `compile.py` — tek komut (`--write` / `--check` / `--summary`) | ✅ |
 | Kapı 2 — `EXPLAIN` (kendi CI işinde) | ⏳ |
-| Manifest, takaslı yazım, sürüklenme kapısı | ⏳ |
-| Gerçek derleme | ⏳ T31'i bekliyor |
+| Kural seti + gerçek derleme | ⏳ T31'i bekliyor |
+
+## Kapı bugünden koşuyor, hat bitmeden
+
+`detections/sigma/manifest.json` şu an sıfır kural taşıyor ve
+`run.pipeline_version` `null`. Bu **bugünkü doğru durum**: sıfır Sigma kuralı
+derleniyor, ve sebebi "hiç kural yok" değil "henüz derlemiyoruz" — manifest
+ikisini karıştırmıyor.
+
+Kapı yine de CI'da. Sebep bu turda ölçüldü: `bizigo_pipeline.py`
+`UNMAPPED_FIELDS`'ı tanımlamış ama hiçbir dönüşüme vermemişti,
+`unmapped_expression()` yazılmış ama hiç çağrılmamıştı. **Hazırlanmış ama
+bağlanmamış**, ve bağlanmamış olması hiçbir yerde belirti üretmiyordu — 24
+kuralın 8'i sessizce koşmuyordu. Kapıyı "hat bitince bağlarız" diye bekletmek
+aynı deseni bir kez daha kurardı.
+
+T31 geldiğinde değişen tek yer `collect_outcomes()`; kapı ve yazım dokunulmadan
+kalıyor, ve kuralların belirmesi bir git diff'i olarak görünüyor.
+
+## Kapı 1 — ne yakalıyor, ne yakalamıyor
+
+Kolon **varlığına** bakıyor. Örneklemdeki 24 gerçek sorguda ölçüldü:
+**8 kural takılıyor, 16'sı geçiyor.**
+
+| Kural | Engel |
+| --- | --- |
+| `fortigate_blocked_category` | `url` |
+| `fortigate_dns_tunnel` | `dns_query_name` |
+| `nginx_admin_path` | `url` |
+| `nginx_dns_rebind` | `query` |
+| `nginx_large_upload` | `http_method`, `url` |
+| `nginx_scanner_agent` | `user_agent` |
+| `nginx_sqli_probe` | `url` |
+| `routeros_dns_request` | `dns_query_name` |
+
+**Yakalayamadığı:** tip uyuşmazlığı — kolon var, karşılaştırma geçersiz.
+Örneklemde iki tane var ve ikisi de Kapı 1'i **geçiyor**, geçmeleri de doğru:
+
+- `connection_info_protocol_name=6` — kolon `LowCardinality(String)`
+- `src_endpoint_ip ILIKE '203.0.113.%'` — kolon `IPv6`, `ILIKE` String istiyor
+
+Kapı 1'in bunları yakalaması ancak kolon tiplerini de modellemesiyle olurdu,
+yani ClickHouse'un yarısını yeniden yazmakla. Yakalayan yer Kapı 2. İki kapının
+neden ayrı olduğu bu; biri diğerinin yerine konursa yakalanmayan sınıf sessiz
+kalır.
+
+`8 + 2 = 10`, ve `compiled=24 / runs=14`. Örneklem tam olarak açıklandı.
+
+## Ad çıkarımı gürültülü tarafa yanılıyor
+
+SQL'den kolon adı çıkarmak tam bir ayrıştırıcı olmadan kesin değil. Bilinmeyen
+bir ClickHouse anahtar sözcüğü kolon sanılabilir — ve bu **kasıtlı olarak**
+kabul edilen taraf:
+
+| Yanılma | Sonuç |
+| --- | --- |
+| Anahtar sözcük kolon sanıldı | Kural reddedilir, rapora düşer — **gürültülü**, listeye bir sözcük eklenir |
+| Kolon referansı görülmedi | Kural kapıdan **geçer**, çalışma zamanında kırılır — **sessiz** |
+
+Yanılma yönünün kendisi bir testle çivili (`test_bilinmeyen_sozcuk_gurultulu_tarafa_yaniliyor`).
 
 ## Neden ayrı bir dizin, `sidecar/` değil
 
@@ -80,9 +140,16 @@ ClickHouse'suz ve pySigma'sız koşabilmesinin sebebi bu.
 
 CI'da `sigma-build` işi bu testleri ve `--check` kapısını koşturuyor.
 
-### Ölçülmüş: kapı kırmızı yanabiliyor
+Testler pySigma **istemiyor**: `tests/fixtures/generated-sql-sample.json`
+prototipin 24 kuralının gerçek backend çıktısını donmuş olarak taşıyor.
+Prototip "atılabilir" işaretli ve testler kurulum durumuna bağlanmamalı.
+T31'in kalıcı pipeline'ı geldiğinde örneklem yenilenir.
 
-Beş mutasyon uygulandı, her biri en az bir testi düşürdü, sonra geri alındı:
+### Ölçülmüş: kapılar kırmızı yanabiliyor
+
+On mutasyon uygulandı, her biri en az bir testi düşürdü, sonra geri alındı.
+
+`view_columns.py`:
 
 | Mutasyon | Düşen test |
 | --- | --- |
@@ -91,6 +158,48 @@ Beş mutasyon uygulandı, her biri en az bir testi düşürdü, sonra geri alın
 | Parantez derinliği sayılmadı (naif virgül bölmesi) | 12 |
 | Ad kuralı zorlaması kaldırıldı | 1 |
 | Adsız ifade sessizce kabul edildi | 1 |
+
+`gate.py`:
+
+| Mutasyon | Düşen test |
+| --- | --- |
+| Metin sabitleri elenmedi | 12 |
+| Fonksiyon adları elenmedi | 1 |
+| Tablo adı elenmedi | 16 |
+| Anahtar sözcükler elenmedi | 15 |
+| Kapı her şeyi geçirdi | 6 |
+
+`manifest.py`:
+
+| Mutasyon | Düşen test |
+| --- | --- |
+| Takas geri alma kaldırıldı | 1 |
+| `gated` kural da dosya üretti | 3 |
+| Kapı hedefin üstüne yazdı | 6 |
+| Manifest sırası girdiye bağlandı | 1 |
+| Manifest'e derleme tarihi eklendi | 1 |
+
+Canlı kapı da ölçüldü: `detections/sigma/` içine bayat bir dosya bırakıldığında
+ve manifest elle bozulduğunda `--check` çıkış kodu 1 veriyor, geri alınınca 0.
+
+## Derleme tarihi neden hiçbir yerde yok — ticket'tan bilinçli sapma
+
+Ticket "kural kimliği, kaynak sürümü ve **derleme tarihi** ile birlikte" diyor.
+Üçü birden olamıyor:
+
+- Kriter A: *aynı girdi, aynı SQL.*
+- Kriter B: *çıktı depodakiyle aynı değilse CI düşer.*
+- Derleme tarihi: her koşumda değişir.
+
+Tarihi kural dosyalarına koymak kapıyı 269 dosyada öldürüyor; manifest'e koymak
+**manifest'in kendi kapısını** öldürüyor, çünkü manifest de karşılaştırılan
+çıktının parçası. Kalan tek yol kapının o alanı görmezden gelmesi — yani kapıyı
+yumuşatmak.
+
+Tarih atıldı çünkü **git zaten tutuyor ve daha güvenilir tutuyor**:
+`git log detections/sigma/manifest.json`. Kaybedilen bilgi yok; kaybedilen tek
+şey aynı bilginin ikinci, sürüklenebilir kopyası. Girdinin parçası olan sürümler
+(`ruleset_commit`, `pipeline_version`, `pipeline_sha`) duruyor.
 
 ## Koşturmadığım test
 

@@ -266,6 +266,134 @@ kod yolu yok — "silmeyi unutma" diye bir yol olmadığı için unutulamaz. Kay
 kural manifest'te `gated`/`failed` sebebiyle durur ve git'te **silinme** olarak
 görünür; sessiz değil.
 
+---
+
+## 4b · `gated` kurallar üründe görünür — manifest bunu taşıyor
+
+Bu bölüm T33 ajanının bulduğu yapısal bir çelişkiden doğdu ve tasarımın bir
+kusurunu kapatıyor.
+
+**Çelişki:** `gated` kurallar dosya üretmiyor (§3), T33'ün kural kaydı üretilmiş
+SQL'den besleniyor, dolayısıyla `gated` bir kural üründe **görünemiyordu**. Bu
+bir tercih değildi, kararın yan etkisiydi.
+
+**Neden ölümcül:** ölçek küçük değil — `compiled=24, runs=14`, yani derlenenlerin
+%40'ı. Görünmediğinde kullanıcının modeli *"SigmaHQ'da X için kural var, biz
+Sigma koşturuyoruz, demek ki X'i yakalıyoruz"* oluyor. Yakalamıyor. Bu, §7'nin
+sınıfının güvenlik ürünündeki hâli: **sahip olmadığın tespit kapsamına sahip
+olduğunu sanmak.** Yanlış çalışan bir alarm fark edilir; hiç var olmayan bir
+alarm fark edilmez.
+
+Kabul kriteri C zaten "görünür olmalı" diyordu — ama o görünürlüğü **CI
+çıktısına** koymuştu, yani koşumdan sonra kimsenin okumadığı yere. Görünürlük,
+görülebildiği yerde olmalı.
+
+### Manifest kaydının biçimi
+
+```json
+{
+  "rule_id": "34775915-0000-4000-8000-000000000000",
+  "title": "FortiGate: yüksek porta tarama",
+  "source_path": "rules/fortigate/high_port_scan.yml",
+  "source_sha": "sha256:9f2c…",
+  "logsource": { "category": "network_connection", "product": "fortigate" },
+  "status": "gated",
+  "gate": "column_existence",
+  "blockers": [
+    {
+      "kind": "unknown_column",
+      "column": "url",
+      "message": "kolon yok: `url` (events_ocsf)",
+      "remedy": "schema"
+    }
+  ]
+}
+```
+
+`status`: `written` · `gated` · `failed` — `gate`: `column_existence` ·
+`explain` · `golden_sample`.
+
+| `kind` | Taşıdığı | `remedy` |
+| --- | --- | --- |
+| `unknown_column` | `column` | `schema` ya da `pipeline` |
+| `type_mismatch` | `column`, `column_type`, `literal_type` | `pipeline` |
+| `unsupported_construct` | `detail` | `pipeline` |
+| `no_golden_sample` | `logsource` | `data` |
+
+### KARAR · `blockers` bir liste, tekil alan değil
+
+T33 ajanının cümlesi tasarımı değiştirdi: **"manifest yalnızca dürüstlük değil,
+F3'ün kendi yol haritası."** `gated` azalabilen bir sayı — şemaya bir kolon
+eklenince kapı açılıyor.
+
+Yol haritası olacaksa sayısı **yanlış tarafta hata yapmamalı.** Bir kural birden
+fazla sebeple takılabiliyor: örneklemdeki `nginx_large_upload` hem `http_method`
+hem `url` istiyor. Tekil bir sebep alanı, *"`url` eklersek kaç kural açılır"*
+sorusuna **fazla** cevap verirdi — o kural `url` gelince açılmıyor. Liste, "bu
+kuralın açılması için **hepsi** gerekli" diyor.
+
+### KARAR · Sebep yapısal, yalnızca metin değil
+
+`"kolon yok: url"` bir cümle; `{"kind":"unknown_column","column":"url"}` bir
+**gruplanabilir kayıt**. *"31'i eşlemesi olmayan alan kullanıyor, 11'i
+desteklenmeyen bir yapı taşıyor"* bir `group by kind`; *"`url` eklersek dört
+kural açılır"* bir `group by column`. Metin ayrıştırarak değil mekanik olarak.
+`message` insan için, yanında duruyor.
+
+`remedy` iş kaleminin nereye gideceğini söylüyor: aynı `unknown_column` bazen
+şema kararı (kolona terfi), bazen pipeline eşlemesi (`unmapped['url']`).
+
+### Üç doğrulama sorusu — cevaplar
+
+**1 · `gated` kural bazında, teşhis alan bazında. Kısmi derleme yok.**
+
+Sigma kuralının `detection`'ı bir boole ağacı. Eşlenemeyen bir alanı düşürmek
+kuralın anlamını değiştiriyor ve **hangi yöne değiştirdiği ağaçtaki yerine
+bağlı**: bir `and` kolunu düşürmek eşleşmeyi *genişletiyor* (yanlış pozitif),
+bir `or` kolunu düşürmek *daraltıyor* (yanlış negatif). İkisinde de başlığı
+söylediğinden başka bir şey yapan bir kural yayınlanmış olur — yani kısmi
+derleme, bu ticket'ın kapatmak için var olduğu sınıfın kendisini üretir.
+
+Kapı bu yüzden kural bazında: geçer ya da geçmez. Ama `blockers` **alan
+bazında**, ve yol haritasının çözünürlüğü oradan geliyor.
+
+**2 · Evet, makine-okunur** — yukarıdaki `kind` sayımı bunun için var.
+
+**3 · Her derlemede yeniden hesaplanıyor; geçiş `git diff`'ten okunuyor.**
+
+`gated` türetilmiş durum. Kalıcılaştırmak ikinci bir gerçek kaynak yaratırdı ve
+bu depoda o desenin bedeli ödendi.
+
+Ama geçiş gerçekten bir olay ve söylenmeye değer: *"42 kuraldan 7'si artık
+derleniyor."* Ayrı bir duruma gerek yok — **manifest commit'li** (sürüklenme
+kapısı zaten bunu zorluyor), yani önceki koşumun manifest'i git'te duruyor. İki
+koşum arasındaki fark, manifest'in kendi diff'i. Hat bunu ayrıca özetliyor:
+`--summary` `HEAD`'deki manifest ile yeni üretileni karşılaştırıp açılan ve
+kapanan kuralları basıyor.
+
+Bu, tasarımın "iki olay iki farklı görünüm" ilkesinin (§4) `gated` tarafındaki
+karşılığı: kapsamın büyümesi de küçülmesi de bir commit'te görünüyor.
+
+### Ürün tarafı — T33'ün alanı, buradan gelen kısıtlar
+
+Üç karar onaylandı: **ayrı görünüm** (listeye karışmıyor), **etkinleştirme
+düğmesi yok** (*"olmayan bir şeyi açmaya davet eden bir düğme kırık bir
+yüzey"*), ana görünümde **sıfırken de görünen tek sayı**.
+
+İki kısıt bu taraftan geliyor:
+
+1. **`gated` üçüncü bir durum, "pasif" değil.** `etkin`/`pasif` **kullanıcının**
+   kararı; `gated` bir **yetenek sınırı**. İkisini tek "kapalı" değerine
+   indirgemek *"kullanıcı istemedi"* ile *"biz yapamadık"*ı karıştırmak olur.
+   Manifest bu yüzden `status` alanında kullanıcı tercihi taşımıyor — o T33'ün
+   kaydında duruyor ve iki eksen ayrı.
+2. **Ana görünümdeki tek sayı `counts.gated`'den okunsun**, kayıtları saymaktan
+   değil. `gated` kayıtlar bir gün sayfalanır ya da filtrelenir; o gün sayfadaki
+   sayı toplamdan ayrışır ve hangisinin doğru olduğunu kimse bilmez. Sayının
+   kaynağı tek olsun.
+
+---
+
 ### KARAR · Kural seti sabit SHA'ya çivilenir, elle yükseltilir
 
 `clicksiem` günlük cron kullanıyor. **Biz kullanmıyoruz** — bilinçli sapma.

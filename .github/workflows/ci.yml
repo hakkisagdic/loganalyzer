@@ -155,6 +155,19 @@ jobs:
         working-directory: tools/sigma-build
         run: python -m sigma_build.view_columns --check
 
+      # KAPI: üretilen SQL ve manifest depodakiyle birebir aynı değilse düşer.
+      # Aksi hâlde bir kural değişir ve kimse fark etmez (ticket'ın kendi cümlesi).
+      #
+      # Bugün sıfır kural derleniyor — kural seti ve pipeline T31'i bekliyor —
+      # ve kapı yine de KOŞUYOR. Bilerek: bu turda tam bu sınıftan bir hata
+      # bulundu (`UNMAPPED_FIELDS` tanımlanmış ama hiçbir dönüşüme verilmemiş,
+      # `unmapped_expression()` yazılmış ama hiç çağrılmamış — hazırlanmış ama
+      # bağlanmamış, ve bağlanmamış olması hiçbir yerde belirti üretmiyor).
+      # Kapıyı "hat bitince bağlarız" diye bekletmek aynı deseni kurardı.
+      - name: Üretilen kural SQL'i güncel mi
+        working-directory: tools/sigma-build
+        run: python -m sigma_build.compile --check
+
   integration:
     name: Entegrasyon testleri (Testcontainers)
     runs-on: ubuntu-latest
