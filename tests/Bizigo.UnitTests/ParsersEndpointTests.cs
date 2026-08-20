@@ -1,4 +1,5 @@
 using Bizigo.Api;
+using Bizigo.Authoring;
 using Bizigo.Parsing.Dispatch;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -32,6 +33,12 @@ public sealed class ParsersEndpointTests
         builder.Services.AddSingleton<ParserCatalog>();
         builder.Services.AddSingleton<DispatchStats>();
         builder.Services.AddSingleton<Dispatcher>();
+
+        // `try` taslağı yayın kapısıyla denetliyor (T19). Fabrika PATLIYOR:
+        // handler'lar bu testte hiç çağrılmıyor ve bir gün çağrılırsa `null`
+        // yerine anlaşılır bir hata çıksın.
+        builder.Services.AddSingleton<ParserPublishGate>(_ =>
+            throw new InvalidOperationException("Bu testte yalnızca kayıt sınanıyor."));
 
         var app = builder.Build();
         app.MapParsers();

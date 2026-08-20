@@ -1,4 +1,8 @@
 using System.Reflection;
+using Bizigo.Alerting;
+using Bizigo.Api.Connectors;
+using Bizigo.Api.Webhooks;
+using Bizigo.Authoring;
 using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Bizigo.Evidence;
@@ -6,8 +10,14 @@ using Bizigo.Ingest;
 using Bizigo.Normalization;
 using Bizigo.Parsing;
 using Bizigo.Query;
+using Bizigo.Replay;
 using Bizigo.Storage.ClickHouse;
 using Bizigo.Storage.Raw;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using NetArchTest.Rules;
 
 namespace Bizigo.UnitTests;
@@ -85,6 +95,68 @@ public sealed class ArchitectureTests
             offenders.Length == 0,
             "API katmanı okuyuculara doğrudan erişiyor: " + string.Join(", ", offenders) +
             ". IScopedQuery kullanılmalı.");
+    }
+
+    /// <summary>
+    /// <b>Singleton bir servis, scoped bir servisi tutamaz.</b>
+    ///
+    /// <para>
+    /// T26'nın <c>DeviceConfigRunner</c>'ı tam bunu yapıyordu: singleton olarak
+    /// kaydedilmişti ve <c>IScopedQuery</c> alıyordu, o da
+    /// <c>ControlPlaneDbContext</c> taşıyor. Sonucu tek bir EF bağlamının
+    /// sürecin ömrü boyunca paylaşılması — EF bağlamı iş parçacığı güvenli
+    /// değil ve değişiklik izleyicisi hiç boşalmıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Sessizce yaşadı.</b> Üretimde <c>ValidateScopes</c> kapalı olduğu için
+    /// uygulama hatasız açılıyordu; kusuru ortaya çıkaran şey, T14'ün OpenAPI
+    /// belge üretiminin <c>Main</c>'i gerçekten çalıştırması oldu — ve o da
+    /// yalnızca birleştirme sırasında görüldü, T26 indikten sonra kimse tipleri
+    /// yeniden üretmediği için. Bu test o tesadüfü kaldırıyor: kapsam
+    /// doğrulaması artık birim testinde, her koşumda.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Uretim_DI_grafi_kapsam_dogrulamasindan_geciyor()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Development,
+            ContentRootPath = AppContext.BaseDirectory,
+        });
+
+        // Uygulamanın gerçekten okuduğu yapılandırma yerine asgari bir küme:
+        // amaç ayarları değil, servis grafiğinin ÖMÜRLERİNİ sınamak.
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:ControlPlane"] = "Host=localhost;Database=bizigo;Username=x;Password=y",
+            ["ConnectionStrings:ClickHouse"] = "Host=localhost;Port=8123;Database=bizigo",
+        });
+
+        builder.Services.AddControlPlane(builder.Configuration.GetConnectionString("ControlPlane")!);
+        builder.Services.AddBizigoDataPlane(new ClickHouseOptions
+        {
+            ConnectionString = builder.Configuration.GetConnectionString("ClickHouse")!,
+        });
+        builder.Services.AddBizigoParsing(builder.Configuration);
+        builder.Services.AddBizigoIngest(builder.Configuration);
+        builder.Services.AddBizigoRawArchive(builder.Configuration);
+        builder.Services.AddBizigoReplay();
+        builder.Services.AddBizigoAuthoring();
+        builder.Services.AddChangeWebhooks(builder.Configuration);
+        builder.Services.AddChangeConnectors(builder.Configuration);
+        builder.Services.AddBizigoAlerting(builder.Configuration);
+
+        // `Build()` doğrulamayı kendisi koşuyor: Development ortamında
+        // `ValidateScopes` ve `ValidateOnBuild` açık. Hiçbir bağlantı
+        // kurulmuyor — yalnızca grafik inşa ediliyor.
+        var exception = Record.Exception(() => builder.Build());
+
+        Assert.True(
+            exception is null,
+            "Üretim servis grafiği kapsam doğrulamasından geçmiyor — büyük ihtimalle bir singleton "
+            + "scoped bir servisi tutuyor (captive dependency):\n" + exception?.Message);
     }
 
     [Fact]

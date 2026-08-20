@@ -316,3 +316,186 @@
   color: var(--danger);
   border-color: var(--danger);
 }
+
+/* --- Kod editörü ---------------------------------------------------------
+ *
+ * Kütüphane yok: `<textarea>` metni saydam, altındaki `<pre>` vurgulanmış
+ * hâli çiziyor. İkisinin ÜST ÜSTE oturması yalnızca font, boyut, satır
+ * yüksekliği ve dolgunun birebir aynı olmasına bağlı — bu yüzden ortak
+ * değerler tek bir sınıfta toplandı ve iki eleman da onu miras alıyor.
+ * Ayrıştıkları gün imleç yazının yanına düşer ve bunu kimse fark etmez.
+ */
+
+.editor {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  overflow: hidden;
+}
+
+.editor:focus-within {
+  border-color: var(--accent);
+}
+
+.editorSurface {
+  margin: 0;
+  padding: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  line-height: var(--leading-loose);
+  tab-size: 2;
+  white-space: pre;
+  /* Kaydırma tek yerde: `<pre>` sadece izliyor, kullanıcı `<textarea>`yı
+     kaydırıyor ve `<pre>` ona uyduruluyor. */
+  overflow: auto;
+}
+
+.editorGutter {
+  composes: editorSurface;
+  padding-inline: var(--space-3) var(--space-2);
+  background: var(--surface-2);
+  border-inline-end: 1px solid var(--border-1);
+  color: var(--text-3);
+  text-align: end;
+  user-select: none;
+  overflow: hidden;
+  min-inline-size: 3.5rem;
+}
+
+.editorGutterLine {
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Hatalı satır numarası: renk TEK başına taşımıyor, `●` işareti de var.
+ * Kırmızı-yeşil ayırt edemeyen bir kullanıcı için renk hiçbir şey söylemez
+ * (WCAG 1.4.1) ve hatanın hangi satırda olduğu bu ekranın kabul kriteri.
+ */
+.editorGutterError {
+  color: var(--danger);
+  font-weight: var(--weight-bold);
+}
+
+.editorStack {
+  position: relative;
+  display: grid;
+  min-inline-size: 0;
+}
+
+.editorHighlight {
+  composes: editorSurface;
+  grid-area: 1 / 1;
+  pointer-events: none;
+  color: var(--text-1);
+}
+
+.editorInput {
+  composes: editorSurface;
+  grid-area: 1 / 1;
+  border: 0;
+  resize: vertical;
+  background: transparent;
+  /* Metin saydam ama imleç değil: yazan kişi imleci görmek zorunda. */
+  color: transparent;
+  caret-color: var(--text-1);
+  min-block-size: 24rem;
+}
+
+.editorInput:focus {
+  outline: none;
+}
+
+.editorInput::selection {
+  /* Saydam metnin seçimi görünmezdi; seçim rengi arka planla veriliyor. */
+  background: var(--accent-soft);
+}
+
+.editorErrorLine {
+  display: block;
+  background: var(--danger-soft);
+}
+
+/* --- Belirteç renkleri --- */
+
+.tokenComment {
+  color: var(--text-3);
+  font-style: italic;
+}
+
+.tokenKey {
+  color: var(--accent-strong);
+  font-weight: var(--weight-medium);
+}
+
+.tokenString {
+  color: var(--success);
+}
+
+/* Şablon (`{{ alan }}`) metnin içinde ayrı duruyor: `map` bloğunun anlamını
+   taşıyan şey o ve yazarken en çok bakılan yer. */
+.tokenTemplate {
+  color: var(--warning);
+  font-weight: var(--weight-medium);
+}
+
+.tokenNumber {
+  color: var(--accent);
+}
+
+.tokenKeyword {
+  color: var(--danger);
+}
+
+.tokenPunct {
+  color: var(--text-3);
+}
+
+.tokenText {
+  color: var(--text-1);
+}
+
+/* --- Tamamlama listesi --- */
+
+.completions {
+  position: absolute;
+  z-index: 20;
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+  max-block-size: 14rem;
+  overflow-y: auto;
+  background: var(--surface-1);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+  min-inline-size: 18rem;
+}
+
+.completionItem {
+  display: flex;
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.completionItem[aria-selected="true"] {
+  background: var(--accent-soft);
+}
+
+.completionName {
+  font-family: var(--font-mono);
+  color: var(--text-1);
+}
+
+.completionHint {
+  font-size: var(--text-xs);
+  color: var(--text-2);
+  margin-inline-start: auto;
+  text-align: end;
+}

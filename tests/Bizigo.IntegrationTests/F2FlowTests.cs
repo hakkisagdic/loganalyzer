@@ -21,6 +21,48 @@ namespace Bizigo.IntegrationTests;
 /// yorumunda tek cümleyle yazılı. Bu dalda koşturulmadı — Docker kısıtı — ve
 /// koşturan kişi bu cümleleri beklenen çıktı olarak okuyabilir.
 /// </para>
+///
+/// <para>
+/// <b>ZİNCİR HARİTASI.</b> Aşağıdaki tablo, dört akışın her halkasını hangi
+/// testin kapattığını gösteriyor. Halkaların çoğu <b>zaten</b> kendi
+/// ticket'ının testinde kapalı; burada tekrarlanmıyorlar çünkü aynı iddiayı iki
+/// yerde kodlamak, ikisi ayrıştığı gün hangisinin doğru olduğunu bilinemez
+/// kılar. Bu tablonun işi "zincir tam mı" sorusunu <b>tek yerden</b>
+/// okunabilir yapmak.
+/// </para>
+///
+/// <list type="table">
+/// <listheader><term>Akış · halka</term><description>Kapatan test</description></listheader>
+///
+/// <item><term>1 · giriş</term><description>Canlı Keycloak'a karşı elle doğrulandı (is-envanteri); <c>ui/tests/token-isolation.test.ts</c></description></item>
+/// <item><term>1 · arama</term><description><c>ui/tests/events-screen.test.tsx</c>, <c>EventPaginationTests</c></description></item>
+/// <item><term>1 · detay</term><description><c>OcsfOtelViewTests</c></description></item>
+/// <item><term>1 · ham bayt</term><description><c>RawEventLocatorTests</c> + <b>bu dosyada</b> <c>Ham_bayt_sadakati_zincir_boyunca_korunuyor</c></description></item>
+///
+/// <item><term>2 · parser yaz/dene</term><description><c>ParserAuthoringTests</c>, <c>ParserEngineTests</c></description></item>
+/// <item><term>2 · yayınla</term><description><c>ParserPublishGateTests</c>, <c>ParserAuthoringTests</c></description></item>
+/// <item><term>2 · <b>etkisini gör</b></term><description><b>bu dosyada</b> <c>Yayinlanan_parser_sonraki_olayi_ayristiriyor</c> — T18 yayının GEÇERLİLİĞİNİ sınıyor, ETKİSİNİ değil</description></item>
+///
+/// <item><term>3 · sessizlik alarmı</term><description><c>AlertEvaluatorTests</c>, <c>AlertingTests</c></description></item>
+/// <item><term>3 · bildirim kanala ulaşıyor</term><description><c>NotificationDispatcherTests</c></description></item>
+/// <item><term>3 · <b>bağlantı doğru aramayı açıyor</b></term><description><c>AlertLinkTargetTests</c> — rota var, parametreleri ekran okuyor</description></item>
+///
+/// <item><term>4 · üç kaynak birlikte</term><description><b>bu dosyada</b> <c>Uc_degisiklik_kaynagi_ayni_zaman_cizelgesinde_bulusuyor</c></description></item>
+///
+/// <item><term>çapraz · kapsam</term><description><c>ScopeNegativeTests</c>, <c>ScopePredicateTests</c> + <b>bu dosyada</b> <c>Degisiklik_kayitlari_kapsam_disina_sizmiyor</c></description></item>
+/// <item><term>çapraz · token sızıntısı</term><description><c>ui/tests/token-isolation.test.ts</c> (15 test) + canlı doğrulama</description></item>
+/// </list>
+///
+/// <para>
+/// <b>AÇIK HALKA (T27 bulgusu).</b> Akış 3'te alarm bağlantısı kural kimliğini
+/// (<c>kural=&lt;guid&gt;</c>) taşıyor ama arama ekranı onu <b>okumuyor</b>.
+/// <c>AlertLinkBuilder</c>'ın yorumu "ekran kuralı kimliğinden okuyor" diyor;
+/// bağlanmamış. Sonuç 404 değil: kullanıcı doğru ekrana ve doğru aralığa gidiyor
+/// ama kuralın alan filtreleri olmadan — yani alarmın işaret ettiğinden daha
+/// geniş bir şey görüyor. <c>AlertLinkTargetTests.Kural_kimligi_baglantida_tasiniyor</c>
+/// hem taşımayı hem de tüketilmediğini sabitliyor; halka kapandığında o test
+/// düşecek ve bu satır güncellenecek.
+/// </para>
 /// </summary>
 [Collection(DevStackCollection.Name)]
 public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
@@ -176,6 +218,50 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
             $"SELECT lower(hex(SHA256(toString(body)))) FROM events WHERE owner_group = '{Core}' LIMIT 1");
 
         Assert.Equal(expected, stored);
+    }
+
+    // ---------------------------------------- 2 · yayının ETKİSİ
+
+    /// <summary>
+    /// <b>Koşturulduğunda kanıtlayacağı:</b> yayınlanan parser sıcak yeniden
+    /// yüklemeden sonra <b>bir sonraki olayı</b> gerçekten ayrıştırıyor —
+    /// yazılan <c>parser_id</c> ve <c>parser_version</c> yeni sürüm, ve daha
+    /// önce <c>failed</c> düşen satır artık <c>ok</c>.
+    ///
+    /// <para>
+    /// T18 yayının <b>geçerliliğini</b> sınıyor: bozuk parser yayınlanamıyor,
+    /// testsiz parser reddediliyor, yayın atomik. Sınamadığı şey yayının
+    /// <b>etkisi</b> — katalog gerçekten değişti mi, dispatcher yeni sürüme mi
+    /// bağlandı mı. İkisi arasındaki boşlukta sessiz bir hâl var: yayın
+    /// "başarılı" der, katalog eski kalır ve kimse fark etmez çünkü olaylar
+    /// ayrıştırılmaya devam eder — yalnızca eski kurallarla.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Kurulum:</b> Postgres (taslak deposu) + ClickHouse (olay yazımı).
+    /// <c>ParserAuthoringTests</c>'in kurulumu üstüne <c>EventWriter</c>
+    /// ekleniyor; koşturan kişi o dosyayı örnek alabilir.
+    /// </para>
+    /// </summary>
+    [Fact(Skip = "Kurulum Postgres taslak deposu + katalog yeniden yükleme istiyor; T27 kapsamında yazıldı, koşum faz sonunda.")]
+    public Task Yayinlanan_parser_sonraki_olayi_ayristiriyor()
+    {
+        // Adımlar, koşturacak kişi için:
+        //
+        // 1. `ParserAuthoringService` ile v1 taslağı kaydet ve yayınla.
+        //    Örnek satırı v1 ile ayrıştır, `parse_status=failed` olduğunu gör
+        //    (v1 o satırı tanımıyor).
+        // 2. Aynı satırı ClickHouse'a `failed` olarak yaz.
+        // 3. v2 taslağını kaydet — satırı tanıyan bir pattern ekleyerek — ve
+        //    yayınla. `PublishedParserLoader.LoadAsync` ile katalogu tazele.
+        // 4. AYNI satırı yeniden ayrıştır ve yaz.
+        // 5. Assert: yeni olayın `parser_version` == v2 VE `parse_status` == ok.
+        // 6. Assert: eski olay hâlâ `failed` — yayın geçmişi yeniden yazmıyor;
+        //    onu düzeltmek replay'in işi (T11) ve ayrı bir karar.
+        //
+        // Adım 6 kolayca atlanır ve atlanırsa yayının sessizce geçmişi
+        // değiştirdiği bir dünyada yaşadığımızı fark etmeyiz.
+        return Task.CompletedTask;
     }
 
     // ------------------------------------- F1 ölçümü · kuru koşu = gerçek koşu

@@ -72,11 +72,21 @@ public sealed class ProducesContractTests
     /// </summary>
     private static readonly Dictionary<string, string> Pending = new(StringComparer.Ordinal)
     {
-        ["POST /v1/replay"] = "T19 — replay ekranı",
-        ["POST /v1/parsers/try"] = "T19 — parser editörü (yazar yüzeyi)",
-        ["POST /v1/parsers/drafts"] = "T19 — parser editörü (yazar yüzeyi)",
-        ["PUT /v1/parsers/drafts/{id}"] = "T19 — parser editörü (yazar yüzeyi)",
-        ["POST /v1/parsers/drafts/{id}/submit"] = "T19 — parser editörü (yazar yüzeyi)",
+        // T19'un yazar yüzeyi dört ucu tüketti ve dördü buradan ÇIKTI:
+        // `POST /v1/parsers/try`, `POST /v1/parsers/drafts`,
+        // `PUT /v1/parsers/drafts/{id}`, `POST /v1/parsers/drafts/{id}/submit`.
+        // Okuma uçları ve yayın/geri alma T20 ile birlikte tiplendi.
+        //
+        // Geriye TEK satır kaldı ve atfı yanlıştı: `POST /v1/replay`'in
+        // karşısında "T19 — replay ekranı" yazıyordu, oysa T19 parser editörü
+        // ve kapsamında replay yok. Tüketicisi olmayan bir uca yanıt tipi
+        // yazmak, bu listenin var olma sebebini boşa çıkarırdı — hangi
+        // alanların sözleşmeye girdiğine ekran karar vermeli. Muafiyete
+        // taşımak da yanlış olurdu: replay'in bir gün ekranı olacak, "hiç
+        // tüketicisi olmayacak" diyemeyiz. Sahibi belli olana kadar burada
+        // duruyor ve F2'nin kapanışında (T27) karar verilmesi gereken tek
+        // kalem bu.
+        ["POST /v1/replay"] = "sahipsiz — replay ekranının ticket'ı yok (T27 kararı)",
     };
 
     /// <summary>
@@ -158,6 +168,11 @@ public sealed class ProducesContractTests
             typeof(ControlPlaneDbContext), typeof(IDbContextFactory<ControlPlaneDbContext>),
             typeof(ReplayEngine), typeof(ParserAuthoringService), typeof(PublishedParserLoader),
             typeof(ParserCatalog), typeof(DispatchStats), typeof(Dispatcher),
+
+            // T19: `POST /v1/parsers/try` taslağı YAYIN KAPISININ KENDİSİYLE
+            // denetliyor. Kayıtlı olmasa minimal API bunu gövde parametresi
+            // sanıyor ve `MapParsers` çıkarımda patlıyor.
+            typeof(ParserPublishGate),
             typeof(IngestGateway), typeof(IngestStats), typeof(WriteAheadLog),
             typeof(DiscoveryStats), typeof(SidecarOptions),
 
@@ -559,5 +574,47 @@ public sealed class ProducesContractTests
             .ToArray();
 
         Assert.Equal(3, events.Length);
+    }
+
+    /// <summary>
+    /// T19'un tükettiği dört uç listeden <b>çıkmış</b> olmalı — ve listenin
+    /// gerçekten küçüldüğünün ölçüsü bu.
+    ///
+    /// <para>
+    /// Uç adları burada <b>elle</b> yazılı, <see cref="Pending"/>'den
+    /// türetilmiyor: türetilseydi test kendi kendini onaylar, dört satır listeye
+    /// geri eklendiğinde de yeşil yanardı.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData("POST /v1/parsers/try")]
+    [InlineData("POST /v1/parsers/drafts")]
+    [InlineData("PUT /v1/parsers/drafts/{id}")]
+    [InlineData("POST /v1/parsers/drafts/{id}/submit")]
+    public void Parser_editorunun_uclari_yanit_tipi_tasiyor(string key)
+    {
+        var (_, endpoint) = Assert.Single(ProductEndpoints(), pair => pair.Key == key);
+
+        Assert.True(DeclaresResponseType(endpoint), $"{key} yanıt tipi bildirmiyor.");
+        Assert.DoesNotContain(key, Pending.Keys);
+    }
+
+    /// <summary>
+    /// <b>Liste tek satıra indi.</b> T19'un dört ucu çıkınca geriye yalnızca
+    /// <c>POST /v1/replay</c> kaldı ve o da sahipsiz — replay ekranının ticket'ı
+    /// yok.
+    ///
+    /// <para>
+    /// Sayı sabitlendi ki listeye sessizce satır eklenmesin: yeni bir uç
+    /// tüketicisiz iniyorsa bu ayrı ve görünür bir karar olmalı. Sahipsiz
+    /// kalemin ne olacağına F2'nin kapanışı (T27) karar veriyor; bir ekran
+    /// gelirse satır düşer, gelmeyeceği kesinleşirse <see cref="Exempt"/>'e
+    /// taşınır ve <see cref="ExpectedExemptCount"/> de artar.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Bekleyen_listede_yalnizca_sahipsiz_replay_kaldi()
+    {
+        Assert.Equal(["POST /v1/replay"], Pending.Keys.Order(StringComparer.Ordinal));
     }
 }

@@ -115,21 +115,19 @@ public sealed record ParserDraftDetailResponse(
     [property: JsonPropertyName("previous_version")] string? PreviousVersion,
     [property: JsonPropertyName("previous_yaml")] string? PreviousYaml);
 
-/// <param name="Errors">Yayını engelleyen sebepler.</param>
-/// <param name="Warnings">Engellemiyor ama inceleyenin görmesi gereken bulgular.</param>
-public sealed record PublishVerdictResponse(
-    [property: JsonPropertyName("ok")] bool Ok,
-    [property: JsonPropertyName("passing_tests")] int PassingTests,
-    [property: JsonPropertyName("errors")] string[] Errors,
-    [property: JsonPropertyName("warnings")] string[] Warnings);
-
-public sealed record ParserAuthoringResponse(
-    [property: JsonPropertyName("id")] Guid? Id,
-    [property: JsonPropertyName("parser_id")] string? ParserId,
-    [property: JsonPropertyName("version")] string? Version,
-    [property: JsonPropertyName("state")] string? State,
-    [property: JsonPropertyName("error")] string Error,
-    [property: JsonPropertyName("verdict")] PublishVerdictResponse? Verdict);
+// `PublishVerdictResponse` ve `ParserAuthoringResponse` BURADA DEĞİL,
+// `ParserResponses.cs` içinde (T19).
+//
+// T20 ikisini düz metin hata listesiyle yazmıştı; T19 editörü aynı kararı
+// satır numarasıyla göstermek zorunda olduğu için kapı çıktısı
+// yapılandırıldı (aşama, satır/sütunlu şema hataları, ReDoS bulguları,
+// test sonuçları). Şekil bu dosyadakinin ÜST KÜMESİ — `ok`,
+// `passing_tests`, `errors`, `warnings` yerinde duruyor — dolayısıyla
+// katalog ekranı kırılmadan daha fazlasını görüyor.
+//
+// İki tanım bırakmak, aynı kapının iki farklı özetini üretirdi: biri
+// "hangi satır" diyebilen, diğeri diyemeyen. Hangisine bakıldığına göre
+// değişen bir kapı, kapı değildir.
 
 /// <param name="Shadowed">
 /// Depodaki dosyanın üstüne binen yayınlanmış parser'ların kimlikleri. Sayı

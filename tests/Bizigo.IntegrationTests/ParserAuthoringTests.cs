@@ -182,6 +182,47 @@ public sealed class ParserAuthoringTests(DevStackFixture stack) : IAsyncLifetime
 
         Assert.False(submitted.Ok);
         Assert.False(submitted.Verdict!.Ok);
+
+        // T19: reddin gerekçesi editöre YAPILANDIRILMIŞ iniyor. Düz metin hata
+        // listesi kullanıcıya "bir yerde bir şey yanlış" demekti; ekran hangi
+        // kapıda takıldığını ve hangi testin düştüğünü satırıyla gösteriyor.
+        Assert.Equal(PublishGateStage.Tests, submitted.Verdict.Stage);
+        Assert.Contains(submitted.Verdict.TestResults, t => !t.Passed && t.Line > 0);
+    }
+
+    /// <summary>
+    /// <b>Taslak denemesi çalışan kataloğu kirletmiyor</b> (T19) — uçtan uca.
+    ///
+    /// <para>
+    /// <c>POST /v1/parsers/try</c> keyfi YAML'ı sunucuda derliyor ve bunun
+    /// güvenli olmasının tek sebebi derlemenin ad-hoc olması. Burada gerçek
+    /// yükleyiciyle dolu bir katalog kuruluyor, ardından kapı taslağı denetliyor
+    /// ve <b>aynı anlık görüntünün</b> yerinde kaldığı sınanıyor: taslak
+    /// kataloğa sızsaydı, herhangi bir <c>author</c> inceleme ve yayın
+    /// kapılarının tamamını atlayarak boru hattının davranışını
+    /// değiştirebilirdi.
+    /// </para>
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task Taslak_denemesi_yayindaki_katalogu_degistirmiyor()
+    {
+        var (authoring, loader, catalog) = Build();
+
+        await PublishAsync(authoring, Yaml("test.canli", "1.0.0", "accept"));
+        await loader.LoadAsync(_repository, TestContext.Current.CancellationToken);
+
+        var before = catalog.Current;
+        Assert.True(before.ByParserId.ContainsKey("test.canli"));
+
+        // Editörün denediği taslak: kataloğa hiç girmemiş, apayrı bir kimlik.
+        var verdict = new ParserPublishGate(Compiler()).Inspect(Yaml("test.denenen", "0.1.0", "accept"));
+
+        Assert.True(verdict.Ok, string.Join(" | ", verdict.Errors));
+        Assert.NotNull(verdict.Compiled);
+
+        Assert.Same(before, catalog.Current);
+        Assert.DoesNotContain("test.denenen", catalog.Current.ByParserId.Keys);
     }
 
     /// <summary>Yayın yalnızca incelemedeki kayıttan yapılabiliyor.</summary>
