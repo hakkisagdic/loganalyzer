@@ -201,6 +201,81 @@ bekliyor; `302020 — zaman damgası olmayan zarf` iddiasını `tags:
 ["_asa_no_timestamp"]` ile gerçekten ölçüyor ve doğru yapmanın örneği olarak
 duruyor.
 
+### Kuralın vendor'ın sözlüğünü değil bizim varsayımımızı araması
+
+Sigma tarafında 2026-08-21'de adı konan sınıf. Üretilen SQL doğru, kolon doğru,
+veri de var — yalnızca **aranan dizge** yanlış, çünkü kuralı yazan kişi örnek
+dosyaya bakmamış.
+
+| Kural | Arıyor | Vendor yazıyor | Nasıl bulundu |
+| --- | --- | --- | --- |
+| `asa_teardown_rst` | `RST` | `Reset-I` | **Eşleşiyordu** — `first`/`burst` sözcüklerinin içine denk geliyordu |
+| `routeros_forward_new` | `action: forward` | `fw_chain` (parser `action`'ı **bilerek** boş bırakıyor) | Kapı 3, canlı ClickHouse |
+| `fortigate_user_auth_fail` | `failure` | `failed` | Aracın "yakın sözcük" uyarısı |
+| `nginx_5xx_burst` | `status` `'5'` ile başlar | kolon `success`/`failure` tutuyor | Eşleme sözlüğü okunarak |
+
+İlki en pahalısı çünkü **yeşildi**: kural eşleşiyordu ve eşleşmesi tamamen
+gürültüydü. `--discover` sayısı bunu söyleyemez; yalnızca örnek dosyanın
+**içeriğini** okuyan görür.
+
+Sonuncusu bir adım öteye gidiyor: orada dizge vendor'ın sözlüğünde yoktu,
+burada **kolonun** sözlüğünde yok — `catalog/mappings/http_status_outcome.yaml`
+HTTP kodunu `success`/`failure`'a çeviriyor, yani kolonda hiçbir zaman sayı
+durmuyor ve `status|startswith: '5'` **asla** doğru olamaz.
+
+Katalog kuralı olarak yazıldı: *bir kuraldaki her sabit dizge, o vendor'ın
+örneğinde geçtiği **ve gittiği kolonun o değeri tutabildiği** görülerek
+yazılmalı.* İkinci yarısı eşleme tablosuna bakmayı gerektiriyor.
+
+### Aynı girdinin iki kopyası — ve sebebi bir talimat değil, iki talimatın kesişimi
+
+Korpus `catalog/sigma/rules/`'a terfi ettirildi; düzeltme `prototypes/`'ta
+yapıldı. `measure.py` birini, Kapı 3 diğerini okuyordu — yani *"aynı kural
+setinin iki ölçümü"* diye okunan iki sayı **iki farklı korpustan** geliyordu.
+
+Sürüklenme kapısı bunu **göremez** ve görmemesi doğru: çıktıyı girdiye karşı
+tutuyor, bir **girdinin kendi kopyasından** ayrışmasını değil. İki ayrı soru.
+
+Bekçi artık **içeriğe** bakıyor — `detection:` ve `logsource:` taşıyan her YAML
+korpus dışındaysa kırmızı. Ada bakan bir bekçi, kopya başka adla başka dizine
+düşerse görmezdi. Yanında kardeşi var: **korpus boş olmamalı**, çünkü
+*"korpus dışında kural yok"* iddiası hiç kural olmayan bir depoda da doğrudur.
+
+Sebep bir kişinin hatası değil: koordinatör bir ajana *"korpusu terfi ettir"*,
+diğerine *"kuralı düzelt"* dedi ve **korpusun taşındığını ikinciye söylemedi.**
+§9'un yasağı bir cümleydi; artık bir bekçi.
+
+### Aynı sözleşmenin iki çözümleyicisi
+
+`EvidenceEndpoints` tel değerlerini `Enum.TryParse(ignoreCase: true)` ile
+çözüyordu, `ReviewWire` tam kalıbı istiyordu. İki kusur:
+
+- Sözleşmeden **geniş** kabul: `"Correct"`, `"CORRECT"`, `"notpresent"` geçiyordu.
+- Daha sinsisi: `Enum.TryParse` enum'a eklenen bir değeri **telde kendiliğinden
+  kabul eder** — yarın `ReviewVerdict`'e bir üye eklenirse sözleşme kimse karar
+  vermeden büyürdü. `ExpectedExemptCount` ile `Pending`'in var olma sebebinin
+  tam tersi.
+
+İki ajan aynı gün kapının **iki ayrı kanadını** kapatmıştı (biri enum eleman
+sayısını sabitledi, diğeri tel adı eşlemesini keşfedilebilir yaptı) — ama
+ortadaki gevşek çözümleyici ikisinin arasından geçiyordu. Kodu koordinatör
+çakışma çözerken yazdı; bulan üçüncü bir ajan oldu.
+
+### Koşum düzeninin sessiz yanlışı — çıkış kodunu kimse okumuyor
+
+Bekçinin kendisi değil, **onu koşturan satır** yalan söylüyor.
+
+| Ne | Nasıl |
+| --- | --- |
+| `cmd && … | tail -3` | `tail` her hâlükârda `0` dönüyor; kırmızı bir test "geçmiş" görünüyor ve üstüne commit ediliyor |
+| `$?`'ı boru hattının **ardından** okumak | Ölçülen şey son komutun çıkışı; kapı `✗` yazarken `cikis=0` okunuyor |
+| Testleri koşucunun **altına** eklemek | Üç test hiç toplanmıyor, paket `13/13 yeşil` diyor |
+
+Üçü de 2026-08-21'de yaşandı; birincisi bir ajanda, ikincisi koordinatörde iki
+kez, üçüncüsü bir ajanda **ikinci kez**. Üçüncüsüne yapısal bekçi kondu:
+dosyadaki `def test_` sayısı ile toplanan sayı karşılaştırılıyor —
+*"sessizce atlanan test, yanlış testten tehlikeli."*
+
 ### Ölçüm aracının **kendi** sessiz yanlışı
 
 Yukarıdaki bölüm bekçilerle ilgiliydi. Bu ayrı bir sınıf ve bu turda **iki kez**
@@ -241,7 +316,40 @@ Ayrıntı: [`t39-alan-kapsami`](../t39-alan-kapsami/index.md).
 | **D4** | **Kimlik/yetkilendirme grafiği kapsam doğrulamasından hiç geçmemişti** — `AddBizigoAuthentication` ömür bekçisinin listesinde yoktu. Artık geçiyor (`5dcb786`), ama bugüne kadar geçmemiş olması D1'in bulduğu sınıfla aynı: doğrulanmamış bir katman, çalıştığı sanılan bir katman. | ✅ kapandı |
 
 | **D5** | **Sigma kapsam ölçümü koştu ama sayısı kullanılamaz.** `match_ratio = %0`; sebebi eşleme değil **veri**: ClickHouse'daki 1M satır tek-vendor'lu sentetik benchmark verisi, altın örnek değil. Aracın ön kontrolü "boş mu" diye soruyordu, "doğru veri mi" diye değil — sonradan altın örnek sondası arayacak şekilde sertleştirildi. **Veriden bağımsız tek kullanılabilir sayı:** `compiled=24, runs=14` — on kural var olmayan kolonlara giden SQL üretiyor, ve bu kapsam daraltarak çözülmez. | koordinatör; altın örnek yükleyicisi yazılıyor |
-| **D6** | **Baseline pencere ölçümü de aynı sebeple bekliyor** — araç en az taban süresi kadar gerçek geçmiş istiyor ve bunu kendisi söylüyor, sessizce anlamsız sayı üretmiyor. | koordinatör, yükleyiciden sonra |
+| ~~D6~~ | ~~Baseline pencere ölçümü de aynı sebeple bekliyor~~ — **koşuldu 2026-08-21.** Süpürme kendi verisini tohumluyor ve imzası iki eğri istiyor. Sonuç aşağıda: bağlayıcı taban **çıkmadı**, ve çıkmaması ölçümün teslim ettiği şey. | ✅ kapandı |
+| **D7** | **T35'in beş korelasyon sağlayıcısının kapsam negatif testi yok** — ticket `status:2`, yani kapanmış sayılıyor. `GetFirstSeenSignaturesAsync`, `GetSignatureVolumeAsync`, `GetAttributeLiftAsync`, `GetPropagationAsync`, `GetEventHistogramAsync`. Bedeli tek cümlede: *ilk-görülen imza başka grubun verisinden gelirse rapor **yanlış** olur* — ve kullanıcı bir sinyalin **yokluğunu** bulgu sanar. Kapsam kapısı **var**; doğru çalıştığı hiç sınanmadı. Bulunma biçimi ayrıca önemli: `ScopeNegativeTests` yansımayla keşfedilebilir hâle getirilince çıktı, ve aynı anda **on iki testin sekiz yolu kapattığı** görüldü — liste "on iki yol denenmiş" görüntüsü veriyordu. | 7, T35 negatif testleri |
+
+### D6'nın sonucu — baseline süpürmesi, 2026-08-21
+
+Ölçüm bir sayı **vermedi**, ve doğru cevap buydu:
+
+```
+dik kuyruk (zipf 2.0) → dirsek 7g
+düz kuyruk (zipf 1.4) → dirsek 1g
+SEÇİLEBİLİR TABAN YOK.
+```
+
+Dirsek tohumlama düğmesiyle **yedi kat** kayıyor. Tek eğri koşturan bir araç
+"7 gün" derdi ve o sayı verinin değil `--zipf 2.0`'ın karakteri olurdu. Araç
+artık tek eğriyle **derlenmiyor** — tavsiye mekanizmaya çevrildi.
+
+Çapraz kontrol **birebir tuttu**: aynı süpürme ClickHouse'a SQL ile, plana
+aritmetikle soruldu; yedi satırın yedisi de aynı çıktı (4/%25.0, 1/%6.3,
+12/%41.4, 4/%13.8, dirsekler 7g/1g). Yani `GetFirstSeenSignaturesAsync`'in
+SQL yolu doğru — ve *"düzgün ama yanlış bir eğri"* arıza sınıfının **yokluğu
+ölçüldü**.
+
+Bağlayıcı tabanın bu fixture'dan çıkmamasının **üç** sebebi var:
+
+1. Düğme kayması (yukarıdaki tablo).
+2. 87 örnek satır ~81 imza taşıyor; taban uzayınca oran **tam sıfıra** iniyor —
+   üretimde olmayan bir hâl, gerçek veride yenilik hiç bitmez.
+3. **Ay adı maskesi yok.** `NUMBER` günü ve saati yiyor, `May`/`Oct` imzada
+   kalıyor; 31 günlük yayılım bir ay sınırı içeriyor ve tabanı ayın birinden
+   öteye uzatmak oranı beklendiği kadar düşürmüyor.
+
+Fixture'ı yenilik üretecek şekilde büyütmek **reddedildi**: o zaman dirseği
+ölçümü yazan kişi çizmiş olurdu — bugünkü hâlden kötü bir dürüstlük.
 
 ### D1'in sonucu — canlı Keycloak, 2026-08-20
 
