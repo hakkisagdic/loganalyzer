@@ -219,13 +219,24 @@ public sealed class DispatcherTests
         Assert.Equal(1, catalog.Count);
     }
 
+    /// <summary>
+    /// <c>Replace</c> sürüm çözümlemesi <b>yapmıyor</b> — verilen listeyi olduğu
+    /// gibi alıyor — ama <c>specificity</c> sıralamasını koruyor.
+    ///
+    /// <para>
+    /// Bu test eskiden <c>Ayni_id_icin_en_yuksek_surum_kazaniyor</c> adını
+    /// taşıyordu ve <b>iki farklı kimlik</b> kullanıyordu, yani adının iddia
+    /// ettiği şeyi hiç sınamıyordu. Yeşildi ve yeşilliği o iddia hakkında
+    /// hiçbir şey ifade etmiyordu; sürüm çözümlemesi
+    /// <see cref="Ayni_id_iki_surumde_varsa_en_yuksegi_kataloga_giriyor"/>'de,
+    /// gerçekten çalıştığı yerde sınanıyor.
+    /// </para>
+    /// </summary>
     [Fact]
-    public void Ayni_id_icin_en_yuksek_surum_kazaniyor()
+    public void Specificity_sirasi_katalogda_korunuyor()
     {
         var catalog = new ParserCatalog();
 
-        // `Replace` sürüm çözümlemesi yapmıyor (doğrudan liste); çözümleme
-        // dizinden yüklemede. Burada kataloğun sıralamayı koruduğunu doğruluyoruz.
         catalog.Replace([
             Parser("a", "x", "%{GREEDYDATA:d}", specificity: 5),
             Parser("b", "x", "%{GREEDYDATA:d}", specificity: 9),
@@ -233,4 +244,75 @@ public sealed class DispatcherTests
 
         Assert.Equal("b", catalog.Current.Parsers[0].Id);
     }
+
+    /// <summary>
+    /// <b>Aynı kimliğin iki sürümü varsa en yüksek olan kataloğa giriyor.</b>
+    ///
+    /// <para>
+    /// Çözümleme <c>LoadFromDirectory</c>'de, dolayısıyla test de oradan
+    /// geçiyor: iki YAML dosyası geçici bir dizine yazılıyor. <c>Replace</c>
+    /// üzerinden sınamak, çözümlemeyi hiç çalıştırmadan sınamak olurdu.
+    /// </para>
+    ///
+    /// <para>
+    /// Bu davranış T18'in yayın akışının altyapısı: yayınlanan yeni sürümün
+    /// eskisini gerçekten değiştirmesi buna bağlı. Sessizce eski sürümde
+    /// kalınsa yayın "başarılı" der ve katalog değişmez —
+    /// <c>F2FlowTests.Yayinlanan_parser_sonraki_olayi_ayristiriyor</c> tam bu
+    /// boşluğu uçtan uca kapatıyor.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Ayni_id_iki_surumde_varsa_en_yuksegi_kataloga_giriyor()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "bizigo-catalog-" + Guid.NewGuid().ToString("N")[..8]);
+        Directory.CreateDirectory(directory);
+
+        try
+        {
+            File.WriteAllText(Path.Combine(directory, "v1.yaml"), Versioned("1.0.0"));
+            File.WriteAllText(Path.Combine(directory, "v2.yaml"), Versioned("1.1.0"));
+
+            var catalog = new ParserCatalog();
+            var report = catalog.LoadFromDirectory(directory, Compiler());
+
+            Assert.Empty(report.Errors);
+
+            // Tek parser kalıyor: iki dosya, tek kimlik.
+            var parser = Assert.Single(catalog.Current.Parsers);
+            Assert.Equal("1.1.0", parser.Version);
+            Assert.Equal("1.1.0", catalog.Current.ByParserId["test.versioned"].Version);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Aynı kimliğin belirli bir sürümü — dosyaya yazılmak üzere.
+    ///
+    /// <para>İnterpolasyon yok: grok pattern'i süslü parantez taşıyor ve
+    /// kaçış kuralları okunurluğu bitiriyordu (aynı gerekçe
+    /// <c>ParserAuthoringTests</c>'te de var).</para>
+    /// </summary>
+    private static string Versioned(string version) => """
+        apiVersion: bizigo.dev/v1
+        kind: Parser
+        metadata:
+          id: test.versioned
+          version: __VERSION__
+        match:
+          contains: ['VERSIONED']
+        pipeline:
+          - grok:
+              field: message
+              patterns:
+                - '^VERSIONED %{WORD:action}$'
+        tests:
+          - name: temel
+            input: 'VERSIONED accept'
+            expect:
+              parse_status: ok
+        """.Replace("__VERSION__", version, StringComparison.Ordinal);
 }
