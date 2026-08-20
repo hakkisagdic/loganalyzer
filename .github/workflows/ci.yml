@@ -164,6 +164,18 @@ jobs:
       # `unmapped_expression()` yazılmış ama hiç çağrılmamış — hazırlanmış ama
       # bağlanmamış, ve bağlanmamış olması hiçbir yerde belirti üretmiyor).
       # Kapıyı "hat bitince bağlarız" diye bekletmek aynı deseni kurardı.
+      # KAPI: kopyalanmış kural ağacı çivisine uyuyor mu. **Ağ kullanmıyor** —
+      # kurallar `catalog/sigma/rules/` altında depoda duruyor, indirilmiyor.
+      #
+      # Kural setini her koşumda indirmek, bu iş dosyasının başında anlatılan
+      # `setup-dotnet` tuzağını kurardı: ağ kesintisi kapıyı ilgisiz bir hata
+      # mesajıyla kırmızı yandırır. Ayrıca ticket'ın kendi gerekçesini de
+      # zayıflatırdı — yukarı akış kaybolduğunda SQL depoda kalır ama yeniden
+      # ÜRETİLEMEZ, yani sürüklenme kapısı da koşamaz.
+      - name: Kural seti çivisi tutuyor mu
+        working-directory: tools/sigma-build
+        run: python -m sigma_build.ruleset --verify
+
       - name: Üretilen kural SQL'i güncel mi
         working-directory: tools/sigma-build
         run: python -m sigma_build.compile --check

@@ -16,7 +16,55 @@ Tasarımın tamamı ve kararların gerekçeleri:
 | `manifest.py` — manifest, takaslı yazım, sürüklenme kapısı | ✅ |
 | `compile.py` — tek komut (`--write` / `--check` / `--summary`) | ✅ |
 | `explain_gate.py` — Kapı 2: `EXPLAIN`, kendi CI işinde | ✅ yazıldı, **koşturulmadı** |
-| Kural seti + gerçek derleme | ⏳ T31'i bekliyor |
+| `ruleset.py` — kural seti çivisi, ağsız doğrulama | ✅ |
+| Kural setinin **yükseltme** yolu (ağ) | ⏳ kapsam kararını bekliyor |
+| Gerçek derleme | ⏳ T31'i bekliyor |
+
+## Kural seti depoda duruyor, indirilmiyor
+
+Kurallar `catalog/sigma/rules/` altında kopyalı, çivi `catalog/sigma/ruleset.json`.
+CI **ağa çıkmıyor**; tek yaptığı kopyanın çiviye uyduğunu doğrulamak.
+
+```bash
+python -m sigma_build.ruleset            # çivinin durumu
+python -m sigma_build.ruleset --verify   # CI kapısı, ağsız
+```
+
+Üç gerekçe:
+
+1. **Ağ, kapının gerekçesi olamaz.** `ci.yml`'ın başında yazılı: `setup-dotnet`
+   `codeload.github.com`'dan iniyordu ve GitHub sınırlandırınca iş kurulumda
+   ölüyordu — ilgisiz bir hata mesajıyla, tek oturumda üç kez.
+2. **Ticket'ın kendi gerekçesi.** "Proje terk edilse bile mevcut kurallar
+   çalışır" ancak kaynak kurallar da depodaysa tam: aksi hâlde SQL kalır ama
+   **yeniden üretilemez**, yani sürüklenme kapısı da koşamaz.
+3. **Kapsam bir liste olmalı, bir filtre değil.** Yukarı akışa karşı çalışan bir
+   filtre, yukarı akış kural eklediğinde korpusu sessizce değiştirir.
+
+Doğrulama üç sürüklenme yönünü **ayrı** raporluyor, çünkü üçünün cevabı farklı:
+eksik dosya (kopyalama yarım), fazla dosya (çiviye girmemiş kural — derlenir ama
+nereden geldiği kayıtsız), değişmiş içerik (elle düzenlenmiş).
+
+Bugün çivi boş: `commit: null`, sıfır kural. Bu "kural yok" değil **"hangi
+sürümden alacağımıza karar verilmedi"** — T30'un kapsam ölçümünü bekliyor.
+Yükseltme yolu bilerek yazılmadı; var olmayan bir komutu mesajlarda anmak, bu
+turda bulunan hatanın (`unmapped_expression()` yazılmış, hiç çağrılmamış) aynısı
+olurdu.
+
+## Üç olay birbirinden ayrılıyor
+
+`python -m sigma_build.compile --summary` iki koşum arasındaki farkı `HEAD`'deki
+manifest'e göre veriyor:
+
+| Alan | Ne söylüyor |
+| --- | --- |
+| `ruleset_changed` + `source_changed` | Kural seti yükseltildi, şu kuralların kaynağı oynadı |
+| `pipeline_changed` | Eşleme değişti — bütün çıktılar yenilendi |
+| `output_changed_without_source_change` | **Kaynağı oynamadan anlamı oynayan kurallar** |
+
+Üçüncüsü asıl bekçi: bir kural seti yükseltmesinde boş olması beklenir, dolu
+çıkarsa yükseltmeyle birlikte başka bir şey daha değişmiştir ve iki değişiklik
+tek diff'te saklanmıştır.
 
 ## Kapı 2 kendini sınıyor
 
@@ -211,10 +259,18 @@ On mutasyon uygulandı, her biri en az bir testi düşürdü, sonra geri alınd�
 | Mutasyon | Düşen test |
 | --- | --- |
 | Takas geri alma kaldırıldı | 1 |
+| Pipeline olayı gizlendi (`output_changed_without_source_change`) | 1 |
 | `gated` kural da dosya üretti | 3 |
 | Kapı hedefin üstüne yazdı | 6 |
 | Manifest sırası girdiye bağlandı | 1 |
 | Manifest'e derleme tarihi eklendi | 1 |
+
+`ruleset.py`:
+
+| Mutasyon | Düşen test |
+| --- | --- |
+| Çivide olmayan kural görmezden gelindi | 2 |
+| İçerik özeti karşılaştırılmadı | 2 |
 
 Canlı kapı da ölçüldü: `detections/sigma/` içine bayat bir dosya bırakıldığında
 ve manifest elle bozulduğunda `--check` çıkış kodu 1 veriyor, geri alınınca 0.

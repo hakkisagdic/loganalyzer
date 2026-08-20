@@ -1,0 +1,7 @@
+{
+  "_comment": "Kural setinin çivisi. Kurallar catalog/sigma/rules/ altında KOPYALI; CI ağa çıkmıyor, yalnızca bu dosyadaki özetlerin tuttuğunu doğruluyor. Yükseltme elle yapılıyor ve henüz yazılmadı: hangi kuralların kopyalanacağı T30'un kapsam ölçümüne bağlı.",
+  "source": "https://github.com/SigmaHQ/sigma",
+  "commit": null,
+  "license": "DRL-1.1",
+  "rules": []
+}

@@ -368,3 +368,69 @@ def test_bos_onceki_manifest_kaza_yapmiyor():
     summary = transition_summary("", build_manifest([written("a")], HEADER))
     assert summary["added"] == ["a"]
     assert summary["opened"] == []
+
+
+# --------------------------------------------------------------------------- #
+# Üç olay ayrı ayrı görünüyor
+# --------------------------------------------------------------------------- #
+
+def _header(*, ruleset: str, pipeline_sha: str) -> RunHeader:
+    return RunHeader(
+        ruleset_commit=ruleset,
+        pipeline_version="v1",
+        pipeline_sha=pipeline_sha,
+        pysigma_version="1.5.0",
+        backend_version="1.1.1",
+    )
+
+
+def _rule(rule_id: str, *, source_sha: str, sql: str) -> RuleOutcome:
+    return RuleOutcome(
+        rule_id=rule_id, title="K", source_path=f"rules/{rule_id}.yml",
+        source_sha=source_sha, status=STATUS_WRITTEN, sql=sql,
+    )
+
+
+def test_kural_seti_yukseltmesi_olay_olarak_gorunuyor():
+    """`ruleset_commit` değişti ve kaynağı değişen kural adıyla listeleniyor."""
+    once = build_manifest([_rule("a", source_sha="sha256:1", sql="SELECT 1")],
+                          _header(ruleset="eski", pipeline_sha="sha256:p"))
+    sonra = build_manifest([_rule("a", source_sha="sha256:2", sql="SELECT 2")],
+                           _header(ruleset="yeni", pipeline_sha="sha256:p"))
+    summary = transition_summary(once, sonra)
+    assert summary["ruleset_changed"] is True
+    assert summary["pipeline_changed"] is False
+    assert summary["source_changed"] == ["a"]
+    assert summary["output_changed_without_source_change"] == []
+
+
+def test_pipeline_degisimi_kardes_olay_olarak_ayriliyor():
+    """Kaynak aynı, çıktı değişti — kullanıcının ETKİN kuralının anlamı oynadı.
+
+    "Kaynak kural sürümü değişti mi" diye bakan bir kriter bunu göremez; asıl
+    gözden geçirilmesi gereken küme bu.
+    """
+    once = build_manifest([_rule("a", source_sha="sha256:1", sql="SELECT 1")],
+                          _header(ruleset="c", pipeline_sha="sha256:p1"))
+    sonra = build_manifest([_rule("a", source_sha="sha256:1", sql="SELECT 2")],
+                           _header(ruleset="c", pipeline_sha="sha256:p2"))
+    summary = transition_summary(once, sonra)
+    assert summary["pipeline_changed"] is True
+    assert summary["ruleset_changed"] is False
+    assert summary["source_changed"] == []
+    assert summary["output_changed_without_source_change"] == ["a"]
+
+
+def test_yukseltmede_dokunulmamis_kural_ciktisini_degistirmemeli():
+    """Yükseltme sırasında bu kümenin boş çıkması beklenir.
+
+    Dolu çıkarsa yükseltmeyle birlikte **başka bir şey daha** değişmiş demektir
+    ve iki değişiklik tek diff'in içinde saklanmış olur.
+    """
+    once = build_manifest(
+        [_rule("a", source_sha="sha256:1", sql="SELECT 1"), _rule("b", source_sha="sha256:9", sql="SELECT 9")],
+        _header(ruleset="eski", pipeline_sha="sha256:p"))
+    sonra = build_manifest(
+        [_rule("a", source_sha="sha256:2", sql="SELECT 2"), _rule("b", source_sha="sha256:9", sql="SELECT 9")],
+        _header(ruleset="yeni", pipeline_sha="sha256:p"))
+    assert transition_summary(once, sonra)["output_changed_without_source_change"] == []
