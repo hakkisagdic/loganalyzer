@@ -244,10 +244,60 @@ seedGoldenCommand.SetAction((parse, cancellationToken) =>
 var seedCommand = new Command("seed", "Ölçüm ve geliştirme verisi yükler.");
 seedCommand.Subcommands.Add(seedGoldenCommand);
 
+// ── fields coverage (T39) ───────────────────────────────────────────────────
+// Kapı 3'ün boş kuralları iki bambaşka sebepten boş olabiliyor: eşleme
+// eksikliği ya da örneklemde desen olmaması. Tabloda ikisi de "boş kolon"
+// görünüyor.
+var migrationsOption = new Option<DirectoryInfo?>("--migrations")
+{
+    Description = "ClickHouse göç dizini — `events_ocsf` kolon listesi oradan okunuyor.",
+};
+
+var fieldsCoverageCommand = new Command(
+    "coverage",
+    "Altın örneklerin taşıdığı bilginin ne kadarının events_ocsf'e ALAN olarak indiğini ölçer.");
+fieldsCoverageCommand.Arguments.Add(seedCatalogArgument);
+fieldsCoverageCommand.Options.Add(masksOption);
+fieldsCoverageCommand.Options.Add(migrationsOption);
+fieldsCoverageCommand.Options.Add(clickHouseOption);
+fieldsCoverageCommand.Options.Add(ownerGroupOption);
+fieldsCoverageCommand.Options.Add(anchorOption);
+fieldsCoverageCommand.Options.Add(patternsOption);
+fieldsCoverageCommand.Options.Add(mappingsOption);
+fieldsCoverageCommand.SetAction((parse, cancellationToken) =>
+{
+    var catalog = parse.GetValue(seedCatalogArgument)!;
+    var anchor = (parse.GetValue(anchorOption) ?? DateTimeOffset.UtcNow).ToUniversalTime();
+    anchor = new DateTimeOffset(anchor.Ticks - (anchor.Ticks % TimeSpan.TicksPerSecond), anchor.Offset);
+
+    var request = new FieldCoverageRequest(
+        Catalog: catalog.FullName,
+        MaskFile: parse.GetValue(masksOption)?.FullName
+            ?? Path.Combine(catalog.Parent?.FullName ?? ".", "masks", "bizigo-masks.yaml"),
+        Migrations: parse.GetValue(migrationsOption)?.FullName
+            ?? Path.Combine("db", "clickhouse"),
+        // Bağlantı verilmezse ClickHouse yarısı atlanıyor: katalog yarısı
+        // Docker'sız koşabilmeli, yoksa alan eksiği ancak konteyner turuyla
+        // görülebilirdi.
+        ConnectionString: parse.GetValue(clickHouseOption)
+            ?? Environment.GetEnvironmentVariable("BIZIGO_CLICKHOUSE"),
+        OwnerGroup: parse.GetValue(ownerGroupOption)!,
+        Anchor: anchor);
+
+    return FieldsCommandHandlers.Coverage(
+        request,
+        Toolbox(parse.GetValue(patternsOption), parse.GetValue(mappingsOption)),
+        cancellationToken);
+});
+
+var fieldsCommand = new Command("fields", "Alan kapsamı ölçümleri.");
+fieldsCommand.Subcommands.Add(fieldsCoverageCommand);
+
 var root = new RootCommand("bizigo — log analyzer CLI");
 root.Subcommands.Add(parserCommand);
 root.Subcommands.Add(schemaCommand);
 root.Subcommands.Add(seedCommand);
+root.Subcommands.Add(fieldsCommand);
 
 return await root.Parse(args).InvokeAsync().ConfigureAwait(false);
 

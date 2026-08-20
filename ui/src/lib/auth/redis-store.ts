@@ -33,6 +33,20 @@ export interface RedisClient {
   /** Bağlantının canlı olup olmadığı. Sağlık için değil, <b>hata ayırt etmek</b> için. */
   isReady(): boolean;
   /**
+   * Bağlantı kurulana kadar bekliyor; kurulursa <c>true</c>, süre dolarsa
+   * <c>false</c>. <b>Yalnızca soğuk açılış için</b> (T27).
+   *
+   * <p>
+   * Neden gerekiyor: bağlantı bilinçli olarak arka planda kuruluyor
+   * (<c>redis-client.ts</c>) ve depo ilk isteğin içinde yaratılıyor. İkisi
+   * birleşince <b>açılıştan sonraki ilk oturumlu istek</b> istemci henüz hazır
+   * değilken geliyordu ve <c>SessionStoreUnavailableError</c> alıyordu — yani
+   * Redis çalışırken kullanıcı "depo yok" cevabı görüyordu. Köşe durum değil,
+   * her soğuk açılışta.
+   * </p>
+   */
+  waitUntilReady(timeoutMs: number): Promise<boolean>;
+  /**
    * Bağlantıyı kapatıyor.
    *
    * <p>
@@ -49,8 +63,27 @@ export interface RedisClient {
 /** Anahtar öneki: aynı Redis'i paylaşan başka bir şey varsa çarpışmasın. */
 const KEY_PREFIX = "bizigo:bff:session:";
 
+/**
+ * Soğuk açılışta bağlantının kurulması için beklenen süre.
+ *
+ * <p>
+ * Yalnızca <b>ilk kez</b> hazır olmayı beklerken kullanılıyor; bir kez hazır
+ * olduktan sonra hazır-değil hâli gerçek bir kesinti sayılıyor ve
+ * beklenmiyor. Ayrım bilinçli: kesintide de beklenseydi, Redis kapalıyken her
+ * istek bu süre kadar gecikirdi ve kullanıcı 503 yerine <b>donmuş bir ekran</b>
+ * görürdü.
+ * </p>
+ */
+const COLD_START_TIMEOUT_MS = 2_000;
+
 export class RedisSessionStore implements SessionStore {
   readonly #client: RedisClient;
+
+  /**
+   * İstemci <b>hiç</b> hazır oldu mu. "Henüz bağlanmadı" ile "bağlantı koptu"
+   * arasındaki farkın tamamı bu bayrakta.
+   */
+  #everReady = false;
 
   constructor(client: RedisClient) {
     this.#client = client;
@@ -136,7 +169,7 @@ export class RedisSessionStore implements SessionStore {
 
   /** Her çağrıyı aynı hata sözleşmesine bağlıyor. */
   async #guard<T>(operation: () => Promise<T>, what: string): Promise<T> {
-    if (!this.#client.isReady()) {
+    if (!(await this.#ready())) {
       throw new SessionStoreUnavailableError(`Oturum deposuna bağlanılamıyor (${what}).`);
     }
 
@@ -147,6 +180,36 @@ export class RedisSessionStore implements SessionStore {
         cause,
       });
     }
+  }
+
+  /**
+   * Hazır mı — ve <b>soğuk açılışta</b> hazır olmasını bekliyor.
+   *
+   * <p>
+   * İki hâl birbirine benziyor ama tamamen farklı: istemci henüz
+   * <b>bağlanmadıysa</b> beklemek doğru cevap, <b>bağlantı koptuysa</b>
+   * beklemek yanlış. Bayrak olmadan ikisi ayırt edilemiyordu ve seçilen cevap
+   * ikisi için de "hemen hata" idi — açılıştan sonraki ilk isteğin, Redis
+   * çalışırken bile, 503 alması demekti.
+   * </p>
+   */
+  async #ready(): Promise<boolean> {
+    if (this.#client.isReady()) {
+      this.#everReady = true;
+      return true;
+    }
+
+    // Bir kez bağlandıysak bu bir kesinti; beklemiyoruz.
+    if (this.#everReady) {
+      return false;
+    }
+
+    if (await this.#client.waitUntilReady(COLD_START_TIMEOUT_MS)) {
+      this.#everReady = true;
+      return true;
+    }
+
+    return false;
   }
 }
 

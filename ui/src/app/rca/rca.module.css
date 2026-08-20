@@ -1,0 +1,266 @@
+/*
+  RCA rapor ekranının yerleşimi.
+
+  Renk, boşluk ve tipografi değerleri BURADA YOK: hepsi `tokens.css`'ten
+  geliyor. Ham değer yazmak, T28'in denetiminde toparlanamayan tutarsızlığın
+  başladığı yer (T13 kuralı).
+*/
+
+.report {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.reportHead {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+  margin: 0;
+}
+
+.hash {
+  font-family: var(--font-mono);
+}
+
+.exportLink {
+  margin-inline-start: auto;
+  color: var(--accent);
+  font-size: var(--text-sm);
+}
+
+/*
+  Dürüstlük satırları EN ÜSTTE. Raporun sonunda duran bir kısıt okunmuyor, ve
+  okunmayan bir kısıt hiç yazılmamış gibi. Sunucunun Markdown'ı da aynı üç
+  satırı aynı yere koyuyor.
+*/
+.honesty {
+  border: 1px solid var(--warn-border);
+  background: var(--warn-bg);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.honesty h2 {
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--warn-text);
+  margin-block: 0 var(--space-2);
+}
+
+.honesty ul {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+  color: var(--warn-text);
+  font-size: var(--text-sm);
+}
+
+.quiet {
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+}
+
+.findings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding-inline-start: var(--space-4);
+}
+
+.finding {
+  border-inline-start: 3px solid var(--accent);
+  padding-inline-start: var(--space-3);
+}
+
+.findingHead {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.provider {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+.summary {
+  margin-block: var(--space-1);
+}
+
+.drilldown {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-block: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+/*
+  Bağlantının filtre kaybettiğini kullanıcının TIKLAMADAN ÖNCE bilmesi
+  gerekiyor: tıkladıktan sonra öğrenmek, yanlış kümeye bakmış olmayı geri
+  almıyor.
+*/
+.lossy {
+  color: var(--warn-text);
+  border: 1px solid var(--warn-border);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.payload {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-dim);
+}
+
+.payload div {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.payload dt {
+  font-family: var(--font-mono);
+}
+
+.payload dd {
+  margin: 0;
+}
+
+.slices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.slices li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/*
+  Rozet dört durumu AYIRIYOR. Tek bir "veri yok" rozeti, T34 ve T36'nın
+  kurduğu her şeyi tek satırda geri alırdı.
+*/
+.badge {
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+
+.badge[data-tone="ok"] {
+  color: var(--ok-text);
+  border-color: var(--ok-border);
+}
+
+.badge[data-tone="warn"] {
+  color: var(--warn-text);
+  border-color: var(--warn-border);
+}
+
+.badge[data-tone="bad"] {
+  color: var(--bad-text);
+  border-color: var(--bad-border);
+}
+
+.detail {
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+}
+
+.timeline,
+.bundles {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.timeline th,
+.timeline td,
+.bundles th,
+.bundles td {
+  text-align: start;
+  padding: var(--space-2);
+  border-block-end: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.timeline th,
+.bundles th {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.launcher {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-block-end: var(--space-5);
+}
+
+.launcherRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-block-end: var(--space-2);
+}
+
+.launcherRow label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+.reviewBox {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+.rootCause {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  margin-block: var(--space-3);
+}
+
+.reviewButtons {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.reviewError {
+  color: var(--bad-text);
+  font-size: var(--text-sm);
+}
+
+.reviewSaved {
+  font-size: var(--text-sm);
+  margin-block-start: var(--space-3);
+}

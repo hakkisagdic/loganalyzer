@@ -124,7 +124,7 @@ def test_beyan_dosyasi_tarihsiz_ve_sirali(tmp_path):
     )
     document = json.loads(metin)
     assert [e["rule_id"] for e in document["expectations"]] == ["a", "z"]
-    assert set(document) == {"_comment", "expectations"}
+    assert set(document) == {"_comment", "expectations", "undeclared"}
 
     path = tmp_path / "expectations.json"
     path.write_text(metin, encoding="utf-8")
@@ -320,7 +320,7 @@ def test_kural_uretiliyorsa_bos_beyan_kirmizi():
 #:
 #: Aynı sorunun kardeşi T31 tarafında da var (bekçiyi tetikleyen kural sayısı
 #: 3'ten 2'ye indi); orada da ayrı bir test tutuyor.
-EXPECTED_AT_LEAST_ONE_COUNT = 2
+EXPECTED_AT_LEAST_ONE_COUNT = 6
 EXPECTED_NONE_COUNT = 2
 
 
@@ -372,3 +372,52 @@ def test_her_beyanin_gerekcesi_kanit_tasiyor():
     for expectation in repo_expectations():
         assert "samples/" in expectation.why or "geçmiyor" in expectation.why, expectation.rule_id
         assert len(expectation.why) > 80, f"{expectation.rule_id}: gerekçe fazla kısa"
+
+
+# --------------------------------------------------------------------------- #
+# Kapının kendi kapsamı — `Pending` / `Exempt` ayrımı (§8)
+# --------------------------------------------------------------------------- #
+
+#: **Bilerek** beyansız kuralların sayısı — azalması beklenmeyen taraf.
+#: "Ölçüm bekleyen" listesiyle tek listede olsaydı, "beyan listesi tamamlandı mı"
+#: sorusunun cevabı asla evet olamazdı.
+EXPECTED_UNDECLARED_COUNT = 1
+
+
+def test_bilerek_beyansiz_sayisi_sabit():
+    from sigma_build.golden_gate import EXPECTATIONS_PATH, load_undeclared
+
+    assert len(load_undeclared(repo_root() / EXPECTATIONS_PATH)) == EXPECTED_UNDECLARED_COUNT
+
+
+def test_beyansizligin_gerekcesi_zorunlu():
+    """Gerekçesiz bir beyansızlık, bir gün "unutulmuş" diye beyan edilir."""
+    from sigma_build.golden_gate import UndeclaredNote
+
+    with pytest.raises(ValueError, match="gerekçesi yok"):
+        UndeclaredNote(rule_id="x", why="  ")
+
+
+def test_bilerek_beyansiz_kural_beyanli_da_olamaz():
+    """Bir kural aynı anda hem beyanlı hem "bilerek beyansız" olamaz.
+
+    İkisi birden olsaydı hangisinin geçerli olduğu belirsizleşir ve kapı
+    kapsamını yanlış sayardı.
+    """
+    from sigma_build.golden_gate import EXPECTATIONS_PATH, load_undeclared
+
+    path = repo_root() / EXPECTATIONS_PATH
+    beyanli = {e.rule_id for e in load_expectations(path)}
+    bilerek = {n.rule_id for n in load_undeclared(path)}
+    assert beyanli & bilerek == set()
+
+
+def test_manifestten_kural_adi_okunuyor():
+    """`--discover` UUID yerine kural adı da basmalı; ad zaten manifest'te."""
+    from sigma_build.golden_gate import rule_titles
+    from sigma_build.manifest import OUTPUT_DIR
+
+    titles = rule_titles(repo_root() / OUTPUT_DIR)
+    assert titles
+    assert all(name.endswith(".sql") for name in titles)
+    assert any("routeros" in ad for ad in titles.values())

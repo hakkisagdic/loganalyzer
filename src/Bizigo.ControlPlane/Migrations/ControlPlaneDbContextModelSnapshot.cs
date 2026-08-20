@@ -589,6 +589,12 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("ActualRootCause")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)")
+                        .HasColumnName("actual_root_cause");
+
                     b.Property<Guid>("BundleId")
                         .HasColumnType("uuid")
                         .HasColumnName("bundle_id");
