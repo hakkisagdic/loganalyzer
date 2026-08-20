@@ -290,8 +290,35 @@ fieldsCoverageCommand.SetAction((parse, cancellationToken) =>
         cancellationToken);
 });
 
+var rulesOption = new Option<FileInfo?>("--rules")
+{
+    Description = "explain_misses.py --json çıktısı; verilirse kurallarla birleştirilir.",
+};
+
+var pipelineOption = new Option<FileInfo?>("--pipeline")
+{
+    Description = "Sigma pipeline dosyası — alan adı çevirisi (FIELD_MAP) oradan okunuyor.",
+};
+
+var fieldsValuesCommand = new Command(
+    "values",
+    "Kolonların taşıyabildiği değerleri çıkarır — VERİYE BAKMADAN, eşleme tablolarından.");
+fieldsValuesCommand.Arguments.Add(seedCatalogArgument);
+fieldsValuesCommand.Options.Add(migrationsOption);
+fieldsValuesCommand.Options.Add(mappingsOption);
+fieldsValuesCommand.Options.Add(rulesOption);
+fieldsValuesCommand.Options.Add(pipelineOption);
+fieldsValuesCommand.SetAction(parse => FieldsCommandHandlers.Values(
+    parse.GetValue(seedCatalogArgument)!.FullName,
+    parse.GetValue(mappingsOption)?.FullName ?? Path.Combine("catalog", "mappings"),
+    parse.GetValue(migrationsOption)?.FullName ?? Path.Combine("db", "clickhouse"),
+    parse.GetValue(rulesOption)?.FullName,
+    parse.GetValue(pipelineOption)?.FullName
+        ?? Path.Combine("prototypes", "t30-sigma", "bizigo_pipeline.py")));
+
 var fieldsCommand = new Command("fields", "Alan kapsamı ölçümleri.");
 fieldsCommand.Subcommands.Add(fieldsCoverageCommand);
+fieldsCommand.Subcommands.Add(fieldsValuesCommand);
 
 var root = new RootCommand("bizigo — log analyzer CLI");
 root.Subcommands.Add(parserCommand);

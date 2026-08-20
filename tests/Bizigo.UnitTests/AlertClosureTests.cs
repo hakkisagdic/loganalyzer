@@ -250,6 +250,59 @@ public sealed class AlertClosureTests : IDisposable
         Assert.Single(db.GoldenReviews);
     }
 
+    /// <summary>
+    /// Kapatma yolu <c>ActualRootCause</c>'u taşıyor.
+    ///
+    /// <para>
+    /// Alan T37'nin ucundan geldi ve gerekçesi orada yazılı: <i>"yanlış" demek
+    /// modeli düzeltmiyor, doğrusunun ne olduğu düzeltiyor.</i> Kapatma yolu onu
+    /// taşımasaydı alarm tetikli incelemelerin tamamı — yani zorunlu olanların
+    /// hepsi — bu boyutta boş kalırdı ve altın kümenin en değerli yarısı
+    /// F4'e sinyalsiz giderdi.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Kapatma_gercek_kok_nedeni_tasiyor()
+    {
+        var trigger = await SeedTriggerAsync();
+
+        var closure = await Service().CloseAsync(
+            trigger.Id,
+            ReviewVerdict.Wrong,
+            ContradictingEvidenceVerdict.Trivial,
+            "rapor NAT değişikliğini gösterdi",
+            Scope(),
+            TestContext.Current.CancellationToken,
+            "asıl sebep upstream BGP flap'ıydı");
+
+        Assert.Equal("asıl sebep upstream BGP flap'ıydı", closure.Review.ActualRootCause);
+    }
+
+    /// <summary>
+    /// Verilmezse boş kalıyor — ve <b>boşluğu bilgi</b>.
+    ///
+    /// <para>
+    /// <c>Wrong</c> deyip burayı boş bırakan inceleyen, yanlışı görmüş ama
+    /// doğrusunu bilmiyor demektir. Boş dizge yerine bir yer tutucu yazsaydık
+    /// (<c>"bilinmiyor"</c> gibi) bu iki durum ayırt edilemezdi.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Gercek_kok_neden_verilmezse_bos_kaliyor()
+    {
+        var trigger = await SeedTriggerAsync();
+
+        var closure = await Service().CloseAsync(
+            trigger.Id,
+            ReviewVerdict.Wrong,
+            ContradictingEvidenceVerdict.NotPresent,
+            "yanlış ama doğrusunu bilmiyorum",
+            Scope(),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(string.Empty, closure.Review.ActualRootCause);
+    }
+
     public void Dispose() => _factory.Dispose();
 }
 

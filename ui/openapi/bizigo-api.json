@@ -220,6 +220,77 @@
         }
       }
     },
+    "/v1/alerts/triggers/{triggerId}/close": {
+      "post": {
+        "tags": [
+          "alerts"
+        ],
+        "operationId": "CloseAlertTrigger",
+        "parameters": [
+          {
+            "name": "triggerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CloseTriggerRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CloseTriggerResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/rca/quality": {
+      "get": {
+        "tags": [
+          "rca"
+        ],
+        "operationId": "GetGoldenSetQuality",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldenSetQualityResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/internal/ingest/stats": {
       "get": {
         "tags": [
@@ -2034,7 +2105,8 @@
           "timed_out",
           "failed",
           "scoped_queries",
-          "notifications"
+          "notifications",
+          "clock_skewed_sources"
         ],
         "type": "object",
         "properties": {
@@ -2096,6 +2168,14 @@
           },
           "notifications": {
             "$ref": "#/components/schemas/AlertingNotificationStats"
+          },
+          "clock_skewed_sources": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
           }
         }
       },
@@ -2493,7 +2573,11 @@
           "source_id",
           "owner_group",
           "summary",
-          "deliveries"
+          "deliveries",
+          "state",
+          "closed_at",
+          "closed_by",
+          "review_id"
         ],
         "type": "object",
         "properties": {
@@ -2550,6 +2634,29 @@
             "items": {
               "$ref": "#/components/schemas/AlertDeliveryResponse"
             }
+          },
+          "state": {
+            "type": "string"
+          },
+          "closed_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "closed_by": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "review_id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -2900,6 +3007,53 @@
             "type": "boolean"
           },
           "error": {
+            "type": "string"
+          }
+        }
+      },
+      "CloseTriggerRequest": {
+        "type": "object",
+        "properties": {
+          "verdict": {
+            "type": "string"
+          },
+          "contradicting_evidence": {
+            "type": "string"
+          },
+          "actual_root_cause": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "CloseTriggerResponse": {
+        "required": [
+          "trigger_id",
+          "closed_at",
+          "bundle_generated",
+          "review_id",
+          "owner_group"
+        ],
+        "type": "object",
+        "properties": {
+          "trigger_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "closed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "bundle_generated": {
+            "type": "boolean"
+          },
+          "review_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "owner_group": {
             "type": "string"
           }
         }
@@ -3596,6 +3750,69 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "GoldenSetQualityResponse": {
+        "required": [
+          "total",
+          "decided",
+          "correct",
+          "unknown",
+          "accuracy",
+          "unknown_ratio"
+        ],
+        "type": "object",
+        "properties": {
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "decided": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "correct": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "unknown": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "accuracy": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "unknown_ratio": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           }
         }
       },
@@ -5949,16 +6166,16 @@
       "name": "parsers"
     },
     {
-      "name": "events"
-    },
-    {
-      "name": "sources"
-    },
-    {
       "name": "alerts"
     },
     {
       "name": "rca"
+    },
+    {
+      "name": "events"
+    },
+    {
+      "name": "sources"
     }
   ]
 }

@@ -241,7 +241,76 @@ public sealed class AlertEvaluator(
     /// güvenilirliğini kaybederdi.
     /// </para>
     /// </summary>
-    private static async Task<AlertOutcome> EvaluateSilenceAsync(
+    /// <summary>
+    /// Ne kadar zamandır haber alınmadı — <b>saat kaymasını ayırarak</b> (T27).
+    ///
+    /// <para>
+    /// <c>now - seen</c> <b>negatif çıkabiliyor</b>: son <c>ingested_at</c>,
+    /// değerlendiricinin şimdisinden ileride olabilir. Sebebi ingest eden makine
+    /// ile değerlendiren makine arasındaki saat farkı — bu üründe ikisi ayrı
+    /// süreç ve ayrı makine olabiliyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Eski davranış:</b> negatif değer eşiğin altında kaldığı için kaynak
+    /// sessizce atlanıyordu. Bu bir "hiç tetiklemez" değil, <b>gecikme</b>: saat
+    /// farkı kapanana kadar susma süresi eşiğe ulaşmıyor. Yine de sinsi, çünkü
+    /// susan bir cihaz o süre boyunca izlenmiyor ve <b>hiçbir yerde belirti
+    /// yok</b> — alarmın var olma sebebinin tersi.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Karar: davranış aynı kalıyor, kayma görünür oluyor.</b> Kaynak bu
+    /// turda yine susmuş sayılmıyor — <c>ingested_at</c> ileride olduğu sürece
+    /// susma iddiasını destekleyen bir kanıt yok. Değişen tek şey, bunun artık
+    /// <b>sayılıyor ve günlüğe düşüyor</b> olması.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Gecikme sınırlanmadı ve sınırlanamaz — ölçüldü.</b> İlk tasarımda
+    /// "kaymayı sıfıra kırparsak gecikme eşik kadar olur" yazmıştım; <b>yanlış</b>.
+    /// Değerlendirici tur başına durumsuz: her turda aynı <c>seen</c> değerinden
+    /// yeniden hesaplıyor, dolayısıyla kırpmak alarmın ne zaman tetikleneceğini
+    /// değiştirmiyor. Gecikmeyi sınırlamak "kaymayı ilk ne zaman gördük"
+    /// bilgisini turlar arasında saklamayı gerektirir; bu ayrı bir tasarım
+    /// kararı ve burada verilmedi.
+    /// </para>
+    ///
+    /// <para>
+    /// Sıfıra kırpma yine de duruyor ama <b>savunma amaçlı</b>: negatif bir
+    /// süre aşağı akışa (<c>AlertHit.Value</c>) hiç sızmasın. Davranışı taşıyan
+    /// şey kırpma değil, eşik karşılaştırması.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Neden <c>CreatedAt</c>'e düşülmedi:</b> o, kaynağı "envantere gireli
+    /// beri hiç konuşmamış" saymak demek ve saati kayan her kaynak için anında
+    /// bir alarm sağanağı üretirdi — bir veri kalitesi sorununu yanlış alarma
+    /// çevirmek, izleme boşluğundan iyi değil.
+    /// </para>
+    /// </summary>
+    private TimeSpan Since(DateTimeOffset now, DateTimeOffset seen, string sourceId)
+    {
+        var since = now - seen;
+
+        if (since >= TimeSpan.Zero)
+        {
+            return since;
+        }
+
+        stats.ClockSkewedSource();
+
+        logger.LogWarning(
+            "'{SourceId}' kaynağının son ingest zamanı şimdiden {Skew} ileride: " +
+            "ingest eden ile değerlendiren makinenin saatleri ayrışmış. " +
+            "Sessizlik alarmı bu kaynak için eşik kadar gecikiyor.",
+            sourceId,
+            -since);
+
+        return TimeSpan.Zero;
+    }
+
+    private async Task<AlertOutcome> EvaluateSilenceAsync(
         AlertRuleEntity rule,
         AccessScope scope,
         AlertEvaluationContext context)
@@ -275,7 +344,7 @@ public sealed class AlertEvaluator(
             }
 
             var since = lastSeen.TryGetValue(source.SourceId, out var seen)
-                ? now - seen
+                ? Since(now, seen, source.SourceId)
                 : now - source.CreatedAt;
 
             if (since < threshold)

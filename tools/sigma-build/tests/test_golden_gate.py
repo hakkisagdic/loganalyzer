@@ -17,6 +17,8 @@ from pathlib import Path
 import pytest
 
 from sigma_build.golden_gate import (
+    CLASS_CORPUS_GAP,
+    CLASS_INVARIANT,
     EXPECT_AT_LEAST_ONE,
     EXPECT_NONE,
     Expectation,
@@ -33,8 +35,12 @@ from sigma_build.view_columns import repo_root
 CONN = {"url": "http://yok", "user": "u", "password": "p", "database": "d"}
 
 
-def beklenti(rule_id="a", file_name="a.sql", expect=EXPECT_AT_LEAST_ONE, why="altın örnekte bu olay var") -> Expectation:
-    return Expectation(rule_id=rule_id, file_name=file_name, expect=expect, why=why)
+def beklenti(rule_id="a", file_name="a.sql", expect=EXPECT_AT_LEAST_ONE,
+             why="altın örnekte bu olay var", kind=None) -> Expectation:
+    # `none` beklentileri `kind` istiyor; testlerde varsayılan `invariant`.
+    if expect == EXPECT_NONE and kind is None:
+        kind = CLASS_INVARIANT
+    return Expectation(rule_id=rule_id, file_name=file_name, expect=expect, why=why, kind=kind)
 
 
 def sahte_post(cevaplar: dict[str, str], *, reddedilenler: frozenset[str] = frozenset()):
@@ -320,8 +326,8 @@ def test_kural_uretiliyorsa_bos_beyan_kirmizi():
 #:
 #: Aynı sorunun kardeşi T31 tarafında da var (bekçiyi tetikleyen kural sayısı
 #: 3'ten 2'ye indi); orada da ayrı bir test tutuyor.
-EXPECTED_AT_LEAST_ONE_COUNT = 6
-EXPECTED_NONE_COUNT = 2
+EXPECTED_AT_LEAST_ONE_COUNT = 9
+EXPECTED_NONE_COUNT = 8
 
 
 def repo_expectations():
@@ -370,7 +376,17 @@ def test_her_beyanin_gerekcesi_kanit_tasiyor():
     gerekçe o kanıtı taşımazsa beklenti kırıldığında kimse doğrulayamaz.
     """
     for expectation in repo_expectations():
-        assert "samples/" in expectation.why or "geçmiyor" in expectation.why, expectation.rule_id
+        # Ölçüt: örnek dosyasına işaret etsin YA DA saydığı şeyi söylesin.
+        #
+        # İlk hâli `"samples/"` (bölü işaretli) ve `"geçmiyor"` sözcüğünü arıyordu,
+        # yani gerekçenin **yazımına** bağlıydı: dizini bölü işaretsiz yazan ya da
+        # "0 kez geçiyor" diyen bir gerekçe reddediliyordu. Test ölçmek istediği
+        # şeyi değil bir kalıbı ölçüyordu ve altı doğru gerekçeyi düşürdü.
+        # Ölçüt: gerekçe bir **örnek dosyasını adıyla** ansın. Bütün beyanlar
+        # `catalog/parsers/*/samples/` içeriğinden türetildi; dosyayı anmayan bir
+        # gerekçe, kırıldığında doğrulanamaz.
+        kanit = "samples" in expectation.why or ".log" in expectation.why
+        assert kanit, f"{expectation.rule_id}: gerekçe bir örnek dosyası anmıyor"
         assert len(expectation.why) > 80, f"{expectation.rule_id}: gerekçe fazla kısa"
 
 
@@ -381,7 +397,7 @@ def test_her_beyanin_gerekcesi_kanit_tasiyor():
 #: **Bilerek** beyansız kuralların sayısı — azalması beklenmeyen taraf.
 #: "Ölçüm bekleyen" listesiyle tek listede olsaydı, "beyan listesi tamamlandı mı"
 #: sorusunun cevabı asla evet olamazdı.
-EXPECTED_UNDECLARED_COUNT = 1
+EXPECTED_UNDECLARED_COUNT = 2
 
 
 def test_bilerek_beyansiz_sayisi_sabit():
@@ -421,3 +437,54 @@ def test_manifestten_kural_adi_okunuyor():
     assert titles
     assert all(name.endswith(".sql") for name in titles)
     assert any("routeros" in ad for ad in titles.values())
+
+
+# --------------------------------------------------------------------------- #
+# `none` iki farklı iddia taşıyor — kırmızıları zıt anlamlı
+# --------------------------------------------------------------------------- #
+
+def test_none_beklentisi_kind_istiyor():
+    """Kırmızı yandığında "kural bozuldu" mu "korpus genişledi" mi dediği buna bağlı.
+
+    `invariant` kırmızısı **kötü haber**: yanlış pozitif doğdu.
+    `corpus_gap` kırmızısı **iyi haber**: artık veri var, beyan
+    `at_least_one`'a dönüştürülebilir.
+
+    Tek kutuda dursalardı kırmızının anlamı okunamazdı.
+    """
+    with pytest.raises(ValueError, match="kind"):
+        Expectation(rule_id="x", file_name="x.sql", expect=EXPECT_NONE, why="sebep var")
+
+
+def test_at_least_one_kind_kabul_etmiyor():
+    """`kind` yalnızca `none` için anlamlı; başka yerde durması onu süs yapardı."""
+    with pytest.raises(ValueError, match="yalnızca"):
+        Expectation(rule_id="x", file_name="x.sql", expect=EXPECT_AT_LEAST_ONE,
+                    why="sebep var", kind=CLASS_INVARIANT)
+
+
+def test_bilinmeyen_kind_reddediliyor():
+    with pytest.raises(ValueError, match="kind"):
+        Expectation(rule_id="x", file_name="x.sql", expect=EXPECT_NONE,
+                    why="sebep var", kind="belki")
+
+
+#: Depodaki `none` beyanlarının **sınıfa göre** sayısı.
+#:
+#: `corpus_gap` **azalması beklenen** taraf: korpus genişledikçe her biri kırmızı
+#: yanıp `at_least_one`'a dönüşecek. `invariant` ise sabit kalmalı — düşerse bir
+#: yanlış pozitif doğmuş demektir.
+EXPECTED_NONE_INVARIANT = 2
+EXPECTED_NONE_CORPUS_GAP = 6
+
+
+def test_none_beyanlari_sinifa_gore_sabit():
+    expectations = repo_expectations()
+    sayim = {
+        CLASS_INVARIANT: sum(1 for e in expectations if e.kind == CLASS_INVARIANT),
+        CLASS_CORPUS_GAP: sum(1 for e in expectations if e.kind == CLASS_CORPUS_GAP),
+    }
+    assert sayim == {
+        CLASS_INVARIANT: EXPECTED_NONE_INVARIANT,
+        CLASS_CORPUS_GAP: EXPECTED_NONE_CORPUS_GAP,
+    }

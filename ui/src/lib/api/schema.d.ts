@@ -116,6 +116,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/alerts/triggers/{triggerId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["CloseAlertTrigger"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rca/quality": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetGoldenSetQuality"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/ingest/stats": {
         parameters: {
             query?: never;
@@ -787,6 +819,8 @@ export interface components {
             /** Format: int64 */
             scoped_queries: number | string;
             notifications: components["schemas"]["AlertingNotificationStats"];
+            /** Format: int64 */
+            clock_skewed_sources: number | string;
         };
         AlertPreviewResponse: {
             rule_type: string;
@@ -896,6 +930,12 @@ export interface components {
             owner_group: string;
             summary: string;
             deliveries: components["schemas"]["AlertDeliveryResponse"][];
+            state: string;
+            /** Format: date-time */
+            closed_at: null | string;
+            closed_by: null | string;
+            /** Format: uuid */
+            review_id: null | string;
         };
         AuthMeResponse: {
             subject: string;
@@ -986,6 +1026,22 @@ export interface components {
         ChannelTestResponse: {
             ok: boolean;
             error: string;
+        };
+        CloseTriggerRequest: {
+            verdict?: string;
+            contradicting_evidence?: string;
+            actual_root_cause?: string;
+            note?: string;
+        };
+        CloseTriggerResponse: {
+            /** Format: uuid */
+            trigger_id: string;
+            /** Format: date-time */
+            closed_at: string;
+            bundle_generated: boolean;
+            /** Format: uuid */
+            review_id: string;
+            owner_group: string;
         };
         ConnectorListResponse: {
             /** Format: int32 */
@@ -1162,6 +1218,20 @@ export interface components {
             field: string;
             op: string;
             values: string[];
+        };
+        GoldenSetQualityResponse: {
+            /** Format: int64 */
+            total: number | string;
+            /** Format: int64 */
+            decided: number | string;
+            /** Format: int64 */
+            correct: number | string;
+            /** Format: int64 */
+            unknown: number | string;
+            /** Format: double */
+            accuracy: null | number | string;
+            /** Format: double */
+            unknown_ratio: null | number | string;
         };
         JsonElement: unknown;
         MaintenanceWindowListResponse: {
@@ -1936,6 +2006,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalogCoverageResponse"];
+                };
+            };
+        };
+    };
+    CloseAlertTrigger: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                triggerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseTriggerRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CloseTriggerResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    GetGoldenSetQuality: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoldenSetQualityResponse"];
                 };
             };
         };

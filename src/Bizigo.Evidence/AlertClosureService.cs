@@ -70,7 +70,8 @@ public sealed class AlertClosureService(
         ContradictingEvidenceVerdict contradicting,
         string note,
         AccessScope scope,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? actualRootCause = null)
     {
         ArgumentNullException.ThrowIfNull(scope);
 
@@ -96,7 +97,16 @@ public sealed class AlertClosureService(
         var (bundleId, generated) = await EnsureBundleAsync(db, trigger, scope, cancellationToken);
 
         var review = await reviews.AddAsync(
-            new ReviewInput(bundleId, trigger.Id, verdict, contradicting, note),
+            new ReviewInput(
+                bundleId,
+                trigger.Id,
+                verdict,
+                contradicting,
+                note,
+
+                // Grup tetiklenmeden çözülüyor; buradan geçmesine gerek yok.
+                OwnerGroup: null,
+                ActualRootCause: actualRootCause),
             scope,
             cancellationToken);
 

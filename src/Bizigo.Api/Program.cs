@@ -150,6 +150,7 @@ app.MapAlerts();
 // tutuldu: kuyruk, kota ve debounce dört tetikleyiciyle birlikte F4'te.
 app.MapRca();
 app.MapNotificationChannels();
+app.MapAlertClosure();
 
 // Ingest sayaçları: "boru hattı akıyor mu" sorusunun tek bakışta cevabı.
 // `declared_encoding_mismatches` sıfırdan büyükse envanterdeki `encoding` yanlış.
