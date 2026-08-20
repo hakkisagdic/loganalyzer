@@ -1,4 +1,5 @@
 using System.Globalization;
+using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Bizigo.Query;
 using Microsoft.EntityFrameworkCore;
@@ -40,19 +41,82 @@ public static class SourcesEndpoints
         group.MapGet("/", ListAsync)
             .RequireAuthorization(BizigoAuthPolicies.Read)
             .WithName("ListSources")
-            // Tüketicisi T15'in kaynak filtresi. Yazma uçları hâlâ tipsiz;
-            // onların tüketicisi T17 (bkz. ProducesContractTests).
             .Produces<SourceListResponse>();
+
+        // Etkinlik ayrı bir uç, listeye gömülü değil: bu ClickHouse'a gidiyor,
+        // liste ise kontrol düzlemine. T15'in kaynak filtresi listeyi her açılışta
+        // çağırıyor ve o çağrının olay tablosuna dokunması için sebep yok.
+        group.MapGet("/activity", ActivityAsync)
+            .RequireAuthorization(BizigoAuthPolicies.Read)
+            .WithName("SourceActivity")
+            .Produces<SourceActivityListResponse>();
 
         group.MapPost("/", UpsertAsync)
             .RequireAuthorization(BizigoAuthPolicies.Admin)
-            .WithName("UpsertSource");
+            .WithName("UpsertSource")
+            .Produces<SourceResponse>()
+            .Produces<SourceResponse>(StatusCodes.Status201Created);
 
         group.MapPost("/csv", ImportCsvAsync)
             .RequireAuthorization(BizigoAuthPolicies.Admin)
-            .WithName("ImportSourcesCsv");
+            .WithName("ImportSourcesCsv")
+            .Produces<SourceCsvImportResponse>()
+            .Produces<SourceCsvErrorResponse>(StatusCodes.Status400BadRequest);
 
         return routes;
+    }
+
+    /// <summary>Etkinlik penceresinin üst sınırı — açık uçlu sorgu yok.</summary>
+    private const int MaxActivityHours = 24 * 30;
+
+    /// <summary>
+    /// Kaynak başına son görülme ve olay sayısı.
+    ///
+    /// <para>
+    /// Sorgu <c>IScopedQuery.GetSourceActivityAsync</c>'te ve <b>T21'in sessizlik
+    /// alarmıyla ortak</b>. İkinci bir kopya, iki farklı zaman kolonu ve iki
+    /// farklı kapsam davranışı demek olurdu.
+    /// </para>
+    /// </summary>
+    private static async Task<IResult> ActivityAsync(
+        int? hours,
+        IScopedQuery query,
+        ICurrentUser user,
+        CancellationToken cancellationToken)
+    {
+        var scope = user.Scope;
+
+        if (scope.IsEmpty)
+        {
+            return Results.Forbid();
+        }
+
+        var window = hours ?? 24;
+
+        if (window is < 1 or > MaxActivityHours)
+        {
+            return Results.BadRequest(new
+            {
+                error = string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"'hours' 1 ile {MaxActivityHours} arasında olmalı."),
+            });
+        }
+
+        var to = DateTimeOffset.UtcNow;
+        var from = to.AddHours(-window);
+
+        var rows = await query.GetSourceActivityAsync(
+            new SourceActivityWindow { From = from, To = to },
+            scope,
+            cancellationToken);
+
+        return Results.Ok(new SourceActivityListResponse(
+            from,
+            to,
+            rows.Count,
+            [.. rows.Select(r => new SourceActivityResponse(
+                r.SourceId, r.OwnerGroup, r.LastEventAt, r.LastIngestedAt, r.EventCount))]));
     }
 
     /// <summary>
@@ -91,6 +155,16 @@ public static class SourcesEndpoints
             return Results.BadRequest(new { error = "'sourceId' ve 'ownerGroup' zorunlu." });
         }
 
+        // Kapsam kontrolü. Bugün bu uç yalnızca `admin` rolüne açık ve admin
+        // sınırsız kapsamlı, yani pratikte no-op. Yine de var: rol tablosu bir
+        // gün grup yöneticisi tanırsa, kontrol olmadan o kullanıcı başka bir
+        // ekibin cihazını kendi grubuna taşıyabilirdi — ve bu, o ekibin verisini
+        // görmek demek.
+        if (!user.Scope.Allows(request.OwnerGroup))
+        {
+            return Results.Forbid();
+        }
+
         var existing = await db.Sources
             .FirstOrDefaultAsync(s => s.SourceId == request.SourceId, cancellationToken);
 
@@ -119,9 +193,18 @@ public static class SourcesEndpoints
 
         await db.SaveChangesAsync(cancellationToken);
 
+        // EF varlığı değil, sözleşme tipi dönüyor: varlık şeması bir gün
+        // değiştiğinde API gövdesinin sessizce değişmesi, T14'ün ürettiği
+        // tiplerin tam olarak yakalayamayacağı bir kırılma olurdu.
+        var body = SourceResponse.From(new SourceSummary(
+            existing.SourceId, existing.OwnerGroup, existing.PeerAddress, existing.Hostname,
+            existing.Vendor, existing.Product, existing.ParserId, existing.Encoding,
+            existing.SourceClass, existing.Enabled,
+            !string.IsNullOrWhiteSpace(existing.ParserId), existing.CreatedAt));
+
         return created
-            ? Results.Created($"/v1/sources/{existing.SourceId}", existing)
-            : Results.Ok(existing);
+            ? Results.Created($"/v1/sources/{existing.SourceId}", body)
+            : Results.Ok(body);
     }
 
     /// <summary>
@@ -132,85 +215,27 @@ public static class SourcesEndpoints
     private static async Task<IResult> ImportCsvAsync(
         HttpRequest request,
         ControlPlaneDbContext db,
+        ICurrentUser user,
         CancellationToken cancellationToken)
     {
         using var reader = new StreamReader(request.Body);
         var content = await reader.ReadToEndAsync(cancellationToken);
 
-        var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(l => l.TrimEnd('\r'))
-            .Where(l => l.Length > 0 && !l.StartsWith('#'))
-            .ToArray();
+        // Ayrıştırma, doğrulama ve kapsam kontrolü `SourceCsvImport`'ta —
+        // veritabanından bağımsız, dolayısıyla konteyner gerektirmeden sınanıyor.
+        var result = SourceCsvImport.Parse(content, user.Scope);
 
-        if (lines.Length < 2)
-        {
-            return Results.BadRequest(new { error = "CSV en az bir başlık ve bir veri satırı içermeli." });
-        }
-
-        var header = lines[0].Split(',').Select(h => h.Trim()).ToArray();
-        var required = new[] { "source_id", "owner_group" };
-
-        foreach (var column in required)
-        {
-            if (!header.Contains(column, StringComparer.Ordinal))
-            {
-                return Results.BadRequest(new { error = $"Zorunlu sütun eksik: '{column}'." });
-            }
-        }
-
-        var errors = new List<string>();
-        var parsed = new List<SourceUpsertRequest>();
-
-        for (var i = 1; i < lines.Length; i++)
-        {
-            var cells = lines[i].Split(',');
-            if (cells.Length != header.Length)
-            {
-                errors.Add(string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"satır {i + 1}: {header.Length} sütun bekleniyordu, {cells.Length} bulundu"));
-                continue;
-            }
-
-            string Cell(string name)
-            {
-                var index = Array.IndexOf(header, name);
-                return index < 0 ? string.Empty : cells[index].Trim();
-            }
-
-            var sourceId = Cell("source_id");
-            var ownerGroup = Cell("owner_group");
-
-            if (sourceId.Length == 0 || ownerGroup.Length == 0)
-            {
-                errors.Add(string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"satır {i + 1}: source_id ve owner_group boş olamaz"));
-                continue;
-            }
-
-            parsed.Add(new SourceUpsertRequest
-            {
-                SourceId = sourceId,
-                OwnerGroup = ownerGroup,
-                PeerAddress = Cell("peer_address"),
-                Hostname = Cell("hostname"),
-                Vendor = Cell("vendor"),
-                Product = Cell("product"),
-                ParserId = Cell("parser_id"),
-                Encoding = Cell("encoding") is { Length: > 0 } enc ? enc : "auto",
-                SourceClass = Cell("source_class") is { Length: > 0 } cls ? cls : "default",
-            });
-        }
-
-        if (errors.Count > 0)
+        if (!result.Ok)
         {
             // Hiçbir satır yazılmıyor. Kısmi yükleme, envanteri sessizce tutarsız
             // bırakır ve hatayı fark etmek için kimsenin bakmadığı bir yere bakmak
             // gerekir.
-            return Results.BadRequest(new { error = "CSV geçersiz, hiçbir satır yazılmadı.", details = errors });
+            return Results.BadRequest(new SourceCsvErrorResponse(
+                "CSV geçersiz, hiçbir satır yazılmadı.",
+                result.Errors));
         }
 
+        var parsed = result.Rows;
         var existing = await db.Sources.ToDictionaryAsync(s => s.SourceId, cancellationToken);
         var created = 0;
         var updated = 0;
@@ -241,6 +266,6 @@ public static class SourcesEndpoints
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return Results.Ok(new { created, updated, total = parsed.Count });
+        return Results.Ok(new SourceCsvImportResponse(created, updated, parsed.Count));
     }
 }

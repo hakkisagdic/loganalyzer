@@ -89,7 +89,14 @@
         "operationId": "PipelineHealth",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PipelineHealthResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -310,7 +317,58 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sources/activity": {
+      "get": {
+        "tags": [
+          "sources"
+        ],
+        "operationId": "SourceActivity",
+        "parameters": [
+          {
+            "name": "hours",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceActivityListResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -323,7 +381,24 @@
         "operationId": "ImportSourcesCsv",
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceCsvImportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceCsvErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -2620,6 +2695,340 @@
           }
         }
       },
+      "PipelineArchiveHealth": {
+        "required": [
+          "by_state",
+          "healthy"
+        ],
+        "type": "object",
+        "properties": {
+          "by_state": {
+            "type": "object",
+            "additionalProperties": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          "healthy": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PipelineDispatchHealth": {
+        "required": [
+          "total",
+          "bound_ratio",
+          "bound_ratio_target",
+          "bound_ratio_healthy",
+          "bound_misses",
+          "unmatched_ratio",
+          "unassigned_source_events"
+        ],
+        "type": "object",
+        "properties": {
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "bound_ratio": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "bound_ratio_target": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "bound_ratio_healthy": {
+            "type": "boolean"
+          },
+          "bound_misses": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "unmatched_ratio": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "unassigned_source_events": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "PipelineHealthResponse": {
+        "required": [
+          "dispatch",
+          "parse",
+          "wal",
+          "ingest",
+          "archive",
+          "sidecar",
+          "inventory"
+        ],
+        "type": "object",
+        "properties": {
+          "dispatch": {
+            "$ref": "#/components/schemas/PipelineDispatchHealth"
+          },
+          "parse": {
+            "$ref": "#/components/schemas/PipelineParseHealth"
+          },
+          "wal": {
+            "$ref": "#/components/schemas/PipelineWalHealth"
+          },
+          "ingest": {
+            "$ref": "#/components/schemas/PipelineIngestHealth"
+          },
+          "archive": {
+            "$ref": "#/components/schemas/PipelineArchiveHealth"
+          },
+          "sidecar": {
+            "$ref": "#/components/schemas/PipelineSidecarHealth"
+          },
+          "inventory": {
+            "$ref": "#/components/schemas/PipelineInventoryHealth"
+          }
+        }
+      },
+      "PipelineIngestHealth": {
+        "required": [
+          "accepted_records",
+          "rejected_full",
+          "rejected_invalid",
+          "non_utf8_records",
+          "declared_encoding_mismatches"
+        ],
+        "type": "object",
+        "properties": {
+          "accepted_records": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "rejected_full": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "rejected_invalid": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "non_utf8_records": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "declared_encoding_mismatches": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "PipelineInventoryHealth": {
+        "required": [
+          "unassigned_sources"
+        ],
+        "type": "object",
+        "properties": {
+          "unassigned_sources": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "PipelineParseHealth": {
+        "required": [
+          "ok",
+          "unmatched",
+          "processed_records"
+        ],
+        "type": "object",
+        "properties": {
+          "ok": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "unmatched": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "processed_records": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "PipelineSidecarHealth": {
+        "required": [
+          "enabled",
+          "circuit",
+          "opened_count",
+          "dropped_queue_full",
+          "dropped_circuit_open",
+          "signature_drift"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "circuit": {
+            "type": "string"
+          },
+          "opened_count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "dropped_queue_full": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "dropped_circuit_open": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "signature_drift": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "PipelineWalHealth": {
+        "required": [
+          "total_bytes",
+          "is_full",
+          "recovery"
+        ],
+        "type": "object",
+        "properties": {
+          "total_bytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "is_full": {
+            "type": "boolean"
+          },
+          "recovery": {
+            "$ref": "#/components/schemas/PipelineWalRecovery"
+          }
+        }
+      },
+      "PipelineWalRecovery": {
+        "required": [
+          "segment_count",
+          "frame_count",
+          "truncated_bytes"
+        ],
+        "type": "object",
+        "properties": {
+          "segment_count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "frame_count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "truncated_bytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
       "PreviewPointResponse": {
         "required": [
           "at",
@@ -2723,6 +3132,125 @@
           },
           "continueOnMissingObjects": {
             "type": "boolean"
+          }
+        }
+      },
+      "SourceActivityListResponse": {
+        "required": [
+          "from",
+          "to",
+          "count",
+          "sources"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceActivityResponse"
+            }
+          }
+        }
+      },
+      "SourceActivityResponse": {
+        "required": [
+          "source_id",
+          "owner_group",
+          "last_event_at",
+          "last_ingested_at",
+          "event_count"
+        ],
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string"
+          },
+          "owner_group": {
+            "type": "string"
+          },
+          "last_event_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_ingested_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "event_count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "SourceCsvErrorResponse": {
+        "required": [
+          "error",
+          "details"
+        ],
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "SourceCsvImportResponse": {
+        "required": [
+          "created",
+          "updated",
+          "total"
+        ],
+        "type": "object",
+        "properties": {
+          "created": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "updated": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },

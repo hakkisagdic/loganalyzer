@@ -103,6 +103,18 @@ export type EventFieldView = EventDetail["ocsf"][number];
 /** `GET /v1/events/{id}/raw` — ham baytlar (T16). */
 export type EventRaw = JsonResponse<Operation<"/v1/events/{id}/raw", "get">>;
 
-/** `GET /v1/sources` — arama ekranının kaynak filtresi (T15). */
+/** `GET /v1/sources` — arama ekranının kaynak filtresi (T15), envanter (T17). */
 export type SourceList = JsonResponse<Operation<"/v1/sources", "get">>;
 export type SourceItem = SourceList["sources"][number];
+
+/** `GET /v1/sources/activity` — son görülme ve olay sayısı (T17). */
+export type SourceActivityList = JsonResponse<Operation<"/v1/sources/activity", "get">>;
+export type SourceActivityItem = SourceActivityList["sources"][number];
+
+/** `POST /v1/sources` — envanter yazma (T17). */
+export type SourceUpsertBody = NonNullable<
+  RequestOptions<Operation<"/v1/sources", "post">>["body"]
+>;
+
+/** `GET /v1/health/pipeline` — envanter ekranındaki özet blok (T17). */
+export type PipelineHealth = JsonResponse<Operation<"/v1/health/pipeline", "get">>;

@@ -25,6 +25,8 @@ export interface AppShellProps {
 const NAV = [
   { href: "/", label: "Genel bakış" },
   { href: "/olaylar", label: "Log arama" },
+  { href: "/kaynaklar", label: "Kaynaklar" },
+  { href: "/alarmlar", label: "Alarmlar" },
 ] as const;
 
 export function AppShell({ username, children }: AppShellProps) {
