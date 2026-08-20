@@ -28,6 +28,7 @@ public static class QueryServiceCollectionExtensions
         services.AddSingleton<EventWriter>();
         services.AddSingleton<EventReader>();
         services.AddSingleton<ChangeEventReader>();
+        services.AddSingleton<CorrelationReader>();
 
         // Yazma yolu (T07): normalizasyon + toplu yazım. Ingest katmanı bunları
         // görmüyor, yalnızca IParsedEventSink sözleşmesini biliyor.

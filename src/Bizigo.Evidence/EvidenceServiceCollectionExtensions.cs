@@ -36,6 +36,15 @@ public static class EvidenceServiceCollectionExtensions
         services.AddScoped<IEvidenceProvider, LogWindowProvider>();
         services.AddScoped<IEvidenceProvider, ChangeFeedProvider>();
 
+        // F3'ün beş deterministik korelasyonu (T35). Beşi de ayrı sağlayıcı ve
+        // toplayıcı hiçbirini tanımıyor — T34'ün taşıyıcı iddiasının karşılığı:
+        // bu beş satır eklendiğinde `EvidenceCollector` değişmedi.
+        services.AddScoped<IEvidenceProvider, FirstSeenSignatureProvider>();
+        services.AddScoped<IEvidenceProvider, VolumeDeviationProvider>();
+        services.AddScoped<IEvidenceProvider, SilenceProvider>();
+        services.AddScoped<IEvidenceProvider, AttributeLiftProvider>();
+        services.AddScoped<IEvidenceProvider, PropagationProvider>();
+
         services.AddScoped<EvidenceCollector>();
 
         return services;

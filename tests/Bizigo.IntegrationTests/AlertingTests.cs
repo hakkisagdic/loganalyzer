@@ -104,6 +104,7 @@ public sealed class AlertingTests(DevStackFixture stack) : IAsyncLifetime
         _query = new ScopedQuery(
             new EventReader(_context),
             new ChangeEventReader(_context),
+            new CorrelationReader(_context),
             writer,
             await _factory.CreateDbContextAsync(Token),
             new NoOpAuditSink());

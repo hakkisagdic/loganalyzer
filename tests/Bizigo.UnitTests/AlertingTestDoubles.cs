@@ -166,6 +166,30 @@ internal sealed class FakeScopedQuery : IScopedQuery, IAlertQuerySource
     public Task<long> CountOutOfScopeChangesAsync(ChangeQuery query, AccessScope scope, CancellationToken cancellationToken = default) =>
         Task.FromResult(0L);
 
+    // ---- F3 korelasyonları (T35) ------------------------------------------
+    // Alarm motorunun bu dördüne ihtiyacı yok; sözleşme genişlediği için
+    // uygulanıyorlar. Boş dönmeleri kasıtlı ve zararsız: bu sahteyi kullanan
+    // testlerin hiçbiri korelasyon sınamıyor.
+
+    public Task<IReadOnlyList<SignatureCount>> GetFirstSeenSignaturesAsync(
+        CorrelationWindow window, AccessScope scope, int limit, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<SignatureCount>>([]);
+
+    public Task<IReadOnlyList<SignatureVolume>> GetSignatureVolumeAsync(
+        CorrelationWindow window, AccessScope scope, int limit, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<SignatureVolume>>([]);
+
+    public Task<IReadOnlyList<FieldValueCount>> GetAttributeLiftAsync(
+        CorrelationWindow window, AccessScope scope, IReadOnlyList<string> fields, int limitPerField,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<FieldValueCount>>([]);
+
+    public Task<IReadOnlyList<SourceOnset>> GetPropagationAsync(
+        CorrelationWindow window, AccessScope scope, byte severityAtOrBelow, int limit,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<SourceOnset>>([]);
+
+
     public Task<EventPage> SearchEventsAsync(EventQuery query, AccessScope scope, CancellationToken cancellationToken = default) =>
         Task.FromResult(new EventPage([], null, false));
 
