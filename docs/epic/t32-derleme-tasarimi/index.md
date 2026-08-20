@@ -149,6 +149,222 @@ kapısının da körleşmesi demek. Bu depoda "başkasının hatası yüzünden 
 bekçi" deseninin bedeli zaten ödendi. Konteyner maliyeti, kapının kendi ayakları
 üstünde durmasından ucuz.
 
+### KARAR · Kapı 2 `EXPLAIN` soruyor — ve ilk hâli kapıyı sessizce yeşil bırakıyordu
+
+İlk yazımda `EXPLAIN SYNTAX` seçilmişti. **Ölçüldü, yanlıştı:** o biçim tip
+denetimi yapmıyor, yalnızca AST'yi yeniden yazıyor. Bilinen iki kırık sorgunun
+ikisine de 200 dönüyordu, yani kapı 24 kuralın hepsini geçirecek ve ikisi
+üretimde patlayacaktı — `KIND_TYPE_MISMATCH` kolu o yoldan **asla**
+tetiklenemezdi. Kapı 2'nin kapatmak için var olduğu sınıf, kapının içinde.
+
+Bunu `--self-test` buldu. Kip olmasaydı kusur, kural seti üretime çıkana kadar
+görünmeyecekti — ve "sıfır sorgu soran kapı" her iki hâlde de yeşil yanardı.
+
+#### Ölçülen tablo — canlı 26.7.3, üç sorgu, üç tur
+
+| Biçim | Ayırt ediyor mu | Sonuçlar |
+| --- | --- | --- |
+| `EXPLAIN` | ✓ | `red, red, kabul` |
+| `EXPLAIN PLAN` | ✓ | `red, red, kabul` |
+| `EXPLAIN ESTIMATE` | ✓ | `red, red, kabul` |
+| `EXPLAIN QUERY TREE` | ✗ | `kabul, red, kabul` — **kısmen** |
+| `EXPLAIN SYNTAX` | ✗ | `kabul, kabul, kabul` |
+
+**Maliyet ayırt edici değil.** Isınma çıkarıldığında üç doğru biçim de
+~12–13 ms/sorgu bandında; 269 kural × ~13 ms ≈ **3,5 saniye**. Geriye tek ölçüt
+olarak doğruluk kalıyor ve o da üçünde eşit — bu yüzden en açık olanı, `EXPLAIN`,
+duruyor. **Biçim seçimi maliyetle gerekçelendirilemez** ve bunu bilmek de bir
+ölçüm sonucu.
+
+⚠️ **Süre sütunu bir kez yalan söyledi.** İlk ölçüm ısınmasızdı ve `EXPLAIN`'i
+`EXPLAIN PLAN`'in 2,3 katı gösterdi. Çıplak `EXPLAIN` zaten `EXPLAIN PLAN`'in
+kendisi olduğu için bu fiziksel olarak imkânsız — K35'te "yalnız ayrıştırma,
+ayrıştırma+etiketlemeden yavaş" çıktığındaki durumun aynısı. Ölçülen şey biçim
+değil **listedeki sıraydı**; sıra ters çevrildiğinde fark biçimi değil ilk sırayı
+takip etti. `probe_forms` artık her biçimden önce sayılmayan bir ısınma turu
+atıyor ve turların en hızlısını raporluyor (§6).
+
+#### `EXPLAIN QUERY TREE` — tablodaki en değerli satır
+
+`ILIKE ↔ IPv6`'yı **yakalıyor**, `tamsayı ↔ LowCardinality(String)`'i
+**kaçırıyor**. Kısmen çalışıyor, ve **kısmen çalışan bir kapı hiç çalışmayandan
+tehlikeli**: biri "daha ucuz ve tip hatasını yakalıyor" diye ona geçseydi kapı
+`ILIKE` hatalarını yakalamaya devam edeceği için *çalışıyor görünürdü* ve
+sessizce geçen tek sınıf tamsayı uyuşmazlıkları olurdu. `EXPLAIN SYNTAX` en
+azından her şeye "kabul" diyerek kendini ele veriyordu.
+
+Bu yüzden probe'un ölçütü *"üç sonucun **üçü de** beklenen mi"* — *"en az bir red
+üretti mi"* değil. Gevşek kriter tam bu satırı kaçırırdı.
+
+İki başarısız biçim de aday listesinde **duruyor**: "denedik, olmadı" bilgisini
+silmek, bir sonraki kişinin aynı seçimi aynı gerekçeyle yapmasına kapı açardı.
+Probe CI'da kapı değil **ölçüm** olarak koşuyor — bir ClickHouse yükseltmesi
+`QUERY TREE`'yi düzeltebilir ya da `PLAN`'i bozabilir, ve o gün bu tablo söyler.
+
+### KARAR · Kapı 2 bugün boş dönüyor — ve bu bir **başarı göstergesi**
+
+T31 ölçüldü: `compiled == runs == 21`. Eşlenemeyen kuralları derleme aşamasında
+düşürdüğü için ClickHouse'a koşmayan tek bir SQL çarpmıyor. Yani Kapı 2 bugün
+hiçbir şey yakalamıyor.
+
+**Bu, kapının gereksiz olduğu anlamına gelmiyor; tam tersi.** Kapı 2'nin bugünkü
+işi, T31'in sınıflandırmasının **ClickHouse ile aynı fikirde olduğunu**
+doğrulamak. İkisi ayrışırsa — T31 "eşlendi" der, ClickHouse reddeder — bunu
+başka hiçbir şey görmez: Kapı 1 kolon adlarına bakıyor, T31 kendi eşleme
+tablosuna, ve ikisi de ClickHouse'a sormuyor.
+
+Bu not buraya **biri bir gün "hiçbir şey yakalamıyor" diye kaldırmasın diye**
+yazıldı. Boş dönen bir bekçinin iki sebebi olabilir: korunan şey sağlam, ya da
+bekçi kör. Kapı 2 için ikisini ayıran şey `--self-test` — ve o kip zaten bir kez
+kapının kendi körlüğünü buldu (`EXPLAIN SYNTAX`).
+
+### KARAR · Kapı 3 iki soruyu **iki ayrı yere** koyuyor
+
+Kapı 3 iki şey ölçebilirdi ve ikisini tek kapıya koymak, hangisinin kırıldığını
+belirsiz bırakırdı:
+
+| Soru | Nerede | Neden orada |
+| --- | --- | --- |
+| **Derleme doğruluğu** — beyan edilmiş bir kural beklediği şeyi buluyor mu | **Kapı** | Kural başına; verinin şeklinden bağımsız, ya bulur ya bulmaz |
+| **Kapsam** — kaç kural bir şey yakalıyor | **Ölçüm** | Verinin şekline bağlı |
+
+§6'nın "mutlak bütçe yerine oran" maddesinin buradaki karşılığı daha sert:
+**kapsam hiç kapı değil.** *"En az N kural eşleşmeli"* diyen bir kapı, bir
+vendor'ın payı kaydığında kırmızı yanar ve o kırmızının sebebi kural setinde
+değil **veride** olur — yani kapı yanlış soruyu sormuş olur.
+
+Beyanlar `catalog/sigma/expectations.json` içinde, kural başına
+`at_least_one` ya da `none` ve **zorunlu bir gerekçe**. Gerekçe alanı boş
+bırakılamıyor: gerekçesiz bir beklenti, kırıldığı gün "herhâlde veri
+değişmiştir" diye gevşetilir.
+
+`none` beklentisi yalnızca yanlış pozitif bekçisi değil, **kapının ayırt
+edebildiğinin kanıtı**: yalnızca `at_least_one` beyanlarından oluşan bir listeyi,
+her şeyi eşleştiren bozuk bir kapı da geçerdi. Kapı bu yüzden listede iki yönün
+de bulunmasını **istiyor**.
+
+Veri yoksa kapı **hiç koşmuyor** (çıkış 3) — T30'un ön kontrol protokolü, üç
+durumu ayrı raporlayarak: sorgu hata verdi (kurulum), tablo boş (yükleyici
+koşmamış), vendor eksik (o vendor'ın kuralları ölçülemez). Gerekçesi T30'da
+ölçülmüş: tabloda önceki turdan kalma tek vendor'lı veri varken "boş mu"
+sorusunun cevabı hayırdı, ölçüm geçti ve **%0 eşleşme** üretti — o sıfır
+eşlemenin değil verinin sonucuydu.
+
+**Kapı bugünden CI'da ama ilk gün kırmızı yanmıyor.** Koşul "üretilen her kural
+beyanlı olmalı"; sıfır kural üretiliyorsa sıfır beyan gerekiyor. Bu bir gevşetme
+değil koşulun kendisi, ve iki tuzağın arasından geçiyor: kapıyı "kural seti
+gelince bağlarız" diye ertelemek **hazırlanmış ama bağlanmamış** desenini
+kurardı; bugün koşulsuz zorlamak ise ilgisiz bir işi bekleyen ve o yüzden ilk
+günden kırmızı yanan — dolayısıyla gevşetilecek — bir kapı yaratırdı. İlk kural
+üretildiği anda kapı **kendiliğinden** diş kazanıyor.
+
+Kapının canlı yarısı koordinatörde koşuyor (§2); CI'da koşan yarı beyan
+listesinin şekli ve ClickHouse'a hiç bağlanmıyor.
+
+### Ölçüldü · Kapı 3 ilk koşumda gerçek bir eşleme kusuru buldu
+
+`routeros_forward_new` beyanı **düştü** ve düşmesi doğru. Üretilen SQL
+`activity_name='forward'` arıyor; veride `class_uid=4001` var, `tcp` var
+(150 satır), eksik olan `activity_name` — ve boş olması bir kaza değil:
+`catalog/parsers/mikrotik.routeros/firewall.yaml` `action`'ı **bilerek** boş
+bırakıyor, çünkü RouterOS kaydı kuralın eşleştiğini bildiriyor, `accept`/`drop`
+yazmak uydurma olurdu. Zincir adı `fields.fw_chain`'e gidiyor.
+
+Yani parser doğru, kuralın **eşlemesi** yanlış: `forward` bir eylem değil bir
+zincir adı. Beyan da yanlış değildi — örnek dosyada gerçekten `forward:` +
+`proto TCP` taşıyan üç satır var. Kayıp **boru hattında**, dosyanın söylediği ile
+ClickHouse'a inen arasında.
+
+**Bunu ancak bu kapı gösterebilirdi.** Ne derleme, ne birim testi, ne Kapı 2 bu
+soruyu soruyor. Beyan bugün kırmızı ve öyle kalmalı; düzeltme T31'in
+`FIELD_MAP`'inde.
+
+### Beyan yazılmayan iki kural — ve ikisinin de sebebi kayıtlı
+
+**`nginx_dns_rebind`:** örneklerde `localhost` yalnızca referrer alanında,
+`127.0.0.1` yalnızca remote_ip konumunda, ve combined format Host başlığı
+taşımıyor. `device_hostname`'in ne olduğu okunamadı, beyan yazılmadı. `--discover`
+koşumu kuralı **boş** buldu — okuma ölçümle doğrulandı. Tahminle beyan yazılsaydı
+kapı yanlış sebeple kırmızı yanardı.
+
+**`asa_teardown_rst`:** `--discover` bunu **eşleşti** diye buldu ve tam bu yüzden
+beyan yazılmadı. Üretilen SQL `raw_data ILIKE '%RST%'` ve ASA örneklerinde harf
+duyarsız `rst` geçen tek yerler **"first"** ve **"burst"** sözcüklerinin içi —
+gerçek bir TCP RST yok. Yani kural **yanlış sebeple** eşleşiyor.
+
+`at_least_one` yazılsaydı kapı yeşil yanar ve bir **yanlış pozitifi kutsardı**.
+"Eşleşti" ile "doğru sebeple eşleşti" farklı şeyler, ve bu ayrımı `--discover`
+sayısı değil örnek dosyanın içeriği veriyor — beyanların gerekçesinin
+ClickHouse sayısından değil dosyadan gelmesinin sebebi bu.
+
+Kuralın ikinci bir kusuru daha var (aşağıda) ve ikisi birbirini gizliyordu.
+
+#### Düzeltildi — ve cevap örneklerin satır sonundaydı
+
+`Teardown` satırlarının kuyruğu ASA'nın sözlüğünü söylüyor: **`TCP Reset-I`**,
+iki satırda. ASA sıfırlamayı `Reset-I`/`Reset-O` diye yazıyor, `RST` diye **hiç
+yazmıyor**. Yani kusur iki katmanlıydı ve ikisi de tekrarlanan anahtarın
+arkasındaydı: `RST` vendor'ın kullanmadığı bir kısaltma, ve tekrarlanan anahtar
+`Teardown`'ı düşürdüğü için kural iki koşuldan **hiçbirini** doğru soramıyordu.
+
+```yaml
+message|contains|all:
+  - 'Teardown'
+  - 'Reset'
+```
+
+`|all` şart: **düz bir liste Sigma'da OR'dur** ve burada AND isteniyor. İki
+koşulu listeye almak, tekrarlanan anahtarın yaptığının kardeşi olurdu — metinsel
+olarak geçerli, anlamsal olarak sessizce başka bir kural. Üretilen SQL doğrulandı:
+`raw_data ILIKE '%Teardown%' AND raw_data ILIKE '%Reset%'`.
+
+`Reset-I` değil `Reset`: `-I`/`-O` yön eki ve kural yönü umursamıyor. Yöne
+bağlamak bugün çalışırdı — örneklemde `Reset-I` 2, `Reset-O` 0 — ama kuralın
+sormadığı bir şeyi sormak olurdu.
+
+**Ölçüldü (örnek dosya üzerinden, canlı doğrulama koordinatörde):**
+
+| Aranan dizge | `Teardown` ile aynı satırda | Kapı |
+| --- | --- | --- |
+| `Reset` | 2 | geçer |
+| `Reset-I` | 2 | geçer — yöne bağlamak bugün fark etmiyor |
+| `Reset-O` | 0 | **düşer** — kuralın gerçekten veriye baktığının kanıtı |
+| `RST` (eski hâl) | 0 | `Teardown` ile hiç kesişmiyor; eski eşleşme `first`/`burst`'tendi |
+
+#### Not · Kural adı vendor'ın sözlüğünü değil bizim varsayımımızı taşıyor
+
+Dosya adı hâlâ `asa_teardown_rst.yml` ve kural artık `RST` aramıyor. Ad
+değiştirilmedi — çivi ve UUID ona bağlı — ama adın yanlış şey söylediği burada
+kayıtlı. Bu, kuralın kusurunun **kaynağı**: adı yazan kişi ASA'nın `RST` yazdığını
+varsaymış, örneklere bakmamıştı.
+
+### Bulgu · Sigma kuralları tekrarlanan YAML anahtarına karşı korumasızdı
+
+`asa_teardown_rst.yml` aynı eşlemede `message|contains` anahtarını **iki kez**
+taşıyor:
+
+```yaml
+    message|contains: 'Teardown'
+    message|contains: 'RST'
+```
+
+YAML sonuncuyu alıyor, yani `Teardown` koşulu **sessizce düşüyor** ve kural
+başlığının söylediğinden başka bir şey yapıyor.
+
+Depoda bu sınıfın bekçisi zaten var — `compose-lint` işi `yamllint`in
+`key-duplicates` kuralını `deploy/docker-compose.yml` ve `.github/workflows/`
+üzerinde koşturuyor. Sigma kuralları kapsamda **değildi**; eklendi.
+
+Bir detection kuralında bu sınıf compose dosyasındakinden **daha pahalı**: kural
+yayınlanır, çalışır, hiçbir sayaç artmaz ve daraltılmış hâliyle "çalışıyor"
+görünür.
+
+⚠️ Bekçi eklendiği anda **kırmızı yanıyor** — ölçüldü, `exit=1`. Bu bilinçli:
+bekçinin gerçek bir kusuru yakaladığı böyle gösteriliyor (önce bekçi, sonra
+düzeltme). Kuralın nasıl düzeltileceği bir **detection kararı** (iki koşul
+listeye mi alınmalı, `RST` alt dizgi araması yeterli mi) ve tek başıma
+vermedim.
+
 ### KARAR · Kapı 1'den geçemeyen kural dosya üretmez
 
 Manifest'e `gated` olarak sebebiyle yazılır (`unknown_column: url`). Böylece
@@ -221,8 +437,23 @@ tarihi yazarsak her koşum farklı bayt üretir; kapı **yapısal olarak** bireb
 karşılaştırma yapamaz hâle gelir ve ya kaldırılır ya da tarihi görmezden gelen
 bir istisnayla yumuşatılır. İkisi de kapıyı öldürür.
 
-Tarih **manifest'in koşum başlığında** durur — orada tek bir satır olur, 269
-dosyada 269 satır değil.
+**Düzeltme (uygulama sırasında bulundu):** ilk hâli "tarih manifest'in koşum
+başlığında dursun" diyordu. Yanlıştı — **manifest de karşılaştırılan çıktının
+parçası**, yani tarihi oraya koymak manifest'in kendi kapısını öldürüyor. Kalan
+tek yol kapının o alanı görmezden gelmesi, yani yumuşatmak.
+
+Tarih **hiçbir yerde yok**. Kaybedilen bilgi de yok: manifest commit'li, yani
+`git log detections/sigma/manifest.json` "ne zaman derlendi" sorusunun cevabı ve
+git bunu daha güvenilir tutuyor. Kaybedilen tek şey aynı bilginin ikinci,
+sürüklenebilir kopyası.
+
+Ticket'ın "derleme tarihi" maddesi **yanlış değil, eksik düşünülmüş**: yazıldığı
+sırada sürüklenme kapısı henüz tasarımda yoktu. İkisi aynı anda var olamıyor ve
+kapı daha değerli.
+
+Girdinin parçası olan sürümler duruyor: `ruleset_commit`, `pipeline_version`,
+`pipeline_sha`. Onlar koşumun değil girdinin özelliği, ve değiştiklerinde çıktı
+da değişiyor.
 
 ### `manifest.json` — iki katmanlı
 
@@ -405,9 +636,10 @@ tasarım **iki** tanımlıyor (§4). `pipeline_sha` değişip `source_sha` aynı
 kaldığında kullanıcının **etkin** kuralının anlamı oynuyor ve o kriter sessiz
 kalıyor.
 
-Manifest'te veri zaten var: `output_sha` değişmiş ama `source_sha` değişmemiş
-kayıtlar tam olarak bu kümeyi veriyor. Düzeltme T33 tarafında; buraya not
-düşülüyor ki iki belge birbirine bağlansın.
+Manifest'te veri zaten var **ve artık hesaplanıyor**: `transition_summary`'nin
+`output_changed_without_source_change` alanı tam olarak bu kümeyi veriyor
+(`python -m sigma_build.compile --summary`). Düzeltme T33 tarafında; veri
+buradan geliyor.
 
 ### Ürün tarafı — T33'ün alanı, buradan gelen kısıtlar
 
@@ -440,6 +672,55 @@ bir günde düşen bir kapı, kısa sürede görmezden gelinen bir kapıdır.
 
 Yükseltme elle ve tek satır: kural setinin SHA'sı değişir, hat koşar, üretilen
 diff incelenir. Sürüklenme o an görünür — bir sabah değil, bir commit'te.
+
+### KARAR · Kurallar depoya kopyalanıyor, koşum anında indirilmiyor
+
+Çivi tek başına yetmiyor: çivilenmiş bir SHA'dan **her koşumda indirmek** de
+mümkündü. Kopyalama seçildi, üç gerekçeyle:
+
+1. **Ağ, kapının gerekçesi olamaz.** `ci.yml` bunu zaten anlatıyor:
+   `actions/setup-dotnet` `codeload.github.com`'dan iniyordu ve GitHub orayı
+   sınırlandırdığında iş **kurulumda** ölüyordu — tek test koşmadan, ilgisiz bir
+   hata mesajıyla, tek oturumda üç kez. Kural setini indiren bir kapı aynı şeyi
+   yapar.
+2. **Ticket'ın kendi gerekçesi yarım kalırdı.** Build-time derlemenin üçüncü
+   sebebi "proje terk edilse bile mevcut kurallar çalışmaya devam eder" idi.
+   Kaynak kurallar yalnızca yukarı akıştaysa SQL depoda kalır ama **yeniden
+   üretilemez** — yani sürüklenme kapısı da koşamaz.
+3. **Kapsam bir liste olmalı, bir filtre değil.** Yukarı akışa karşı
+   değerlendirilen bir filtre, yukarı akış kural eklediğinde korpusu **sessizce**
+   değiştirir. Kopyalanmış listede kural eklemek bir commit.
+
+Yerleşim: `catalog/sigma/rules/` (girdi, `catalog/patterns/` ile aynı desen —
+kopyalanmış üçüncü taraf içerik) ve `catalog/sigma/ruleset.json` (çivi).
+`detections/` yalnızca çıktı için.
+
+Ağ **yalnızca yükseltmede**, elle. CI'nın yaptığı tek şey kopyanın çiviye
+uyduğunu doğrulamak, ve doğrulama üç sürüklenme yönünü ayrı raporluyor: eksik
+dosya (kopyalama yarım), fazla dosya (**çiviye girmemiş kural — derlenir ama
+nereden geldiği kayıtsız**), değişmiş içerik (elle düzenlenmiş).
+
+**Lisans:** SigmaHQ kuralları Detection Rule License altında. `catalog/patterns/`
+zaten aynı deseni izliyor ve `THIRD-PARTY-NOTICES.md`'de kayıtlı; kural seti
+çivilendiğinde oraya bir bölüm daha gerekiyor.
+
+### KARAR · Yükseltme de bir olay — ve üç olay birbirinden ayrılıyor
+
+`ruleset_commit` değiştiğinde `output_sha`'ların çoğu değişiyor. Bu, "pipeline
+değişti, kaynak değişmedi" olayının kardeşi ve ikisi karışmamalı. Manifest
+üçünü ayırıyor:
+
+| Olay | Manifest'te | Gözden geçirenin sorusu |
+| --- | --- | --- |
+| Kural seti yükseltildi | `ruleset_changed`, `source_changed` dolu | "Hangi kuralların kaynağı oynadı?" |
+| Pipeline değişti | `pipeline_changed`, `source_changed` **boş** | "Hangi kuralın anlamı oynadı?" |
+| İkisi de değişmedi ama çıktı değişti | `output_changed_without_source_change` | **"Ne oldu?"** |
+
+Üçüncü satır asıl bekçi. Bir kural seti yükseltmesinde o kümenin **boş olması
+beklenir**; dolu çıkarsa yükseltmeyle birlikte başka bir şey daha değişmiş
+demektir ve iki değişiklik tek diff'in içinde saklanmıştır.
+
+Aynı küme T33'ün kriter boşluğunu da kapatıyor (aşağıdaki not).
 
 ### `.gitignore` tuzağı — yol seçimi bilinçli
 

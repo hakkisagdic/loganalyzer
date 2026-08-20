@@ -59,6 +59,7 @@ kapanmayanlar listeyi sonsuza kadar dolu gösteriyordu.
 | B10 | Jenkins `FINALIZED` ilk-gelen-kazanır: farklı `status` taşıyorsa erken durum kaydediliyor | T26'da ele alındı, kapanışı doğrulanacak |
 | **B14** | **Şema tamamlama listesi motorun kopyası.** `ui/src/lib/parsers/schema.ts` `ParserYamlLoader`'ın anahtar kümelerini istemcide tekrarlıyor. Motora yeni bir adım eklenip burası güncellenmezse öneri eksik kalır. Bedeli "öneri görünmüyor", sessiz yanlış davranış **değil** — bu yüzden kabul edildi. Ucuz bir bekçi bulunamadı; sunucudan çekmek tamamlamayı her tuşta ağ isteğine bağlardı. | bekçi tasarlanabilirse |
 | **B15** | **Ticket `status` alanları her merge'de bayatlıyor.** B11 bir kez kapatılmıştı ve yeniden açıldı; koordinatör `03a6efa`'da sekiz dosyayı düzeltti ama kalıcı çözüm değil — kapanışı bir kez yapmak yetmiyor. | koordinatör, her merge'de |
+| **B19** | **CI kırmızıydı ve dört merge boyunca kimse bakmadı.** B18'i yakalayan kapı (`compose` işindeki `docker compose config --quiet`) **zaten vardı ve zaten kırmızı yanmıştı**: B7 merge'ünün koşumundan (`32384919290`) itibaren "Geliştirme ortamı doğrulaması" işi dört koşumda üst üste düştü, log satırı da tam hatayı yazıyordu. Eksik olan bekçi değil, kırmızıyı okuyan biriydi. Ölçüldü: `gh run list` beş koşumun dördünü `failure` gösteriyor. Ayrıca **ikinci bir iş** de bugün kırmızı: "Kapı 2 — ClickHouse üretilen SQL'i kabul ediyor mu" (T32 merge'ünden sonra) — bu kalem yalnızca compose'la ilgili değil. | **İki katman geldi, ikisi de kişiye dayanmıyor.** (1) `.githooks/pre-push`: `main`'e push'u, bir önceki koşum kırmızıysa durduruyor — hatırlamayı değil, komutun kendisini hedefliyor. (2) `.github/workflows/ci-red.yml`: main kırmızı kaldığında açık bir konu yazıyor, yerel kurulum istemiyor. **Kalan boşluk:** kanca `git config core.hooksPath .githooks` bir kez yapılmazsa sessizce yok — bu yüzden tek katman değil |
 | **B17** | **`docs/epic/` senkron yönü.** Protokol epic dizinini kanonik sayıyordu, ama ajanlar oraya **erişemiyor**; yazdıkları tek yer depo kopyası. Koordinatör `rsync <epic>/ docs/epic/` çalıştırınca T27'nin 233 satırlık envanteri 148 satıra düştü ve yeni bölümü kayboldu (`git checkout` ile geri alındı). Yön **depo → epic** olarak düzeltildi ve `CLAUDE.md` §11'e yazıldı. Kalan risk: iki ajan aynı belgeyi paralel güncellerse çakışma kaçınılmaz — bu turda oldu. | çalışma kuralı; koordinatör tek yazar atamalı |
 
 ### 2.2 · Kapanmayacak — gerekçesiyle kabul edilmiş
@@ -82,6 +83,7 @@ kapanmayanlar listeyi sonsuza kadar dolu gösteriyordu.
 | ~~B11~~ | Ticket `status` alanları bayat | 2026-08-20'de kapandı, **B15 olarak yeniden açıldı** |
 | ~~B12~~ | T25'in iki ekranının UI testi yok, maske ölçülmedi | T25; `ui/tests/changes-screen.test.tsx` maskeyi sınıyor |
 | ~~B13~~ | **Elle tutulan `Add*` listesi ömür bekçisini körleştiriyor** | T19 (`5dcb786`); keşif yansımaya çevrildi — ayrıntısı aşağıda |
+| ~~B18~~ | **Compose yığını B7'den bugüne ayrıştırılamıyordu.** `426fb05` compose'a `redis` adında bir servis ekledi; aynı adda bir servis 155 satır aşağıda T01'den beri duruyordu. Git iki tarafı da temiz gördü, derleme ve testler yeşil kaldı — **hiçbir şey kırmızı yanmadı**, dosyanın tamamı ayrıştırılamaz olduğu hâlde. Öğrenmenin tek yolu yığını ayağa kaldırmayı denemekti (§7: ölçülmeyen çalışıyor sayılmaz) | İki ayrı örnek: `redis-session` (BFF, kalıcılık yok, port açık) ve `redis` (sidecar, `--save 60 1`, port yok). Birleştirmek mümkün değil — RDB anlık görüntüsü veritabanı seçmiyor, "sidecar için kalıcı" demek "token'lar da diske" demek. CI'a Docker istemeyen bir ayrıştırma kapısı eklendi (`compose-lint`); süregelen kısmı **B19** |
 
 ### Üç kez ısıran kalıp — ve neden artık ısıramaz
 
@@ -124,6 +126,80 @@ düşmüştü; **(b)** bir kusurun yalnızca tesadüfen görülebilir olması, k
 kendisi kadar önemli. İkincisi
 `ArchitectureTests.Uretim_DI_grafi_kapsam_dogrulamasindan_geciyor` ile
 kapatıldı: kapsam doğrulaması artık her birim testi koşumunda.
+
+### Bir bekçinin **adı ile gövdesinin ayrışması**
+
+Yukarıdaki iki bölüm aynı hastalığın iki belirtisiydi; hastalığın kendisi bu ve
+bir sözleşme kalemi değil, bir **ölçüm kültürü** kalemi.
+
+**Bir bekçinin adı bir iddia kurar. Gövdesi başka bir şey ölçüyorsa, o bekçi
+hiç yokmuş gibidir — ama yokluğu görünmez, çünkü yeşil yanıyor.** Hiç bekçi
+olmamasından tehlikeli olmasının sebebi bu: eksik bekçi bir boşluk bırakır,
+yanlış bekçi o boşluğu **doldurulmuş gösterir.**
+
+Bu turda dört örnek çıktı.
+
+| Bekçi | Adının kurduğu iddia | Gövdesinin ölçtüğü | Nasıl bulundu |
+| --- | --- | --- | --- |
+| `ProducesContractTests` | `/v1/*` altındaki her uç sözleşmeli | **Listedeki** uçlar — 16 uç listede yoktu | Keşif yansımaya çevrilince |
+| Ömür bekçisi | Üretim DI grafiği kapsam doğrulamasından geçiyor | `AddBizigoAuthentication` **hariç** grafik | Keşif yansımaya çevrilince |
+| `sigma_build` Kapı 2 | Tip uyuşmazlığı yakalanıyor | `EXPLAIN SYNTAX` yalnızca AST'yi yeniden yazıyor, **tip denetimi yapmıyor** — iki bilinen kırık sorguya da 200 | Kapının kendi `--self-test` kipi |
+| `Ayni_id_icin_en_yuksek_surum_kazaniyor` | Sürüm çözümlemesi | `specificity` **sıralaması** (iki farklı `id`) | Yeni test yazılırken |
+
+**Nasıl bulunduklarına dikkat** — arayan birine nereye bakacağını söyleyen kısım
+bu:
+
+**Üç ayrı yol.** Dördü tek bir yöntemle bulunmadı ve aradaki fark, arayan biri
+için asıl bilgi.
+
+- **İkisi, keşif elle tutulan bir listeden yansımaya çevrilince çıktı**
+(`ProducesContractTests`, ömür bekçisi). Liste kaldırıldığı an denetlenen küme
+büyüdü ve bekçinin daha önce neyi görmediği **sayı olarak** göründü. Yani:
+*bir bekçi elle tutulan bir listeden besleniyorsa, listeyi kaldırmak teşhis
+aracıdır.*
+- **Biri, kapının kendi `--self-test` kipiyle çıktı** (`sigma_build` Kapı 2).
+Kip, kapıyı **bilinen kırık girdilere** karşı koşturuyor; `EXPLAIN SYNTAX` iki
+kırık sorgunun ikisine de 200 dönünce kapının hiçbir şey ölçmediği görüldü. Bu
+en ucuz yol ve tek başına bir kalıp: *bir bekçiye, yakalaması gereken şeyi
+yakalayıp yakalamadığını soran bir kip yaz.* Kip olmasaydı kusur kural seti
+üretime çıkana kadar görünmeyecekti.
+- **Biri, o bekçinin iddiasına dayanan yeni bir test yazılırken çıktı**
+(`Ayni_id_icin_en_yuksek_surum_kazaniyor`).
+`Yayinlanan_parser_sonraki_olayi_ayristiriyor` "yeni sürüm kataloğa giriyor"
+varsayımına dayanıyordu; o varsayımı kim tutuyor diye bakınca tutmadığı
+görüldü. Yani: *bir iddiaya dayanacaksan önce onu kimin tuttuğuna bak.*
+
+**En can sıkıcı örnek sonuncusu**, çünkü bilgi zaten kayıtlıydı: testin kendi
+yorumu *"`Replace` sürüm çözümlemesi yapmıyor; çözümleme dizinden yüklemede"*
+diyordu ve testin **adı** sürüm çözümlemesini iddia ediyordu. İki cümle yan yana
+duruyordu; kimse ikisini birden okumamıştı. Diğer üçü keşif ya da araç
+gerektirdi, bu yalnızca dikkat gerektiriyordu.
+
+#### Katalogda arandı — üç bulgu
+
+Aynı soru `catalog/parsers`'daki **62 gömülü teste** soruldu: adı ile beklentisi
+ayrışan var mı? Yöntem, her testin `name` alanıyla `expect` bloğunu yan yana
+dökmek oldu.
+
+| Test | Ad ne diyordu | Gövde ne ölçüyordu | Düzeltme |
+| --- | --- | --- | --- |
+| `cisco.asa.auth` — 611103 | "yıllı zarf ve **host yok**" | Zarf sınanıyordu, **host yokluğu sınanmıyordu** | `core.host: null` eklendi |
+| `nginx.access.combined` — sanal sunucu öneki | "**yüzde kodlu yol**" | Host, IP, durum, bayt — **yola hiç bakılmıyordu** | `otel.url.path` eklendi, kod çözülmemiş hâliyle |
+| `mikrotik.routeros.firewall` — kural öneki | "**boşluklu arayüz adlı** satır" | Girdide boşluklu arayüz **yok** (`ether1-gateway`); ad bir **sonraki** testin girdisini anlatıyordu | Ad gerçekten sınadığı şeye çevrildi |
+
+İlk ikisi ancak T08 raporu #6 kapandıktan sonra düzeltilebilirdi: "bu alan hiç
+olmamalı" beklentisi T19'a kadar ifade edilemiyordu. Yani bulgu yeni değil,
+**düzeltilebilir olması** yeni.
+
+**Ölçüldü:** iki yeni beklenti de kırmızı yanabiliyor. ASA zarfına host
+eklendiğinde `core.host` düşüyor, nginx yolu kod çözülmüş hâline çevrildiğinde
+`otel.url.path` düşüyor — `62 geçti` → `60 geçti, 2 kaldı`. Sonra geri alındı.
+
+**Geri kalan 59 testte ayrışma bulunmadı** — aradım, yok. Negatif testlerin
+tamamı (`negatif — … bu parser'a düşmemeli`) gerçekten `parse_status: failed`
+bekliyor; `302020 — zaman damgası olmayan zarf` iddiasını `tags:
+["_asa_no_timestamp"]` ile gerçekten ölçüyor ve doğru yapmanın örneği olarak
+duruyor.
 
 ## 3 · Doğrulanmamış olan
 
@@ -235,6 +311,52 @@ ayrımı `ParserAuthoringEndpoints`'te zaten çizili: author uçları T19, admin
 okuma uçları T20. `GET /v1/parsers/drafts/{id}` sözleşmesi ikisine birden
 çivilendi (`yaml` alanı, `snake_case`) ki biri diğerini beklemesin. Merge'de
 o satırlardan hiçbiri iki kez silinmedi — bölünme tuttu.
+
+### F1'den kalan borç: T40 — ham arşiv kurtarma
+
+`status: 0` · `tickets/ham-arsiv-kurtarma` · kaynağı
+[T04 karar belgesi](../t04-kararlar/index.md) açık kalem #4
+
+F1 karar belgeleri yazılırken çıktı ve **yeni bir ticket açtırdı**, çünkü
+bulunan şey eksik bir özellik değil: 48 saatlik WAL saklama penceresi *"nesne
+kaybolursa yerelden yeniden yükle"* için seçilmiş, `RawManifestEntity.WalSegment`
+o bağı taşıyor, scrub kaybı `RawObjectState.Missing` ile görüyor — ve kurtarmayı
+yapan kod **yok**.
+
+Ticket'a çevrilirken kod tekrar okundu, iki şey daha çıktı:
+
+| # | Bulgu | Sonucu |
+| --- | --- | --- |
+| a | `DeleteExpiredSegmentsAsync` silme kararını yalnızca `VerifiedAt`'e bakarak veriyor; `State` sorguya hiç girmiyor | Kaybın **tespit edilmiş olması**, kurtarma kaynağı olan WAL segmentinin silinmesini engellemiyor. Mekanizma yazılsa bile bu satır düzeltilmeden **kendi kaynağını silebilir** |
+| b | Scrub 6 saatte 20 nesne tarıyor → 48 saatte 160 nesne → ~64 MB'lık nesnelerle ~**10 GB** | Arşiv bundan büyükse tam tarama penceresinden uzun sürüyor ve kayıp, segment silindikten *sonra* fark ediliyor. Koruma belli bir boyuttan sonra **aritmetik olarak erişilemez** |
+
+(b) yapılandırmadan **hesaplandı**, ölçülmedi. T04'ün "bu sayıların gerekçesi
+kayıtta yok" diyen iki ayrı açık kalemi (#2 scrub örneklemesi, #3 saklama
+penceresi) aslında tek kalemin iki yarısıymış: pencere, tam tarama süresinden
+kısa olamaz.
+
+**Verilen karar:** kurtarma **tespitten tetiklenir**, ayrı bir zamanlamadan
+değil — aksi hâlde 48 saatlik bütçe iki bağımsız periyot arasında bölünür ve
+toplamı kimse tutmaz. Elle tetiklenen uç ikincil kalır; birincil olsaydı koruma
+yine bir insanın bakmasına bağlanırdı.
+
+### D kalemine bağ: ingest çift yazma penceresi
+
+T40 ile aynı turda ölçülen ayrı bir kalem, ama aynı aileden.
+`IngestRetryWindowTests` (birim, Docker yok) şunu sabitliyor: `AcceptAsync`
+batch'i WAL'a yazıp `fsync` ettikten **sonra** dolu kanalda bekliyor, yani veri
+dayanıklı olduğu hâlde istemcinin elinde 200 yok. O pencerede zaman aşımına
+düşüp yeniden gönderen istemci WAL'a ikinci çerçeveyi yazdırıyor.
+
+Asıl bulgu tekrarın kendisi değil: iki kayıt **birbirine bağlanamıyor**.
+`EventId` her çözümlemede `Guid.CreateVersion7` ile yeniden üretildiği için
+gövde baytları birebir aynı, kimlikler farklı — arşiv, ClickHouse ve replay
+bu ikisinin aynı gönderim olduğunu **söyleyemiyor**.
+
+Sorun bir *tekrar* sorunu değil bir *kimlik* sorunu, ve sonucu şu: tekilleştirme
+eklendiğinde anahtar **var olmayan bir yerden** gelmek zorunda — ya istemciden
+bir başlık, ya gövdenin hash'i. İkisi ayrı kararlar, maliyetleri farklı.
+Ayrıntısı [T03 karar belgesi](../t03-kararlar/index.md) açık kalem #3'te.
 
 **T27'nin önündeki tek açık karar:** izin listesindeki `POST /v1/replay`.
 Atfı yanlıştı ("T19 — replay ekranı"), oysa replay ekranının ticket'ı yok.

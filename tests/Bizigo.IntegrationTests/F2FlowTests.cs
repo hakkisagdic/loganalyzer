@@ -7,6 +7,7 @@ using Bizigo.Normalization;
 using Bizigo.Parsing.Dispatch;
 using Bizigo.Parsing.Engine;
 using Bizigo.Parsing.Grok;
+using Bizigo.Authoring;
 using Bizigo.Replay;
 using Bizigo.Storage.ClickHouse;
 using Bizigo.Storage.Raw;
@@ -256,26 +257,200 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
     /// ekleniyor; koşturan kişi o dosyayı örnek alabilir.
     /// </para>
     /// </summary>
-    [Fact(Skip = "Kurulum Postgres taslak deposu + katalog yeniden yükleme istiyor; T27 kapsamında yazıldı, koşum faz sonunda.")]
-    public Task Yayinlanan_parser_sonraki_olayi_ayristiriyor()
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task Yayinlanan_parser_sonraki_olayi_ayristiriyor()
     {
-        // Adımlar, koşturacak kişi için:
-        //
-        // 1. `ParserAuthoringService` ile v1 taslağı kaydet ve yayınla.
-        //    Örnek satırı v1 ile ayrıştır, `parse_status=failed` olduğunu gör
-        //    (v1 o satırı tanımıyor).
-        // 2. Aynı satırı ClickHouse'a `failed` olarak yaz.
-        // 3. v2 taslağını kaydet — satırı tanıyan bir pattern ekleyerek — ve
-        //    yayınla. `PublishedParserLoader.LoadAsync` ile katalogu tazele.
-        // 4. AYNI satırı yeniden ayrıştır ve yaz.
-        // 5. Assert: yeni olayın `parser_version` == v2 VE `parse_status` == ok.
-        // 6. Assert: eski olay hâlâ `failed` — yayın geçmişi yeniden yazmıyor;
-        //    onu düzeltmek replay'in işi (T11) ve ayrı bir karar.
-        //
-        // Adım 6 kolayca atlanır ve atlanırsa yayının sessizce geçmişi
-        // değiştirdiği bir dünyada yaşadığımızı fark etmeyiz.
-        return Task.CompletedTask;
+        var (authoring, loader, catalog, repository) = await BuildAuthoringAsync();
+        var dispatcher = new Dispatcher(catalog, new DispatchStats());
+
+        try
+        {
+            // 1 · v1 yayında. Örnek satırı TANIMIYOR: pattern sonu bağlı ve
+            // satırda fazladan bir alan var.
+            await PublishAsync(authoring, EditorParser("1.0.0", withSourceIp: false));
+            await loader.LoadAsync(repository, Token);
+
+            var before = catalog.Current.ByParserId[EditorParserId].Parse(EditorLine);
+
+            Assert.Equal(ParseStatus.Failed, before.Status);
+
+            // 2 · O hâliyle ClickHouse'a yazılıyor — üretimde olan da bu.
+            var oldEvent = Guid.CreateVersion7(Day);
+            await _writer.WriteEventsAsync([Parsed(oldEvent, before, "1.0.0")], Token);
+
+            // 3 · v2 yayınlanıyor ve katalog SICAK tazeleniyor.
+            await PublishAsync(authoring, EditorParser("1.1.0", withSourceIp: true));
+
+            var report = await loader.LoadAsync(repository, Token);
+
+            Assert.Empty(report.Errors);
+            Assert.Equal(1, report.FromDatabase);
+
+            // 4 · AYNI satır, envanter bağıyla — üretimdeki baskın yol (kademe 1).
+            var dispatch = dispatcher.Dispatch(EditorLine, EditorParserId);
+
+            // 5 · Yayının ETKİSİ: katalog gerçekten değişti ve dispatcher yeni
+            // sürüme bağlandı. T18 yayının GEÇERLİLİĞİNİ sınıyor; buradaki iddia
+            // farklı — "yayınlandı" demek ile davranışın değişmesi arasındaki
+            // boşlukta sessiz bir hâl var: yayın başarılı der, katalog eski
+            // kalır ve olaylar ayrıştırılmaya devam eder, yalnızca eski
+            // kurallarla.
+            Assert.Equal(DispatchTier.InventoryBound, dispatch.Tier);
+            Assert.Equal(ParseStatus.Ok, dispatch.Result.Status);
+            Assert.Equal("1.1.0", dispatch.Result.ParserVersion);
+            Assert.Equal("10.0.0.7", dispatch.Result.Core["src_ip"]);
+
+            var newEvent = Guid.CreateVersion7(Day.AddSeconds(1));
+            await _writer.WriteEventsAsync([Parsed(newEvent, dispatch.Result, "1.1.0")], Token);
+
+            // 6 · ESKİ olay hâlâ `failed`. Yayın geçmişi yeniden yazmıyor;
+            // onu düzeltmek replay'in işi (T11) ve ayrı bir karar. Bu adım
+            // kolayca atlanır — atlanırsa yayının sessizce geçmişi değiştirdiği
+            // bir dünyada yaşadığımızı fark etmeyiz.
+            var stillFailed = await ScalarAsync(
+                $"SELECT count() FROM events WHERE event_id = '{oldEvent}' AND parse_status = 'failed'");
+
+            Assert.Equal("1", stillFailed);
+
+            var reparsed = await ScalarAsync(
+                $"SELECT parser_version FROM events WHERE event_id = '{newEvent}'");
+
+            Assert.Equal("1.1.0", reparsed);
+        }
+        finally
+        {
+            Directory.Delete(repository, recursive: true);
+        }
     }
+
+    /// <summary>
+    /// Taslak deposu, yayın kapısı ve iki kaynaklı katalog yükleyicisi.
+    ///
+    /// <para>
+    /// Repo dizini <b>boş ve geçici</b>: gerçek katalog kullanılsaydı test onun
+    /// içeriğine bağımlı olurdu ve yayınlanan taslağın etkisi 87 satırlık
+    /// gürültünün içinde kaybolurdu.
+    /// </para>
+    /// </summary>
+    private async Task<(ParserAuthoringService Authoring, PublishedParserLoader Loader,
+        ParserCatalog Catalog, string Repository)> BuildAuthoringAsync()
+    {
+        var factory = await DevStackSetup.ControlPlaneAsync(stack, Token);
+
+        await using (var db = await factory.CreateDbContextAsync(Token))
+        {
+            // Taslak tablosu paylaşılıyor; önceki koşumun artığı yayında
+            // kalırsa katalog beklenmedik bir parser taşır.
+            await db.Parsers.ExecuteDeleteAsync(Token);
+        }
+
+        var repository = Path.Combine(Path.GetTempPath(), "bizigo-f2flow-" + Guid.NewGuid().ToString("N")[..8]);
+        Directory.CreateDirectory(repository);
+
+        var compiler = new ParserCompiler(
+            new GrokCompiler(GrokPatternLibrary.LoadWithOverlay(
+                DevStackSetup.RepoPath("catalog/patterns/legacy"),
+                DevStackSetup.RepoPath("catalog/patterns/bizigo-v1"))),
+            MappingTableCatalog.LoadFromDirectory(DevStackSetup.RepoPath("catalog/mappings")));
+
+        var catalog = new ParserCatalog();
+
+        return (
+            new ParserAuthoringService(factory, new ParserPublishGate(compiler), NullLogger<ParserAuthoringService>.Instance),
+            new PublishedParserLoader(
+                factory,
+                catalog,
+                compiler,
+                Options.Create(new Bizigo.Parsing.ParsingOptions { ParserDirectory = repository }),
+                NullLogger<PublishedParserLoader>.Instance),
+            catalog,
+            repository);
+    }
+
+    /// <summary>Taslak → incelemede → yayında. Kapı her iki geçişte de koşuyor.</summary>
+    private async Task PublishAsync(ParserAuthoringService authoring, string yaml)
+    {
+        var draft = await authoring.SaveDraftAsync(null, yaml, "test", Token);
+        Assert.True(draft.Ok, draft.Error);
+
+        var submitted = await authoring.SubmitForReviewAsync(draft.Draft!.Id, Token);
+        Assert.True(submitted.Ok, string.Join(" | ", submitted.Verdict?.Errors ?? [submitted.Error]));
+
+        var published = await authoring.PublishAsync(draft.Draft.Id, Token);
+        Assert.True(published.Ok, string.Join(" | ", published.Verdict?.Errors ?? [published.Error]));
+    }
+
+    private const string EditorParserId = "test.editor.published";
+    private const string EditorLine = "F2FLOW accept 10.0.0.7";
+
+    /// <summary>
+    /// Aynı kimliğin iki sürümü. <c>withSourceIp</c> yanlışken pattern satırın
+    /// sonuna bağlı ve fazladan alanı tanımıyor — v1'in <c>failed</c> vermesinin
+    /// sebebi bu.
+    ///
+    /// <para>Her iki sürüm de <b>kendi</b> gömülü testini taşıyor: kapı testsiz
+    /// parser'ı reddediyor ve v1'in de geçerli bir parser olması gerekiyor,
+    /// yoksa test kapının reddiyle düşer ve yayının etkisine hiç gelemez.</para>
+    /// </summary>
+    private static string EditorParser(string version, bool withSourceIp) => """
+        apiVersion: bizigo.dev/v1
+        kind: Parser
+        metadata:
+          id: test.editor.published
+          version: __VERSION__
+          vendor: Test
+          product: Editor
+        match:
+          transport: [syslog]
+          contains: ["F2FLOW"]
+        pipeline:
+          - grok:
+              field: message
+              patterns:
+                - '__PATTERN__'
+        map:
+          core:
+            action: "{{ action }}"
+        __EXTRA_MAP__
+        tests:
+          - name: temel
+            input: '__TEST_INPUT__'
+            expect:
+              parse_status: ok
+              core.action: "accept"
+        """
+        .Replace("__VERSION__", version, StringComparison.Ordinal)
+        .Replace(
+            "__PATTERN__",
+            withSourceIp ? "^F2FLOW %{WORD:action} %{IPV4:src_ip}$" : "^F2FLOW %{WORD:action}$",
+            StringComparison.Ordinal)
+        .Replace(
+            "__EXTRA_MAP__",
+            withSourceIp ? "    src_ip: \"{{ src_ip }}\"" : string.Empty,
+            StringComparison.Ordinal)
+        .Replace(
+            "__TEST_INPUT__",
+            withSourceIp ? EditorLine : "F2FLOW accept",
+            StringComparison.Ordinal);
+
+    /// <summary>Ayrıştırma sonucunu yazılabilir olaya çeviriyor.</summary>
+    private static LogEvent Parsed(Guid eventId, Parsing.Engine.ParseResult result, string version) => new()
+    {
+        EventId = eventId,
+        Timestamp = Day,
+        IngestedAt = Day,
+        OwnerGroup = Core,
+        SourceId = "fg-core-01",
+        Host = "fw-01",
+        ParseStatus = result.Status,
+        ParserId = EditorParserId,
+        ParserVersion = version,
+        Action = result.Core.GetValueOrDefault("action")?.ToString() ?? string.Empty,
+        SrcIp = IPAddress.IPv6Any,
+        DstIp = IPAddress.IPv6Any,
+        Body = EditorLine,
+    };
 
     // ------------------------------------- F1 ölçümü · kuru koşu = gerçek koşu
 

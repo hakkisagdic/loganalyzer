@@ -8,29 +8,52 @@ import type { SessionRecord } from "@/lib/auth/store";
  * **Gerçek Redis'e karşı** oturum deposu (B7).
  *
  * <p>
- * <b>Bu dosya varsayılan koşumda atlanıyor</b> ve sebebi yazılı: ajanlar
- * Docker'a dokunmuyor (protokol §2), makine 16 GB ve paralel konteyner koşumu
- * onu swap'e sürüklüyor. Testi <b>yazmak</b> ajanın işi, <b>koşturmak</b>
- * koordinatörün.
+ * <b>Bu dosya varsayılan koşumun dışında</b> ve sebebi yazılı: ajanlar Docker'a
+ * dokunmuyor (protokol §2), makine 16 GB ve paralel konteyner koşumu onu swap'e
+ * sürüklüyor. Testi <b>yazmak</b> ajanın işi, <b>koşturmak</b> koordinatörün.
  * </p>
  *
  * <p>
- * Atlama <b>sessiz değil</b>: koşum çıktısında "skipped" olarak görünüyor ve
- * neden atlandığı burada duruyor. Sessizce atlayan bir bekçi, bekçinin
- * kendisinden tehlikeli — bu depoda o desenin bedeli üç kez ödendi.
+ * <b>Dışlama artık yapılandırmada, bu dosyada değil</b> (T27):
+ * <c>vitest.live-tests.ts</c> tek liste, <c>vitest.config.ts</c> onu dışlıyor,
+ * <c>vitest.live.config.ts</c> yalnızca onu topluyor. Eskiden burada bir
+ * <c>describe.skip</c> vardı ve iki bedeli vardı — koşturmak için dosyayı
+ * <b>düzenlemek</b> gerekiyordu (düzenlenmesi gereken bir test, koşturulmayan
+ * bir testtir), ve niyet dosyada dururken gerçek yapılandırmadaydı; bu depoda
+ * o ayrışmanın bedeli bir kez ödendi.
+ * </p>
+ *
+ * <p>
+ * Sessiz değil: <c>tests/test-config.test.ts</c> her koşumda listenin iki
+ * yapılandırmayla da uyuştuğunu sınıyor, yani dosya sessizce hiçbir kümede
+ * kalmıyor.
  * </p>
  *
  * <h3>Koşturmak için</h3>
  *
  * <pre>
- * docker compose -f deploy/docker-compose.yml up -d redis
- * BFF_REDIS_URL=redis://localhost:6379 npx vitest run tests/redis-live.test.ts
+ * docker compose -f deploy/docker-compose.yml up -d redis-session
+ * npm run test:live
  * </pre>
  *
  * <p>
- * <c>describe.skip</c> yerine adres değişkenine bakmıyor olmamız bilinçli:
- * değişkene bağlansaydı, değişken unutulduğunda test <b>sessizce</b> hiç
- * koşmazdı ve yeşil görünürdü.
+ * Redis ayakta değilse test <b>kırmızı yanıyor</b> — kendini atlamıyor.
+ * Protokol §7 üç hâlden ikisine izin veriyor ("o bileşenle koş" ya da "açıkça
+ * dışla"); bu dosya varsayılan koşumda ikincisinde, <c>test:live</c>'da
+ * birincisinde.
+ * </p>
+ *
+ * <p>
+ * Servis adı <b>`redis-session`</b>, düz `redis` değil: compose'da iki Redis
+ * örneği var ve `redis` sidecar'ın Drain3 durumunu tutuyor — kalıcılığı açık.
+ * Oturum deposunu oraya bağlamak token'ları diske yazmak olurdu.
+ * </p>
+ *
+ * <p>
+ * Koşup koşmayacağı <b>adres değişkenine bağlı değil</b> ve bu bilinçli:
+ * <c>BFF_REDIS_URL</c> tanımlıysa koş deseydik, değişken unutulduğunda test
+ * <b>sessizce</b> hiç koşmaz ve yeşil görünürdü. Karar yapılandırmada, ortam
+ * değişkeninde değil.
  * </p>
  *
  * <h3>Koşturulduğunda ne kanıtlıyor</h3>
@@ -46,17 +69,35 @@ import type { SessionRecord } from "@/lib/auth/store";
 
 const URL = process.env.BFF_REDIS_URL ?? "redis://localhost:6379";
 
-describe.skip("gerçek Redis (koordinatör koşturur)", () => {
+describe("gerçek Redis (koordinatör koşturur)", () => {
   let store: RedisSessionStore;
   let second: RedisSessionStore;
   let clients: RedisClient[];
 
-  beforeAll(() => {
+  beforeAll(async () => {
     // İKİ bağlantı: uygulamanın iki kopyası. Paylaşılan depoya geçmenin bütün
     // sebebi bu — birinin yazdığını öbürü görmeli.
     clients = [createRedisClient(URL), createRedisClient(URL)];
     store = new RedisSessionStore(clients[0]!);
     second = new RedisSessionStore(clients[1]!);
+
+    // Bağlantı arka planda kuruluyor. Beklemeden `set` çağırmak, ilk koşumda
+    // tam olarak ÜRÜNÜN kusurunu tekrarlıyordu — ve o kusur artık düzeldi
+    // (`RedisSessionStore` soğuk açılışta bekliyor). Burada yine de açıkça
+    // bekleniyor, çünkü bir bağlantı kurulamadıysa bunun testin ilk
+    // iddiasında değil KURULUMDA görünmesi gerekiyor: "EXPIRE uygulanmıyor"
+    // diyen bir hata, aslında "Redis ayakta değil" demekse yanlış yeri
+    // işaret eder.
+    for (const [index, client] of clients.entries()) {
+      const ready = await client.waitUntilReady(5_000);
+
+      if (!ready) {
+        throw new Error(
+          `Redis'e bağlanılamadı (${index + 1}. istemci, ${URL}). ` +
+            "Ayakta mı? `docker compose -f deploy/docker-compose.yml up -d redis-session`",
+        );
+      }
+    }
   });
 
   afterAll(async () => {

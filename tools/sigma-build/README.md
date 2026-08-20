@@ -15,8 +15,58 @@ Tasarımın tamamı ve kararların gerekçeleri:
 | `gate.py` — Kapı 1: kural SQL'i var olmayan kolona gidiyor mu | ✅ |
 | `manifest.py` — manifest, takaslı yazım, sürüklenme kapısı | ✅ |
 | `compile.py` — tek komut (`--write` / `--check` / `--summary`) | ✅ |
-| `explain_gate.py` — Kapı 2: `EXPLAIN`, kendi CI işinde | ✅ yazıldı, **koşturulmadı** |
-| Kural seti + gerçek derleme | ⏳ T31'i bekliyor |
+| `explain_gate.py` — Kapı 2: `EXPLAIN`, kendi CI işinde | ✅ **koşturuldu** — ilk koşum kapının kendi kusurunu buldu |
+| `ruleset.py` — kural seti çivisi, ağsız doğrulama | ✅ |
+| `golden_gate.py` — Kapı 3: altın örnek, ön kontrol + beyanlar | ✅ yazıldı, **koşturulmadı** |
+| `clickhouse.py` — Kapı 2 ve 3'ün ortak HTTP yüzeyi | ✅ |
+| Kural setinin **yükseltme** yolu (ağ) | ⏳ kapsam kararını bekliyor |
+| Gerçek derleme | ⏳ T31'i bekliyor |
+
+## Kural seti depoda duruyor, indirilmiyor
+
+Kurallar `catalog/sigma/rules/` altında kopyalı, çivi `catalog/sigma/ruleset.json`.
+CI **ağa çıkmıyor**; tek yaptığı kopyanın çiviye uyduğunu doğrulamak.
+
+```bash
+python -m sigma_build.ruleset            # çivinin durumu
+python -m sigma_build.ruleset --verify   # CI kapısı, ağsız
+```
+
+Üç gerekçe:
+
+1. **Ağ, kapının gerekçesi olamaz.** `ci.yml`'ın başında yazılı: `setup-dotnet`
+   `codeload.github.com`'dan iniyordu ve GitHub sınırlandırınca iş kurulumda
+   ölüyordu — ilgisiz bir hata mesajıyla, tek oturumda üç kez.
+2. **Ticket'ın kendi gerekçesi.** "Proje terk edilse bile mevcut kurallar
+   çalışır" ancak kaynak kurallar da depodaysa tam: aksi hâlde SQL kalır ama
+   **yeniden üretilemez**, yani sürüklenme kapısı da koşamaz.
+3. **Kapsam bir liste olmalı, bir filtre değil.** Yukarı akışa karşı çalışan bir
+   filtre, yukarı akış kural eklediğinde korpusu sessizce değiştirir.
+
+Doğrulama üç sürüklenme yönünü **ayrı** raporluyor, çünkü üçünün cevabı farklı:
+eksik dosya (kopyalama yarım), fazla dosya (çiviye girmemiş kural — derlenir ama
+nereden geldiği kayıtsız), değişmiş içerik (elle düzenlenmiş).
+
+Bugün çivi boş: `commit: null`, sıfır kural. Bu "kural yok" değil **"hangi
+sürümden alacağımıza karar verilmedi"** — T30'un kapsam ölçümünü bekliyor.
+Yükseltme yolu bilerek yazılmadı; var olmayan bir komutu mesajlarda anmak, bu
+turda bulunan hatanın (`unmapped_expression()` yazılmış, hiç çağrılmamış) aynısı
+olurdu.
+
+## Üç olay birbirinden ayrılıyor
+
+`python -m sigma_build.compile --summary` iki koşum arasındaki farkı `HEAD`'deki
+manifest'e göre veriyor:
+
+| Alan | Ne söylüyor |
+| --- | --- |
+| `ruleset_changed` + `source_changed` | Kural seti yükseltildi, şu kuralların kaynağı oynadı |
+| `pipeline_changed` | Eşleme değişti — bütün çıktılar yenilendi |
+| `output_changed_without_source_change` | **Kaynağı oynamadan anlamı oynayan kurallar** |
+
+Üçüncüsü asıl bekçi: bir kural seti yükseltmesinde boş olması beklenir, dolu
+çıkarsa yükseltmeyle birlikte başka bir şey daha değişmiştir ve iki değişiklik
+tek diff'te saklanmıştır.
 
 ## Kapı 2 kendini sınıyor
 
@@ -30,15 +80,120 @@ python -m sigma_build.explain_gate --self-test --clickhouse-url http://localhost
 python -m sigma_build.explain_gate --clickhouse-url http://localhost:8123
 ```
 
-Kırmızı yanabildiği **her koşumda** ölçülüyor, bir kez değil. Ve sınav aynı
-zamanda bir ölçüm: iki reddin gerçekleşeceği şu an `0001_events.sql`'den
-okunmuş bir **çıkarım**; ilk koşum onu ya doğrulayacak ya çürütecek.
+Kırmızı yanabildiği **her koşumda** ölçülüyor, bir kez değil.
+
+### İlk koşum kapının kendi kusurunu buldu
+
+Sınav ilk kez koşturulduğunda iki reddin de **kabul** geldiğini bildirdi. İlk
+okuyuşta "tipler tuttu, iddia çürüdü" gibi görünüyor. Değildi:
+
+| Sorgu | `EXPLAIN SYNTAX` | `EXPLAIN` |
+| --- | --- | --- |
+| `connection_info_protocol_name=6` | kabul | **red — Code 386 `NO_COMMON_TYPE`** |
+| `src_endpoint_ip ILIKE '203.0.113.%'` | kabul | **red — Code 43 `ILLEGAL_TYPE_OF_ARGUMENT`** |
+| sağlam sorgu | kabul | kabul |
+
+`EXPLAIN SYNTAX` **tip denetimi yapmıyor** — yalnızca AST'yi yeniden yazıyor.
+Yani kapı, kural seti geldiğinde 24 kuralın hepsini geçirecek ve ikisi üretimde
+patlayacaktı; `KIND_TYPE_MISMATCH` kolu o yoldan asla tetiklenemezdi. Kapı 2'nin
+kapatmak için var olduğu sınıfın kendisi, kapının içinde.
+
+Aynı koşum `0001_events.sql`'den okunan tipleri de doğruladı (`toTypeName` →
+`LowCardinality(String)`, `IPv6`) ve sınıflandırmada ikinci bir boşluk açtı:
+`NO_COMMON_TYPE`'ın metni hiçbir desene uymuyordu, yani tip uyuşmazlığı
+`remedy: unknown` diye etiketleniyordu — **kapanabilir bir iş kalemi "kapanır mı
+bilmiyoruz" kutusunda.** Desen eklendi, testi ölçülen metinle yazıldı.
+
+### Hangi biçim — ölçüldü, seçildi
+
+```bash
+python -m sigma_build.explain_gate --probe-forms --clickhouse-url http://localhost:8123
+```
+
+Canlı 26.7.3, üç sorgu, üç tur:
+
+| Biçim | Ayırt ediyor mu | Sonuçlar |
+| --- | --- | --- |
+| `EXPLAIN` | ✓ | `red, red, kabul` |
+| `EXPLAIN PLAN` | ✓ | `red, red, kabul` |
+| `EXPLAIN ESTIMATE` | ✓ | `red, red, kabul` |
+| `EXPLAIN QUERY TREE` | ✗ | `kabul, red, kabul` — **kısmen** |
+| `EXPLAIN SYNTAX` | ✗ | `kabul, kabul, kabul` |
+
+**Maliyet ayırt edici değil**: ısınma çıkarıldığında üç doğru biçim de
+~12–13 ms/sorgu. 269 kural × ~13 ms ≈ **3,5 saniye** — CI'da bir kalem değil.
+Geriye tek ölçüt olarak doğruluk kalıyor ve o da üçünde eşit, o yüzden en açık
+olanı duruyor. **Biçim seçimi maliyetle gerekçelendirilemez.**
+
+⚠️ İlk ölçüm ısınmasızdı ve `EXPLAIN`'i `EXPLAIN PLAN`'in 2,3 katı gösterdi.
+Çıplak `EXPLAIN` zaten `EXPLAIN PLAN` olduğu için imkânsız bir sonuç; ölçülen şey
+biçim değil **listedeki sıraydı** (§6). Artık her biçimden önce sayılmayan bir
+ısınma turu atılıyor ve turların en hızlısı raporlanıyor.
+
+### `QUERY TREE` — kısmen çalışan bir kapı hiç çalışmayandan tehlikeli
+
+`ILIKE ↔ IPv6`'yı yakalıyor, tamsayı uyuşmazlığını kaçırıyor. Biri "daha ucuz ve
+tip hatasını yakalıyor" diye ona geçseydi kapı `ILIKE` hatalarını yakalamaya
+devam edeceği için **çalışıyor görünürdü**; sessizce geçen tek sınıf tamsayı
+uyuşmazlıkları olurdu. `EXPLAIN SYNTAX` en azından her şeye "kabul" diyerek
+kendini ele veriyordu.
+
+Bu yüzden probe'un ölçütü "üç sonucun **üçü de** beklenen mi" — "en az bir red
+üretti mi" değil. İkisi de aday listesinde **duruyor**: "denedik, olmadı"
+bilgisini silmek, bir sonraki kişinin aynı seçimi aynı gerekçeyle yapmasına kapı
+açardı.
 
 Hata sınıflandırması güvenli tarafa bozuluyor: desenler ClickHouse sürümüyle
 bayatlayabilir, ve bayatladıkları gün tanınmayan hata yine bir engel üretiyor —
 kayıp `kind` çözünürlüğünde, kuralın kapıdan geçmesinde değil. Bağlantı hatası
 ise engel değil **istisna**: ortam bozukken "bütün kurallar kırık" yazdırmak
 ölçüm aracının kendi sessiz yanlışı olurdu.
+
+## Kapı 3 — iki soru, iki ayrı yer
+
+| Soru | Nerede | Neden |
+| --- | --- | --- |
+| Beyan edilmiş kural beklediğini buluyor mu | **Kapı** | Verinin şeklinden bağımsız |
+| Kaç kural bir şey yakalıyor | **Ölçüm** | Verinin şekline bağlı |
+
+*"En az N kural eşleşmeli"* diyen bir kapı, bir vendor'ın payı kaydığında kırmızı
+yanar ve sebebi kural setinde değil **veride** olur. Kapsam raporlanıyor, kapı
+yapılmıyor.
+
+```bash
+python -m sigma_build.golden_gate --shape-only                      # CI, ağsız
+python -m sigma_build.golden_gate --clickhouse-url http://localhost:8123
+python -m sigma_build.golden_gate --discover --clickhouse-url ...   # beyan YAZMAZ, basar
+```
+
+Beyanlar `catalog/sigma/expectations.json`: kural başına `at_least_one` ya da
+`none`, ve **zorunlu gerekçe** — gerekçesiz bir beklenti, kırıldığı gün
+"herhâlde veri değişmiştir" diye gevşetilir.
+
+`none` beklentisi yalnızca yanlış pozitif bekçisi değil, kapının **ayırt
+edebildiğinin kanıtı**: yalnızca `at_least_one`'lardan oluşan bir listeyi her
+şeyi eşleştiren bozuk bir kapı da geçerdi.
+
+Veri yoksa kapı **hiç koşmuyor** (çıkış 3): sorgu hatası, boş tablo ve eksik
+vendor ayrı ayrı raporlanıyor — T30'un protokolü.
+
+`--discover` beyan **yazmıyor**, basıyor. Beyan bir karardır; aracın kendi
+ölçümünden otomatik doğması kapıyı bugünkü davranışın fotoğrafına çevirirdi ve o
+kapı hiçbir şeyi kanıtlamaz.
+
+## Kapı 2 bugün boş dönüyor — bu başarı göstergesi
+
+T31 ölçüldü: `compiled == runs == 21`, eşlenemeyen kuralları derleme aşamasında
+düşürüyor. Yani ClickHouse'a koşmayan tek bir SQL çarpmıyor ve Kapı 2 hiçbir şey
+yakalamıyor.
+
+Kapının bugünkü işi, **T31'in sınıflandırmasının ClickHouse ile aynı fikirde
+olduğunu** doğrulamak. İkisi ayrışırsa bunu başka hiçbir şey görmez: Kapı 1 kolon
+adlarına bakıyor, T31 kendi eşleme tablosuna, ve ikisi de ClickHouse'a sormuyor.
+
+Boş dönen bir bekçinin iki sebebi olabilir — korunan şey sağlam, ya da bekçi kör.
+Kapı 2 için ikisini ayıran şey `--self-test`, ve o kip zaten bir kez kapının
+kendi körlüğünü buldu.
 
 ## `gated` tek sayı değil
 
@@ -211,10 +366,18 @@ On mutasyon uygulandı, her biri en az bir testi düşürdü, sonra geri alınd�
 | Mutasyon | Düşen test |
 | --- | --- |
 | Takas geri alma kaldırıldı | 1 |
+| Pipeline olayı gizlendi (`output_changed_without_source_change`) | 1 |
 | `gated` kural da dosya üretti | 3 |
 | Kapı hedefin üstüne yazdı | 6 |
 | Manifest sırası girdiye bağlandı | 1 |
 | Manifest'e derleme tarihi eklendi | 1 |
+
+`ruleset.py`:
+
+| Mutasyon | Düşen test |
+| --- | --- |
+| Çivide olmayan kural görmezden gelindi | 2 |
+| İçerik özeti karşılaştırılmadı | 2 |
 
 Canlı kapı da ölçüldü: `detections/sigma/` içine bayat bir dosya bırakıldığında
 ve manifest elle bozulduğunda `--check` çıkış kodu 1 veriyor, geri alınınca 0.

@@ -94,7 +94,11 @@ tests:
       fields.fw_chain: "forward"
       fields.packet_len: 78
 
-  - name: kural önekli ve boşluklu arayüz adlı satır
+  # Adı eskiden "kural önekli ve boşluklu arayüz adlı satır"dı; girdide boşluklu
+  # arayüz **yok** (`ether1-gateway`, tireli). Boşluklu arayüz bir sonraki testin
+  # konusu ve orada asıl beklentisiyle duruyor. Ad, bir sonraki testin girdisini
+  # anlatıyordu.
+  - name: kural önekli satır — TCP bayrağı ve tireli arayüz adı
     input: 'Apr  2 19:37:45 172.16.16.5 firewall,info R2 forward: in:bridge_vlan20 out:ether1-gateway, src-mac 98:52:b1:79:31:94, proto TCP (SYN), 172.31.20.200:33976->198.51.100.46:443, len 60'
     expect:
       parse_status: ok

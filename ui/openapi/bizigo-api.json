@@ -1512,6 +1512,242 @@
         }
       }
     },
+    "/v1/rca": {
+      "post": {
+        "tags": [
+          "rca"
+        ],
+        "operationId": "GatherRca",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RcaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RcaReportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "rca"
+        ],
+        "operationId": "ListRcaBundles",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RcaBundleListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/rca/{id}": {
+      "get": {
+        "tags": [
+          "rca"
+        ],
+        "operationId": "GetRcaReport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RcaReportResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/rca/{id}/export": {
+      "get": {
+        "tags": [
+          "rca"
+        ],
+        "operationId": "ExportRcaReport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/markdown": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/rca/{id}/review": {
+      "post": {
+        "tags": [
+          "rca"
+        ],
+        "operationId": "ReviewRcaReport",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RcaReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RcaReviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/alerts/channels": {
       "get": {
         "tags": [
@@ -4729,6 +4965,475 @@
           }
         }
       },
+      "RcaBundleListResponse": {
+        "required": [
+          "bundles"
+        ],
+        "type": "object",
+        "properties": {
+          "bundles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RcaBundleSummaryResponse"
+            }
+          }
+        }
+      },
+      "RcaBundleSummaryResponse": {
+        "required": [
+          "bundle_id",
+          "gathered_at",
+          "window_from",
+          "window_to",
+          "content_hash",
+          "out_of_scope_count",
+          "is_partial"
+        ],
+        "type": "object",
+        "properties": {
+          "bundle_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "gathered_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "window_from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "window_to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "content_hash": {
+            "type": "string"
+          },
+          "out_of_scope_count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "is_partial": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RcaDrilldownFilterResponse": {
+        "required": [
+          "field",
+          "operator",
+          "values"
+        ],
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "operator": {
+            "type": "string"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RcaDrilldownResponse": {
+        "required": [
+          "from",
+          "to",
+          "owner_groups",
+          "source_ids",
+          "full_text",
+          "filters"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "owner_groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "full_text": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "filters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RcaDrilldownFilterResponse"
+            }
+          }
+        }
+      },
+      "RcaFindingResponse": {
+        "required": [
+          "id",
+          "provider_id",
+          "kind",
+          "timestamp",
+          "summary",
+          "payload",
+          "drilldown"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "drilldown": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RcaDrilldownResponse"
+              }
+            ]
+          }
+        }
+      },
+      "RcaReportResponse": {
+        "required": [
+          "bundle_id",
+          "content_hash",
+          "gathered_at",
+          "window",
+          "findings",
+          "timeline",
+          "silent",
+          "not_consulted",
+          "trust",
+          "out_of_scope_count",
+          "is_partial",
+          "review"
+        ],
+        "type": "object",
+        "properties": {
+          "bundle_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "content_hash": {
+            "type": "string"
+          },
+          "gathered_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "window": {
+            "$ref": "#/components/schemas/RcaWindowResponse"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RcaFindingResponse"
+            }
+          },
+          "timeline": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RcaFindingResponse"
+            }
+          },
+          "silent": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RcaSliceResponse"
+            }
+          },
+          "not_consulted": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RcaSliceResponse"
+            }
+          },
+          "trust": {
+            "$ref": "#/components/schemas/RcaTrustResponse"
+          },
+          "out_of_scope_count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "is_partial": {
+            "type": "boolean"
+          },
+          "review": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RcaReviewResponse"
+              }
+            ]
+          }
+        }
+      },
+      "RcaRequest": {
+        "required": [
+          "from",
+          "to",
+          "baseline_from",
+          "baseline_to"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "baseline_from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "baseline_to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "owner_groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RcaReviewRequest": {
+        "required": [
+          "verdict"
+        ],
+        "type": "object",
+        "properties": {
+          "verdict": {
+            "type": "string"
+          },
+          "contradicting_evidence": {
+            "type": "string"
+          },
+          "actual_root_cause": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "RcaReviewResponse": {
+        "required": [
+          "id",
+          "bundle_id",
+          "reviewed_at",
+          "verdict",
+          "contradicting_evidence",
+          "reviewer",
+          "actual_root_cause",
+          "note"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bundle_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reviewed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "verdict": {
+            "type": "string"
+          },
+          "contradicting_evidence": {
+            "type": "string"
+          },
+          "reviewer": {
+            "type": "string"
+          },
+          "actual_root_cause": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "RcaSliceResponse": {
+        "required": [
+          "provider_id",
+          "kind",
+          "status",
+          "detail",
+          "item_count",
+          "truncated"
+        ],
+        "type": "object",
+        "properties": {
+          "provider_id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "item_count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RcaTrustResponse": {
+        "required": [
+          "measured",
+          "total_events",
+          "unreliable_time_events",
+          "unreliable_ratio"
+        ],
+        "type": "object",
+        "properties": {
+          "measured": {
+            "type": "boolean"
+          },
+          "total_events": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "unreliable_time_events": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "unreliable_ratio": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "RcaWindowResponse": {
+        "required": [
+          "from",
+          "to",
+          "baseline_from",
+          "baseline_to",
+          "owner_groups",
+          "source_ids"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "baseline_from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "baseline_to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "owner_groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "ReplayBlockedResponse": {
         "required": [
           "error",
@@ -5243,6 +5948,9 @@
     },
     {
       "name": "alerts"
+    },
+    {
+      "name": "rca"
     }
   ]
 }

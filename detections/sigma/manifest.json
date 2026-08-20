@@ -2,19 +2,323 @@
   "_comment": "ÜRETİLMİŞ DOSYA — elle düzenlemeyin. Üretici: tools/sigma-build. Derleme tarihi BİLEREK yok: sürüklenme kapısı birebir bayt karşılaştırıyor ve her koşumda değişen bir alan kapıyı imkânsız kılar. 'Ne zaman derlendi' sorusunun cevabı `git log` bu dosyada.",
   "run": {
     "view": "events_ocsf",
-    "ruleset_commit": null,
-    "pipeline_version": null,
-    "pipeline_sha": null,
-    "pysigma_version": null,
-    "backend_version": null
+    "ruleset_commit": "t30-ornekleminden-terfi",
+    "pipeline_version": "bizigo-events-ocsf/fa56f2121e9b",
+    "pipeline_sha": "sha256:fa56f2121e9bf35752eb2c65d4a68055f8e818f940100a42f1c1796c71ea46a5",
+    "pysigma_version": "1.5.0",
+    "backend_version": "1.1.1"
   },
   "counts": {
-    "total": 0,
-    "written": 0,
-    "gated": 0,
-    "gated_closeable": 0,
+    "total": 24,
+    "written": 21,
+    "gated": 3,
+    "gated_closeable": 3,
     "gated_upstream": 0,
     "failed": 0
   },
-  "rules": []
+  "rules": [
+    {
+      "rule_id": "03702803-0000-4000-8000-000000000000",
+      "title": "FortiGate: kimlik doğrulama hatası",
+      "source_path": "catalog/sigma/rules/fortigate_user_auth_fail.yml",
+      "source_sha": "sha256:d22bf875d663afd7eb443c12b2d892b641cb5ff3257a63242d172adb58bf68ed",
+      "logsource": {
+        "category": "firewall",
+        "product": "fortigate"
+      },
+      "status": "written",
+      "output_sha": "sha256:f6bc791636facd99c8e49057d3326b5fffdebae5536725425c94b93e65634381"
+    },
+    {
+      "rule_id": "06977082-0000-4000-8000-000000000000",
+      "title": "nginx: tarayıcı user-agent",
+      "source_path": "catalog/sigma/rules/nginx_scanner_agent.yml",
+      "source_sha": "sha256:e30aa8a3baa78b8f2a033b92e5227cf11c91f4fa6f68cbd0c327e72df59e88e7",
+      "logsource": {
+        "category": "firewall",
+        "product": "nginx"
+      },
+      "status": "written",
+      "output_sha": "sha256:d236b95a5bcd1b90b01b287b3642a3cd24d9a12c906796db1f7833e6ade60247"
+    },
+    {
+      "rule_id": "07131427-0000-4000-8000-000000000000",
+      "title": "MikroTik: Winbox erişimi",
+      "source_path": "catalog/sigma/rules/routeros_winbox_access.yml",
+      "source_sha": "sha256:efada6f9199ca8e0242e9a779f9ae02a219e825f4f8019a2b831f407241d69c9",
+      "logsource": {
+        "category": "network_connection",
+        "product": "routeros"
+      },
+      "status": "written",
+      "output_sha": "sha256:39f0c0522e1c6ac9069d02135d2674377dd31c1e8dd3aaa0d5d4f55150f58fdf"
+    },
+    {
+      "rule_id": "07883503-0000-4000-8000-000000000000",
+      "title": "Cisco ASA: RST ile kapanan oturum",
+      "source_path": "catalog/sigma/rules/asa_teardown_rst.yml",
+      "source_sha": "sha256:a494c1150e9299234c656d424910472c731f7297be3c00a87c9fc56482e06053",
+      "logsource": {
+        "category": "network_connection",
+        "product": "asa"
+      },
+      "status": "written",
+      "output_sha": "sha256:6af561e3421867b6f09ed1ad6566e14915d0e3c7bdb2e236552e11c13cc45aac"
+    },
+    {
+      "rule_id": "14477452-0000-4000-8000-000000000000",
+      "title": "Cisco ASA: VPN oturum açma",
+      "source_path": "catalog/sigma/rules/asa_vpn_login.yml",
+      "source_sha": "sha256:3bd9645df58dc8b1effa5fe4e6200445ec1c6be39bb555b927433d224973dee9",
+      "logsource": {
+        "category": "firewall",
+        "product": "asa"
+      },
+      "status": "written",
+      "output_sha": "sha256:b6da23e9eee3d8b6b0640b2666496cd12691764045c7a5a56ea47b8913e95c3d"
+    },
+    {
+      "rule_id": "14644215-0000-4000-8000-000000000000",
+      "title": "nginx: şüpheli Host başlığı (DNS rebinding)",
+      "source_path": "catalog/sigma/rules/nginx_dns_rebind.yml",
+      "source_sha": "sha256:706a5f29ef35b03941f6085541d187f56120ff6658ac69d62980ef0a7acdbdaa",
+      "logsource": {
+        "category": "webserver",
+        "product": "nginx"
+      },
+      "status": "written",
+      "output_sha": "sha256:5bf50a88c930be5be083eb22546b229e860466b1ca42c906e13300b3cb246386"
+    },
+    {
+      "rule_id": "17828938-0000-4000-8000-000000000000",
+      "title": "FortiGate: reddedilen bağlantı sağanağı",
+      "source_path": "catalog/sigma/rules/fortigate_denied_burst.yml",
+      "source_sha": "sha256:6f11b2771471d30de9d51874198d65ab49b8c2ffeb097686ea846210b1360b7e",
+      "logsource": {
+        "category": "firewall",
+        "product": "fortigate"
+      },
+      "status": "written",
+      "output_sha": "sha256:596bf0bcbb7100be722698bafbd176314d23c45c01c5bca38590751524449c25"
+    },
+    {
+      "rule_id": "19506570-0000-4000-8000-000000000000",
+      "title": "Cisco ASA: ACL eşleşmesi",
+      "source_path": "catalog/sigma/rules/asa_acl_hit.yml",
+      "source_sha": "sha256:3e01ad0e6b8bf50389c7c36190e27762980674d34d252cd87f51e0b8afc512a0",
+      "logsource": {
+        "category": "firewall",
+        "product": "asa"
+      },
+      "status": "written",
+      "output_sha": "sha256:8dd3017728ab2f95761ec2a9eae959a59f1643d3659e64d544c90a1b265117e7"
+    },
+    {
+      "rule_id": "21011482-0000-4000-8000-000000000000",
+      "title": "nginx: 5xx sağanağı",
+      "source_path": "catalog/sigma/rules/nginx_5xx_burst.yml",
+      "source_sha": "sha256:98c544d16cb0cbdfc1cfd04f876d49eef6d0e4dc92030ce936721d85bd9c07af",
+      "logsource": {
+        "category": "firewall",
+        "product": "nginx"
+      },
+      "status": "written",
+      "output_sha": "sha256:6067561f8ea33f450c92a78d1068dd16a24dd2c99133c386f4daded0234b562f"
+    },
+    {
+      "rule_id": "21934394-0000-4000-8000-000000000000",
+      "title": "Cisco ASA: içeri reddedilen paket",
+      "source_path": "catalog/sigma/rules/asa_deny_inbound.yml",
+      "source_sha": "sha256:02d0ff433f966396e901ef13204783c31f23c74c5c0d4b597715fd6fe8673cb2",
+      "logsource": {
+        "category": "firewall",
+        "product": "asa"
+      },
+      "status": "written",
+      "output_sha": "sha256:d21a0f47623d7db7867d3ef94cd38a4d78480a625fbb39ccf405cb0cdfe18e23"
+    },
+    {
+      "rule_id": "25520785-0000-4000-8000-000000000000",
+      "title": "Cisco ASA: ICMP sağanağı",
+      "source_path": "catalog/sigma/rules/asa_icmp_flood.yml",
+      "source_sha": "sha256:69074f0cfbef67f7c6e28e3cd5e421f61d6877147a674fa10b528e9e14d6c904",
+      "logsource": {
+        "category": "network_connection",
+        "product": "asa"
+      },
+      "status": "written",
+      "output_sha": "sha256:094b5a29b9bbfff5d04e9c201d6f2c5320974ef69df49263ed0e7961e55ab225"
+    },
+    {
+      "rule_id": "33839694-0000-4000-8000-000000000000",
+      "title": "MikroTik: yeni forward zincirinde TCP bağlantısı",
+      "source_path": "catalog/sigma/rules/routeros_forward_new.yml",
+      "source_sha": "sha256:91a9ba46ba5a00ddda6b0cfbea03d81193c78f64f0711aba4aa047d497015dc7",
+      "logsource": {
+        "category": "network_connection",
+        "product": "routeros"
+      },
+      "status": "written",
+      "output_sha": "sha256:c6cd861640d0bb28fc954bc09c36cad9301978f12af535e682bcde8d0a6d34c4"
+    },
+    {
+      "rule_id": "34775915-0000-4000-8000-000000000000",
+      "title": "FortiGate: yüksek porta tarama",
+      "source_path": "catalog/sigma/rules/fortigate_high_port_scan.yml",
+      "source_sha": "sha256:f4b0a995a26509f220d09c7d438da37da82f40b11e8d7a8b2a37fa235b9c5878",
+      "logsource": {
+        "category": "network_connection",
+        "product": "fortigate"
+      },
+      "status": "written",
+      "output_sha": "sha256:45746a842e7f76b28d6b647fe381568d903b8d32e48183bf4a912c7a52a6b828"
+    },
+    {
+      "rule_id": "43129827-0000-4000-8000-000000000000",
+      "title": "FortiGate: yasaklı kategori",
+      "source_path": "catalog/sigma/rules/fortigate_blocked_category.yml",
+      "source_sha": "sha256:0084052ff19e61a2b39cae89addaf2b30412b10ab9a099c8b3e3230c42893481",
+      "logsource": {
+        "category": "firewall",
+        "product": "fortigate"
+      },
+      "status": "written",
+      "output_sha": "sha256:4d33c9439e5170d124df38f36fbe5f1d9a13f039555919522e1881ca2f1e2b81"
+    },
+    {
+      "rule_id": "50087630-0000-4000-8000-000000000000",
+      "title": "MikroTik: DHCP teklifi",
+      "source_path": "catalog/sigma/rules/routeros_dhcp_offer.yml",
+      "source_sha": "sha256:960ecd6660ac2d764e7023576c9f721dd6bb35d15473ed27958e82fbd0b81684",
+      "logsource": {
+        "category": "network_connection",
+        "product": "routeros"
+      },
+      "status": "written",
+      "output_sha": "sha256:46dd19911bacf757682308465252f1b5a0ba098ed9b63605636c05d78be9790e"
+    },
+    {
+      "rule_id": "52776632-0000-4000-8000-000000000000",
+      "title": "FortiGate: WAN'dan yönetim portuna erişim",
+      "source_path": "catalog/sigma/rules/fortigate_admin_from_wan.yml",
+      "source_sha": "sha256:f052b62beb91c442837c1184f0f965dd90ff0ae750c5ad808a2b099a12ff86dd",
+      "logsource": {
+        "category": "firewall",
+        "product": "fortigate"
+      },
+      "status": "written",
+      "output_sha": "sha256:2964189b23c0b673fb31a206c0783b6db1824e66291c422590be5a7b27e43502"
+    },
+    {
+      "rule_id": "56293354-0000-4000-8000-000000000000",
+      "title": "nginx: yönetim yoluna istek",
+      "source_path": "catalog/sigma/rules/nginx_admin_path.yml",
+      "source_sha": "sha256:7dd3fb47f38dcd39f645e7c09417cac92d19760d6f692b3973875bf7d0bc4b4f",
+      "logsource": {
+        "category": "firewall",
+        "product": "nginx"
+      },
+      "status": "written",
+      "output_sha": "sha256:f3bb394ee48049eb4848011f1861b933e0cbd4ec1c119e02e893d09a2f92d462"
+    },
+    {
+      "rule_id": "58613739-0000-4000-8000-000000000000",
+      "title": "Cisco ASA: dışa açılan bağlantı",
+      "source_path": "catalog/sigma/rules/asa_outbound_built.yml",
+      "source_sha": "sha256:f9c1e86ce58620045a4ffe8d34b69f746cfaa18b0875518a12612790f9cf6287",
+      "logsource": {
+        "category": "network_connection",
+        "product": "asa"
+      },
+      "status": "written",
+      "output_sha": "sha256:73ed427c5dbf7ce36ee37f926de3d2b3fb07abc2d673efc821d788eaff6c7f1b"
+    },
+    {
+      "rule_id": "73633522-0000-4000-8000-000000000000",
+      "title": "MikroTik: başarısız giriş",
+      "source_path": "catalog/sigma/rules/routeros_login_failure.yml",
+      "source_sha": "sha256:91f92732f0c777c94ffba436865c9240db06806cd5ca4048f49f4a88aaa009ba",
+      "logsource": {
+        "category": "firewall",
+        "product": "routeros"
+      },
+      "status": "written",
+      "output_sha": "sha256:112ab5c106d7762f7a310b602ec163c2627b6befb45765f3b369bcf27973e343"
+    },
+    {
+      "rule_id": "75335998-0000-4000-8000-000000000000",
+      "title": "FortiGate: uzun DNS sorgusu",
+      "source_path": "catalog/sigma/rules/fortigate_dns_tunnel.yml",
+      "source_sha": "sha256:b362f46d9abe26c37abd1860bc6a1561c33b606ea79ff61e3a5fbd208f6dc6e4",
+      "logsource": {},
+      "status": "gated",
+      "gate": "column_existence",
+      "blockers": [
+        {
+          "kind": "unknown_column",
+          "message": "`dns_query_name` bu şemada eşlenemiyor: Hiçbir parser DNS sorgu adı üretmiyor. FortiGate `traffic`/`event` ve MikroTik `system`/`firewall` parser'larında DNS alanı yok. Kapatmak için önce bir DNS parser'ı gerekiyor.",
+          "remedy": "schema",
+          "column": "dns_query_name"
+        }
+      ]
+    },
+    {
+      "rule_id": "78576261-0000-4000-8000-000000000000",
+      "title": "MikroTik: input zincirinde düşürme",
+      "source_path": "catalog/sigma/rules/routeros_drop_input.yml",
+      "source_sha": "sha256:436a6f0a59dba9b1de31ec2e6cb0951c2bc3051d5749072e9fc1ba88f10cdebd",
+      "logsource": {},
+      "status": "gated",
+      "gate": "column_existence",
+      "blockers": [
+        {
+          "kind": "unknown_column",
+          "message": "`action` → `activity_name` bu vendor'da her zaman boş; parser onu bilerek doldurmuyor",
+          "remedy": "schema",
+          "column": "action"
+        }
+      ]
+    },
+    {
+      "rule_id": "81341084-0000-4000-8000-000000000000",
+      "title": "nginx: büyük yükleme",
+      "source_path": "catalog/sigma/rules/nginx_large_upload.yml",
+      "source_sha": "sha256:d0fed53fbf57cd316d07f941e2abf653632248bf252e2ea29749a62d32e361ac",
+      "logsource": {
+        "category": "network_connection",
+        "product": "nginx"
+      },
+      "status": "written",
+      "output_sha": "sha256:16939f8453e6862d427e9d93ce207b7a1586fe2064d7f766750d50bd9ab42d6d"
+    },
+    {
+      "rule_id": "84223564-0000-4000-8000-000000000000",
+      "title": "MikroTik: DNS isteği",
+      "source_path": "catalog/sigma/rules/routeros_dns_request.yml",
+      "source_sha": "sha256:e45383ffeebd4d9f3934f9d29a640eab2ebc4bd0dfef67acde3d071b36b55295",
+      "logsource": {},
+      "status": "gated",
+      "gate": "column_existence",
+      "blockers": [
+        {
+          "kind": "unknown_column",
+          "message": "`dns_query_name` bu şemada eşlenemiyor: Hiçbir parser DNS sorgu adı üretmiyor. FortiGate `traffic`/`event` ve MikroTik `system`/`firewall` parser'larında DNS alanı yok. Kapatmak için önce bir DNS parser'ı gerekiyor.",
+          "remedy": "schema",
+          "column": "dns_query_name"
+        }
+      ]
+    },
+    {
+      "rule_id": "86872380-0000-4000-8000-000000000000",
+      "title": "nginx: SQL enjeksiyon denemesi",
+      "source_path": "catalog/sigma/rules/nginx_sqli_probe.yml",
+      "source_sha": "sha256:c672b2ca247dd6b7d8ef7185d2d9df0f79da85a7c17355127c2497fe02b19a27",
+      "logsource": {
+        "category": "firewall",
+        "product": "nginx"
+      },
+      "status": "written",
+      "output_sha": "sha256:a6491c600ff004d64a4c7ff87849242bb0c98eee8bbd630608b6b73ce3d36e11"
+    }
+  ]
 }

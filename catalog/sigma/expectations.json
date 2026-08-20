@@ -1,0 +1,59 @@
+{
+  "_comment": "Kural başına beklenen altın örnek sonucu. Kapı 3 bunları canlı ClickHouse'a karşı doğruluyor. KAPSAM SAYISI BURADA DEĞİL: kapsam verinin şekline bağlı ve kapı yapılırsa bir vendor'ın payı kaydığında kırmızı yanar.",
+  "expectations": [
+    {
+      "rule_id": "07131427-0000-4000-8000-000000000000",
+      "file_name": "07131427-0000-4000-8000-000000000000.sql",
+      "expect": "none",
+      "why": "routeros_winbox_access — kural `dst_endpoint_port=8291` arıyor ve `8291` MikroTik örneklerinin İKİSİNDE DE hiç geçmiyor (firewall.log 0, system.log 0). Yanlış pozitif bekçisi: bu kural satır döndürürse ya port eşlemesi ya vendor daraltması bozulmuştur."
+    },
+    {
+      "rule_id": "07883503-0000-4000-8000-000000000000",
+      "file_name": "07883503-0000-4000-8000-000000000000.sql",
+      "expect": "at_least_one",
+      "why": "asa_teardown_rst — catalog/parsers/cisco.asa/samples/network.log içinde `Teardown` VE `Reset` aynı satırda 2 kez geçiyor (`... duration 0:01:07 bytes 38110 TCP Reset-I`). `RST` neden ARANMIYOR: ASA sıfırlamayı `Reset-I`/`Reset-O` diye yazıyor, `RST` diye hiç yazmıyor. Kuralın eski hâli `RST` arıyordu ve örneklerde yalnızca `first` ile `burst` sözcüklerinin içine denk geliyordu — yani eşleşiyordu ama tamamen yanlış sebeple. Bu satır, altı ay sonra `RST` daha genel diye geri koymak isteyecek kişiye cevap. `Reset-I` değil `Reset` aranıyor: `-I`/`-O` yön eki ve kural yönü umursamıyor — örneklemde `Reset-I` 2, `Reset-O` 0 kez geçiyor, yani yöne bağlamak bugün çalışır ama kuralın sormadığı bir şeyi sormuş olurdu."
+    },
+    {
+      "rule_id": "17828938-0000-4000-8000-000000000000",
+      "file_name": "17828938-0000-4000-8000-000000000000.sql",
+      "expect": "at_least_one",
+      "why": "fortigate_denied_burst — catalog/parsers/fortinet.fortigate/samples/traffic.log içinde action=\"blocked\" VE dstport=443 taşıyan 1 satır var. Beyan bilerek o tek satıra dayanıyor: `blocked` 2 satırda, `dstport=443` 5 satırda geçiyor ama kural ikisini AND ile bağlıyor, yani önemli olan kesişim."
+    },
+    {
+      "rule_id": "21934394-0000-4000-8000-000000000000",
+      "file_name": "21934394-0000-4000-8000-000000000000.sql",
+      "expect": "none",
+      "why": "asa_deny_inbound — kural `activity_name='Deny' AND dst_endpoint_port=445` arıyor; `445` cisco.asa/samples/network.log içinde hiç geçmiyor. Örnekte `Deny tcp` satırları VAR, yani bu beklenti `activity_name` koşulunu değil **port koşulunu** sınıyor — ikisi AND ile bağlı ve biri tutmuyor."
+    },
+    {
+      "rule_id": "25520785-0000-4000-8000-000000000000",
+      "file_name": "25520785-0000-4000-8000-000000000000.sql",
+      "expect": "at_least_one",
+      "why": "asa_icmp_flood — catalog/parsers/cisco.asa/samples/network.log içinde ICMP geçen 2 satır var. Kural yalnızca `connection_info_protocol_name='icmp'` arıyor, başka koşulu yok."
+    },
+    {
+      "rule_id": "33839694-0000-4000-8000-000000000000",
+      "file_name": "33839694-0000-4000-8000-000000000000.sql",
+      "expect": "at_least_one",
+      "why": "routeros_forward_new — catalog/parsers/mikrotik.routeros/samples/firewall.log içinde `firewall,info forward:` VE `proto TCP` taşıyan 3 satır var (ör. satır 4: `proto TCP (SYN), 10.0.0.91:45572->198.51.100.101:443`). Kural `activity_name='forward' AND connection_info_protocol_name='tcp'` arıyor; küçük harfe çevirme `catalog/mappings/ip_proto_name.yaml` üzerinden."
+    },
+    {
+      "rule_id": "43129827-0000-4000-8000-000000000000",
+      "file_name": "43129827-0000-4000-8000-000000000000.sql",
+      "expect": "at_least_one",
+      "why": "fortigate_blocked_category — catalog/parsers/fortinet.fortigate/samples/traffic.log içinde `/config/` geçen tek satır aynı zamanda action=\"blocked\" taşıyor. Kural URL'ye unmapped['otel.url.path'] üzerinden bakıyor (kolon değil Map erişimi), yani bu beyan aynı zamanda `unmapped` yolunun canlıda çalıştığını sınıyor."
+    },
+    {
+      "rule_id": "58613739-0000-4000-8000-000000000000",
+      "file_name": "58613739-0000-4000-8000-000000000000.sql",
+      "expect": "at_least_one",
+      "why": "asa_outbound_built — catalog/parsers/cisco.asa/samples/network.log içinde `Built` ve `TCP` AYNI satırda 4 kez geçiyor (ör. `Built outbound TCP connection ...`). Kural `activity_name='Built' AND connection_info_protocol_name='tcp'` arıyor; ikisi de aynı olaydan geliyor."
+    }
+  ],
+  "undeclared": [
+    {
+      "rule_id": "14644215-0000-4000-8000-000000000000",
+      "why": "nginx_dns_rebind — kural `hostname|contains: localhost/127.0.0.1/169.254.169.254` arıyor. catalog/parsers/nginx.access/samples/combined.log içinde `localhost` YALNIZCA referrer alanında (`\"http://localhost:8080/\"`), `127.0.0.1` YALNIZCA remote_ip konumunda; combined format zaten Host başlığı taşımıyor. Yani `device_hostname`'in bu satırlarda ne olduğu örnek dosyadan okunamıyor ve tahminle beyan yazmak kapıyı yanlış sebeple kırmızı yakardı. `--discover` kuralı boş buldu; okuma ölçümle örtüştü. Beyan, kuralın `access-json.log`'a mı bakması gerektiği kararından sonra yazılacak."
+    }
+  ]
+}

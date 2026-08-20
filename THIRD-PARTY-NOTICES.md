@@ -37,3 +37,18 @@ file copy.
 Runtime and build-time dependencies are declared in
 [`Directory.Packages.props`](Directory.Packages.props) and are not redistributed
 in source form. Their licenses are available on nuget.org.
+
+## catalog/sigma/ — bugün üçüncü taraf DEĞİL
+
+Buradaki 24 Sigma kuralı **bizim** (T30 örnekleminden terfi ettirildi) ve çivi
+bunu söylüyor: `catalog/sigma/ruleset.json` → `source: "bizigo/prototip"`.
+Dolayısıyla bugün bu bölümde bildirilecek bir üçüncü taraf malzemesi yok.
+
+**Gerçek SigmaHQ alt kümesi çivilendiğinde burası doldurulmalı.** O gün
+bakılacak şey: SigmaHQ kuralları **Detection Rule License** (DRL) altında —
+Apache/MIT değil — ve DRL yeniden dağıtım için atıf istiyor. `catalog/patterns/`
+zaten aynı deseni izliyor (logstash grok pattern'leri, yukarıda kayıtlı), yani
+biçim orada hazır: kaynak deposu, sürüm/commit, lisans adı.
+
+Bu not, o günü yaşayan kişinin soruyu sıfırdan sormaması için duruyor.
+

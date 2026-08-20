@@ -1,0 +1,25 @@
+title: "Cisco ASA: RST ile kapanan oturum"
+id: 07883503-0000-4000-8000-000000000000
+status: experimental
+description: T30 ölçüm örneklemi — F1 kataloğunun tanıdığı vendor'lara göre yazıldı.
+logsource:
+  category: network_connection
+  product: asa
+detection:
+  selection:
+    # `|all` ŞART: düz bir liste Sigma'da OR'dur ve burada AND isteniyor.
+    # Listeye almak, tekrarlanan anahtarın yaptığının kardeşi olurdu — metinsel
+    # olarak geçerli, anlamsal olarak sessizce başka bir kural.
+    #
+    # `Reset`, `Reset-I` DEĞİL: `-I` yön eki (inbound), `-O` da var ve kural
+    # yönü umursamıyor. Yöne bağlamak, kuralın sormadığı bir şeyi sormak olurdu.
+    #
+    # `RST` kaldırıldı: ASA sıfırlamayı `Reset-I`/`Reset-O` diye yazıyor, `RST`
+    # diye HİÇ yazmıyor. Eski hâli örneklerde yalnızca `first` ve `burst`
+    # sözcüklerinin içine denk geliyordu — yani kural eşleşiyordu ama
+    # tamamen yanlış sebeple.
+    message|contains|all:
+      - 'Teardown'
+      - 'Reset'
+  condition: selection
+level: medium

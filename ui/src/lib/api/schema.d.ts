@@ -631,6 +631,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/rca": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListRcaBundles"];
+        put?: never;
+        post: operations["GatherRca"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rca/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetRcaReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rca/{id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExportRcaReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/rca/{id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReviewRcaReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/alerts/channels": {
         parameters: {
             query?: never;
@@ -1440,6 +1504,128 @@ export interface components {
             tests: components["schemas"]["ParserTestCaseResponse"][];
             errors: string[];
             warnings: string[];
+        };
+        RcaBundleListResponse: {
+            bundles: components["schemas"]["RcaBundleSummaryResponse"][];
+        };
+        RcaBundleSummaryResponse: {
+            /** Format: uuid */
+            bundle_id: string;
+            /** Format: date-time */
+            gathered_at: string;
+            /** Format: date-time */
+            window_from: string;
+            /** Format: date-time */
+            window_to: string;
+            content_hash: string;
+            /** Format: int64 */
+            out_of_scope_count: number | string;
+            is_partial: boolean;
+        };
+        RcaDrilldownFilterResponse: {
+            field: string;
+            operator: string;
+            values: string[];
+        };
+        RcaDrilldownResponse: {
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            owner_groups: string[];
+            source_ids: string[];
+            full_text: null | string;
+            filters: components["schemas"]["RcaDrilldownFilterResponse"][];
+        };
+        RcaFindingResponse: {
+            id: string;
+            provider_id: string;
+            kind: string;
+            /** Format: date-time */
+            timestamp: string;
+            summary: string;
+            payload: {
+                [key: string]: string;
+            };
+            drilldown: null | components["schemas"]["RcaDrilldownResponse"];
+        };
+        RcaReportResponse: {
+            /** Format: uuid */
+            bundle_id: string;
+            content_hash: string;
+            /** Format: date-time */
+            gathered_at: string;
+            window: components["schemas"]["RcaWindowResponse"];
+            findings: components["schemas"]["RcaFindingResponse"][];
+            timeline: components["schemas"]["RcaFindingResponse"][];
+            silent: components["schemas"]["RcaSliceResponse"][];
+            not_consulted: components["schemas"]["RcaSliceResponse"][];
+            trust: components["schemas"]["RcaTrustResponse"];
+            /** Format: int64 */
+            out_of_scope_count: number | string;
+            is_partial: boolean;
+            review: null | components["schemas"]["RcaReviewResponse"];
+        };
+        RcaRequest: {
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            /** Format: date-time */
+            baseline_from: string;
+            /** Format: date-time */
+            baseline_to: string;
+            owner_groups?: string[];
+            source_ids?: string[];
+        };
+        RcaReviewRequest: {
+            verdict: string;
+            contradicting_evidence?: string;
+            actual_root_cause?: string;
+            note?: string;
+        };
+        RcaReviewResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            bundle_id: string;
+            /** Format: date-time */
+            reviewed_at: string;
+            verdict: string;
+            contradicting_evidence: string;
+            reviewer: string;
+            actual_root_cause: string;
+            note: string;
+        };
+        RcaSliceResponse: {
+            provider_id: string;
+            kind: string;
+            status: string;
+            detail: string;
+            /** Format: int32 */
+            item_count: number | string;
+            truncated: boolean;
+        };
+        RcaTrustResponse: {
+            measured: boolean;
+            /** Format: int64 */
+            total_events: number | string;
+            /** Format: int64 */
+            unreliable_time_events: number | string;
+            /** Format: double */
+            unreliable_ratio: null | number | string;
+        };
+        RcaWindowResponse: {
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            /** Format: date-time */
+            baseline_from: string;
+            /** Format: date-time */
+            baseline_to: string;
+            owner_groups: string[];
+            source_ids: string[];
         };
         ReplayBlockedResponse: {
             error: string;
@@ -2750,6 +2936,185 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AlertingStatsResponse"];
+                };
+            };
+        };
+    };
+    ListRcaBundles: {
+        parameters: {
+            query?: {
+                limit?: number | string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RcaBundleListResponse"];
+                };
+            };
+        };
+    };
+    GatherRca: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RcaRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RcaReportResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    GetRcaReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RcaReportResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    ExportRcaReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/markdown": string;
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    ReviewRcaReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RcaReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RcaReviewResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

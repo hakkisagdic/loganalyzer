@@ -1,0 +1,104 @@
+{
+  "_comment": "Kural setinin çivisi. Kurallar catalog/sigma/rules/ altında KOPYALI; CI ağa çıkmıyor, yalnızca bu dosyadaki özetlerin tuttuğunu doğruluyor. Yükseltme elle yapılıyor ve henüz yazılmadı: hangi kuralların kopyalanacağı T30'un kapsam ölçümüne bağlı.",
+  "source": "bizigo/prototip (prototypes/t30-sigma/rules)",
+  "commit": "t30-ornekleminden-terfi",
+  "license": "MIT (bizigo)",
+  "rules": [
+    {
+      "path": "asa_acl_hit.yml",
+      "sha256": "sha256:3e01ad0e6b8bf50389c7c36190e27762980674d34d252cd87f51e0b8afc512a0"
+    },
+    {
+      "path": "asa_deny_inbound.yml",
+      "sha256": "sha256:02d0ff433f966396e901ef13204783c31f23c74c5c0d4b597715fd6fe8673cb2"
+    },
+    {
+      "path": "asa_icmp_flood.yml",
+      "sha256": "sha256:69074f0cfbef67f7c6e28e3cd5e421f61d6877147a674fa10b528e9e14d6c904"
+    },
+    {
+      "path": "asa_outbound_built.yml",
+      "sha256": "sha256:f9c1e86ce58620045a4ffe8d34b69f746cfaa18b0875518a12612790f9cf6287"
+    },
+    {
+      "path": "asa_teardown_rst.yml",
+      "sha256": "sha256:a494c1150e9299234c656d424910472c731f7297be3c00a87c9fc56482e06053"
+    },
+    {
+      "path": "asa_vpn_login.yml",
+      "sha256": "sha256:3bd9645df58dc8b1effa5fe4e6200445ec1c6be39bb555b927433d224973dee9"
+    },
+    {
+      "path": "fortigate_admin_from_wan.yml",
+      "sha256": "sha256:f052b62beb91c442837c1184f0f965dd90ff0ae750c5ad808a2b099a12ff86dd"
+    },
+    {
+      "path": "fortigate_blocked_category.yml",
+      "sha256": "sha256:0084052ff19e61a2b39cae89addaf2b30412b10ab9a099c8b3e3230c42893481"
+    },
+    {
+      "path": "fortigate_denied_burst.yml",
+      "sha256": "sha256:6f11b2771471d30de9d51874198d65ab49b8c2ffeb097686ea846210b1360b7e"
+    },
+    {
+      "path": "fortigate_dns_tunnel.yml",
+      "sha256": "sha256:b362f46d9abe26c37abd1860bc6a1561c33b606ea79ff61e3a5fbd208f6dc6e4"
+    },
+    {
+      "path": "fortigate_high_port_scan.yml",
+      "sha256": "sha256:f4b0a995a26509f220d09c7d438da37da82f40b11e8d7a8b2a37fa235b9c5878"
+    },
+    {
+      "path": "fortigate_user_auth_fail.yml",
+      "sha256": "sha256:d22bf875d663afd7eb443c12b2d892b641cb5ff3257a63242d172adb58bf68ed"
+    },
+    {
+      "path": "nginx_5xx_burst.yml",
+      "sha256": "sha256:98c544d16cb0cbdfc1cfd04f876d49eef6d0e4dc92030ce936721d85bd9c07af"
+    },
+    {
+      "path": "nginx_admin_path.yml",
+      "sha256": "sha256:7dd3fb47f38dcd39f645e7c09417cac92d19760d6f692b3973875bf7d0bc4b4f"
+    },
+    {
+      "path": "nginx_dns_rebind.yml",
+      "sha256": "sha256:706a5f29ef35b03941f6085541d187f56120ff6658ac69d62980ef0a7acdbdaa"
+    },
+    {
+      "path": "nginx_large_upload.yml",
+      "sha256": "sha256:d0fed53fbf57cd316d07f941e2abf653632248bf252e2ea29749a62d32e361ac"
+    },
+    {
+      "path": "nginx_scanner_agent.yml",
+      "sha256": "sha256:e30aa8a3baa78b8f2a033b92e5227cf11c91f4fa6f68cbd0c327e72df59e88e7"
+    },
+    {
+      "path": "nginx_sqli_probe.yml",
+      "sha256": "sha256:c672b2ca247dd6b7d8ef7185d2d9df0f79da85a7c17355127c2497fe02b19a27"
+    },
+    {
+      "path": "routeros_dhcp_offer.yml",
+      "sha256": "sha256:960ecd6660ac2d764e7023576c9f721dd6bb35d15473ed27958e82fbd0b81684"
+    },
+    {
+      "path": "routeros_dns_request.yml",
+      "sha256": "sha256:e45383ffeebd4d9f3934f9d29a640eab2ebc4bd0dfef67acde3d071b36b55295"
+    },
+    {
+      "path": "routeros_drop_input.yml",
+      "sha256": "sha256:436a6f0a59dba9b1de31ec2e6cb0951c2bc3051d5749072e9fc1ba88f10cdebd"
+    },
+    {
+      "path": "routeros_forward_new.yml",
+      "sha256": "sha256:91a9ba46ba5a00ddda6b0cfbea03d81193c78f64f0711aba4aa047d497015dc7"
+    },
+    {
+      "path": "routeros_login_failure.yml",
+      "sha256": "sha256:91f92732f0c777c94ffba436865c9240db06806cd5ca4048f49f4a88aaa009ba"
+    },
+    {
+      "path": "routeros_winbox_access.yml",
+      "sha256": "sha256:efada6f9199ca8e0242e9a779f9ae02a219e825f4f8019a2b831f407241d69c9"
+    }
+  ]
+}

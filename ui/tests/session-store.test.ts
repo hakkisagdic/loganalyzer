@@ -56,7 +56,23 @@ class FakeRedis implements RedisClient {
     this.entries.delete(key);
   }
 
+  /** `waitUntilReady` çağrıldığında hazır hâle geliyorsa: soğuk açılış taklidi. */
+  becomesReadyWhenAwaited = false;
+
+  /** Kaç kez beklendi — bekleme davranışını duvar saatsiz sınamak için. */
+  waits = 0;
+
   isReady(): boolean {
+    return this.ready;
+  }
+
+  async waitUntilReady(): Promise<boolean> {
+    this.waits += 1;
+
+    if (this.becomesReadyWhenAwaited) {
+      this.ready = true;
+    }
+
     return this.ready;
   }
 
@@ -183,6 +199,61 @@ describe("TTL tek yerden türüyor", () => {
     await store.set("abc", record({ expiresAt: Date.now() - 1000 }));
 
     expect(redis.entries.has("bizigo:bff:session:abc")).toBe(false);
+  });
+});
+
+// ------------------------------------------- "henüz bağlanmadı" ≠ "bağlantı koptu"
+
+describe("soğuk açılış", () => {
+  /**
+   * <b>Canlı testin bulduğu kusur</b> (T27). Bağlantı bilinçli olarak arka
+   * planda kuruluyor ve depo ilk isteğin içinde yaratılıyor; ikisi birleşince
+   * açılıştan sonraki <b>ilk oturumlu istek</b> istemci hazır olmadan geliyordu
+   * ve 503 alıyordu — Redis çalışırken.
+   *
+   * <p>
+   * Köşe durum değildi: depo tembel yaratıldığı için <b>her soğuk açılışta</b>
+   * oluyordu. Belirtisi de yanıltıcıydı — "oturum deposu yanıt vermiyor" diyen
+   * bir hata, deposu gayet ayakta olan bir kurulumda.
+   * </p>
+   *
+   * <p>
+   * Bu blok konteyner istemiyor ve <b>duvar saatine bakmıyor</b>: sahte
+   * istemci, beklendiği anda hazır hâle geliyor. Ölçülen şey süre değil,
+   * <b>beklenip beklenmediği</b>.
+   * </p>
+   */
+  it("henüz bağlanmamış istemci için BEKLİYOR, hata vermiyor", async () => {
+    const store = new RedisSessionStore(redis);
+    redis.ready = false;
+    redis.becomesReadyWhenAwaited = true;
+
+    await store.set("abc", record());
+
+    expect(redis.waits).toBe(1);
+    expect(await store.get("abc")).toBeDefined();
+  });
+
+  it("bir kez bağlandıktan sonra kopan bağlantı için BEKLEMİYOR", async () => {
+    // Kesintide de beklenseydi, Redis kapalıyken her istek zaman aşımı kadar
+    // gecikirdi: kullanıcı 503 yerine donmuş bir ekran görürdü.
+    const store = new RedisSessionStore(redis);
+    await store.set("abc", record());
+    const before = redis.waits;
+
+    redis.ready = false;
+    redis.becomesReadyWhenAwaited = true;
+
+    await expect(store.get("abc")).rejects.toBeInstanceOf(SessionStoreUnavailableError);
+    expect(redis.waits).toBe(before);
+  });
+
+  it("hiç bağlanamayan istemci bir kez bekleyip hata veriyor", async () => {
+    const store = new RedisSessionStore(redis);
+    redis.ready = false;
+
+    await expect(store.get("abc")).rejects.toBeInstanceOf(SessionStoreUnavailableError);
+    expect(redis.waits).toBe(1);
   });
 });
 

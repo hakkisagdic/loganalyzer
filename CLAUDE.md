@@ -57,6 +57,18 @@ yüklü makinede **yanlış sayı** üretiyor (bkz. §6).
 **Koşturamadığın bir testi "yazdım" diye yeşil gösterme.** `Skip` ile iskelet
 bırakmak dürüst; sahte yeşil değil.
 
+**Yeni bir test paketi eklerken bekçinin tanıdığı bir işaret dosyası bırak ya
+da bekçiyi genişlet.** `CiCoverageTests` depodaki test köklerini işaret
+dosyalarından buluyor (`pytest.ini`/`conftest.py`, `vitest.config.*`, test
+SDK'sı referanslayan `*.csproj`) ve her birinin `ci.yml`'da **onu koşturan** bir
+adımı olduğunu sınıyor. Tanımadığı bir konvansiyonla gelen paket görünmez
+kalır.
+
+Bu satır bir mekanizma değil, **mekanizmanın kapsama notu** — unutulduğunda
+kırmızı yanan hâlâ bekçi. Gerekçe ölçüldü: `sidecar/tests/` altında dört pytest
+dosyası vardı, yapılandırma yerindeydi, ve CI onları **hiç koşturmuyordu**.
+Yazan kişi doğru şeyi yapmıştı; eksik olan disiplin değil bir bağdı.
+
 ---
 
 ## 3 · Proses hijyeni
@@ -116,6 +128,29 @@ etmesi gereken şey çok; ajanın yok.
 **Git'in göremediği çakışmalar vardır.** Bir ajan arayüze üye ekler, başka bir
 ajanın test sahtesi onu uygulamaz: metinsel merge temiz, derleme kırık. Her
 birleştirmeden sonra **derle ve koştur**.
+
+Aynı sınıfın ikinci örneği daha sinsi: iki ajan compose'a ayrı ayrı `redis`
+servisi ekledi. Metinsel merge temiz, derleme temiz, testler yeşil — ama YAML
+dosyası **hiç ayrıştırılamıyor**, yani compose yığınının tamamı kullanılamaz.
+Kırığı yalnızca yığını ayağa kaldırmayı deneyen görüyor. Ne derleme ne birim
+testi bu sınıfa bakıyor; ürünün **yapılandırma dosyaları** da birleştirmenin
+kurbanı olabiliyor ve onların bekçisi ayrı.
+
+**Push ettikten sonra CI'yı oku. Kendi koşturduğun testler CI'nın yerine
+geçmez.** Bu depoda `docker compose config --quiet` T01'den beri duruyordu ve
+yukarıdaki kırığı ilk merge'de yakaladı. Bekçi bağırdı; **dört merge boyunca
+kimse bakmadı**, çünkü koordinatör kendi yeşil koşumuna bakıp geçti. Kırığı
+bulan şey nihayetinde bir CI logu değil, elle `docker compose up` denemesiydi —
+yani bekçi olmasaydı da aynı gün bulunacaktı. Bekçinin kazandırdığı dört merge
+boşa gitti.
+
+Kural: `git push`'un ardından `gh run list` ile o koşumun sonucuna bak. Kırmızıysa
+sıradaki ticket'ı verme. "Bende yeşildi" bir CI kırmızısını kapatmaz — CI'nın
+gördüğü şey senin koşmadığın şeydir, zaten o yüzden orada.
+
+**Bir kapının kırmızı yanması ile o kırmızının okunması ayrı olaylardır.** Kapı
+eklemek işin yarısı; okunmayan kapı, olmayan kapıyla aynı sonucu veriyor ve
+üstüne "bu soru sorulmuş" yanılsaması bırakıyor.
 
 ---
 

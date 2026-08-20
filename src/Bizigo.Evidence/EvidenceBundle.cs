@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Bizigo.Contracts;
 
 namespace Bizigo.Evidence;
 
@@ -108,7 +109,45 @@ public sealed record EvidenceBundle
 /// </summary>
 /// <param name="OwnerGroups">Boş liste = sistem kapsamı (her şey).</param>
 /// <param name="IsSystem">Kapsam sınırsız mıydı.</param>
-public sealed record BundleScope(IReadOnlyList<string> OwnerGroups, bool IsSystem);
+public sealed record BundleScope(IReadOnlyList<string> OwnerGroups, bool IsSystem)
+{
+    /// <summary>
+    /// Bu paketi <paramref name="reader"/> okuyabilir mi (K17).
+    ///
+    /// <para>
+    /// <b>Neden gerekiyor:</b> paket <b>saklanıyor</b> ve kanıtı toplandığı
+    /// kapsamla taşıyor. Kimlikle okunan bir kayıt, kapsam kapısının
+    /// <b>atlandığı</b> yerdir: A grubunun kapsamıyla toplanmış bir paketi B
+    /// grubundan biri kimliğiyle isteyebilir ve içindeki her kanıt satırını
+    /// görürdü. Sorgu yolundaki filtre burada işe yaramıyor — okuma bir sorgu
+    /// değil, bir belge getirme.
+    /// </para>
+    ///
+    /// <para>
+    /// Kural: paketin kapsamı okuyanınkinin <b>alt kümesi</b> olmalı. Sistem
+    /// kapsamıyla toplanmış bir paket yalnızca sınırsız okuyucuya açık —
+    /// içinde her grubun verisi olabilir.
+    /// </para>
+    ///
+    /// <para>
+    /// Okuyamayan için uç <b>404</b> döndürüyor, 403 değil: 403 paketin var
+    /// olduğunu doğrular ve bu tek başına bir sızıntı (bir pencerede RCA
+    /// koşulduğu bilgisi).
+    /// </para>
+    /// </summary>
+    public bool IsReadableBy(AccessScope reader)
+    {
+        ArgumentNullException.ThrowIfNull(reader);
+
+        if (reader.IsUnrestricted)
+        {
+            return true;
+        }
+
+        // Sistem kapsamı sınırsızdı; sınırlı bir okuyucu onu daraltamaz.
+        return !IsSystem && OwnerGroups.Count > 0 && OwnerGroups.All(reader.Allows);
+    }
+}
 
 /// <summary>
 /// Pencerenin <b>ne kadarına güvenilebileceği</b> (T35 → T36 zaman dürüstlüğü).

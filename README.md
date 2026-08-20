@@ -27,6 +27,9 @@ Planlama belgeleri Traycer epic'inde:
 ## Hızlı başlangıç
 
 ```bash
+# 0. Git kancaları (klon başına BİR KEZ)
+git config core.hooksPath .githooks
+
 # 1. Geliştirme ortamı
 cd deploy && cp .env.example .env && docker compose up -d --wait && cd ..
 
@@ -41,6 +44,17 @@ dotnet run --project src/Bizigo.Api
 # 4. Arayüzü çalıştır (ayrı terminal)
 cd ui && cp .env.example .env.local && npm install && npm run dev
 ```
+
+**0. adım ne yapıyor.** `.githooks/pre-push`, `main`'e push etmeden önce bir
+önceki CI koşumuna bakıyor ve kırmızıysa push'u durduruyor. Sebebi ölçülmüş bir
+olay: compose dosyası dört merge boyunca ayrıştırılamıyordu, kapı her koşumda
+kırmızı yanıyordu ve kimse bakmadığı için üstüne üç merge daha kondu (B18/B19).
+Bilerek geçmek için `git push --no-verify`.
+
+`gh` kurulu değilse kanca **gürültülü biçimde açık kalıyor** — kapatsaydı
+`--no-verify` alışkanlığa döner ve kanca tamamen ölürdü. O boşluğu GitHub
+tarafındaki `.github/workflows/ci-red.yml` kapatıyor: main kırmızı kaldığında
+açık bir konu (issue) yazıyor ve hiçbir yerel kuruluma bağlı değil.
 
 `Bizigo.Api` gibi arayüz de **compose'un dışında**, doğrudan makinede koşuyor:
 sıcak yeniden yükleme geliştirme döngüsünü hızlandırıyor ve API zaten aynı
@@ -397,8 +411,14 @@ dönüyor, `401` değil: `401` istemciye "yeniden giriş yap" dedirtir, giriş d
 aynı depoya yazmayı dener ve düşer — kullanıcı hiçbir hata görmeden sonsuz
 döngüye girer. `currentUser()`'ın üç durumlu olmasının sebebi de buydu.
 
-`redis` servisi `deploy/docker-compose.yml` içinde; kalıcılığı **kapalı**, çünkü
-oturum verisi geçici ve diske yazmak token'ları diske yazmak olurdu.
+Servis adı **`redis-session`** (`deploy/docker-compose.yml`); kalıcılığı
+**kapalı**, çünkü oturum verisi geçici ve diske yazmak token'ları diske yazmak
+olurdu.
+
+Compose'da **iki Redis örneği** var ve bu bilinçli: `redis` sidecar'ın Drain3
+ağacını tutuyor ve kalıcılığı **açık** olmak zorunda — durum kaybolursa
+`template_id`'ler sessizce kayar. RDB anlık görüntüsü örneğin tamamını yazdığı
+için (veritabanı seçmiyor) tek örnekte iki ihtiyaç sağlanamıyor.
 
 ### Ölçüm verisi — `bizigo seed golden` (T39)
 
@@ -442,10 +462,28 @@ vendor'lar arasında sırayla dağıtılmış, varış zamanları düzgün (unif
 ritim bilerek modellenmedi, çünkü ritim 45 dakikalık olay penceresinin
 yoğunluğunu yükleyicinin koşturulduğu saate bağlardı.
 
+**Baseline ölçümü artık kendi verisini tohumluyor.** `BaselineWindowMeasurement`
+compose yığınına bakmıyor: her eğri için izole bir ClickHouse veritabanı kurup
+yukarıdaki tiplerin **aynısıyla** tohumluyor. Dışarıdan bağlanmak ölçümü birinin
+elle kurduğu bir duruma bağlardı; **tekrarlanabilirlik, sayının bağlayıcı
+olmasının şartı.**
+
 > ⚠️ Baseline eğrisinin **dirseği bu fixture'ın özelliğidir**, üretimin değil:
 > yaklaşık `1/λ_min` civarında oluşuyor, yani seçilen `--zipf` ve
-> `--events`/`--span-days` oranının sonucu. Bağlayıcı sayı için ölçümü farklı
-> `--zipf` ile tekrarlayın; dirsek kayıyorsa ölçülen şey fixture'dır.
+> `--events`/`--span-days` oranının sonucu. Bu yüzden ölçüm **iki farklı
+> `--zipf` ile birden** koşuyor ve `BaselineFixtureVerdict.Compare`'in **imzası**
+> iki eğri istiyor — tavsiye olarak yazılsaydı bir kez koşturulur ve unutulurdu.
+> Dirsekler ayrışırsa "seçilebilir taban" **doğmuyor** (`Baseline` alanı `null`),
+> yani rapor basacak bir sayı bulamıyor.
+>
+> **Ölçüldü (ClickHouse'suz ön görü, `BaselineFixturePreviewTests`):** `zipf=2.0`
+> dirseği **7 gün**, `zipf=1.4` dirseği **1 gün**. Yani bugünkü fixture'dan
+> üretim için bağlayıcı bir taban uzunluğu **çıkmıyor**; ölçümün kanıtladığı şey
+> mekanizmanın çalıştığı. Bağlayıcı sayı gerçek müşteri verisiyle tekrarlanmalı.
+>
+> İkinci sınır: 87 örnek satır ~81 imza taşıyor, yani taban yeterince uzadığında
+> oran **sıfıra** iniyor — üretimde olmayacak bir hâl. Yenilik üretmeye devam
+> eden bir örneklem gerekiyor.
 
 > ⚠️ **Maskeleme sözlüğünde ay *adı* için maske yok.** `NUMBER` günü ve saati
 > yutuyor ama `May`/`Oct` imzada kalıyor, yani syslog biçimli vendor'larda
@@ -453,6 +491,45 @@ yoğunluğunu yükleyicinin koşturulduğu saate bağlardı.
 > alıyor. Ölçüldü: 87 örnek satırın 38'i bu davranışı gösteriyor; 5 günlük
 > yayılımda 81 ayrı imza, 30 günlükte 92, 90 günlükte 102. Yükleyici bunu her
 > koşumda basıyor. F3'ün "ilk-görülen imza" sinyali için gerçek bir kalem.
+
+### Alan kapsamı — `bizigo fields coverage` (T39)
+
+Bir Sigma kuralı hiçbir satır bulmuyorsa sebebi üç bambaşka şey olabilir ve
+tabloda üçü de aynı görünür: **boş kolon**. Bu araç üçünü ayırıyor.
+
+```bash
+# Katalog yarısı — ClickHouse gerekmiyor.
+$BIN fields coverage
+
+# Her iki yarı: katalog ne üretebiliyor ↔ events_ocsf'te ne yazılı.
+$BIN fields coverage --clickhouse 'Host=localhost;...' --owner-group golden
+```
+
+| Kutu | Soru | Örnek |
+| --- | --- | --- |
+| **1** | Dosyada var, hiçbir alana inmemiş | ASA'nın `Reset-I`'si — parser hiç görmemiş |
+| **2** | İnmiş ama OCSF adına değil `unmapped`'e | RouterOS zincir adı → `fw_chain` |
+| **3a** | Kolon hiçbir vendor'da dolmuyor | eşleme hiç yazılmamış olabilir |
+| **3b** | Kolon **bu** vendor'da boş, başkasında dolu | `activity_name`: FortiGate dolu, RouterOS boş |
+
+3b ayrımı olmadan küresel bir "eksik alan" listesi `activity_name`'i ifade
+edemiyor ve iki farklı durum için de yanlış iş yaptırıyor.
+
+**Araç eşanlamlı tablosu taşımıyor:** hangi `unmapped` anahtarının hangi OCSF
+kolonuna karşılık geldiğini iddia etmiyor — o tabloyu yazmak, ölçümün cevabını
+ölçümün girdisine taşımak olurdu. Kutular yan yana basılıyor, eşleştirmeyi
+okuyan yapıyor. Tek istisna **biçim** farkı: `proto_token=UDP` ile
+`connection_info_protocol_name=udp` birebir tespit edilebiliyor ve
+`[biçim: …]` diye işaretleniyor — o durumda cevap "kayıp" değil "dönüştürülmüş".
+
+> ⚠️ **Kutu 1'de ayraç ve söz dizimi de var.** "Yakalanmamış" bilgi demek değil;
+> liste taranarak *veriye benzeyen* parçalar aranmalı. Araç bu ayrımı yapmıyor,
+> çünkü yapabilmesi için neyin veri olduğunu bilmesi gerekirdi — sorunun kendisi bu.
+>
+> Kutu 1 bir kez **sessizce boş çıktı** ve düzeltildi: `attrs['message']` satırın
+> tamamı ve kapsama sayılınca hiçbir aralık boşta kalmıyordu, yani "parser her
+> şeyi yakalamış" görünüyordu. Artık **içinde başka bir yakalanmış değer geçen**
+> alanlar üst hâl sayılıyor ve kapsama girmiyor.
 
 ### Parser CLI
 

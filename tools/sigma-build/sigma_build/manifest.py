@@ -352,25 +352,45 @@ def transition_summary(previous_manifest: str, current_manifest: str) -> dict[st
     Ayrı bir duruma gerek yok, çünkü manifest commit'li: önceki koşum git'te
     duruyor ve fark, manifest'in kendi diff'i.
     """
-    def statuses(text: str) -> dict[str, str]:
+    def parse(text: str) -> tuple[dict[str, dict[str, object]], dict[str, object]]:
         if not text.strip():
-            return {}
-        return {rule["rule_id"]: rule["status"] for rule in json.loads(text).get("rules", [])}
+            return {}, {}
+        document = json.loads(text)
+        return {rule["rule_id"]: rule for rule in document.get("rules", [])}, document.get("run", {})
 
-    before = statuses(previous_manifest)
-    after = statuses(current_manifest)
+    before, before_run = parse(previous_manifest)
+    after, after_run = parse(current_manifest)
+
+    shared = sorted(set(before) & set(after))
+
+    # Üç ayrı olay ve üçü karışmamalı (§4). En sinsisi sonuncusu: kaynak kural
+    # değişmediği hâlde üretilen SQL değişmişse, kullanıcının **etkin** kuralının
+    # anlamı oynamış demektir ve "kaynak sürümü değişti mi" diye bakan bir kriter
+    # bunu göremez.
+    source_changed = [r for r in shared if before[r].get("source_sha") != after[r].get("source_sha")]
+    output_changed = [r for r in shared if before[r].get("output_sha") != after[r].get("output_sha")]
 
     return {
         "opened": sorted(
             rule_id
-            for rule_id, status in after.items()
-            if status == STATUS_WRITTEN and before.get(rule_id) in {STATUS_GATED, STATUS_FAILED}
+            for rule_id, rule in after.items()
+            if rule["status"] == STATUS_WRITTEN
+            and (before.get(rule_id) or {}).get("status") in {STATUS_GATED, STATUS_FAILED}
         ),
         "closed": sorted(
             rule_id
-            for rule_id, status in after.items()
-            if status in {STATUS_GATED, STATUS_FAILED} and before.get(rule_id) == STATUS_WRITTEN
+            for rule_id, rule in after.items()
+            if rule["status"] in {STATUS_GATED, STATUS_FAILED}
+            and (before.get(rule_id) or {}).get("status") == STATUS_WRITTEN
         ),
         "added": sorted(set(after) - set(before)),
         "removed": sorted(set(before) - set(after)),
+        "ruleset_changed": before_run.get("ruleset_commit") != after_run.get("ruleset_commit"),
+        "pipeline_changed": before_run.get("pipeline_sha") != after_run.get("pipeline_sha"),
+        "source_changed": sorted(source_changed),
+        # Gözden geçirenin asıl bakması gereken küme: anlamı oynamış ama kaynağı
+        # oynamamış kurallar. Bir kural seti yükseltmesinde bu kümenin **boş**
+        # olması beklenir — dolu çıkarsa yükseltmeyle birlikte başka bir şey daha
+        # değişmiş demektir.
+        "output_changed_without_source_change": sorted(set(output_changed) - set(source_changed)),
     }

@@ -20,7 +20,7 @@ public sealed class EvidenceBundleFactory(
     EvidenceCollector collector,
     IScopedQuery query,
     ILogger<EvidenceBundleFactory> logger,
-    TimeProvider? timeProvider = null)
+    TimeProvider? timeProvider = null) : IEvidenceBundleSource
 {
     private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
 
