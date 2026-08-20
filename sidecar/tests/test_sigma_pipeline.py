@@ -498,3 +498,60 @@ def test_zincir_adi_attrs_tarafina_gidiyor() -> None:
     öneksiz iniyor, yani `unmapped['fw_chain']`."""
     assert sp.ATTRS_MAP["fw_chain"] == "fw_chain"
     assert sp.unmapped_expression(sp.ATTRS_MAP["fw_chain"]) == "unmapped['fw_chain']"
+
+
+def test_bilinmeyen_product_ta_bekci_YASAKLAMIYOR() -> None:
+    """**`unknown` ile `empty` farklı şeyler** ve bu ayrım burada tutuyor.
+
+    `VENDOR_EMPTY_COLUMNS` `LogsourceCondition(product=...)` ile koşullu,
+    yani tanımadığımız bir product'ta (ör. `linux`) hiç uygulanmıyor. Doğru
+    davranış: o vendor'da kolonun boş olduğunu **bilmiyoruz**, ve bilmediğimiz
+    bir şeyi yasaklamak kuralı sebepsiz düşürürdü.
+
+    Bekçinin dar olması bir eksiklik değil ölçüsü: `activity_name`'i her
+    logsource'ta yasaklamak kolaydı ve tanımadığımız her vendor'ın kurallarını
+    sessizce öldürürdü.
+    """
+    pytest.importorskip("sigma.backends.clickhouse.clickhouse")
+    from sigma.collection import SigmaCollection
+
+    rule = (
+        "title: t\nid: 66666666-0000-4000-8000-000000000000\nstatus: experimental\n"
+        "logsource:\n  product: linux\n"
+        "detection:\n  selection:\n    action: 'denied'\n    user_name: 'admin'\n"
+        "  condition: selection\nlevel: low\n"
+    )
+    sql = sp.bizigo_backend(mappings_path=CATALOG / "mappings").convert(
+        SigmaCollection.from_yaml(rule)
+    )[0]
+
+    assert "activity_name='denied'" in sql
+    assert "actor_user_name='admin'" in sql
+
+
+def test_sozlukler_okunamazsa_KURULUM_hatasi_kullanici_hatasi_degil() -> None:
+    """**Yanlış yapılandırılmış bir dağıtım, kullanıcıya "kuralın bozuk" demez.**
+
+    `/v1/sigma/compile` sözlükleri imaj yolundan okuyor. Yol yanlışsa
+    `FileNotFoundError` geliyordu ve ucun genel `except`'i onu **422**'ye
+    çeviriyordu — yani kurulum hatası, kural hatası gibi raporlanıyordu ve
+    kimse imaja bakmazdı.
+
+    Ölçüldü: CI'da tam olarak bu oldu ve teşhis bir tur sürdü.
+    """
+    pytest.importorskip("sigma.backends.clickhouse.clickhouse")
+    from app.sigma_compile import SigmaBackendUnavailable, compile_rule
+
+    rule = (
+        "title: t\nid: 77777777-0000-4000-8000-000000000000\nstatus: experimental\n"
+        "logsource:\n  product: fortigate\n"
+        "detection:\n  selection:\n    action: 'blocked'\n  condition: selection\nlevel: low\n"
+    )
+
+    with pytest.raises(SigmaBackendUnavailable) as caught:
+        compile_rule(rule, "clickhouse", mappings_path="/bu/yol/yok")
+
+    # Mesaj NEREYE bakılacağını söylüyor: "okunamadı" tek başına bir sonraki
+    # kişiyi kuralın içinde arattırırdı.
+    assert "kurulum sorunu" in str(caught.value)
+    assert "BIZIGO_MAPPINGS_PATH" in str(caught.value)
