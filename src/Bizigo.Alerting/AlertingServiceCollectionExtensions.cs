@@ -43,6 +43,7 @@ public static class AlertingServiceCollectionExtensions
             configuration[$"{SecretProtectionOptions.SectionName}:SecretKey"]));
         services.AddSingleton<AlertEvaluator>();
         services.AddSingleton<AlertRuleService>();
+        services.AddSingleton<AlertPreview>();
         services.AddSingleton<NotificationChannelService>();
         services.AddSingleton<IAlertQuerySource, ServiceScopeAlertQuerySource>();
 

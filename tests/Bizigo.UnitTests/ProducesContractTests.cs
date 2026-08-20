@@ -1,3 +1,4 @@
+using Bizigo.Alerting;
 using Bizigo.Api;
 using Bizigo.Api.Connectors;
 using Bizigo.Api.Webhooks;
@@ -77,6 +78,13 @@ public sealed class ProducesContractTests
         ["POST /v1/parsers/drafts/{id}/return"] = "T18 — parser editörü",
         ["POST /v1/parsers/drafts/{id}/publish"] = "T18 — parser editörü",
         ["POST /v1/parsers/{parserId}/rollback"] = "T18 — parser editörü",
+
+        // Alarm uçlarının on ikisi T23'te tipini kazandı ve bu listeden çıktı —
+        // ekran indi, tip artık tahmin değil. Kalan üçü gövdesiz 204: uydurulmuş
+        // bir yanıt tipi olmayan bir sözleşme vaat ederdi.
+        ["DELETE /v1/alerts/rules/{id}"] = "204, gövdesiz.",
+        ["DELETE /v1/alerts/maintenance/{id}"] = "204, gövdesiz.",
+        ["DELETE /v1/alerts/channels/{id}"] = "204, gövdesiz.",
     };
 
     /// <summary>
@@ -98,7 +106,15 @@ public sealed class ProducesContractTests
             typeof(ParserCatalog), typeof(DispatchStats), typeof(Dispatcher),
             typeof(IngestGateway), typeof(IngestStats), typeof(WriteAheadLog),
             typeof(DiscoveryStats), typeof(SidecarOptions),
-            // T24 + T25
+
+            // T21/T22/T24/T25 uçlarının bağımlılıkları. Bunlar eklenmeden
+            // `MapAlerts`/`MapChangeWebhooks` parametre çıkarımında patlıyordu ve
+            // o uç dosyaları kapıya HİÇ görünmüyordu.
+            //
+            // `TimeProvider` bilerek listede YOK: ASP.NET onu kendi kurulumunda
+            // çözüyor ve zehirlemek `WebApplicationBuilder.Build()`'i patlatıyor.
+            typeof(AlertRuleService), typeof(NotificationChannelService),
+            typeof(AlertingOptions), typeof(AlertingStats), typeof(AlertPreview),
             typeof(IChangeWebhookRegistry), typeof(ChangeWebhookOptions),
             typeof(ChangeWebhookDeliveryLog), typeof(ChangeConnectorService),
         })
@@ -108,6 +124,9 @@ public sealed class ProducesContractTests
                 throw new InvalidOperationException(
                     $"{captured.Name} bu testte çözülmemeli — yalnızca kayıt sınanıyor."));
         }
+
+        // Gerçek örnek: uçlar bunu kayıt anında çözüyor, sahte fırlatıcı patlar.
+        builder.Services.AddSingleton(TimeProvider.System);
 
         var app = builder.Build();
 
@@ -124,6 +143,8 @@ public sealed class ProducesContractTests
         app.MapReplay();
         app.MapParsers();
         app.MapParserAuthoring();
+        app.MapAlerts();
+        app.MapNotificationChannels();
 
         return [.. ((IEndpointRouteBuilder)app).DataSources
             .SelectMany(static source => source.Endpoints)

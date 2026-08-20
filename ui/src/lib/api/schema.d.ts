@@ -36,6 +36,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/changes/webhooks/{endpointId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReceiveChangeWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/health/pipeline": {
         parameters: {
             query?: never;
@@ -279,6 +295,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/changes/connectors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListChangeConnectors"];
+        put?: never;
+        post: operations["CreateChangeConnector"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/changes/connectors/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetChangeConnector"];
+        put: operations["UpdateChangeConnector"];
+        post?: never;
+        delete: operations["DeleteChangeConnector"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/changes/connectors/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TestChangeConnector"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/changes/connectors/{id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListChangeConnectorRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/parsers": {
         parameters: {
             query?: never;
@@ -407,10 +487,318 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/alerts/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListAlertRules"];
+        put?: never;
+        post: operations["CreateAlertRule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/alerts/rules/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetAlertRule"];
+        put: operations["UpdateAlertRule"];
+        post?: never;
+        delete: operations["DeleteAlertRule"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/alerts/rules/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PreviewAlertRule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/alerts/triggers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListAlertTriggers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/alerts/maintenance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListMaintenanceWindows"];
+        put?: never;
+        post: operations["CreateMaintenanceWindow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/alerts/maintenance/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["DeleteMaintenanceWindow"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/alerts/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AlertingStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/alerts/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListNotificationChannels"];
+        put?: never;
+        post: operations["CreateNotificationChannel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/alerts/channels/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["UpdateNotificationChannel"];
+        post?: never;
+        delete: operations["DeleteNotificationChannel"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/alerts/channels/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TestNotificationChannel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AlertDeliveryResponse: {
+            /** Format: uuid */
+            channel_id: string;
+            channel_name: string;
+            channel_type: null | string;
+            state: string;
+            /** Format: int32 */
+            attempts: number | string;
+            /** Format: date-time */
+            delivered_at: null | string;
+            /** Format: date-time */
+            next_attempt_at: null | string;
+            last_error: string;
+        };
+        AlertingNotificationStats: {
+            /** Format: int64 */
+            queued: number | string;
+            /** Format: int64 */
+            delivered: number | string;
+            /** Format: int64 */
+            retried: number | string;
+            /** Format: int64 */
+            abandoned: number | string;
+        };
+        AlertingStatsResponse: {
+            /** Format: int64 */
+            turns: number | string;
+            /** Format: int64 */
+            evaluated: number | string;
+            /** Format: int64 */
+            fired: number | string;
+            /** Format: int64 */
+            suppressed: number | string;
+            /** Format: int64 */
+            timed_out: number | string;
+            /** Format: int64 */
+            failed: number | string;
+            /** Format: int64 */
+            scoped_queries: number | string;
+            notifications: components["schemas"]["AlertingNotificationStats"];
+        };
+        AlertPreviewResponse: {
+            rule_type: string;
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            /** Format: int32 */
+            bucket_seconds: number | string;
+            /** Format: double */
+            threshold: number | string;
+            /** Format: int32 */
+            firing_count: number | string;
+            note: string;
+            points: components["schemas"]["PreviewPointResponse"][];
+            sources: components["schemas"]["PreviewSourceResponse"][];
+        };
+        AlertRuleDetailResponse: {
+            rule: components["schemas"]["AlertRuleResponse"];
+            channel_ids: string[];
+        };
+        AlertRuleListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            rules: components["schemas"]["AlertRuleResponse"][];
+        };
+        AlertRuleRequest: {
+            name: string;
+            description?: string;
+            ruleType?: string;
+            ownerGroups?: string[];
+            fullText?: null | string;
+            filters?: components["schemas"]["FieldFilterRequest"][];
+            sourceIds?: string[];
+            /** Format: int32 */
+            windowSeconds?: number | string;
+            /** Format: int32 */
+            intervalSeconds?: number | string;
+            /** Format: double */
+            threshold?: number | string;
+            comparison?: string;
+            /** Format: int32 */
+            silenceSeconds?: number | string;
+            /** Format: int32 */
+            repeatIntervalSeconds?: number | string;
+            enabled?: boolean;
+            channelIds?: string[];
+        };
+        AlertRuleResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            description: string;
+            rule_type: string;
+            owner_groups: string[];
+            /** Format: int32 */
+            window_seconds: number | string;
+            /** Format: int32 */
+            interval_seconds: number | string;
+            /** Format: double */
+            threshold: number | string;
+            comparison: string;
+            /** Format: int32 */
+            silence_seconds: number | string;
+            /** Format: int32 */
+            repeat_interval_seconds: number | string;
+            enabled: boolean;
+            /** Format: date-time */
+            next_run_at: null | string;
+            /** Format: date-time */
+            last_run_at: null | string;
+            /** Format: date-time */
+            last_fired_at: null | string;
+            last_run_state: string;
+            last_error: string;
+            search: components["schemas"]["AlertSearchResponse"];
+        };
+        AlertSearchResponse: {
+            full_text: null | string;
+            filters: components["schemas"]["FieldFilterResponse"][];
+            source_ids: string[];
+        };
+        AlertTriggerListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            triggers: components["schemas"]["AlertTriggerResponse"][];
+        };
+        AlertTriggerResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            rule_id: string;
+            rule_name: string;
+            /** Format: date-time */
+            fired_at: string;
+            /** Format: date-time */
+            window_from: string;
+            /** Format: date-time */
+            window_to: string;
+            /** Format: double */
+            value: number | string;
+            /** Format: double */
+            threshold: number | string;
+            source_id: string;
+            owner_group: string;
+            summary: string;
+            deliveries: components["schemas"]["AlertDeliveryResponse"][];
+        };
         AuthMeResponse: {
             subject: string;
             username: string;
@@ -420,11 +808,33 @@ export interface components {
             unrestricted: boolean;
             sees_nothing: boolean;
         };
+        ChangeResponse: {
+            /** Format: uuid */
+            change_id: string;
+            /** Format: date-time */
+            timestamp: string;
+            owner_group: string;
+            target_kind: string;
+            target_id: string;
+            change_kind: string;
+            actor: string;
+            summary: string;
+            details: {
+                [key: string]: string;
+            };
+            source: string;
+            external_ref: string;
+        };
+        ChangeSearchResponse: {
+            /** Format: int32 */
+            count: number | string;
+            changes: components["schemas"]["ChangeResponse"][];
+        };
         ChangeWriteRequest: {
-            ownerGroup: string;
-            targetKind: string;
-            targetId: string;
-            changeKind: string;
+            owner_group: string;
+            target_kind: string;
+            target_id: string;
+            change_kind: string;
             /** Format: date-time */
             timestamp?: null | string;
             actor?: string;
@@ -433,7 +843,94 @@ export interface components {
                 [key: string]: string;
             };
             source?: string;
-            externalRef?: string;
+            external_ref?: string;
+        };
+        ChangeWriteResponse: {
+            /** Format: uuid */
+            change_id: string;
+        };
+        ChannelSettingsResponse: {
+            headers: {
+                [key: string]: string;
+            };
+            host: string;
+            /** Format: int32 */
+            port: number | string;
+            from: string;
+            to: string[];
+            user: string;
+            use_start_tls: boolean;
+        };
+        ChannelTestResponse: {
+            ok: boolean;
+            error: string;
+        };
+        ConnectorListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            connectors: components["schemas"]["ConnectorView"][];
+        };
+        ConnectorRequest: {
+            slug?: string;
+            name?: string;
+            connector_type?: string;
+            owner_group?: string;
+            config?: null | components["schemas"]["JsonElement"];
+            credential?: null | string;
+            /** Format: int32 */
+            interval_seconds?: null | number | string;
+            enabled?: boolean;
+        };
+        ConnectorRunListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            runs: components["schemas"]["ConnectorRunView"][];
+        };
+        ConnectorRunView: {
+            /** Format: date-time */
+            started_at: string;
+            /** Format: date-time */
+            finished_at: string;
+            state: string;
+            /** Format: int32 */
+            changes_written: number | string;
+            error: string;
+        };
+        ConnectorTestResponse: {
+            ok: boolean;
+            message: string;
+        };
+        ConnectorView: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+            connector_type: string;
+            owner_group: string;
+            config: components["schemas"]["JsonElement"];
+            credential_set: boolean;
+            credential: string;
+            /** Format: int32 */
+            interval_seconds: null | number | string;
+            enabled: boolean;
+            /** Format: date-time */
+            next_run_at: null | string;
+            /** Format: date-time */
+            last_run_at: null | string;
+            last_run_state: null | string;
+            last_error: string;
+            receive_path: null | string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        CreatedIdResponse: {
+            /** Format: uuid */
+            id: string;
+        };
+        ErrorResponse: {
+            error: string;
         };
         EventCursorResponse: {
             /** Format: date-time */
@@ -538,6 +1035,74 @@ export interface components {
             op: string;
             values: string[];
         };
+        FieldFilterResponse: {
+            field: string;
+            op: string;
+            values: string[];
+        };
+        JsonElement: unknown;
+        MaintenanceWindowListResponse: {
+            windows: components["schemas"]["MaintenanceWindowResponse"][];
+        };
+        MaintenanceWindowRequest: {
+            ownerGroup: string;
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: date-time */
+            endsAt: string;
+            /** Format: uuid */
+            ruleId: null | string;
+            reason: string;
+        };
+        MaintenanceWindowResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            rule_id: null | string;
+            owner_group: string;
+            /** Format: date-time */
+            starts_at: string;
+            /** Format: date-time */
+            ends_at: string;
+            reason: string;
+            created_by: string;
+        };
+        NotificationChannelListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            channels: components["schemas"]["NotificationChannelResponse"][];
+        };
+        NotificationChannelRequest: {
+            name: string;
+            channelType: string;
+            ownerGroup: string;
+            secret?: null | string;
+            enabled?: boolean;
+            headers?: {
+                [key: string]: string;
+            };
+            host?: string;
+            /** Format: int32 */
+            port?: number | string;
+            from?: string;
+            to?: string[];
+            user?: string;
+            useStartTls?: boolean;
+        };
+        NotificationChannelResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            channel_type: string;
+            owner_group: string;
+            enabled: boolean;
+            secret_set: boolean;
+            settings: components["schemas"]["ChannelSettingsResponse"];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
         ParserDraftRequest: {
             yaml: string;
         };
@@ -545,6 +1110,21 @@ export interface components {
             line: string;
             /** @default  */
             parserId: string;
+        };
+        PreviewPointResponse: {
+            /** Format: date-time */
+            at: string;
+            /** Format: int64 */
+            count: number | string;
+            /** Format: double */
+            value: number | string;
+        };
+        PreviewSourceResponse: {
+            source_id: string;
+            owner_group: string;
+            /** Format: date-time */
+            last_seen: null | string;
+            gaps_seconds: (number | string)[];
         };
         ReplayRequest: {
             /** Format: date-time */
@@ -637,6 +1217,26 @@ export interface operations {
                 "application/json": string;
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ReceiveChangeWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                endpointId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {
@@ -869,7 +1469,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ChangeSearchResponse"];
+                };
             };
         };
     };
@@ -886,12 +1488,172 @@ export interface operations {
             };
         };
         responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangeWriteResponse"];
+                };
+            };
+        };
+    };
+    ListChangeConnectors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
             /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "application/json": components["schemas"]["ConnectorListResponse"];
+                };
+            };
+        };
+    };
+    CreateChangeConnector: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorView"];
+                };
+            };
+        };
+    };
+    GetChangeConnector: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorView"];
+                };
+            };
+        };
+    };
+    UpdateChangeConnector: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectorRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorView"];
+                };
+            };
+        };
+    };
+    DeleteChangeConnector: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
+            };
+        };
+    };
+    TestChangeConnector: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorTestResponse"];
+                };
+            };
+        };
+    };
+    ListChangeConnectorRuns: {
+        parameters: {
+            query?: {
+                limit?: number | string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorRunListResponse"];
+                };
             };
         };
     };
@@ -1076,6 +1838,461 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ListAlertRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertRuleListResponse"];
+                };
+            };
+        };
+    };
+    CreateAlertRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlertRuleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertRuleResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    GetAlertRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertRuleDetailResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    UpdateAlertRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlertRuleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertRuleResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    DeleteAlertRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    PreviewAlertRule: {
+        parameters: {
+            query?: {
+                lookbackSeconds?: number | string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlertRuleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertPreviewResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    ListAlertTriggers: {
+        parameters: {
+            query?: {
+                ruleId?: string;
+                limit?: number | string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertTriggerListResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    ListMaintenanceWindows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MaintenanceWindowListResponse"];
+                };
+            };
+        };
+    };
+    CreateMaintenanceWindow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MaintenanceWindowRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedIdResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    DeleteMaintenanceWindow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AlertingStats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlertingStatsResponse"];
+                };
+            };
+        };
+    };
+    ListNotificationChannels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationChannelListResponse"];
+                };
+            };
+        };
+    };
+    CreateNotificationChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationChannelRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationChannelResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    UpdateNotificationChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationChannelRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationChannelResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    DeleteNotificationChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    TestNotificationChannel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelTestResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelTestResponse"];
+                };
             };
         };
     };

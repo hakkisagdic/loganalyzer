@@ -52,6 +52,48 @@ public sealed record EventQuery
 public sealed record EventPage(IReadOnlyList<LogEvent> Events, EventCursor? Next, bool HasMore);
 
 /// <summary>
+/// Zaman kovalarına bölünmüş olay sayımı (T23 önizlemesi).
+///
+/// <para>
+/// <b>Bu tipin varlık sebebi tek bir tasarım kararı:</b> alarm önizlemesi
+/// "eşiği değiştir, sayının nasıl değiştiğini gör" ekranı ve eşik her
+/// değiştiğinde ClickHouse'a gitmek K16'nın uyardığı şeyin ta kendisi olurdu —
+/// kaydırıcıyı sürükleyen bir kullanıcı saniyede onlarca sorgu üretir. Bunun
+/// yerine <b>bir kez</b> histogram alınıyor; eşik karşılaştırması aynı veri
+/// üzerinde, sorgusuz yapılıyor.
+/// </para>
+///
+/// <para>
+/// Yan kazanç: dönen şey eşikten <b>bağımsız</b>, yani önizleme sonucu
+/// önbelleklenebiliyor ve üç kural tipi de aynı yanıttan besleniyor.
+/// </para>
+/// </summary>
+public sealed record EventHistogramQuery
+{
+    public required DateTimeOffset From { get; init; }
+    public required DateTimeOffset To { get; init; }
+
+    /// <summary>Kova genişliği. Kural tipine göre değerlendirme penceresiyle eşitleniyor.</summary>
+    public required int BucketSeconds { get; init; }
+
+    public string? FullText { get; init; }
+    public IReadOnlyList<FieldFilter> Filters { get; init; } = [];
+    public IReadOnlyList<string> SourceIds { get; init; } = [];
+
+    /// <summary>Kapsam <b>daraltması</b>; kapsamı genişletemez.</summary>
+    public IReadOnlyList<string> OwnerGroups { get; init; } = [];
+
+    /// <summary>
+    /// Kaynak başına ayrı seri. Sessizlik önizlemesi bunu istiyor: "hangi kaynak
+    /// ne kadar sustu" sorusu toplam sayıdan çıkarılamıyor.
+    /// </summary>
+    public bool GroupBySource { get; init; }
+}
+
+/// <param name="SourceId"><see cref="EventHistogramQuery.GroupBySource"/> kapalıysa boş.</param>
+public sealed record HistogramBucket(DateTimeOffset Start, string SourceId, long Count);
+
+/// <summary>
 /// Kaynak etkinliği sorgusunun penceresi (T21).
 ///
 /// <para>

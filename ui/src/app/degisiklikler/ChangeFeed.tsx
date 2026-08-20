@@ -11,18 +11,23 @@ import { describeError } from "@/lib/api/errors";
 
 import styles from "./changes.module.css";
 
-/** `change_events` satırının UI karşılığı. */
+/**
+ * `change_events` satırının UI karşılığı.
+ *
+ * <p>Alan adları `snake_case`: API'nin tamamı öyle konuşuyor (T15, `/auth/me`).
+ * Tip üretilen şemadan geliyor; bu arayüz yalnızca okunurluk için duruyor.</p>
+ */
 interface ChangeRow {
-  readonly changeId?: string;
+  readonly change_id: string;
   readonly timestamp: string;
-  readonly ownerGroup: string;
-  readonly targetKind: string;
-  readonly targetId: string;
-  readonly changeKind: string;
+  readonly owner_group: string;
+  readonly target_kind: string;
+  readonly target_id: string;
+  readonly change_kind: string;
   readonly actor: string;
   readonly summary: string;
   readonly source: string;
-  readonly externalRef: string;
+  readonly external_ref: string;
 }
 
 const TARGET_KINDS = ["Device", "Service", "Config", "Inventory", "Maintenance"] as const;
@@ -75,7 +80,7 @@ export function ChangeFeed({ ownerGroups, unrestricted }: ChangeFeedProps) {
       freeText: true,
       render: (row) => (
         <span>
-          <Badge>{row.targetKind}</Badge> {row.targetId}
+          <Badge>{row.target_kind}</Badge> {row.target_id}
         </span>
       ),
     },
@@ -83,7 +88,7 @@ export function ChangeFeed({ ownerGroups, unrestricted }: ChangeFeedProps) {
       key: "changeKind",
       header: "Tür",
       width: "14ch",
-      render: (row) => <span>{row.changeKind}</span>,
+      render: (row) => <span>{row.change_kind}</span>,
     },
     {
       key: "summary",
@@ -91,9 +96,9 @@ export function ChangeFeed({ ownerGroups, unrestricted }: ChangeFeedProps) {
       // Özet Türkçe, Arapça ya da Çince gelebiliyor — hizalama içeriğe bırakılıyor.
       freeText: true,
       render: (row) =>
-        row.externalRef ? (
-          <a href={row.externalRef} rel="noreferrer noopener" target="_blank">
-            {row.summary || row.externalRef}
+        row.external_ref ? (
+          <a href={row.external_ref} rel="noreferrer noopener" target="_blank">
+            {row.summary || row.external_ref}
           </a>
         ) : (
           <span>{row.summary || "—"}</span>
@@ -157,7 +162,7 @@ export function ChangeFeed({ ownerGroups, unrestricted }: ChangeFeedProps) {
           caption="Son değişiklikler"
           columns={columns}
           rows={rows}
-          rowKey={(row) => row.changeId ?? `${row.timestamp}-${row.targetId}-${row.changeKind}`}
+          rowKey={(row) => row.change_id}
         />
       )}
     </>
@@ -197,10 +202,10 @@ function ManualChangeForm({ ownerGroups, unrestricted, onSaved }: ManualChangeFo
     try {
       await api.post("/v1/changes", {
         body: {
-          ownerGroup: String(form.get("ownerGroup") ?? ""),
-          targetKind: String(form.get("targetKind") ?? "Device"),
-          targetId: String(form.get("targetId") ?? "").trim(),
-          changeKind: String(form.get("changeKind") ?? "").trim(),
+          owner_group: String(form.get("ownerGroup") ?? ""),
+          target_kind: String(form.get("targetKind") ?? "Device"),
+          target_id: String(form.get("targetId") ?? "").trim(),
+          change_kind: String(form.get("changeKind") ?? "").trim(),
           actor: String(form.get("actor") ?? "").trim(),
           summary: String(form.get("summary") ?? "").trim(),
           source: "manual",

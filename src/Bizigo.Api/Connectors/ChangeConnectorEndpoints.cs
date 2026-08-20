@@ -1,23 +1,42 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Bizigo.ControlPlane;
 
 namespace Bizigo.Api.Connectors;
 
+/// <remarks>
+/// İstek de <c>snake_case</c>: T15'in <c>EventSearchRequest</c>'i öyle ve tek
+/// bir uç ailesinin istekte bir dil, yanıtta başka bir dil konuşması en kötü
+/// hâl olurdu.
+/// </remarks>
 public sealed record ConnectorRequest
 {
+    [JsonPropertyName("slug")]
     public string Slug { get; init; } = string.Empty;
+
+    [JsonPropertyName("name")]
     public string Name { get; init; } = string.Empty;
+
+    [JsonPropertyName("connector_type")]
     public string ConnectorType { get; init; } = nameof(ChangeConnectorType.Webhook);
+
+    [JsonPropertyName("owner_group")]
     public string OwnerGroup { get; init; } = string.Empty;
+
+    [JsonPropertyName("config")]
     public JsonElement? Config { get; init; }
 
     /// <summary>
     /// Yeni kimlik bilgisi. Boş bırakmak "değiştirme" demek — ekran mevcut
     /// değeri hiç görmediği için geri gönderemiyor.
     /// </summary>
+    [JsonPropertyName("credential")]
     public string? Credential { get; init; }
 
+    [JsonPropertyName("interval_seconds")]
     public int? IntervalSeconds { get; init; }
+
+    [JsonPropertyName("enabled")]
     public bool Enabled { get; init; }
 }
 
@@ -32,37 +51,48 @@ public sealed record ConnectorRequest
 /// <see langword="null"/>. Sunucudan geliyor çünkü ekranın kendi kurması, yol
 /// değiştiğinde iki yerde düzeltme demekti.
 /// </param>
+/// <remarks>
+/// Alan adları <c>snake_case</c>: T15 olay uçlarını ve <c>/auth/me</c>'yi öyle
+/// bıraktı ve API'nin kendi içinde iki dil konuşması, hangi ekranın hangisini
+/// beklediğini hatırlamak zorunda kalmak demekti.
+/// </remarks>
 public sealed record ConnectorView(
-    Guid Id,
-    string Slug,
-    string Name,
-    string ConnectorType,
-    string OwnerGroup,
-    JsonElement Config,
-    bool CredentialSet,
-    string Credential,
-    int? IntervalSeconds,
-    bool Enabled,
-    DateTimeOffset? NextRunAt,
-    DateTimeOffset? LastRunAt,
-    string? LastRunState,
-    string LastError,
-    string? ReceivePath,
-    DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    [property: JsonPropertyName("id")] Guid Id,
+    [property: JsonPropertyName("slug")] string Slug,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("connector_type")] string ConnectorType,
+    [property: JsonPropertyName("owner_group")] string OwnerGroup,
+    [property: JsonPropertyName("config")] JsonElement Config,
+    [property: JsonPropertyName("credential_set")] bool CredentialSet,
+    [property: JsonPropertyName("credential")] string Credential,
+    [property: JsonPropertyName("interval_seconds")] int? IntervalSeconds,
+    [property: JsonPropertyName("enabled")] bool Enabled,
+    [property: JsonPropertyName("next_run_at")] DateTimeOffset? NextRunAt,
+    [property: JsonPropertyName("last_run_at")] DateTimeOffset? LastRunAt,
+    [property: JsonPropertyName("last_run_state")] string? LastRunState,
+    [property: JsonPropertyName("last_error")] string LastError,
+    [property: JsonPropertyName("receive_path")] string? ReceivePath,
+    [property: JsonPropertyName("created_at")] DateTimeOffset CreatedAt,
+    [property: JsonPropertyName("updated_at")] DateTimeOffset UpdatedAt);
 
-public sealed record ConnectorListResponse(int Count, IReadOnlyList<ConnectorView> Connectors);
+public sealed record ConnectorListResponse(
+    [property: JsonPropertyName("count")] int Count,
+    [property: JsonPropertyName("connectors")] IReadOnlyList<ConnectorView> Connectors);
 
-public sealed record ConnectorTestResponse(bool Ok, string Message);
+public sealed record ConnectorTestResponse(
+    [property: JsonPropertyName("ok")] bool Ok,
+    [property: JsonPropertyName("message")] string Message);
 
 public sealed record ConnectorRunView(
-    DateTimeOffset StartedAt,
-    DateTimeOffset FinishedAt,
-    string State,
-    int ChangesWritten,
-    string Error);
+    [property: JsonPropertyName("started_at")] DateTimeOffset StartedAt,
+    [property: JsonPropertyName("finished_at")] DateTimeOffset FinishedAt,
+    [property: JsonPropertyName("state")] string State,
+    [property: JsonPropertyName("changes_written")] int ChangesWritten,
+    [property: JsonPropertyName("error")] string Error);
 
-public sealed record ConnectorRunListResponse(int Count, IReadOnlyList<ConnectorRunView> Runs);
+public sealed record ConnectorRunListResponse(
+    [property: JsonPropertyName("count")] int Count,
+    [property: JsonPropertyName("runs")] IReadOnlyList<ConnectorRunView> Runs);
 
 /// <summary>
 /// Connector yönetim uçları (T25, K34).

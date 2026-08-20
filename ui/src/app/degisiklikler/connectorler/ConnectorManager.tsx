@@ -84,10 +84,10 @@ export function ConnectorManager({ ownerGroups, unrestricted, canManage }: Conne
         body: {
           slug: connector.slug,
           name: connector.name,
-          connectorType: connector.connector_type,
-          ownerGroup: connector.owner_group,
+          connector_type: connector.connector_type,
+          owner_group: connector.owner_group,
           config: connector.config,
-          intervalSeconds: connector.interval_seconds,
+          interval_seconds: connector.interval_seconds,
           enabled: !connector.enabled,
           // `credential` GÖNDERİLMİYOR: boş bırakmak "değiştirme" demek.
           // Ekran mevcut değeri zaten hiç görmüyor.
@@ -276,8 +276,8 @@ function ConnectorForm({ ownerGroups, unrestricted, onSaved }: ConnectorFormProp
         body: {
           slug: String(form.get("slug") ?? "").trim(),
           name: String(form.get("name") ?? "").trim(),
-          connectorType,
-          ownerGroup: String(form.get("ownerGroup") ?? ""),
+          connector_type: connectorType,
+          owner_group: String(form.get("ownerGroup") ?? ""),
           config:
             connectorType === "Webhook"
               ? {
@@ -287,7 +287,7 @@ function ConnectorForm({ ownerGroups, unrestricted, onSaved }: ConnectorFormProp
                 }
               : {},
           credential: String(form.get("credential") ?? ""),
-          intervalSeconds:
+          interval_seconds:
             connectorType === "DeviceConfig" ? Number(form.get("intervalSeconds") ?? 900) : null,
           // Yeni connector PASİF başlıyor: etkinleştirmeden önce bağlantı
           // denenebilsin. Etkin doğan bir connector, yanlış yapılandırıldığında

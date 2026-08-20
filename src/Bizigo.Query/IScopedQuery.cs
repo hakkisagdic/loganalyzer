@@ -102,6 +102,21 @@ public interface IScopedQuery
         SourceActivityWindow window,
         AccessScope scope,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Zaman kovalarına bölünmüş sayım — alarm önizlemesinin tek sorgusu (T23).
+    ///
+    /// <para>
+    /// Eşik <b>uygulanmadan</b> dönüyor: önizleme ekranı eşiği değiştirdiğinde
+    /// yeni bir sorgu atmasın diye. Kaydırıcıyı sürükleyen bir kullanıcı aksi
+    /// hâlde saniyede onlarca sorgu üretirdi ve K16'nın uyardığı "tek kötü kural"
+    /// senaryosu kural yazılmadan, sadece yazılırken gerçekleşirdi.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyList<HistogramBucket>> GetEventHistogramAsync(
+        EventHistogramQuery query,
+        AccessScope scope,
+        CancellationToken cancellationToken = default);
 }
 
 /// <param name="IsKnownToDispatcher"><c>parser_id</c> bağlı mı — dispatcher kademe 1.</param>
