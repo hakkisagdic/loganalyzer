@@ -2,7 +2,17 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using Bizigo.Contracts;
+using Bizigo.ControlPlane;
+using Bizigo.Normalization;
+using Bizigo.Parsing.Dispatch;
+using Bizigo.Parsing.Engine;
+using Bizigo.Parsing.Grok;
+using Bizigo.Replay;
 using Bizigo.Storage.ClickHouse;
+using Bizigo.Storage.Raw;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace Bizigo.IntegrationTests;
 
@@ -79,6 +89,14 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
 
     private const string Core = "network/core";
     private const string Edge = "network/edge";
+    private const string SourceKey = "10.1.2.9";
+
+    /// <summary>
+    /// Replay'in sabitlediği parser. <c>eventtime</c>'dan zaman çözüyor, yani
+    /// ayrıştırılan zaman damgası girdinin kendisinde yazılı — bölüm seçimi
+    /// takvime değil veriye bağlı kalıyor.
+    /// </summary>
+    private const string ParserId = "fortinet.fortigate.event";
 
     private ClickHouseContext _context = null!;
     private EventWriter _writer = null!;
@@ -87,8 +105,7 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
-        _context = await stack.CreateIsolatedClickHouseContextAsync(Token);
-        await new ClickHouseMigrator(_context).MigrateAsync(RepoPath("db/clickhouse"), Token);
+        _context = await DevStackSetup.ClickHouseAsync(stack, Token);
 
         _writer = new EventWriter(_context);
     }
@@ -97,18 +114,6 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
     {
         _context.Dispose();
         return ValueTask.CompletedTask;
-    }
-
-    private static string RepoPath(string relative)
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Bizigo.sln")))
-        {
-            dir = dir.Parent;
-        }
-
-        return Path.Combine(dir!.FullName, relative);
     }
 
     private Task<string> ScalarAsync(string sql) =>
@@ -288,30 +293,267 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
     ///
     /// <para>
     /// <b>Bu test ClickHouse'un ötesinde Postgres ve S3 de istiyor</b> (manifest
-    /// ve arşiv nesneleri). Kurulum <c>ReplayStoreTests</c> ile
-    /// <c>RawArchiveTests</c>'in kurulumlarının birleşimi; koşturan kişi ikisini
-    /// örnek alabilir.
+    /// ve arşiv nesneleri) — üç deponun birlikte koştuğu tek test. Kurulum
+    /// <c>DevStackSetup</c>'ta: <c>ReplayStoreTests</c> ve
+    /// <c>RawArchiveTests</c> de aynı yüzeyden besleniyor, üçüncü bir kopya
+    /// yazılmadı.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Kuru koşu ile gerçek koşunun eşitliği tek başına yetmiyor</b> — ikisi
+    /// aynı yanlışı da söyleyebilir, çünkü ikisi aynı kodu koşuyor. Asıl kanıt
+    /// uygulamadan sonraki ikinci kuru koşu: yapacak iş kalmamış olmalı.
+    /// </para>
+    /// <summary>
+    /// <b>Açık bölüm testin içinde.</b> Aralık iki günü kapsıyor: 17 Ağustos
+    /// kapalı, 18 Ağustos motorun saatine göre <b>hâlâ yazılan</b> bölüm.
+    /// Varsayılan davranış onu dışarıda bırakıyor ve test bunun içinde koşuyor —
+    /// yalnızca kapalı bölümü sınayan bir test, zaten güvenli olan yolu sınardı.
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task Kuru_kosu_gercek_kosuyla_ayni_sonucu_veriyor()
+    {
+        var (engine, records, pinnedVersion) = await BuildReplayAsync();
+
+        // 17 Ağustos'un iki kaydı ClickHouse'a ESKİ hâliyle yazılıyor: biri
+        // `failed` (parser satırı hiç tanımamıştı), biri yanlış `action` ile
+        // `ok`. Üçüncü kayıt tabloda YOK — ilk işlemede kaybedilmiş satır.
+        // Dördüncü kayıt 18 Ağustos'ta, yani açık bölümde.
+        await _writer.WriteEventsAsync(
+            [
+                Stale(records[0], ParseStatus.Failed, action: string.Empty),
+                Stale(records[1], ParseStatus.Ok, action: "eski"),
+                Stale(records[3], ParseStatus.Ok, action: "eski"),
+            ],
+            Token);
+
+        var plan = new ReplayPlan
+        {
+            From = Day.AddDays(-1),
+            To = Day.AddDays(2),
+            ParserId = ParserId,
+
+            // Sürüm KATALOGDAN okunuyor, elle yazılmıyor. Motor sabitlenmiş
+            // sürüm katalogdakiyle uyuşmazsa duruyor (tekrarlanabilirlik
+            // iddiası) — elle yazılan bir sürüm, katalog sürüm atladığı gün bu
+            // testi replay'le hiç ilgisi olmayan bir sebeple düşürürdü.
+            ParserVersion = pinnedVersion,
+        };
+
+        // 3 · kuru koşu
+        var dry = await engine.DryRunAsync(plan, Token);
+
+        // Açık bölüm raporda GÖRÜNÜYOR — sessizce kısalma değil, bildirilen bir
+        // karar. Bu satır düşerse replay canlı ingest'i sessizce silmeye geri
+        // dönmüş demektir.
+        Assert.Equal(["20260818"], dry.SkippedOpenPartitions);
+        Assert.Equal(["20260817"], dry.Partitions);
+        Assert.False(dry.Applied);
+
+        Assert.Equal(2, dry.Changed);
+        Assert.Equal(1, dry.FailedToOk);
+        Assert.Equal(0, dry.OkToFailed);
+        Assert.Equal(1, dry.NewRows);
+
+        // 4 · gerçek koşu
+        var applied = await engine.ApplyAsync(plan, Token);
+
+        // 5 · kuru koşu neyi vaat ettiyse o olmuş
+        Assert.True(applied.Applied);
+        Assert.Equal(dry.Changed, applied.Changed);
+        Assert.Equal(dry.FailedToOk, applied.FailedToOk);
+        Assert.Equal(dry.OkToFailed, applied.OkToFailed);
+        Assert.Equal(dry.NewRows, applied.NewRows);
+        Assert.Equal(dry.SkippedOpenPartitions, applied.SkippedOpenPartitions);
+
+        // 6-7 · ASIL KANIT. 5. adım yalnızca "iki rapor aynı" diyor; iki rapor
+        // aynı yanlışı da söyleyebilir. Bu adım "uygulama gerçekten uygulandı"
+        // diyor: aynı plana tekrar bakıldığında yapacak iş kalmamış olmalı.
+        var after = await engine.DryRunAsync(plan, Token);
+
+        Assert.Equal(0, after.Changed);
+        Assert.Equal(0, after.FailedToOk);
+        Assert.Equal(0, after.NewRows);
+        Assert.Equal(3, after.Unchanged);
+
+        // Açık bölüm hâlâ atlanıyor ve satırı DEĞİŞMEDEN duruyor: replay ona
+        // dokunmadıysa canlı ingest'in yazdığı da yerinde kalmış olmalı.
+        Assert.Equal(["20260818"], after.SkippedOpenPartitions);
+
+        var untouched = await ScalarAsync(
+            "SELECT action FROM events WHERE toYYYYMMDD(ts) = 20260818 LIMIT 1");
+
+        Assert.Equal("eski", untouched);
+
+        // Kapalı bölümdeki `failed` satır gerçekten düzelmiş: rapor sayı
+        // veriyor, tablo sonucu veriyor. İkisini birden sormak, raporun kendi
+        // kendini onaylamasını engelliyor.
+        //
+        // Karşılaştırma sayıyla değil ADLA (`Enum8('ok' = 1, …)`): sayı yazmak,
+        // enum sırası değiştiği gün sessizce başka bir durumu sayardı.
+        var stillFailed = await ScalarAsync(
+            "SELECT count() FROM events WHERE toYYYYMMDD(ts) = 20260817 AND parse_status = 'failed'");
+
+        Assert.Equal("0", stillFailed);
+
+        // Üç satır da yeni parser'ın sonucunu taşıyor: ikisi düzeltilmiş, biri
+        // arşivden geri kazanılmış (`NewRows`).
+        var replayed = await ScalarAsync(
+            "SELECT count() FROM events WHERE toYYYYMMDD(ts) = 20260817 "
+            + "AND parse_status = 'ok' AND action = 'login' AND parser_version = '1.0.0'");
+
+        Assert.Equal("3", replayed);
+    }
+
+    /// <summary>
+    /// Replay motorunu gerçek bağımlılıklarıyla kuruyor ve arşive dört kayıt
+    /// yüklüyor.
+    ///
+    /// <para>
+    /// <b>Saat sahte, veri gerçek.</b> Motor 18 Ağustos 00:30'da duruyor, yani
+    /// 20260818 açık bölüm. Gerçek saatle koşmak, testin hangi bölümün açık
+    /// olduğunu takvime bırakması demekti — bu deponun iki kez ödediği "testin
+    /// geçme sebebi duvar saati" hatası.
+    /// </para>
+    ///
+    /// <para>
+    /// Nesneler ve manifest satırları <c>RawArchiveUploader</c> ile yazılıyor,
+    /// elle değil: manifest satırını testin kendi elleriyle kurması, üretimin
+    /// yazdığından farklı bir satır üretme riski taşır ve replay tam da o satırı
+    /// okuyor.
     /// </para>
     /// </summary>
-    [Fact(Skip = "Kurulum Postgres manifest + S3 nesnesi istiyor; T27 kapsamında yazıldı, koşum faz sonunda.")]
-    public Task Kuru_kosu_gercek_kosuyla_ayni_sonucu_veriyor()
+    private async Task<(ReplayEngine Engine, IReadOnlyList<RawRecord> Records, string ParserVersion)>
+        BuildReplayAsync()
     {
-        // Adımlar, koşturacak kişi için:
-        //
-        // 1. Arşive iki ham kayıt yükle, manifest satırlarını yaz.
-        // 2. `events` tablosuna aynı kayıtların ESKİ parser'la üretilmiş
-        //    hâlini yaz (biri `failed`).
-        // 3. `DryRunAsync(plan)` → rapor A.
-        // 4. `ApplyAsync(plan)` → rapor B.
-        // 5. Assert: A.Changed == B.Changed, A.FailedToOk == B.FailedToOk,
-        //    A.NewRows == B.NewRows. Kuru koşu neyi vaat ettiyse o olmuş.
-        // 6. `DryRunAsync(plan)` → rapor C.
-        // 7. Assert: C.Changed == 0 && C.FailedToOk == 0. Yapacak iş kalmamış.
-        //
-        // Adım 7 asıl kanıt: 5 yalnızca "iki rapor aynı" diyor, 7 "uygulama
-        // gerçekten uygulandı" diyor.
-        return Task.CompletedTask;
+        var factory = await DevStackSetup.ControlPlaneAsync(stack, Token);
+
+        await using (var db = await factory.CreateDbContextAsync(Token))
+        {
+            db.Sources.Add(new SourceEntity
+            {
+                SourceId = "fg-core-01",
+                PeerAddress = SourceKey,
+                OwnerGroup = Core,
+                SourceClass = "firewall",
+            });
+            await db.SaveChangesAsync(Token);
+        }
+
+        var options = DevStackSetup.RawOptions(stack);
+        var store = new S3RawObjectStore(Options.Create(options));
+        await store.EnsureBucketAsync(Token);
+
+        var records = new[]
+        {
+            Raw(0, "0100032002", "Admin login failed", "failed", "passwd_invalid"),
+            Raw(5, "0100032001", "Admin login successful", "success", "none"),
+            Raw(10, "0100032001", "Admin login successful", "success", "none"),
+
+            // Açık bölüm: motorun saatine göre bugün.
+            Raw(24 * 3600, "0100032001", "Admin login successful", "success", "none"),
+        };
+
+        var segments = new FakeSegmentSource();
+        segments.Add("segment-1", records.Select(r => (ReadOnlyMemory<byte>)RawRecordCodec.ToLine(r)));
+
+        var directory = new SourceDirectory(factory);
+
+        var uploader = new RawArchiveUploader(
+            segments,
+            store,
+            factory,
+            directory,
+            new NullRawRefSink(),
+            Options.Create(options),
+            NullLogger<RawArchiveUploader>.Instance,
+            TimeProvider.System);
+
+        var report = await uploader.RunOnceAsync(Token);
+        Assert.True(report.ObjectsWritten > 0, "Arşive hiç nesne yazılmadı; replay okuyacak bir şey bulamaz.");
+
+        var compiler = new ParserCompiler(
+            new GrokCompiler(GrokPatternLibrary.LoadWithOverlay(
+                DevStackSetup.RepoPath("catalog/patterns/legacy"),
+                DevStackSetup.RepoPath("catalog/patterns/bizigo-v1"))),
+            MappingTableCatalog.LoadFromDirectory(DevStackSetup.RepoPath("catalog/mappings")));
+
+        var catalog = new ParserCatalog();
+        catalog.LoadFromDirectory(DevStackSetup.RepoPath("catalog/parsers"), compiler);
+
+        var engine = new ReplayEngine(
+            factory,
+            store,
+            catalog,
+            new Dispatcher(catalog, new DispatchStats()),
+            directory,
+            new EventNormalizer(),
+            _writer,
+            new ReplayStore(_context),
+            MaskCatalog.LoadFromFile(DevStackSetup.RepoPath("catalog/masks/bizigo-masks.yaml")),
+            NullLogger<ReplayEngine>.Instance,
+            new FakeTime(Day.AddDays(1).AddMinutes(30)));
+
+        var pinned = Assert.Contains(ParserId, catalog.Current.ByParserId);
+
+        return (engine, records, pinned.Version);
     }
+
+    /// <summary>
+    /// FortiGate olay satırı. Zaman <c>eventtime</c>'dan çözülüyor (epoch ns),
+    /// yani ayrıştırılan zaman damgası <b>ölçülebilir biçimde</b> sabit —
+    /// RFC3164 gibi yılı çıkarımla bulan bir biçim, bölümü takvime bağlardı.
+    /// </summary>
+    private static RawRecord Raw(
+        int offsetSeconds,
+        string logId,
+        string description,
+        string status,
+        string reason)
+    {
+        var at = Day.AddSeconds(offsetSeconds);
+        var nanos = at.ToUnixTimeSeconds() * 1_000_000_000L;
+
+        var line =
+            $"date={at:yyyy-MM-dd} time={at:HH:mm:ss} logid=\"{logId}\" type=\"event\" subtype=\"system\" "
+            + $"level=\"alert\" vd=\"root\" eventtime={nanos} logdesc=\"{description}\" sn=\"0\" user=\"esra\" "
+            + $"ui=\"ssh(10.1.2.9)\" method=\"ssh\" srcip=10.1.2.9 dstip=10.1.2.3 action=\"login\" "
+            + $"status=\"{status}\" reason=\"{reason}\" msg=\"Administrator esra {description}\"";
+
+        return new RawRecord
+        {
+            EventId = Guid.CreateVersion7(at),
+            ReceivedAt = at,
+            ObservedAt = at,
+            SourceKey = SourceKey,
+            Body = Encoding.UTF8.GetBytes(line),
+        };
+    }
+
+    /// <summary>
+    /// Kaydın <b>eski parser'la</b> üretilmiş hâli — replay'in düzelteceği satır.
+    /// Aynı <c>EventId</c>, çünkü replay eşleştirmeyi onunla yapıyor.
+    /// </summary>
+    private static LogEvent Stale(RawRecord record, ParseStatus status, string action) => new()
+    {
+        EventId = record.EventId,
+        Timestamp = record.ObservedAt!.Value,
+        IngestedAt = record.ReceivedAt,
+        OwnerGroup = Core,
+        SourceId = "fg-core-01",
+        Host = "fw-01",
+        ParseStatus = status,
+        ParserId = ParserId,
+
+        // Eski sürüm: replay'in yazacağı sürümden farklı olmalı, yoksa
+        // `parser_version` farkı görünmez ve testin "değişti" iddiası zayıflar.
+        ParserVersion = "0.9.0",
+        Action = action,
+        SrcIp = IPAddress.IPv6Any,
+        DstIp = IPAddress.IPv6Any,
+        Body = Encoding.UTF8.GetString(record.Body.Span),
+    };
 
     private static ChangeEvent Change(
         string source,
