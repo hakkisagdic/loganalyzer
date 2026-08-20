@@ -89,10 +89,10 @@ from __future__ import annotations
 
 import json
 import re
-import urllib.error
-import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
+
+from sigma_build.clickhouse import post_sql
 
 from sigma_build.gate import (
     GATE_EXPLAIN,
@@ -210,29 +210,6 @@ class ExplainResult:
     verdict: GateVerdict
 
 
-def _post(url: str, sql: str, *, user: str, password: str, database: str, timeout: float) -> tuple[bool, str]:
-    request = urllib.request.Request(  # noqa: S310 — şema sabit, aşağıda doğrulanıyor
-        url,
-        data=sql.encode("utf-8"),
-        headers={
-            "X-ClickHouse-User": user,
-            "X-ClickHouse-Key": password,
-            "X-ClickHouse-Database": database,
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
-            return True, response.read().decode("utf-8", errors="replace")
-    except urllib.error.HTTPError as error:
-        return False, error.read().decode("utf-8", errors="replace")
-    except OSError as error:
-        # Bağlantı kurulamadı: bu bir kural kusuru DEĞİL, kurulum kusuru.
-        # Kural hatasıymış gibi raporlamak, ortam bozukken "269 kural kırık"
-        # yazdırırdı — ölçüm aracının kendi sessiz yanlışı.
-        raise ConnectionError(f"ClickHouse'a ulaşılamadı ({url}): {error}") from error
-
-
 def explain_sql(
     sql: str,
     *,
@@ -244,13 +221,12 @@ def explain_sql(
     form: str = DEFAULT_EXPLAIN_FORM,
 ) -> GateVerdict:
     """Tek bir sorguyu ClickHouse'a sorar. Veri okunmuyor, yalnızca çözümleniyor."""
-    if not url.startswith(("http://", "https://")):
-        raise ValueError(f"Beklenen http(s) adresi: {url!r}")
     if not form.upper().startswith("EXPLAIN"):
         raise ValueError(f"Biçim EXPLAIN ile başlamalı: {form!r}")
 
-    ok, body = _post(url, f"{form} {sql.strip().rstrip(';')}", user=user, password=password,
-                     database=database, timeout=timeout)
+    # `http(s)` doğrulaması `post_sql` içinde — tek yerde.
+    ok, body = post_sql(f"{form} {sql.strip().rstrip(';')}", url=url, user=user,
+                        password=password, database=database, timeout=timeout)
     if ok:
         return GateVerdict(gate=GATE_EXPLAIN, blockers=())
     return GateVerdict(gate=GATE_EXPLAIN, blockers=(classify_error(body),))
