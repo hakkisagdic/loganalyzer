@@ -1,0 +1,117 @@
+#!/bin/sh
+#
+# main'e push etmeden önce: BİR ÖNCEKİ koşum kırmızı mı?
+#
+# B19. Bu kanca bir bekçi değil, bir GÖRÜNÜRLÜK düzeneği. Kaçırdığımız hatayı
+# (compose'un ayrıştırılamaması) yakalayan kapı zaten vardı ve zaten kırmızı
+# yanmıştı; B7'den itibaren dört koşum üst üste düştü ve dördünde de üstüne
+# yeni bir merge kondu. Eksik olan kapı değil, kırmızıyı okuyan andı.
+#
+# Bu kanca tam o anda duruyor: yeni bir merge'i, okunmamış bir kırmızının
+# üstüne yığmadan önce.
+#
+# ---------------------------------------------------------------------------
+# NEDEN KANCA — ve neden bunun yerine "CI'ya bakmayı unutma" kuralı değil
+#
+# Çünkü o kural zaten vardı ve dört kez tutmadı. Kişinin hatırlamasına dayanan
+# her çözüm aynı yere gider. Kanca hatırlamayı gerektirmiyor: push komutunun
+# kendisi duruyor.
+#
+# NEDEN AÇIK KALIYOR (fail-open) — `gh` yoksa ya da yetkisizse
+#
+# Kapatsaydı (fail-closed) `gh`si olmayan her makinede her push düşerdi ve
+# `--no-verify` alışkanlığa dönerdi; alışkanlık hâline gelmiş bir kaçış kapısı,
+# kancayı tamamen yok eder. Onun yerine GÜRÜLTÜLÜ biçimde açık kalıyor ve
+# sessiz kalmamasının bedeli GitHub tarafındaki ikinci katmana bırakılıyor
+# (`.github/workflows/ci-red.yml`) — o katman yerel kuruluma hiç bağlı değil.
+#
+# KURULUM (bir kez, klon başına):
+#
+#   git config core.hooksPath .githooks
+#
+# Bu tek satır unutulursa kanca SESSİZCE yok. Bilinen zayıflık ve bu yüzden
+# tek katman değil: GitHub tarafındaki iş kurulum istemiyor.
+# ---------------------------------------------------------------------------
+
+set -eu
+
+# stdin: <yerel ref> <yerel sha> <uzak ref> <uzak sha>
+pushing_main=0
+while read -r _localref _localsha remoteref _remotesha; do
+    case "$remoteref" in
+        refs/heads/main) pushing_main=1 ;;
+    esac
+done
+
+[ "$pushing_main" -eq 1 ] || exit 0
+
+# TEST DİKİŞİ. Kancanın kırmızı yanabildiğini ölçmenin tek yolu bu — gerçek bir
+# push denemeden durumu enjekte edebilmek. Aynı zamanda bir kaçış kapısı, ama
+# YENİ bir delik değil: `git push --no-verify` zaten var ve daha kolay.
+status="${BIZIGO_CI_STATUS:-}"
+
+if [ -z "$status" ]; then
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "pre-push: \`gh\` bulunamadı — CI durumu SORULAMADI." >&2
+        echo "pre-push: push'a izin veriliyor. Kurulum: https://cli.github.com" >&2
+        exit 0
+    fi
+
+    # `--limit 1`: yalnızca en son koşum. Daha eskisine bakmak, arada
+    # düzelmiş bir dalı kırmızı sanmak demek olurdu.
+    status=$(gh run list --branch main --limit 1 \
+        --json conclusion --jq '.[0].conclusion' 2>/dev/null || echo "")
+
+    if [ -z "$status" ]; then
+        echo "pre-push: CI durumu okunamadı (yetki? ağ?). Push'a izin veriliyor." >&2
+        exit 0
+    fi
+fi
+
+case "$status" in
+    # Koşum hâlâ sürüyorsa `conclusion` boş döner ve yukarıda yakalandı.
+    # `success`, `skipped`, `neutral` → sorun yok.
+    success|skipped|neutral)
+        exit 0
+        ;;
+esac
+
+# Buraya düşen her şey kırmızı sayılıyor: `failure`, `cancelled`, `timed_out`,
+# `action_required`, `startup_failure`. Bilinmeyen bir değer de kırmızı sayılır
+# — tanımadığı bir durumu "herhalde iyidir" diye geçen bir bekçi, bu depodaki
+# sessiz-yeşil sınıfının kendisi olurdu.
+echo "" >&2
+echo "  main'deki SON CI koşumu: $status" >&2
+echo "" >&2
+
+if [ -z "${BIZIGO_CI_STATUS:-}" ] && command -v gh >/dev/null 2>&1; then
+    # Koşum kimliği ÖNCE alınıyor: `gh run view` kimliksiz çağrıldığında
+    # etkileşimli seçici açıyor ve bir kanca içinde o, asılı kalan bir push
+    # demek.
+    run_id=$(gh run list --branch main --limit 1 --json databaseId \
+        --jq '.[0].databaseId' 2>/dev/null || echo "")
+
+    if [ -n "$run_id" ]; then
+        gh run view "$run_id" --json displayTitle,url \
+            --jq '"  \(.displayTitle)\n  \(.url)"' >&2 2>/dev/null || true
+        echo "" >&2
+        echo "  Düşen işler:" >&2
+        gh run view "$run_id" --json jobs \
+            --jq '.jobs[] | select(.conclusion == "failure") | "    ✗ \(.name)"' >&2 2>/dev/null || true
+        echo "" >&2
+    fi
+fi
+
+cat >&2 <<'MESAJ'
+  Bu push ENGELLENDİ — çünkü okunmamış bir kırmızının üstüne yeni bir merge
+  koymak, bu depoda dört kez oldu ve dördünde de kimse fark etmedi (B18/B19).
+
+  Kırmızı senin işinle ilgili olmayabilir; o zaman da bilerek geçmek gerekiyor:
+
+      git push --no-verify
+
+  Bilerek geçtiysen sebebini raporuna yaz. Sessizce geçilen bir kırmızı,
+  hiç sorulmamış bir soruyla aynı şey.
+MESAJ
+
+exit 1

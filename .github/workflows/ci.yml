@@ -98,10 +98,13 @@ jobs:
       # Yakaladığı hata sınıfı Git'in göremediği türden: iki ajan aynı dosyaya
       # aynı adda servis ekliyor, metinsel merge tertemiz, derleme ve testler
       # yeşil — yalnızca yığını ayağa kaldırmayı deneyen kişi öğreniyor.
+      #
+      # İş akışı dosyaları da kapsamda: aynı hata sınıfı orada da mümkün ve
+      # oradaki bir tekrarlanan anahtar, kapının KENDİSİNİ sessizce değiştirir.
       - name: Tekrarlanan anahtar var mı
         run: >
           yamllint -d '{rules: {key-duplicates: enable}}'
-          deploy/docker-compose.yml
+          deploy/docker-compose.yml .github/workflows/
 
   ui:
     name: Arayüz — tip kapısı, testler, derleme

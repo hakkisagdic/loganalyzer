@@ -1,0 +1,87 @@
+# main'de CI kırmızı kaldıysa, bunu kimsenin bakmasını beklemeyen bir yere yaz.
+#
+# B19. Kaçırılan hata bir bekçi eksikliği değildi: kapı vardı, kırmızı yandı,
+# dört merge boyunca okunmadı. Koşum listesine bakmak bir alışkanlık gerektiriyor
+# ve o alışkanlık dört kez tutmadı.
+#
+# Bu iş, kırmızıyı **kalıcı ve kendiliğinden gelen** bir şeye çeviriyor: açık bir
+# konu (issue). Konu kapanana kadar depoda duruyor, bildirim üretiyor ve bir
+# sonraki turda "bakmayı unuttum" ile kaybolmuyor.
+#
+# NEDEN `pre-push` KANCASININ YANINDA — ikisi farklı boşluğu kapatıyor:
+#
+#   * Kanca yanlış ANI durduruyor (okunmamış kırmızının üstüne yeni merge), ama
+#     `git config core.hooksPath .githooks` bir kez yapılmazsa sessizce yok.
+#   * Bu iş hiçbir yerel kurulum istemiyor — depoya girdiği an çalışıyor — ama
+#     bir şeyi durdurmuyor, yalnızca görünür kılıyor.
+#
+# Tek katman seçmek, iki boşluktan birini açık bırakmak olurdu.
+name: CI kırmızı kaldı mı
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+# Yalnızca konu yazma. Depoya yazma yetkisi İSTENMİYOR: bu işin kod
+# değiştirmesi gereken hiçbir durum yok.
+permissions:
+  issues: write
+
+jobs:
+  bildir:
+    name: Kırmızıyı açık bir konuya çevir
+    # `head_branch` kontrolü şart: dal koşumlarının kırmızısı normal ve
+    # beklenen. Sorun, MAIN'in kırmızı kalması.
+    if: >
+      github.event.workflow_run.conclusion == 'failure' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Konuyu aç ya da güncelle
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RUN_TITLE: ${{ github.event.workflow_run.display_title }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+
+          # Başlık bir İŞARET olarak kullanılıyor, etiket değil: `--label` ile
+          # açmak, etiket depoda tanımlı değilse `gh issue create`'i düşürür ve
+          # bu işin tek görevi olan "kırmızıyı görünür kıl"ı sessizce
+          # başarısız kılardı.
+          MARKER="CI kırmızı — main"
+
+          # `--search "in:title ..."` yerine TAM BAŞLIK eşleşmesi: arama
+          # sözdizimi noktalama işaretlerini kendi anlamıyla yorumluyor ve
+          # eşleşmeyen bir sorgu burada "açık konu yok" diye okunurdu — yani
+          # her kırmızı koşum yeni bir konu açardı. Yerelde eşleştirmek o
+          # belirsizliği tamamen kaldırıyor.
+          existing=$(gh issue list --state open --limit 100 --json number,title \
+            --jq ".[] | select(.title == \"$MARKER\") | .number" | head -1)
+
+          govde=$(printf '%s\n' \
+            "main'deki CI koşumu düştü." \
+            "" \
+            "| | |" \
+            "| --- | --- |" \
+            "| Koşum | [$RUN_TITLE]($RUN_URL) |" \
+            "| Commit | \`$RUN_SHA\` |" \
+            "" \
+            "Bu konu **kendiliğinden kapanmıyor**. Kırmızı giderildiğinde elle kapatın." \
+            "" \
+            "Gerekçe: bu depoda bir kapı dört merge boyunca kırmızı yandı ve" \
+            "okunmadı (B18/B19). Konu, koşum listesine bakma alışkanlığının" \
+            "yerine geçiyor — çünkü o alışkanlık dört kez tutmadı.")
+
+          if [ -n "$existing" ]; then
+            # Yeni bir konu açmak yerine yorum: her kırmızı koşum için ayrı
+            # konu açmak, ilk konunun içindeki bağlamı gürültüde kaybederdi.
+            gh issue comment "$existing" --body "$govde"
+            echo "Var olan konu güncellendi: #$existing"
+          else
+            gh issue create --title "$MARKER" --body "$govde"
+          fi
