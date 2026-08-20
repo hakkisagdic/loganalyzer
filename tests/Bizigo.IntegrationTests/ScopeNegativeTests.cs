@@ -122,15 +122,15 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
     private static LogEvent[] CorrelationSeed() =>
     [
         // Tabanda görülmüş imzalar — "ilk kez görüldü" sayılmamalılar.
-        Correlated("net-core", "fg-core", CoreSignature, BaselineFrom.AddHours(1), "admin"),
-        Correlated("net-edge", "fg-edge", EdgeSignature, BaselineFrom.AddHours(1), "operator"),
+        Correlated("net-core", "fg-core", CoreSignature, BaselineFrom.AddHours(1), "core-allow"),
+        Correlated("net-edge", "fg-edge", EdgeSignature, BaselineFrom.AddHours(1), "edge-deny"),
 
         // Pencerede: aynı imzalar tekrar (hacim), artı her grup için tabanda
         // hiç olmayan yeni bir imza (ilk-görülen).
-        Correlated("net-core", "fg-core", CoreSignature, CorrelationFrom.AddMinutes(5), "admin"),
-        Correlated("net-edge", "fg-edge", EdgeSignature, CorrelationFrom.AddMinutes(5), "operator"),
-        Correlated("net-core", "fg-core", CoreSignature + 100, CorrelationFrom.AddMinutes(10), "admin"),
-        Correlated("net-edge", "fg-edge", EdgeSignature + 100, CorrelationFrom.AddMinutes(10), "operator"),
+        Correlated("net-core", "fg-core", CoreSignature, CorrelationFrom.AddMinutes(5), "core-allow"),
+        Correlated("net-edge", "fg-edge", EdgeSignature, CorrelationFrom.AddMinutes(5), "edge-deny"),
+        Correlated("net-core", "fg-core", CoreSignature + 100, CorrelationFrom.AddMinutes(10), "core-allow"),
+        Correlated("net-edge", "fg-edge", EdgeSignature + 100, CorrelationFrom.AddMinutes(10), "edge-deny"),
 
         // Bozulmuş olaylar — yayılma (propagation) bunları sıralıyor.
         Degraded("net-core", "fg-core", CorrelationFrom.AddMinutes(20)),
@@ -142,7 +142,7 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
         string sourceId,
         ulong signature,
         DateTimeOffset at,
-        string userName) => new()
+        string action) => new()
     {
         EventId = Guid.CreateVersion7(at),
         Timestamp = at,
@@ -156,7 +156,13 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
         SignatureHash = signature,
         ParseStatus = ParseStatus.Ok,
         TimeSource = TimeSources.Parsed,
-        UserName = userName,
+        // `action`, `user_name` DEĞİL: lift sorgusu alan adını bir İZİN
+        // LİSTESİNDEN alıyor (`source_id, host, vendor, product, parser_id,
+        // proto, action, outcome`) ve liste dışı bir ad `ArgumentException`
+        // fırlatıyor. `user_name` sıcak kolonlarda var ama listede yok; onu
+        // listeye eklemek bir ÜRÜN kararı ve gerekçesi "testim istiyor"
+        // olamaz — o yüzden tohum listeye uyduruldu.
+        Action = action,
         SeverityNum = 9,
     };
 
@@ -488,10 +494,10 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
     public async Task Alan_degeri_sayimi_baska_grubun_degerini_gostermiyor()
     {
         var mine = await _query.GetAttributeLiftAsync(
-            CorrelationSpan(), CoreOnly(), ["user_name"], 50, TestContext.Current.CancellationToken);
+            CorrelationSpan(), CoreOnly(), ["action"], 50, TestContext.Current.CancellationToken);
 
-        Assert.Contains(mine, v => v.Value == "admin");
-        Assert.DoesNotContain(mine, v => v.Value == "operator");
+        Assert.Contains(mine, v => v.Value == "core-allow");
+        Assert.DoesNotContain(mine, v => v.Value == "edge-deny");
     }
 
     /// <summary>

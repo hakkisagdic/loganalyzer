@@ -56,17 +56,29 @@ public sealed class FakeSegmentSource : IRawSegmentSource
 public sealed class FakeObjectStoreOverS3(S3RawObjectStore inner) : IRawObjectStore, IDisposable
 {
     private readonly Dictionary<string, byte[]> _corrupted = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _lost = new(StringComparer.Ordinal);
     private bool _hidden;
 
     public Task EnsureBucketAsync(CancellationToken cancellationToken = default) =>
         inner.EnsureBucketAsync(cancellationToken);
 
-    public Task PutAsync(string key, ReadOnlyMemory<byte> content, CancellationToken cancellationToken = default) =>
-        inner.PutAsync(key, content, cancellationToken);
+    public Task PutAsync(string key, ReadOnlyMemory<byte> content, CancellationToken cancellationToken = default)
+    {
+        // Yazma kaybı GERİ ALIYOR: kurtarma (T40) nesneyi yeniden yazdığında
+        // artık kayıp değil. Kalıcı olsaydı kurtarmanın geri okuma doğrulaması
+        // hiçbir zaman geçemez ve test kurtarmayı değil taklidi ölçerdi.
+        _lost.Remove(key);
+        return inner.PutAsync(key, content, cancellationToken);
+    }
 
     public async Task<byte[]?> GetAsync(string key, CancellationToken cancellationToken = default)
     {
         if (_hidden)
+        {
+            return null;
+        }
+
+        if (_lost.Contains(key))
         {
             return null;
         }
@@ -77,12 +89,22 @@ public sealed class FakeObjectStoreOverS3(S3RawObjectStore inner) : IRawObjectSt
     }
 
     public Task<RawObjectInfo?> HeadAsync(string key, CancellationToken cancellationToken = default) =>
-        _hidden ? Task.FromResult<RawObjectInfo?>(null) : inner.HeadAsync(key, cancellationToken);
+        _hidden || _lost.Contains(key)
+            ? Task.FromResult<RawObjectInfo?>(null)
+            : inner.HeadAsync(key, cancellationToken);
 
     public void Corrupt(string key) => _corrupted[key] = "bozuk"u8.ToArray();
 
     /// <summary>Nesnelerin kaybolduğu durumu taklit eder.</summary>
     public void Hide() => _hidden = true;
+
+    /// <summary>
+    /// <b>Tek bir nesneyi</b> kaybeder — <see cref="Hide"/>'ın aksine geri
+    /// yazılabilir. T40'ın kurtarma yolu tam olarak bunu istiyor: nesne
+    /// kayboluyor, kurtarma onu yeniden yazıyor, ve geri okuma <b>gerçek
+    /// depodan</b> geliyor.
+    /// </summary>
+    public void Lose(string key) => _lost.Add(key);
 
     public void Dispose() => inner.Dispose();
 }
