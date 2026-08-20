@@ -82,8 +82,23 @@ def compile_rule(
             f"pySigma ClickHouse backend'i yüklenemedi: {exc}"
         ) from exc
 
+    # Backend'i kurmak **sözlükleri okumayı** gerektiriyor ve o bir DOSYA
+    # işi: yol yanlışsa `FileNotFoundError` gelir.
+    #
+    # Bu bir KURULUM hatası, kullanıcının kuralının hatası değil. Genel
+    # `except`'e düşseydi uç 422 dönerdi — yani yanlış yapılandırılmış bir
+    # dağıtım, her kullanıcıya "kuralın bozuk" derdi ve kimse imaja bakmazdı.
+    # Ölçüldü: CI'da tam olarak bu oldu.
+    try:
+        backend = bizigo_backend(table=table_name, mappings_path=mappings_path)
+    except OSError as exc:
+        raise SigmaBackendUnavailable(
+            f"Sigma değer sözlükleri okunamadı ({mappings_path or 'varsayılan yol'}): {exc}. "
+            "Bu bir kurulum sorunu; imaj `catalog/mappings`'i taşımıyor ya da "
+            "`BIZIGO_MAPPINGS_PATH` yanlış."
+        ) from exc
+
     collection = SigmaCollection.from_yaml(rule_yaml)
-    backend = bizigo_backend(table=table_name, mappings_path=mappings_path)
     backend.full_log_column = full_log_column
     queries = backend.convert(collection)
 
