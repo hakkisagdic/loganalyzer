@@ -119,7 +119,34 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayBlockedResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -4702,6 +4729,74 @@
           }
         }
       },
+      "ReplayBlockedResponse": {
+        "required": [
+          "error",
+          "missing_objects",
+          "hint"
+        ],
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "missing_objects": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hint": {
+            "type": "string"
+          }
+        }
+      },
+      "ReplayDiffResponse": {
+        "required": [
+          "event_id",
+          "status_before",
+          "status_after",
+          "changes"
+        ],
+        "type": "object",
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status_before": {
+            "type": "string"
+          },
+          "status_after": {
+            "type": "string"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReplayFieldChangeResponse"
+            }
+          }
+        }
+      },
+      "ReplayFieldChangeResponse": {
+        "required": [
+          "field",
+          "before",
+          "after"
+        ],
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "before": {
+            "type": "string"
+          },
+          "after": {
+            "type": "string"
+          }
+        }
+      },
       "ReplayRequest": {
         "required": [
           "from",
@@ -4717,28 +4812,154 @@
             "type": "string",
             "format": "date-time"
           },
-          "parserId": {
+          "parser_id": {
             "type": "string"
           },
-          "parserVersion": {
+          "parser_version": {
             "type": "string"
           },
-          "ownerGroups": {
+          "owner_groups": {
             "type": "array",
             "items": {
               "type": "string"
             }
           },
-          "sourceIds": {
+          "source_ids": {
             "type": "array",
             "items": {
               "type": "string"
             }
           },
-          "dryRun": {
+          "dry_run": {
             "type": "boolean"
           },
-          "continueOnMissingObjects": {
+          "continue_on_missing_objects": {
+            "type": "boolean"
+          },
+          "allow_open_partition": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ReplayResponse": {
+        "required": [
+          "partitions",
+          "records_replayed",
+          "unchanged",
+          "changed",
+          "failed_to_ok",
+          "ok_to_failed",
+          "new_rows",
+          "copied_unchanged",
+          "skipped_open_partitions",
+          "missing_objects",
+          "changes_by_field",
+          "samples",
+          "duration_seconds",
+          "applied"
+        ],
+        "type": "object",
+        "properties": {
+          "partitions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "records_replayed": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "unchanged": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "changed": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "failed_to_ok": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "ok_to_failed": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "new_rows": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "copied_unchanged": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "skipped_open_partitions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "missing_objects": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "changes_by_field": {
+            "type": "object",
+            "additionalProperties": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          "samples": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReplayDiffResponse"
+            }
+          },
+          "duration_seconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "applied": {
             "type": "boolean"
           }
         }
