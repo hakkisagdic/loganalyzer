@@ -273,16 +273,27 @@ public static class EvidenceEndpoints
             return failure;
         }
 
-        if (!Enum.TryParse<ReviewVerdict>(request.Verdict, ignoreCase: true, out var verdict))
+        // Tel adlarını **tek yer** çözüyor (T38'in `ReviewWire`'ı). Buradaki
+        // önceki hâli `Enum.TryParse(ignoreCase: true)` + `Replace("_", "")`
+        // idi ve iki şeyi birden yanlış yapıyordu.
+        //
+        // Sözleşmeden geniş kabul ediyordu: `"Correct"`, `"CORRECT"`,
+        // `"notpresent"` geçiyordu. Kimse bunu istemedi; kolay olduğu için
+        // oradaydı.
+        //
+        // Daha sinsisi: `Enum.TryParse` enum'a eklenen bir değeri **telde
+        // kendiliğinden kabul eder**. Yarın `ReviewVerdict`'e bir üye
+        // eklendiğinde sözleşme kimse karar vermeden büyürdü — `Pending` ve
+        // `ExpectedExemptCount`'un var olma sebebinin tam tersi. Açık bir
+        // eşleme tablosunda aynı ekleme derlenir ama **tanınmaz**, yani telde
+        // görünmesi ayrı ve bilinçli bir hareket olur.
+        if (!ReviewWire.TryParseVerdict(request.Verdict, out var verdict))
         {
             return Results.BadRequest(new ErrorResponse(
                 $"Tanınmayan karar: '{request.Verdict}'. Beklenen: correct, wrong, incomplete, unknown."));
         }
 
-        if (!Enum.TryParse<ContradictingEvidenceVerdict>(
-                request.ContradictingEvidence.Replace("_", string.Empty, StringComparison.Ordinal),
-                ignoreCase: true,
-                out var contradicting))
+        if (!ReviewWire.TryParseContradicting(request.ContradictingEvidence, out var contradicting))
         {
             return Results.BadRequest(new ErrorResponse(
                 $"Tanınmayan çelişen-kanıt kararı: '{request.ContradictingEvidence}'. "
