@@ -340,7 +340,13 @@ def test_ornekleme_gercek_bosluk_sayisi() -> None:
     sys.path.insert(0, str(root / "sidecar"))
     shipping = importlib.import_module("app.sigma_pipeline")
 
-    rules = sorted((Path(__file__).parent / "rules").glob("*.yml"))
+    # Korpus `catalog/sigma/rules/`'a taşındı (T32). Bu test eski dizini
+    # okuyordu ve taşınmayı **yakaladı** — sıfır kural bulunca "bekçi artık
+    # sınanmıyor" dedi. Yanlış alarm değil, doğru alarm: sıfır kural okuyan
+    # bir testin yeşil kalması, sessizce hiçbir şey ölçmemesi olurdu.
+    rules = sorted(measure._corpus_dir().glob("*.yml"))
+    assert rules, "korpus boş — ölçüm yapılamaz"
+
     affected = {
         path.name: shipping.unsupported_fields(path.read_text(encoding="utf-8"))
         for path in rules
@@ -375,7 +381,7 @@ def test_orneklem_bekciyi_HALA_sinamaya_devam_ediyor() -> None:
 
     blocked = [
         path.name
-        for path in sorted((Path(__file__).parent / "rules").glob("*.yml"))
+        for path in sorted(measure._corpus_dir().glob("*.yml"))
         if any(
             field in shipping.SCHEMA_GAPS
             for field in shipping.rule_fields(path.read_text(encoding="utf-8"))

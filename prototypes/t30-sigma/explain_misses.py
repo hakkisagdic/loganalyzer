@@ -48,9 +48,6 @@ import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-#: Korpusun kanonik yeri (T32 terfisi). Prototip dizini emekli.
-CORPUS = Path("catalog/sigma/rules")
-
 #: `logsource.product` → altın örnek dizini.
 SAMPLES: dict[str, str] = {
     "fortigate": "catalog/parsers/fortinet.fortigate/samples",
@@ -117,6 +114,31 @@ def _shipping():
         sys.path.insert(0, sidecar)
 
     return importlib.import_module("app.sigma_pipeline")
+
+
+def corpus_dir(root: Path) -> Path:
+    """Korpusun yeri — **T32'nin sabitinden**, elle yazılmadan.
+
+    Yol burada tekrar yazılsaydı üçüncü bir bildirim olurdu ve bu turda tam
+    olarak o ayrışmanın bedeli ödendi: korpus `catalog/sigma/rules/`'a terfi
+    ettirilirken bir ajan eski dizinde düzeltme yaptı, derleme hattı
+    düzeltilmemiş kopyayı derledi, Kapı 3 iki koşum boyunca eski SQL'i sınadı
+    ve hiçbir şey bunu söylemedi.
+
+    Import edilemiyorsa **sessizce geri çekilmiyor**: bilinmeyen bir yolu
+    tahmin etmek, o ayrışmayı yeniden kurmak olurdu.
+    """
+    import importlib
+    import sys
+
+    tools = str(root / "tools" / "sigma-build")
+
+    if tools not in sys.path:
+        sys.path.insert(0, tools)
+
+    ruleset = importlib.import_module("sigma_build.ruleset")
+
+    return root / ruleset.CATALOG_DIR / ruleset.RULES_SUBDIR
 
 
 def repo_root() -> Path | None:
@@ -366,7 +388,7 @@ def examine(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Eşleşmeyen kural neden eşleşmiyor (T30)")
-    parser.add_argument("--corpus", default="", help=f"varsayılan {CORPUS}")
+    parser.add_argument("--corpus", default="", help="varsayılan: T32 korpusu")
     parser.add_argument("--json", default="")
     args = parser.parse_args(argv)
 
@@ -376,7 +398,7 @@ def main(argv: list[str] | None = None) -> int:
         print("Depo kökü bulunamadı (`Bizigo.sln`). Araç depo ağacından koşmalı.", file=sys.stderr)
         return 2
 
-    corpus = Path(args.corpus) if args.corpus else root / CORPUS
+    corpus = Path(args.corpus) if args.corpus else corpus_dir(root)
 
     # Boş korpusa "0 kural incelendi" demek, ölçümün yapıldığı izlenimi
     # bırakırdı. Korpus T32'de taşındı; eski yolu okuyan bir araç sessizce
