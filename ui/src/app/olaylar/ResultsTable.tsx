@@ -4,7 +4,8 @@ import { TimeSourceBadge } from "@/components/events/TimeSourceBadge";
 import { Badge } from "@/components/ui/Field";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import type { EventSummary } from "@/lib/api/client";
-import { formatParseStatus, formatSeverity, formatTimestamp } from "@/lib/events/format";
+import { formatParseStatus, formatSeverity } from "@/lib/events/format";
+import { formatInstant } from "@/lib/ui/time";
 
 import styles from "./events.module.css";
 
@@ -39,7 +40,7 @@ export function ResultsTable({ events }: { events: readonly EventSummary[] }) {
       render: (row) => (
         <span className={styles.timeCell}>
           <Link href={`/olaylar/${row.event_id}`} className={styles.timeLink}>
-            {formatTimestamp(row.ts)}
+            {formatInstant(row.ts)}
           </Link>
           <TimeSourceBadge value={row.time_source} />
         </span>

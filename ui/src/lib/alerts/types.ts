@@ -1,3 +1,7 @@
+import { formatInstant } from "@/lib/ui/time";
+
+export { formatInstant };
+
 import type { components } from "@/lib/api/schema";
 
 /**
@@ -99,12 +103,3 @@ export function describeSeconds(seconds: number | string): string {
   return `${Math.round(value / 86400)} gün`;
 }
 
-/** Tarihi yerel okunabilir biçime çeviriyor; geçersiz girdi sessizce boş dönüyor. */
-export function formatInstant(value: string | null | undefined): string {
-  if (!value) return "—";
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? "—"
-    : date.toLocaleString("tr-TR", { dateStyle: "short", timeStyle: "medium" });
-}

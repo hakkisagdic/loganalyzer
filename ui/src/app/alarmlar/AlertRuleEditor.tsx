@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, Field, SelectField } from "@/components/ui/Field";
 import { ErrorState } from "@/components/ui/States";
 import { api } from "@/lib/api/client";
-import { describeError } from "@/lib/alerts/errors";
+import { describeError } from "@/lib/api/errors";
 import {
   COMPARISON_LABELS,
   COMPARISONS,
