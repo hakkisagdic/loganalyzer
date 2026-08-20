@@ -1201,6 +1201,8 @@ export interface components {
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
+            updated_at: string;
+            /** Format: date-time */
             published_at: null | string;
         };
         ParserGrokResponse: {

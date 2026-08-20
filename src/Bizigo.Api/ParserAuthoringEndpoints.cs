@@ -304,6 +304,7 @@ public static class ParserAuthoringEndpoints
         parser.PassingTests,
         parser.Quarantined,
         parser.CreatedAt,
+        parser.UpdatedAt,
         parser.PublishedAt);
 
     private static CatalogReloadResponse Describe(CatalogSourceReport report) => new(

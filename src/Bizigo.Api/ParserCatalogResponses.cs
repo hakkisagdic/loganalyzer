@@ -80,6 +80,14 @@ public sealed record ParserDraftResponse(
     [property: JsonPropertyName("passing_tests")] int PassingTests,
     [property: JsonPropertyName("quarantined")] bool Quarantined,
     [property: JsonPropertyName("created_at")] DateTimeOffset CreatedAt,
+
+    /// <summary>
+    /// Gövdenin son değiştiği an — T20'nin "son değişiklik" sütunu ve inceleme
+    /// kuyruğunun sıralaması. Listede taşınıyor: satır başına detay çekmek,
+    /// kuyruğun açılışını N istek yapardı.
+    /// </summary>
+    [property: JsonPropertyName("updated_at")] DateTimeOffset UpdatedAt,
+
     [property: JsonPropertyName("published_at")] DateTimeOffset? PublishedAt);
 
 public sealed record ParserDraftListResponse(

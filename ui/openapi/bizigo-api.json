@@ -3602,6 +3602,7 @@
           "passing_tests",
           "quarantined",
           "created_at",
+          "updated_at",
           "published_at"
         ],
         "type": "object",
@@ -3640,6 +3641,10 @@
             "type": "boolean"
           },
           "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
             "type": "string",
             "format": "date-time"
           },
