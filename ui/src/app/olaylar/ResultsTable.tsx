@@ -66,7 +66,11 @@ export function ResultsTable({ events }: { events: readonly EventSummary[] }) {
     {
       key: "severity",
       header: "Önem",
-      width: "7rem",
+      // 7rem'di ve en uzun etiket ("belirtilmemiş") kelime ortasından
+      // kırılıyordu — ekran görüntüsünde görüldü. `overflow-wrap: anywhere`
+      // çok dilli gövdeler için doğru, ama dar bir sütunda Türkçe bir kelimeyi
+      // hecesiz bölüyor.
+      width: "9.5rem",
       render: (row) => formatSeverity(row.severity_num),
     },
     {

@@ -144,13 +144,27 @@
   background: var(--surface-2);
 }
 
-/** Log gövdesi hücresi: tek aralıklı, satır sayısı sınırlı. */
+/**
+ * Log gövdesi hücresi.
+ *
+ * <p>
+ * Kırpma <b>hücrenin kendisinde değil, içindeki öğede</b>. Sebebi ölçüldü:
+ * <c>display: -webkit-box</c> bir <c>&lt;td&gt;</c>'ye uygulandığında hücre
+ * tablo hücresi olmaktan çıkıyor, satır ona göre boyutlanmıyor ve uzun gövdenin
+ * son satırı tablonun alt kenarından taşarak <b>yarım</b> görünüyordu. Ekran
+ * görüntüsünde yakalandı; hiçbir birim testi bunu göremezdi.
+ * </p>
+ */
 .cellBody {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
+}
+
+/** Dört satırda kesilen gövde metni — hücrenin İÇİNDE. */
+.cellBodyText {
   /*
-   * Dört satırdan sonrası kesiliyor. Kesmemek, tek bir 8 KB'lık satırın bütün
-   * tabloyu ekrandan sürmesi demek — F1 arşivinde o boyutta gövdeler var.
+   * Kesmemek, tek bir 8 KB'lık satırın bütün tabloyu ekrandan sürmesi demek —
+   * F1 arşivinde o boyutta gövdeler var.
    */
   display: -webkit-box;
   -webkit-line-clamp: 4;

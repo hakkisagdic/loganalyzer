@@ -151,6 +151,52 @@ describe("dört durumun sırası tek yerde", () => {
     expect(definitions).toEqual(["lib/ui/screen-state.ts"]);
   });
 
+  /**
+   * Kör noktanın <b>ucuz yarısı</b>.
+   *
+   * <p>
+   * Yukarıdaki iki test <c>screenState</c> <b>tanımlarını</b> ada göre buluyor;
+   * bir ekranın sırayı JSX içinde satır içi yazmasını yakalamıyordu. Sırayı
+   * JSX'te analiz etmek kırılgan, o yüzden kovalanmadı — ama sorunun ucuz bir
+   * yarısı var: <b>veri çeken</b> ve <c>EmptyState</c> çizen bir dosya,
+   * <c>ErrorState</c>'i ondan <b>önce</b> çizmek zorunda.
+   * </p>
+   *
+   * <p>
+   * Kaynak sırası kaba bir vekil ama bu depoda anlamlı: erken dönüşler ve JSX
+   * dalları yukarıdan aşağı yazılıyor. Kaçırdığı hâller kalıyor ve bu bilinçli —
+   * kural <b>ölçülerek</b> daraltıldı. İlk hâli "her <c>EmptyState</c> çizen
+   * ekran" idi ve 16 dosyanın 13'ünü boşuna işaretliyordu; üçü tek tek açılıp
+   * doğru sırada oldukları görüldü. İkinci daraltma veri çekmeyen sunum
+   * bileşenlerini (<c>GateReport</c>, <c>TriggerHistory</c>) dışarıda bıraktı:
+   * yükleme hatası olmayan bir bileşenden hata durumu istemek yanlış pozitiftir.
+   * </p>
+   */
+  it("veri çeken ekranda hata, boş durumdan önce geliyor", () => {
+    const offenders = CODE.filter((f) => f.startsWith(APP))
+      .map((f) => ({ file: f, source: stripComments(read(f)) }))
+      .filter(({ source }) => source.includes("<EmptyState"))
+      // Veri çekmeyen sunum bileşeninin yükleme hatası olamaz.
+      .filter(({ source }) => /\b(api|serverApi)\.\w+\(|\bfetch\(/.test(source))
+      // Ortak sırayı kullanan zaten doğru; tekrar sınamanın anlamı yok.
+      .filter(({ source }) => !source.includes("screenState"))
+      .filter(({ source }) => {
+        const empty = source.indexOf("<EmptyState");
+        const error = source.indexOf("<ErrorState");
+
+        return error === -1 || error > empty;
+      })
+      .map(({ file }) => rel(file))
+      .sort();
+
+    expect(
+      offenders,
+      "Hata durumu boş durumdan sonra çiziliyor. Hata varken \"kayıt yok\" demek " +
+        "kullanıcıya yanlış bilgi vermek: kayıt olabilir, yalnızca okunamadı. " +
+        "`screenState` kullanın ya da `ErrorState`'i öne alın.",
+    ).toEqual([]);
+  });
+
   it("hiçbir ekran kendi `ScreenState` tipini yazmıyor", () => {
     const offenders = CODE.filter(
       (f) => /export type ScreenState\b/.test(read(f)) && rel(f) !== "lib/ui/screen-state.ts",
@@ -219,6 +265,30 @@ describe("Türkçe kasa dönüşümü", () => {
         "Girdi kanıtlanabilir biçimde ASCII ise EXEMPT'e gerekçesiyle yazıp " +
         "EXPECTED_EXEMPT_COUNT'u güncelleyin.",
     ).toEqual([]);
+  });
+
+  /**
+   * CSS <c>text-transform: uppercase</c> Türkçede ancak <c>lang="tr"</c> ile
+   * doğru çalışıyor: <c>i</c> → <c>İ</c>. Öznitelik düşerse altı etiket sessizce
+   * yanlış kasada yazılır (<c>KESIF</c> gibi) ve hiçbir test bunu görmez —
+   * <c>toUpperCase</c> bekçisi JavaScript'e bakıyor, CSS'e değil.
+   */
+  it("CSS kasa dönüşümü `lang=\"tr\"` ile korunuyor", () => {
+    const usesTransform = STYLES.some((f) =>
+      /text-transform:\s*(uppercase|lowercase|capitalize)/.test(read(f)),
+    );
+
+    if (!usesTransform) {
+      return;
+    }
+
+    const layout = CODE.find((f) => rel(f) === "app/layout.tsx");
+
+    expect(layout, "kök düzen bulunamadı").toBeDefined();
+    expect(
+      read(layout!),
+      'CSS kasa dönüşümü var ama kök düzende `lang="tr"` yok — Türkçe i/İ yanlış çıkar',
+    ).toContain('lang="tr"');
   });
 
   it("muafiyet listesi sessizce büyümüyor", () => {
