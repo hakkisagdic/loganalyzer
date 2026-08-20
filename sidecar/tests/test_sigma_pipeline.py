@@ -199,7 +199,40 @@ def test_taninmayan_alan_gorunur_kaliyor() -> None:
 # arasındaki farkı somutlaştıran, gerçekten yaşanmış hatalar.
 # ---------------------------------------------------------------------------
 
-RULES = Path(__file__).resolve().parents[2] / "prototypes" / "t30-sigma" / "rules"
+def _corpus() -> Path:
+    """Kural korpusu — **T32'nin sabitinden**, elle yazılmadan.
+
+    Bu sabit eskiden `prototypes/t30-sigma/rules`'u gösteriyordu ve korpus
+    `catalog/sigma/rules/`'a taşındığında **CI'yı kırdı**. Kırması iyi oldu:
+    sessizce boş bir liste okusaydı testler "atlandı" diye yeşil kalırdı.
+
+    Asıl ders taşımanın kendisi değil: iki aracı tek kaynağa çevirirken
+    *"her iki tüketici de"* denmişti — ama tüketiciler **sayılmamış,
+    hatırlanmıştı**. Üçüncüsü buydu ve aynı pakette duruyordu.
+    `rg -n "t30-sigma"` bir saniyelik iş.
+    """
+    import sys
+
+    root = Path(__file__).resolve().parents[2]
+    tools = str(root / "tools" / "sigma-build")
+
+    if tools not in sys.path:
+        sys.path.insert(0, tools)
+
+    from sigma_build.ruleset import CATALOG_DIR, RULES_SUBDIR
+
+    return root / CATALOG_DIR / RULES_SUBDIR
+
+
+RULES = _corpus()
+
+#: Korpusta gerçekten kural var mı — atlama ölçütü **dizin varlığı değil**.
+#:
+#: Eski ölçüt `RULES.is_dir()` idi ve tam da bu yüzden CI'yı kırdı: emekli
+#: dizin bir README ile duruyordu, yani `is_dir()` doğruydu, testler atlanmadı
+#: ve dosya okumada patladılar. Dizinin var olması kuralların var olması
+#: demek değil.
+HAS_RULES = RULES.is_dir() and any(RULES.glob("*.yml"))
 
 
 def _sql(rule_name: str) -> str:
@@ -207,13 +240,19 @@ def _sql(rule_name: str) -> str:
     from sigma.collection import SigmaCollection
 
     backend = sp.bizigo_backend(mappings_path=CATALOG / "mappings")
+    path = RULES / rule_name
+
+    # Adı geçen kural yoksa bu bir ATLAMA sebebi değil, bir arıza: korpus
+    # yerinde ama beklenen kural gitmiş demektir ve testin sessizce
+    # geçmesi o kaybı gizlerdi.
+    assert path.is_file(), f"korpusta beklenen kural yok: {path}"
 
     return backend.convert(
-        SigmaCollection.from_yaml((RULES / rule_name).read_text(encoding="utf-8"))
+        SigmaCollection.from_yaml(path.read_text(encoding="utf-8"))
     )[0]
 
 
-@pytest.mark.skipif(not RULES.is_dir(), reason="T30 örneklemi bu ağaçta yok")
+@pytest.mark.skipif(not HAS_RULES, reason="kural korpusu bu ağaçta yok (dağıtılmış imaj)")
 def test_attrs_erisimi_backtick_ILE_SARILMIYOR() -> None:
     """**Bu hata ancak üretilen SQL okununca görüldü.**
 
@@ -231,7 +270,7 @@ def test_attrs_erisimi_backtick_ILE_SARILMIYOR() -> None:
     assert "`" not in sql, f"backtick sızdı: {sql}"
 
 
-@pytest.mark.skipif(not RULES.is_dir(), reason="T30 örneklemi bu ağaçta yok")
+@pytest.mark.skipif(not HAS_RULES, reason="kural korpusu bu ağaçta yok (dağıtılmış imaj)")
 def test_ip_joker_karsilastirmasi_metne_ceviriliyor() -> None:
     """`src_endpoint_ip ILIKE '203.0.113.%'` iki kere yanlıştı.
 
@@ -244,7 +283,7 @@ def test_ip_joker_karsilastirmasi_metne_ceviriliyor() -> None:
     assert "replaceRegexpOne(toString(src_endpoint_ip), '^::ffff:', '') ILIKE '203.0.113.%'" in sql
 
 
-@pytest.mark.skipif(not RULES.is_dir(), reason="T30 örneklemi bu ağaçta yok")
+@pytest.mark.skipif(not HAS_RULES, reason="kural korpusu bu ağaçta yok (dağıtılmış imaj)")
 def test_ip_esitligi_indeksli_kolonda_kaliyor() -> None:
     """Joker yoksa metne çevrilmiyor: en sık IP koşulu indeksten düşmemeli.
 
@@ -267,7 +306,7 @@ def test_ip_esitligi_indeksli_kolonda_kaliyor() -> None:
     assert "replaceRegexpOne" not in sql
 
 
-@pytest.mark.skipif(not RULES.is_dir(), reason="T30 örneklemi bu ağaçta yok")
+@pytest.mark.skipif(not HAS_RULES, reason="kural korpusu bu ağaçta yok (dağıtılmış imaj)")
 def test_proto_sayisi_kolonun_metnine_ceviriliyor() -> None:
     """`proto: 6` kolonda `tcp` arıyor; sayı olarak bıraksak tip hatası olurdu."""
     sql = _sql("fortigate_high_port_scan.yml")
@@ -276,7 +315,7 @@ def test_proto_sayisi_kolonun_metnine_ceviriliyor() -> None:
     assert "connection_info_protocol_name=6" not in sql
 
 
-@pytest.mark.skipif(not RULES.is_dir(), reason="T30 örneklemi bu ağaçta yok")
+@pytest.mark.skipif(not HAS_RULES, reason="kural korpusu bu ağaçta yok (dağıtılmış imaj)")
 def test_sema_bosluklu_kural_SESSIZCE_gecmiyor() -> None:
     """T31'in kabul kriteri: eşlenemeyen kural derleme hattında işaretleniyor.
 
