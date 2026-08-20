@@ -121,6 +121,27 @@ public sealed class GoldenReviewEntity
     [MaxLength(4096)]
     public string Note { get; set; } = string.Empty;
 
+    /// <summary>
+    /// İnceleyenin bildiği gerçek kök neden — rapor yanlışsa <b>doğrusu</b>.
+    ///
+    /// <para>
+    /// <c>Note</c>'tan ayrı bir alan, çünkü ayrı bir soruyu cevaplıyor: not
+    /// *"neden böyle düşünüyorum"*, bu alan *"cevap neydi"*. F4'ün
+    /// model-insan karşılaştırması ikincisini okuyacak ve serbest notun
+    /// içinden ayıklamak zorunda kalırsa karşılaştırma bir ayrıştırma
+    /// işine dönüşür.
+    /// </para>
+    ///
+    /// <para>
+    /// Boş olabilir ve boşluğu bilgi: <c>Verdict</c> <c>Correct</c> ise
+    /// zaten doldurulacak bir şey yok; <c>Wrong</c> olup burası boşsa
+    /// inceleyen yanlışı görmüş ama doğrusunu bilmiyor demektir — F4 için
+    /// ayrı bir sinyal.
+    /// </para>
+    /// </summary>
+    [MaxLength(4096)]
+    public string ActualRootCause { get; set; } = string.Empty;
+
     /// <summary>OIDC <c>sub</c>. Audit ve "kim ne kadar inceledi" için.</summary>
     [MaxLength(256)]
     public required string ReviewerSubject { get; set; }

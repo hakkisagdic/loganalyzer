@@ -43,13 +43,19 @@ public sealed record GoldenSetQuality(long Total, long Correct, long Unknown)
 /// grup tetiklenmeden geliyor. Kullanıcı tetiklide, kapsamı birden çok grup
 /// olan kişi bunu vermek zorunda.
 /// </param>
+/// <param name="ActualRootCause">
+/// İnceleyenin bildiği doğru cevap; rapor yanlışsa ne olmalıydı. Boş
+/// bırakılabilir ve boşluğu bilgi taşıyor — bkz.
+/// <see cref="GoldenReviewEntity.ActualRootCause"/>.
+/// </param>
 public sealed record ReviewInput(
     Guid BundleId,
     Guid? TriggerId,
     ReviewVerdict Verdict,
     ContradictingEvidenceVerdict ContradictingEvidence,
     string Note,
-    string? OwnerGroup = null);
+    string? OwnerGroup = null,
+    string? ActualRootCause = null);
 
 /// <summary>
 /// Altın kümenin deposu ve <b>kapsam kapısı</b> (T38).
@@ -112,6 +118,7 @@ public sealed class GoldenReviewStore(
             Verdict = input.Verdict,
             ContradictingEvidence = input.ContradictingEvidence,
             Note = input.Note ?? string.Empty,
+            ActualRootCause = input.ActualRootCause ?? string.Empty,
             ReviewerSubject = scope.Subject,
             ReviewedAt = _time.GetUtcNow(),
         };
