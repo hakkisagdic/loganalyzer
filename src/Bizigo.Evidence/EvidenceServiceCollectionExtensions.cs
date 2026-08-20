@@ -54,6 +54,10 @@ public static class EvidenceServiceCollectionExtensions
         services.AddScoped<EvidenceBundleFactory>();
         services.AddScoped<EvidenceBundleStore>();
 
+        // Raporun insan değerlendirmesi (T37). Ekrandaki üç düğmenin gittiği yer;
+        // T38'in altın kümesi buradan besleniyor.
+        services.AddScoped<EvidenceReviewStore>();
+
         return services;
     }
 }

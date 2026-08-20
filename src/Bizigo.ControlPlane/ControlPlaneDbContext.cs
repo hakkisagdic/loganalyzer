@@ -37,6 +37,11 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
     // model koşturup karşılaştırabilsin.
     public DbSet<EvidenceBundleEntity> EvidenceBundles => Set<EvidenceBundleEntity>();
 
+    // Raporun insan değerlendirmesi (T37). Ekrandaki üç düğme bir yere
+    // yazmıyorsa yalan söyleyen bir düğmedir; T38'in altın kümesi buradan
+    // besleniyor.
+    public DbSet<EvidenceReviewEntity> EvidenceReviews => Set<EvidenceReviewEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -156,6 +161,18 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
 
             // "Şu zaman aralığına ait paketler".
             e.HasIndex(x => new { x.WindowFrom, x.WindowTo });
+        });
+
+        modelBuilder.Entity<EvidenceReviewEntity>(e =>
+        {
+            // "Bu paketin son incelemesi" — rapor ekranının açılışta sorduğu tek
+            // soru. Tekil DEĞİL: aynı paket birden çok kez incelenebilir ve
+            // incelemenin değişmesi kalite ölçümü için bir veri, silinecek bir
+            // şey değil. Son sözü `ReviewedAt` söylüyor.
+            e.HasIndex(x => new { x.BundleId, x.ReviewedAt });
+
+            // "İncelenmiş paketler" — T38'in altın küme taraması bununla dönüyor.
+            e.HasIndex(x => x.ReviewedAt);
         });
     }
 }

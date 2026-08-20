@@ -145,6 +145,10 @@ app.MapReplay();
 app.MapParsers();
 app.MapParserAuthoring();
 app.MapAlerts();
+
+// RCA kanıt paketi, deterministik rapor ve export (T37). Elle tetikleme dar
+// tutuldu: kuyruk, kota ve debounce dört tetikleyiciyle birlikte F4'te.
+app.MapRca();
 app.MapNotificationChannels();
 
 // Ingest sayaçları: "boru hattı akıyor mu" sorusunun tek bakışta cevabı.

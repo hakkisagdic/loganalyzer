@@ -6,6 +6,7 @@ using Bizigo.Api.Connectors;
 using Bizigo.Api.Webhooks;
 using Bizigo.Authoring;
 using Bizigo.ControlPlane;
+using Bizigo.Evidence;
 using Bizigo.Ingest.Discovery;
 using Bizigo.Ingest.Pipeline;
 using Bizigo.Ingest.Wal;
@@ -186,6 +187,12 @@ public sealed class ProducesContractTests
             // T20'nin kapsam ucu. Kaydedilmezse `CatalogCoverageCache` gövde
             // parametresi sanılıyor ve `MapParserAuthoring` çıkarımda patlıyor.
             typeof(CatalogCoverageCache), typeof(ParserPublishGate),
+
+            // T37'nin RCA uçları. Aynı tuzak: kaydedilmezlerse `factory` ve
+            // `store` "gövde mi servis mi" ayrımına takılıyor ve `MapRca`
+            // çıkarımda patlıyor — yani uç dosyası kapıya hiç görünmüyor.
+            typeof(EvidenceBundleFactory), typeof(EvidenceBundleStore),
+            typeof(EvidenceReviewStore),
         })
         {
             var captured = type;
@@ -294,7 +301,7 @@ public sealed class ProducesContractTests
                 "MapAlerts", "MapAuth", "MapChangeConnectors", "MapChangeWebhooks", "MapChanges",
                 "MapEvents",
                 "MapNotificationChannels", "MapOtlpLogs", "MapParserAuthoring", "MapParsers",
-                "MapPipelineHealth", "MapReplay", "MapSources",
+                "MapPipelineHealth", "MapRca", "MapReplay", "MapSources",
             ],
             names);
 
