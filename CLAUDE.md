@@ -147,6 +147,14 @@ sessizce siliniyor.
 Ortak nokta: hata yok, sayaç yok, belirti yok. Bir şey ölçülmediyse **çalıştığı
 varsayılmaz**.
 
+**Dış bir ikili gerektiren test ya CI'da o ikiliyle koşmalı ya koşumdan açıkça
+dışlanmalı.** Üçüncü hâl — *"koşuma giriyor ama ortam hazır değil"* — sessizce
+kırmızı yanan bir CI. Ekran görüntüsü bekçileri korumasız `chromium.launch()`
+yapıyordu; yazan ajan raporuna "varsayılan pakete koymadım" yazmıştı ama
+`vitest.config`'in `include` deseni dosyayı alıyordu. Kimse ikisinin
+ayrıştığını okumadı. İhlali bir kişi değil **yapılandırma** yapıyor, o yüzden
+kural burada duruyor: testle kovalamak CI yapılandırmasını test etmek olurdu.
+
 **Bir bekçinin sessizce atlaması, bekçinin kendisinden tehlikelidir.**
 `Produces<T>` kapısı uçları elle yazılmış bir listeden topluyordu; üç uç dosyası
 listede olmadığı için **16 uç kapıya hiç görünmüyordu ve üç test de yeşildi.**
