@@ -1,5 +1,6 @@
 using Bizigo.Api.Webhooks;
 using Bizigo.Contracts.Security;
+using Bizigo.Devices;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Bizigo.Api.Connectors;
@@ -34,6 +35,19 @@ public static class ChangeConnectorServiceCollectionExtensions
         services.TryAddSingleton(TimeProvider.System);
 
         services.AddSingleton<IChangeConnectorRunner, WebhookConnectorRunner>();
+
+        // Cihaz config toplayıcısı (T26). Bu kayıt, T25'in "toplayıcısı olmayan
+        // tip etkinleştirilemiyor" kapısını `DeviceConfig` için AÇIYOR — kapının
+        // gerçekten açıldığını bir birim testi sınıyor.
+        services.AddSingleton<IDeviceTransport, SshDeviceTransport>();
+        services.AddSingleton<IConfigCollector, FortiGateCollector>();
+        services.AddSingleton<IConfigCollector, CiscoAsaCollector>();
+        services.AddSingleton<IConfigCollector, MikroTikCollector>();
+        services.AddSingleton(sp => new DeviceConfigService(
+            sp.GetRequiredService<IDeviceTransport>(),
+            sp.GetRequiredService<IEnumerable<IConfigCollector>>(),
+            options.MaxDeviceConcurrency));
+        services.AddSingleton<IChangeConnectorRunner, DeviceConfigRunner>();
         services.AddSingleton<ChangeConnectorService>();
 
         // Webhook uçları artık ÖNCE veritabanından çözülüyor (K34). Kayıt burada

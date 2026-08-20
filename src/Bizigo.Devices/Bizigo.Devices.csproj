@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Cihaz config toplama (T26).
+
+    Ayrı bir proje olmasının sebebi Bizigo.Alerting'inkinin daha sert hâli:
+    burası ürünün cihazlara BAĞLANAN tek parçası. Okuma amaçlı da olsa, "hangi
+    derleme bir ağ cihazına soket açabiliyor" sorusunun cevabı tek bir proje
+    sınırına indiriliyor — SSH bağımlılığı da yalnızca burada.
+
+    Kapsam zorlayan kod (Bizigo.Query) ve dışarı bağlanan kod aynı derlemede
+    olmamalı; T22'de kurulan ayrımın aynısı.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bizigo.Contracts\Bizigo.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SSH.NET" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+</Project>

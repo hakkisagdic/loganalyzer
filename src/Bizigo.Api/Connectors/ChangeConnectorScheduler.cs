@@ -36,6 +36,18 @@ public sealed class ChangeConnectorOptions
 
     /// <summary>Temizlik turu aralığı. Saklama süresine göre seyrek olması yeterli.</summary>
     public TimeSpan CleanupInterval { get; set; } = TimeSpan.FromHours(6);
+
+    /// <summary>
+    /// Aynı anda kaç cihaza bağlanılabileceği (T26 kabul kriteri: "çekim
+    /// maliyeti sınırlı").
+    ///
+    /// <para>
+    /// Yüzlerce cihaza aynı anda SSH açmak iki tarafı da yorar: bizde soket ve
+    /// iş parçacığı, cihazda yönetim CPU'su. İzlediğimiz cihazı yormak,
+    /// izlemenin kendisini bir arıza sebebine çevirir.
+    /// </para>
+    /// </summary>
+    public int MaxDeviceConcurrency { get; set; } = 8;
 }
 
 /// <summary>

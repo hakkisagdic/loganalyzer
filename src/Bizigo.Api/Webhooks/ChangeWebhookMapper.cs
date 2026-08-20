@@ -227,11 +227,20 @@ public static class ChangeWebhookMapper
     /// </para>
     ///
     /// <para>
-    /// Bedeli bilinçli: <c>FINALIZED</c> son işlem adımlarından sonra geldiği
-    /// için nadiren <c>COMPLETED</c>'dan farklı bir <c>status</c> taşıyabilir ve
-    /// ilk-gelen-kazanır kuralı o durumda erken durumu kaydeder. Alternatif —
-    /// ikisini de yazmak — her koşuya iki satır demekti; RCA için gürültü,
-    /// nadir bir durum sapmasından pahalı.
+    /// <b>Anahtar durumu da içeriyor</b> (<c>{iş}#{numara}:{durum}</c>) ve bu,
+    /// ilk hâlin bıraktığı borcu kapatıyor. <c>FINALIZED</c> son işlem
+    /// adımlarından sonra geldiği için nadiren <c>COMPLETED</c>'dan farklı bir
+    /// <c>status</c> taşıyor — bir post-build adımı düşerse yapı <c>SUCCESS</c>
+    /// bildirip <c>FAILURE</c> olarak bitebiliyor. Anahtar yalnızca yapı
+    /// kimliğinden kurulsaydı o durumda <b>erken ve yanlış</b> durum kaydedilir,
+    /// hiçbir belirti de vermezdi.
+    /// </para>
+    ///
+    /// <para>
+    /// Olağan durumda iki faz aynı <c>status</c>'u taşıyor, anahtarlar
+    /// çakışıyor ve <b>tek kayıt</b> oluşuyor. Durum gerçekten değiştiyse ikinci
+    /// kayıt oluşuyor — ve o ikinci kayıt gürültü değil, gerçekten olmuş bir
+    /// ikinci olgu. Bu üründe sessiz yanlışlık, nadir bir ek satırdan pahalı.
     /// </para>
     /// </summary>
     private static WebhookMapResult MapJenkins(
@@ -243,16 +252,17 @@ public static class ChangeWebhookMapper
         var job = Read(root, "$.name");
         var number = Read(root, "$.build.number");
 
-        // Faz anahtarın DIŞINDA: iki bitiş fazı aynı yapıyı bildiriyor ve aynı
-        // teslimat sayılmalı.
-        var delivery = $"{job}#{number}";
+        var status = Read(root, "$.build.status");
+
+        // Faz anahtarın DIŞINDA, durum İÇİNDE: iki bitiş fazı aynı durumu
+        // bildiriyorsa tek kayıt; durum değiştiyse ikinci kayıt, çünkü o
+        // gerçekten ikinci bir olgu.
+        var delivery = $"{job}#{number}:{status}";
 
         if (phase is not ("COMPLETED" or "FINALIZED"))
         {
-            return Ignored(delivery, $"Jenkins fazı '{phase}' — yapı henüz bitmedi.");
+            return Ignored($"{job}#{number}", $"Jenkins fazı '{phase}' — yapı henüz bitmedi.");
         }
-
-        var status = Read(root, "$.build.status");
 
         var change = Build(endpoint, clock,
             // Bir iş birden çok hedefe dağıtım yapabiliyor; hedef parametreden

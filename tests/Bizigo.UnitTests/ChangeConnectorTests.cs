@@ -269,6 +269,41 @@ public sealed class ChangeConnectorTests : IDisposable
         Assert.Equal(1, await scheduler.RunTurnAsync(Token));
     }
 
+    /// <summary>
+    /// <b>T25'in kapısı T26 geldiğinde AÇILIYOR.</b>
+    ///
+    /// <para>
+    /// T25 "toplayıcısı olmayan tip etkinleştirilemiyor" kuralını koymuştu ve
+    /// <c>DeviceConfig</c> connector'ı kaydedilebiliyor ama açılamıyordu. T26'nın
+    /// runner'ı kaydedildiği an kapı kendiliğinden açılmalı — ama kendiliğinden
+    /// olan bir şeyin olduğunu kimse görmez. Bu test onu görünür kılıyor: aynı
+    /// girdi, tek fark kayıtlı runner.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Toplayici_kaydedilince_cihaz_connector_i_etkinlestirilebiliyor()
+    {
+        var input = WebhookInput() with
+        {
+            ConnectorType = ChangeConnectorType.DeviceConfig,
+            IntervalSeconds = 900,
+            Enabled = true,
+        };
+
+        // Runner YOKken: kapı kapalı.
+        var closed = await Service().SaveAsync(null, input, Scope("network/core"), Token);
+        Assert.False(closed.Ok);
+        Assert.Contains("toplayıcı henüz yok", closed.Error, StringComparison.Ordinal);
+
+        // Runner VARken: aynı girdi geçiyor ve zamanlayıcıya giriyor.
+        var opened = await Service(new CountingRunner())
+            .SaveAsync(null, input, Scope("network/core"), Token);
+
+        Assert.True(opened.Ok, opened.Error);
+        Assert.True(opened.Connector!.Enabled);
+        Assert.Equal(Start, opened.Connector.NextRunAt);
+    }
+
     [Fact]
     public async Task Toplayicisi_olmayan_tip_etkinlestirilemiyor()
     {

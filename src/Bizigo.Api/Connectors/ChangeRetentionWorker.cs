@@ -62,8 +62,8 @@ public sealed class ChangeRetentionWorker(
         }
     }
 
-    /// <returns>Silinen satır sayısı: teslimat kayıtları + çalışma geçmişi.</returns>
-    public async Task<(int Deliveries, int Runs)> RunTurnAsync(
+    /// <returns>Silinen satır sayıları.</returns>
+    public async Task<(int Deliveries, int Runs, int Snapshots)> RunTurnAsync(
         CancellationToken cancellationToken = default)
     {
         Turns++;
@@ -82,15 +82,45 @@ public sealed class ChangeRetentionWorker(
             .Where(r => r.StartedAt < cutoff)
             .ExecuteDeleteAsync(cancellationToken);
 
-        if (deliveries + runs > 0)
+        var snapshots = await CleanSnapshotsAsync(db, cutoff, cancellationToken);
+
+        if (deliveries + runs + snapshots > 0)
         {
             // Sessizce silmek, "kayıtlarım nereye gitti" sorusunu cevapsız
             // bırakırdı.
             log.LogInformation(
-                "Saklama temizliği: {Deliveries} teslimat, {Runs} koşu kaydı silindi ({Cutoff} öncesi).",
-                deliveries, runs, cutoff);
+                "Saklama temizliği: {Deliveries} teslimat, {Runs} koşu, {Snapshots} anlık görüntü silindi ({Cutoff} öncesi).",
+                deliveries, runs, snapshots, cutoff);
         }
 
-        return (deliveries, runs);
+        return (deliveries, runs, snapshots);
+    }
+
+    /// <summary>
+    /// Config anlık görüntüleri — <b>her connector'ın en yenisi hariç</b>.
+    ///
+    /// <para>
+    /// Bu istisna olmadan sessiz bir tuzak açılıyor: hiç değişmeyen bir cihazın
+    /// tek anlık görüntüsü de bir gün kesimin gerisinde kalır, silinir, ve bir
+    /// sonraki çekim taban çizgisi bulamayıp <b>config'in tamamını</b> yeni
+    /// değişiklik olarak raporlar. Belirtisi de en kötü zamanda çıkar: kimsenin
+    /// bakmadığı bir gecede, RCA'nın güvendiği tabloya devasa bir sahte kayıt.
+    /// </para>
+    /// </summary>
+    private static async Task<int> CleanSnapshotsAsync(
+        ControlPlaneDbContext db,
+        DateTimeOffset cutoff,
+        CancellationToken cancellationToken)
+    {
+        // Connector başına korunacak kayıt: en yenisi. Liste connector sayısı
+        // kadar — cihaz sayısıyla sınırlı, satır sayısıyla değil.
+        var keep = await db.ChangeConfigSnapshots
+            .GroupBy(s => s.ConnectorId)
+            .Select(g => g.OrderByDescending(s => s.CapturedAt).Select(s => s.Id).First())
+            .ToListAsync(cancellationToken);
+
+        return await db.ChangeConfigSnapshots
+            .Where(s => s.CapturedAt < cutoff && !keep.Contains(s.Id))
+            .ExecuteDeleteAsync(cancellationToken);
     }
 }
