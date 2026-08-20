@@ -492,6 +492,45 @@ olmasının şartı.**
 > yayılımda 81 ayrı imza, 30 günlükte 92, 90 günlükte 102. Yükleyici bunu her
 > koşumda basıyor. F3'ün "ilk-görülen imza" sinyali için gerçek bir kalem.
 
+### Alan kapsamı — `bizigo fields coverage` (T39)
+
+Bir Sigma kuralı hiçbir satır bulmuyorsa sebebi üç bambaşka şey olabilir ve
+tabloda üçü de aynı görünür: **boş kolon**. Bu araç üçünü ayırıyor.
+
+```bash
+# Katalog yarısı — ClickHouse gerekmiyor.
+$BIN fields coverage
+
+# Her iki yarı: katalog ne üretebiliyor ↔ events_ocsf'te ne yazılı.
+$BIN fields coverage --clickhouse 'Host=localhost;...' --owner-group golden
+```
+
+| Kutu | Soru | Örnek |
+| --- | --- | --- |
+| **1** | Dosyada var, hiçbir alana inmemiş | ASA'nın `Reset-I`'si — parser hiç görmemiş |
+| **2** | İnmiş ama OCSF adına değil `unmapped`'e | RouterOS zincir adı → `fw_chain` |
+| **3a** | Kolon hiçbir vendor'da dolmuyor | eşleme hiç yazılmamış olabilir |
+| **3b** | Kolon **bu** vendor'da boş, başkasında dolu | `activity_name`: FortiGate dolu, RouterOS boş |
+
+3b ayrımı olmadan küresel bir "eksik alan" listesi `activity_name`'i ifade
+edemiyor ve iki farklı durum için de yanlış iş yaptırıyor.
+
+**Araç eşanlamlı tablosu taşımıyor:** hangi `unmapped` anahtarının hangi OCSF
+kolonuna karşılık geldiğini iddia etmiyor — o tabloyu yazmak, ölçümün cevabını
+ölçümün girdisine taşımak olurdu. Kutular yan yana basılıyor, eşleştirmeyi
+okuyan yapıyor. Tek istisna **biçim** farkı: `proto_token=UDP` ile
+`connection_info_protocol_name=udp` birebir tespit edilebiliyor ve
+`[biçim: …]` diye işaretleniyor — o durumda cevap "kayıp" değil "dönüştürülmüş".
+
+> ⚠️ **Kutu 1'de ayraç ve söz dizimi de var.** "Yakalanmamış" bilgi demek değil;
+> liste taranarak *veriye benzeyen* parçalar aranmalı. Araç bu ayrımı yapmıyor,
+> çünkü yapabilmesi için neyin veri olduğunu bilmesi gerekirdi — sorunun kendisi bu.
+>
+> Kutu 1 bir kez **sessizce boş çıktı** ve düzeltildi: `attrs['message']` satırın
+> tamamı ve kapsama sayılınca hiçbir aralık boşta kalmıyordu, yani "parser her
+> şeyi yakalamış" görünüyordu. Artık **içinde başka bir yakalanmış değer geçen**
+> alanlar üst hâl sayılıyor ve kapsama girmiyor.
+
 ### Parser CLI
 
 ```bash
