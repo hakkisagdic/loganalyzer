@@ -312,7 +312,7 @@ okuma uçları T20. `GET /v1/parsers/drafts/{id}` sözleşmesi ikisine birden
 çivilendi (`yaml` alanı, `snake_case`) ki biri diğerini beklemesin. Merge'de
 o satırlardan hiçbiri iki kez silinmedi — bölünme tuttu.
 
-### F1'den kalan borç: T39 — ham arşiv kurtarma
+### F1'den kalan borç: T40 — ham arşiv kurtarma
 
 `status: 0` · `tickets/ham-arsiv-kurtarma` · kaynağı
 [T04 karar belgesi](../t04-kararlar/index.md) açık kalem #4
@@ -342,7 +342,7 @@ yine bir insanın bakmasına bağlanırdı.
 
 ### D kalemine bağ: ingest çift yazma penceresi
 
-T39 ile aynı turda ölçülen ayrı bir kalem, ama aynı aileden.
+T40 ile aynı turda ölçülen ayrı bir kalem, ama aynı aileden.
 `IngestRetryWindowTests` (birim, Docker yok) şunu sabitliyor: `AcceptAsync`
 batch'i WAL'a yazıp `fsync` ettikten **sonra** dolu kanalda bekliyor, yani veri
 dayanıklı olduğu hâlde istemcinin elinde 200 yok. O pencerede zaman aşımına

@@ -1,10 +1,10 @@
 ---
-title: "T39 — Ham arşiv kurtarma: kayıp nesneyi WAL segmentinden geri yükle"
+title: "T40 — Ham arşiv kurtarma: kayıp nesneyi WAL segmentinden geri yükle"
 kind: ticket
 status: 0
 ---
 
-# T39 — Kayıp nesnenin yerel segmentten geri yüklenmesi
+# T40 — Kayıp nesnenin yerel segmentten geri yüklenmesi
 
 **Kaynak:** T04 karar belgesi, açık kalem #4
 ([`docs/epic/t04-kararlar`](../../t04-kararlar/index.md)) ·
