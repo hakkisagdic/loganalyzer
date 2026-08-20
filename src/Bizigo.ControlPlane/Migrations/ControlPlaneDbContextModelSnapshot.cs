@@ -156,6 +156,16 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<string>("ClosedBySubject")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("closed_by_subject");
+
                     b.Property<DateTimeOffset>("FiredAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("fired_at");
@@ -166,6 +176,10 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("owner_group");
 
+                    b.Property<Guid?>("ReviewId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("review_id");
+
                     b.Property<Guid>("RuleId")
                         .HasColumnType("uuid")
                         .HasColumnName("rule_id");
@@ -175,6 +189,10 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")
                         .HasColumnName("source_id");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer")
+                        .HasColumnName("state");
 
                     b.Property<string>("Summary")
                         .IsRequired()
@@ -206,6 +224,9 @@ namespace Bizigo.ControlPlane.Migrations
 
                     b.HasIndex("RuleId", "FiredAt")
                         .HasDatabaseName("ix_alert_triggers_rule_id_fired_at");
+
+                    b.HasIndex("State", "FiredAt")
+                        .HasDatabaseName("ix_alert_triggers_state_fired_at");
 
                     b.ToTable("alert_triggers", "bizigo");
                 });
@@ -561,6 +582,76 @@ namespace Bizigo.ControlPlane.Migrations
                     b.ToTable("evidence_bundles", "bizigo");
                 });
 
+            modelBuilder.Entity("Bizigo.ControlPlane.GoldenReviewEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ActualRootCause")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)")
+                        .HasColumnName("actual_root_cause");
+
+                    b.Property<Guid>("BundleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("bundle_id");
+
+                    b.Property<int>("ContradictingEvidence")
+                        .HasColumnType("integer")
+                        .HasColumnName("contradicting_evidence");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(4096)
+                        .HasColumnType("character varying(4096)")
+                        .HasColumnName("note");
+
+                    b.Property<string>("OwnerGroup")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("owner_group");
+
+                    b.Property<DateTimeOffset>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<string>("ReviewerSubject")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("reviewer_subject");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("schema_version");
+
+                    b.Property<Guid?>("TriggerId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("trigger_id");
+
+                    b.Property<int>("Verdict")
+                        .HasColumnType("integer")
+                        .HasColumnName("verdict");
+
+                    b.HasKey("Id")
+                        .HasName("pk_golden_reviews");
+
+                    b.HasIndex("BundleId")
+                        .HasDatabaseName("ix_golden_reviews_bundle_id");
+
+                    b.HasIndex("TriggerId")
+                        .HasDatabaseName("ix_golden_reviews_trigger_id");
+
+                    b.HasIndex("OwnerGroup", "ReviewedAt")
+                        .HasDatabaseName("ix_golden_reviews_owner_group_reviewed_at");
+
+                    b.ToTable("golden_reviews", "bizigo");
+                });
+
             modelBuilder.Entity("Bizigo.ControlPlane.IdpGroupMappingEntity", b =>
                 {
                     b.Property<string>("IdpGroup")
@@ -863,6 +954,10 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("owner_group");
+
+                    b.Property<int>("RecoveryAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("recovery_attempts");
 
                     b.Property<string>("Sha256")
                         .IsRequired()

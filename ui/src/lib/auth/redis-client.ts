@@ -61,6 +61,31 @@ export function createRedisClient(url: string): RedisClient {
     isReady() {
       return client.isReady;
     },
+    async waitUntilReady(timeoutMs) {
+      if (client.isReady) {
+        return true;
+      }
+
+      // `ready` olayı bekleniyor, döngüyle yoklanmıyor: yoklama hem gecikme
+      // ekler hem de "kaç ms'de bir bakmalı" diye cevabı olmayan bir soru
+      // sordurur.
+      return await new Promise<boolean>((resolve) => {
+        const finish = (value: boolean) => {
+          clearTimeout(timer);
+          client.removeListener("ready", onReady);
+          resolve(value);
+        };
+        const onReady = () => finish(true);
+
+        const timer = setTimeout(() => finish(false), timeoutMs);
+        // Bu zamanlayıcı süreci ayakta TUTMAMALI: uygulama kapanırken bekleyen
+        // bir bağlantı yüzünden asılı kalması, protokol §3'ün tam olarak
+        // uyardığı şey.
+        timer.unref?.();
+
+        client.once("ready", onReady);
+      });
+    },
     async close() {
       // `destroy()` değil `close()`: bekleyen komutların bitmesine izin veriyor.
       // Kapalı bir istemciyi tekrar kapatmak hata veriyor, o yüzden korumalı.

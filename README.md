@@ -492,6 +492,86 @@ olmasının şartı.**
 > yayılımda 81 ayrı imza, 30 günlükte 92, 90 günlükte 102. Yükleyici bunu her
 > koşumda basıyor. F3'ün "ilk-görülen imza" sinyali için gerçek bir kalem.
 
+### Alan kapsamı — `bizigo fields coverage` (T39)
+
+Bir Sigma kuralı hiçbir satır bulmuyorsa sebebi üç bambaşka şey olabilir ve
+tabloda üçü de aynı görünür: **boş kolon**. Bu araç üçünü ayırıyor.
+
+```bash
+# Katalog yarısı — ClickHouse gerekmiyor.
+$BIN fields coverage
+
+# Her iki yarı: katalog ne üretebiliyor ↔ events_ocsf'te ne yazılı.
+$BIN fields coverage --clickhouse 'Host=localhost;...' --owner-group golden
+```
+
+| Kutu | Soru | Örnek |
+| --- | --- | --- |
+| **1** | Dosyada var, hiçbir alana inmemiş | ASA'nın `Reset-I`'si — parser hiç görmemiş |
+| **2** | İnmiş ama OCSF adına değil `unmapped`'e | RouterOS zincir adı → `fw_chain` |
+| **3a** | Kolon hiçbir vendor'da dolmuyor | eşleme hiç yazılmamış olabilir |
+| **3b** | Kolon **bu** vendor'da boş, başkasında dolu | `activity_name`: FortiGate dolu, RouterOS boş |
+
+3b ayrımı olmadan küresel bir "eksik alan" listesi `activity_name`'i ifade
+edemiyor ve iki farklı durum için de yanlış iş yaptırıyor.
+
+**Araç eşanlamlı tablosu taşımıyor:** hangi `unmapped` anahtarının hangi OCSF
+kolonuna karşılık geldiğini iddia etmiyor — o tabloyu yazmak, ölçümün cevabını
+ölçümün girdisine taşımak olurdu. Kutular yan yana basılıyor, eşleştirmeyi
+okuyan yapıyor. Tek istisna **biçim** farkı: `proto_token=UDP` ile
+`connection_info_protocol_name=udp` birebir tespit edilebiliyor ve
+`[biçim: …]` diye işaretleniyor — o durumda cevap "kayıp" değil "dönüştürülmüş".
+
+> ⚠️ **Kutu 1'de ayraç ve söz dizimi de var.** "Yakalanmamış" bilgi demek değil;
+> liste taranarak *veriye benzeyen* parçalar aranmalı. Araç bu ayrımı yapmıyor,
+> çünkü yapabilmesi için neyin veri olduğunu bilmesi gerekirdi — sorunun kendisi bu.
+>
+> Kutu 1 bir kez **sessizce boş çıktı** ve düzeltildi: `attrs['message']` satırın
+> tamamı ve kapsama sayılınca hiçbir aralık boşta kalmıyordu, yani "parser her
+> şeyi yakalamış" görünüyordu. Artık **içinde başka bir yakalanmış değer geçen**
+> alanlar üst hâl sayılıyor ve kapsama girmiyor.
+
+### Değer uzayı — `bizigo fields values` (T39)
+
+Üç kutu "bilgi alan oldu mu" diye soruyor; bu ölçüm **alan hangi değerleri
+taşıyabiliyor** diye. Bir eşleme tablosu, beslediği kolonun değer uzayını
+daraltıyor: `status` kolonu `http_status_outcome.yaml`'dan besleniyor ve orada
+hiçbir zaman bir HTTP kodu durmuyor, yalnızca `success`/`failure` duruyor.
+
+```bash
+$BIN fields values                                  # değer uzayları
+python3 prototypes/t30-sigma/explain_misses.py --json /tmp/misses.json
+$BIN fields values --rules /tmp/misses.json         # kurallarla birleştir
+```
+
+**Veriye hiç bakmıyor** ve bakmaması asıl özelliği: örneklemde bir değerin
+bulunmaması *"bugün yok"*, şemanın onu üretememesi *"hiçbir zaman olmayacak"*.
+
+Kuralları da **okumuyor** — `explain_misses.py --json` zaten
+`alan|operatör = değer` üçlülerini çıkarıyor, alan adı çevirisi de
+`bizigo_pipeline.py`'nin `FIELD_MAP`'inden okunuyor. İki ayrıştırıcı, iki aracın
+aynı kuralı farklı kolona bağladığı gün demekti.
+
+| Sınıf | Anlamı |
+| --- | --- |
+| **ERİŞİLEMEZ** | Kapalı uzay o değeri üretemiyor — örneklem düzelse de eşleşmez |
+| **PARSER BOŞLUĞU** | Vendor'da açık ama bazı parser'lar kolonu hiç doldurmuyor |
+| **METİN EKSENİ YANILIYOR** | Ham satırda yok ama kolonda **var** (eşleme tablosu çeviriyor) |
+| ham metin | `raw_data ILIKE …` — tasarım tercihi, ama indeks kullanılmıyor |
+| `unmapped` erişimi | `unmapped['…']` — alan olarak adreslenmiş, yine indekssiz |
+| uzay açık | Şema bir şey demiyor |
+
+Ölçülen (24 kural, 33 dizge): ERİŞİLEMEZ **0** · parser boşluğu **4** ·
+metin ekseni yanılıyor **1** · ham metne vuran kural **4/24**.
+
+> ⚠️ **`absent` kutusu bir üst sınırdır.** Bir eşleme tablosu cihazın sözcüğünü
+> normalleştiriyorsa (`failed → failure`), kuralın aradığı değer ham satırda hiç
+> geçmez ve metin ekseninde "desen yok" görünür — oysa kolonda gerçekten vardır.
+> Ölçüldü: 10 `absent` kuralın **1'i** bu yüzden orada. Kapsam oranının paydası
+> `absent` düşülerek kurulduğu için bu doğrudan paydayı oynatıyor.
+
+Ayrıntı: `docs/epic/t39-alan-kapsami/`.
+
 ### Parser CLI
 
 ```bash

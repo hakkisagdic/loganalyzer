@@ -26,5 +26,11 @@ export default defineConfig({
     environment: "node",
     include: [...LIVE_TESTS],
     isolate: true,
+    // Kurulum kancası bağlantıyı bekliyor ve o bekleme vitest'in varsayılan
+    // 10 sn'lik kanca sınırıyla YARIŞIYORDU: Redis kapalıyken kazanan vitest
+    // oluyor, çıktı "Hook timed out" ve **3 skipped** diyordu — yani sebebi
+    // söylemeyen bir hata ve "atlandı" gibi okunan bir kırmızı. Sınır açıkça
+    // yükseltildi ki kancanın kendi mesajı kazansın.
+    hookTimeout: 30_000,
   },
 });

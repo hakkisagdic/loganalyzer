@@ -32,6 +32,19 @@ public sealed class AlertingStats
     private long _notificationsRetried;
     private long _notificationsAbandoned;
 
+    /// <summary>
+    /// Son <c>ingested_at</c>'i değerlendiricinin <b>şimdi</b>'sinden ileride
+    /// olan kaynak sayısı — saat kayması (T27).
+    ///
+    /// <para>
+    /// Kendi sayacı var çünkü bu bir alarm sonucu değil, bir <b>veri kalitesi</b>
+    /// belirtisi: ingest eden makine ile değerlendiren makine arasındaki fark.
+    /// Sessizlik alarmını geciktiriyor ve sayaç olmadan hiçbir yerde
+    /// görünmüyordu.
+    /// </para>
+    /// </summary>
+    private long _clockSkewedSources;
+
     public long Turns => Interlocked.Read(ref _turns);
     public long Evaluated => Interlocked.Read(ref _evaluated);
     public long Fired => Interlocked.Read(ref _fired);
@@ -52,6 +65,13 @@ public sealed class AlertingStats
     /// <summary>Deneme hakkı bitmiş teslimler. Sıfırdan büyükse bir kanal kalıcı olarak kırık.</summary>
     public long NotificationsAbandoned => Interlocked.Read(ref _notificationsAbandoned);
 
+    /// <summary>
+    /// Sıfırdan büyükse <b>sessizlik alarmları gecikiyor</b>: o kaynakların son
+    /// <c>ingested_at</c>'i değerlendiricinin şimdisinden ileride ve susma süresi
+    /// o farkı kapatana kadar eşiğe ulaşmıyor.
+    /// </summary>
+    public long ClockSkewedSources => Interlocked.Read(ref _clockSkewedSources);
+
     public void Turn() => Interlocked.Increment(ref _turns);
     public void Evaluate() => Interlocked.Increment(ref _evaluated);
     public void Fire() => Interlocked.Increment(ref _fired);
@@ -64,11 +84,15 @@ public sealed class AlertingStats
     public void RetryNotification() => Interlocked.Increment(ref _notificationsRetried);
     public void AbandonNotification() => Interlocked.Increment(ref _notificationsAbandoned);
 
+    /// <summary>Saati ileride bir kaynak görüldü (T27).</summary>
+    public void ClockSkewedSource() => Interlocked.Increment(ref _clockSkewedSources);
+
     [SuppressMessage("Design", "CA1024:Use properties where appropriate",
         Justification = "Anlık görüntü bir hesap; özellik gibi bedava görünmemeli.")]
     public AlertingSnapshot Snapshot() => new(
         Turns, Evaluated, Fired, Suppressed, TimedOut, Failed, ScopedQueries,
-        NotificationsQueued, NotificationsDelivered, NotificationsRetried, NotificationsAbandoned);
+        NotificationsQueued, NotificationsDelivered, NotificationsRetried, NotificationsAbandoned,
+        ClockSkewedSources);
 }
 
 public sealed record AlertingSnapshot(
@@ -82,4 +106,7 @@ public sealed record AlertingSnapshot(
     long NotificationsQueued,
     long NotificationsDelivered,
     long NotificationsRetried,
-    long NotificationsAbandoned);
+    long NotificationsAbandoned,
+
+    /// <summary>Saati ileride kaynak sayısı — sessizlik alarmı o kadar gecikiyor (T27).</summary>
+    long ClockSkewedSources);

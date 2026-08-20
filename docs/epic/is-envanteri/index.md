@@ -201,6 +201,149 @@ bekliyor; `302020 — zaman damgası olmayan zarf` iddiasını `tags:
 ["_asa_no_timestamp"]` ile gerçekten ölçüyor ve doğru yapmanın örneği olarak
 duruyor.
 
+### Kuralın vendor'ın sözlüğünü değil bizim varsayımımızı araması
+
+Sigma tarafında 2026-08-21'de adı konan sınıf. Üretilen SQL doğru, kolon doğru,
+veri de var — yalnızca **aranan dizge** yanlış, çünkü kuralı yazan kişi örnek
+dosyaya bakmamış.
+
+| Kural | Arıyor | Vendor yazıyor | Nasıl bulundu |
+| --- | --- | --- | --- |
+| `asa_teardown_rst` | `RST` | `Reset-I` | **Eşleşiyordu** — `first`/`burst` sözcüklerinin içine denk geliyordu |
+| `routeros_forward_new` | `action: forward` | `fw_chain` (parser `action`'ı **bilerek** boş bırakıyor) | Kapı 3, canlı ClickHouse |
+| `fortigate_user_auth_fail` | `failure` | `failed` | Aracın "yakın sözcük" uyarısı |
+| `nginx_5xx_burst` | `status` `'5'` ile başlar | kolon `success`/`failure` tutuyor | Eşleme sözlüğü okunarak |
+
+İlki en pahalısı çünkü **yeşildi**: kural eşleşiyordu ve eşleşmesi tamamen
+gürültüydü. `--discover` sayısı bunu söyleyemez; yalnızca örnek dosyanın
+**içeriğini** okuyan görür.
+
+Sonuncusu bir adım öteye gidiyor: orada dizge vendor'ın sözlüğünde yoktu,
+burada **kolonun** sözlüğünde yok — `catalog/mappings/http_status_outcome.yaml`
+HTTP kodunu `success`/`failure`'a çeviriyor, yani kolonda hiçbir zaman sayı
+durmuyor ve `status|startswith: '5'` **asla** doğru olamaz.
+
+Katalog kuralı olarak yazıldı: *bir kuraldaki her sabit dizge, o vendor'ın
+örneğinde geçtiği **ve gittiği kolonun o değeri tutabildiği** görülerek
+yazılmalı.* İkinci yarısı eşleme tablosuna bakmayı gerektiriyor.
+
+### Aynı girdinin iki kopyası — ve sebebi bir talimat değil, iki talimatın kesişimi
+
+Korpus `catalog/sigma/rules/`'a terfi ettirildi; düzeltme `prototypes/`'ta
+yapıldı. `measure.py` birini, Kapı 3 diğerini okuyordu — yani *"aynı kural
+setinin iki ölçümü"* diye okunan iki sayı **iki farklı korpustan** geliyordu.
+
+Sürüklenme kapısı bunu **göremez** ve görmemesi doğru: çıktıyı girdiye karşı
+tutuyor, bir **girdinin kendi kopyasından** ayrışmasını değil. İki ayrı soru.
+
+Bekçi artık **içeriğe** bakıyor — `detection:` ve `logsource:` taşıyan her YAML
+korpus dışındaysa kırmızı. Ada bakan bir bekçi, kopya başka adla başka dizine
+düşerse görmezdi. Yanında kardeşi var: **korpus boş olmamalı**, çünkü
+*"korpus dışında kural yok"* iddiası hiç kural olmayan bir depoda da doğrudur.
+
+Sebep bir kişinin hatası değil: koordinatör bir ajana *"korpusu terfi ettir"*,
+diğerine *"kuralı düzelt"* dedi ve **korpusun taşındığını ikinciye söylemedi.**
+§9'un yasağı bir cümleydi; artık bir bekçi.
+
+### Aynı sözleşmenin iki çözümleyicisi
+
+`EvidenceEndpoints` tel değerlerini `Enum.TryParse(ignoreCase: true)` ile
+çözüyordu, `ReviewWire` tam kalıbı istiyordu. İki kusur:
+
+- Sözleşmeden **geniş** kabul: `"Correct"`, `"CORRECT"`, `"notpresent"` geçiyordu.
+- Daha sinsisi: `Enum.TryParse` enum'a eklenen bir değeri **telde kendiliğinden
+  kabul eder** — yarın `ReviewVerdict`'e bir üye eklenirse sözleşme kimse karar
+  vermeden büyürdü. `ExpectedExemptCount` ile `Pending`'in var olma sebebinin
+  tam tersi.
+
+İki ajan aynı gün kapının **iki ayrı kanadını** kapatmıştı (biri enum eleman
+sayısını sabitledi, diğeri tel adı eşlemesini keşfedilebilir yaptı) — ama
+ortadaki gevşek çözümleyici ikisinin arasından geçiyordu. Kodu koordinatör
+çakışma çözerken yazdı; bulan üçüncü bir ajan oldu.
+
+### Koşum düzeninin sessiz yanlışı — çıkış kodunu kimse okumuyor
+
+Bekçinin kendisi değil, **onu koşturan satır** yalan söylüyor.
+
+| Ne | Nasıl |
+| --- | --- |
+| `cmd && … | tail -3` | `tail` her hâlükârda `0` dönüyor; kırmızı bir test "geçmiş" görünüyor ve üstüne commit ediliyor |
+| `$?`'ı boru hattının **ardından** okumak | Ölçülen şey son komutun çıkışı; kapı `✗` yazarken `cikis=0` okunuyor |
+| Testleri koşucunun **altına** eklemek | Üç test hiç toplanmıyor, paket `13/13 yeşil` diyor |
+
+Üçü de 2026-08-21'de yaşandı; birincisi bir ajanda, ikincisi koordinatörde iki
+kez, üçüncüsü bir ajanda **ikinci kez**. Üçüncüsüne yapısal bekçi kondu:
+dosyadaki `def test_` sayısı ile toplanan sayı karşılaştırılıyor —
+*"sessizce atlanan test, yanlış testten tehlikeli."*
+
+### Ölçüm aracının **kendi** sessiz yanlışı
+
+Yukarıdaki bölüm bekçilerle ilgiliydi. Bu ayrı bir sınıf ve bu turda **iki kez**
+çıktı: kusur ürünün değil, **ölçüm aracının** kendisinde ve aracın çıktısı
+yeşil.
+
+Farkı şu: bozuk bir bekçi bir kusuru göremez. Bozuk bir ölçüm aracı ise
+**gerçeğin tersini rapor eder** ve rapor bir karar belgesine dönüşür.
+
+| # | Araç | Ne dedi | Gerçek | Sebep |
+| --- | --- | --- | --- | --- |
+| 1 | Sigma kapsam ölçümü (`measure.py`) ön kontrolü | "Veri var, ölçebilirim" | Tablodaki 1M satır tek-vendor'lu sentetik kıyaslama verisiydi; ölçüm `%0` üretti ve o sıfır eşlemenin değil **verinin** sonucuydu | Kontrol bir **yokluk** kanıtı arıyordu ("tablo boş mu"), **varlık** kanıtı değil ("doğru veri mi") |
+| 2 | Alan kapsamı ölçümü (`fields coverage`) kutu 1 | "Hiçbir vendor'da yakalanmamış metin yok" → *parser her şeyi yakalamış* | ASA'nın `Reset-I`'si dahil, satırların bir kısmı hiçbir alana inmiyor | `attrs['message']` satırın **birebir kendisi**; kapsama sayılınca gövdede hiçbir aralık boşta kalmıyordu |
+
+**İkisinin ortak imzası:** araç, ölçemediği durumu ölçebildiği durumdan ayırt
+edemiyordu ve ayırt edememenin çıktısı **başarılı bir koşum**du.
+
+**İkisinin düzeltmesi de aynı biçimde:** *yokluk kanıtı yerine varlık kanıtı.*
+Sigma ön kontrolü artık altın örnek dosyasından türetilmiş bir sondayı gövdede
+**arıyor**; kutu 1 artık gövdenin kopyasını kapsama **saymıyor** — içinde başka
+bir yakalanmış değer geçen alan üst hâl sayılıyor. İkincisi bir eşik değil
+**yapı** kuralı: eşik bugünkü veride aynı sonucu verir, yarın kayardı.
+
+Üçüncü bir örnek aynı turda **önlendi**: baseline süpürmesi tek `--zipf` ile
+koşsaydı düzgün bir dirsek raporlayacaktı ve o sayı verinin değil tohumlama
+parametresinin özelliği olacaktı. Önleyen şey bir uyarı değil bir **imza**:
+`BaselineFixtureVerdict.Compare` iki eğri olmadan derlenmiyor.
+
+Ayrıntı: [`t39-alan-kapsami`](../t39-alan-kapsami/index.md).
+
+#### Koşum düzeninin sessiz yanlışı
+
+Yukarıdakiler aracın kendisiyle ilgiliydi. Bunun bir kardeşi var ve **kod hiç
+değişmiyor**: araç doğru, ölçüm doğru, ama **çıkış kodu kimseye ulaşmıyor.**
+
+Kalıp tek satır:
+
+```bash
+dotnet test … 2>&1 | tail -5        # tail 0 döndürüyor, test kırmızıysa bile
+komut_a && komut_b >/dev/null 2>&1  # a'nın çıktısı da hatası da yutuluyor
+```
+
+Kabuk boru hattının çıkış kodu **son** komutundan gelir ve `tail` her hâlükârda
+başarılı. Sonuç: kırmızı bir koşum "geçmiş" görünüyor, `&&` zinciri devam
+ediyor, ve bir sonraki adım **bayat ikiliyle** koşuyor.
+
+Bu turda dört kez oldu:
+
+| Kim | Nasıl | Sonucu |
+| --- | --- | --- |
+| Sigma tarafı | `&&` zinciri `tail` ile bitiyordu | Bir testi **kırmızıyken commit etti** |
+| Koordinatör | `$?`'ı `tail`'in ardından okudu | İki kez; koşum "geçti" göründü |
+| T39 | Mutasyon sonrası `dotnet build … >/dev/null 2>&1` | Derleme **hata verdi**, test bayat ikiliyle koştu ve "bulgu yok" gibi göründü. Kırmızı ölçümü tekrarlamak gerekti |
+
+**Neden ölçüm aracının yalanıyla aynı sınıf:** her ikisinde de "ölçemedim" ile
+"sorun yok" aynı çıktıya iniyor. Farkı, buradaki kusurun **koda hiç
+dokunmaması** — hiçbir test, hiçbir bekçi bunu yakalayamaz, çünkü kusur testin
+kendisinde değil onu koşturan satırda.
+
+**Uygulanacak alışkanlık:** ölçüm koşumlarında boru hattı **kırpma amaçlı
+kullanılmaz**; çıktı gerekiyorsa önce dosyaya yazılıp sonra kırpılır, ya da
+`set -o pipefail` açılır. `>/dev/null` ile susturulan bir adımın ardından `&&`
+gelmez — susturulan adım başarısız olabilir ve zincir onu görmez.
+
+Bu üç bölüm birlikte okunmalı: **bekçinin körlüğü → ölçüm aracının yalanı →
+koşum düzeninin sessizliği.** Üçü de aynı soruyu farklı katmanda soruyor:
+*"ölçemediğimi söyleyebiliyor muyum?"*
+
 ## 3 · Doğrulanmamış olan
 
 | # | Ne | Kim |
@@ -211,7 +354,40 @@ duruyor.
 | **D4** | **Kimlik/yetkilendirme grafiği kapsam doğrulamasından hiç geçmemişti** — `AddBizigoAuthentication` ömür bekçisinin listesinde yoktu. Artık geçiyor (`5dcb786`), ama bugüne kadar geçmemiş olması D1'in bulduğu sınıfla aynı: doğrulanmamış bir katman, çalıştığı sanılan bir katman. | ✅ kapandı |
 
 | **D5** | **Sigma kapsam ölçümü koştu ama sayısı kullanılamaz.** `match_ratio = %0`; sebebi eşleme değil **veri**: ClickHouse'daki 1M satır tek-vendor'lu sentetik benchmark verisi, altın örnek değil. Aracın ön kontrolü "boş mu" diye soruyordu, "doğru veri mi" diye değil — sonradan altın örnek sondası arayacak şekilde sertleştirildi. **Veriden bağımsız tek kullanılabilir sayı:** `compiled=24, runs=14` — on kural var olmayan kolonlara giden SQL üretiyor, ve bu kapsam daraltarak çözülmez. | koordinatör; altın örnek yükleyicisi yazılıyor |
-| **D6** | **Baseline pencere ölçümü de aynı sebeple bekliyor** — araç en az taban süresi kadar gerçek geçmiş istiyor ve bunu kendisi söylüyor, sessizce anlamsız sayı üretmiyor. | koordinatör, yükleyiciden sonra |
+| ~~D6~~ | ~~Baseline pencere ölçümü de aynı sebeple bekliyor~~ — **koşuldu 2026-08-21.** Süpürme kendi verisini tohumluyor ve imzası iki eğri istiyor. Sonuç aşağıda: bağlayıcı taban **çıkmadı**, ve çıkmaması ölçümün teslim ettiği şey. | ✅ kapandı |
+| **D7** | **T35'in beş korelasyon sağlayıcısının kapsam negatif testi yok** — ticket `status:2`, yani kapanmış sayılıyor. `GetFirstSeenSignaturesAsync`, `GetSignatureVolumeAsync`, `GetAttributeLiftAsync`, `GetPropagationAsync`, `GetEventHistogramAsync`. Bedeli tek cümlede: *ilk-görülen imza başka grubun verisinden gelirse rapor **yanlış** olur* — ve kullanıcı bir sinyalin **yokluğunu** bulgu sanar. Kapsam kapısı **var**; doğru çalıştığı hiç sınanmadı. Bulunma biçimi ayrıca önemli: `ScopeNegativeTests` yansımayla keşfedilebilir hâle getirilince çıktı, ve aynı anda **on iki testin sekiz yolu kapattığı** görüldü — liste "on iki yol denenmiş" görüntüsü veriyordu. | 7, T35 negatif testleri |
+
+### D6'nın sonucu — baseline süpürmesi, 2026-08-21
+
+Ölçüm bir sayı **vermedi**, ve doğru cevap buydu:
+
+```
+dik kuyruk (zipf 2.0) → dirsek 7g
+düz kuyruk (zipf 1.4) → dirsek 1g
+SEÇİLEBİLİR TABAN YOK.
+```
+
+Dirsek tohumlama düğmesiyle **yedi kat** kayıyor. Tek eğri koşturan bir araç
+"7 gün" derdi ve o sayı verinin değil `--zipf 2.0`'ın karakteri olurdu. Araç
+artık tek eğriyle **derlenmiyor** — tavsiye mekanizmaya çevrildi.
+
+Çapraz kontrol **birebir tuttu**: aynı süpürme ClickHouse'a SQL ile, plana
+aritmetikle soruldu; yedi satırın yedisi de aynı çıktı (4/%25.0, 1/%6.3,
+12/%41.4, 4/%13.8, dirsekler 7g/1g). Yani `GetFirstSeenSignaturesAsync`'in
+SQL yolu doğru — ve *"düzgün ama yanlış bir eğri"* arıza sınıfının **yokluğu
+ölçüldü**.
+
+Bağlayıcı tabanın bu fixture'dan çıkmamasının **üç** sebebi var:
+
+1. Düğme kayması (yukarıdaki tablo).
+2. 87 örnek satır ~81 imza taşıyor; taban uzayınca oran **tam sıfıra** iniyor —
+   üretimde olmayan bir hâl, gerçek veride yenilik hiç bitmez.
+3. **Ay adı maskesi yok.** `NUMBER` günü ve saati yiyor, `May`/`Oct` imzada
+   kalıyor; 31 günlük yayılım bir ay sınırı içeriyor ve tabanı ayın birinden
+   öteye uzatmak oranı beklendiği kadar düşürmüyor.
+
+Fixture'ı yenilik üretecek şekilde büyütmek **reddedildi**: o zaman dirseği
+ölçümü yazan kişi çizmiş olurdu — bugünkü hâlden kötü bir dürüstlük.
 
 ### D1'in sonucu — canlı Keycloak, 2026-08-20
 
@@ -311,6 +487,52 @@ ayrımı `ParserAuthoringEndpoints`'te zaten çizili: author uçları T19, admin
 okuma uçları T20. `GET /v1/parsers/drafts/{id}` sözleşmesi ikisine birden
 çivilendi (`yaml` alanı, `snake_case`) ki biri diğerini beklemesin. Merge'de
 o satırlardan hiçbiri iki kez silinmedi — bölünme tuttu.
+
+### F1'den kalan borç: T40 — ham arşiv kurtarma
+
+`status: 0` · `tickets/ham-arsiv-kurtarma` · kaynağı
+[T04 karar belgesi](../t04-kararlar/index.md) açık kalem #4
+
+F1 karar belgeleri yazılırken çıktı ve **yeni bir ticket açtırdı**, çünkü
+bulunan şey eksik bir özellik değil: 48 saatlik WAL saklama penceresi *"nesne
+kaybolursa yerelden yeniden yükle"* için seçilmiş, `RawManifestEntity.WalSegment`
+o bağı taşıyor, scrub kaybı `RawObjectState.Missing` ile görüyor — ve kurtarmayı
+yapan kod **yok**.
+
+Ticket'a çevrilirken kod tekrar okundu, iki şey daha çıktı:
+
+| # | Bulgu | Sonucu |
+| --- | --- | --- |
+| a | `DeleteExpiredSegmentsAsync` silme kararını yalnızca `VerifiedAt`'e bakarak veriyor; `State` sorguya hiç girmiyor | Kaybın **tespit edilmiş olması**, kurtarma kaynağı olan WAL segmentinin silinmesini engellemiyor. Mekanizma yazılsa bile bu satır düzeltilmeden **kendi kaynağını silebilir** |
+| b | Scrub 6 saatte 20 nesne tarıyor → 48 saatte 160 nesne → ~64 MB'lık nesnelerle ~**10 GB** | Arşiv bundan büyükse tam tarama penceresinden uzun sürüyor ve kayıp, segment silindikten *sonra* fark ediliyor. Koruma belli bir boyuttan sonra **aritmetik olarak erişilemez** |
+
+(b) yapılandırmadan **hesaplandı**, ölçülmedi. T04'ün "bu sayıların gerekçesi
+kayıtta yok" diyen iki ayrı açık kalemi (#2 scrub örneklemesi, #3 saklama
+penceresi) aslında tek kalemin iki yarısıymış: pencere, tam tarama süresinden
+kısa olamaz.
+
+**Verilen karar:** kurtarma **tespitten tetiklenir**, ayrı bir zamanlamadan
+değil — aksi hâlde 48 saatlik bütçe iki bağımsız periyot arasında bölünür ve
+toplamı kimse tutmaz. Elle tetiklenen uç ikincil kalır; birincil olsaydı koruma
+yine bir insanın bakmasına bağlanırdı.
+
+### D kalemine bağ: ingest çift yazma penceresi
+
+T40 ile aynı turda ölçülen ayrı bir kalem, ama aynı aileden.
+`IngestRetryWindowTests` (birim, Docker yok) şunu sabitliyor: `AcceptAsync`
+batch'i WAL'a yazıp `fsync` ettikten **sonra** dolu kanalda bekliyor, yani veri
+dayanıklı olduğu hâlde istemcinin elinde 200 yok. O pencerede zaman aşımına
+düşüp yeniden gönderen istemci WAL'a ikinci çerçeveyi yazdırıyor.
+
+Asıl bulgu tekrarın kendisi değil: iki kayıt **birbirine bağlanamıyor**.
+`EventId` her çözümlemede `Guid.CreateVersion7` ile yeniden üretildiği için
+gövde baytları birebir aynı, kimlikler farklı — arşiv, ClickHouse ve replay
+bu ikisinin aynı gönderim olduğunu **söyleyemiyor**.
+
+Sorun bir *tekrar* sorunu değil bir *kimlik* sorunu, ve sonucu şu: tekilleştirme
+eklendiğinde anahtar **var olmayan bir yerden** gelmek zorunda — ya istemciden
+bir başlık, ya gövdenin hash'i. İkisi ayrı kararlar, maliyetleri farklı.
+Ayrıntısı [T03 karar belgesi](../t03-kararlar/index.md) açık kalem #3'te.
 
 **T27'nin önündeki tek açık karar:** izin listesindeki `POST /v1/replay`.
 Atfı yanlıştı ("T19 — replay ekranı"), oysa replay ekranının ticket'ı yok.
