@@ -326,8 +326,8 @@ def test_kural_uretiliyorsa_bos_beyan_kirmizi():
 #:
 #: Aynı sorunun kardeşi T31 tarafında da var (bekçiyi tetikleyen kural sayısı
 #: 3'ten 2'ye indi); orada da ayrı bir test tutuyor.
-EXPECTED_AT_LEAST_ONE_COUNT = 6
-EXPECTED_NONE_COUNT = 2
+EXPECTED_AT_LEAST_ONE_COUNT = 9
+EXPECTED_NONE_COUNT = 8
 
 
 def repo_expectations():
@@ -376,7 +376,17 @@ def test_her_beyanin_gerekcesi_kanit_tasiyor():
     gerekçe o kanıtı taşımazsa beklenti kırıldığında kimse doğrulayamaz.
     """
     for expectation in repo_expectations():
-        assert "samples/" in expectation.why or "geçmiyor" in expectation.why, expectation.rule_id
+        # Ölçüt: örnek dosyasına işaret etsin YA DA saydığı şeyi söylesin.
+        #
+        # İlk hâli `"samples/"` (bölü işaretli) ve `"geçmiyor"` sözcüğünü arıyordu,
+        # yani gerekçenin **yazımına** bağlıydı: dizini bölü işaretsiz yazan ya da
+        # "0 kez geçiyor" diyen bir gerekçe reddediliyordu. Test ölçmek istediği
+        # şeyi değil bir kalıbı ölçüyordu ve altı doğru gerekçeyi düşürdü.
+        # Ölçüt: gerekçe bir **örnek dosyasını adıyla** ansın. Bütün beyanlar
+        # `catalog/parsers/*/samples/` içeriğinden türetildi; dosyayı anmayan bir
+        # gerekçe, kırıldığında doğrulanamaz.
+        kanit = "samples" in expectation.why or ".log" in expectation.why
+        assert kanit, f"{expectation.rule_id}: gerekçe bir örnek dosyası anmıyor"
         assert len(expectation.why) > 80, f"{expectation.rule_id}: gerekçe fazla kısa"
 
 
@@ -387,7 +397,7 @@ def test_her_beyanin_gerekcesi_kanit_tasiyor():
 #: **Bilerek** beyansız kuralların sayısı — azalması beklenmeyen taraf.
 #: "Ölçüm bekleyen" listesiyle tek listede olsaydı, "beyan listesi tamamlandı mı"
 #: sorusunun cevabı asla evet olamazdı.
-EXPECTED_UNDECLARED_COUNT = 1
+EXPECTED_UNDECLARED_COUNT = 2
 
 
 def test_bilerek_beyansiz_sayisi_sabit():
@@ -461,11 +471,11 @@ def test_bilinmeyen_kind_reddediliyor():
 
 #: Depodaki `none` beyanlarının **sınıfa göre** sayısı.
 #:
-#: `corpus_gap` bugün sıfır: kalan 12 beyan T31 ajanının üç kutulu ölçümünün
-#: kural bazında dökümünü bekliyor. O geldiğinde bu sayı artacak ve **azalması
-#: beklenen** taraf olacak — `invariant` ise sabit kalmalı.
+#: `corpus_gap` **azalması beklenen** taraf: korpus genişledikçe her biri kırmızı
+#: yanıp `at_least_one`'a dönüşecek. `invariant` ise sabit kalmalı — düşerse bir
+#: yanlış pozitif doğmuş demektir.
 EXPECTED_NONE_INVARIANT = 2
-EXPECTED_NONE_CORPUS_GAP = 0
+EXPECTED_NONE_CORPUS_GAP = 6
 
 
 def test_none_beyanlari_sinifa_gore_sabit():

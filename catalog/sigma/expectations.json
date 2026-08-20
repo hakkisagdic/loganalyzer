@@ -2,6 +2,13 @@
   "_comment": "Kural başına beklenen altın örnek sonucu. Kapı 3 bunları canlı ClickHouse'a karşı doğruluyor. KAPSAM SAYISI BURADA DEĞİL: kapsam verinin şekline bağlı ve kapı yapılırsa bir vendor'ın payı kaydığında kırmızı yanar.",
   "expectations": [
     {
+      "rule_id": "06977082-0000-4000-8000-000000000000",
+      "file_name": "06977082-0000-4000-8000-000000000000.sql",
+      "expect": "none",
+      "kind": "corpus_gap",
+      "why": "nginx_scanner_agent — `user_agent|contains: sqlmap|nikto`; `catalog/parsers/nginx.access/samples` içinde ikisi de 0 kez geçiyor (ajanlar Chrome ve Debian APT-HTTP). Tarayıcı trafiği taşıyan bir örnek gelirse kırmızı yanar."
+    },
+    {
       "rule_id": "07131427-0000-4000-8000-000000000000",
       "file_name": "07131427-0000-4000-8000-000000000000.sql",
       "expect": "none",
@@ -15,10 +22,23 @@
       "why": "asa_teardown_rst — catalog/parsers/cisco.asa/samples/network.log içinde `Teardown` VE `Reset` aynı satırda 2 kez geçiyor (`... duration 0:01:07 bytes 38110 TCP Reset-I`). `RST` neden ARANMIYOR: ASA sıfırlamayı `Reset-I`/`Reset-O` diye yazıyor, `RST` diye hiç yazmıyor. Kuralın eski hâli `RST` arıyordu ve örneklerde yalnızca `first` ile `burst` sözcüklerinin içine denk geliyordu — yani eşleşiyordu ama tamamen yanlış sebeple. Bu satır, altı ay sonra `RST` daha genel diye geri koymak isteyecek kişiye cevap. `Reset-I` değil `Reset` aranıyor: `-I`/`-O` yön eki ve kural yönü umursamıyor — örneklemde `Reset-I` 2, `Reset-O` 0 kez geçiyor, yani yöne bağlamak bugün çalışır ama kuralın sormadığı bir şeyi sormuş olurdu."
     },
     {
+      "rule_id": "14477452-0000-4000-8000-000000000000",
+      "file_name": "14477452-0000-4000-8000-000000000000.sql",
+      "expect": "none",
+      "kind": "corpus_gap",
+      "why": "asa_vpn_login — kural `message|contains: 'Group User'` arıyor; bu dizge catalog/parsers/cisco.asa/samples içindeki iki dosyada da 0 kez geçiyor. Desen örneklemde yok; korpus VPN kaydı taşıyan bir örnekle genişlerse bu beyan kırmızı yanar ve `at_least_one`'a dönüştürülür."
+    },
+    {
       "rule_id": "17828938-0000-4000-8000-000000000000",
       "file_name": "17828938-0000-4000-8000-000000000000.sql",
       "expect": "at_least_one",
       "why": "fortigate_denied_burst — catalog/parsers/fortinet.fortigate/samples/traffic.log içinde action=\"blocked\" VE dstport=443 taşıyan 1 satır var. Beyan bilerek o tek satıra dayanıyor: `blocked` 2 satırda, `dstport=443` 5 satırda geçiyor ama kural ikisini AND ile bağlıyor, yani önemli olan kesişim."
+    },
+    {
+      "rule_id": "19506570-0000-4000-8000-000000000000",
+      "file_name": "19506570-0000-4000-8000-000000000000.sql",
+      "expect": "at_least_one",
+      "why": "asa_acl_hit — `message|contains: 'access-list'` VE `action: 'denied'`. catalog/parsers/cisco.asa/samples/network.log içinde `access-list` geçen 1 satır var ve örnekte `Deny tcp` satırları da mevcut. Desen VAR, kural koşuyor, sıfır dönüyor: eşleme boşluğu. BU BEYAN BUGÜN KIRMIZI — iş kalemi olarak duruyor."
     },
     {
       "rule_id": "21934394-0000-4000-8000-000000000000",
@@ -40,22 +60,66 @@
       "why": "routeros_forward_new — catalog/parsers/mikrotik.routeros/samples/firewall.log içinde `firewall,info forward:` VE `proto TCP` taşıyan 3 satır var (ör. satır 4: `proto TCP (SYN), 10.0.0.91:45572->198.51.100.101:443`). Kural `activity_name='forward' AND connection_info_protocol_name='tcp'` arıyor; küçük harfe çevirme `catalog/mappings/ip_proto_name.yaml` üzerinden."
     },
     {
+      "rule_id": "34775915-0000-4000-8000-000000000000",
+      "file_name": "34775915-0000-4000-8000-000000000000.sql",
+      "expect": "at_least_one",
+      "why": "fortigate_high_port_scan — `proto: 6` VE `dstport|gte: 30000`; traffic.log içinde `proto=6` 8 satırda var. Sebebi BİLİNİYOR ve Kapı 2'nin `--self-test`'inde duruyor: `connection_info_protocol_name` `LowCardinality(String)`, kural tamsayı `6` yazıyor. Aynı aile: RST↔Reset-I, action↔fw_chain, failure↔failed. Kural `'tcp'` yazmalı. BU BEYAN BUGÜN KIRMIZI."
+    },
+    {
       "rule_id": "43129827-0000-4000-8000-000000000000",
       "file_name": "43129827-0000-4000-8000-000000000000.sql",
       "expect": "at_least_one",
       "why": "fortigate_blocked_category — catalog/parsers/fortinet.fortigate/samples/traffic.log içinde `/config/` geçen tek satır aynı zamanda action=\"blocked\" taşıyor. Kural URL'ye unmapped['otel.url.path'] üzerinden bakıyor (kolon değil Map erişimi), yani bu beyan aynı zamanda `unmapped` yolunun canlıda çalıştığını sınıyor."
     },
     {
+      "rule_id": "50087630-0000-4000-8000-000000000000",
+      "file_name": "50087630-0000-4000-8000-000000000000.sql",
+      "expect": "none",
+      "kind": "corpus_gap",
+      "why": "routeros_dhcp_offer — `proto udp` VE `dstport 68`. catalog/parsers/mikrotik.routeros/samples/firewall.log içinde `proto UDP` 4 satırda VAR ama hedef port 68 **hiç yok** (örnekteki hedef portlar 62181, 51233 gibi yüksek portlar). Ölçüm aracı bu kuralı `present` kutusuna koymuştu; kesişim boş, yani kutu `absent`. AND'in iki yarısından biri tutuyor diye desen var sayılamaz."
+    },
+    {
+      "rule_id": "56293354-0000-4000-8000-000000000000",
+      "file_name": "56293354-0000-4000-8000-000000000000.sql",
+      "expect": "none",
+      "kind": "corpus_gap",
+      "why": "nginx_admin_path — `url|startswith: '/admin'`; `catalog/parsers/nginx.access/samples` içindeki iki dosyada `/admin` 0 kez geçiyor (istekler `/downloads/`, `/favicon.ico`, `/test1`). Desen yok; yönetim paneline istek taşıyan bir örnek gelirse kırmızı yanar."
+    },
+    {
       "rule_id": "58613739-0000-4000-8000-000000000000",
       "file_name": "58613739-0000-4000-8000-000000000000.sql",
       "expect": "at_least_one",
       "why": "asa_outbound_built — catalog/parsers/cisco.asa/samples/network.log içinde `Built` ve `TCP` AYNI satırda 4 kez geçiyor (ör. `Built outbound TCP connection ...`). Kural `activity_name='Built' AND connection_info_protocol_name='tcp'` arıyor; ikisi de aynı olaydan geliyor."
+    },
+    {
+      "rule_id": "73633522-0000-4000-8000-000000000000",
+      "file_name": "73633522-0000-4000-8000-000000000000.sql",
+      "expect": "at_least_one",
+      "why": "routeros_login_failure — `message|contains: 'login failure'`; catalog/parsers/mikrotik.routeros/samples/system.log içinde 4 satır var (`system,error,critical login failure for user admin ...`). Desen VAR, sıfır dönüyor: eşleme boşluğu, sebebi ölçülmedi. BU BEYAN BUGÜN KIRMIZI."
+    },
+    {
+      "rule_id": "81341084-0000-4000-8000-000000000000",
+      "file_name": "81341084-0000-4000-8000-000000000000.sql",
+      "expect": "none",
+      "kind": "corpus_gap",
+      "why": "nginx_large_upload — `http_method: POST` VE `url|contains: '/upload'`; `catalog/parsers/nginx.access/samples` içinde `POST` 0, `/upload` 0 kez geçiyor. Örneklem yalnızca GET taşıyor."
+    },
+    {
+      "rule_id": "86872380-0000-4000-8000-000000000000",
+      "file_name": "86872380-0000-4000-8000-000000000000.sql",
+      "expect": "none",
+      "kind": "corpus_gap",
+      "why": "nginx_sqli_probe — `url|contains: 'UNION SELECT'` ve `\"' OR '1'='1\"`; `catalog/parsers/nginx.access/samples` içinde 0 kez geçiyor. Saldırı deseni taşıyan örnek yok."
     }
   ],
   "undeclared": [
     {
       "rule_id": "14644215-0000-4000-8000-000000000000",
       "why": "nginx_dns_rebind — kural `hostname|contains: localhost/127.0.0.1/169.254.169.254` arıyor. catalog/parsers/nginx.access/samples/combined.log içinde `localhost` YALNIZCA referrer alanında (`\"http://localhost:8080/\"`), `127.0.0.1` YALNIZCA remote_ip konumunda; combined format zaten Host başlığı taşımıyor. Yani `device_hostname`'in bu satırlarda ne olduğu örnek dosyadan okunamıyor ve tahminle beyan yazmak kapıyı yanlış sebeple kırmızı yakardı. `--discover` kuralı boş buldu; okuma ölçümle örtüştü. Beyan, kuralın `access-json.log`'a mı bakması gerektiği kararından sonra yazılacak."
+    },
+    {
+      "rule_id": "21011482-0000-4000-8000-000000000000",
+      "why": "nginx_5xx_burst — iki ayrı sebeple beyan yazılamıyor ve ikisi de ölçüldü. (1) Örneklemde HİÇ 5xx yok: combined.log 200/206/304/404, access-json.log 200/206/304/403/404. (2) Daha önemlisi, 5xx gelse bile kural eşleşemez: `status` kolonu `outcome`'dan geliyor ve catalog/mappings/http_status_outcome.yaml HTTP kodunu `success`/`failure` sözlüğüne çeviriyor — kolonda hiçbir zaman sayı durmuyor, yani `status|startswith: '5'` asla doğru olamaz. Bu bir korpus boşluğu DEĞİL kural kusuru: RST↔Reset-I, action↔fw_chain, failure↔failed ailesinin dördüncüsü. Ölçüm aracı bu kuralı `present` kutusuna koymuştu. Düzeltme kararı verilene kadar beyansız."
     }
   ]
 }
