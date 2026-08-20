@@ -209,13 +209,18 @@ jobs:
         with:
           python-version: '3.13'
 
-      # `tools/sigma-build/requirements.txt` BİLEREK kurulmuyor: o dosya
-      # sidecar'ınkine işaret ediyor ve drain3'ü bir git SHA'sından çekiyor.
-      # Bu işteki iki adımın ikisi de saf metin işi — `view_columns.py` pySigma
-      # istemiyor. Gerçek derleme adımı geldiğinde (T32 sırası §5, madde 6) tam
-      # bağımlılık kurulumu o adımla birlikte gelir.
-      - name: Test bağımlılıkları
-        run: pip install pytest==9.1.1
+      # Derleme adımı artık T31'in pipeline'ını gerçekten çağırıyor, yani
+      # pySigma gerekiyor. `requirements.txt` sidecar'ınkine `-r` ile İŞARET
+      # ETMİYOR: o dosya drain3'ü bir git SHA'sından çekiyor ve Sigma derleme
+      # hattını üçüncü taraf bir deponun erişilebilirliğine bağlamak olurdu
+      # (aşağıdaki `sidecar` işinin notu). Ağ, kapının gerekçesi olamaz.
+      #
+      # Bedeli iki dosyada aynı sürümü tutmak; karşılığı `test_requirements.py`,
+      # ayrıştıkları gün kırmızı yanıyor. Ayrışma sessiz olsaydı sidecar'ın
+      # `/v1/sigma/compile` ucu UI'da bir SQL gösterirken build-time başka bir
+      # SQL üretirdi.
+      - name: Bağımlılıklar
+        run: pip install pytest==9.1.1 -r tools/sigma-build/requirements.txt
 
       - name: Derleme hattı birim testleri
         working-directory: tools/sigma-build

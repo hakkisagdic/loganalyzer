@@ -3,10 +3,10 @@
   "run": {
     "view": "events_ocsf",
     "ruleset_commit": null,
-    "pipeline_version": null,
-    "pipeline_sha": null,
-    "pysigma_version": null,
-    "backend_version": null
+    "pipeline_version": "bizigo-events-ocsf/0d03a6af9371",
+    "pipeline_sha": "sha256:0d03a6af937130d37aa3c68d4fe3b964378d85fd495add3a6d2e8fcb5d58c2f0",
+    "pysigma_version": "1.5.0",
+    "backend_version": "1.1.1"
   },
   "counts": {
     "total": 0,
