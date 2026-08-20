@@ -83,6 +83,88 @@ def test_verisiz_kural_orandan_dusuluyor() -> None:
     assert report.match_ratio > naive
 
 
+def test_veri_var_ama_altin_ornek_yoksa_reddediliyor() -> None:
+    """**Bu testin karşılığı gerçek bir koşumda yaşandı.**
+
+    Tabloda önceki bir turdan kalma 1.000.000 satırlık tek-vendor'lu sentetik
+    benchmark verisi vardı. Ön kontrol "boş mu" diye sordu, cevap hayırdı,
+    geçirdi — ve ölçüm `%0` eşleşme üretti. O sıfır eşlemenin değil verinin
+    sonucuydu.
+
+    "Boş değil" ile "doğru veri" aynı şey değil; kontrol artık bir YOKLUK
+    kanıtı değil VARLIK kanıtı arıyor.
+    """
+
+    def stub(sql: str, *_args: object, **_kwargs: object) -> tuple[int, str]:
+        # Bol satır var, ama hiçbir altın örnek sondası tutmuyor.
+        if "position(raw_data" in sql:
+            return 0, ""
+        return 1_000_001, ""
+
+    measure.run_on_clickhouse = stub
+    result = measure.preflight("http://x", "u", "p", 1.0)
+
+    assert not result.ok
+    assert result.rows == 1_000_001
+    assert "altın örnek değil" in result.reason
+    assert not any(result.golden.values())
+
+
+def test_altin_ornek_bulununca_geciyor() -> None:
+    """Tek bir vendor'ın örneği bile bulunursa ölçüm anlamlı olabilir."""
+    probes = measure.golden_probes()
+    assert probes, "altın örnek sondaları türetilemedi — dosyalar taşınmış olabilir"
+
+    fortinet = probes["Fortinet"]
+
+    def stub(sql: str, *_args: object, **_kwargs: object) -> tuple[int, str]:
+        if "position(raw_data" in sql:
+            return (1 if fortinet[:20] in sql else 0), ""
+        return 87, ""
+
+    measure.run_on_clickhouse = stub
+    result = measure.preflight("http://x", "u", "p", 1.0)
+
+    assert result.ok
+    assert result.golden["Fortinet"]
+    assert not result.golden["Cisco"]
+
+
+def test_sondalar_ayirt_edici_uzunlukta() -> None:
+    """Kısa ya da jenerik sonda işe yaramaz: sentetik veri de aynı söz dizimini
+    taşıyor ve `level="notice"` gibi bir parça onda da bulunur."""
+    probes = measure.golden_probes()
+
+    assert set(probes) == {"Fortinet", "Cisco", "MikroTik", "nginx"}
+
+    for vendor, probe in probes.items():
+        assert len(probe) == 60, f"{vendor} sondası {len(probe)} karakter"
+
+
+def test_reddedilen_kolonlar_uc_hata_bicimini_de_okuyor() -> None:
+    """ClickHouse bilinmeyen kolonu üç ayrı cümleyle anlatıyor."""
+    assert measure.rejected_columns(
+        "Code: 47. DB::Exception: Unknown expression identifier 'type_uid' in scope SELECT"
+    ) == ["type_uid"]
+
+    assert measure.rejected_columns(
+        "Code: 47. DB::Exception: Missing columns: 'dns_query_name' 'answer' while processing"
+    ) == ["dns_query_name", "answer"]
+
+    assert measure.rejected_columns(
+        "Code: 47. DB::Exception: Unknown identifier: process_name; there are columns: time"
+    ) == ["process_name"]
+
+    assert measure.rejected_columns("") == []
+
+
+def test_esleyen_kural_yoksa_inf_yerine_sifir() -> None:
+    """`inf` bir ölçüm gibi görünüyor ama ölçüm yapılamadığını anlatıyor."""
+    report = measure.Report(rules=24, matches=0, pipeline_lines=111)
+
+    assert report.mapping_lines_per_rule == 0.0
+
+
 def test_olculebilir_kural_yoksa_oran_sifir() -> None:
     """Sıfıra bölme yerine sıfır — ve sıfır oran zaten ölçüm yapılmadı demek."""
     assert measure.Report(rules=0).match_ratio == 0.0

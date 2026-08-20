@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 import urllib.error
@@ -80,6 +81,12 @@ class RuleOutcome:
     #: `unmapped[...]` erişimi içeriyor mu (indekssiz, yani yavaş).
     unmapped_hits: int = 0
 
+    #: ClickHouse'un tanımadığı kolon adları — reddedilen SQL'in SEBEBİ.
+    #:
+    #: Sayı "on kural düştü" der; bu liste "hangi kolon yüzünden" der ve
+    #: T31'in eşleme tablosunun ilk taslağı odur.
+    rejected_columns: list[str] = field(default_factory=list)
+
     #: Bu kuralın vendor'ına ait HİÇ satır yok.
     #:
     #: `matches=False` ile karıştırılmamalı: biri "kural eşleşmedi", diğeri
@@ -112,6 +119,9 @@ class Report:
 
     no_data: int = 0
 
+    #: Kolon adı → kaç kuralı düşürdü. En çok düşüreni en önce ele alınmalı.
+    rejected_columns: dict[str, int] = field(default_factory=dict)
+
     #: `events_ocsf` satır sayısı ve vendor dağılımı — ön kontrolden.
     view_rows: int = 0
     vendor_rows: dict[str, int] = field(default_factory=dict)
@@ -135,8 +145,14 @@ class Report:
 
     @property
     def mapping_lines_per_rule(self) -> float:
-        """Kapsam kararının birimi: eşleme satırı / eşlenen kural."""
-        return self.pipeline_lines / self.matches if self.matches else float("inf")
+        """Kapsam kararının birimi: eşleme satırı / eşlenen kural.
+
+        Eşleşen kural yoksa **sıfır** dönüyor, `inf` değil: `inf` bir ölçüm
+        gibi görünüyor ama ölçüm yapılamadığını anlatıyor ve çıktıda aracın
+        kendine güvenini zedeliyor. Çağıran `matches == 0` durumunu zaten
+        ayrıca görüyor.
+        """
+        return self.pipeline_lines / self.matches if self.matches else 0.0
 
     @property
     def seconds_per_rule(self) -> float:
@@ -220,6 +236,67 @@ def run_on_clickhouse(sql: str, url: str, user: str, password: str, timeout: flo
         return 0, f"{type(exc).__name__}: {exc}"
 
 
+#: Vendor anahtarı → altın örnek dosyaları.
+#:
+#: Sonda bu dosyalardan **çalışma anında** türetiliyor; sabit bir dizge
+#: yazsaydık örnekler değiştiği gün kontrol sessizce yalan söylemeye başlardı.
+GOLDEN_SAMPLES: dict[str, str] = {
+    "Fortinet": "catalog/parsers/fortinet.fortigate/samples",
+    "Cisco": "catalog/parsers/cisco.asa/samples",
+    "MikroTik": "catalog/parsers/mikrotik.routeros/samples",
+    "nginx": "catalog/parsers/nginx.access/samples",
+}
+
+
+def _repo_root() -> Path:
+    here = Path(__file__).resolve()
+
+    for parent in here.parents:
+        if (parent / "Bizigo.sln").exists():
+            return parent
+
+    return here.parent
+
+
+def golden_probes() -> dict[str, str]:
+    """Vendor → altın örnekten türetilmiş ayırt edici bir dizge.
+
+    İki tercih, ikisi de ayırt ediciliği artırmak için:
+
+    * **En uzun satır** seçiliyor — en çok alan taşıyan, dolayısıyla içinde
+      benzersiz değer (IP, port, oturum kimliği) bulunma olasılığı en yüksek olan.
+    * Satırın **ortasından 60 karakter** alınıyor, tamamı değil: başındaki syslog
+      önceliği (`<188>`) ve sondaki alanlar boru hattında kırpılabiliyor.
+
+    Kısa ya da jenerik bir sonda işe yaramaz: sentetik benchmark verisi de aynı
+    vendor'ın söz dizimini taşıyor ve `level="notice"` gibi bir parça onda da
+    bulunur. Kontrolün anlamı, sondanın **o dosyadaki o satıra** ait olmasında.
+    """
+    probes: dict[str, str] = {}
+    root = _repo_root()
+
+    for vendor, relative in GOLDEN_SAMPLES.items():
+        directory = root / relative
+
+        if not directory.is_dir():
+            continue
+
+        longest = ""
+
+        for path in sorted(directory.glob("*.log")):
+            for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
+                line = raw.strip()
+
+                if len(line) > len(longest):
+                    longest = line
+
+        if len(longest) >= 100:
+            start = (len(longest) - 60) // 2
+            probes[vendor] = longest[start : start + 60]
+
+    return probes
+
+
 @dataclass
 class Preflight:
     """Ölçüme başlamadan önce verinin gerçekten orada olduğunun kanıtı."""
@@ -228,6 +305,9 @@ class Preflight:
     reason: str = ""
     rows: int = 0
     vendors: dict[str, int] = field(default_factory=dict)
+
+    #: Vendor → altın örnek sondası tablo içinde bulundu mu.
+    golden: dict[str, bool] = field(default_factory=dict)
 
 
 def preflight(url: str, user: str, password: str, timeout: float) -> Preflight:
@@ -284,7 +364,43 @@ def preflight(url: str, user: str, password: str, timeout: float) -> Preflight:
     )
     vendors["nginx"] = rows
 
-    return Preflight(ok=True, rows=total, vendors=vendors)
+    # --- Asıl kapı: altın örnekler GERÇEKTEN yüklü mü --------------------
+    #
+    # "Tablo boş değil" ile "doğru veri yüklü" aynı şey değil ve aradaki fark
+    # bir kez pahalıya patladı: tabloda önceki bir turdan kalma 1.000.000
+    # satırlık tek-vendor'lu sentetik benchmark verisi vardı. Ön kontrol
+    # "boş mu" diye sordu, cevap hayırdı, geçirdi — ve ölçüm `%0` eşleşme
+    # üretti. O sıfır eşlemenin değil verinin sonucuydu.
+    #
+    # Bu yüzden kontrol artık bir YOKLUK kanıtı değil VARLIK kanıtı arıyor:
+    # altın örnek satırının kendisi gövdede duruyor mu.
+    probes = golden_probes()
+    golden: dict[str, bool] = {}
+
+    for vendor, probe in probes.items():
+        escaped = probe.replace("\\", "\\\\").replace("'", "''")
+        hits, _ = run_on_clickhouse(
+            f"SELECT * FROM events_ocsf WHERE position(raw_data, '{escaped}') > 0",
+            url, user, password, timeout,
+        )
+        golden[vendor] = hits > 0
+
+    if probes and not any(golden.values()):
+        return Preflight(
+            ok=False,
+            rows=total,
+            vendors=vendors,
+            golden=golden,
+            reason=(
+                f"`events_ocsf` {total} satır taşıyor ama **hiçbiri altın örnek değil**. "
+                "Hiçbir vendor'ın örnek satırı gövdede bulunamadı; tablodaki veri başka "
+                "bir turdan kalmış olabilir (ör. sentetik benchmark verisi). "
+                "Bu hâlde ölçüm `%0` eşleşme üretir ve o sıfır eşlemenin değil VERİNİN "
+                "sonucudur. Önce altın örnekleri yükleyin."
+            ),
+        )
+
+    return Preflight(ok=True, rows=total, vendors=vendors, golden=golden)
 
 
 #: Kuralın `logsource.product` değeri → ön kontroldeki vendor anahtarı.
@@ -294,6 +410,46 @@ PRODUCT_TO_VENDOR = {
     "routeros": "MikroTik",
     "nginx": "nginx",
 }
+
+
+#: ClickHouse'un bilinmeyen kolonu üç ayrı cümleyle anlatıyor; üçünü de yakalıyoruz.
+_UNKNOWN_COLUMN = re.compile(
+    r"Unknown expression identifier '([^']+)'"
+    r"|Missing columns:((?:\s*'[^']+')+)"
+    r"|Unknown identifier:?\s*[`']?([A-Za-z_][A-Za-z0-9_.]*)"
+)
+
+
+def rejected_columns(error: str) -> list[str]:
+    """Hata gövdesinden tanınmayan kolon adlarını çıkarır.
+
+    Sayı tek başına "on kural düştü" diyor; asıl işe yarayan bilgi **hangi
+    kolon**. Bir sonraki koşumda hem sayı hem sebep gelsin diye çıktıya
+    özet olarak basılıyor — ve o özet T31'in eşleme tablosunun ilk taslağı.
+    """
+    found: list[str] = []
+
+    for match in _UNKNOWN_COLUMN.finditer(error or ""):
+        single, group, bare = match.groups()
+
+        if single:
+            found.append(single)
+        elif group:
+            found.extend(re.findall(r"'([^']+)'", group))
+        elif bare:
+            found.append(bare)
+
+    # Sıra korunuyor ama tekrar atılıyor: aynı kolon iki kez geçtiğinde
+    # ağırlığı artmamalı, kuralı bir kez düşürüyor.
+    seen: set[str] = set()
+    unique = []
+
+    for name in found:
+        if name not in seen:
+            seen.add(name)
+            unique.append(name)
+
+    return unique
 
 
 def measure(args: argparse.Namespace) -> Report:
@@ -353,6 +509,7 @@ def measure(args: argparse.Namespace) -> Report:
 
                 if run_error:
                     outcome.error = run_error
+                    outcome.rejected_columns = rejected_columns(run_error)
 
         report.outcomes.append(outcome)
 
@@ -364,6 +521,10 @@ def measure(args: argparse.Namespace) -> Report:
     report.table_rewrites = sum(1 for o in report.outcomes if o.table_rewritten)
     report.unmapped_rules = sum(1 for o in report.outcomes if o.unmapped_hits > 0)
     report.no_data = sum(1 for o in report.outcomes if o.no_data)
+
+    for outcome in report.outcomes:
+        for column in outcome.rejected_columns:
+            report.rejected_columns[column] = report.rejected_columns.get(column, 0) + 1
 
     if report.no_data:
         missing = sorted({o.product for o in report.outcomes if o.no_data})
@@ -422,7 +583,13 @@ def main() -> int:
         print(f"Ön kontrol: events_ocsf {checked.rows} satır")
 
         for vendor, rows in sorted(checked.vendors.items()):
-            flag = "" if rows else "   ← veri yok, bu vendor'ın kuralları ölçülemez"
+            if checked.golden.get(vendor):
+                flag = "   altın örnek bulundu"
+            elif rows:
+                flag = "   ← satır var ama altın örnek YOK (başka bir turdan kalmış olabilir)"
+            else:
+                flag = "   ← veri yok, bu vendor'ın kuralları ölçülemez"
+
             print(f"  {vendor:<10} {rows:>8}{flag}")
 
         print()
@@ -445,9 +612,22 @@ def main() -> int:
         print(f"Eşleşme oranı       : {report.match_ratio:.0%}  ← kapsam kararının dayanağı")
     print(f"Pipeline'a dokunmadı: {report.untouched}")
     print(f"Eşleme satırı       : {report.pipeline_lines} ({report.mapped_fields} alan)")
-    print(f"Kural başına eşleme : {report.mapping_lines_per_rule:.2f} satır")
+    if report.matches:
+        print(f"Kural başına eşleme : {report.mapping_lines_per_rule:.2f} satır")
+    else:
+        print("Kural başına eşleme : ölçülemedi (eşleşen kural yok)")
     print(f"Kural başına süre   : {report.seconds_per_rule * 1000:.1f} ms")
     print(f"unmapped kullanan   : {report.unmapped_rules} kural")
+
+    if report.rejected_columns:
+        print("\nClickHouse'un tanımadığı kolonlar (kaç kuralı düşürdü):")
+
+        for column, count in sorted(
+            report.rejected_columns.items(), key=lambda pair: (-pair[1], pair[0])
+        ):
+            print(f"  {column:<32} {count}")
+
+        print("  → T31'in eşleme tablosunun ilk taslağı bu liste.")
 
     for note in report.notes:
         print(f"\n! {note}")

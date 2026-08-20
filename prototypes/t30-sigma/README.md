@@ -46,7 +46,19 @@ Canlı kip, ölçmeye başlamadan önce `events_ocsf`'e bakıyor ve **geçemezse
 | --- | --- |
 | Sorgu hata veriyor | Reddediyor — görünüm yok ya da kimlik yanlış |
 | Tablo boş | Reddediyor — statik kipi öneriyor |
-| Veri var | Geçiyor, **vendor dağılımını** basıyor |
+| **Satır var ama altın örnek yok** | **Reddediyor** — veri başka bir turdan kalmış |
+| Altın örnek bulundu | Geçiyor, vendor dağılımını basıyor |
+
+Üçüncü satır bir koşumda **gerçekten yaşandı**: tabloda önceki bir turdan kalma
+1.000.000 satırlık tek-vendor'lu sentetik benchmark verisi vardı. Kontrol
+"boş mu" diye sordu, cevap hayırdı, geçirdi — ve ölçüm `%0` eşleşme üretti.
+O sıfır eşlemenin değil **verinin** sonucuydu.
+
+Kontrol bu yüzden artık bir **yokluk** kanıtı değil **varlık** kanıtı arıyor:
+altın örnek dosyalarının en uzun satırından türetilen 60 karakterlik bir sonda
+gövdede (`raw_data`) gerçekten duruyor mu. Sonda çalışma anında dosyadan
+türetiliyor — sabit yazılsaydı örnekler değiştiği gün kontrol sessizce yalan
+söylemeye başlardı.
 
 Sebep: boş bir görünüme karşı koşulan ölçüm her kural için `matches=false`
 üretir ve o tablo "kapsam düşük" diye okunur. Sıfırı sonuç sanmak, bu ticket'ın
