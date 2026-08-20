@@ -27,6 +27,10 @@ public sealed record AlertRuleInput
     public AlertComparison Comparison { get; init; } = AlertComparison.GreaterThan;
     public int SilenceSeconds { get; init; } = 900;
     public int RepeatIntervalSeconds { get; init; } = 3600;
+    /// <summary>
+    /// Kullanıcının açıp kapatması. <b>`Gated` buradan verilemez</b>: o bir
+    /// yetenek sınırı, kullanıcının kararı değil — derleme hattı koyuyor.
+    /// </summary>
     public bool Enabled { get; init; } = true;
     public IReadOnlyList<Guid> ChannelIds { get; init; } = [];
 }
@@ -206,7 +210,13 @@ public sealed class AlertRuleService(
         rule.Comparison = input.Comparison;
         rule.SilenceSeconds = input.SilenceSeconds;
         rule.RepeatIntervalSeconds = input.RepeatIntervalSeconds;
-        rule.Enabled = input.Enabled;
+        // `Gated` bir kural kullanıcı isteğiyle açılamaz: SQL'i yok, açılsa
+        // zamanlayıcı onu her turda boşuna görürdü. Kullanıcının açma/kapama
+        // kararı yalnızca ilk iki durum arasında geçiş yapıyor.
+        if (rule.Status != AlertRuleStatus.Gated)
+        {
+            rule.Status = input.Enabled ? AlertRuleStatus.Enabled : AlertRuleStatus.Disabled;
+        }
         rule.UpdatedAt = now;
 
         // Kural değiştiyse bir sonraki turda koşsun: değişikliğin etkisini

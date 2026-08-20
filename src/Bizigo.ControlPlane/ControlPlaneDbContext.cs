@@ -111,7 +111,16 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
         {
             // Zamanlayıcının tek sorgusu: "vadesi gelmiş etkin kurallar".
             // Kural sayısı arttığında bu sorgunun maliyeti sabit kalmalı (K16).
-            e.HasIndex(x => new { x.Enabled, x.NextRunAt });
+            // İndeks `Status` üzerinde: zamanlayıcı `Status == Enabled` filtreliyor.
+            // 269 Sigma kuralı açıldığında bu sorgunun maliyeti sabit kalmalı (K16).
+            e.HasIndex(x => new { x.Status, x.NextRunAt });
+
+            // Sigma kuralının yukarı akış kimliği tekil: aynı kural iki kez
+            // kaydedilirse derleme hattı hangisini güncelleyeceğini bilemez ve
+            // biri sessizce bayat kalır.
+            e.HasIndex(x => x.SigmaRuleId)
+                .HasFilter(null)
+                .IsUnique(false);
         });
 
         modelBuilder.Entity<AlertTriggerEntity>(e =>

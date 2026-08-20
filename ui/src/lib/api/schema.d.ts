@@ -887,7 +887,9 @@ export interface components {
             silence_seconds: number | string;
             /** Format: int32 */
             repeat_interval_seconds: number | string;
-            enabled: boolean;
+            status: string;
+            source: string;
+            gated_reason: string;
             /** Format: date-time */
             next_run_at: null | string;
             /** Format: date-time */

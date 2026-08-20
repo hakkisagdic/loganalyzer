@@ -264,12 +264,91 @@ public sealed class AlertSchedulerTests : IDisposable
 
         await using (var db = _factory.CreateDbContext())
         {
-            (await db.AlertRules.SingleAsync(Token)).Enabled = false;
+            (await db.AlertRules.SingleAsync(Token)).Status = AlertRuleStatus.Disabled;
             await db.SaveChangesAsync(Token);
         }
 
         Assert.Equal(AlertTurn.Idle, await Worker().RunTurnAsync(Token));
         Assert.Equal(0, await TriggerCountAsync());
+    }
+
+    /// <summary>
+    /// <b>`Gated` de sorgu üretmiyor — ama AYRI sınanıyor</b> (T33).
+    ///
+    /// <para>
+    /// Ticket'ın uyardığı tuzak tam burada: bir <c>gated</c> kural
+    /// <i>"kapalı kural sorgu üretmiyor"</i> kriterini <b>tanım gereği</b>
+    /// sağlıyor — zaten SQL'i yok. İkisini tek testte toplasaydık
+    /// <c>Disabled</c> yolunun gerçekten sınandığı görünmez olurdu ve bekçi
+    /// yanlış sebeple yeşil yanardı.
+    /// </para>
+    ///
+    /// <para>
+    /// İkisi aynı sonucu veriyor ama aynı şey değil: biri kullanıcının kararı,
+    /// diğeri yetenek sınırı. Zamanlayıcının ikisini de atlaması, ikisinin aynı
+    /// olduğunu göstermez.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Gated_kural_da_hic_degerlendirilmiyor_ama_ayri_bir_sebeple()
+    {
+        var rule = await SeedFiringRuleAsync();
+
+        await using (var db = _factory.CreateDbContext())
+        {
+            var stored = await db.AlertRules.SingleAsync(Token);
+            stored.Status = AlertRuleStatus.Gated;
+            stored.Source = AlertRuleSource.Sigma;
+            stored.GatedReason = "`dns_query_name` bu şemada eşlenemiyor [remedy=schema]";
+            await db.SaveChangesAsync(Token);
+        }
+
+        Assert.Equal(AlertTurn.Idle, await Worker().RunTurnAsync(Token));
+        Assert.Equal(0, await TriggerCountAsync());
+
+        // Ve sebep KAYBOLMUYOR: sessiz bir "kapalı" rozeti, kullanıcının
+        // neyin kapatacağını göremediği bir liste demek.
+        await using (var db = _factory.CreateDbContext())
+        {
+            var stored = await db.AlertRules.SingleAsync(Token);
+            Assert.Equal(AlertRuleStatus.Gated, stored.Status);
+            Assert.Contains("remedy=schema", stored.GatedReason, StringComparison.Ordinal);
+        }
+    }
+
+    /// <summary>
+    /// Kullanıcı bir <c>gated</c> kuralı açamaz: SQL'i yok, açılsaydı
+    /// zamanlayıcı onu her turda boşuna görürdü.
+    /// </summary>
+    [Fact]
+    public async Task Gated_kural_kullanici_istegiyle_ACILAMIYOR()
+    {
+        await SeedFiringRuleAsync();
+
+        await using (var db = _factory.CreateDbContext())
+        {
+            var stored = await db.AlertRules.SingleAsync(Token);
+            stored.Status = AlertRuleStatus.Gated;
+            await db.SaveChangesAsync(Token);
+        }
+
+        await using (var db = _factory.CreateDbContext())
+        {
+            var stored = await db.AlertRules.SingleAsync(Token);
+
+            // `AlertRuleService` yolunun yaptığı: `Enabled=true` isteği geldi.
+            if (stored.Status != AlertRuleStatus.Gated)
+            {
+                stored.Status = AlertRuleStatus.Enabled;
+            }
+
+            await db.SaveChangesAsync(Token);
+        }
+
+        await using (var db = _factory.CreateDbContext())
+        {
+            Assert.Equal(AlertRuleStatus.Gated, (await db.AlertRules.SingleAsync(Token)).Status);
+        }
     }
 
     [Fact]

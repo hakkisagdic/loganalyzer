@@ -8,11 +8,19 @@ namespace Bizigo.Cli.Fields;
 ///
 /// <para>
 /// <b>Neden ikinci bir kopya yazılmadı:</b> bu sözlük
-/// <c>prototypes/t30-sigma/bizigo_pipeline.py</c> içinde ve orası onun tek
-/// gerçeği — derlenen SQL'in kolon adları oradan çıkıyor. C# tarafına elle
+/// <c>sidecar/app/sigma_pipeline.py</c> içinde ve orası onun tek gerçeği — derlenen SQL'in kolon adları oradan çıkıyor. C# tarafına elle
 /// kopyalasaydık, iki tarafın aynı kuralı farklı kolona bağladığı gün
 /// hiçbir yerde görünmezdi: erişilebilirlik ölçümü doğru görünen ama yanlış
 /// kolona bakan bir cevap üretirdi.
+/// </para>
+///
+/// <para>
+/// <b>Ve bu tam olarak bir kez oldu.</b> Varsayılan yol T31 öncesinde
+/// <c>prototypes/t30-sigma/bizigo_pipeline.py</c>'yi gösteriyordu; kalıcı
+/// modül yazıldıktan sonra o dosya bayat kaldı ve ölçüm, ürünün eşlediği dört
+/// alanı (<c>http_method</c>, <c>user_name</c>, <c>cs_method</c>,
+/// <c>TargetUserName</c>) "eşlenmemiş" saymaya devam etti. Hata yok, sayaç
+/// yok — yalnızca olduğundan kötü bir kapsam sayısı.
 /// </para>
 ///
 /// <para>

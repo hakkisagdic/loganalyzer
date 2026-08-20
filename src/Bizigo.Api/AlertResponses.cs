@@ -41,7 +41,23 @@ public sealed record AlertRuleResponse(
     [property: JsonPropertyName("comparison")] string Comparison,
     [property: JsonPropertyName("silence_seconds")] int SilenceSeconds,
     [property: JsonPropertyName("repeat_interval_seconds")] int RepeatIntervalSeconds,
-    [property: JsonPropertyName("enabled")] bool Enabled,
+    // `enabled` bool GİTTİ, yerine üç değerli `status` (T33).
+    //
+    // `pasif` ile `gated`'i tek bool'da toplamak, "kullanıcı istemedi" ile "biz
+    // yapamadık"ı karıştırmak olurdu: ekranda tek renk görünürler, kullanıcı
+    // kapalı bir kuralı açmayı dener, açılmaz ve sebebini de göremez.
+    //
+    // Kırmak şu an bedava — tek tüketici ürünün kendi ekranı (§8).
+    [property: JsonPropertyName("status")] string Status,
+
+    // Kaynak ayırt edilmeli: kullanıcı için ikisi de "beni uyaran şey" ama
+    // Sigma kuralı düzenlenemiyor. Kaynağı göstermeyen bir liste, "neden bunu
+    // düzenleyemiyorum" sorusuna cevap veremez.
+    [property: JsonPropertyName("source")] string Source,
+
+    // `gated` ise NEDEN gated. Sessiz bir "kapalı" rozeti listeyi çöp kutusuna
+    // çevirir — kullanıcı neyin kapatacağını göremezse liste hiç boşalmaz.
+    [property: JsonPropertyName("gated_reason")] string GatedReason,
     [property: JsonPropertyName("next_run_at")] DateTimeOffset? NextRunAt,
     [property: JsonPropertyName("last_run_at")] DateTimeOffset? LastRunAt,
     [property: JsonPropertyName("last_fired_at")] DateTimeOffset? LastFiredAt,
@@ -200,7 +216,7 @@ public sealed record NotificationChannelResponse(
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("channel_type")] string ChannelType,
     [property: JsonPropertyName("owner_group")] string OwnerGroup,
-    [property: JsonPropertyName("enabled")] bool Enabled,
+[property: JsonPropertyName("enabled")] bool Enabled,
     [property: JsonPropertyName("secret_set")] bool SecretSet,
     [property: JsonPropertyName("settings")] ChannelSettingsResponse Settings,
     [property: JsonPropertyName("created_at")] DateTimeOffset CreatedAt,
