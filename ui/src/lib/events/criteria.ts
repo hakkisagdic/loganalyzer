@@ -127,6 +127,28 @@ function many(params: RawParams, key: string): string[] {
     .filter((entry) => entry.length > 0);
 }
 
+/**
+ * Alarm bağlantısının taşıdığı, bu ekranda **gösterilemeyen** filtreler.
+ *
+ * <p>
+ * Bir alarm kuralı `src_ip` gibi bu ekranda karşılığı olmayan bir alan
+ * üzerinden filtreleyebiliyor. O filtre bağlantıya konamıyor ve sessizce
+ * düşerse kullanıcı, alarmın izlediğinden **daha geniş** bir kümeye bakar ve
+ * baktığı kümenin alarmın kümesi olduğunu sanır. `AlertLinkBuilder` bunları
+ * `eksik` parametresinde bildiriyor; burada okunup kullanıcıya söyleniyor.
+ * </p>
+ */
+export const UNSUPPORTED_PARAM = "eksik";
+
+export function unsupportedFilters(params: RawParams): readonly string[] {
+  const raw = params[UNSUPPORTED_PARAM];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+
+  return value
+    ? value.split(",").map((name) => name.trim()).filter((name) => name.length > 0)
+    : [];
+}
+
 export function readCriteria(params: RawParams): SearchCriteria {
   const limit = Number.parseInt(one(params, PARAM.limit), 10);
   const severity = Number.parseInt(one(params, PARAM.severityMin), 10);
