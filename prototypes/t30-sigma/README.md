@@ -37,10 +37,34 @@ kurulacak olandan başka bir şeyi ölçmemeli.
   --json sonuc-canli.json
 ```
 
-Canlı koşumdan önce **altın örneklerin ClickHouse'a yüklenmiş olması** gerekiyor;
-aksi hâlde her kural `runs=true, matches=false` verir ve bu "kural yanlış" değil
-"veri yok" demektir. İkisini ayırt etmek için `matches=0` çıktığında önce
-`SELECT count() FROM events_ocsf` bakılmalı.
+### Ön kontrol — bunu atlayamazsınız
+
+Canlı kip, ölçmeye başlamadan önce `events_ocsf`'e bakıyor ve **geçemezse
+ölçüm hiç yapılmıyor** (çıkış kodu 3):
+
+| Durum | Davranış |
+| --- | --- |
+| Sorgu hata veriyor | Reddediyor — görünüm yok ya da kimlik yanlış |
+| Tablo boş | Reddediyor — statik kipi öneriyor |
+| Veri var | Geçiyor, **vendor dağılımını** basıyor |
+
+Sebep: boş bir görünüme karşı koşulan ölçüm her kural için `matches=false`
+üretir ve o tablo "kapsam düşük" diye okunur. Sıfırı sonuç sanmak, bu ticket'ın
+engellemek için var olduğu sessiz yanlış sonucun ölçüm aracındaki hâli.
+
+Vendor dağılımı da hesabın parçası: yüklenmemiş bir vendor'ın kuralları
+`no_data` işaretlenip **oranın paydasından düşülüyor**. 24 kuralın 6'sı verisizse
+oran %38 değil %50 — ve bu iki sayı `SONUCLAR`'daki karar tablosunda iki farklı
+dal.
+
+### Aracın kendi testleri
+
+Ölçüm bir kapsam kararı verecek; aracın sessizce yanlış sayması, protokolün
+engellemek istediği hatayı aracın üretmesi olurdu.
+
+```bash
+python3.13 test_measure.py     # pySigma GEREKMİYOR
+```
 
 ## Ölçülen üç kademe — ve neden üçü ayrı
 
