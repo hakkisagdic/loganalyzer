@@ -1441,17 +1441,61 @@ export interface components {
             errors: string[];
             warnings: string[];
         };
+        ReplayBlockedResponse: {
+            error: string;
+            missing_objects: string[];
+            hint: string;
+        };
+        ReplayDiffResponse: {
+            /** Format: uuid */
+            event_id: string;
+            status_before: string;
+            status_after: string;
+            changes: components["schemas"]["ReplayFieldChangeResponse"][];
+        };
+        ReplayFieldChangeResponse: {
+            field: string;
+            before: string;
+            after: string;
+        };
         ReplayRequest: {
             /** Format: date-time */
             from: string;
             /** Format: date-time */
             to: string;
-            parserId?: string;
-            parserVersion?: string;
-            ownerGroups?: string[];
-            sourceIds?: string[];
-            dryRun?: boolean;
-            continueOnMissingObjects?: boolean;
+            parser_id?: string;
+            parser_version?: string;
+            owner_groups?: string[];
+            source_ids?: string[];
+            dry_run?: boolean;
+            continue_on_missing_objects?: boolean;
+            allow_open_partition?: boolean;
+        };
+        ReplayResponse: {
+            partitions: string[];
+            /** Format: int32 */
+            records_replayed: number | string;
+            /** Format: int32 */
+            unchanged: number | string;
+            /** Format: int32 */
+            changed: number | string;
+            /** Format: int32 */
+            failed_to_ok: number | string;
+            /** Format: int32 */
+            ok_to_failed: number | string;
+            /** Format: int32 */
+            new_rows: number | string;
+            /** Format: int32 */
+            copied_unchanged: number | string;
+            skipped_open_partitions: string[];
+            missing_objects: string[];
+            changes_by_field: {
+                [key: string]: number | string;
+            };
+            samples: components["schemas"]["ReplayDiffResponse"][];
+            /** Format: double */
+            duration_seconds: number | string;
+            applied: boolean;
         };
         SourceActivityListResponse: {
             /** Format: date-time */
@@ -1631,7 +1675,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ReplayResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplayBlockedResponse"];
+                };
             };
         };
     };
