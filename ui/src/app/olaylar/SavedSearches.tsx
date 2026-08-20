@@ -23,12 +23,40 @@ import styles from "./events.module.css";
  * </p>
  */
 
-const STORAGE_KEY = "bizigo.saved-searches";
+export const STORAGE_KEY = "bizigo.saved-searches";
 
-interface SavedSearch {
+export interface SavedSearch {
   readonly name: string;
   /** `/olaylar?...` — ölçütlerin tamamı burada. */
   readonly href: string;
+}
+
+/**
+ * Kaydetmenin <b>saf</b> hâli: yeni liste ne olacak.
+ *
+ * <p>
+ * Bileşenden ayrı duruyor ve sebebi tek: <b>tarayıcı deposuna ne yazıldığı</b>
+ * sınanabilir olmalı (T27). Ticket token sızıntısı için üç yer sayıyor — yanıt,
+ * çerez ve <c>localStorage</c> — ve ilk ikisi her baytıyla taranırken üçüncüsü
+ * hiç sınanmıyordu.
+ * </p>
+ *
+ * <p>
+ * Yazılan şeklin dar kalması, §8'in "depolama tipi tel sözleşmesi değildir"
+ * kuralının tarayıcı tarafındaki karşılığı: kayda eklenen her alan, kimse karar
+ * vermeden cihazda kalıcı hâle gelir.
+ * </p>
+ */
+export function nextEntries(
+  existing: readonly SavedSearch[],
+  name: string,
+  href: string,
+): SavedSearch[] {
+  const trimmed = name.trim();
+
+  // Aynı ad iki kez kaydedilirse sonuncusu kazanıyor; iki girdi bırakmak
+  // kullanıcıya hangisinin güncel olduğunu sormak olurdu.
+  return [...existing.filter((entry) => entry.name !== trimmed), { name: trimmed, href }];
 }
 
 function read(): SavedSearch[] {
@@ -72,7 +100,7 @@ export function SavedSearches({ currentHref }: { currentHref: string }) {
       return;
     }
 
-    persist([...saved.filter((entry) => entry.name !== trimmed), { name: trimmed, href: currentHref }]);
+    persist(nextEntries(saved, trimmed, currentHref));
     setName("");
   }
 
