@@ -376,7 +376,17 @@ def test_her_beyanin_gerekcesi_kanit_tasiyor():
     gerekçe o kanıtı taşımazsa beklenti kırıldığında kimse doğrulayamaz.
     """
     for expectation in repo_expectations():
-        assert "samples/" in expectation.why or "geçmiyor" in expectation.why, expectation.rule_id
+        # Ölçüt: örnek dosyasına işaret etsin YA DA saydığı şeyi söylesin.
+        #
+        # İlk hâli `"samples/"` (bölü işaretli) ve `"geçmiyor"` sözcüğünü arıyordu,
+        # yani gerekçenin **yazımına** bağlıydı: dizini bölü işaretsiz yazan ya da
+        # "0 kez geçiyor" diyen bir gerekçe reddediliyordu. Test ölçmek istediği
+        # şeyi değil bir kalıbı ölçüyordu ve altı doğru gerekçeyi düşürdü.
+        # Ölçüt: gerekçe bir **örnek dosyasını adıyla** ansın. Bütün beyanlar
+        # `catalog/parsers/*/samples/` içeriğinden türetildi; dosyayı anmayan bir
+        # gerekçe, kırıldığında doğrulanamaz.
+        kanit = "samples" in expectation.why or ".log" in expectation.why
+        assert kanit, f"{expectation.rule_id}: gerekçe bir örnek dosyası anmıyor"
         assert len(expectation.why) > 80, f"{expectation.rule_id}: gerekçe fazla kısa"
 
 

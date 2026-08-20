@@ -76,7 +76,7 @@
       "file_name": "50087630-0000-4000-8000-000000000000.sql",
       "expect": "none",
       "kind": "corpus_gap",
-      "why": "routeros_dhcp_offer — `proto udp` VE `dstport 68`. `proto UDP` 4 satırda VAR ama hedef port 68 **hiç yok** (örnekteki hedef portlar 62181, 51233 gibi yüksek portlar). Ölçüm aracı bu kuralı `present` kutusuna koymuştu; kesişim boş, yani kutu `absent`. AND'in iki yarısından biri tutuyor diye desen var sayılamaz."
+      "why": "routeros_dhcp_offer — `proto udp` VE `dstport 68`. catalog/parsers/mikrotik.routeros/samples/firewall.log içinde `proto UDP` 4 satırda VAR ama hedef port 68 **hiç yok** (örnekteki hedef portlar 62181, 51233 gibi yüksek portlar). Ölçüm aracı bu kuralı `present` kutusuna koymuştu; kesişim boş, yani kutu `absent`. AND'in iki yarısından biri tutuyor diye desen var sayılamaz."
     },
     {
       "rule_id": "56293354-0000-4000-8000-000000000000",
