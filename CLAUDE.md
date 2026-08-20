@@ -243,14 +243,21 @@ Planlama artifact'larının kanonik yeri Traycer epic dizini
 (`~/.traycer/epics/<id>/artifacts`), ama ajanlar ayrı worktree'lerde çalıştığı
 için oradan **okuyamıyorlar**. Depodaki kopya `docs/epic/`.
 
+**Senkron yönü depodan epic dizinine.** Ters yön veri kaybettiriyor:
+
 ```bash
-rsync -a --delete ~/.traycer/epics/<id>/artifacts/ docs/epic/
+rsync -a --delete docs/epic/ ~/.traycer/epics/<id>/artifacts/
 ```
 
-**Bu bir anlık görüntüdür.** Ajanlar epic dizinine yazmaya devam ediyor;
-kopyayı **faz bitimlerinde ve büyük birleştirmelerden sonra** koordinatör
-tazeler. Bayat kalırsa iki gerçek kaynak doğar — ve bu depoda o desenin bedeli
-zaten ödendi (webhook defteri, katalog kaynağı).
+Gerekçe ölçüldü. Ajanlar epic dizinine **erişemiyor** — ayrı worktree'lerdeler —
+dolayısıyla yazdıkları tek yer depo kopyası. Koordinatör "kanonik olan epic
+dizini" diye ters yönde rsync çalıştırınca ajanın yazdığının üstüne yazıyor.
+Bir kez oldu: T27'nin 233 satırlık envanteri 148 satıra düştü ve yeni yazdığı
+bölüm tamamen kayboldu. `git checkout <commit> -- <dosya>` ile geri alındı,
+ama fark edilmeseydi sessizce kaybolacaktı.
+
+Kural: **depo yazılabilir kaynak, epic dizini görüntü.** Ters yönde
+çalıştırman gereken bir durum varsa önce `diff -rq` ile ne kaybedeceğini gör.
 
 `.gitignore`'daki `artifacts/` satırı .NET derleme çıktısı içindir; `docs/epic/`
 onu etkilemez.
