@@ -23,9 +23,15 @@ import type { SessionRecord } from "@/lib/auth/store";
  * <h3>Koşturmak için</h3>
  *
  * <pre>
- * docker compose -f deploy/docker-compose.yml up -d redis
+ * docker compose -f deploy/docker-compose.yml up -d redis-session
  * BFF_REDIS_URL=redis://localhost:6379 npx vitest run tests/redis-live.test.ts
  * </pre>
+ *
+ * <p>
+ * Servis adı <b>`redis-session`</b>, düz `redis` değil: compose'da iki Redis
+ * örneği var ve `redis` sidecar'ın Drain3 durumunu tutuyor — kalıcılığı açık.
+ * Oturum deposunu oraya bağlamak token'ları diske yazmak olurdu.
+ * </p>
  *
  * <p>
  * <c>describe.skip</c> yerine adres değişkenine bakmıyor olmamız bilinçli:

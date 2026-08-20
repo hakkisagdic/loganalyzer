@@ -64,6 +64,45 @@ jobs:
           name: unit-test-results
           path: TestResults/
 
+  compose-lint:
+    name: Compose dosyası ayrıştırılabiliyor mu
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      # ARAÇ SEÇİMİ ÖLÇÜLDÜ. Akla gelen ilk çözüm — `python -c "import yaml;
+      # yaml.safe_load(open(...))"` — bu hatayı YAKALAMIYOR: PyYAML tekrarlanan
+      # anahtarı sessizce kabul edip sonuncuyu alıyor. Ölçüldü:
+      # `yaml.safe_load("a: 1\na: 2")` → `{'a': 2}`, hata yok, çıkış 0.
+      # Yani o bekçi yeşil yanar ve yeşilliği hiçbir şey ifade etmezdi.
+      #
+      # `yamllint`in `key-duplicates` kuralı tam bu hatayı hedefliyor ve
+      # kırmızı yandığı ölçüldü. Kural kümesi BİLEREK tek kural: varsayılan
+      # yapılandırma satır uzunluğu ve yorum aralığı gibi şeyleri de hata
+      # sayıyor, ve bu dosyada bugün onlardan bolca var — kapı ilk gün kırmızı
+      # yansaydı ya gevşetilir ya devre dışı bırakılırdı.
+      - name: yamllint kur
+        run: pip install yamllint==1.37.1
+
+      # NEDEN AYRI VE UCUZ BİR İŞ. `compose` işinde zaten
+      # `docker compose config --quiet` var ve bu hatayı gerçekten yakaladı —
+      # B7 merge'ünden itibaren dört koşumda üst üste kırmızı yandı. Ama o iş
+      # Docker istiyor, en geç bitenlerden biri ve kırmızılığı dört merge
+      # boyunca okunmadı. Bu iş 20 saniyede aynı soruyu soruyor ve tek işi o.
+      #
+      # Yakaladığı hata sınıfı Git'in göremediği türden: iki ajan aynı dosyaya
+      # aynı adda servis ekliyor, metinsel merge tertemiz, derleme ve testler
+      # yeşil — yalnızca yığını ayağa kaldırmayı deneyen kişi öğreniyor.
+      - name: Tekrarlanan anahtar var mı
+        run: >
+          yamllint -d '{rules: {key-duplicates: enable}}'
+          deploy/docker-compose.yml
+
   ui:
     name: Arayüz — tip kapısı, testler, derleme
     runs-on: ubuntu-latest

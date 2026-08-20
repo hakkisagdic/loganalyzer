@@ -397,8 +397,14 @@ dönüyor, `401` değil: `401` istemciye "yeniden giriş yap" dedirtir, giriş d
 aynı depoya yazmayı dener ve düşer — kullanıcı hiçbir hata görmeden sonsuz
 döngüye girer. `currentUser()`'ın üç durumlu olmasının sebebi de buydu.
 
-`redis` servisi `deploy/docker-compose.yml` içinde; kalıcılığı **kapalı**, çünkü
-oturum verisi geçici ve diske yazmak token'ları diske yazmak olurdu.
+Servis adı **`redis-session`** (`deploy/docker-compose.yml`); kalıcılığı
+**kapalı**, çünkü oturum verisi geçici ve diske yazmak token'ları diske yazmak
+olurdu.
+
+Compose'da **iki Redis örneği** var ve bu bilinçli: `redis` sidecar'ın Drain3
+ağacını tutuyor ve kalıcılığı **açık** olmak zorunda — durum kaybolursa
+`template_id`'ler sessizce kayar. RDB anlık görüntüsü örneğin tamamını yazdığı
+için (veritabanı seçmiyor) tek örnekte iki ihtiyaç sağlanamıyor.
 
 ### Ölçüm verisi — `bizigo seed golden` (T39)
 
