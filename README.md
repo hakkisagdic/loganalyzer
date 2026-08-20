@@ -531,6 +531,36 @@ okuyan yapıyor. Tek istisna **biçim** farkı: `proto_token=UDP` ile
 > şeyi yakalamış" görünüyordu. Artık **içinde başka bir yakalanmış değer geçen**
 > alanlar üst hâl sayılıyor ve kapsama girmiyor.
 
+### Değer uzayı — `bizigo fields values` (T39)
+
+Üç kutu "bilgi alan oldu mu" diye soruyor; bu ölçüm **alan hangi değerleri
+taşıyabiliyor** diye. Bir eşleme tablosu, beslediği kolonun değer uzayını
+daraltıyor: `status` kolonu `http_status_outcome.yaml`'dan besleniyor ve orada
+hiçbir zaman bir HTTP kodu durmuyor, yalnızca `success`/`failure` duruyor.
+
+```bash
+$BIN fields values                                  # değer uzayları
+python3 prototypes/t30-sigma/explain_misses.py --json /tmp/misses.json
+$BIN fields values --rules /tmp/misses.json         # kurallarla birleştir
+```
+
+**Veriye hiç bakmıyor** ve bakmaması asıl özelliği: örneklemde bir değerin
+bulunmaması *"bugün yok"*, şemanın onu üretememesi *"hiçbir zaman olmayacak"*.
+
+Kuralları da **okumuyor** — `explain_misses.py --json` zaten
+`alan|operatör = değer` üçlülerini çıkarıyor, alan adı çevirisi de
+`bizigo_pipeline.py`'nin `FIELD_MAP`'inden okunuyor. İki ayrıştırıcı, iki aracın
+aynı kuralı farklı kolona bağladığı gün demekti.
+
+| Sınıf | Anlamı |
+| --- | --- |
+| **ERİŞİLEMEZ** | Kapalı uzay o değeri üretemiyor — örneklem düzelse de eşleşmez |
+| **PARSER BOŞLUĞU** | Vendor'da açık ama bazı parser'lar kolonu hiç doldurmuyor |
+| **METİN EKSENİ YANILIYOR** | Ham satırda yok ama kolonda **var** (eşleme tablosu çeviriyor) |
+
+Ölçülen (24 kural, 33 dizge): ERİŞİLEMEZ **0** · parser boşluğu **4** ·
+metin ekseni yanılıyor **1**. Ayrıntı: `docs/epic/t39-alan-kapsami/`.
+
 ### Parser CLI
 
 ```bash
