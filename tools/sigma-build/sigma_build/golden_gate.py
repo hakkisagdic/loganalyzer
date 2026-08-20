@@ -56,6 +56,9 @@ from sigma_build.clickhouse import post_sql
 
 __all__ = [
     "EXPECTATIONS_PATH",
+    "UndeclaredNote",
+    "load_undeclared",
+    "rule_titles",
     "EXPECT_AT_LEAST_ONE",
     "EXPECT_NONE",
     "Expectation",
@@ -115,6 +118,30 @@ class Expectation:
 
 
 @dataclass(frozen=True)
+class UndeclaredNote:
+    """**Bilerek** beyan edilmemiş bir kural — ve sebebi.
+
+    §8'in `Pending`/`Exempt` ayrımının buradaki hâli. İki tür beyansızlık var ve
+    tek listede durursalar "liste doldu mu" sorusu asla cevaplanamaz:
+
+    * **Ölçüm bekleyen** — beyan yazılacak, henüz veri yok. Azalması beklenen.
+    * **Bilerek beyansız** — beyan yazılamaz ve sebebi kayıtlı. Azalması
+      beklenmeyen.
+
+    En pahalı örnek `asa_teardown_rst`'ti: `--discover` "eşleşti" diyordu ama
+    eşleşme `first`/`burst` sözcüklerindendi. `at_least_one` yazmak bir yanlış
+    pozitifi kutsardı; beyansız bırakmanın **sebebi** ancak burada durabilirdi.
+    """
+
+    rule_id: str
+    why: str
+
+    def __post_init__(self) -> None:
+        if not self.why.strip():
+            raise ValueError(f"{self.rule_id}: beyansızlığın gerekçesi yok.")
+
+
+@dataclass(frozen=True)
 class PrecheckResult:
     ok: bool
     problems: tuple[str, ...]
@@ -148,7 +175,36 @@ def load_expectations(path: Path) -> list[Expectation]:
     ]
 
 
-def expectations_text(expectations: list[Expectation] | tuple[Expectation, ...]) -> str:
+def load_undeclared(path: Path) -> list[UndeclaredNote]:
+    if not path.is_file():
+        return []
+    document = json.loads(path.read_text(encoding="utf-8"))
+    return [
+        UndeclaredNote(rule_id=entry["rule_id"], why=entry["why"])
+        for entry in document.get("undeclared", [])
+    ]
+
+
+def rule_titles(output_dir: Path) -> dict[str, str]:
+    """Dosya adı → kural başlığı, manifest'ten.
+
+    `--discover` çıktısı UUID basıyordu ve beyan yazacak kişi her seferinde
+    `grep -rl` ile kural adını çıkarmak zorunda kalıyordu. Ad zaten manifest'te.
+    """
+    manifest = output_dir / "manifest.json"
+    if not manifest.is_file():
+        return {}
+    document = json.loads(manifest.read_text(encoding="utf-8"))
+    return {
+        f"{rule['rule_id']}.sql": (rule.get("source_path", "").split("/")[-1] or rule.get("title", ""))
+        for rule in document.get("rules", [])
+    }
+
+
+def expectations_text(
+    expectations: list[Expectation] | tuple[Expectation, ...],
+    undeclared: list[UndeclaredNote] | tuple[UndeclaredNote, ...] | None = None,
+) -> str:
     """Beyan dosyasının metni. Tarihsiz ve sıralı — üretilen her şey gibi."""
     return (
         json.dumps(
@@ -167,6 +223,13 @@ def expectations_text(expectations: list[Expectation] | tuple[Expectation, ...])
                         "why": expectation.why,
                     }
                     for expectation in sorted(expectations, key=lambda e: e.rule_id)
+                ],
+                # BİLEREK beyansız kurallar — "ölçüm bekliyor"dan ayrı liste.
+                # İkisi tek listede olsaydı "beyan listesi tamamlandı mı"
+                # sorusunun cevabı asla evet olamazdı (§8).
+                "undeclared": [
+                    {"rule_id": note.rule_id, "why": note.why}
+                    for note in sorted(undeclared or (), key=lambda n: n.rule_id)
                 ],
             },
             indent=2,
@@ -370,9 +433,17 @@ def _main(argv: list[str] | None = None) -> int:
         # Beyan üretmiyor, **basıyor**. Beyan bir karar; aracın kendi ölçümünden
         # otomatik doğması, kapıyı bugünkü davranışın fotoğrafına çevirirdi ve
         # o kapı hiçbir şeyi kanıtlamaz.
+        titles = rule_titles(output_dir)
         for path in sorted(output_dir.glob("*.sql")):
             rows = count_rows(path.read_text(encoding="utf-8"), **connection)
-            print(f"  {'eşleşti ' if rows else 'boş     '} {path.name}")
+            ad = titles.get(path.name, "")
+            print(f"  {'eşleşti ' if rows else 'boş     '} {ad:<34} {path.name}")
+        print(
+            "\n⚠️ `eşleşti` **doğru sebeple eşleşti** demek değil. Ölçüldü: "
+            "`asa_teardown_rst` eşleşiyordu ve eşleşmesi `first`/`burst` "
+            "sözcüklerindendi. Beyan yazarken örnek dosyanın içeriğine bakın, "
+            "bu sayıya değil."
+        )
         return 0
 
     expectations = load_expectations(expectations_path)
@@ -408,6 +479,27 @@ def _main(argv: list[str] | None = None) -> int:
     if (output_dir / MANIFEST_NAME).is_file():
         counts = json.loads((output_dir / MANIFEST_NAME).read_text(encoding="utf-8"))["counts"]
         print(f"manifest: {counts}")
+
+    # KAPININ KENDİ KAPSAMI — sessiz bir eksik, ölçüldüğü sanılan bir eksiktir.
+    # İki liste ayrı (§8): bilerek beyansız olanlar azalması beklenmeyen taraf,
+    # ölçüm bekleyenler azalması beklenen taraf.
+    titles = rule_titles(output_dir)
+    beyanli = {e.file_name for e in expectations}
+    bilerek = {note.rule_id: note.why for note in load_undeclared(expectations_path)}
+    bekleyen = [
+        path.name
+        for path in sorted(output_dir.glob("*.sql"))
+        if path.name not in beyanli and path.stem not in bilerek
+    ]
+
+    if bilerek:
+        print(f"\nbilerek beyansız ({len(bilerek)}) — azalması beklenmiyor:")
+        for rule_id, why in sorted(bilerek.items()):
+            print(f"  {titles.get(rule_id + '.sql', ''):<34} {why[:100]}")
+    if bekleyen:
+        print(f"\nölçüm bekleyen ({len(bekleyen)}) — beyan yazılacak:")
+        for name in bekleyen:
+            print(f"  {titles.get(name, ''):<34} {name}")
 
     if failed:
         print("\n✗ Beyan edilen sonucu vermeyen kural var.", file=sys.stderr)
