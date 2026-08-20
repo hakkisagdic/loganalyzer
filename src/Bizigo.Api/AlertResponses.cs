@@ -150,8 +150,20 @@ public sealed record MaintenanceWindowListResponse(
 
 public sealed record CreatedIdResponse([property: JsonPropertyName("id")] Guid Id);
 
-/// <summary>F1'den beri yerleşik hata gövdesi: <c>{ "error": "…" }</c>.</summary>
-public sealed record ErrorResponse([property: JsonPropertyName("error")] string Error);
+/// <summary>
+/// F1'den beri yerleşik hata gövdesi: <c>{ "error": "…", "hint": "…" }</c>.
+///
+/// <para>
+/// <c>hint</c> isteğe bağlı ve <b>ayrı</b> taşınıyor: <c>error</c> ne olduğunu,
+/// <c>hint</c> ne yapılacağını söylüyor ve arayüzde ayrı yerlere gidiyorlar
+/// (<c>ErrorState</c>). İkisini tek cümlede birleştirmek, eyleme çağrıyı hata
+/// metninin içinde kaybediyordu. BFF vekili (<c>lib/api/proxy.ts</c>) kendi
+/// ürettiği hatalarda bu şekli zaten kullanıyordu; tip onu geç yakaladı (T19).
+/// </para>
+/// </summary>
+public sealed record ErrorResponse(
+    [property: JsonPropertyName("error")] string Error,
+    [property: JsonPropertyName("hint")] string? Hint = null);
 
 /// <summary>
 /// Kanal yapılandırmasının gizli <b>olmayan</b> kısmı.

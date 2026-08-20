@@ -3,6 +3,7 @@ import { formatInstant } from "@/lib/ui/time";
 export { formatInstant };
 
 import type { components } from "@/lib/api/schema";
+import { toNumber } from "@/lib/api/numbers";
 
 /**
  * Alarm ekranlarının tipleri — hepsi **üretilen şemadan**.
@@ -65,27 +66,14 @@ export const CHANNEL_TYPE_LABELS: Record<ChannelType, string> = {
 };
 
 /**
- * Şemadaki sayısal alanı `number`'a çeviriyor.
+ * `toNumber` artık ortak katmanda (`@/lib/api/numbers`).
  *
- * <p>
- * .NET 10'un OpenAPI üreticisi `long` ve `double` alanları
- * `type: [integer, string]` olarak yazıyor — JSON'da dizge kodlanmış sayıları
- * da kabul etmek için. Üretilen TypeScript tipi bu yüzden `number | string`.
- * </p>
- *
- * <p>
- * Dönüşüm <b>tek yerde</b>: her kullanım yerinde `Number(...)` yazmak, birinde
- * unutulduğu gün `"12" > 9` gibi dizge karşılaştırmasına düşmek demekti — ve o
- * hata eşik karşılaştırmasında sessizce yanlış tetiklenme sayısı üretirdi.
- * </p>
+ * <p>T23'te burada doğmuştu; şemadaki `number | string` sorunu alarmlara özgü
+ * değil — parser ekranı da aynı dönüşüme ihtiyaç duyunca ortaklaştırıldı.
+ * İkinci bir kopya, birinde düzeltilen bir hatanın diğerinde kalması
+ * demekti.</p>
  */
-export function toNumber(value: number | string | null | undefined): number {
-  if (typeof value === "number") return value;
-  if (value === null || value === undefined) return 0;
-
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
+export { toNumber } from "@/lib/api/numbers";
 
 /**
  * Saniyeyi insanın okuyacağı hâle getiriyor.

@@ -64,11 +64,20 @@ public sealed record DeviceConnectorConfig
 /// değil: cihaz kimlik bilgisi ele geçse bile yazılabilecek tek yer o
 /// connector'ın grubu.
 /// </para>
+///
+/// <para>
+/// <b><c>IScopedQuery</c> doğrudan enjekte EDİLMİYOR — koşum başına bir kapsam
+/// açılıyor.</b> Bu sınıf singleton (zamanlayıcı da öyle), <c>IScopedQuery</c>
+/// ise scoped ve <c>ControlPlaneDbContext</c> taşıyor. Doğrudan almak, tek bir
+/// <c>DbContext</c>'i sürecin ömrü boyunca tutmak demekti: EF bağlamı iş
+/// parçacığı güvenli değil ve değişiklik izleyicisi hiç boşalmadan büyürdü.
+/// Kapsamı burada açmak, her koşumun kendi bağlamıyla çalışmasını sağlıyor.
+/// </para>
 /// </summary>
 public sealed class DeviceConfigRunner(
     DeviceConfigService devices,
     IDbContextFactory<ControlPlaneDbContext> factory,
-    IScopedQuery query,
+    IServiceScopeFactory scopes,
     SecretProtector protector,
     TimeProvider clock,
     ILogger<DeviceConfigRunner> log) : IChangeConnectorRunner
@@ -187,6 +196,12 @@ public sealed class DeviceConfigRunner(
             // ClickHouse Map'i ve config satırları sır taşıyabiliyor.
             ["sections"] = string.Join(", ", diff.Sections.Take(10).Select(s => s.Section)),
         };
+
+        // Kapsam yazma başına açılıyor ve hemen kapanıyor: `IScopedQuery`
+        // `ControlPlaneDbContext` taşıyor ve onu koşumlar arasında tutmak,
+        // singleton bir toplayıcıda paylaşılan tek bir EF bağlamı demek olurdu.
+        await using var scope = scopes.CreateAsyncScope();
+        var query = scope.ServiceProvider.GetRequiredService<IScopedQuery>();
 
         await query.WriteChangeAsync(
             new ChangeEvent

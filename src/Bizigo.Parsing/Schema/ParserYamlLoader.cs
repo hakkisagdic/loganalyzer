@@ -720,6 +720,19 @@ public static class ParserYamlLoader
         return tests;
     }
 
+    /// <summary>
+    /// YAML'ın <c>null</c> yazımları — <b>yalnızca düz (plain) skalerde</b>.
+    ///
+    /// <para>
+    /// Tırnaklı <c>"null"</c> bilinçli olarak dışarıda: yazarın "bu alan hiç
+    /// olmamalı" demesi ile "bu alanın değeri <c>null</c> metni" demesi iki
+    /// ayrı beklenti ve ikisini birleştirmek, sessizce başka bir şey sınayan
+    /// bir test bırakırdı (T08 raporu #6).
+    /// </para>
+    /// </summary>
+    private static readonly HashSet<string> NullScalars =
+        new(StringComparer.Ordinal) { string.Empty, "~", "null", "Null", "NULL" };
+
     private static object? ReadExpectedValue(YamlNode node)
     {
         switch (node)
@@ -735,6 +748,16 @@ public static class ParserYamlLoader
                 if (scalar.Style != YamlDotNet.Core.ScalarStyle.Plain)
                 {
                     return raw;
+                }
+
+                // `expect: core.user_name: null` → gerçek `null`, "null" metni
+                // değil. `ValuesMatch` zaten `expected is null && actual is null`
+                // durumunu doğru ele alıyor; eksik olan tek şey buraya kadar
+                // gelen değerin `null` OLMASIYDI. Bu satır olmadan negatif alan
+                // testi yazılamıyor ve katalogda yorumla açıklanıyordu.
+                if (NullScalars.Contains(raw))
+                {
+                    return null;
                 }
 
                 if (long.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var l))
