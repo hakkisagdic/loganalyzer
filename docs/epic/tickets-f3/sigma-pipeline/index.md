@@ -28,8 +28,26 @@ ile birlikte.
 
 ### Dışında
 
-- `ocsf_pipeline`'ı zincire koymak. Ölçüldü: bizim evrenimizde hiçbir şey
-yapmıyor. Maliyeti sıfır ama faydası da sıfır; koyulacaksa gerekçesi yazılmalı.
+- `ocsf_pipeline`'ı zincire koymak. **Karar aynı, gerekçesi düzeltildi (T30).**
+
+  Eski gerekçe *"maliyeti sıfır ama faydası da sıfır"* diyordu. Faydası
+  gerçekten sıfır — ama **maliyeti sıfır değil, negatif.** T30 prototipi
+  yazılırken ölçüldü: `ocsf_pipeline` OCSF sınıf ayırıcısını **`type_uid`**
+  üzerinden ekliyor ve o kolon bizde **yok**. K8 gereği kolona yazılan tek OCSF
+  alanı `class_uid` ve `activity_id`; gerisi `attrs` içinde önekli duruyor.
+
+  Sonuç, zincire konduğunda **derlenen ama koşmayan SQL**: pySigma başarıyla
+  çevirir, ClickHouse "böyle bir kolon yok" der. Yani zararı "boşuna bir adım"
+  değil, T30'un aramak için var olduğu sessiz yanlış sonuç sınıfının ta kendisi —
+  derleme yeşil, sorgu kırık, hiçbir sayaç artmıyor.
+
+  <b>Bu ayrım neden önemli:</b> yanlış gerekçeyle verilmiş doğru bir karar, bir
+  sonraki kişinin kararı yanlış sebeple geri almasına açık kapı bırakır. "Faydası
+  yok" diye dışarıda tutulan bir şey, biri bir fayda bulduğunda içeri alınabilir;
+  "koştuğu anda SQL'i kırıyor" diye dışarıda tutulan bir şey alınamaz.
+
+  Zincire konması hâlâ tartışılabilir, ama ancak `type_uid` görünüme eklendikten
+  <b>sonra</b> — ve o, K8'in "yazılan tek gerçek `core`" kararını yeniden açar.
 - Windows/Sysmon aileleri — bizim şemamızın hedefi değil.
 
 ## Kabul kriterleri
@@ -42,7 +60,15 @@ canlı ClickHouse'ta koşuyor.
 
 ## Notlar
 
-Ölçülen tuzaklar T30'un notlarında. En sinsisi tırnaklama tutarsızlığı: aynı SQL
-içinde hem backtick'li hem tırnaksız noktalı ad üretilmiş, ve tırnaksız hâli
-ClickHouse'ta derlenmiyor. Kendi pipeline'ımız düzleştirilmiş ad ürettiği için
-bu sorunu baştan atlıyor — ama `ocsf_pipeline` zincire konursa geri geliyor.
+Ölçülen tuzaklar [T30 ölçümü](../../t30-sigma-olcumu/index.md)'nde; beşi de
+orada tabloya bağlı.
+
+En sinsisi tırnaklama tutarsızlığı: aynı SQL içinde hem backtick'li hem tırnaksız
+noktalı ad üretilmiş, ve tırnaksız hâli ClickHouse'ta derlenmiyor. Kendi
+pipeline'ımız düzleştirilmiş ad ürettiği için bu sorunu baştan atlıyor — ama
+`ocsf_pipeline` zincire konursa geri geliyor.
+
+**Bu ikisi aynı sonucun iki yolu:** tırnaklama da, `type_uid` de zincire
+konduğunda derlenen ama koşmayan SQL üretiyor. "Dışında" maddesindeki gerekçe bu
+yüzden "faydasız" değil "zararlı" — ikisi ayrı ayrı küçük görünen ama aynı
+sessiz kırılmaya çıkan bulgular.
