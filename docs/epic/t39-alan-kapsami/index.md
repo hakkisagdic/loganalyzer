@@ -178,8 +178,16 @@ iki aracın aynı kuralı farklı kolona bağladığı günü hazırlamak olurdu
 | **ERİŞİLEMEZ** | **0** | Aradım, yok — bugünkü korpusta hiçbir kural, gittiği kolonun üretemeyeceği bir değer aramıyor |
 | **PARSER BOŞLUĞU** | 4 | Vendor'da açık ama bazı parser'lar kolonu hiç doldurmuyor |
 | **METİN EKSENİ YANILIYOR** | 1 | Ham satırda yok ama kolonda **var** |
-| söylenemez | 24 | Uzay açık; şema bir şey demiyor |
+| ham metin | 5 | `raw_data ILIKE …` — değer uzayı sorusu anlamsız, ama indeks kullanılmıyor |
+| `unmapped` erişimi | 11 | `unmapped['…']` — alan olarak adreslenmiş, yine indekssiz |
+| uzay açık | 8 | Şema bir şey demiyor |
 | erişilebilir | 5 | — |
+
+**Son üç satır önce tek kutudaydı ("söylenemez, 24") ve o birleşim yanıltıcıydı:**
+"ham metne vuruyor" bir **tasarım tercihi**, "uzay açık" bir **iş kalemi**.
+Ayrıldıktan sonra çıkan sayı kendi başına bir kapsam göstergesi: **24 kuralın
+4'ü** ham gövdeye vuruyor, yani yapısal alan aramıyor. Tam metin taraması
+indeksten yararlanmıyor ve maliyet kural sayısıyla çarpılıyor.
 
 ### Parser boşluğu — vendor birleşiminde kaybolan fark
 
@@ -213,8 +221,36 @@ duruyor, kural doğru.
 **Bu, metin ekseninin sistematik bir sapması:** bir eşleme tablosu cihazın
 sözcüğünü normalleştiriyorsa, kuralın aradığı normalleştirilmiş değer ham
 satırda hiç geçmez ve `absent` görünür. `absent` kutusu bu yüzden bir **üst
-sınır**; her elemanı örneklem boşluğu değil. Kapsam oranının paydası hesaplanırken
-bu düşülmeli.
+sınır**; her elemanı örneklem boşluğu değil.
+
+### Sapmanın niceliği — paydayı ne kadar oynatıyor
+
+```
+### `absent` KUTUSUNUN DÜZELTMESİ — 10 kuraldan 1'i çıkıyor
+Tamamen çıkan   : fortigate_user_auth_fail.yml
+Kısmen açıklanan: (yok)
+```
+
+Kapsam oranının paydası `absent` düşülerek kuruluyor (24 − 10 = 14). Bu
+düzeltmeden sonra payda **15**. Oran yeniden hesaplanmalı.
+
+Hesap **kural düzeyinde**, çünkü metin ekseninin kutusu da kural düzeyinde: bir
+kuralın **bütün** `absent` dizgeleri normalleştirmeyle açıklanıyorsa kural
+kutudan tamamen çıkar; bir kısmı açıklanıyorsa çıkmaz ama kalemi vardır.
+
+### ⚠️ Düzeltmenin kendisi kuralı kırıyor
+
+`failure` → `failed` değişikliği kuralı **erişilemez** yapıyor. Ölçüldü:
+
+```
+fortigate_user_auth_fail.yml (DÜZELTME SONRASI) [Fortinet] status = 'failed'
+  `status` kapalı bir değer uzayı taşıyor (failure · success) ve `` ile `failed`
+  oradan üretilemiyor. Örneklem düzelse de bu kural eşleşmez.
+```
+
+`auth_outcome.yaml`'da `failed` bir **anahtar**, bir çıktı değil: tablo
+`failed → failure` çeviriyor. Yani kolonda hiçbir zaman `failed` durmuyor.
+Düzeltme, çalışan bir kuralı hiç eşleşmeyen bir kurala çevirir.
 
 ## Açık kalem
 

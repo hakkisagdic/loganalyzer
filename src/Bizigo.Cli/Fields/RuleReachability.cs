@@ -39,6 +39,20 @@ public enum ReachVerdict
     /// <summary>Şema açısından engel yok; eşleşip eşleşmediği veriye bakar.</summary>
     Reachable,
 
+    /// <summary>
+    /// Kural <b>ham metne</b> vuruyor (<c>raw_data ILIKE …</c>). Değer uzayı
+    /// sorusu anlamsız — ama sayısı bir kapsam göstergesi: tam metin taraması
+    /// indeksten yararlanmıyor ve 269 kuralda maliyeti var.
+    /// </summary>
+    RawText,
+
+    /// <summary>
+    /// Kural, görünümde kolonu olmayan bir ada vuruyor; pipeline bunu
+    /// <c>unmapped['X']</c>'e çeviriyor. Alan olarak adreslenmiş ama
+    /// <c>Map</c> araması, yine indekssiz.
+    /// </summary>
+    UnmappedAccess,
+
     /// <summary>Söylenemez — ve söylememek doğru.</summary>
     Unknown,
 }
@@ -114,14 +128,21 @@ public static class RuleReachability
     /// <c>src_endpoint_ip</c> duruyor — çeviri olmadan her dizge "kolona bağlı
     /// değil" görünürdü.
     /// </param>
+    /// <param name="rawTextAlias">
+    /// Görünümde ham gövdeyi taşıyan takma ad (<c>body AS raw_data</c>). Elle
+    /// yazılmıyor: görünüm dosyasından, kaynağı <c>body</c> olan kolondan
+    /// türetiliyor.
+    /// </param>
     public static IReadOnlyList<LiteralReach> Join(
         IReadOnlyList<RuleEntry> rules,
         IReadOnlyList<VendorValueSpace> spaces,
-        IReadOnlyDictionary<string, string> fieldMap)
+        IReadOnlyDictionary<string, string> fieldMap,
+        string rawTextAlias)
     {
         ArgumentNullException.ThrowIfNull(rules);
         ArgumentNullException.ThrowIfNull(spaces);
         ArgumentNullException.ThrowIfNull(fieldMap);
+        ArgumentException.ThrowIfNullOrWhiteSpace(rawTextAlias);
 
         var results = new List<LiteralReach>();
 
@@ -137,7 +158,7 @@ public static class RuleReachability
 
             foreach (var literal in rule.Literals)
             {
-                results.Add(Examine(rule, literal, space, fieldMap));
+                results.Add(Examine(rule, literal, space, fieldMap, rawTextAlias));
             }
         }
 
@@ -148,7 +169,8 @@ public static class RuleReachability
         RuleEntry rule,
         RuleLiteral literal,
         VendorValueSpace? space,
-        IReadOnlyDictionary<string, string> fieldMap)
+        IReadOnlyDictionary<string, string> fieldMap,
+        string rawTextAlias)
     {
         if (space is null)
         {
@@ -164,15 +186,26 @@ public static class RuleReachability
         // Kural Sigma taxonomy'siyle yazılmış; kolon adı pipeline'ın çevirdiği.
         var alias = fieldMap.GetValueOrDefault(literal.Field, literal.Field);
 
+        if (string.Equals(alias, rawTextAlias, StringComparison.Ordinal))
+        {
+            return new LiteralReach(
+                rule.Name,
+                space.Vendor,
+                literal,
+                ReachVerdict.RawText,
+                $"`{literal.Field}` → `{alias}`: kural ham gövdeye vuruyor. Değer uzayı sorusu " +
+                "anlamsız; bedeli tam metin taraması ve indeksin kullanılamaması.");
+        }
+
         if (!space.Columns.TryGetValue(alias, out var column))
         {
             return new LiteralReach(
                 rule.Name,
                 space.Vendor,
                 literal,
-                ReachVerdict.Unknown,
-                $"`{literal.Field}` → `{alias}`: bu vendor'ın parser'larının doldurduğu bir kolona bağlı değil " +
-                "(ör. `message` gibi ham metne çevrilen bir ad, ya da yalnızca `unmapped`'te duran bir alan).");
+                ReachVerdict.UnmappedAccess,
+                $"`{literal.Field}` → `{alias}`: görünümde bu adda bir kolon yok, pipeline " +
+                "`unmapped['…']` üretiyor. Alan olarak adreslenmiş ama Map araması — yine indekssiz.");
         }
 
         // Parser düzeyindeki boşluk vendor birleşiminde kayboluyor: kolonu
@@ -215,7 +248,11 @@ public static class RuleReachability
         {
             // Metin ekseni "yok" dediyse ama kapalı uzayda VARSA, eşleme
             // tablosu cihazın sözcüğünü çeviriyor demektir.
-            var normalized = string.Equals(literal.Verdict, "absent", StringComparison.Ordinal);
+            // Modellenmemiş operatörde `CanSatisfy` güvenli tarafa düşüp true
+            // dönüyor; o true'yu "değer kolonda VAR" diye okumak, bilmediğini
+            // bildiği gibi göstermek olurdu.
+            var normalized = string.Equals(literal.Verdict, "absent", StringComparison.Ordinal)
+                && ColumnValueSpaces.IsModelled(literal.Operator);
 
             return new LiteralReach(
                 rule.Name,

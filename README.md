@@ -557,9 +557,20 @@ aynı kuralı farklı kolona bağladığı gün demekti.
 | **ERİŞİLEMEZ** | Kapalı uzay o değeri üretemiyor — örneklem düzelse de eşleşmez |
 | **PARSER BOŞLUĞU** | Vendor'da açık ama bazı parser'lar kolonu hiç doldurmuyor |
 | **METİN EKSENİ YANILIYOR** | Ham satırda yok ama kolonda **var** (eşleme tablosu çeviriyor) |
+| ham metin | `raw_data ILIKE …` — tasarım tercihi, ama indeks kullanılmıyor |
+| `unmapped` erişimi | `unmapped['…']` — alan olarak adreslenmiş, yine indekssiz |
+| uzay açık | Şema bir şey demiyor |
 
 Ölçülen (24 kural, 33 dizge): ERİŞİLEMEZ **0** · parser boşluğu **4** ·
-metin ekseni yanılıyor **1**. Ayrıntı: `docs/epic/t39-alan-kapsami/`.
+metin ekseni yanılıyor **1** · ham metne vuran kural **4/24**.
+
+> ⚠️ **`absent` kutusu bir üst sınırdır.** Bir eşleme tablosu cihazın sözcüğünü
+> normalleştiriyorsa (`failed → failure`), kuralın aradığı değer ham satırda hiç
+> geçmez ve metin ekseninde "desen yok" görünür — oysa kolonda gerçekten vardır.
+> Ölçüldü: 10 `absent` kuralın **1'i** bu yüzden orada. Kapsam oranının paydası
+> `absent` düşülerek kurulduğu için bu doğrudan paydayı oynatıyor.
+
+Ayrıntı: `docs/epic/t39-alan-kapsami/`.
 
 ### Parser CLI
 
