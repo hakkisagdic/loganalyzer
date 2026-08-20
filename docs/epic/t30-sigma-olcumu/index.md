@@ -93,16 +93,76 @@ yanlış, ve hiçbir şey kırmızı yanmıyor.
 çalışıyor ama **indekslenmiyor**. Yani bedeli doğruluk değil hız — ve bu, F3'te
 hangi alanların kolona terfi etmesi gerektiğinin listesi.
 
-## Doldurulacak — canlı koşum sonrası
+## Birinci koşum — **geçersiz**, ve nedeni ölçümün kendi dersi
 
-Koşum: `prototypes/t30-sigma/README.md` içindeki komut. Doldurulacaklar:
+Koşum yapıldı ve `%0` eşleşme verdi. **O sıfır kullanılamaz.**
 
-- [ ] `compiled` / `runs` / `matches` / `untouched` sayıları
+```
+Ön kontrol: events_ocsf 1000001 satır
+  Cisco             0     Fortinet   1000000     MikroTik  0     nginx  0
+
+Örneklem 24 · Ölçülebilir 6 · Derlendi 24 · ClickHouse kabul etti 14
+Satır döndürdü 0 · Eşleşme oranı %0 · Pipeline'a dokunmadı 0
+Eşleme satırı 111 (28 alan) · Kural başına süre 1,5 ms · unmapped kullanan 0
+```
+
+Tablodaki 1.000.001 satır **altın örnek değildi**: önceki bir turdan kalan
+tek-vendor'lu sentetik benchmark verisi. Ön kontrol "tablo boş mu" diye sordu,
+cevap hayırdı, geçirdi.
+
+<user_quoted_section>"Boş değil" ile "doğru veri" aynı şey değil — ve aradaki boşluk, ön kontrolünengellemek için yazıldığı hatanın tam olarak bir kademe deriniydi.</user_quoted_section>
+
+Kanıtı çıktının kendisinde: Fortinet'in 1.000.000 satırı varken **Fortinet
+kuralları bile hiçbir şey döndürmedi**. Gerçek FortiGate altın örnekleri olsaydı
+en az birkaçı eşleşirdi.
+
+**Ön kontrol düzeltildi:** artık bir yokluk kanıtı değil **varlık kanıtı**
+arıyor — her vendor'ın altın örnek dosyasındaki en uzun satırdan türetilen 60
+karakterlik bir sonda `raw_data` içinde gerçekten duruyor mu. Hiçbiri
+bulunmazsa ölçüm **yapılmıyor**.
+
+### Ama iki sayı veriden bağımsız ve şimdiden geçerli
+
+| Sayı | Değer | Anlamı |
+| --- | --- | --- |
+| `compiled` | **24 / 24** | pySigma hepsini çevirdi; derleme bir sorun değil |
+| `runs` | **14 / 24** | **On kural, ClickHouse'un reddettiği SQL üretti** |
+| `untouched` | **0** | Pipeline her kurala dokunuyor — eşleme atlanmıyor |
+| `unmapped` kullanan | **0** | Hiçbir kural Map erişimine düşmedi |
+
+Bunlar satır sayısına bakmıyor: bir kolonun var olup olmaması tabloda kaç kayıt
+olduğuna bağlı değil.
+
+**Bu, aşağıdaki 2. geçersizleme kontrolünü tetikliyor** — yani kapsam kararına
+geçmeden önce eşlemenin kendisi ele alınmalı. On kural var olmayan kolonlara
+gidiyor ve bu kapsam daraltılarak çözülmez: daraltılan kapsamdaki kurallar da
+aynı kolonlara gidiyor.
+
+`untouched = 0` ile `unmapped = 0` birlikte okununca resim netleşiyor: sorun
+eşlemenin **atlanması** değil, ürettiği adların bizde **olmaması**. Beşinci
+tuzağın (`type_uid`) canlı karşılığı gibi duruyor — ama **doğrulanmadı**;
+reddedilen kolon adları gelmeden bu bir hipotez.
+
+Araç artık reddedilen kolonları da özetliyor (ClickHouse'un üç ayrı hata
+cümlesini de okuyarak), dolayısıyla bir sonraki koşumda hem sayı hem **sebep**
+gelecek. O liste T31'in eşleme tablosunun ilk taslağı olacak.
+
+## Doldurulacak — altın örnekler yüklendikten sonra
+
+Koşum: `prototypes/t30-sigma/README.md` içindeki komut. Ön kontrol raporunda
+her vendor için `altın örnek bulundu` yazmıyorsa ölçüm yine geçersizdir.
+
+- [ ] Reddedilen **kolon adları** — okuma sırasında ilk bakılacak şey
+- [ ] `matches` ve `match_ratio` (payda: `measurable`)
 - [ ] Kural başına gerçek eşleme satırı (payda = `matches`)
 - [ ] Kural başına derleme süresi ve 269 kuralın toplam maliyeti
 - [ ] En az bir kuralın canlı ClickHouse'ta doğru sonuç verdiği (kabul kriteri)
 - [ ] Tablo adı ikamesi gerekti mi — gerektiyse T31 bunu kaynağında çözmeli
 - [ ] Yanlış pozitif var mı: eşleşen satırlar gerçekten o kuralın aradığı mı
+
+⚠️ Birinci koşumun `runs = 14` sayısı **devralınmayacak**, yeniden okunacak.
+Kolonların varlığı veriye bağlı değil, ama o 14 kural sentetik veriye karşı
+koştu ve hangi kuralların hangi sebeple düştüğü değişebilir.
 
 ## Ön kontrol — ölçüm aracının kendi bekçisi
 
