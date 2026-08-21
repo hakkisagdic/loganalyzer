@@ -213,71 +213,65 @@ describe("errorKind — kapalı sözlük", () => {
 describe("error_kind kapalı sözlüğün DIŞINA çıkamıyor", () => {
   /**
    * <p>
-   * TypeScript `errorKind()`'ın dönüşünü kısıtlıyor, ama olay paylodu
-   * `Partial<Record<string, unknown>>` — bir ekran `error_kind: "olur da"`
-   * yazabilir ve derleyici susar. Bu bekçi kaynağı tarıyor.
+   * <b>Asıl bekçi artık tip sistemi, bu dosya değil.</b> `EventFieldTypes`
+   * her alanı tipliyor, dolayısıyla `error_kind: identity.message` — yani
+   * sunucunun cümlesini doğrudan telemetriye koymak — <b>derlenmiyor</b>.
+   * Ölçüldü: `Type 'string' is not assignable to type 'ErrorKind'`.
    * </p>
    *
    * <p>
-   * <b>Bekçinin kendisi ölçüldü ve ilk hâli BOŞA GEÇİYORDU.</b> Kaynakta o an
-   * hiç satır içi metin yoktu (hepsi değişken ya da fonksiyon çağrısıydı),
-   * dolayısıyla tarayıcı hiçbir şey bulamıyor ve yeşil yanıyordu — kırmızı
-   * yanabildiğini ölçmeye çalışınca çıktı. §7'nin "sessizce atlayan bekçi"
-   * sınıfı: yeşilliği hiçbir şey ifade etmiyordu.
+   * <b>Buradaki tarayıcı küçüldü ve sebebi bir geri adım.</b> İlk hâli
+   * kaynaktaki metin sabitlerini arıyordu ve inceleme haklı olarak şunu
+   * gösterdi: gerçek çağrı yerleri (`error_kind: kind`,
+   * `error_kind: errorKind(cause)`) birer <i>ifade</i>, sabit değil — yani
+   * tarayıcı tam da tehlikeli hâli göremiyordu. Tarayıcıyı büyütmek (AST'ye
+   * çıkmak) mümkündü ama yanlış cevaptı: tip sistemi o işi zaten daha iyi
+   * yapıyor.
    * </p>
    *
    * <p>
-   * Şimdi üç ayrı test var: tarayıcının <b>bulabildiği</b>, <b>kaçırmadığı</b>,
-   * ve depoda <b>gerçekten bir şeye baktığı</b>. Üçüncüsü olmadan ilk ikisi de
-   * boşa geçebilir.
+   * Geriye tipin kapatamadığı <b>tek delik</b> kaldı: `as ErrorKind` zorlaması.
+   * Tarayıcı artık yalnızca onu arıyor, ve doğru geçme hâli <b>sıfır bulmak</b>.
+   * Önceki sürümdeki "hiç bulamazsan kırmızı yan" kapısı bu yüzden kaldırıldı —
+   * o kapı, tarayıcının yük taşıdığı zamanın kuralıydı; artık taşımıyor.
    * </p>
    */
-  const SOZLUK = [
-    "identity",
-    "session_expired",
-    "forbidden",
-    "not_found",
-    "rate_limited",
-    "transport",
-    "unknown",
-  ];
-
-  /** Saf tarayıcı — testin doğrudan sınayabildiği şey bu. */
-  function sozlukDisi(metin: string): { bulunan: number; ihlal: string[] } {
-    const ihlal: string[] = [];
-    let bulunan = 0;
-
-    const desenler = [
-      /error_kind:\s*"([^"]*)"/g,
-      /"([^"]*)"\s+as\s+ErrorKind/g,
-      /:\s*ErrorKind\s*=\s*"([^"]*)"/g,
+  function sozluktenMi(deger: string): boolean {
+    const sabitler = [
+      "identity",
+      "session_expired",
+      "forbidden",
+      "not_found",
+      "rate_limited",
+      "transport",
+      "unknown",
     ];
 
-    for (const desen of desenler) {
-      for (const eslesme of metin.matchAll(desen)) {
-        bulunan += 1;
-        const deger = eslesme[1]!;
-
-        if (!SOZLUK.includes(deger)) {
-          ihlal.push(deger);
-        }
-      }
-    }
-
-    return { bulunan, ihlal };
+    // `http_${number}` da geçerli bir üye — `ErrorKind` bir şablon değişmezi
+    // taşıyor ve `"http_404"` ondan geliyor.
+    return sabitler.includes(deger) || /^http_\d+$/.test(deger);
   }
 
-  it("tarayıcı sözlük dışı metni BULUYOR — üç biçimde de", () => {
-    expect(sozlukDisi('error_kind: "golden grubu kapsam disinda"').ihlal).toEqual([
-      "golden grubu kapsam disinda",
-    ]);
-    expect(sozlukDisi('const k = "uydurma" as ErrorKind;').ihlal).toEqual(["uydurma"]);
-    expect(sozlukDisi('const k: ErrorKind = "uydurma2";').ihlal).toEqual(["uydurma2"]);
+  /** Tipin kapatamadığı tek delik: açık zorlama. */
+  function zorlamalar(metin: string): string[] {
+    return [
+      ...[...metin.matchAll(/"([^"]*)"\s+as\s+ErrorKind/g)].map((m) => m[1]!),
+      ...[...metin.matchAll(/error_kind:\s*"([^"]*)"/g)].map((m) => m[1]!),
+    ];
+  }
+
+  it("sözlük şablon değişmezini de kabul ediyor", () => {
+    expect(sozluktenMi("http_404")).toBe(true);
+    expect(sozluktenMi("http_503")).toBe(true);
+    expect(sozluktenMi("identity")).toBe(true);
+    expect(sozluktenMi("golden grubu kapsam disinda")).toBe(false);
+    expect(sozluktenMi("http_")).toBe(false);
   });
 
-  it("sözlük üyesini ihlal saymıyor", () => {
-    expect(sozlukDisi('error_kind: "forbidden"').ihlal).toEqual([]);
-    expect(sozlukDisi('const k: ErrorKind = "identity";').ihlal).toEqual([]);
+  it("tarayıcı zorlamayı buluyor", () => {
+    expect(zorlamalar('const k = "uydurma" as ErrorKind;')).toEqual(["uydurma"]);
+    expect(zorlamalar('error_kind: "uydurma2"')).toEqual(["uydurma2"]);
+    expect(zorlamalar("error_kind: errorKind(cause)")).toEqual([]);
   });
 
   const KAYNAK_DOSYALARI = (() => {
@@ -295,31 +289,27 @@ describe("error_kind kapalı sözlüğün DIŞINA çıkamıyor", () => {
     return sonuc;
   })();
 
-  it("depodaki hiçbir atama sözlük dışına çıkmıyor", () => {
+  it("depoda tipi zorlayan hiçbir yer yok", () => {
     const ihlaller: string[] = [];
-    let toplamBulunan = 0;
 
     for (const dosya of KAYNAK_DOSYALARI) {
-      const { bulunan, ihlal } = sozlukDisi(readFileSync(dosya, "utf8"));
-      toplamBulunan += bulunan;
-      ihlaller.push(...ihlal.map((d) => `${dosya}: "${d}"`));
+      for (const deger of zorlamalar(readFileSync(dosya, "utf8"))) {
+        if (!sozluktenMi(deger)) {
+          ihlaller.push(`${dosya}: "${deger}"`);
+        }
+      }
     }
-
-    // BOŞA GEÇME KAPISI: tarayıcı hiçbir şey bulamadıysa bu test hiçbir şey
-    // söylemiyor demektir. Kaynakta en az bir `ErrorKind` ataması olmalı;
-    // yoksa ya enstrümantasyon kaldırılmış ya desenler ayrışmıştır.
-    expect(
-      toplamBulunan,
-      "Tarayıcı kaynakta hiç `error_kind`/`ErrorKind` ataması bulamadı. Bu test " +
-        "boşa geçiyor demektir — desen ayrışmış ya da enstrümantasyon kaldırılmış.",
-    ).toBeGreaterThan(0);
 
     expect(
       ihlaller,
-      "`error_kind` sözlük dışı bir metin taşıyor. Sınıflandırma kapalı bir küme " +
-        "olmalı (classify.ts): serbest metin, sunucunun cümlesinin telemetriye " +
-        "sızmasının yoludur.",
+      "`error_kind` sözlük dışı bir metne zorlanıyor. `as ErrorKind`, tip " +
+        "sisteminin kapattığı deliği elle açmak demek — sunucunun cümlesinin " +
+        "telemetriye sızma yolu tam olarak budur.",
     ).toEqual([]);
+  });
+
+  it("dosya listesi boş değil — tarayıcı gerçekten bir yere bakıyor", () => {
+    expect(KAYNAK_DOSYALARI.length).toBeGreaterThan(20);
   });
 });
 
