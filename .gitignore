@@ -37,3 +37,10 @@ venv/
 # iCloud sync duplikatları (bkz. CLAUDE.md)
 * 2.*
 *\ 2/
+
+# obsidian-wiki — ÜÇÜNCÜ TARAF araç, `git clone` ile geliyor (8,4 MB).
+#
+# Depoya vendor edilmiyor çünkü ürünün parçası değil: bilgi tabanını üreten bir
+# makine aracı. Vendor edilseydi yükseltmesi bir merge işi olurdu ve deponun
+# geçmişi başka bir projenin sürümleriyle dolardı. Kurulumu README'de yazılı.
+tools/obsidian-wiki/
