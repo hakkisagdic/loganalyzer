@@ -1,0 +1,48 @@
+# Derleme bağlamından dışlananlar.
+#
+# Bu dosya bir hız iyileştirmesi DEĞİL, bir doğruluk koşulu. Ölçüldü: `.NET`
+# derleme çıktısı bağlama girdiğinde makinedeki `obj/project.assets.json`
+# container'ın kendi `restore`'unun ürettiği dosyanın üstüne yazılıyor. O dosya
+# makinenin NuGet yolunu (`/Users/<kişi>/.nuget/packages`) gösteriyor, container
+# içinde öyle bir yol yok, ve `publish` şu hatayla düşüyor:
+#
+#     error NETSDK1064: Package AWSSDK.S3, version 4.0.102.1 was not found.
+#
+# Hata paketten söz ediyor ama sebebi paket değil; bu yüzden gerekçe burada
+# yazılı — bir sonraki kişi aynı mesajı görüp NuGet'i kurcalamasın.
+
+# .NET derleme çıktısı
+**/bin/
+**/obj/
+
+# Arayüz: bağımlılıklar ve Next derleme çıktısı. Yüz binlerce dosya ve
+# imajların hiçbirine girmiyorlar.
+ui/node_modules/
+ui/.next/
+ui/.playwright/
+ui/.screenshots-tmp/
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/.venv/
+**/.pytest_cache/
+
+# Git geçmişi imaja girmiyor; `.git` bu depoda bağlamın en büyük kalemi.
+.git/
+.githooks/
+
+# Yerel ortam dosyaları. `.env.example` bağlamda KALIYOR (compose onu okuyor),
+# gerçek `.env` girmiyor.
+**/.env
+**/.env.local
+**/.env*.local
+
+# Belgeler ve planlama artifact'ları — hiçbir imaj okumuyor.
+docs/
+prototypes/
+
+# Araç ve editör artıkları
+.vscode/
+.idea/
+.DS_Store
