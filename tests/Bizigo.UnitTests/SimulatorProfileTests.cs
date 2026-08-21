@@ -106,6 +106,55 @@ public sealed class SimulatorProfileTests
         Assert.True(ihlal.Count == 0, "Profil vendor komutu taşıyor:\n  " + string.Join("\n  ", ihlal));
     }
 
+    /// <summary>
+    /// <b>Bilinmeyen alan sessizce yutulmuyor.</b>
+    ///
+    /// <para>
+    /// Okuyucu <c>IgnoreUnmatchedProperties()</c> KULLANMIYOR ve bu testin
+    /// koruduğu şey o karar. Yutulsaydı <c>owner_grup</c> diye yazılmış bir alan
+    /// yok sayılırdı: profil geçerli görünür, kapsam boş kalır ve hata ancak
+    /// ekran boş çıktığında fark edilirdi — bu depodaki en pahalı hata sınıfı.
+    /// </para>
+    ///
+    /// <para>
+    /// Ayrıştırma hatası koşumu patlatmıyor, bir <b>doğrulama bulgusuna</b>
+    /// dönüyor: tek tek düşen bir okuyucu ikinci bozuk profili ancak birincisi
+    /// düzeltildikten sonra gösterirdi.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Bilinmeyen_alan_sessizce_yutulmuyor()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "sim-" + Guid.NewGuid().ToString("N")[..8]);
+        Directory.CreateDirectory(directory);
+
+        try
+        {
+            // `owner_grup` — `owner_group` yazılacakken yapılan bir harf hatası.
+            File.WriteAllText(
+                Path.Combine(directory, "typo-01.yaml"),
+                """
+                id: typo-01
+                vendor: fortinet
+                product: fortigate
+                hostname: typo-01
+                owner_grup: network/core
+                """);
+
+            var result = Assert.Single(SimulatorProfileStore.LoadAll(directory, RepositoryLayout.Root));
+
+            Assert.NotEmpty(result.Errors);
+            Assert.Contains(
+                result.Errors,
+                error => error.Contains("owner_grup", StringComparison.Ordinal)
+                    || error.Contains("YAML okunamadı", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     /// <summary>N1: varsayılan koşum baseline'ı döndürüyor.</summary>
     [Fact]
     public async Task Varsayilan_kosum_baseline_donduruyor()

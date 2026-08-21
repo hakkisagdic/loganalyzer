@@ -256,14 +256,25 @@ public sealed class DevStackFixture : IAsyncLifetime
 
     public async ValueTask DisposeAsync()
     {
-        await Task.WhenAll(
-            _clickHouse.DisposeAsync().AsTask(),
-            _postgres.DisposeAsync().AsTask(),
-            _rustFs.DisposeAsync().AsTask());
-
-        // Ağ container'lardan SONRA siliniyor: bağlı bir uç varken silme
-        // reddedilir ve arkada sahipsiz bir ağ kalır.
-        await _network.DisposeAsync();
+        try
+        {
+            await Task.WhenAll(
+                _clickHouse.DisposeAsync().AsTask(),
+                _postgres.DisposeAsync().AsTask(),
+                _rustFs.DisposeAsync().AsTask());
+        }
+        finally
+        {
+            // Ağ container'lardan SONRA siliniyor: bağlı bir uç varken silme
+            // reddedilir ve arkada sahipsiz bir ağ kalır.
+            //
+            // `finally` şart: container temizliği düştüğünde (Docker daemon
+            // kapandı, container zaten yok) `Task.WhenAll` fırlıyordu ve ağ
+            // silme satırına HİÇ gelinmiyordu — yani temizliğin başarısız
+            // olduğu her koşum arkasında bir ağ bırakıyordu. §3'ün saydığı
+            // görünmez birikmenin tam örneği.
+            await _network.DisposeAsync();
+        }
     }
 }
 
