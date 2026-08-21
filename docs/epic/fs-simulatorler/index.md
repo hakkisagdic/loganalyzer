@@ -110,43 +110,24 @@ config, hangi log satırları. Her biri kendi tanımını taşısaydı, ayrışt
 `fw-ankara-01` derken syslog tarafı `fw-ankara-1` basar, envanterde iki cihaz
 görünür, ikisi de yarım.
 
-Bu yüzden tek bir **cihaz profili** var ve üçü de onu okuyor:
+Bu yüzden tek bir **cihaz profili** var ve üçü de onu okuyor. Şemanın
+kendisi ve çalışan örnekler burada:
 
-```yaml
-# catalog/simulators/fw-ankara-01.yaml
-id: fw-ankara-01
-vendor: fortinet
-product: fortigate
-hostname: fw-ankara-01
-owner_group: network/core          # KAPSAM buradan geliyor
-parser_id: fortinet.fortigate.traffic
-encoding: utf-8
+- **Şema ve gerekçeler:** [`catalog/simulators/README.md`](../../../catalog/simulators/README.md)
+- **Beş profil:** [`catalog/simulators/*.yaml`](../../../catalog/simulators/)
+- **Tipler:** [`sim/Bizigo.Simulators/SimulatorProfile.cs`](../../../sim/Bizigo.Simulators/SimulatorProfile.cs)
 
-ssh:
-  port: 22
-  username: bizigo-ro
-  auth: password                    # ya da `key`
-  # Parolanın KENDİSİ değil, nereden okunacağı. Profil depoya giriyor;
-  # gizli bilgi girmiyor.
-  credential_env: SIM_FW_ANKARA_PASSWORD
-  # Komutlar vendor toplayıcısından geliyor, burada TEKRARLANMIYOR.
+> **Buraya örnek bir YAML kopyalanmıyor** ve bu bir eksiklik değil, bu belgenin
+> bizzat ödediği bir bedelin karşılığı. Kopya iki kez ayrıştı ve ikisini de
+> inceleme yakaladı: bir kez dizin adında (`profiles/` ↔ `profiller/`), bir kez
+> de var olmayan bir senaryo dosyasını göstererek — o örnekten kurulan bir
+> profil doğrulamadan geçemezdi. Tasarım belgesinin örneği ayrıştığında
+> öğrettiği şey yanlış şekil oluyor. Şeklin tek kaynağı çalışan dosyalar; burası
+> **kararları** anlatıyor, sözdizimini değil.
 
-config:
-  baseline: profiller/fw-ankara-01/baseline.conf
-  scenarios:
-    kural-eklendi:    profiller/fw-ankara-01/kural-eklendi.conf
-    sir-dondu:        profiller/fw-ankara-01/sir-dondu.conf
-    cihaz-yeniden-yazdi: profiller/fw-ankara-01/yeniden-yazim.conf
-
-syslog:
-  # Joker YOK: her dosya tek tek yazılıyor, çünkü doğrulayıcı her birinin var
-  # olduğunu sınıyor ve eşleşmeyen bir joker sessizce boş küme döndürürdü.
-  samples:
-    - catalog/parsers/fortinet.fortigate/samples/traffic.log
-    - catalog/parsers/fortinet.fortigate/samples/event.log
-  rate_per_minute: 240
-  transport: tcp                    # tcp | udp
-```
+Profilin taşıdığı alanlar ve neden orada oldukları
+[`catalog/simulators/README.md`](../../../catalog/simulators/README.md) içindeki
+tabloda; doğrulayıcının hangi hâlde kırmızı yandığı §10'da.
 
 Üç şey bilerek profilde **yok**:
 

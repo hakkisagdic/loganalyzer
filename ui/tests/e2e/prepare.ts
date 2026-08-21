@@ -26,7 +26,8 @@ import { fileURLToPath } from "node:url";
  * bildirimlerini söküyor, yani ayrı bir çevirici bağımlılığı gerekmiyor. Bayrak
  * <b>Node 22.6</b>'dan beri var ve CI Node 22 kullanıyor; önkoşul
  * <c>ui/package.json</c>'daki <c>engines</c> alanında beyan edilmiş durumda.
- * (Node 23+ bunu varsayılan yapıyor, bayrak orada zararsız.)
+ * (Tip sökme Node 22.18 ve 23.6'dan itibaren varsayılan; bayrak orada da
+ * zararsız, yalnızca daha eski 22.x sürümlerinde zorunlu.)
  * </p>
  */
 
