@@ -108,21 +108,32 @@ public static partial class ConfigNormalizer
     /// çevriliyor — "hangi sır değişti" görünür, "sır ne" görünmez.
     ///
     /// <para>
-    /// Anahtar kelimenin önünde <b>bir</b> belirtece izin veriliyor
-    /// (<c>snmp-server community …</c>, <c>set psksecret ENC …</c>) ve ayırıcı
-    /// hem boşluk hem <c>=</c> olabiliyor (MikroTik <c>password=…</c> yazıyor).
-    /// Serbest bir <c>.*?</c> öneki yerine sınırlı bir belirteç: desen geri
+    /// Anahtar kelimenin önünde <b>en çok üç</b> belirtece izin veriliyor
+    /// (<c>snmp-server community …</c>, <c>set psksecret ENC …</c>,
+    /// <c>ikev2 remote-authentication pre-shared-key …</c>) ve ayırıcı hem
+    /// boşluk hem <c>=</c> olabiliyor (MikroTik <c>password=…</c> yazıyor).
+    /// Serbest bir <c>.*?</c> öneki yerine <b>sınırlı</b> tekrar: desen geri
     /// izlemeye düşmüyor ve maliyeti satır uzunluğunda doğrusal kalıyor.
     /// </para>
     ///
     /// <para>
-    /// <b>Bir kez kırıldı:</b> desen anahtar kelimeyi satır başına bağlıyordu ve
-    /// ASA'nın <c>snmp-server community …</c> satırı maskelenmeden kalıyordu.
-    /// Bir birim testi yakaladı.
+    /// <b>İki kez kırıldı, ikisi de aynı sınıf.</b> Önce desen anahtar
+    /// kelimeyi satır başına bağlıyordu ve ASA'nın <c>snmp-server community …</c>
+    /// satırı maskelenmeden kalıyordu; bir belirteç eklendi. Sonra ASA'nın
+    /// gerçek IKEv2 söz dizimi <b>iki</b> belirteç taşıdığı için
+    /// (<c>ikev2 remote-authentication pre-shared-key</c>) ham anahtar yine
+    /// normalize edilmiş metinde kalıyordu — bunu simülatör fixture'ı ilk
+    /// koşumunda yakaladı (FS · S01).
+    /// </para>
+    ///
+    /// <para>
+    /// Sınır <b>üç</b>, çünkü asıl kısıt "kaç kelime" değil "serbest joker
+    /// yok". Fazla maskelemek sızdırmaktan ucuz; bu yüzden sınır cömert
+    /// tutuldu ama sonsuz değil.
     /// </para>
     /// </summary>
     [GeneratedRegex(
-        @"^(?<prefix>\s*(?:[\w./-]+[\s=]+)?(?:password|passwd|psksecret|secret|pre-shared-key|wpa2-pre-shared-key|snmp-community|community|auth-key|key-string)[\s=]+(?:ENC[\s=]+|encrypted[\s=]+|[78][\s=]+)?)(?<value>\S.*)$",
+        @"^(?<prefix>\s*(?:[\w./-]+[\s=]+){0,3}(?:password|passwd|psksecret|secret|pre-shared-key|wpa2-pre-shared-key|snmp-community|community|auth-key|key-string)[\s=]+(?:ENC[\s=]+|encrypted[\s=]+|[78][\s=]+)?)(?<value>\S.*)$",
         RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture)]
     private static partial Regex SecretAssignment();
 
