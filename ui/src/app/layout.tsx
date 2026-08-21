@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { Telemetry } from "@/components/telemetry/Telemetry";
 import { themeBootstrapScript } from "@/components/ui/ThemeToggle";
 
 import "./globals.css";
@@ -23,7 +24,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         */}
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
       </head>
-      <body>{children}</body>
+      <body>
+        {/*
+          Telemetri KAPALIYKEN bu sarmalayıcı yalnızca çocukları döndürüyor ve
+          posthog-js istemci paketine hiç inmiyor (bkz. components/telemetry/
+          Telemetry.tsx). Varsayılan kapalı — açmak bilinçli bir hareket.
+        */}
+        <Telemetry>{children}</Telemetry>
+      </body>
     </html>
   );
 }
