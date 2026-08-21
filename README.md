@@ -629,6 +629,19 @@ mesajları, ham URL'ler, istemci IP'si, e-posta, ham Keycloak `sub`.
 Süzgeç beyaz liste ve kırmızı yanabildiği ölçüldü
 (`ui/tests/telemetry-scrub.test.ts`, `ui/tests/telemetry-proxy.test.ts`).
 
+## Uçtan uca akışlar (Maestro)
+
+`ui/tests/maestro/` altında YAML ile yazılmış, derleme gerektirmeyen E2E
+akışları — gerçek Keycloak girişi, gerçek API, gerçek veri.
+
+```bash
+maestro test ui/tests/maestro
+```
+
+Playwright paketi (`ui/tests/e2e/`) ürünün nasıl **göründüğünü** kaydediyor;
+Maestro akışları nasıl **davrandığını** sınıyor. Ayrıntı ve şu anki CI boşluğu:
+[`ui/tests/maestro/README.md`](ui/tests/maestro/README.md).
+
 ## Lisans
 
 [MIT](LICENSE). Yeniden dağıtılan üçüncü taraf malzeme
