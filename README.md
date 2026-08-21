@@ -656,6 +656,18 @@ Playwright paketi (`ui/tests/e2e/`) ürünün nasıl **göründüğünü** kayde
 Maestro akışları nasıl **davrandığını** sınıyor. Ayrıntı ve şu anki CI boşluğu:
 [`ui/tests/maestro/README.md`](ui/tests/maestro/README.md).
 
+## Araştırma notları
+
+`docs/arastirma/` altında, bu depoda üretilmiş ama bu depo hakkında olmayan
+çalışmalar duruyor. İlki: **100 mikroservislik bir estate'te uçtan uca kod
+bilgisi için katmanlı referans mimari** — altı mercek, her mercek için
+adversarial bir doğrulama turu, ve bir eksiklik eleştirisi.
+
+Merkezî fikir, bu deponun kendi kurallarıyla aynı yerden geliyor: bir kenarın
+güvenilirliği, o kenarı yanlış tutmanın bedeliyle orantılıdır — yani kenarları
+kaynağına göre değil **yaptırımına** göre sınıflandırın. Ayrıntı:
+[`docs/arastirma/README.md`](docs/arastirma/README.md).
+
 ## Lisans
 
 [MIT](LICENSE). Yeniden dağıtılan üçüncü taraf malzeme
