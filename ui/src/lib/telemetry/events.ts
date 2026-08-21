@@ -18,6 +18,23 @@ import type { TelemetryProperties } from "./scrub";
  * </p>
  *
  * <p>
+ * <b>Ama "yalnızca bu liste gider" DEĞİL, ve fark önemli.</b> Süzgeç
+ * <i>ekranın geçirdiği</i> alanları buna göre kesiyor; sink'ler bunun üstüne
+ * kendi alanlarını ekliyor: her iki taraf da <c>environment</c>, posthog-js
+ * <c>$lib</c>/<c>$lib_version</c> gibi kütüphane alanları, posthog-node ayrıca
+ * <c>$is_server</c> ve <c>$geoip_disable</c>. Kütüphanenin kendi eklediği
+ * alanlar `DENIED_AUTOMATIC_PROPERTIES` kara listesinden geçiyor
+ * (bkz. `scrub.ts`) — yani iki ayrı mekanizma, iki ayrı küme.
+ * </p>
+ *
+ * <p>
+ * Bu satır bir ayrıntı değil bir <b>düzeltme</b>: buradaki açıklamayı
+ * "allowlist dışında hiçbir şey gitmiyor" diye okuyan biri, gerçekte giden
+ * alanları saymadan güvenlik yorumu yapardı. Giden şeyin tamamını görmek
+ * için <c>ui/scripts/telemetry-echo.mjs</c> ham paylodu basıyor.
+ * </p>
+ *
+ * <p>
  * Adlandırma `snake_case`, CLAUDE.md §8 ile aynı gerekçe: iki adlandırma
  * politikası bir arada yaşayamıyor.
  * </p>

@@ -25,6 +25,16 @@ import {
  * </p>
  */
 export type ErrorKind =
+  /**
+   * Kimlik katmanı düştü — API çağrısı değil.
+   *
+   * <p>Ayrı bir üye çünkü ayrı bir arıza: `currentUser` üç durumlu ve
+   * "API cevap vermiyor" hâli hiçbir HTTP durumu taşımıyor. `unknown`'a
+   * düşürmek onu ekranların ürettiği her sınıflandırılamayan hatayla aynı
+   * kovaya koyardı ve "kimlik katmanı mı bozuk, bir uç mu" sorusu veride
+   * cevaplanamaz olurdu. Sözlüğe girdi, yani kapalı kalmaya devam ediyor.</p>
+   */
+  | "identity"
   | "session_expired"
   | "forbidden"
   | "not_found"

@@ -8,7 +8,7 @@ import type { EventSearchResult, SourceList, SourceItem } from "@/lib/api/client
 import { ApiError } from "@/lib/api/errors";
 import { NoSessionError, serverApi } from "@/lib/api/server";
 import { currentUser } from "@/lib/auth/currentUser";
-import { errorKind, errorStatus } from "@/lib/telemetry/classify";
+import { errorKind, errorStatus, type ErrorKind } from "@/lib/telemetry/classify";
 import { searchShape } from "@/lib/telemetry/measure";
 import { trackServer } from "@/lib/telemetry/server";
 import {
@@ -67,7 +67,11 @@ export default async function EventSearchPage({
     // Kullanıcıya gösterilen CÜMLE değil, hatanın SINIFI gidiyor. `identity.message`
     // API'nin adresini ya da realm adını taşıyabiliyor (bkz. currentUser.ts'teki
     // ipuçları); telemetriye giden `identity` yalnızca "kimlik katmanı düştü" diyor.
-    after(() => trackServer("error_shown", { route: "/olaylar", error_kind: "identity" }));
+    // Sabit metin DEĞİL, sözlükten bir değer: `ErrorKind` ataması bu satırın
+    // kapalı sözlüğün dışına çıkmasını derleme zamanında engelliyor.
+    const kind: ErrorKind = "identity";
+
+    after(() => trackServer("error_shown", { route: "/olaylar", error_kind: kind }));
 
     return (
       <AppShell>
