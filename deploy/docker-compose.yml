@@ -170,6 +170,16 @@ services:
       # Keycloak yine her iki host'tan da cevap veriyor, yalnızca issuer sabit
       # kalıyor.
       KC_HOSTNAME: ${KC_ISSUER:-http://localhost:8180}
+      # Backchannel URL'leri isteğin geldiği host'tan türüyor; issuer YUKARIDA
+      # sabit kalıyor. İkisi ayrılmadan container'lı API çalışmıyor ve sebebi
+      # ölçüldü: `keycloak:8080`'den inen metadata belgesinin içindeki
+      # `jwks_uri` yine `http://localhost:8180/...` diyordu — belge iniyor, ama
+      # imzalama anahtarları o adresten İNDİRİLEMİYOR ve API her token'ı
+      # reddediyor. Ekranda görünen hâli "API kimliği tanımıyor".
+      #
+      # Makinede koşan kurulum etkilenmiyor: istek zaten localhost:8180'e
+      # gidiyor, dönen backchannel URL'i de o oluyor.
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
     ports:
       - "${KC_PORT:-8180}:8080"
     volumes:
@@ -266,7 +276,76 @@ services:
       retries: 20
       start_period: 10s
 
+  # --------------------------------------------------------------------------
+  # Bizigo.Api — PROFİL ARKASINDA.
+  #
+  # `docker compose up -d` bunu BAŞLATMIYOR ve bu bilinçli: README'nin anlattığı
+  # geliştirme akışı API'yi makinede koşturuyor (sıcak yeniden yükleme) ve
+  # varsayılanı değiştirmek herkesin döngüsünü yavaşlatırdı. Container'lı hâl
+  # ayrı bir soruya cevap veriyor — "yığının tamamı tek komutla kalkıyor mu" —
+  # ve şununla açılıyor:
+  #
+  #     docker compose --profile api up -d --wait
+  #
+  # Collector'ı da container'daki API'ye bakacak şekilde çevirmek için `.env`:
+  #     BIZIGO_ENDPOINT=http://api:8080
+  # --------------------------------------------------------------------------
+  api:
+    profiles: ["api"]
+    build:
+      # Context repo kökü: imaja `src/`, `catalog/` ve `db/clickhouse/` giriyor.
+      # Gerekçesi src/Bizigo.Api/Dockerfile başlığında.
+      context: ..
+      dockerfile: src/Bizigo.Api/Dockerfile
+    depends_on:
+      clickhouse: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+      rustfs: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      sidecar: { condition: service_healthy }
+    environment:
+      ConnectionStrings__ControlPlane: "Host=postgres;Port=5432;Database=bizigo;Username=${PG_USER:-bizigo};Password=${PG_PASSWORD:-bizigo}"
+      ConnectionStrings__ClickHouse: "Host=clickhouse;Port=8123;Database=bizigo;Username=${CH_USER:-bizigo};Password=${CH_PASSWORD:-bizigo}"
+
+      # Issuer DEĞİŞMİYOR: token'da `http://localhost:8180/realms/bizigo` yazıyor
+      # (Keycloak'ın KC_HOSTNAME'i öyle sabitliyor) ve güvendiğimiz şey o.
+      # Değişen tek şey anahtarların NEREDEN indirileceği — container içinde
+      # `localhost:8180` Keycloak değil, container'ın kendisi.
+      Auth__Authority: ${KC_ISSUER:-http://localhost:8180}/realms/bizigo
+      Auth__MetadataAddress: http://keycloak:8080/realms/bizigo/.well-known/openid-configuration
+
+      RawStore__ServiceUrl: http://rustfs:9000
+      RawStore__AccessKey: ${S3_ACCESS_KEY:-bizigoadmin}
+      RawStore__SecretKey: ${S3_SECRET_KEY:-bizigoadmin}
+
+      Sidecar__BaseUrl: http://sidecar:8000
+
+      # Boş bırakılabilir: anahtar yoksa gizli bilgi düz metne DÜŞMÜYOR,
+      # kaydedilmiyor. Bildirim kanalı ya da connector kimliği denenecekse
+      # `.env`'e base64 32 baytlık bir değer koyun.
+      Security__SecretKey: ${SECURITY_SECRET_KEY:-}
+    ports:
+      - "${API_PORT:-5080}:8080"
+    volumes:
+      # WAL kalıcı: ack ham batch diske yazıldıktan sonra veriliyor. İmaj
+      # katmanında kalsaydı konteyner yeniden yaratıldığında henüz arşive
+      # geçmemiş batch'ler kaybolurdu.
+      - api_wal:/var/lib/bizigo/wal
+    healthcheck:
+      # aspnet imajında curl yok ve `/bin/sh` dash — `/dev/tcp` yalnızca bash'te
+      # var, o yüzden kabuk açıkça bash.
+      test:
+        - CMD
+        - bash
+        - -c
+        - "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && grep -q bizigo-loganalyzer <&3"
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
 volumes:
+  api_wal:
   clickhouse_data:
   postgres_data:
   rustfs_data:
