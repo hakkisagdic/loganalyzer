@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -72,7 +71,9 @@ const THEMES = ["light", "dark"] as const;
  */
 const SCREENS: ReadonlyArray<{ ad: string; yol: string; hazir: string }> = [
   { ad: "olaylar", yol: "/olaylar?limit=50", hazir: "table tbody tr" },
-  { ad: "kaynaklar", yol: "/kaynaklar", hazir: 'h1:text-is("Kaynak envanteri")' },
+  // Başlığa DEĞİL içeriğe bakıyor: "hiçbir şey göremiyorsunuz" dalı da aynı
+  // başlığı basıyor ve başlığa bakan bir işaret o hatayı ürün sanardı.
+  { ad: "kaynaklar", yol: "/kaynaklar", hazir: "table tbody tr" },
   { ad: "parserlar-yetkisiz", yol: "/parserlar", hazir: "text=Parser yazma yetkiniz yok" },
   { ad: "katalog", yol: "/katalog", hazir: 'h1:text-is("Parser kataloğu")' },
   { ad: "alarmlar", yol: "/alarmlar", hazir: 'h1:text-is("Alarm kuralları")' },
@@ -94,130 +95,22 @@ test.describe.configure({ mode: "serial" });
  * ekranlar sessizce boş çıkardı.
  * </p>
  */
-test.beforeAll(async () => {
-  mkdirSync(OUT, { recursive: true });
-
-  psql(`INSERT INTO bizigo.idp_group_mapping (idp_group, owner_group, note)
-        VALUES ('${IDP_GROUP}', '${OWNER_GROUP}', 'uctan uca ekran goruntusu kosumu')
-        ON CONFLICT (idp_group) DO UPDATE SET owner_group = EXCLUDED.owner_group;`);
-
-  await seedInventory();
-});
-
-/** Kontrol düzlemine tek ifade — compose'un içindeki `psql` üzerinden. */
-function psql(sql: string): void {
-  execFileSync(
-    "docker",
-    [
-      "compose", "-f", "deploy/docker-compose.yml", "exec", "-T", "postgres",
-      "psql", "-U", "bizigo", "-d", "bizigo", "-v", "ON_ERROR_STOP=1", "-c", sql,
-    ],
-    { cwd: REPO, stdio: ["ignore", "ignore", "inherit"] },
-  );
-}
-
-/** ClickHouse'a tek sorgu; satırlar TSV. */
-async function clickhouse(sql: string): Promise<string[][]> {
-  const response = await fetch("http://localhost:8123/", {
-    method: "POST",
-    headers: {
-      "X-ClickHouse-User": "bizigo",
-      "X-ClickHouse-Key": "bizigo",
-      "X-ClickHouse-Database": "bizigo",
-    },
-    body: sql,
-  });
-
-  if (!response.ok) {
-    throw new Error(`ClickHouse sorguyu reddetti: ${await response.text()}`);
-  }
-
-  return (await response.text())
-    .trim()
-    .split("\n")
-    .filter((line) => line.length > 0)
-    .map((line) => line.split("\t"));
-}
-
 /**
- * Kaynak envanteri.
+ * Yalnızca çıktı dizini.
  *
  * <p>
- * <b>Liste ClickHouse'tan okunuyor, buraya yazılmıyor.</b> Parser dizinlerini
- * ikinci kez saymak, tohumlayıcı değiştiği gün sessizce ayrışan bir kopya
- * olurdu (§9) — ve ayrıştığı yer, envanterin olayları göstermediği bir ekran
- * olurdu.
- * </p>
- *
- * <p>
- * <b><c>parser_id</c> BASKIN parser'a bağlanıyor ve o da ölçülüyor.</b>
- * Envanterdeki bağ tek parser tutuyor (dispatcher kademe 1), oysa altın kümede
- * her kaynak iki parser tipi basıyor. Bağlamanın zararsız olduğu <b>koda
- * bakılarak</b> doğrulandı: bağlı parser tutmazsa <c>Dispatcher</c> kademe 2'ye
- * düşüyor, satır doğru parser'a gidiyor ve <c>RecordBoundMiss</c> sayacı bunu
- * ayrı tutuyor — yani hiçbir satır kaybolmuyor ya da yanlış atfedilmiyor.
- * </p>
- *
- * <p>
- * Hangi parser'ın baskın olduğu <b>veriden</b> geliyor (<c>argMax</c>), buraya
- * yazılmıyor. Elle yazılmış bir eşleme, örnek korpusu değiştiği gün sessizce
- * yanlış parser'a bağlardı ve bağlama oranı sebebi görünmeden düşerdi.
- * Ölçülen pay: baskın parser'lar satırların <b>%93,5</b>'ini taşıyor.
+ * Kapsam eşlemesi ve envanter <b>burada değil</b>, <c>tests/e2e/prepare.ts</c>
+ * içinde ve bu bir düzeltme: burada dururken API onları GÖREMİYORDU.
+ * <c>Program.cs</c> kapsam eşlemesini açılışta bir kez okuyor, Playwright ise
+ * <c>webServer</c>'ları testlerden önce başlatıyor — yani test satırı yazana
+ * kadar API'nin önbelleği çoktan boş yüklenmiş oluyordu. Yerelde geçmesinin
+ * sebebi satırın önceki koşumdan kalmasıydı; temiz bir veritabanında (CI)
+ * ekranlar boş çıkardı.
  * </p>
  */
-async function seedInventory(): Promise<void> {
-  const rows = await clickhouse(
-    `SELECT source_id,
-            any(vendor),
-            any(product),
-            argMax(parser_id, satir) AS baskin_parser
-     FROM (
-       SELECT source_id, vendor, product, parser_id, count() AS satir
-       FROM events
-       WHERE owner_group = '${OWNER_GROUP}' AND parser_id != ''
-       GROUP BY source_id, vendor, product, parser_id
-     )
-     GROUP BY source_id ORDER BY source_id FORMAT TSV`,
-  );
-
-  if (rows.length === 0) {
-    throw new Error(
-      `ClickHouse'ta '${OWNER_GROUP}' grubunda hiç kaynak yok. ` +
-        "Önce `npm run e2e:prepare` (ya da `bizigo seed golden`) koşturun.",
-    );
-  }
-
-  // Değerler kendi ClickHouse'umuzdan geliyor ama tırnak taşıyan bir değer
-  // ifadeyi bozardı ve bozulduğu yer sessiz olurdu: açıkça reddediliyor.
-  for (const row of rows) {
-    for (const value of row) {
-      if (value.includes("'")) {
-        throw new Error(`Envanter değeri tırnak taşıyor, ifade kurulamaz: ${value}`);
-      }
-    }
-  }
-
-  const values = rows
-    .map(
-      ([sourceId, vendor, product, parserId]) =>
-        `('${sourceId}', '${sourceId}', '${OWNER_GROUP}', '${vendor}', '${product}', ` +
-        `'${parserId}', 'auto', 'golden', true, now(), now())`,
-    )
-    .join(",\n         ");
-
-  psql(
-    `INSERT INTO bizigo.sources
-       (source_id, hostname, owner_group, vendor, product,
-        parser_id, encoding, source_class, enabled, created_at, updated_at)
-     VALUES ${values}
-     ON CONFLICT (source_id) DO UPDATE SET
-       owner_group = EXCLUDED.owner_group,
-       vendor = EXCLUDED.vendor,
-       product = EXCLUDED.product,
-       parser_id = EXCLUDED.parser_id,
-       updated_at = now();`,
-  );
-}
+test.beforeAll(() => {
+  mkdirSync(OUT, { recursive: true });
+});
 
 /**
  * Keycloak'ın kendi giriş sayfasından geçiyor.
@@ -233,6 +126,42 @@ async function signIn(page: Page): Promise<void> {
   await page.locator("#password").fill(PASSWORD);
   await page.locator("#kc-login").click();
   await page.waitForURL(/localhost:3000\/olaylar/, { timeout: 60_000 });
+}
+
+/**
+ * <b>Kapsam boş mu?</b> Girişten hemen sonra, ekran çekilmeden önce.
+ *
+ * <p>
+ * Bu tek iddia bütün bir hata sınıfını kapatıyor. Ürünün birden çok ekranı
+ * (<c>olaylar</c>, <c>kaynaklar</c>) "hiçbir şey göremiyorsunuz" dalında da
+ * ekranın <b>kendi başlığını</b> basıyor — yani hazır işareti olarak başlığa
+ * bakan bir koşum, hata kartının görüntüsünü çekip ürün diye commitler ve
+ * yeşil kalır. Bu depoda bunun adı konmuş: yeşilliği hiçbir şey ifade etmeyen
+ * bekçi (§7).
+ * </p>
+ *
+ * <p>
+ * Seçicileri tek tek sağlamlaştırmak yerine kaynağı soruyoruz: kapsam boşsa
+ * koşum <b>burada</b>, sebebi yazılı olarak duruyor.
+ * </p>
+ */
+async function assertScopeIsNotEmpty(page: Page): Promise<void> {
+  const me = await page.evaluate(async () => {
+    const response = await fetch("/api/bff/auth/me");
+    return { status: response.status, body: await response.text() };
+  });
+
+  expect(me.status, `/auth/me ${me.status} döndü: ${me.body.slice(0, 200)}`).toBe(200);
+
+  const user = JSON.parse(me.body) as { sees_nothing?: boolean };
+
+  expect(
+    user.sees_nothing,
+    `Kullanıcının kapsamı BOŞ (${USER}). Ekranlar hata kartı basacak ve bu koşum ` +
+      "onları ürün diye çekerdi. Muhtemel sebep: `idp_group_mapping` satırı API " +
+      "açılışından SONRA yazıldı — eşleme yalnızca açılışta okunuyor, tazelenmiyor. " +
+      "Tohumlama `tests/e2e/prepare.ts` içinde ve Playwright'tan önce koşmalı.",
+  ).toBe(false);
 }
 
 /**
@@ -299,6 +228,7 @@ for (const tema of THEMES) {
       await capture(page, "keycloak-giris", tema);
 
       await signIn(page);
+      await assertScopeIsNotEmpty(page);
 
       for (const { ad, yol, hazir } of SCREENS) {
         await test.step(ad, async () => {
