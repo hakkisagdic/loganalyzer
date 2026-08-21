@@ -1,7 +1,14 @@
 # bizigo-loganalyzer
 
+[![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/hakkisagdic/loganalyzer?utm_source=oss&utm_medium=github&utm_campaign=hakkisagdic%2Floganalyzer&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)](https://coderabbit.ai)
+
 Plugin tabanlı, çok formatlı ve çok dilli log analiz platformu. Ağ/altyapı cihazı
 logları birincil alan; agentic katmanla proaktif araştırma ve kök neden analizi.
+
+> İnceleme akışı **PR üzerinden**: `main`'e doğrudan push yerine dal + pull
+> request. CodeRabbit yalnızca PR'ları inceliyor, ve CI de (`ci.yml`)
+> `push: branches: [main]` ile `pull_request` olaylarında koşuyor — yani dal
+> push'u tek başına hiçbir kapıyı çalıştırmıyor.
 
 **Durum:** F1 (boru hattı) kapandı — T01 iskelet, T02 depolama/kapsam, T03 ingest
 boru hattı, T04 ham arşiv, T05 parser motoru, T06 dispatcher, T07 normalizasyon,
