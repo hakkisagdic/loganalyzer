@@ -1,0 +1,39 @@
+# Yetki kapisinin GERCEKTEN kapali oldugu.
+#
+# NE KANITLIYOR: parser editoru `author` rolu istiyor ve `analyst.core`'da yok.
+# Ekran aciliyor ama icerik yerine sebebi yazan bir kart basiyor.
+#
+# NEDEN AYRI BIR AKIS: bu, urunun en pahali hata sinifinin (CLAUDE.md §7)
+# dogrudan ustunde duruyor — yetkisiz bir kullaniciya editorun SESSIZCE
+# acilmasi hicbir sayacta gorunmez. Diger ekranlarla ayni akisa gomulseydi,
+# akis baska bir sebeple kirildiginda bu sorunun sorulmadigi fark edilmezdi.
+#
+# Gezinmede baglantinin GORUNUR olmasi da bilincli (AppShell.tsx): gizlemek,
+# yetkisi olmayan birine ekranin VAR OLDUGUNU saklardi ve "neden ben
+# goremiyorum" sorusu hic sorulamazdi. Akis ikisini birden siniyor.
+url: http://localhost:3000/olaylar
+env:
+  # `env:` blogu `---`'den ONCE duruyor ve degiskenler `${AD}` ile okunuyor.
+  #
+  # ÖLÇÜLDÜ — degisken YALNIZCA komut alanlarinda yorumlaniyor:
+  #   `inputText: ${KULLANICI}`   -> yorumlaniyor
+  #   `openLink:  ${APP_URL}`     -> YORUMLANMIYOR, birebir metin olarak gidiyor
+  #   `url:` basligi              -> YORUMLANMIYOR
+  # Bu yuzden adresler asagida SABIT yazili. Baska bir adrese kosturmak icin
+  # bu dosyalardaki `http://localhost:3000` metnini degistirin; bir degiskene
+  # cikarmak calismiyor ve calismadigi da SESSIZ oluyor — akis literal adrese
+  # gidip bos sayfada zaman asimina dusuyor.
+  KULLANICI: analyst.core
+  PAROLA: analyst
+---
+- runFlow: altakimlar/giris.yaml
+
+# Baglanti gezinmede DURUYOR — gizlenmiyor.
+- assertVisible: "Parser editörü"
+
+- tapOn: "Parser editörü"
+
+# Ve girildiginde sebebi acikca yazan bir ekran cikiyor.
+- extendedWaitUntil:
+    visible: "Parser yazma yetkiniz yok"
+    timeout: 90000

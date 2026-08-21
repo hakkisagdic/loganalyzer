@@ -1,0 +1,51 @@
+# Ekranlarin gercekten VERIYLE cizildigi.
+#
+# NE KANITLIYOR: her ekran kendi verisini alip basiyor. Olctugu sey "sayfa
+# acildi" degil — o, iskeletle de dogru olurdu.
+#
+# ISKELET TUZAGI: her rotanin `loading.tsx`'i ekranin AYNI basligini basiyor
+# (`kaynaklar/loading.tsx` -> `<h1>Kaynak envanteri</h1>`). Yalnizca basligi
+# beklemek iskelete takilip geciyor ve akis yine de yesil yaniyor — Playwright
+# tarafinda bu olculdu (bkz. ui/tests/e2e/screenshots.spec.ts). O yuzden ONCE
+# iskeletin etiketinin GITMESI bekleniyor, sonra icerik siniyor.
+url: http://localhost:3000/olaylar
+env:
+  # `env:` blogu `---`'den ONCE duruyor ve degiskenler `${AD}` ile okunuyor.
+  #
+  # ÖLÇÜLDÜ — degisken YALNIZCA komut alanlarinda yorumlaniyor:
+  #   `inputText: ${KULLANICI}`   -> yorumlaniyor
+  #   `openLink:  ${APP_URL}`     -> YORUMLANMIYOR, birebir metin olarak gidiyor
+  #   `url:` basligi              -> YORUMLANMIYOR
+  # Bu yuzden adresler asagida SABIT yazili. Baska bir adrese kosturmak icin
+  # bu dosyalardaki `http://localhost:3000` metnini degistirin; bir degiskene
+  # cikarmak calismiyor ve calismadigi da SESSIZ oluyor — akis literal adrese
+  # gidip bos sayfada zaman asimina dusuyor.
+  KULLANICI: analyst.core
+  PAROLA: analyst
+---
+- runFlow: altakimlar/giris.yaml
+
+# ---------------------------------------------------------------- kaynaklar
+- openLink: http://localhost:3000/kaynaklar
+- extendedWaitUntil:
+    notVisible: "Envanter yükleniyor"
+    timeout: 90000
+- assertVisible: "Kaynak envanteri"
+
+# ---------------------------------------------------------------- katalog
+- openLink: http://localhost:3000/katalog
+- extendedWaitUntil:
+    visible: "Parser kataloğu"
+    timeout: 90000
+
+# ---------------------------------------------------------------- alarmlar
+- openLink: http://localhost:3000/alarmlar
+- extendedWaitUntil:
+    visible: "Alarm kuralları"
+    timeout: 90000
+
+# ---------------------------------------------------------------- rca
+- openLink: http://localhost:3000/rca
+- extendedWaitUntil:
+    visible: "RCA raporları"
+    timeout: 90000

@@ -1,0 +1,33 @@
+# Kimlik akisinin uctan uca calistigi.
+#
+# NE KANITLIYOR: oturumsuz bir ziyaretci korunan yola gidince middleware onu
+# Keycloak'a dusuruyor, giris sonrasi BFF cerezi yaziliyor, ve kabuk kullanici
+# adiyla ciziliyor — yani token gercekten sunucudan sunucuya kullaniliyor.
+# Bu zincirde sahte hicbir halka yok.
+url: http://localhost:3000/olaylar
+env:
+  # `env:` blogu `---`'den ONCE duruyor ve degiskenler `${AD}` ile okunuyor.
+  #
+  # ÖLÇÜLDÜ — degisken YALNIZCA komut alanlarinda yorumlaniyor:
+  #   `inputText: ${KULLANICI}`   -> yorumlaniyor
+  #   `openLink:  ${APP_URL}`     -> YORUMLANMIYOR, birebir metin olarak gidiyor
+  #   `url:` basligi              -> YORUMLANMIYOR
+  # Bu yuzden adresler asagida SABIT yazili. Baska bir adrese kosturmak icin
+  # bu dosyalardaki `http://localhost:3000` metnini degistirin; bir degiskene
+  # cikarmak calismiyor ve calismadigi da SESSIZ oluyor — akis literal adrese
+  # gidip bos sayfada zaman asimina dusuyor.
+  KULLANICI: analyst.core
+  PAROLA: analyst
+---
+- runFlow: altakimlar/giris.yaml
+
+# Kullanici adi kabukta gorunuyor: `/auth/me` cevap verdi demek.
+- assertVisible: ${KULLANICI}
+
+# Gezinmenin tamami — bir baglantinin kaybolmasi ekrani "adresini bilenin
+# ekrani" yapiyor (bkz. AppShell.tsx'teki katalog notu).
+- assertVisible: "Log arama"
+- assertVisible: "Kaynaklar"
+- assertVisible: "Alarmlar"
+- assertVisible: "Parser kataloğu"
+- assertVisible: "Parser editörü"
