@@ -1,0 +1,36 @@
+# FortiGate — İzmir kenar güvenlik duvarı (BAŞKA kapsam grubu)
+#
+# Şema ve gerekçeler: catalog/simulators/README.md
+# Faz belgesi:        docs/epic/fs-simulatorler/index.md
+
+id: fw-izmir-01
+vendor: fortinet
+product: fortigate
+hostname: fw-izmir-01
+
+# KAPSAM. Envanterdeki owner_group buradan geliyor; `idp_group_mapping` bu
+# değeri IdP grubuna bağlıyor.
+owner_group: network/edge
+
+# Bu profilin filodaki işi tek başına bir kanıt: `analyst.core` bunu
+# GÖRMEMELİ. İki analistin ekranının farklı olduğunu ve farkın kaynağının
+# `idp_group_mapping` olduğunu gösteren tek satır bu.
+parser_id: fortinet.fortigate.traffic
+encoding: utf-8
+
+ssh:
+  port: 22
+  username: bizigo-ro
+  credential_env: SIM_FW_IZMIR_PASSWORD
+  auth: password
+
+config:
+  baseline: profiller/fw-izmir-01/baseline.conf
+  scenarios:
+    cihaz-yeniden-yazdi: profiller/fw-izmir-01/yeniden-yazim.conf
+
+syslog:
+  samples:
+    - catalog/parsers/fortinet.fortigate/samples/traffic.log
+  rate_per_minute: 90
+  transport: tcp

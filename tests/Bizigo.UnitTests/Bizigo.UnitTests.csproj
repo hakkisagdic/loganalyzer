@@ -45,6 +45,7 @@
     <ProjectReference Include="..\..\src\Bizigo.Authoring\Bizigo.Authoring.csproj" />
     <ProjectReference Include="..\..\src\Bizigo.Alerting\Bizigo.Alerting.csproj" />
     <ProjectReference Include="..\..\src\Bizigo.Evidence\Bizigo.Evidence.csproj" />
+    <ProjectReference Include="..\..\sim\Bizigo.Simulators\Bizigo.Simulators.csproj" />
   </ItemGroup>
 
 </Project>

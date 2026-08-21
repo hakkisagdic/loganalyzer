@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Cihaz simülatörleri (FS · S01).
+
+    `src/` ALTINDA DEĞİL ve bu bilinçli: burası ürün değil, ürünün cihaza
+    dokunan yüzeyini gerçek cihaz olmadan sınamak için var. `src/` altına
+    konulsaydı "hangi derleme üretime gidiyor" sorusunun cevabı bulanıklaşırdı.
+    `sidecar/` ile aynı seviyede duruyor — o da ayrı bir bileşen.
+
+    `Bizigo.Devices`'a referans veriyor çünkü N1 seviyesi `IDeviceTransport`'u
+    uyguluyor ve toplayıcıların komut listesini okuyor. Referans TEK YÖNLÜ:
+    ürün burayı hiç görmüyor.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Bizigo.Devices\Bizigo.Devices.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+
+</Project>

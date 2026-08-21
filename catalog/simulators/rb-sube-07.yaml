@@ -1,0 +1,41 @@
+# MikroTik RouterOS — şube yönlendiricisi
+#
+# Şema ve gerekçeler: catalog/simulators/README.md
+# Faz belgesi:        docs/epic/fs-simulatorler/index.md
+
+id: rb-sube-07
+vendor: mikrotik
+product: routeros
+hostname: rb-sube-07
+
+# KAPSAM. Envanterdeki owner_group buradan geliyor; `idp_group_mapping` bu
+# değeri IdP grubuna bağlıyor.
+owner_group: network/edge
+
+parser_id: mikrotik.routeros.firewall
+
+# RouterOS `activity_name`'i BİLEREK boş bırakıyor (zincir adı `fw_chain`'e
+# gidiyor). T30'un dokuzuncu tuzağı bu cihazda görünür: gerçek kolon, temiz
+# derleme, ama o vendor'da hep boş.
+encoding: utf-8
+
+ssh:
+  port: 22
+  username: bizigo-ro
+  credential_env: SIM_RB_SUBE_PASSWORD
+  auth: key
+
+config:
+  baseline: profiller/rb-sube-07/baseline.conf
+  scenarios:
+    # MikroTik export başlığına çekim anının tarihini yazıyor — her çekimde
+    # değişen tek satır. Gürültü elemesinin klasik sınavı.
+    gurultu: profiller/rb-sube-07/gurultu.conf
+    kural-eklendi: profiller/rb-sube-07/kural-eklendi.conf
+
+syslog:
+  samples:
+    - catalog/parsers/mikrotik.routeros/samples/firewall.log
+    - catalog/parsers/mikrotik.routeros/samples/system.log
+  rate_per_minute: 60
+  transport: udp

@@ -1,0 +1,47 @@
+# FortiGate — Ankara merkez güvenlik duvarı
+#
+# Şema ve gerekçeler: catalog/simulators/README.md
+# Faz belgesi:        docs/epic/fs-simulatorler/index.md
+
+id: fw-ankara-01
+vendor: fortinet
+product: fortigate
+hostname: fw-ankara-01
+
+# KAPSAM. Envanterdeki owner_group buradan geliyor; `idp_group_mapping` bu
+# değeri IdP grubuna bağlıyor.
+owner_group: network/core
+
+# Envanter bağı: dispatcher kademe 1. Bu cihaz İKİ parser tipi basıyor
+# (traffic ve event); bağ tek değer tutuyor, o yüzden BASKIN olan yazılı.
+# Tutmayan satır kaybolmuyor — kademe 2'ye düşüyor ve `RecordBoundMiss`
+# sayıyor.
+parser_id: fortinet.fortigate.traffic
+
+# Tel kodlaması. FortiGate UTF-8 basıyor; `bozuk-kodlama` senaryosu bunu
+# bilerek yalanlıyor.
+encoding: utf-8
+
+ssh:
+  port: 22
+  username: bizigo-ro
+  # Parola DEĞİL, parolanın nereden okunacağı. Profil dosyaya giriyor;
+  # gizli bilgi girmiyor.
+  credential_env: SIM_FW_ANKARA_PASSWORD
+  auth: password
+
+config:
+  baseline: profiller/fw-ankara-01/baseline.conf
+  scenarios:
+    kural-eklendi: profiller/fw-ankara-01/kural-eklendi.conf
+    sir-dondu: profiller/fw-ankara-01/sir-dondu.conf
+    gurultu: profiller/fw-ankara-01/gurultu.conf
+
+syslog:
+  # Örnek satırlar KOPYALANMIYOR, işaret ediliyor. Bir örnek düzeltildiğinde
+  # simülatör de düzelmiş oluyor.
+  samples:
+    - catalog/parsers/fortinet.fortigate/samples/traffic.log
+    - catalog/parsers/fortinet.fortigate/samples/event.log
+  rate_per_minute: 240
+  transport: tcp
