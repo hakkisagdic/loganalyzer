@@ -629,6 +629,20 @@ mesajları, ham URL'ler, istemci IP'si, e-posta, ham Keycloak `sub`.
 Süzgeç beyaz liste ve kırmızı yanabildiği ölçüldü
 (`ui/tests/telemetry-scrub.test.ts`, `ui/tests/telemetry-proxy.test.ts`).
 
+## Bilgi grafiği (Graphify)
+
+Depo `graphify-out/` altında sorgulanabilir bir bilgi grafiği taşıyor: 8.280
+düğüm, 18.892 kenar, 429 topluluk — ve **sıfır token maliyetiyle** üretildi
+(kod grafı tree-sitter AST'siyle deterministik çıkarılıyor, LLM'siz).
+
+```bash
+graphify query "kapsam filtresi nerede uygulanıyor"
+graphify path "AccessScopeResolver" "EventsController"
+graphify update .          # kod değişince tazele
+```
+
+Kurulum, merge sürücüsü ve bilinen maliyetler: [`docs/graphify.md`](docs/graphify.md).
+
 ## Uçtan uca akışlar (Maestro)
 
 `ui/tests/maestro/` altında YAML ile yazılmış, derleme gerektirmeyen E2E
