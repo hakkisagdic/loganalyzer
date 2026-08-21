@@ -53,22 +53,53 @@ export const EVENTS = {
    */
   event_search_run: event({
     name: "event_search_run",
-    properties: ["criteria_count", "range_hours", "result_count", "duration_ms", "timed_out"],
-    describes: "Olay araması. Aranan metin ASLA gitmiyor; yalnızca ölçüt sayısı ve süre.",
+    properties: [
+      "criteria_count",
+      "range_hours",
+      "result_count",
+      "duration_ms",
+      "has_full_text",
+      "query_verdict",
+      "paginated",
+      "page_size",
+      "scoped",
+    ],
+    describes:
+      "Olay araması. Aranan metin ASLA gitmiyor; `has_full_text` yalnızca VAR MI diyor, " +
+      "`query_verdict` kısa-sorgu kapısının kararı (ready/forced/too-short), `scoped` " +
+      "kaynak filtresi verilmiş mi — F1'de ölçülen derin sayfalama maliyeti bununla ilgili.",
   }),
 
   /** Parser taslağı derlendi. Derleme başarısı ürünün en önemli sağlık sinyali. */
   parser_compiled: event({
     name: "parser_compiled",
-    properties: ["parser_kind", "succeeded", "error_kind", "duration_ms"],
-    describes: "Parser derleme sonucu. `error_kind` sınıflandırılmış hata tipi, mesajın kendisi değil.",
+    properties: [
+      "succeeded",
+      "error_kind",
+      "duration_ms",
+      "schema_error_count",
+      "test_failure_count",
+      "redos_count",
+      "yaml_lines",
+      "gate_ok",
+      "gate_stage",
+    ],
+    describes:
+      "Parser derleme sonucu. `error_kind` SINIFLANDIRILMIŞ hata tipi (bkz. classify.ts), " +
+      "mesajın kendisi değil — mesaj bir pattern adı ya da bir log satırı taşıyabilir. " +
+      "`yaml_lines` taslağın BOYUTU; içeriğinden hiçbir şey gitmiyor. `gate_stage` " +
+      "kapının DURDUĞU aşama — sınırlı bir sözlük, ve \"insanlar nerede takılıyor\" " +
+      "sorusunun tek cevaplanabilir hâli.",
   }),
 
   /** Parser sürümü yayımlandı. */
-  parser_published: event({
-    name: "parser_published",
-    properties: ["parser_kind", "from_draft"],
-    describes: "Bir parser sürümü yayına alındı.",
+  parser_submitted: event({
+    name: "parser_submitted",
+    properties: ["succeeded", "error_kind", "gate_ok_before_submit"],
+    describes:
+      "Taslak incelemeye gönderildi. `gate_ok_before_submit` ekranın gönderim ANINDA ne " +
+      "sandığı: kapı sunucuda YENİDEN koşuyor, yani ekranın tahmini ile sonucun ayrıştığı " +
+      "oran ölçülebilir bir şey ve ürün için anlamlı.",
   }),
 
   /** Alarm ölçütü kaydedildi. */
