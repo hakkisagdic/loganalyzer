@@ -1,0 +1,29 @@
+# nginx — ters vekil (cihaz değil, ama aynı yoldan geçiyor)
+#
+# Şema ve gerekçeler: catalog/simulators/README.md
+# Faz belgesi:        docs/epic/fs-simulatorler/index.md
+
+id: lb-web-01
+vendor: nginx
+product: nginx
+hostname: lb-web-01
+
+# KAPSAM. Envanterdeki owner_group buradan geliyor; `idp_group_mapping` bu
+# değeri IdP grubuna bağlıyor.
+owner_group: network/core
+
+parser_id: nginx.access.json
+encoding: utf-8
+
+# SSH YOK ve bu bilinçli: nginx bir ağ cihazı değil, config'i bu ürünün
+# çekmediği bir yerden geliyor. Yalnızca syslog basıyor.
+#
+# Profilin `ssh` bölümü olmadan da geçerli olması, şemanın "her profil her
+# yüzeyi taklit etmek zorunda" varsayımına düşmediğini gösteriyor.
+
+syslog:
+  samples:
+    - catalog/parsers/nginx.access/samples/access-json.log
+    - catalog/parsers/nginx.access/samples/combined.log
+  rate_per_minute: 600
+  transport: tcp

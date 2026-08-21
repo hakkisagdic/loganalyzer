@@ -1,0 +1,43 @@
+# Cisco ASA — veri merkezi kenarı
+#
+# Şema ve gerekçeler: catalog/simulators/README.md
+# Faz belgesi:        docs/epic/fs-simulatorler/index.md
+
+id: asa-dc-01
+vendor: cisco
+product: asa
+hostname: asa-dc-01
+
+# KAPSAM. Envanterdeki owner_group buradan geliyor; `idp_group_mapping` bu
+# değeri IdP grubuna bağlıyor.
+owner_group: network/core
+
+# Aynı grupta ikinci vendor: bağlama oranının vendor'a değil KAYNAĞA bağlı
+# olduğunu görünür kılıyor.
+parser_id: cisco.asa.network
+
+# ASA syslog basıyor ve damgasında ay ADI var (`Aug`). Maskeleme sözlüğünde
+# ay adı için maske YOK, yani bu cihaz her ay yeni `signature_hash` üretiyor.
+# Bilinen bir ürün özelliği; `saat-kaymasi` senaryosu bunun üstüne kuruluyor.
+encoding: utf-8
+
+ssh:
+  port: 22
+  username: bizigo-ro
+  credential_env: SIM_ASA_DC_PASSWORD
+  auth: password
+
+config:
+  baseline: profiller/asa-dc-01/baseline.conf
+  scenarios:
+    # ASA config'i her çekimde `Cryptochecksum` satırını değiştiriyor.
+    # `ConfigNormalizer` bunu elemezse fark motoru her turda yalan söyler.
+    gurultu: profiller/asa-dc-01/gurultu.conf
+    sir-dondu: profiller/asa-dc-01/sir-dondu.conf
+
+syslog:
+  samples:
+    - catalog/parsers/cisco.asa/samples/network.log
+    - catalog/parsers/cisco.asa/samples/auth.log
+  rate_per_minute: 150
+  transport: udp
