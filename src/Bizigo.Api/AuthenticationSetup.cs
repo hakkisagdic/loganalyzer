@@ -18,6 +18,29 @@ public sealed class AuthOptions
     /// <summary>Keycloak realm adresi (issuer).</summary>
     public string Authority { get; set; } = "http://localhost:8180/realms/bizigo";
 
+    /// <summary>
+    /// Anahtarların <b>indirileceği</b> adres — issuer'dan ayrı.
+    ///
+    /// <para>
+    /// Boş bırakıldığında handler bunu <see cref="Authority"/>'den türetiyor ve
+    /// tek makinede koşan bir kurulumda doğru davranış da bu. Ayrılması
+    /// container'lı kurulumun zorunlu kıldığı bir ayrım: Keycloak issuer'ı
+    /// <c>KC_HOSTNAME</c> ile <c>http://localhost:8180</c>'e <b>sabitliyor</b>
+    /// (tarayıcı oraya gidiyor ve token'da yazan da o), ama API container'ının
+    /// içinde <c>localhost:8180</c> Keycloak değil container'ın kendisi.
+    /// Metadata adresi ayrılmadan API açılışta anahtarları hiç indiremiyor ve
+    /// her token'ı reddediyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Issuer doğrulaması bundan etkilenmiyor:</b> <c>ValidIssuer</c> hâlâ
+    /// <see cref="Authority"/>. Yani "anahtarı nereden alıyorum" ile "kime
+    /// güveniyorum" ayrı sorular ve ikincisinin cevabı değişmedi — aksi hâlde
+    /// ağ içinden erişilebilen herhangi bir IdP kabul edilir olurdu.
+    /// </para>
+    /// </summary>
+    public string MetadataAddress { get; set; } = string.Empty;
+
     /// <summary>Token'ın <c>aud</c> claim'i. Keycloak varsayılanı <c>account</c>.</summary>
     public string Audience { get; set; } = "account";
 
@@ -100,6 +123,14 @@ public static class AuthenticationSetup
                 jwt.Authority = options.Authority;
                 jwt.Audience = options.Audience;
                 jwt.RequireHttpsMetadata = options.RequireHttpsMetadata;
+
+                // Yalnızca AÇIKÇA verildiğinde ayarlanıyor. Boş bir değer
+                // atamak handler'ın kendi türetmesini bastırır ve tek makinede
+                // koşan kurulum anahtarları hiç bulamaz.
+                if (!string.IsNullOrWhiteSpace(options.MetadataAddress))
+                {
+                    jwt.MetadataAddress = options.MetadataAddress;
+                }
 
                 // Claim sözleşmesinin ÇALIŞMASI bu satıra bağlı. Varsayılan
                 // `true` iken handler gelen claim'leri Microsoft'un uzun URI

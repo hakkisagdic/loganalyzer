@@ -48,20 +48,37 @@ public sealed partial class CiCoverageTests
     private static partial Regex SwallowedExitCode();
 
     /// <summary>
-    /// Depodaki test kökleri — <b>işaret dosyalarından</b>, elle listeden değil.
+    /// Bir test paketi: <b>hangi dizin</b> ve <b>hangi koşucu</b>.
+    /// </summary>
+    /// <param name="Root">İşaret dosyasının bulunduğu dizin, depo köküne göre.</param>
+    /// <param name="Family">İşaretin belirlediği koşucu ailesi.</param>
+    private readonly record struct Suite(string Root, string Family);
+
+    /// <summary>
+    /// Depodaki test paketleri — <b>işaret dosyalarından</b>, elle listeden değil.
     ///
     /// <para>
-    /// Üç işaret: pytest yapılandırması, vitest yapılandırması, ve test SDK'sı
-    /// referanslayan bir proje dosyası. Yeni bir dil eklenirse bekçi onu
-    /// görmez — kapsamının sınırı bu ve <c>CLAUDE.md</c>'ye yazılan tek şey de
-    /// o: <i>yeni bir test paketi eklerken tanınan bir işaret bırak ya da
-    /// bekçiyi genişlet.</i>
+    /// Dört işaret: pytest yapılandırması, vitest yapılandırması, playwright
+    /// yapılandırması, ve test SDK'sı referanslayan bir proje dosyası. Yeni bir
+    /// dil eklenirse bekçi onu görmez — kapsamının sınırı bu ve
+    /// <c>CLAUDE.md</c>'ye yazılan tek şey de o: <i>yeni bir test paketi
+    /// eklerken tanınan bir işaret bırak ya da bekçiyi genişlet.</i>
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Birim neden dizin değil (kök, aile) çifti:</b> ilk hâli dizin
+    /// sayıyordu ve <c>ui</c> altına ikinci bir paket girdiğinde <b>kör
+    /// kaldı</b>. <c>ui/vitest.config.ts</c> o dizini "kapsanmış" yapıyor,
+    /// <c>npm test</c> adımı bekçiyi tatmin ediyordu; yanı başındaki
+    /// <c>ui/playwright.config.ts</c> ise CI'da hiç koşmuyordu ve bekçi bunu
+    /// söyleyemiyordu. Aynı dizinde iki paket olabiliyor, ve birinin koşuyor
+    /// olması diğeri hakkında hiçbir şey söylemiyor.
     /// </para>
     /// </summary>
-    private static IReadOnlyList<string> TestRoots()
+    private static IReadOnlyList<Suite> TestSuites()
     {
         var root = RepositoryLayout.Root;
-        var roots = new SortedSet<string>(StringComparer.Ordinal);
+        var suites = new SortedSet<Suite>(SuiteOrder.Instance);
 
         foreach (var marker in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
         {
@@ -80,12 +97,18 @@ public sealed partial class CiCoverageTests
 
             var name = Path.GetFileName(relative);
 
-            var isMarker = name is "pytest.ini" or "conftest.py"
-                || name.StartsWith("vitest.config.", StringComparison.Ordinal)
-                || (name.EndsWith(".csproj", StringComparison.Ordinal)
-                    && File.ReadAllText(marker).Contains("Microsoft.NET.Test.Sdk", StringComparison.Ordinal));
+            var family = name switch
+            {
+                "pytest.ini" or "conftest.py" => Families.Pytest,
+                _ when name.StartsWith("vitest.config.", StringComparison.Ordinal) => Families.Vitest,
+                _ when name.StartsWith("playwright.config.", StringComparison.Ordinal) => Families.Playwright,
+                _ when name.EndsWith(".csproj", StringComparison.Ordinal)
+                    && File.ReadAllText(marker).Contains("Microsoft.NET.Test.Sdk", StringComparison.Ordinal)
+                    => Families.Dotnet,
+                _ => null,
+            };
 
-            if (!isMarker)
+            if (family is null)
             {
                 continue;
             }
@@ -94,34 +117,64 @@ public sealed partial class CiCoverageTests
 
             if (!string.IsNullOrEmpty(directory))
             {
-                roots.Add(directory);
+                suites.Add(new Suite(directory, family));
             }
         }
 
         // İç içe kökleri tekilleştir: `sidecar` ve `sidecar/tests` aynı paket,
         // ve CI'ın hedeflemesi gereken dıştaki. İkisini birden raporlamak aynı
         // eksiği iki kalem gibi gösterirdi.
-        return [.. roots.Where(candidate =>
-            !roots.Any(other => other != candidate && IsUnder(candidate, other)))];
+        //
+        // Tekilleştirme AYNI AİLE içinde: `ui/vitest.config.ts` ile
+        // `ui/playwright.config.ts` aynı dizinde ama ayrı paketler ve ayrı
+        // adımlar istiyorlar. Aileyi göz ardı eden bir tekilleştirme ikisini
+        // tek kaleme indirir ve bekçiyi tam da eklendiği kusurda kör bırakır.
+        return [.. suites.Where(candidate => !suites.Any(other =>
+            other.Family == candidate.Family
+            && other.Root != candidate.Root
+            && IsUnder(candidate.Root, other.Root)))];
+    }
+
+    /// <summary>Koşucu aileleri — işaret dosyasının belirlediği.</summary>
+    private static class Families
+    {
+        public const string Pytest = "pytest";
+        public const string Vitest = "vitest";
+        public const string Playwright = "playwright";
+        public const string Dotnet = "dotnet";
+    }
+
+    /// <summary>Raporun sırası koşumdan koşuma değişmesin diye.</summary>
+    private sealed class SuiteOrder : IComparer<Suite>
+    {
+        public static readonly SuiteOrder Instance = new();
+
+        public int Compare(Suite x, Suite y)
+        {
+            var byRoot = string.CompareOrdinal(x.Root, y.Root);
+
+            return byRoot != 0 ? byRoot : string.CompareOrdinal(x.Family, y.Family);
+        }
     }
 
     [Fact]
     public void Depodaki_her_test_paketi_ci_da_kosuyor()
     {
         var workflow = Workflow();
-        var roots = TestRoots();
+        var suites = TestSuites();
 
-        Assert.NotEmpty(roots);
+        Assert.NotEmpty(suites);
 
         var steps = Steps(workflow);
 
-        var missing = roots
+        var missing = suites
             .Where(candidate => !Covered(steps, candidate))
+            .Select(candidate => $"{candidate.Root}  ({candidate.Family})")
             .ToArray();
 
         Assert.True(
             missing.Length == 0,
-            "Bu test kökleri CI'da hiç koşmuyor:\n  " + string.Join("\n  ", missing) +
+            "Bu test paketleri CI'da hiç koşmuyor:\n  " + string.Join("\n  ", missing) +
             "\n\nTest yazılmış ama koşuma girmiyorsa, girmediği hiçbir yerde görünmez. " +
             "`ci.yml`'a bir adım ekleyin.");
     }
@@ -141,7 +194,7 @@ public sealed partial class CiCoverageTests
     public void Bekcinin_kendi_paketi_de_ci_da_kosuyor()
     {
         Assert.True(
-            Covered(Steps(Workflow()), "tests/Bizigo.UnitTests"),
+            Covered(Steps(Workflow()), new Suite("tests/Bizigo.UnitTests", Families.Dotnet)),
             "Bu bekçinin yaşadığı paket CI'da koşmuyor — yani bekçi de koşmuyor.");
     }
 
@@ -202,11 +255,34 @@ public sealed partial class CiCoverageTests
 
             steps.Add(new Step(
                 directory.Success ? directory.Groups["dir"].Value.Trim().TrimEnd('/') : string.Empty,
-                run.Success ? run.Groups["cmd"].Value : block));
+                WithoutComments(run.Success ? run.Groups["cmd"].Value : block)));
         }
 
         return steps;
     }
+
+    /// <summary>
+    /// Yorum satırları çıkarılmış komut metni.
+    ///
+    /// <para>
+    /// <c>run: |</c> bloğundaki <c>#</c> satırı bir <b>kabuk yorumu</b>; koşan
+    /// bir komut değil. Bekçi onları da sayarken yanlış sebeple yeşil
+    /// yanabiliyordu: bu depoda <c>e2e</c> işinin hemen üstündeki açıklama
+    /// yorumu <c>npm run e2e</c> dizgesini birebir taşıyor, yani adım silinse
+    /// bile koşucu jetonu komşu adımın metninde bulunabiliyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// Bu, bekçinin yakalamak için var olduğu kusurun ta kendisi — bir kapının
+    /// yanlış sebeple geçmesi, hiç olmamasından kötü (§7). Yorumları çıkarmak
+    /// kuralı genelleştiriyor: yorum içine yazılmış hiçbir komut adı bir adımı
+    /// "koşuyor" saydırmıyor.
+    /// </para>
+    /// </summary>
+    private static string WithoutComments(string run) =>
+        string.Join(
+            "\n",
+            run.Split('\n').Where(line => !line.TrimStart().StartsWith('#')));
 
     /// <summary>
     /// Kökü <b>koşturan</b> bir adım var mı.
@@ -224,9 +300,9 @@ public sealed partial class CiCoverageTests
     /// paketini koşturuyormuş gibi sayılırdı.
     /// </para>
     /// </summary>
-    private static bool Covered(IReadOnlyList<Step> steps, string root)
+    private static bool Covered(IReadOnlyList<Step> steps, Suite suite)
     {
-        var runners = RunnersFor(root);
+        var runners = RunnersFor(suite.Family);
 
         foreach (var step in steps)
         {
@@ -235,12 +311,12 @@ public sealed partial class CiCoverageTests
                 continue;
             }
 
-            if (step.Run.Contains(root, StringComparison.Ordinal))
+            if (step.Run.Contains(suite.Root, StringComparison.Ordinal))
             {
                 return true;
             }
 
-            if (step.WorkingDirectory.Length > 0 && IsUnder(root, step.WorkingDirectory))
+            if (step.WorkingDirectory.Length > 0 && IsUnder(suite.Root, step.WorkingDirectory))
             {
                 return true;
             }
@@ -249,22 +325,24 @@ public sealed partial class CiCoverageTests
         return false;
     }
 
-    private static string[] RunnersFor(string root)
+    /// <summary>
+    /// Aileyi koşturan komutlar.
+    ///
+    /// <para>
+    /// Koşucu <b>aileden</b> türüyor, dizini yeniden yoklayarak değil: aynı
+    /// dizinde iki aile birden olabiliyor (<c>ui</c>) ve dizine bakan bir
+    /// çözüm ikisine de ilk bulduğu koşucuyu verirdi.
+    /// </para>
+    /// </summary>
+    private static string[] RunnersFor(string family) => family switch
     {
-        var full = Path.Combine(RepositoryLayout.Root, root);
-
-        if (File.Exists(Path.Combine(full, "pytest.ini")) || File.Exists(Path.Combine(full, "conftest.py")))
-        {
-            return ["pytest"];
-        }
-
-        if (Directory.EnumerateFiles(full, "vitest.config.*").Any())
-        {
-            return ["npm test", "vitest"];
-        }
-
-        return ["dotnet test"];
-    }
+        Families.Pytest => ["pytest"],
+        Families.Vitest => ["npm test", "vitest"],
+        // `npm run e2e` hazırlığı da çalıştırıyor; çıplak `playwright test`
+        // hazırlığın başka bir adımda yapıldığı kurulumlar için.
+        Families.Playwright => ["npm run e2e", "playwright test"],
+        _ => ["dotnet test"],
+    };
 
     /// <summary><paramref name="root"/>, <paramref name="ancestor"/>'ın altında mı.</summary>
     private static bool IsUnder(string root, string ancestor) =>

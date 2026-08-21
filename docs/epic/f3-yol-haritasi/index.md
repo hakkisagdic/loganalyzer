@@ -23,8 +23,16 @@ ticket dosyalarını tek tek açmadan verebilmek.
 | **F3** — Detection + RCA kanıtı | Sigma → SQL, kural yönetimi, kanıt sağlayıcı, RCA raporu | **buradayız** — aşağısı |
 | F4 — Agentic | senaryo plugin, MCP server, LLM yorumu, dört tetikleyici | başlamadı |
 | F5 — Kanıt genişletme | metrik, trace, topoloji sağlayıcıları | başlamadı |
+| **FS** — Cihaz simülatörleri | SSH config çekimi, syslog basımı, değişiklik bildirimi; filo + kapsam yayılımı | **paralel**, F3'ü bloke etmiyor — [belge](../fs-simulatorler/index.md) |
 
 F5 sonrası tanıtım materyali var, henüz kapsamlandırılmadı.
+
+**FS neden bu tabloda ve neden numarasız:** ekip gerçek cihazlara erişmiyor,
+dolayısıyla `Bizigo.Devices` ve ingest'in canlı yolu bugün hiçbir yerde
+koşmuyor. Ayrı bir faz çünkü üç yüzeye dokunuyor; **paralel** çünkü F3'ün
+kritik yolundaki ölçümle hiçbir bağı yok ve ihtiyaç duyduğu her şey F1'de
+indi. Ticket'ları `S` önekli (S01…S07) — `T` dizisiyle araya girmesi "hangi
+ticket hangi fazın" sorusunu numaradan okunamaz hâle getirirdi.
 
 ---
 

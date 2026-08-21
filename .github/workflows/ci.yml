@@ -6,6 +6,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+# En dar yetki, İŞ AKIŞI düzeyinde. Tek bir işe yazmak yerine buraya
+# konulmasının sebebi kapsam: dokuz işin hepsi yalnızca kodu okuyor ve artefakt
+# yüklüyor; artefakt yüklemesi ek bir izin istemiyor. Varsayılan token yazma
+# yetkili geliyor ve bir adımın onu kullanması için hata yapması yetiyor.
+permissions:
+  contents: read
+
 env:
   DOTNET_NOLOGO: true
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
@@ -408,6 +415,108 @@ jobs:
         with:
           name: integration-test-results
           path: TestResults/
+
+  # ---------------------------------------------------------------------------
+  # Uçtan uca: ÇALIŞAN ürünün ekran görüntüleri.
+  #
+  # `ui` işindeki ekran görüntüsü bekçisiyle karışmasın — o bileşenleri doğrudan
+  # çiziyor ve Next sunucusu, Keycloak ya da API görmüyor. Burada üçü de gerçek:
+  # tarayıcı Keycloak'ın kendi giriş sayfasından geçiyor, veri ClickHouse'tan
+  # geliyor ve kapsam `idp_group_mapping` üzerinden uygulanıyor. İkisi aynı işi
+  # yapmıyor; biri görünümü, diğeri zinciri kanıtlıyor.
+  # ---------------------------------------------------------------------------
+  e2e:
+    name: Uçtan uca — çalışan ürün
+    runs-on: ubuntu-latest
+    # Yığın + iki derleme + tarayıcı gezintisi. Entegrasyon işinden uzun.
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+
+      # Gerekçesi `integration` işindekiyle aynı: `actions/setup-dotnet`
+      # codeload'dan iniyor ve sınırlandığında iş kurulumda ölüyor.
+      - name: .NET SDK kur
+        run: |
+          curl -fsSL --retry 5 --retry-all-errors https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"
+          echo "$HOME/.dotnet" >> "$GITHUB_PATH"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Bağımlılıklar
+        working-directory: ui
+        run: npm ci
+
+      - name: Tarayıcı
+        working-directory: ui
+        run: npx playwright install --with-deps chromium
+
+      # Yığın compose ile kalkıyor: dokuz servisin yapılandırması zaten orada
+      # ve ikinci bir tanım yazmak, ikisinin ayrışabileceği bir yer daha
+      # açardı. Uçtan uca koşum bu beşini istiyor.
+      - name: Yığın ayağa kalksın
+        working-directory: deploy
+        run: |
+          cp .env.example .env
+          # `|| { logs; exit 1; }` şart: `up --wait` düştüğünde konteynerin KENDİ
+          # hata mesajını yutuyor ve geriye teşhis edilemez bir satır kalıyor.
+          docker compose up -d --build --wait --wait-timeout 600 \
+            clickhouse postgres rustfs keycloak sidecar || {
+            echo "=== compose up başarısız — servis logları ==="
+            docker compose ps -a
+            docker compose logs --no-color --tail 200
+            exit 1
+          }
+          docker compose ps
+
+      # `npm run e2e` = hazırlık (yığın kontrolü, derleme, tohumlama, Next
+      # derlemesi) + Playwright. Başsız: runner'da ekran yok.
+      - name: Uçtan uca koşum
+        working-directory: ui
+        run: npm run e2e
+
+      # Görüntüler bu deponun İÇİNDE commitli. Bu yüzden onları artefakt olarak
+      # yüklemek hiçbir şey kanıtlamıyordu: `actions/checkout` dosyaları zaten
+      # diske koyuyor, yani `if-no-files-found: error` koşulu asla
+      # gerçekleşemez ve düşen bir koşum bile "ürün" adıyla bir önceki turun
+      # görüntülerini yüklüyordu. Sessizce yeşil bir bekçi.
+      #
+      # Yerine GERÇEK bir kontrol: dosyalar değişmediyse koşum onları
+      # üretmemiştir. Tohumlama zaman damgalarını her koşumda yeniden yazdığı
+      # için üretilen görüntüler zorunlu olarak farklı; birebir aynı çıkmaları
+      # ancak Playwright hiç yazmadıysa mümkün.
+      - name: Görüntüler gerçekten üretildi mi
+        if: success()
+        run: |
+          if git diff --quiet -- docs/ekran-goruntuleri/uctan-uca/; then
+            echo "Ekran görüntüleri DEĞİŞMEDİ — koşum onları üretmemiş görünüyor."
+            echo "Beklenen: tohumlama her koşumda yeni zaman damgası yazıyor,"
+            echo "dolayısıyla üretilen PNG'ler commitli olanlardan farklı olmalı."
+            exit 1
+          fi
+          git diff --stat -- docs/ekran-goruntuleri/uctan-uca/
+
+      # İz ve video yalnızca düşen koşumda üretiliyor (`retain-on-failure`).
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: uctan-uca-izler
+          path: ui/.playwright/
+          if-no-files-found: ignore
+
+      - name: Yığın logları
+        if: failure()
+        working-directory: deploy
+        run: docker compose logs --no-color --tail 300
+
+      - name: Yığını indir
+        if: always()
+        working-directory: deploy
+        run: docker compose down -v
 
   compose:
     name: Geliştirme ortamı doğrulaması
