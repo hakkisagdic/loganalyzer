@@ -1,3 +1,4 @@
+import type { ErrorKind } from "./classify";
 import type { TelemetryProperties } from "./scrub";
 
 /**
@@ -149,8 +150,65 @@ export const EVENTS = {
 
 export type EventName = keyof typeof EVENTS;
 
+/**
+ * **Her alanın tipi.** Katalog neyin gidebileceğini söylüyordu; bu tablo
+ * <b>ne şekilde</b> gidebileceğini söylüyor.
+ *
+ * <p>
+ * İnceleme bunu istedi ve gerekçesi haklıydı: paylod `unknown` iken bir ekran
+ * `error_kind: identity.message` yazabiliyordu — yani sunucunun cümlesini
+ * doğrudan telemetriye koyabiliyordu — ve derleyici susuyordu. Kaynağı tarayan
+ * bir bekçi bunu yakalayamaz, çünkü orada bir metin sabiti yok, bir ifade var.
+ * </p>
+ *
+ * <p>
+ * Bu tabloyla o hata artık <b>derlenmiyor</b>. Bir tarayıcının kaçırabildiği
+ * her şeyi tip sistemi kaçırmıyor, ve kapalı sözlükler (`ErrorKind`,
+ * `query_verdict`) buradan dayatılıyor.
+ * </p>
+ */
+export interface EventFieldTypes {
+  /** Kalıba indirilmiş yol — `/kaynaklar/:id`. Ham URL DEĞİL. */
+  route: string;
+  scope_kind: string;
+  /** Sınıflandırılmış hata tipi. `classify.ts`'in kapalı sözlüğü. */
+  error_kind: ErrorKind;
+  status: number;
+
+  criteria_count: number;
+  range_hours: number;
+  result_count: number;
+  duration_ms: number;
+  has_full_text: boolean;
+  /** `judgeQuery`'nin kararı; serbest metin değil. */
+  query_verdict: "ready" | "forced" | "too-short";
+  paginated: boolean;
+  page_size: number;
+  scoped: boolean;
+
+  succeeded: boolean;
+  schema_error_count: number;
+  test_failure_count: number;
+  redos_count: number;
+  yaml_lines: number;
+  gate_ok: boolean;
+  /** Kapının durduğu aşama. API'nin döndürdüğü sınırlı sözlük. */
+  gate_stage: string;
+  gate_ok_before_submit: boolean;
+
+  is_new: boolean;
+  has_threshold: boolean;
+  signal_count: number;
+  quality_band: string;
+}
+
+/**
+ * Bir olayın taşıyabileceği paylod: katalogdaki alanlar, `EventFieldTypes`'taki
+ * tipleriyle. Katalogda olmayan bir alan adı derlenmiyor; yanlış tipte bir
+ * değer de derlenmiyor.
+ */
 export type EventPayload<TName extends EventName> = Readonly<
-  Partial<Record<(typeof EVENTS)[TName]["properties"][number], unknown>>
+  Partial<Pick<EventFieldTypes, Extract<(typeof EVENTS)[TName]["properties"][number], keyof EventFieldTypes>>>
 >;
 
 /** Katalogda tanımlı olan alan listesi. `scrubProperties` bunu kullanıyor. */

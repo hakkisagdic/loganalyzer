@@ -35,14 +35,32 @@ kapanana kadar açık.
 kendisine uygulanmış hâli: her kenar kökenini taşımalı, yoksa "bu doğru mu"
 sorusunun cevabı asla evet olamaz.
 
+**İddialar kaynağa bağlı DEĞİL, ve bu bilinen bir eksik.** Çipler bir iddianın
+doğrulama turundan geçtiğini söylüyor; hangi kaynaktan, hangi sürümden ya da
+hangi tarihte geçtiğini söylemiyor. İnceleme bunu haklı olarak işaretledi.
+Sebebi sonradan düzeltilebilecek bir şey değil: taramayı koşturan iş akışının
+şeması iddia başına kaynak URL'si **toplamıyordu**. Sonradan dipnot uydurmak,
+olmayan bir kesinliği varmış gibi göstermek olurdu. Kapanması için tarama, alan
+başına kaynak isteyen bir şemayla yeniden koşmalı.
+
 **Hiçbir deney koşturulmadı.** Kullanıcı açıkça deney istememişti. Yani
 buradaki her şey tarama, doğrulama ve muhakeme — bu depoda ölçülmüş bir sayı
 değil. Belgenin 7. bölümü doğrulanamayan sayıları tek tek sayıyor.
 
-## Üretilmiş dosya
+## Üretilmiş dosyalar
 
-`kenar-guveni-mimarisi.html` **üretilmiştir**, elle düzenlenmez. Kaynak
-markdown değişirse:
+Her ikisi de **üretilmiştir**, elle düzenlenmez:
+
+| Dosya | Ne için |
+| --- | --- |
+| `kenar-guveni-mimarisi.html` | **Tam belge** — `<!doctype>`, `lang="tr"`, UTF-8. Depodan `file://` ile doğrudan açılan kopya bu. |
+| `kenar-guveni-mimarisi-artifact.html` | **Parça** — `<title>` ile başlıyor, iskeleti yok. Artifact platformu kendi `<html>`/`<head>`/`<body>`'siyle sarıyor. |
+
+İkisi ayrı çünkü gereksinimleri karşıt: doğrudan açılan bir dosyada `<!doctype>`
+yokluğu tarayıcıyı quirks mode'a düşürüyor, sarılan bir parçada ise kendi
+`<!doctype>`unu koymak `<body>` içine ikinci bir belge gömmek oluyor.
+
+Kaynak markdown değişirse:
 
 ```bash
 python3 docs/arastirma/uret.py

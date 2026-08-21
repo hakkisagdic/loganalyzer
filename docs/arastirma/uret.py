@@ -19,6 +19,7 @@ from pathlib import Path
 BURASI = Path(__file__).resolve().parent
 KAYNAK = BURASI / "kenar-guveni-mimarisi.md"
 CIKTI = BURASI / "kenar-guveni-mimarisi.html"
+PARCA = BURASI / "kenar-guveni-mimarisi-artifact.html"
 
 src = KAYNAK.read_text(encoding="utf-8")
 lines = src.split("\n")
@@ -29,7 +30,10 @@ KOKEN = re.compile(r"\*{0,2}\[(doğrulandı[^\]]*|doğrulanmadı[^\]]*|doğrulan
 def koken(m):
     t = m.group(1)
     tur = "dogru" if t.startswith("doğrulandı") else "supheli"
-    return f'<span class="koken {tur}">{html.escape(t)}</span>'
+    # Çip metni ZATEN kaçırılmış geliyor (`kacir()` önce koştu); burada yalnızca
+    # kendi içindeki backtick kod işaretine çevriliyor.
+    govde = re.sub(r"`([^`]+)`", lambda mm: "<code>" + mm.group(1) + "</code>", t)
+    return '<span class="koken ' + tur + '">' + govde + '</span>'
 
 def kacir(s):
     s = s.replace("&lt;", "\x00LT\x00").replace("&gt;", "\x00GT\x00").replace("&amp;", "\x00AMP\x00")
@@ -38,8 +42,12 @@ def kacir(s):
 
 def ici(s):
     s = kacir(s)
-    s = re.sub(r"`([^`]+)`", lambda m: f"<code>{m.group(1)}</code>", s)
+    # KÖKEN ÖNCE: `[doğrulandı: `index/builder.go:327`]` gibi bir işaret kendi
+    # içinde backtick taşıyabiliyor. Kod dönüşümü önce koşarsa çip metninin
+    # içine <code> HTML'i giriyor, rozet onu bir kez daha kaçırıyor ve ekranda
+    # literal "&lt;code&gt;" görünüyor — ölçüldü, bir örnekte çıktı.
     s = KOKEN.sub(koken, s)
+    s = re.sub(r"`([^`]+)`", lambda m: f"<code>{m.group(1)}</code>", s)
     s = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", s)
     s = re.sub(r"(?<!\*)\*([^*\n]+)\*(?!\*)", r"<em>\1</em>", s)
     return s
@@ -148,15 +156,15 @@ govde = "\n".join(out)
 # --- sol ray: gezinme AYNI ZAMANDA katman şeması ---
 ray = []
 for b in yapi["bolumler"]:
-    ray.append(f'<a class="rb" href="#{b["id"]}"><span class="rnum">{b["num"]}</span>{b["ad"]}</a>')
+    ray.append(f'<a class="rb" href="#{b["id"]}"><span class="rnum">{html.escape(b["num"])}</span>{html.escape(b["ad"])}</a>')
     if b["num"] == "2":
         ray.append('<div class="yigin" role="group" aria-label="Katman yığını, L0 tabanda">')
         for k in yapi["katmanlar"]:
             ray.append(
                 f'<a class="ky" href="#{k["id"]}">'
                 f'<span class="ktik" aria-hidden="true"></span>'
-                f'<span class="kkodr">{k["kod"]}</span>'
-                f'<span class="kadr">{k["ad"]}</span></a>'
+                f'<span class="kkodr">{html.escape(k["kod"])}</span>'
+                f'<span class="kadr">{html.escape(k["ad"])}</span></a>'
             )
         ray.append('</div>')
 RAY = "\n".join(ray)
@@ -400,6 +408,40 @@ table code {{ background:var(--surface2); }}
 '''
 
 
-CIKTI.write_text(HTML, encoding="utf-8")
-print(f"yazıldı: {CIKTI.relative_to(BURASI.parent.parent)} ({len(HTML)} karakter)")
+# ---------------------------------------------------------------------------
+# İKİ ÇIKTI, ve ayrı olmalarının sebebi somut.
+#
+# `…-artifact.html` bir PARÇA: `<title>` ile başlıyor, `<html>`/`<head>`/`<body>`
+# yok. Artifact platformu onu kendi iskeletine sarıyor; kendi `<!doctype>`umuzu
+# koymak `<body>` içine ikinci bir belge gömmek olurdu.
+#
+# `…​.html` ise TAM bir belge: depodaki kopya `file://` ile doğrudan açılıyor ve
+# orada `<!doctype>` yokluğu tarayıcıyı quirks mode'a düşürüyor, `<meta charset>`
+# yokluğu da Türkçe karakterleri bozuyor. İki hedefin iki farklı gereksinimi var;
+# tek dosyayla ikisini birden karşılamak mümkün değil.
+# ---------------------------------------------------------------------------
+kafa, ayirac, govde_markup = HTML.partition('<div class="kabuk">')
+
+if not ayirac:
+    raise SystemExit("Şablon değişmiş: '<div class=\"kabuk\">' bulunamadı.")
+
+STANDALONE = (
+    "<!doctype html>\n"
+    '<html lang="tr">\n'
+    "<head>\n"
+    '<meta charset="utf-8">\n'
+    '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+    + kafa
+    + "</head>\n<body>\n"
+    + ayirac
+    + govde_markup
+    + "</body>\n</html>\n"
+)
+
+CIKTI.write_text(STANDALONE, encoding="utf-8")
+PARCA.write_text(HTML, encoding="utf-8")
+
+kok = BURASI.parent.parent
+print(f"yazıldı: {CIKTI.relative_to(kok)} ({len(STANDALONE)} karakter, tam belge)")
+print(f"yazıldı: {PARCA.relative_to(kok)} ({len(HTML)} karakter, artifact parçası)")
 print(f"bölüm: {len(bolumler)} · katman: {len(katmanlar)}")
