@@ -675,6 +675,29 @@ CLI repo içindeki herhangi bir alt dizinden çağrılabilir.
 export DOTNET_ROOT="$HOME/.dotnet"
 ```
 
+## Bilgi tabanı — Obsidian vault
+
+Deponun belgelerinden beslenen bir bilgi tabanı `docs/wiki/` altında duruyor ve
+[obsidian-wiki](https://github.com/ar9av/obsidian-wiki) ile yönetiliyor.
+
+```bash
+# Aracı getir (depoya vendor EDİLMİYOR — .gitignore'da)
+git clone --depth 1 https://github.com/ar9av/obsidian-wiki.git tools/obsidian-wiki
+
+# Profil zaten `~/.obsidian-wiki/config.bizigo` altında; aktif etmek için
+ln -sfn ~/.obsidian-wiki/config.bizigo ~/.obsidian-wiki/config
+```
+
+**Araç vendor edilmiyor** çünkü ürünün parçası değil: bilgi tabanını üreten bir
+makine aracı. Vendor edilseydi yükseltmesi bir merge işi olur ve deponun geçmişi
+başka bir projenin sürümleriyle dolardı. `catalog/patterns/` ise bunun tersi ve
+sebebi ayrı: o **veri**, ürünün çalışma zamanında okuduğu bir kütüphane.
+
+**Profil ayrı tutuluyor.** `~/.obsidian-wiki/config` bu makinede başka bir
+projeye (`dukkan-defteri`) bakıyordu; o profil `config.dukkan-defteri` adıyla
+korundu. Aralarında geçiş sembolik bağı değiştirmekle oluyor — iki proje
+birbirinin vault'unu ezmiyor.
+
 ## Lisans
 
 [MIT](LICENSE). Yeniden dağıtılan üçüncü taraf malzeme
