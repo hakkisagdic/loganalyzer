@@ -60,6 +60,42 @@ açık bir konu (issue) yazıyor ve hiçbir yerel kuruluma bağlı değil.
 sıcak yeniden yükleme geliştirme döngüsünü hızlandırıyor ve API zaten aynı
 şekilde çalışıyor.
 
+**API'yi container'da koşturmak** ayrı bir soruya cevap veriyor — *yığının
+tamamı tek komutla kalkıyor mu* — ve varsayılanı değiştirmiyor:
+
+```bash
+cd deploy && docker compose --profile api up -d --wait
+```
+
+Profil arkasında olması bilinçli: yukarıdaki sıcak yeniden yükleme döngüsü
+geliştirmenin varsayılanı ve onu yavaşlatmanın bedeli herkese çıkardı.
+
+İki karar container'lı kurulumun **zorunlu kıldığı** şeyler ve ikisi de
+ölçülerek bulundu:
+
+- **`Auth:MetadataAddress`** — anahtarın *nereden indirileceği* ile *kime
+güvenildiği* ayrıldı. Issuer hâlâ `http://localhost:8180/realms/bizigo` (token'da
+yazan o ve tarayıcı oraya gidiyor), ama container içinde `localhost:8180`
+Keycloak değil container'ın kendisi.
+- **`KC_HOSTNAME_BACKCHANNEL_DYNAMIC`** — metadata adresini ayırmak tek başına
+yetmedi. Belge iniyordu ama **içindeki `jwks_uri` yine `localhost:8180`**
+diyordu, yani imzalama anahtarları indirilemiyor ve API her token'ı reddediyordu.
+Ekranda görünen hâli *"API kimliği tanımıyor"* — bir kimlik hatası gibi duran,
+aslında ağ topolojisi olan bir arıza. Ölçülen hâli:
+
+  | Nereden | `issuer` | `jwks_uri` |
+  | --- | --- | --- |
+  | Ağ içinden | `localhost:8180` | `keycloak:8080` |
+  | Makineden | `localhost:8180` | `localhost:8180` |
+
+  Yani makinedeki akış değişmiyor; değişen yalnızca ağ içinden sorulduğunda
+  verilen backchannel adresi.
+
+**`.dockerignore` bir hız ayarı değil doğruluk koşulu.** Makinedeki `obj/`
+derleme bağlamına girdiğinde container'ın kendi `restore` çıktısının üstüne
+yazıyor ve `publish` *"Package AWSSDK.S3 … was not found"* diyerek düşüyor —
+paketten söz eden ama sebebi paket olmayan bir hata.
+
 | Servis | Adres | Not |
 | --- | --- | --- |
 | ClickHouse | http://localhost:8123 | `bizigo` / `bizigo` |
@@ -379,6 +415,41 @@ npm run typecheck
 npm run api:generate   # OpenAPI belgesi + TypeScript tipleri (T14)
 npm run api:check      # CI kapısı: üretilenler depodakiyle aynı mı
 ```
+
+### Uçtan uca — çalışan ürünün ekran görüntüleri
+
+Arayüzün iki ayrı görüntü paketi var ve **aynı şeyi kanıtlamıyorlar**:
+
+| Paket | Ne koşturuyor | Ne kanıtlıyor |
+| --- | --- | --- |
+| `npm test` → `tests/screenshots/` | Bileşenleri doğrudan çiziyor, sunucu yok | Görünüm: çok dilli gövde, rozet kontrastı, 500 satırlık tablonun yerleşimi |
+| `npm run e2e` → `tests/e2e/` | Gerçek Keycloak + gerçek API + gerçek veri | Zincir: yönlendirme, OIDC akışı, kapsam filtresi, ClickHouse sorgusu |
+
+```bash
+# Ön koşul: yığın ayakta. Yığın yoksa koşum KIRMIZI yanıyor, atlamıyor.
+cd deploy && cp .env.example .env
+docker compose up -d --wait clickhouse postgres rustfs keycloak sidecar
+
+cd ../ui
+npm run e2e             # başsız — hazırlık + koşum
+npm run e2e:headed      # tarayıcı önde, adımlar izlenebilir hızda
+npx playwright test     # yalnız koşum (hazırlık zaten yapılmışsa)
+```
+
+`npm run e2e:prepare` dört iş yapıyor: yığın sağlıklı mı, API/CLI derlemesi,
+`bizigo seed golden`, `next build`. **Playwright'ın `globalSetup`'ına
+konulamıyor** — Playwright `webServer`'ı ondan önce başlatıyor ve sunucu henüz
+var olmayan bir ikiliyi çalıştırmaya çalışıyor.
+
+**Giriş `analyst.core` ile, `admin` ile değil.** `admin` kapsam filtresinden
+muaf (`AccessScope.System`); o yolla çekilen bir görüntü kapsamın uygulandığını
+göstermezdi. Analistin `/network/core` claim'i `idp_group_mapping` üzerinden
+`golden`'a çevriliyor, yani görüntüdeki her satır aynı zamanda K17'nin kanıtı.
+
+Çıktı `docs/ekran-goruntuleri/uctan-uca/`. Üç port sabit ve üçü de zorunlu:
+**3000** (realm'in `redirectUris`'i), **5080** (`BIZIGO_API_URL`), **8180**
+(Keycloak'ın `KC_HOSTNAME`'i issuer'ı oraya sabitliyor).
+
 
 **Kimlik akışı Next'te (K31).** Tarayıcıya yalnızca oturum çerezi gidiyor; erişim
 ve yenileme token'ları sunucudaki oturum deposunda duruyor ve API'ye sunucudan
