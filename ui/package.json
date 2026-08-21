@@ -23,6 +23,7 @@
   "dependencies": {
     "jose": "^6.0.12",
     "next": "^15.5.5",
+    "posthog-js": "^1.418.9",
     "react": "^19.1.2",
     "react-dom": "^19.1.2",
     "redis": "^6.2.1"
