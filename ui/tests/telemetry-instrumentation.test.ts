@@ -1,3 +1,7 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -203,6 +207,119 @@ describe("errorKind — kapalı sözlük", () => {
     );
 
     expect(scrubbed).toEqual({ route: "/olaylar", error_kind: "forbidden", status: 403 });
+  });
+});
+
+describe("error_kind kapalı sözlüğün DIŞINA çıkamıyor", () => {
+  /**
+   * <p>
+   * TypeScript `errorKind()`'ın dönüşünü kısıtlıyor, ama olay paylodu
+   * `Partial<Record<string, unknown>>` — bir ekran `error_kind: "olur da"`
+   * yazabilir ve derleyici susar. Bu bekçi kaynağı tarıyor.
+   * </p>
+   *
+   * <p>
+   * <b>Bekçinin kendisi ölçüldü ve ilk hâli BOŞA GEÇİYORDU.</b> Kaynakta o an
+   * hiç satır içi metin yoktu (hepsi değişken ya da fonksiyon çağrısıydı),
+   * dolayısıyla tarayıcı hiçbir şey bulamıyor ve yeşil yanıyordu — kırmızı
+   * yanabildiğini ölçmeye çalışınca çıktı. §7'nin "sessizce atlayan bekçi"
+   * sınıfı: yeşilliği hiçbir şey ifade etmiyordu.
+   * </p>
+   *
+   * <p>
+   * Şimdi üç ayrı test var: tarayıcının <b>bulabildiği</b>, <b>kaçırmadığı</b>,
+   * ve depoda <b>gerçekten bir şeye baktığı</b>. Üçüncüsü olmadan ilk ikisi de
+   * boşa geçebilir.
+   * </p>
+   */
+  const SOZLUK = [
+    "identity",
+    "session_expired",
+    "forbidden",
+    "not_found",
+    "rate_limited",
+    "transport",
+    "unknown",
+  ];
+
+  /** Saf tarayıcı — testin doğrudan sınayabildiği şey bu. */
+  function sozlukDisi(metin: string): { bulunan: number; ihlal: string[] } {
+    const ihlal: string[] = [];
+    let bulunan = 0;
+
+    const desenler = [
+      /error_kind:\s*"([^"]*)"/g,
+      /"([^"]*)"\s+as\s+ErrorKind/g,
+      /:\s*ErrorKind\s*=\s*"([^"]*)"/g,
+    ];
+
+    for (const desen of desenler) {
+      for (const eslesme of metin.matchAll(desen)) {
+        bulunan += 1;
+        const deger = eslesme[1]!;
+
+        if (!SOZLUK.includes(deger)) {
+          ihlal.push(deger);
+        }
+      }
+    }
+
+    return { bulunan, ihlal };
+  }
+
+  it("tarayıcı sözlük dışı metni BULUYOR — üç biçimde de", () => {
+    expect(sozlukDisi('error_kind: "golden grubu kapsam disinda"').ihlal).toEqual([
+      "golden grubu kapsam disinda",
+    ]);
+    expect(sozlukDisi('const k = "uydurma" as ErrorKind;').ihlal).toEqual(["uydurma"]);
+    expect(sozlukDisi('const k: ErrorKind = "uydurma2";').ihlal).toEqual(["uydurma2"]);
+  });
+
+  it("sözlük üyesini ihlal saymıyor", () => {
+    expect(sozlukDisi('error_kind: "forbidden"').ihlal).toEqual([]);
+    expect(sozlukDisi('const k: ErrorKind = "identity";').ihlal).toEqual([]);
+  });
+
+  const KAYNAK_DOSYALARI = (() => {
+    const kok = fileURLToPath(new URL("..", import.meta.url));
+    const sonuc: string[] = [];
+
+    for (const dizin of ["src/app", "src/lib", "src/components"]) {
+      for (const girdi of readdirSync(join(kok, dizin), { withFileTypes: true, recursive: true })) {
+        if (girdi.isFile() && /\.tsx?$/.test(girdi.name)) {
+          sonuc.push(join(girdi.parentPath ?? girdi.path, girdi.name));
+        }
+      }
+    }
+
+    return sonuc;
+  })();
+
+  it("depodaki hiçbir atama sözlük dışına çıkmıyor", () => {
+    const ihlaller: string[] = [];
+    let toplamBulunan = 0;
+
+    for (const dosya of KAYNAK_DOSYALARI) {
+      const { bulunan, ihlal } = sozlukDisi(readFileSync(dosya, "utf8"));
+      toplamBulunan += bulunan;
+      ihlaller.push(...ihlal.map((d) => `${dosya}: "${d}"`));
+    }
+
+    // BOŞA GEÇME KAPISI: tarayıcı hiçbir şey bulamadıysa bu test hiçbir şey
+    // söylemiyor demektir. Kaynakta en az bir `ErrorKind` ataması olmalı;
+    // yoksa ya enstrümantasyon kaldırılmış ya desenler ayrışmıştır.
+    expect(
+      toplamBulunan,
+      "Tarayıcı kaynakta hiç `error_kind`/`ErrorKind` ataması bulamadı. Bu test " +
+        "boşa geçiyor demektir — desen ayrışmış ya da enstrümantasyon kaldırılmış.",
+    ).toBeGreaterThan(0);
+
+    expect(
+      ihlaller,
+      "`error_kind` sözlük dışı bir metin taşıyor. Sınıflandırma kapalı bir küme " +
+        "olmalı (classify.ts): serbest metin, sunucunun cümlesinin telemetriye " +
+        "sızmasının yoludur.",
+    ).toEqual([]);
   });
 });
 
