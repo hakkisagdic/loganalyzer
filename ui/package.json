@@ -10,9 +10,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.ts",
+    "e2e": "npm run e2e:prepare && playwright test",
+    "e2e:headed": "npm run e2e:prepare && E2E_SLOWMO=250 playwright test --headed",
     "test:watch": "vitest",
     "api:generate": "./scripts/generate-api-types.sh",
-    "api:check": "./scripts/generate-api-types.sh --check"
+    "api:check": "./scripts/generate-api-types.sh --check",
+    "e2e:prepare": "node --experimental-strip-types tests/e2e/prepare.ts"
   },
   "dependencies": {
     "jose": "^6.0.11",
