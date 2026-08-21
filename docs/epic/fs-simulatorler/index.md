@@ -292,6 +292,61 @@ gelir (§6). Fazın üreteceği bekçiler:
 
 ---
 
+## 10.5 · S02'nin ilk koşumu: ölçülen bir kayıp
+
+Basıcı yazıldı, koşturuldu, ve **ilk gününde ürün tarafında bir boşluk
+gösterdi.** Fazın gerekçesi buydu; kanıtı da bu.
+
+### Ölçüm
+
+`fw-ankara-01` ve `lb-web-01` profillerinden collector'a (syslog TCP 5140)
+toplam **385 satır** basıldı. Rakamlar aynı anda alındı:
+
+```
+API  /internal/ingest/stats : accepted_records 385 · processed_records 385
+                              rejected_full 0 · rejected_invalid 0
+ClickHouse events            : 13 satır  (2 ok · 11 failed)
+```
+
+Aradaki **372 kayıt** hiçbir yerde görünmüyor: API'de hata yok, collector
+hiçbir şey loglamıyor, `ParsingSink` tek bir kaydı bile düşürmüyor (hepsini
+`downstream`'e veriyor), ve `ClickHouseEventSink` 10.000 satırda **ya da 2
+saniyede** flush ediyor — yani "henüz yazılmadı" açıklaması da tutmuyor. 90
+saniye beklenerek doğrulandı.
+
+### Neden bu bir bulgu, neden bir arıza raporu değil
+
+Kök neden **bulunmadı** ve tahmin edilmiyor. Bilinen şey davranış: boru hattı
+kaydı kabul ediyor, "işledim" diye sayıyor, ve kayıt tabloya ulaşmıyor —
+**hiçbir sayaç bu kaybı saymıyor.** §7'nin tanımladığı sınıfın tam ortası:
+hata yok, sayaç yok, belirti yok.
+
+Bugüne kadar görünmemesinin sebebi de yazılı: boru hattını besleyen tek araç
+`bizigo seed golden`'dı ve o **doğrudan ClickHouse'a** yazıyor. Canlı yol
+ölçüm verisiyle hiç koşmadığı için kimse bakmamıştı.
+
+### Yol boyunca doğrulananlar
+
+Kayıp *aşağıdakilerin* kusuru değil; hepsi ayrı ayrı ölçüldü:
+
+| Ne | Nasıl ölçüldü |
+| --- | --- |
+| Syslog çerçevelemesi | Ham soketle 5 ayrı satır → 5 kayıt; PRI korunmuş, gövde tek satır |
+| Tekrarlanan içerik | 5 **birebir aynı** satır → 5 kayıt (`MergeTree`, çökertme yok) |
+| Basıcının teslimi | API sayacı gönderilen sayıyla **birebir** tutuyor (385) |
+| Ayrıştırma zinciri | Ulaşan kayıtta OCSF sınıfı, `attrs`, ve **`raw_ref` dolu** |
+
+### Açık kalem
+
+**S02a — canlı ingest yolunda kayıp kaydı.** Kök neden `ClickHouseEventSink`
+ile `IngestPipeline` arasında; ilk bakılacak yer `Ingest:WorkerCount` (bugün
+`0`) ve sink'in flush yolu. Kabul ölçütü: basılan satır sayısı ile tabloya
+ulaşan satır sayısı arasındaki farkı **sayan bir sayaç**, ve fark sıfır
+olmadığında kırmızı yanan bir bekçi. Sayacı olmayan bir kayıp, düzeltildiğini
+de kanıtlayamaz.
+
+---
+
 ## 11 · Bu belgenin bilmediği şey
 
 **Gerçek cihaz olmadan kapanmayacak** kalemler — ve simülatör bunları

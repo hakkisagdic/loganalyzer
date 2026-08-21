@@ -13,6 +13,16 @@
     ürün burayı hiç görmüyor.
   -->
 
+  <PropertyGroup>
+    <!--
+      Hem kütüphane hem çalıştırılabilir. N1 sahte taşıyıcısı birim
+      testlerinden referansla kullanılıyor; syslog basıcısı `dotnet run` ile
+      koşuyor. İkiye bölmek profil okuyucusunun iki yerden referanslanması
+      demekti ve §9'un yasakladığı ikinci kopyaya davetiye çıkarırdı.
+    -->
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bizigo.Devices\Bizigo.Devices.csproj" />
   </ItemGroup>
