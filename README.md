@@ -7,8 +7,10 @@ logları birincil alan; agentic katmanla proaktif araştırma ve kök neden anal
 
 > İnceleme akışı **PR üzerinden**: `main`'e doğrudan push yerine dal + pull
 > request. CodeRabbit yalnızca PR'ları inceliyor, ve CI de (`ci.yml`)
-> `push: branches: [main]` ile `pull_request` olaylarında koşuyor — yani dal
-> push'u tek başına hiçbir kapıyı çalıştırmıyor.
+> `push: branches: [main]` ile `pull_request` olaylarında koşuyor. Yani
+> **`main` dışındaki bir dala** push etmek tek başına hiçbir kapıyı
+> çalıştırmıyor; ilk sinyal ancak PR açıldığında ya da `main` hareket ettiğinde
+> geliyor.
 
 **Durum:** F1 (boru hattı) kapandı — T01 iskelet, T02 depolama/kapsam, T03 ingest
 boru hattı, T04 ham arşiv, T05 parser motoru, T06 dispatcher, T07 normalizasyon,

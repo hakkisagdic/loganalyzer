@@ -113,7 +113,7 @@ görünür, ikisi de yarım.
 Bu yüzden tek bir **cihaz profili** var ve üçü de onu okuyor:
 
 ```yaml
-# catalog/simulators/fw-ankara-01.yaml   (yer önerisi — S01'in kararı)
+# catalog/simulators/fw-ankara-01.yaml
 id: fw-ankara-01
 vendor: fortinet
 product: fortigate
@@ -126,18 +126,25 @@ ssh:
   port: 22
   username: bizigo-ro
   auth: password                    # ya da `key`
+  # Parolanın KENDİSİ değil, nereden okunacağı. Profil depoya giriyor;
+  # gizli bilgi girmiyor.
+  credential_env: SIM_FW_ANKARA_PASSWORD
   # Komutlar vendor toplayıcısından geliyor, burada TEKRARLANMIYOR.
 
 config:
-  baseline: profiles/fw-ankara-01/baseline.conf
+  baseline: profiller/fw-ankara-01/baseline.conf
   scenarios:
-    kural-eklendi:    profiles/fw-ankara-01/kural-eklendi.conf
-    sir-dondu:        profiles/fw-ankara-01/sir-dondu.conf
-    cihaz-yeniden-yazdi: profiles/fw-ankara-01/yeniden-yazim.conf
+    kural-eklendi:    profiller/fw-ankara-01/kural-eklendi.conf
+    sir-dondu:        profiller/fw-ankara-01/sir-dondu.conf
+    cihaz-yeniden-yazdi: profiller/fw-ankara-01/yeniden-yazim.conf
 
 syslog:
-  samples: catalog/parsers/fortinet.fortigate/samples/*.log
-  rate: 12/dk
+  # Joker YOK: her dosya tek tek yazılıyor, çünkü doğrulayıcı her birinin var
+  # olduğunu sınıyor ve eşleşmeyen bir joker sessizce boş küme döndürürdü.
+  samples:
+    - catalog/parsers/fortinet.fortigate/samples/traffic.log
+    - catalog/parsers/fortinet.fortigate/samples/event.log
+  rate_per_minute: 240
   transport: tcp                    # tcp | udp
 ```
 
@@ -279,7 +286,7 @@ flowchart TB
 | --- | --- | --- | --- |
 | **S01** | Profil YAML şeması + doğrulayıcı + N1 `IDeviceTransport` uygulaması | — | Bir profil bozuksa **derleme/lint kırmızı**; N1 ile `DeviceConfigTests` profil okuyor |
 | **S02** | Syslog basıcı: profilden örnek okuyup TCP/UDP basıyor, hız ve kodlama profilden | S01 | Basılan satır ClickHouse'a **ham arşivden geçerek** ulaşıyor; `raw_manifest` doğrulanmış |
-| **S03** | N2: gerçek SSH sunucusu container'ı, komuta göre profil çıktısı | S01 | `SshDeviceTransport` **ilk kez** bir testte koşuyor; yanlış parola 401 üretiyor |
+| **S03** | N2: gerçek SSH sunucusu container'ı, komuta göre profil çıktısı | S01 | `SshDeviceTransport` **ilk kez** bir testte koşuyor; yanlış parola `DeviceCommandResult.Ok=false` ve kimlik doğrulama hatası üretiyor — SSH'ın HTTP durum kodu yok, ölçüt oraya yazılırsa hiç gerçekleşemez |
 | **S04** | Senaryo motoru: adlandırılmış geçişler, hem SSH hem syslog tarafında | S02, S03 | §7'deki yedi senaryonun her biri için bir test; her biri **kırmızı yanabildiği ölçülmüş** |
 | **S05** | Beş cihazlık filo, iki `owner_group`, envanter + bağlama otomatik | S04 | Uçtan uca harness'taki **elle tohumlama silinebiliyor** (§6'nın kapanış ölçütü) |
 | **S06** | N3: etkileşimli kabuk, prompt, sayfalama, vendor hata mesajları | S03 | Toplayıcı sayfalama açıkken de doğru çıktı alıyor — ya da alamadığı **yazılı** |

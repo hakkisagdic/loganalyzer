@@ -6,6 +6,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+# En dar yetki, İŞ AKIŞI düzeyinde. Tek bir işe yazmak yerine buraya
+# konulmasının sebebi kapsam: dokuz işin hepsi yalnızca kodu okuyor ve artefakt
+# yüklüyor; artefakt yüklemesi ek bir izin istemiyor. Varsayılan token yazma
+# yetkili geliyor ve bir adımın onu kullanması için hata yapması yetiyor.
+permissions:
+  contents: read
+
 env:
   DOTNET_NOLOGO: true
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
@@ -472,14 +479,26 @@ jobs:
         working-directory: ui
         run: npm run e2e
 
-      # Görüntüler işin ÜRÜNÜ, yan çıktısı değil: kırmızı koşumda da yükleniyor
-      # çünkü yarıda kalan bir gezinti nerede durduğunu görüntüyle söylüyor.
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: uctan-uca-ekran-goruntuleri
-          path: docs/ekran-goruntuleri/uctan-uca/
-          if-no-files-found: error
+      # Görüntüler bu deponun İÇİNDE commitli. Bu yüzden onları artefakt olarak
+      # yüklemek hiçbir şey kanıtlamıyordu: `actions/checkout` dosyaları zaten
+      # diske koyuyor, yani `if-no-files-found: error` koşulu asla
+      # gerçekleşemez ve düşen bir koşum bile "ürün" adıyla bir önceki turun
+      # görüntülerini yüklüyordu. Sessizce yeşil bir bekçi.
+      #
+      # Yerine GERÇEK bir kontrol: dosyalar değişmediyse koşum onları
+      # üretmemiştir. Tohumlama zaman damgalarını her koşumda yeniden yazdığı
+      # için üretilen görüntüler zorunlu olarak farklı; birebir aynı çıkmaları
+      # ancak Playwright hiç yazmadıysa mümkün.
+      - name: Görüntüler gerçekten üretildi mi
+        if: success()
+        run: |
+          if git diff --quiet -- docs/ekran-goruntuleri/uctan-uca/; then
+            echo "Ekran görüntüleri DEĞİŞMEDİ — koşum onları üretmemiş görünüyor."
+            echo "Beklenen: tohumlama her koşumda yeni zaman damgası yazıyor,"
+            echo "dolayısıyla üretilen PNG'ler commitli olanlardan farklı olmalı."
+            exit 1
+          fi
+          git diff --stat -- docs/ekran-goruntuleri/uctan-uca/
 
       # İz ve video yalnızca düşen koşumda üretiliyor (`retain-on-failure`).
       - uses: actions/upload-artifact@v4

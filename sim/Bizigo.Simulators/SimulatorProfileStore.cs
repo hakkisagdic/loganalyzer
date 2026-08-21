@@ -1,4 +1,5 @@
 using Bizigo.Devices;
+using YamlDotNet.Core;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 
@@ -24,7 +25,13 @@ public static class SimulatorProfileStore
         // yazımı JSON sözleşmesiyle aynı (§8) — iki ayrı yazım kuralı, okuyanın
         // hangisini hatırlayacağını sorması demekti.
         .WithNamingConvention(UnderscoredNamingConvention.Instance)
-        .IgnoreUnmatchedProperties()
+        //
+        // `IgnoreUnmatchedProperties()` YOK ve bu bilinçli. Varsayılan davranış
+        // bilinmeyen bir alanda hata vermek; yutmak, `owner_grup` diye yazılmış
+        // bir alanın sessizce YOK SAYILMASI demekti — profil geçerli görünür,
+        // kapsam boş kalır, ve hata ancak ekran boş çıktığında fark edilir.
+        // Bekçinin kendi belgesi "bilinmeyen alan kırmızı yanar" diyor; bu satır
+        // olmadan o cümle yalan oluyordu.
         .Build();
 
     /// <summary>
@@ -43,8 +50,25 @@ public static class SimulatorProfileStore
 
         foreach (var path in Directory.EnumerateFiles(profileDirectory, "*.yaml").Order(StringComparer.Ordinal))
         {
-            var profile = Yaml.Deserialize<SimulatorProfile>(File.ReadAllText(path))
-                ?? new SimulatorProfile();
+            SimulatorProfile profile;
+
+            try
+            {
+                profile = Yaml.Deserialize<SimulatorProfile>(File.ReadAllText(path))
+                    ?? new SimulatorProfile();
+            }
+            catch (YamlException error)
+            {
+                // Ayrıştırma hatası da bir DOĞRULAMA bulgusu: koşum burada
+                // patlamak yerine bütün profilleri okuyup hepsini birden
+                // raporluyor. Tek tek düşen bir okuyucu, ikinci bozuk profili
+                // ancak birincisi düzeltildikten sonra gösterirdi.
+                results.Add(new ProfileLoadResult(
+                    new SimulatorProfile { Id = Path.GetFileNameWithoutExtension(path) },
+                    [$"YAML okunamadı: {error.Message}"]));
+
+                continue;
+            }
 
             results.Add(new ProfileLoadResult(
                 profile,

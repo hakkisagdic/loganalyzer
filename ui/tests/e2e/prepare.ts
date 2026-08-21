@@ -22,8 +22,11 @@ import { fileURLToPath } from "node:url";
  * </p>
  *
  * <p>
- * Betik <c>node</c> ile doğrudan koşuyor: Node 24 tip bildirimlerini kendisi
- * söküyor, yani ayrı bir çevirici bağımlılığı eklemeye gerek yok.
+ * Betik <c>node</c> ile doğrudan koşuyor: <c>--experimental-strip-types</c> tip
+ * bildirimlerini söküyor, yani ayrı bir çevirici bağımlılığı gerekmiyor. Bayrak
+ * <b>Node 22.6</b>'dan beri var ve CI Node 22 kullanıyor; önkoşul
+ * <c>ui/package.json</c>'daki <c>engines</c> alanında beyan edilmiş durumda.
+ * (Node 23+ bunu varsayılan yapıyor, bayrak orada zararsız.)
  * </p>
  */
 
