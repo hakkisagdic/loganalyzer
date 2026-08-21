@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/Field";
@@ -7,6 +8,9 @@ import type { EventSearchResult, SourceList, SourceItem } from "@/lib/api/client
 import { ApiError } from "@/lib/api/errors";
 import { NoSessionError, serverApi } from "@/lib/api/server";
 import { currentUser } from "@/lib/auth/currentUser";
+import { errorKind, errorStatus } from "@/lib/telemetry/classify";
+import { searchShape } from "@/lib/telemetry/measure";
+import { trackServer } from "@/lib/telemetry/server";
 import {
   MIN_FULL_TEXT_LENGTH,
   PARAM,
@@ -60,6 +64,11 @@ export default async function EventSearchPage({
   }
 
   if (identity.status === "error") {
+    // Kullanıcıya gösterilen CÜMLE değil, hatanın SINIFI gidiyor. `identity.message`
+    // API'nin adresini ya da realm adını taşıyabiliyor (bkz. currentUser.ts'teki
+    // ipuçları); telemetriye giden `identity` yalnızca "kimlik katmanı düştü" diyor.
+    after(() => trackServer("error_shown", { route: "/olaylar", error_kind: "identity" }));
+
     return (
       <AppShell>
         <ErrorState title={identity.message} hint={identity.hint} />
@@ -189,16 +198,60 @@ export default async function EventSearchPage({
     }
   }
 
+  /**
+   * Aramayı koşturuyor ve <b>ölçüyor</b>.
+   *
+   * <p>
+   * Ölçüm burada, ekranın içinde değil: süre, sonuç sayısı ve hatanın sınıfı
+   * bu fonksiyonun sınırlarında biliniyor. Dışarı taşımak, ölçülen şeyle
+   * ölçümün arasına bir adım koymak olurdu.
+   * </p>
+   *
+   * <p>
+   * <b>Gönderim <c>after()</c> ile, yani yanıt yazıldıktan SONRA.</b> Beklemek
+   * doğru veriyi getirirdi ama her aramaya bir PostHog gidiş-dönüşü eklerdi —
+   * ölçmeye çalıştığımız şeyi (arama süresini) ölçerken bozmak olurdu.
+   * </p>
+   */
   async function runSearch(): Promise<
     { kind: "ok"; page: EventSearchResult } | { kind: "error"; message: string; hint?: string }
   > {
+    const started = performance.now();
+
     try {
       const page = (await serverApi.post("/v1/events/search", {
         body: toSearchBody(criteria),
       })) as EventSearchResult;
 
+      const shape = searchShape(criteria, verdict, {
+        durationMs: performance.now() - started,
+        resultCount: page.events.length,
+      });
+
+      after(() => trackServer("event_search_run", shape, { subject: user.subject }));
+
       return { kind: "ok", page };
     } catch (error) {
+      // Düşen arama da bir arama: süresi ve şekli aynı olayda gidiyor,
+      // `result_count` olmadan. Yalnızca başarılı aramaları saymak,
+      // "aramalar hızlı" diyen bir panoya yol açardı — düşenler zaten
+      // sayılmadığı için.
+      const shape = searchShape(criteria, verdict, {
+        durationMs: performance.now() - started,
+      });
+
+      const kind = errorKind(error);
+      const status = errorStatus(error);
+
+      after(async () => {
+        await trackServer("event_search_run", shape, { subject: user.subject });
+        await trackServer(
+          "error_shown",
+          { route: "/olaylar", error_kind: kind, status },
+          { subject: user.subject },
+        );
+      });
+
       if (error instanceof ApiError) {
         return { kind: "error", message: error.message, hint: error.hint };
       }

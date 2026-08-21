@@ -109,6 +109,79 @@ testi var (`ui/tests/telemetry-scrub.test.ts`).
 bütün olayları uygulama sunucusunun adresinden görüyor. Coğrafi kırılım
 kayboluyor. Bilinçli takas — müşteri ağının adresi bizim analitiğimizde işi yok.
 
+
+## Kanıt: giden byte'lara bakmak
+
+"Sorgu metni gitmiyor" cümlesini okumak ile giden paylodu görmek farklı şeyler.
+`ui/scripts/telemetry-echo.mjs` ikincisini yapıyor: PostHog'un yerine geçen
+yerel bir alıcı, ve **kanarya taraması** — paylodda geçmemesi gereken metinleri
+veriyorsunuz, geçerse bağırıyor ve çıkış kodunu 1 yapıyor.
+
+```bash
+node ui/scripts/telemetry-echo.mjs --port 8399 \
+  --canary "10.0.4.17" --canary "admin@musteri.com" --canary "src_ip"
+```
+
+`ui/.env.local`:
+
+```bash
+TELEMETRY_ENABLED=true
+TELEMETRY_PROJECT_KEY=phc_yerel_test
+TELEMETRY_HOST=http://127.0.0.1:8399
+```
+
+Sonra ürüne gerçek bir arama yaptırın. Aşağıdaki çıktı **koşturuldu**: aranan
+şey `src_ip=10.0.4.17 AND user=admin AND mail=admin@musteri.com`, kaynak
+`fw-core-01`, vendor `cisco`, proto `tcp`, severity ≥ 4.
+
+```
+── POST /batch/
+   olay: event_search_run
+   kimlik: anonymous
+   ürünün gönderdiği: {"criteria_count":5,"duration_ms":37,"result_count":0,
+                       "has_full_text":true,"query_verdict":"ready",
+                       "paginated":false,"page_size":100,"scoped":true,
+                       "environment":"dev"}
+   ✓ 5 kanaryanın hiçbiri paylodda yok
+```
+
+Beş tam sayı ve üç boolean. IP yok, kullanıcı adı yok, e-posta yok, kaynak adı
+yok, vendor yok. `has_full_text` yalnızca **var mı** diyor — uzunluğu bile
+gitmiyor, çünkü uzunluk tek başına bir IP'yi (15) bir UUID'den (36) ayırmaya
+yetiyor.
+
+Vekilin iki kapısı da aynı koşumda ölçüldü:
+
+```
+POST /api/telemetry/e             → 200  (alıcıya ulaştı)
+POST /api/telemetry/s             → 403  "Oturum kaydı ucu bilinçli olarak dışarıda"
+POST /api/telemetry/api/projects  → 403  PostHog yönetim API'si de kapalı
+```
+
+### ⚠️ `localhost` yazmayın, `127.0.0.1` yazın
+
+Bu yarım saat yedi ve tam olarak bu deponun en pahalı hata sınıfı: echo
+sunucusu `127.0.0.1:8000`'e bağlıydı, `TELEMETRY_HOST=http://localhost:8000`
+yazılmıştı, ve **üründen çıkan her olay Docker Desktop'a gitti**. Docker
+`*:8000`'i IPv6'da tutuyor, Node'un `fetch`i `localhost`u önce `::1`'e
+çözüyor. Vekil doğruydu, hedef adres doğruydu, log'da doğru adres yazıyordu —
+trafik başka bir servise gidiyor ve 404 dönüyordu. Hiçbir yerde "yanlış
+sunucuya konuşuyorsun" yazmadı.
+
+## Ne enstrümante edildi
+
+| Olay | Nereden | Neden orada |
+| --- | --- | --- |
+| `event_search_run` | **Sunucu** (`olaylar/page.tsx`) | Arama sunucuda koşuyor; süre ve sonuç sayısı orada biliniyor. Tarayıcıya taşımak hem ölçümü tarayıcının sözüne bağlar hem de ölçütü tarayıcıya indirirdi. |
+| `error_shown` | **Sunucu** | Kimlik hatası ve düşen arama. Giden şey `describeError`'ın cümlesi değil, `errorKind`'ın sınıfı. |
+| `parser_compiled` | **İstemci** (`ParserWorkbench.tsx`) | Editör bir istemci bileşeni; derleme orada tetikleniyor. |
+| `parser_submitted` | **İstemci** | Aynı sebep. `gate_ok_before_submit` ekranın tahminini taşıyor — kapı sunucuda yeniden koşuyor ve tahminle sonucun ayrıştığı oran ölçülebilir bir şey. |
+
+İki sink var ama **tek süzgeç**: `scrub.ts` ve `events.ts` ikisi arasında
+paylaşılıyor (§9). Sunucu tarafı gönderimi `after()` içinde, yani yanıt
+yazıldıktan sonra — beklemek her aramaya bir PostHog gidiş-dönüşü eklerdi ve
+ölçmeye çalıştığımız şeyi bozardı.
+
 ## Kimlik
 
 Varsayılan **anonim**: posthog-js'in rastgele tarayıcı kimliği kullanılıyor,

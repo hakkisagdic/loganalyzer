@@ -2604,9 +2604,9 @@
     "semantic_hash": ""
   },
   "ui/package.json": {
-    "mtime": 1787317345.6995826,
-    "seen": 1787320437.357144,
-    "ast_hash": "73e82190bad04326122b251bd1a2f0fa",
+    "mtime": 1787322833.30292,
+    "seen": 1787322895.519852,
+    "ast_hash": "dbc070fe51797a438d20da35547600b4",
     "semantic_hash": ""
   },
   "ui/scripts/generate-api-types.sh": {
@@ -2868,9 +2868,9 @@
     "semantic_hash": ""
   },
   "ui/src/app/olaylar/page.tsx": {
-    "mtime": 1787316780.9154627,
-    "seen": 1787317285.959543,
-    "ast_hash": "c58ebaba881ffe40a62ca4ff61cbc59a",
+    "mtime": 1787322023.1786964,
+    "seen": 1787322895.5245671,
+    "ast_hash": "43526098fd1fe1537d1841031d2e5b44",
     "semantic_hash": ""
   },
   "ui/src/app/page.tsx": {
@@ -2892,9 +2892,9 @@
     "semantic_hash": ""
   },
   "ui/src/app/parserlar/ParserWorkbench.tsx": {
-    "mtime": 1787316780.9222515,
-    "seen": 1787317285.959546,
-    "ast_hash": "b123fa487f04de235780b5ee8c351d61",
+    "mtime": 1787322103.6078348,
+    "seen": 1787322895.524708,
+    "ast_hash": "032846407a3d16052225a941959a4758",
     "semantic_hash": ""
   },
   "ui/src/app/parserlar/TryPanel.tsx": {
@@ -3432,9 +3432,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1787320415.4667149,
-    "seen": 1787320437.3617668,
-    "ast_hash": "8ee1b358d99d20dba77e58548255d482",
+    "mtime": 1787320460.2620003,
+    "seen": 1787322895.528907,
+    "ast_hash": "15a4aaaba392400c74e3439336f6c196",
     "semantic_hash": ""
   },
   "THIRD-PARTY-NOTICES.md": {
@@ -4296,110 +4296,110 @@
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/durum-bos-dark.png": {
-    "mtime": 1787320160.7045667,
-    "seen": 1787320437.366635,
+    "mtime": 1787322859.6659484,
+    "seen": 1787322895.5350652,
     "ast_hash": "3d07312f9887fb46aa74c1e05fa329ac",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/durum-bos-light.png": {
-    "mtime": 1787320160.5771294,
-    "seen": 1787320437.366636,
+    "mtime": 1787322859.4153244,
+    "seen": 1787322895.5350661,
     "ast_hash": "99be4c9df4539413186c277749e6b86c",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/durum-hata-dark.png": {
-    "mtime": 1787320161.064034,
-    "seen": 1787320437.3666382,
+    "mtime": 1787322860.0152812,
+    "seen": 1787322895.5350678,
     "ast_hash": "ad1155657e46abdb9710b771630be493",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/durum-hata-light.png": {
-    "mtime": 1787320160.8252559,
-    "seen": 1787320437.3666391,
+    "mtime": 1787322859.8492563,
+    "seen": 1787322895.53507,
     "ast_hash": "3c7dbbe592d95ece3dccb624a75726bd",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/durum-yukleniyor-dark.png": {
-    "mtime": 1787320161.5598319,
-    "seen": 1787320437.3666408,
+    "mtime": 1787322860.3258758,
+    "seen": 1787322895.535071,
     "ast_hash": "7b1ebf1d2ad70bfc146b0eb1c2123ff6",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/durum-yukleniyor-light.png": {
-    "mtime": 1787320161.3595276,
-    "seen": 1787320437.366642,
+    "mtime": 1787322860.1772308,
+    "seen": 1787322895.535072,
     "ast_hash": "e00cf193c4f0046b71f3f98abe11118e",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/kaynaklar-envanter-dark.png": {
-    "mtime": 1787320161.979735,
-    "seen": 1787320437.366645,
+    "mtime": 1787322860.6140265,
+    "seen": 1787322895.535073,
     "ast_hash": "a7f97c6f536a42e6706234382f72e688",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/kaynaklar-envanter-light.png": {
-    "mtime": 1787320161.764909,
-    "seen": 1787320437.366647,
+    "mtime": 1787322860.4768088,
+    "seen": 1787322895.5350761,
     "ast_hash": "ede6f8529c531975a9fd8e56537efa3d",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/kaynaklar-saglik-dark.png": {
-    "mtime": 1787320162.2955794,
-    "seen": 1787320437.36665,
+    "mtime": 1787322860.9118295,
+    "seen": 1787322895.5350778,
     "ast_hash": "4992c787a19e8764d5e1113b7935e45e",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/kaynaklar-saglik-light.png": {
-    "mtime": 1787320162.143705,
-    "seen": 1787320437.366652,
+    "mtime": 1787322860.7642446,
+    "seen": 1787322895.535079,
     "ast_hash": "888919f93e99c349f54bf568d650dab4",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/olaylar-cok-veri-dark.png": {
-    "mtime": 1787320160.0693824,
-    "seen": 1787320437.366653,
+    "mtime": 1787322858.5495958,
+    "seen": 1787322895.53508,
     "ast_hash": "7e925f18259eceffcb0d041bc7d5cf11",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/olaylar-cok-veri-light.png": {
-    "mtime": 1787320159.1654623,
-    "seen": 1787320437.366654,
+    "mtime": 1787322857.5247388,
+    "seen": 1787322895.535082,
     "ast_hash": "cc4457b566f3a3c0516517f4a4adea2a",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/olaylar-dolu-dark.png": {
-    "mtime": 1787320157.7314575,
-    "seen": 1787320437.366656,
+    "mtime": 1787322856.153755,
+    "seen": 1787322895.535083,
     "ast_hash": "dd4975a0d18f2d2550a0db8537224f4e",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/olaylar-dolu-light.png": {
-    "mtime": 1787320157.4360476,
-    "seen": 1787320437.366658,
+    "mtime": 1787322855.1260977,
+    "seen": 1787322895.535084,
     "ast_hash": "5009cd4b9314d063549cf8d4d9f9fc61",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/olaylar-filtre-dark.png": {
-    "mtime": 1787320160.4105248,
-    "seen": 1787320437.36666,
+    "mtime": 1787322859.1934154,
+    "seen": 1787322895.535085,
     "ast_hash": "3b759e8966fa855371cdedb57034111c",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/olaylar-filtre-light.png": {
-    "mtime": 1787320160.2596664,
-    "seen": 1787320437.366661,
+    "mtime": 1787322858.9117777,
+    "seen": 1787322895.535087,
     "ast_hash": "8ddbaf7a45250233c9ada10ace43f145",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/rozetler-dark.png": {
-    "mtime": 1787320162.6291857,
-    "seen": 1787320437.366663,
+    "mtime": 1787322861.2086427,
+    "seen": 1787322895.535088,
     "ast_hash": "2d18033a48b2fe599786704674d57184",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/rozetler-light.png": {
-    "mtime": 1787320162.441477,
-    "seen": 1787320437.366665,
+    "mtime": 1787322861.060245,
+    "seen": 1787322895.535091,
     "ast_hash": "e9c63511f512972a63d3b9fdb957a423",
     "semantic_hash": ""
   },
@@ -4428,8 +4428,8 @@
     "semantic_hash": ""
   },
   "ui/src/app/api/telemetry/[...path]/route.ts": {
-    "mtime": 1787318217.7501774,
-    "seen": 1787320437.357776,
+    "mtime": 1787322597.1206462,
+    "seen": 1787322895.520541,
     "ast_hash": "9079aa20055b44b46c39f90a6a695f95",
     "semantic_hash": ""
   },
@@ -4458,9 +4458,9 @@
     "semantic_hash": ""
   },
   "ui/src/lib/telemetry/events.ts": {
-    "mtime": 1787318203.7649407,
-    "seen": 1787320437.3606741,
-    "ast_hash": "8ee022922f2ebc930a052ea06eb8daad",
+    "mtime": 1787322080.2898362,
+    "seen": 1787322895.5269709,
+    "ast_hash": "8430e0f629cb577fa5892e5890ceb9ef",
     "semantic_hash": ""
   },
   "ui/src/lib/telemetry/identity.ts": {
@@ -4548,15 +4548,15 @@
     "semantic_hash": ""
   },
   "deploy/posthog/README.md": {
-    "mtime": 1787318302.371437,
-    "seen": 1787320437.363432,
-    "ast_hash": "1b95c5496a54c8b6cf82950249bdeea5",
+    "mtime": 1787322833.2202163,
+    "seen": 1787322895.530887,
+    "ast_hash": "ea44319241a253a29d0d4f11059a34d4",
     "semantic_hash": ""
   },
   "docs/graphify.md": {
-    "mtime": 1787319358.0836356,
-    "seen": 1787320437.3663979,
-    "ast_hash": "bbfb4bcc25723249f05da4b188ad6b81",
+    "mtime": 1787320460.2612596,
+    "seen": 1787322895.534587,
+    "ast_hash": "867d979393a0f19a39a337932b908a1c",
     "semantic_hash": ""
   },
   "ui/tests/maestro/01-giris-ve-kabuk.yaml": {
@@ -4593,6 +4593,36 @@
     "mtime": 1787318679.39626,
     "seen": 1787320437.366634,
     "ast_hash": "f52c104b79532d2b732171eb7e52303d",
+    "semantic_hash": ""
+  },
+  "ui/scripts/telemetry-echo.mjs": {
+    "mtime": 1787322597.165456,
+    "seen": 1787322895.519892,
+    "ast_hash": "48f46f8486af472d6625014ab948fd1b",
+    "semantic_hash": ""
+  },
+  "ui/src/lib/telemetry/classify.ts": {
+    "mtime": 1787321794.3168662,
+    "seen": 1787322895.5268931,
+    "ast_hash": "a2ac15abac6aba762cfe6ea9ff93ca0f",
+    "semantic_hash": ""
+  },
+  "ui/src/lib/telemetry/measure.ts": {
+    "mtime": 1787321964.4962664,
+    "seen": 1787322895.52702,
+    "ast_hash": "e3b6b2e88c26255b393067cf9103d2e2",
+    "semantic_hash": ""
+  },
+  "ui/src/lib/telemetry/server.ts": {
+    "mtime": 1787321873.8575547,
+    "seen": 1787322895.5270588,
+    "ast_hash": "e5000182fbf1068e5b1d627b85340a83",
+    "semantic_hash": ""
+  },
+  "ui/tests/telemetry-instrumentation.test.ts": {
+    "mtime": 1787322207.073311,
+    "seen": 1787322895.528021,
+    "ast_hash": "a0ff1aefad2bb0ce6501051b2f8d87dd",
     "semantic_hash": ""
   }
 }
