@@ -255,11 +255,34 @@ public sealed partial class CiCoverageTests
 
             steps.Add(new Step(
                 directory.Success ? directory.Groups["dir"].Value.Trim().TrimEnd('/') : string.Empty,
-                run.Success ? run.Groups["cmd"].Value : block));
+                WithoutComments(run.Success ? run.Groups["cmd"].Value : block)));
         }
 
         return steps;
     }
+
+    /// <summary>
+    /// Yorum satırları çıkarılmış komut metni.
+    ///
+    /// <para>
+    /// <c>run: |</c> bloğundaki <c>#</c> satırı bir <b>kabuk yorumu</b>; koşan
+    /// bir komut değil. Bekçi onları da sayarken yanlış sebeple yeşil
+    /// yanabiliyordu: bu depoda <c>e2e</c> işinin hemen üstündeki açıklama
+    /// yorumu <c>npm run e2e</c> dizgesini birebir taşıyor, yani adım silinse
+    /// bile koşucu jetonu komşu adımın metninde bulunabiliyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// Bu, bekçinin yakalamak için var olduğu kusurun ta kendisi — bir kapının
+    /// yanlış sebeple geçmesi, hiç olmamasından kötü (§7). Yorumları çıkarmak
+    /// kuralı genelleştiriyor: yorum içine yazılmış hiçbir komut adı bir adımı
+    /// "koşuyor" saydırmıyor.
+    /// </para>
+    /// </summary>
+    private static string WithoutComments(string run) =>
+        string.Join(
+            "\n",
+            run.Split('\n').Where(line => !line.TrimStart().StartsWith('#')));
 
     /// <summary>
     /// Kökü <b>koşturan</b> bir adım var mı.

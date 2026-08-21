@@ -414,6 +414,59 @@ public sealed class DeviceConfigTests
         Assert.Equal("fortinet.fortigate@10.0.0.1:22", target.ToString());
     }
 
+    /// <summary>
+    /// Dört belirteçli SNMP satırı da maskeleniyor.
+    ///
+    /// <para>
+    /// ASA/IOS'un yaygın biçimi anahtar kelimeden önce dört belirteç taşıyor:
+    /// <c>snmp-server host &lt;arayüz&gt; &lt;ip&gt; community &lt;anahtar&gt;</c>.
+    /// Önek sınırı buna yetmediği sürece anahtar ham hâlde normalize edilmiş
+    /// config'te kalıyordu — ve orası saklanan anlık görüntünün metni.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Dort_belirtecli_snmp_satiri_maskeleniyor()
+    {
+        const string config = """
+            hostname asa-dc-01
+            !
+            snmp-server host inside 10.1.1.9 community S3cr3tC0mmun1ty
+            """;
+
+        var masked = Flatten(ConfigNormalizer.Normalize(ConfigNormalizer.CiscoAsa, config));
+
+        Assert.DoesNotContain("S3cr3tC0mmun1ty", masked, StringComparison.Ordinal);
+        Assert.Contains("<gizli:", masked, StringComparison.Ordinal);
+
+        // Anahtarın ADI korunuyor: "hangi sır değişti" görünür kalmalı.
+        Assert.Contains("community", masked, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <b>Açıklama alanı maskelenmiyor.</b>
+    ///
+    /// <para>
+    /// Önek sınırı genişletilince doğan kusur buydu: <c>secret</c> sözcüğü bir
+    /// açıklamanın içinde geçtiğinde desen tutuyor ve operatörün yazdığı metin
+    /// bir özete dönüşüyordu. Sır sızıntısı değil, <b>sessiz veri kaybı</b> —
+    /// fark raporu açıklamayı yok ediyor ve kimse silindiğini görmüyor.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData(ConfigNormalizer.CiscoAsa, "description shared secret for the Ankara tunnel", "Ankara tunnel")]
+    [InlineData(ConfigNormalizer.CiscoAsa, "remark allow community access from branch", "access from branch")]
+    [InlineData(ConfigNormalizer.FortiGate, "set comments \"rotate the psksecret every quarter\"", "every quarter")]
+    public void Aciklama_alani_maskelenmiyor(string vendor, string line, string korunmali)
+    {
+        var masked = Flatten(ConfigNormalizer.Normalize(vendor, "hostname x\n" + line));
+
+        Assert.Contains(korunmali, masked, StringComparison.Ordinal);
+        Assert.DoesNotContain("<gizli:", masked, StringComparison.Ordinal);
+    }
+
+    private static string Flatten(IReadOnlyList<ConfigLine> lines) =>
+        string.Join("\n", lines.Select(l => l.Text));
+
     private static DeviceTarget Target(string vendor = ConfigNormalizer.FortiGate) => new()
     {
         Vendor = vendor,

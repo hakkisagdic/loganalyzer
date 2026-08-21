@@ -32,6 +32,10 @@ const UI = fileURLToPath(new URL("../..", import.meta.url));
 
 const CLICKHOUSE = "Host=localhost;Port=8123;Database=bizigo;Username=bizigo;Password=bizigo";
 
+/** Analistin IdP grubu ve tohumlanan verinin kapsam grubu. */
+const IDP_GROUP = "/network/core";
+const OWNER_GROUP = "golden";
+
 /** Yığından beklenen servisler ve neden gerektikleri. */
 const REQUIRED_SERVICES: ReadonlyArray<readonly [service: string, why: string]> = [
   ["clickhouse", "olay tablosu — arama ve RCA ekranlarının verisi"],
@@ -169,6 +173,174 @@ function seed(): void {
   );
 }
 
+/**
+ * Kontrol düzlemi göçleri ve kapsam verisi — <b>Playwright hiçbir şey
+ * başlatmadan ÖNCE</b>.
+ *
+ * <h3>Neden testin içinde değil</h3>
+ *
+ * <p>
+ * Daha önce buradaki iki satır (<c>idp_group_mapping</c> ve envanter) testin
+ * <c>beforeAll</c>'undaydı ve <b>yerelde geçiyordu</b>. CI'da geçmezdi ve
+ * sebebi kodda yazılı: <c>Program.cs</c> kapsam eşlemesini <b>açılışta bir
+ * kez</b> belleğe alıyor (<c>AccessScopeResolver.RefreshAsync</c>) ve bir daha
+ * tazelemiyor. Playwright ise <c>webServer</c>'ları testlerden önce başlatıyor.
+ * </p>
+ *
+ * <p>
+ * Zincir şuydu: API açılır → eşleme tablosu <b>temiz veritabanında boş</b> →
+ * önbellek boş yüklenir → test satırı yazar (çok geç) → analistin kapsamı boş
+ * kalır → hiçbir olay dönmez → ekran boş. Yerelde geçmesinin tek sebebi
+ * satırın önceki bir koşumdan kalmış olmasıydı; yani test yeşildi ama sebebi
+ * makinenin geçmişiydi.
+ * </p>
+ *
+ * <p>
+ * EF göçü de burada koşuyor, çünkü tablo göçle doğuyor: temiz bir veritabanında
+ * göç uygulanmadan satır yazılamaz.
+ * </p>
+ */
+async function scopeAndInventory(): Promise<void> {
+  const dotnet = `${process.env.HOME}/.dotnet/dotnet`;
+  const env = { DOTNET_ROOT: `${process.env.HOME}/.dotnet` };
+
+  // Container'daki API varsa DURDURULUYOR ve sebebi yukarıdaki önbellek:
+  // Playwright yerelde zaten koşan bir sunucuyu tekrar kullanıyor
+  // (`reuseExistingServer`), o da bu tohumlamadan ÖNCE açılmış olabilir — yani
+  // eski, boş bir kapsam önbelleğiyle. CI'da bu hâl yok (orada her koşum kendi
+  // sürecini açıyor), ve yerelin CI'yı yalanlaması bu turda düşülen tuzağın ta
+  // kendisi. Durdurulunca Playwright yerelde de yeni bir süreç açıyor.
+  try {
+    run("docker", ["compose", "-f", "deploy/docker-compose.yml", "--profile", "api", "stop", "api"], REPO);
+    process.stdout.write("· container'daki API durduruldu (kapsam önbelleği bayat kalmasın)\n");
+  } catch {
+    // Koşmuyorsa yapılacak bir şey yok.
+  }
+
+  process.stdout.write("· kontrol düzlemi göçleri\n");
+  run(dotnet, ["tool", "restore"], REPO, env);
+  run(
+    dotnet,
+    [
+      "ef", "database", "update",
+      "--project", "src/Bizigo.ControlPlane",
+      "--startup-project", "src/Bizigo.Api",
+    ],
+    REPO,
+    { ...env, ASPNETCORE_ENVIRONMENT: "Development" },
+  );
+
+  process.stdout.write("· kapsam eşlemesi\n");
+  psql(`INSERT INTO bizigo.idp_group_mapping (idp_group, owner_group, note)
+        VALUES ('${IDP_GROUP}', '${OWNER_GROUP}', 'uctan uca ekran goruntusu kosumu')
+        ON CONFLICT (idp_group) DO UPDATE SET owner_group = EXCLUDED.owner_group;`);
+
+  process.stdout.write("· kaynak envanteri\n");
+  await seedInventory();
+}
+
+/** Kontrol düzlemine tek ifade — compose'un içindeki `psql` üzerinden. */
+function psql(sql: string): void {
+  run(
+    "docker",
+    [
+      "compose", "-f", "deploy/docker-compose.yml", "exec", "-T", "postgres",
+      "psql", "-U", "bizigo", "-d", "bizigo", "-v", "ON_ERROR_STOP=1", "-c", sql,
+    ],
+    REPO,
+  );
+}
+
+/** ClickHouse'a tek sorgu; satırlar TSV. */
+async function clickhouse(sql: string): Promise<string[][]> {
+  const response = await fetch("http://localhost:8123/", {
+    method: "POST",
+    headers: {
+      "X-ClickHouse-User": "bizigo",
+      "X-ClickHouse-Key": "bizigo",
+      "X-ClickHouse-Database": "bizigo",
+    },
+    body: sql,
+  });
+
+  if (!response.ok) {
+    throw new Error(`ClickHouse sorguyu reddetti: ${await response.text()}`);
+  }
+
+  return (await response.text())
+    .trim()
+    .split("\n")
+    .filter((line) => line.length > 0)
+    .map((line) => line.split("\t"));
+}
+
+/**
+ * Kaynak envanteri.
+ *
+ * <p>
+ * <b>Liste ClickHouse'tan okunuyor, buraya yazılmıyor.</b> Parser dizinlerini
+ * ikinci kez saymak, tohumlayıcı değiştiği gün sessizce ayrışan bir kopya
+ * olurdu (§9).
+ * </p>
+ *
+ * <p>
+ * <c>parser_id</c> BASKIN parser'a bağlanıyor ve o da ölçülüyor
+ * (<c>argMax</c>). Bağlamanın zararsız olduğu koda bakılarak doğrulandı: bağlı
+ * parser tutmazsa <c>Dispatcher</c> kademe 2'ye düşüyor ve
+ * <c>RecordBoundMiss</c> sayıyor — hiçbir satır kaybolmuyor.
+ * </p>
+ */
+async function seedInventory(): Promise<void> {
+  const rows = await clickhouse(
+    `SELECT source_id,
+            any(vendor),
+            any(product),
+            argMax(parser_id, satir) AS baskin_parser
+     FROM (
+       SELECT source_id, vendor, product, parser_id, count() AS satir
+       FROM events
+       WHERE owner_group = '${OWNER_GROUP}' AND parser_id != ''
+       GROUP BY source_id, vendor, product, parser_id
+     )
+     GROUP BY source_id ORDER BY source_id FORMAT TSV`,
+  );
+
+  if (rows.length === 0) {
+    throw new Error(
+      `ClickHouse'ta '${OWNER_GROUP}' grubunda hiç kaynak yok. Tohumlama koştu mu?`,
+    );
+  }
+
+  for (const row of rows) {
+    for (const value of row) {
+      if (value.includes("'")) {
+        throw new Error(`Envanter değeri tırnak taşıyor, ifade kurulamaz: ${value}`);
+      }
+    }
+  }
+
+  const values = rows
+    .map(
+      ([sourceId, vendor, product, parserId]) =>
+        `('${sourceId}', '${sourceId}', '${OWNER_GROUP}', '${vendor}', '${product}', ` +
+        `'${parserId}', 'auto', 'golden', true, now(), now())`,
+    )
+    .join(",\n         ");
+
+  psql(
+    `INSERT INTO bizigo.sources
+       (source_id, hostname, owner_group, vendor, product,
+        parser_id, encoding, source_class, enabled, created_at, updated_at)
+     VALUES ${values}
+     ON CONFLICT (source_id) DO UPDATE SET
+       owner_group = EXCLUDED.owner_group,
+       vendor = EXCLUDED.vendor,
+       product = EXCLUDED.product,
+       parser_id = EXCLUDED.parser_id,
+       updated_at = now();`,
+  );
+}
+
 /** Arayüz derlemesi — `next start` derlenmiş çıktı istiyor. */
 function buildUi(): void {
   if (process.env.E2E_SKIP_BUILD === "1" && existsSync(`${UI}/.next`)) {
@@ -183,6 +355,7 @@ function buildUi(): void {
 assertStackIsUp();
 build();
 seed();
+await scopeAndInventory();
 buildUi();
 
 process.stdout.write("· hazır\n");
