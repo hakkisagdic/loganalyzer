@@ -278,7 +278,11 @@ describe("error_kind kapalı sözlüğün DIŞINA çıkamıyor", () => {
     const kok = fileURLToPath(new URL("..", import.meta.url));
     const sonuc: string[] = [];
 
-    for (const dizin of ["src/app", "src/lib", "src/components"]) {
+    // TÜM `src` — üç alt dizin DEĞİL. İnceleme `src/middleware.ts`'in denetim
+    // dışında kaldığını gösterdi: elle sayılan bir kapsam, sayılmayan dosyayı
+    // görünmez yapıyor ve görünmezliği hiçbir yerde yazmıyor.
+    {
+      const dizin = "src";
       for (const girdi of readdirSync(join(kok, dizin), { withFileTypes: true, recursive: true })) {
         if (girdi.isFile() && /\.tsx?$/.test(girdi.name)) {
           sonuc.push(join(girdi.parentPath ?? girdi.path, girdi.name));
