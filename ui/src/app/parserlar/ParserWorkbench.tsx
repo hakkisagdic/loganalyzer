@@ -10,6 +10,9 @@ import { api, type SourceItem } from "@/lib/api/client";
 import { describeError } from "@/lib/api/errors";
 import { toNumber } from "@/lib/api/numbers";
 import { fetchDraft } from "@/lib/parsers/draft";
+import { errorKind } from "@/lib/telemetry/classify";
+import { track } from "@/lib/telemetry/client";
+import { yamlLines } from "@/lib/telemetry/measure";
 import { STEP_TYPES, suggest } from "@/lib/parsers/schema";
 import { NEW_PARSER_TEMPLATE, appendStep } from "@/lib/parsers/template";
 import type { ParserGate, ParserTry } from "@/lib/parsers/types";
@@ -111,16 +114,47 @@ export function ParserWorkbench({ sources, draftId }: ParserWorkbenchProps) {
       setTrying(true);
       setTryError(null);
 
+      const started = performance.now();
+
       api
         .post("/v1/parsers/try", {
           body: { yaml, line, parser_id: "" },
           signal: controller.signal,
         })
-        .then((result) => setTryResult(result))
+        .then((result) => {
+          setTryResult(result);
+
+          // Derlemenin ŞEKLİ ölçülüyor, içeriği değil: kaç şema hatası, kaç
+          // düşen test, kapı hangi aşamada durdu, YAML kaç satır. Hiçbiri
+          // taslağın kendisinden bir parça taşımıyor — `gate_stage` sınırlı
+          // bir sözlük, sayılar sayı.
+          const verdict = result.draft;
+
+          track("parser_compiled", {
+            succeeded: true,
+            duration_ms: Math.round(performance.now() - started),
+            yaml_lines: yamlLines(yaml),
+            gate_ok: verdict?.ok ?? false,
+            gate_stage: verdict?.stage,
+            schema_error_count: verdict?.schema_errors?.length ?? 0,
+            test_failure_count: (verdict?.tests ?? []).filter((test) => !test.passed).length,
+            redos_count: verdict?.redos?.length ?? 0,
+          });
+        })
         .catch((cause: unknown) => {
           if (controller.signal.aborted) return;
           setTryResult(null);
           setTryError(describeError(cause));
+
+          // `describeError` sunucunun CÜMLESİNİ döndürüyor ve ekrana o
+          // yazılıyor; telemetriye giden `errorKind` ise sınıflandırılmış
+          // bir değer. İkisinin ayrı olması bu modülün varlık sebebi.
+          track("parser_compiled", {
+            succeeded: false,
+            error_kind: errorKind(cause),
+            duration_ms: Math.round(performance.now() - started),
+            yaml_lines: yamlLines(yaml),
+          });
         })
         .finally(() => {
           if (!controller.signal.aborted) setTrying(false);
@@ -223,11 +257,22 @@ export function ParserWorkbench({ sources, draftId }: ParserWorkbenchProps) {
     setSaveError(null);
     setNotice(null);
 
+    // Ekranın gönderim ANINDA ne sandığı. Kapı sunucuda YENİDEN koşuyor, yani
+    // bu bir tahmin; tahminle sonucun ayrıştığı oran ölçülebilir ve ürün için
+    // anlamlı bir sayı.
+    const sanilan = gate?.ok ?? false;
+
     try {
       const result = await api.post("/v1/parsers/drafts/{id}/submit", { path: { id: savedId } });
       setNotice(`Taslak incelemeye gönderildi (durum: ${result.state}).`);
+      track("parser_submitted", { succeeded: true, gate_ok_before_submit: sanilan });
     } catch (cause) {
       setSaveError(describeError(cause));
+      track("parser_submitted", {
+        succeeded: false,
+        error_kind: errorKind(cause),
+        gate_ok_before_submit: sanilan,
+      });
     } finally {
       setSaving(false);
     }

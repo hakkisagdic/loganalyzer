@@ -595,6 +595,79 @@ CLI repo içindeki herhangi bir alt dizinden çağrılabilir.
 export DOTNET_ROOT="$HOME/.dotnet"
 ```
 
+## Telemetri (PostHog)
+
+Ürün analitiği. **Varsayılan kapalı** — bu ürün müşterinin log'unu okuyor ve
+kurulumun kendiliğinden dışarı konuşmaya başlaması, ürünü değerlendiren bir
+güvenlik ekibinin ilk gün bulacağı şey olurdu.
+
+Açmak için `ui/.env.local`:
+
+```bash
+TELEMETRY_ENABLED=true
+TELEMETRY_PROJECT_KEY=phc_...
+TELEMETRY_HOST=https://eu.i.posthog.com    # ya da kendi self-host adresiniz
+```
+
+Sunucu tarafı ve self-host kurulumu: [`deploy/posthog/README.md`](deploy/posthog/README.md).
+
+**Tarayıcı PostHog'a hiç konuşmuyor.** Bütün trafik Next sunucusundaki
+`/api/telemetry` vekilinden geçiyor — `api/bff` ile aynı desen. Müşteri ağı
+yalnızca ürünün kendi adresini görüyor, ve istemci IP'si yukarı akışa gitmiyor.
+
+**Oturum kaydı (session replay) iki yerden kapalı** ve bu pazarlığa açık değil:
+ekranda duran şey müşterinin log satırları. İstemci `disable_session_recording`
+ile, vekil de `/s` ucunu 403'le reddederek kapatıyor. İkinci kapı, birincisinin
+bir sürüm yükseltmesinde varsayılanını değiştirebilmesine karşı.
+
+**Ne gidiyor:** yalnızca `ui/src/lib/telemetry/events.ts` kataloğundaki olaylar
+ve her olayın yanında **yazılı** alanlar — sayaçlar, süreler, sınıflandırılmış
+hata tipleri, kalıba indirilmiş yollar (`/kaynaklar/:id`).
+**Ne gitmiyor:** arama ölçütünün metni, sorgu dizeleri, log satırları, hata
+mesajları, ham URL'ler, istemci IP'si, e-posta, ham Keycloak `sub`.
+
+Süzgeç beyaz liste ve kırmızı yanabildiği ölçüldü
+(`ui/tests/telemetry-scrub.test.ts`, `ui/tests/telemetry-proxy.test.ts`).
+
+## Bilgi grafiği (Graphify)
+
+Depo `graphify-out/` altında sorgulanabilir bir bilgi grafiği taşıyor: 8.280
+düğüm, 18.892 kenar, 429 topluluk — ve **sıfır token maliyetiyle** üretildi
+(kod grafı tree-sitter AST'siyle deterministik çıkarılıyor, LLM'siz).
+
+```bash
+graphify query "kapsam filtresi nerede uygulanıyor"
+graphify path "AccessScopeResolver" "EventsController"
+graphify update .          # kod değişince tazele
+```
+
+Kurulum, merge sürücüsü ve bilinen maliyetler: [`docs/graphify.md`](docs/graphify.md).
+
+## Uçtan uca akışlar (Maestro)
+
+`ui/tests/maestro/` altında YAML ile yazılmış, derleme gerektirmeyen E2E
+akışları — gerçek Keycloak girişi, gerçek API, gerçek veri.
+
+```bash
+maestro test ui/tests/maestro
+```
+
+Playwright paketi (`ui/tests/e2e/`) ürünün nasıl **göründüğünü** kaydediyor;
+Maestro akışları nasıl **davrandığını** sınıyor. Ayrıntı ve şu anki CI boşluğu:
+[`ui/tests/maestro/README.md`](ui/tests/maestro/README.md).
+
+## Araştırma notları
+
+`docs/arastirma/` altında, bu depoda üretilmiş ama bu depo hakkında olmayan
+çalışmalar duruyor. İlki: **100 mikroservislik bir estate'te uçtan uca kod
+bilgisi için katmanlı referans mimari** — altı mercek, her mercek için
+adversarial bir doğrulama turu, ve bir eksiklik eleştirisi.
+
+Merkezî fikir, bu deponun kendi kurallarıyla aynı yerden geliyor: bir kenarın
+güvenilirliği, o kenarı yanlış tutmanın bedeliyle orantılıdır — yani kenarları
+kaynağına göre değil **yaptırımına** göre sınıflandırın. Ayrıntı:
+[`docs/arastirma/README.md`](docs/arastirma/README.md).
+
 ## Lisans
 
 [MIT](LICENSE). Yeniden dağıtılan üçüncü taraf malzeme

@@ -12,11 +12,14 @@
     "test:live": "vitest run --config vitest.live.config.ts",
     "test:watch": "vitest",
     "api:generate": "./scripts/generate-api-types.sh",
-    "api:check": "./scripts/generate-api-types.sh --check"
+    "api:check": "./scripts/generate-api-types.sh --check",
+    "telemetry:echo": "node scripts/telemetry-echo.mjs"
   },
   "dependencies": {
     "jose": "^6.0.11",
     "next": "^15.5.4",
+    "posthog-js": "^1.418.9",
+    "posthog-node": "^5.49.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "redis": "^6.2.1"

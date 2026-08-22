@@ -1,0 +1,16 @@
+# Maestro çalışma alanı yapılandırması.
+#
+# Bu dosya aynı zamanda `CiCoverageTests` bekçisinin işareti: bekçi test
+# köklerini işaret dosyalarından buluyor (`pytest.ini`, `vitest.config.*`,
+# `playwright.config.*`, Test SDK'lı `*.csproj`) ve `maestro` adlı bir dizinin
+# içindeki `config.yaml` "burada bir Maestro paketi var" demek.
+#
+# Uydurma bir işaret dosyası koymak yerine Maestro'nun GERÇEK yapılandırma
+# dosyası seçildi: bekçinin kapsamı var olan yapılandırmanın üstünden büyüsün,
+# yalnızca bekçiyi memnun etmek için var olan bir dosyanın üstünden değil.
+
+flows:
+  - "*.yaml"
+
+# Alt akışlar tek başına koşmuyor; `runFlow` ile çağrılıyorlar.
+# `flows` deseni yalnızca kök dizini topladığı için `altakimlar/` zaten dışarıda.

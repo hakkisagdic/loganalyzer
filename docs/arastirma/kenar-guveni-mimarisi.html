@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kenar Güveni Mimarisi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Spectral:ital,wght@0,500;0,600;1,500&display=swap">
+<style>
+/* ---- jetonlar: acik palet bare :root'ta, tamami ---- */
+:root {
+  --ground:#EDF1F3; --surface:#FCFDFD; --surface2:#F4F7F8;
+  --ink:#101A20; --muted:#55666F; --rule:#D3DCE1; --rule2:#E4EAEE;
+  --accent:#12506E; --accent-soft:#DCE9F0;
+  --enforced:#0C6053; --enforced-bg:#DDEDE9;
+  --declared:#8A5606; --declared-bg:#F5E9D6;
+  --observed:#3F4F8C; --observed-bg:#E2E6F4;
+  --alarm:#912A2D; --alarm-bg:#F6E0E0;
+  --shadow:0 1px 2px rgba(16,26,32,.06), 0 8px 24px -16px rgba(16,26,32,.18);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:#0B1114; --surface:#121B20; --surface2:#172127;
+    --ink:#DCE5E9; --muted:#8A9BA4; --rule:#22313A; --rule2:#1A252B;
+    --accent:#6FB4D8; --accent-soft:#16323F;
+    --enforced:#4CB3A0; --enforced-bg:#123029;
+    --declared:#D9A648; --declared-bg:#33260F;
+    --observed:#8898D8; --observed-bg:#1B2140;
+    --alarm:#E0736F; --alarm-bg:#3A1B1C;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"] {
+  --ground:#0B1114; --surface:#121B20; --surface2:#172127;
+  --ink:#DCE5E9; --muted:#8A9BA4; --rule:#22313A; --rule2:#1A252B;
+  --accent:#6FB4D8; --accent-soft:#16323F;
+  --enforced:#4CB3A0; --enforced-bg:#123029;
+  --declared:#D9A648; --declared-bg:#33260F;
+  --observed:#8898D8; --observed-bg:#1B2140;
+  --alarm:#E0736F; --alarm-bg:#3A1B1C;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+}
+
+*, *::before, *::after { box-sizing:border-box; }
+body {
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size:16px; line-height:1.68; -webkit-font-smoothing:antialiased;
+}
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:2px; }
+@media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+
+/* ---- kabuk ---- */
+.kabuk { max-width:1320px; margin:0 auto; padding:0 24px 96px; }
+
+/* ---- kunye ---- */
+.kunye { padding:64px 0 36px; border-bottom:1px solid var(--rule); }
+.etiket {
+  font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:11px; font-weight:500;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 18px;
+  display:flex; flex-wrap:wrap; gap:8px 18px;
+}
+.kunye h1 {
+  font-family:Spectral, Georgia, serif; font-weight:600; font-size:clamp(30px,4.4vw,52px);
+  line-height:1.1; letter-spacing:-.015em; margin:0 0 20px; max-width:19ch; text-wrap:balance;
+}
+.kunye .ozet {
+  font-size:17px; color:var(--muted); max-width:64ch; margin:0;
+  font-style:italic; font-family:Spectral, Georgia, serif;
+}
+.olcum { display:flex; flex-wrap:wrap; gap:10px; margin:26px 0 0; padding:0; list-style:none; }
+.olcum li {
+  font-family:"IBM Plex Mono", monospace; font-size:12px; color:var(--muted);
+  background:var(--surface); border:1px solid var(--rule); border-radius:2px; padding:5px 10px;
+}
+.olcum b { color:var(--ink); font-weight:500; }
+
+/* ---- iki sutun ---- */
+.govde { display:grid; grid-template-columns:250px minmax(0,1fr); gap:56px; align-items:start; }
+@media (max-width:1000px) { .govde { grid-template-columns:1fr; gap:0; } }
+
+/* ---- sol ray: gezinme AYNI ZAMANDA katman semasi ---- */
+.ray { position:sticky; top:24px; padding:36px 0 0; max-height:calc(100vh - 48px); overflow-y:auto; }
+@media (max-width:1000px) { .ray { position:static; max-height:none; padding-bottom:32px; border-bottom:1px solid var(--rule); } }
+.raybas {
+  font-family:"IBM Plex Mono", monospace; font-size:10px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--muted); margin:0 0 14px;
+}
+.rb {
+  display:flex; gap:10px; align-items:baseline; text-decoration:none; color:var(--ink);
+  font-size:13.5px; padding:6px 0; border-bottom:1px solid var(--rule2);
+}
+.rb:hover { color:var(--accent); }
+.rnum {
+  font-family:"IBM Plex Mono", monospace; font-size:11px; color:var(--accent);
+  min-width:14px; font-weight:500;
+}
+.yigin {
+  margin:10px 0 14px 8px; padding:10px 0 10px 18px; position:relative;
+  border-left:1px solid var(--rule);
+}
+.yigin::after {
+  content:"bağımlılık yönü"; position:absolute; left:-1px; bottom:-19px;
+  font-family:"IBM Plex Mono", monospace; font-size:9px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--muted); white-space:nowrap;
+}
+.ky {
+  display:grid; grid-template-columns:auto auto minmax(0,1fr); gap:8px; align-items:baseline;
+  text-decoration:none; color:var(--muted); font-size:12.5px; padding:3.5px 0; position:relative;
+}
+.ky:hover { color:var(--accent); }
+.ky:hover .ktik { background:var(--accent); }
+.ktik {
+  width:9px; height:1px; background:var(--rule); margin-left:-18px; align-self:center;
+  display:block; position:absolute; left:0; top:50%;
+}
+.kkodr {
+  font-family:"IBM Plex Mono", monospace; font-size:11px; font-weight:500;
+  color:var(--accent); min-width:22px;
+}
+.kadr { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* ---- ana metin ---- */
+main { padding:36px 0 0; min-width:0; max-width:74ch; }
+.bolum { padding:0 0 20px; }
+.bolum + .bolum { margin-top:56px; padding-top:44px; border-top:1px solid var(--rule); }
+h2 {
+  font-family:Spectral, Georgia, serif; font-weight:600; font-size:clamp(22px,2.6vw,30px);
+  line-height:1.2; letter-spacing:-.01em; margin:0 0 26px; display:flex; gap:14px;
+  align-items:baseline; text-wrap:balance;
+}
+.bnum {
+  font-family:"IBM Plex Mono", monospace; font-size:13px; font-weight:500; color:var(--accent);
+  border:1px solid var(--accent-soft); background:var(--accent-soft);
+  border-radius:2px; padding:2px 7px; flex:none; align-self:center;
+}
+h3 {
+  font-family:Spectral, Georgia, serif; font-weight:600; font-size:19px; line-height:1.32;
+  margin:38px 0 12px; text-wrap:balance;
+}
+h3.katman {
+  display:flex; flex-wrap:wrap; gap:10px; align-items:baseline;
+  margin-top:52px; padding-top:20px; border-top:2px solid var(--accent-soft);
+}
+.kkod {
+  font-family:"IBM Plex Mono", monospace; font-size:13px; font-weight:500;
+  color:var(--surface); background:var(--accent); border-radius:2px; padding:3px 8px; flex:none;
+}
+.kad { flex:1 1 auto; min-width:0; }
+p { margin:0 0 16px; }
+p.deck { color:var(--muted); font-family:Spectral, Georgia, serif; font-size:17px; }
+ul, ol { margin:0 0 18px; padding-left:22px; }
+li { margin:0 0 7px; }
+li::marker { color:var(--accent); }
+strong { font-weight:600; }
+em { font-style:italic; }
+code {
+  font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:.87em;
+  background:var(--surface2); border:1px solid var(--rule2); border-radius:2px;
+  padding:1px 5px; overflow-wrap:anywhere;
+}
+blockquote {
+  margin:22px 0; padding:14px 20px; border-left:3px solid var(--accent);
+  background:var(--surface); color:var(--muted); font-family:Spectral, Georgia, serif;
+  font-size:16.5px;
+}
+blockquote p { margin:0; }
+
+/* ---- koken cipleri: belgenin kendi tezi kendine uygulaniyor ---- */
+.koken {
+  font-family:"IBM Plex Mono", monospace; font-size:10.5px; font-weight:500;
+  letter-spacing:.02em; padding:1px 6px; border-radius:2px; white-space:nowrap;
+  border:1px solid transparent; vertical-align:.08em;
+}
+.koken.dogru { color:var(--enforced); background:var(--enforced-bg); border-color:var(--enforced-bg); }
+.koken.supheli { color:var(--declared); background:var(--declared-bg); border-color:var(--declared-bg); }
+
+.bayrak {
+  font-family:"IBM Plex Mono", monospace; font-size:10.5px; font-weight:500;
+  letter-spacing:.04em; text-transform:uppercase; padding:2px 7px; border-radius:2px; flex:none;
+}
+.bayrak.anahtar { color:var(--observed); background:var(--observed-bg); }
+.bayrak.uyari { color:var(--alarm); background:var(--alarm-bg); }
+
+/* ---- tablolar ---- */
+.tsar {
+  overflow-x:auto; margin:22px 0 26px; border:1px solid var(--rule);
+  border-radius:3px; background:var(--surface); box-shadow:var(--shadow);
+}
+table { border-collapse:collapse; width:100%; font-size:13.5px; line-height:1.55; }
+thead th {
+  text-align:left; font-family:"IBM Plex Mono", monospace; font-size:10.5px; font-weight:500;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
+  padding:11px 14px; border-bottom:1px solid var(--rule); background:var(--surface2);
+  white-space:nowrap;
+}
+tbody td {
+  padding:11px 14px; border-bottom:1px solid var(--rule2); vertical-align:top;
+  font-variant-numeric:tabular-nums;
+}
+tbody tr:last-child td { border-bottom:0; }
+tbody td:first-child { white-space:normal; min-width:11ch; }
+table code { background:var(--surface2); }
+
+/* ---- alt ---- */
+.dipnot {
+  margin-top:64px; padding-top:24px; border-top:1px solid var(--rule);
+  font-size:12.5px; color:var(--muted); max-width:74ch;
+}
+.dipnot p { margin:0 0 8px; }
+</style>
+
+</head>
+<body>
+<div class="kabuk">
+  <header class="kunye">
+    <p class="etiket"><span>Bizigo · altyapı araştırması</span><span>21 Ağustos 2026</span><span>6 mercek · 13 ajan</span></p>
+    <h1>Kenar güveni: 100 mikroservislik bir estate'te kod bilgisi</h1>
+    <p class="ozet">Altı ayrı merceğin taraması, her mercek için onu çürütmeye çalışan bir doğrulama turu, ve bir eksiklik eleştirisi. Doğrulamanın düzelttiği her yerde düzeltilmiş hâl esas alındı; doğrulanamayan her sayı işaretli.</p>
+    <ul class="olcum">
+      <li><b>11</b> katman · L0–L10</li>
+      <li><b>40</b> doğrulanmış iddia</li>
+      <li><b>12</b> doğrulanamamış</li>
+      <li><b>1</b> doğrulama ajanı düştü (529)</li>
+    </ul>
+  </header>
+
+  <div class="govde">
+    <nav class="ray" aria-label="Belge yapısı">
+      <p class="raybas">Bölümler</p>
+      <a class="rb" href="#b1"><span class="rnum">1</span>TEK EN ÖNEMLİ FİKİR</a>
+<a class="rb" href="#b2"><span class="rnum">2</span>KATMANLAR</a>
+<div class="yigin" role="group" aria-label="Katman yığını, L0 tabanda">
+<a class="ky" href="#l0"><span class="ktik" aria-hidden="true"></span><span class="kkodr">L0</span><span class="kadr">Kimlik ve birleştirme anahtarı</span></a>
+<a class="ky" href="#l1"><span class="ktik" aria-hidden="true"></span><span class="kkodr">L1</span><span class="kadr">Sözcüksel ve yapısal arama</span></a>
+<a class="ky" href="#l2"><span class="ktik" aria-hidden="true"></span><span class="kkodr">L2</span><span class="kadr">Repo-içi sembol grafı</span></a>
+<a class="ky" href="#l3"><span class="ktik" aria-hidden="true"></span><span class="kkodr">L3</span><span class="kadr">Bağımlılık manifesti, SBOM ve build grafı</span></a>
+<a class="ky" href="#l4"><span class="ktik" aria-hidden="true"></span><span class="kkodr">L4</span><span class="kadr">Sözleşme kayıt defteri ve kırılma kapıları</span></a>
+<a class="ky" href="#l5"><span class="ktik" aria-hidden="true"></span><span class="kkodr">L5</span><span class="kadr">Beyan edilmiş çalışma-zamanı topolojisi</span></a>
+<a class="ky" href="#l6"><span class="ktik" aria-hidden="true"></span><span class="kkodr">L6</span><span class="kadr">Gözlemlenmiş çalışma-zamanı topolojisi</span></a>
+<a class="ky" href="#l7"><span class="ktik" aria-hidden="true"></span><span class="kkodr">L7</span><span class="kadr">Sahiplik ve yönetişim (katalog)</span></a>
+<a class="ky" href="#l8"><span class="ktik" aria-hidden="true"></span><span class="kkodr">L8</span><span class="kadr">Karar kaydı (&quot;neden&quot; katmanı)</span></a>
+<a class="ky" href="#l9"><span class="ktik" aria-hidden="true"></span><span class="kkodr">L9</span><span class="kadr">Ajan yüzeyi</span></a>
+<a class="ky" href="#l10"><span class="ktik" aria-hidden="true"></span><span class="kkodr">L10</span><span class="kadr">Bekçiler</span></a>
+</div>
+<a class="rb" href="#b3"><span class="rnum">3</span>AL vs YAP vs ALMA</a>
+<a class="rb" href="#b4"><span class="rnum">4</span>AJAN YÜZEYİ</a>
+<a class="rb" href="#b5"><span class="rnum">5</span>BAŞARISIZLIK MODLARI</a>
+<a class="rb" href="#b6"><span class="rnum">6</span>90 GÜNLÜK SIRA</a>
+<a class="rb" href="#b7"><span class="rnum">7</span>NE ÖLÇÜLMEDİ / NE BİLİNMİYOR</a>
+    </nav>
+
+    <main>
+<p class="deck"><em>Altı mercek, altı adversarial doğrulama ve bir eksiklik taramasının sentezi. Doğrulama aşamasının düzelttiği her yerde düzeltilmiş hâli esas alındı; doğrulanamayan her sayı işaretlendi.</em></p>
+<section id="b1" class="bolum">
+<h2><span class="bnum">1</span><span class="bad">TEK EN ÖNEMLİ FİKİR</span></h2>
+<h3>Bir kenarın güvenilirliği, o kenarı yanlış tutmanın bedeliyle orantılıdır.</h3>
+<p>Yaygın formülasyon şudur: <em>&quot;mikroservisler arası bağ sembollerden doğmaz; onu sözleşme ya da çalışma zamanı verir.&quot;</em> Bu doğru ama yetersiz — çünkü tarama, <strong>sözleşme kaynaklarının çoğunun da çürüdüğünü</strong> gösterdi. Elle yazılmış OpenAPI dosyası bir kenar değildir. <code>catalog-info.yaml</code> içindeki <code>dependsOn</code> bir kenar değildir. Elle küratörlü bir repo kümesi bir kenar değildir. Elle düzenlenmiş veri soy ağacı bir kenar değildir — DataHub bunu kendi dokümanına yazmış: elle eklenen ve programatik soy ağacı birbirini eziyor <span class="koken dogru">doğrulandı</span>.</p>
+<p>Sembol zincirinin <code>http.Post(...)</code> satırında bitmesi doğru bir gözlem. GitHub&#x27;ın kendi CodeQL izleyicisi bunu kabul ediyor: Python&#x27;da başlayıp Go&#x27;da biten bir akış için önerilen çözüm, arayüzü bir veritabanında <em>sink</em>, diğerinde <em>source</em> olarak <strong>elle modellemek</strong>. 100 mikroservis için bu, keşfetmesini istediğiniz topolojiyi elle çizmek demek. Ama &quot;öyleyse sözleşmeden al&quot; demek, hangi sözleşmeden alacağınızı söylemiyor.</p>
+<p>Asıl ayrım bir seviye aşağıda. Kenarları kaynağına göre değil, <strong>yaptırımına</strong> göre sınıflandırın:</p>
+<div class="tsar"><table><thead><tr><th>Sınıf</th><th>Yanlış olursa ne olur</th><th>Örnekler</th><th>Güven</th></tr></thead><tbody><tr><td><strong>Derleme-yaptırımlı</strong></td><td>Derleme kırılır</td><td><code>go.mod</code> / <code>pom.xml</code> / <code>package.json</code> satırı, üretilen SDK bağımlılığı, Bazel/Nx hedefi, derlenmiş protobuf modülü</td><td>Yüksek</td></tr><tr><td><strong>Çalışma-zamanı-yaptırımlı</strong></td><td>İstek reddedilir</td><td>Kafka ACL, NetworkPolicy, Istio AuthorizationPolicy, gateway route, IAM, DB <code>GRANT</code></td><td>Yüksek</td></tr><tr><td><strong>Yaptırımsız beyan</strong></td><td>Hiçbir şey olmaz</td><td><code>dependsOn</code>, elle yazılmış OpenAPI/AsyncAPI, Copilot Space, Repo Cluster, elle düzenlenmiş lineage</td><td>Çürür</td></tr><tr><td><strong>Gözlem</strong></td><td>Yanlış olmaz, <strong>eksik</strong> olur</td><td>Trace kenarı, eBPF akışı, consumer group, sorgu logu</td><td>Alt sınır</td></tr></tbody></table></div>
+<p>Bu tablonun üç sonucu var ve mimarinin tamamı bunlardan çıkıyor.</p>
+<p><strong>Birincisi: işiniz çıkarım değil, toplama ve birleştirmedir.</strong> Yaptırımlı kenarların büyük kısmı zaten var — manifest&#x27;lerde, SBOM&#x27;da, build grafında, IaC&#x27;de, broker konfigürasyonunda. Sözleşme merceğinin en iyi fikri (&quot;manifest bir kenardır, ucuz bir ayrıştırma işi, neredeyse kimse yapmıyor&quot;) <strong>yanlıştı</strong>: bunu yapan olgun bir sanayi var — Dependency-Track portföydeki <em>her uygulamanın her sürümünde</em> bileşen kullanımını izliyor ve &quot;ne etkilendi, nerede&quot; sorusunu doğrudan cevaplıyor <span class="koken dogru">doğrulandı</span>; GUAC&#x27;ın adı harfiyen &quot;Graph for Understanding Artifact Composition&quot; ve GraphQL + REST API sunuyor <span class="koken dogru">doğrulandı</span>. Kendi manifest ayrıştırıcınızı yazmak, mevcut bir grafı farklı bir soruyla yeniden inşa etmektir.</p>
+<p><strong>İkincisi: yaptırımlı gerçek ile yaptırımsız iddia aynı alanda duramaz.</strong> Bu deponun kendi §8 kuralı (&quot;bir gün kapanacak&quot; ile &quot;hiç kapanmayacak&quot; aynı listede duramaz) graf ölçeğindeki tam karşılığı. Her kenar bir <strong>köken etiketi</strong> taşımalı: <code>derived-from: go.mod@sha</code> vs <code>declared-by: team-payments@2024-11</code>. Etiket yoksa &quot;bu graf doğru mu&quot; sorusunun cevabı asla evet olamaz.</p>
+<p><strong>Üçüncüsü ve en tehlikelisi: eksik kenar, &quot;hiçbir şey buna bağlı değil&quot; diye okunur.</strong> Bu alanda yokluk nötr değil. Örneklenmemiş bir trace, enstrümante edilmemiş bir servis, 2 saniyelik TTL&#x27;e takılan bir hop, <code>SizeMax</code>&#x27;ı aşan üretilmiş bir protobuf istemcisi — hepsi ekranda temiz bir harita ve eksik bir çizgi olarak görünür, ve &quot;gerçekten çağıranı olmayan servis&quot;ten <strong>ayırt edilemez</strong>. Bu, deponun §7&#x27;sinin tarif ettiği en pahalı hata sınıfı: hata yok, sayaç yok, belirti yok.</p>
+<p>Bu yüzden mimarinin birinci gereksinimi hız değil, <strong>kapsam farkındalığı</strong>: her katman &quot;kenar yok&quot; ile &quot;kapsamım yok&quot;u ayırabilmeli. Bunu yapamayan bir katman, silme kararına girdi olamaz.</p>
+</section>
+<section id="b2" class="bolum">
+<h2><span class="bnum">2</span><span class="bad">KATMANLAR</span></h2>
+<h3>Genel görünüm</h3>
+<div class="tsar"><table><thead><tr><th>#</th><th>Katman</th><th>Cevapladığı soru</th><th>Kenar sınıfı</th><th>Bağımlı olduğu</th></tr></thead><tbody><tr><td><strong>L0</strong></td><td>Kimlik ve birleştirme anahtarı</td><td>&quot;Bu sembol, bu paket, bu süreç aynı şeyin mi?&quot;</td><td>—</td><td>—</td></tr><tr><td><strong>L1</strong></td><td>Sözcüksel / yapısal arama</td><td>&quot;Bu dize, bu isim, bu kod şekli nerede geçiyor?&quot;</td><td>yok (dizin)</td><td>—</td></tr><tr><td><strong>L2</strong></td><td>Repo-içi sembol grafı</td><td>&quot;Bu fonksiyonu <strong>bu repoda</strong> kim çağırıyor?&quot;</td><td>derleme-yaptırımlı</td><td>L0</td></tr><tr><td><strong>L3</strong></td><td>Bağımlılık manifesti + SBOM + build grafı</td><td>&quot;Bu paketi/şemayı hangi servisler kullanıyor?&quot;</td><td>derleme-yaptırımlı</td><td>L0</td></tr><tr><td><strong>L4</strong></td><td>Sözleşme kayıt defteri + kırılma kapısı</td><td>&quot;Bu şemayı değiştirirsem kim derlenmez?&quot;</td><td>derleme-yaptırımlı</td><td>L0, L3</td></tr><tr><td><strong>L5</strong></td><td>Beyan edilmiş çalışma-zamanı topolojisi</td><td>&quot;Bu servisi kim <strong>çağırabilir</strong>?&quot;</td><td>çalışma-zamanı-yaptırımlı</td><td>L0</td></tr><tr><td><strong>L6</strong></td><td>Gözlemlenmiş çalışma-zamanı topolojisi</td><td>&quot;Bu kenar son N günde <strong>kullanıldı mı</strong>?&quot;</td><td>gözlem (alt sınır)</td><td>L0</td></tr><tr><td><strong>L7</strong></td><td>Sahiplik ve yönetişim (katalog)</td><td>&quot;3&#x27;te kimi arayacağım? Bu servis hangi katman?&quot;</td><td>beyan (yaptırımsız)</td><td>L3–L6</td></tr><tr><td><strong>L8</strong></td><td>Karar kaydı (&quot;neden&quot;)</td><td>&quot;Neden böyle? Neyi bilerek yapmadık?&quot;</td><td>tarihli kayıt</td><td>—</td></tr><tr><td><strong>L9</strong></td><td>Ajan yüzeyi (federe MCP)</td><td>—</td><td>—</td><td>L1–L8</td></tr><tr><td><strong>L10</strong></td><td>Bekçiler (CI kapıları)</td><td>&quot;Graf kırmızı yanabiliyor mu?&quot;</td><td>—</td><td>L3–L6</td></tr></tbody></table></div>
+<p>Bağımlılık sırası: <strong>L0 → (L1, L8 paralel) → (L2, L3, L5 paralel) → L4 → L6 → (L7, L10) → L9.</strong></p>
+<h3 id="l0" class="katman"><span class="kkod">L0</span><span class="kad">Kimlik ve birleştirme anahtarı</span></h3>
+<p><strong>Hangi soruyu cevaplar:</strong> İki farklı katmanın gösterdiği iki şey aynı şey mi?</p>
+<p><strong>Neden var:</strong> Statik graf repo/modül/sembol ile anahtarlanır. Manifest grafı paket koordinatı ile. Çalışma zamanı grafı <code>service.name</code> ve pod etiketiyle. SBOM grafı PURL ile. Bu dört uzay hiçbir yerde otomatik kesişmez. Kesişmezse ne yaparsanız yapın, üstteki katmanların hiçbiri diğerine katılamaz — ve bu tek başına projeyi öldürür.</p>
+<p class="deck"><strong>Ne kurulur — üç koordinat sistemi + bir omurga + bir birleştirme tablosu:</strong></p>
+<ul><li><strong>Omurga:</strong> repo adı. Her şey ona asılır.</li><li><strong>Kod sembolü için SCIP şeması.</strong> <code>&lt;scheme&gt; &lt;package-manager&gt; &lt;package-name&gt; &lt;version&gt; &lt;descriptor&gt;+</code>. Bu, <code>100 tane config.ts</code> probleminin yayınlanmış cevabı: <code>npm example-app 1.0.0 config.</code> ile <code>npm other-app 2.0.0 config.</code> yapı gereği farklı sembollerdir. Ayrıca <code>local &lt;id&gt;</code> sembolleri belgenin dışına çıkmakla yapısal olarak yasaklı.</li><li><strong>Artefakt için PURL.</strong> CycloneDX, SPDX, Dependency-Track ve GUAC&#x27;ın hepsi buna anahtarlanıyor. Ekosistemler-arası artefakt kimliğinin fiili standardı bu ve altı merceğin hiçbirinde geçmiyor.</li><li><strong>Çalışma zamanı için OTel resource attribute&#x27;ları.</strong></li><li><strong>Birleştirme tablosu:</strong> repo → {PURL listesi} → {service.name listesi} → {SCIP paket koordinatı}. Bir repo birden fazla artefakt ve birden fazla çalışma-zamanı servisi üretebilir; &quot;tek evrensel ID&quot; tavsiyesi bu yüzden yanlış.</li></ul>
+<p><strong>Neden alternatifi değil:</strong> &quot;Tek isim ilan et, CI&#x27;da zorla&quot; tavsiyesi eksik. Ama merceğin <em>&quot;hiçbir satıcı bunu sağlayamaz&quot;</em> iddiası da fazla: Backstage&#x27;in varlık modeli, OTel Weaver&#x27;ın semconv politika kontrolleri ve SkyWalking&#x27;in &quot;Service Hierarchy Relationship&quot; özelliği (Kubernetes ↔ Istio mesh katmanları arasında mantıksal servis eşlemesi yapıyor) bu işin ürünleşmiş parçaları. Kimlik <em>şemasını</em> siz seçersiniz; <em>zorlamayı</em> mevcut araçlara yaptırabilirsiniz.</p>
+<p class="deck"><strong>İşletme maliyeti:</strong> Kurulum 3–5 gün (şema kararı + tablo + CI kontrolü). Sürdürme ~0,05 FTE. <em>Bu bir mühendislik tahmini; taramada ölçülmüş bir kaynak yok.</em></p>
+<p><strong>Ne zaman atlanır:</strong> Asla. Bunu atlarsanız diğer on katman birleştirilemeyen on ayrı graf üretir.</p>
+<h3 id="l1" class="katman"><span class="kkod">L1</span><span class="kad">Sözcüksel ve yapısal arama</span></h3>
+<p><strong>Hangi soruyu cevaplar:</strong> &quot;Bu dize/isim/kod şekli 100 repoda nerede geçiyor?&quot;</p>
+<p><strong>Neden var:</strong> Bir ajanın varsayılan hamlesi ripgrep&#x27;tir ve 100 reponun yerel kopyası yoktur. Bu katmanın tamamı o eksikliği kapatmak içindir — daha fazlası değil.</p>
+<p><strong>Ne kurulur:</strong> Zoekt sınıfı bir trigram indeksi. Ücretsiz taban: kendi Zoekt&#x27;iniz ya da Sourcebot Basic (tek Docker imajı, arama, ücretsiz <span class="koken dogru">doğrulandı</span>). Estate github.com üzerindeyse Blackbird zaten çalışıyor ve marjinal maliyeti sıfır — ama GHES&#x27;te yok. Yapısal kol için <code>ast-grep</code> (MIT, tree-sitter tabanlı, <code>$METAVAR</code> desenleriyle AST şekli eşleme) — grep&#x27;in metin körlüğü olmadan, indeks maliyeti de olmadan.</p>
+<p><strong>Neden alternatifi değil:</strong> Repo başına gömme (embedding) indeksi <strong>almayın</strong>. Ama gerekçe, merceğin sunduğu gerekçe değil — o gerekçe doğrulamada çöktü:</p>
+<ul><li>Amazon makalesi &quot;~%94,5&quot; demiyor, &quot;%90&#x27;ın üzerinde&quot; diyor; Aralık 2025 tarihli; PDF üzerinde, kod üzerinde değil <span class="koken dogru">doğrulandı: kunye yanlış</span>.</li><li><em>&quot;Is Grep All You Need?&quot;</em>&#x27;in kendi sonucu &quot;grep kazanır&quot; değil: &quot;hangi harness ve tool-calling stilini kullandığın, altta yatan veri aynıyken bile skoru güçlü biçimde belirliyor&quot; <span class="koken dogru">doğrulandı</span>.</li><li>CORE-Bench&#x27;in asıl sonucu embedding&#x27;lerin işe yaramadığı değil, <strong>basit supervised fine-tuning&#x27;in açığı ciddi biçimde kapattığı</strong> <span class="koken dogru">doğrulandı</span> — yani merceğin tezinin tersi.</li></ul>
+<p>Gömmeye karşı ayakta kalan gerçek argümanlar ikisi ve ikisi de ölçüm değil aritmetik: (a) <strong>maliyetin çarpılması</strong> — 100 repo × N geliştirici, aynı gömme işini paylaşılmayan biçimde tekrarlıyor; (b) <strong>bayatlama</strong> — gömme indeksi sessizce eskir ve eskidiğini söylemez.</p>
+<p><strong>İşletme maliyeti:</strong> Kurulum 2–4 gün. Sürdürme ~0,1 FTE (indeksleme izleme, disk, sürüm). Donanım için elinizde <strong>doğrulanmış bir tablo yok</strong>: GitLab&#x27;in Zoekt boyutlandırma tablosu OAuth duvarının arkasında teyit edilemedi ve iç tutarsız (r5.large&#x27;da vCPU&#x27;yu, r5.8xlarge&#x27;da fiziksel çekirdeği &quot;cores&quot; saymış); &quot;100 servis &lt;50GB git&quot; varsayımı da kaynaksız. Kendi deponuzda ölçün.</p>
+<p><strong>Ne zaman atlanır:</strong> Ücretli katmanı, ajan yüzeyini L9&#x27;dan alıyorsanız atlayın. Ücretsiz tabanı asla atlamayın.</p>
+<p><strong>Kritik uyarı (bu katmanın sessiz hatası):</strong> Sourcebot&#x27;un <code>find_symbol_references</code> aracı bir regex çalıştırıyor: <code>\b{symbolName}\b rev:… lang:… case:yes</code>; tanımlar <code>sym:\b{symbolName}\b</code> ile ctags&#x27;ten geliyor; varsayılan kapsam <strong>tek repo</strong> <span class="koken dogru">doğrulandı: kaynak dokümanda birebir</span>. Yani derleyici-kesin bir isim taşıyan bir arac, yorum satırlarını ve alakasız aynı-isimli sembolleri döndürüyor ve ajan bunu anlamıyor. Bu aracı ajana <strong>kendi adıyla vermeyin</strong> (bkz. §4).</p>
+<h3 id="l2" class="katman"><span class="kkod">L2</span><span class="kad">Repo-içi sembol grafı</span></h3>
+<p><strong>Hangi soruyu cevaplar:</strong> &quot;Bu fonksiyonu bu repoda kim çağırıyor? Bu tipi kim uyguluyor?&quot;</p>
+<p><strong>Neden var:</strong> Repo <em>içinde</em> sembol çözümlemesi derleyici tarafından yaptırımlıdır ve ucuzdur. Repo <em>dışına</em> çıkmaz — bu katmanın tanımı budur.</p>
+<p class="deck"><strong>Ne kurulur, üç seçenek, artan maliyet sırasıyla:</strong></p>
+<ol><li><strong>Tree-sitter tabanlı, build gerektirmeyen graf</strong> (graphify&#x27;ın oturduğu kat). Yayınlanan ölçüm: 31 repoda %83 cevap kalitesi, dosya-dosya keşfe kıyasla ~10× daha az token ve 2,1× daha az araç çağrısı — ama <strong>karşılaştırma noktası %92</strong>, yani ~dokuz puan <em>kayıp</em> karşılığında onda bir maliyet. Bu bir yükseltme değil, bir takas.</li><li><strong>LSP tabanlı sembol erişimi</strong> (Serena sınıfı, MIT, ~24–28k yıldız, 40+ dil, MCP-yerli <span class="koken dogru">doğrulandı</span>). Altı merceğin en büyük atlaması buydu: gerçek sembol çözümlemesi, ajan-yerli, ücretsiz, build gerektirmiyor (dil sunucusu gerektiriyor).</li><li><strong>SCIP indeksleyicileri</strong> (derleyici-kesin). Sadece belirli dil aileleri için GA, ve derlenen diller için <strong>çalışan bir build şart</strong>.</li></ol>
+<p class="deck"><strong>Neden alternatifi değil — ve bu tarama içindeki en önemli iç çelişki:</strong> Kod-grafı merceği &quot;build gerektiren araçlar derlenmeyen repoları sessizce düşürür, sessiz delikli bir bilgi katmanı hiç olmamasından kötüdür&quot; diyerek CodeQL, Moderne ve GraphRAG&#x27;i reddetti — sonra SCIP&#x27;i &quot;REQUIRED&quot; ilan etti. SCIP derlenen dillerde build ister. Aynı kusur, ters karar. Doğru pozisyon: <strong>SCIP&#x27;in kimlik şemasını benimseyin (L0), indeksleyicilerini yalnızca ölçülmüş fayda gördüğünüz dillerde çalıştırın.</strong></p>
+<p>Ve &quot;kimlik şemasını benimsemek bedava&quot; ifadesi de yanlış: 100 repo için <code>package-name</code> ve <code>version</code> üretmek, her manifest formatını ayrıştırmayı, yayınlanmamış iç paketleri koordinatlandırmayı ve &quot;deploy edilen ama yayınlanmayan bir servisin sürümü nedir&quot; sorusunu cevaplamayı gerektirir. Bu, sıfır fiyatlanmış sürekli mühendisliktir.</p>
+<p class="deck"><strong>İşletme maliyeti:</strong> Tree-sitter kolu: kurulum 3–5 gün, sürdürme ~0,1 FTE. SCIP kolu: <strong>repo × dil başına bir CI işi</strong>; 100 repo için gerçek maliyet 0,3–0,5 FTE&#x27;dir ve hiçbir mercekte fiyatlanmamıştır. <em>Tahmin.</em></p>
+<p><strong>Ne zaman atlanır:</strong> Ajanlarınız yerel checkout ile tek repoda çalışıyorsa bu katmanı estate seviyesinde kurmayın — zaten ripgrep + LSP&#x27;leri var. GA dil ailesi dışındaki diller için SCIP&#x27;i atlayın; oradaki &quot;precise navigation&quot; sessizce bulanık aramaya düşer.</p>
+<h3 id="l3" class="katman"><span class="kkod">L3</span><span class="kad">Bağımlılık manifesti, SBOM ve build grafı</span><span class="bayrak anahtar">ilk gerçek cross-repo katman</span></h3>
+<p><strong>Hangi soruyu cevaplar:</strong> &quot;Bu paketi/şemayı/kütüphaneyi hangi servisler kullanıyor?&quot; — portföy çapında <strong>ters</strong> arama.</p>
+<p><strong>Neden var:</strong> Bu, taramadaki en yüksek fayda/maliyet oranı. Kenar zaten yazılmış (<code>go.mod</code>, <code>pom.xml</code>, <code>package.json</code>, lockfile), zaten CI tarafından ayrıştırılıyor, ve <strong>yaptırımlı</strong>: yanlışsa derleme kırılır. Şema kayıt defteri kod üretiyorsa (bkz. L4), üreticinin kimliği tüketicinin manifest&#x27;ine sürüm-sabitli olarak yazılıyor.</p>
+<p><strong>Ne kurulur:</strong> Kendi ayrıştırıcınızı <strong>yazmayın</strong>. SBOM boru hattını ingest edin:</p>
+<ul><li><strong>Dependency-Track</strong> (Apache-2.0, ücretsiz): portföydeki her uygulamanın her sürümünde bileşen kullanımı; CycloneDX SBOM <strong>ve VEX</strong>&#x27;i hem tüketiyor hem üretiyor <span class="koken dogru">doğrulandı</span>.</li><li><strong>GUAC</strong>: SBOM + metadata&#x27;yı yutup artefaktlar arası yönlü graf kuruyor; OSV, Scorecard, ClearlyDefined, End-of-Life toplayıcıları; belgelenmiş kullanım senaryosu &quot;CLI ile yama planı üretme&quot; <span class="koken dogru">doğrulandı</span>.</li><li>Build sistemi varsa <strong>build grafı</strong> ekleyin — ama asimetriyi bilerek: Bazel <code>cquery</code> analiz fazında çalışır, <code>select()</code> dallarını doğru modeller, <strong>ama <code>rdeps()</code>/<code>allrdeps()</code> desteklemez</strong>; ters bağımlılık için tüm <code>select()</code> dallarını birden alan <code>query</code>&#x27;ye düşersiniz <span class="koken dogru">doğrulandı</span>. Yani aracın kesin olduğu yön &quot;neye bağlıyım&quot;, bulanıklaştığı yön &quot;bana kim bağlı&quot; — ve istediğiniz ikincisi. Nx <code>affected</code> de tek workspace içinde kalır <span class="koken dogru">doğrulandı</span>; 100 ayrı repo = 100 kopuk graf.</li></ul>
+<p><strong>Neden alternatifi değil:</strong> GitHub Dependency Graph API zaten açık ve ücretsiz — bunu tabana koyun ve satın alacağınız her şeyi bunun <em>üstüne</em> eklemeyi gerekçelendirin. Riftmap ücretsiz katmanda 250 repoya kadar tam graf veriyor ama <strong>self-host mevcut değil (planlı)</strong>, <strong>MCP gönderilmemiş (planlı)</strong> ve ücretsiz katmanda <strong>sürekli yeniden tarama yok</strong> <span class="koken dogru">doğrulandı</span> — yani üretilen graf tek seferlik bir enstantane, ve bu mimarinin kendi kuralına göre bayat bir graf sessizce yanlış bir graftır.</p>
+<p><strong>VEX&#x27;e dair bir not, çünkü kimse fark etmemiş:</strong> VEX, &quot;beyan edilmiş ama geçerli olmayan kenar&quot;ı kaydetmek için icat edilmiş bir formattır. Çalışma-zamanı merceği tam olarak buna ihtiyaç duyduğunu söyleyip &quot;nitelikli olumsuzu ifade edecek bir yer yok&quot; sandı. Var, standart, ve muhtemelen kurumunuzda zaten kurulu.</p>
+<p class="deck"><strong>İşletme maliyeti:</strong> Zaten SBOM üretiyorsanız kurulum 3–5 gün (ingest + graf). Sıfırdan Dependency-Track: +3–5 gün. Sürdürme ~0,1 FTE. <em>Tahmin.</em></p>
+<p><strong>Ne zaman atlanır:</strong> Build grafı kısmını, build sisteminiz graf üretmiyorsa atlayın. Manifest/SBOM kısmını <strong>asla</strong> atlamayın; bu, elinizdeki en ucuz cross-repo kenardır.</p>
+<h3 id="l4" class="katman"><span class="kkod">L4</span><span class="kad">Sözleşme kayıt defteri ve kırılma kapıları</span></h3>
+<p><strong>Hangi soruyu cevaplar:</strong> &quot;Bu şemayı değiştirirsem hangi servisler derlenmez / seri hâle getiremez?&quot;</p>
+<p><strong>Neden var:</strong> L3 kenarı verir; L4 o kenar üzerindeki değişikliğin <strong>güvenli olup olmadığını</strong> verir, ve merge&#x27;den önce verir. Distributed tracing bunu asla veremez çünkü ancak üretimde çalışmış bir kenarı görebilir.</p>
+<p class="deck"><strong>Ne kurulur — ve buradaki maliyet ayrımı kritik:</strong></p>
+<ul><li><strong>Protobuf:</strong> <code>buf</code> CLI Apache-2.0 ve <strong>ücretsiz</strong> <span class="koken dogru">doğrulandı</span>. <code>buf breaking --against .git#branch=main</code> kırıcı-değişiklik kapısını <strong>BSR olmadan, $0&#x27;a</strong> kurar. <code>buf generate</code> çıktısını kendi Artifactory/Nexus/GitHub Packages&#x27;ınızda yayınlarsanız L3&#x27;ün manifest kenarı da $0&#x27;a oluşur.</li><li><strong>BSR (barındırılan kayıt defteri)</strong> ayrı bir karardır. Fiyat <strong>tip başına</strong>: Teams $0,50/tip/ay, Pro $5,00/tip/ay ve <strong>$3.000/ay taban</strong>, Pro&#x27;da halka açık tipler de faturalanıyor <span class="koken dogru">doğrulandı</span>. ~5.000 tiplik bir estate Pro&#x27;da ~$25.000/ay ≈ <strong>~$300.000/yıl</strong>. Kod-arama merceği bunu hesaplayıp aynı cümlede &quot;strong-fit&quot; dedi. Sattığı şey namespace, sunucu-tarafı onay akışı ve SLA — kırılma kapısı değil.</li><li><strong>Kafka/Avro:</strong> Apicurio (Apache-2.0, tek depo: Avro, Protobuf, JSON Schema, XSD, WSDL, OpenAPI, AsyncAPI, GraphQL; artefakt <strong>referans grafı</strong> var) ya da Karapace (Apache-2.0, ama API uyumu <strong>Confluent SR 6.1.1 seviyesinde sabit</strong> <span class="koken dogru">doğrulandı: README birebir</span>). Confluent&#x27;in Stream Lineage&#x27;ı — bu merceğin tek gerçek &quot;gözlemlenmiş üretici→topic→tüketici&quot; kaynağı — <strong>yalnızca Confluent Cloud&#x27;da</strong> <span class="koken dogru">doğrulandı: ürün sayfasında birebir</span>. Self-host edenler için sema deposu + uyumluluk kontrolünden ibaret, ve çekirdek Confluent Community License, açık kaynak değil.</li><li><strong>OpenAPI:</strong> yalnızca <strong>koddan üretiliyorsa</strong> bu katmana girer. Üretilmiş spec + <code>oasdiff</code> (Apache-2.0, 514 değişiklik kuralı, PR satır-içi anotasyon) ucuz ve etkilidir. Elle yazılmış spec bir iddiadır; ona kapı koymak, iki kurguyu sadakatle diff&#x27;lemektir.</li></ul>
+<p><strong>Neden alternatifi değil:</strong> Tüketici-güdümlü sözleşme testi (Pact) tek gerçek &quot;bu değişiklik <em>gerçek</em> bir tüketiciyi kırar mı&quot; cevabı ama 100 serviste belgelenmiş arıza modları disiplin arızalarıdır ve servis sayısıyla kötüleşir: tekrar kullanılan sürümler <code>can-i-deploy</code>&#x27;ı <strong>yalan söyletiyor</strong> (yeşil ama yanlış bir kapı, kapısızlıktan kötüdür), aşırı-belirtim sahte kırılma üretip sinyali boğuyor, sızıntılı provider state en yaygın flake sebebi. Ve ~100 serviste Pact koşan yayınlanmış tek bir hesap bulunamadı.</p>
+<p><strong>Önemli düzeltme — &quot;%75 drift&quot;:</strong> Sözleşme merceğinin kategorinin yarısını &quot;gereksiz&quot; ilan eden dayanağı olan APIContext çalışması (650M çağrı, 10.000+ uç, %75 varyans) <strong>doğrulanamadı</strong>; o başlıkta bir whitepaper listede yok <span class="koken supheli">doğrulanmadı</span>. Yapısal argüman sayısız da ayakta duruyor: <em>kimsenin bağımlı olmadığı bir dokümanın tutarsız olacağı bir şey yoktur.</em> Ama sayıyı ölçülmüş gibi taşımayın.</p>
+<p><strong>İşletme maliyeti:</strong> Ücretsiz CLI kapıları: 100 repoya ekleme ~5–8 gün (asıl iş her serviste taban spec üretme boru hattı, oasdiff&#x27;in kendisi değil). Barındırılan kayıt defteri: ayrıca maliyet modellemesi + satın alma döngüsü. Apicurio self-host: <strong>her üretici ve tüketicinin seri hâle getirme yolunda duran senkron bir bağımlılık</strong> — bu bir nöbet yüzeyidir ve &quot;Apache-2.0, ücretsiz&quot; satırının altında görünmez. Redpanda&#x27;nın broker-içi kayıt defteri bu işletme maliyetini sıfıra indirir ve mercekte hiç geçmiyor.</p>
+<p><strong>Ne zaman atlanır:</strong> Barındırılan kayıt defterini, paylaşılan bir namespace&#x27;e ihtiyacınız yoksa atlayın; ücretsiz kırılma kapısını tutun. Spec&#x27;leriniz elle yazılıysa ve üretmeye geçmeyecekseniz OpenAPI kolunu <strong>tamamen</strong> atlayın — o kapı hiçbir şey ölçmez.</p>
+<h3 id="l5" class="katman"><span class="kkod">L5</span><span class="kad">Beyan edilmiş çalışma-zamanı topolojisi</span></h3>
+<p><strong>Hangi soruyu cevaplar:</strong> &quot;Bu servisi kim <strong>çağırabilir</strong>?&quot; (potansiyel kenar — gerçekleşen değil)</p>
+<p><strong>Neden var, ve neden altı mercek de bunu kaçırdı:</strong> Bu, trace&#x27;ten ucuz, dağıtımdan <strong>önce</strong> var olan ve statik/çalışma-zamanı ikilisine <strong>dik</strong> olan bir katman. Kaynakları:</p>
+<ul><li><strong>Kafka ACL&#x27;leri ve consumer group metadata&#x27;sı</strong> — broker&#x27;dan iki komutla alınabilen, ayrıştırma ve trace gerektirmeyen üretici/tüketici kenar listesi. Sözleşme merceğinin &quot;kayıt defteri subject bilir, servis bilmez&quot; şikâyetinin doğrudan panzehiri: <strong>ACL principal&#x27;ı servis kimliğidir.</strong> <em>Uyarı:</em> bir consumer group ancak offset commit ettikten sonra görünür — yokluk yine belirsiz <span class="koken supheli">Kafka dokümanı bu turda teyit edilemedi</span>.</li><li><strong>NetworkPolicy / Istio AuthorizationPolicy / IAM / security group</strong> — kimin kime bağlanmasına izin verildiği.</li><li><strong>Gateway route konfigürasyonu</strong> (Kong/Gravitee/Envoy) — ama kör noktasıyla: yalnızca gateway&#x27;den geçen trafiği görür, ki bu genelde north-south&#x27;tur; east-west servis-servis çağrıları görünmez. Kong ~$105/servis/ay <span class="koken supheli">doğrulanmadı</span>; 100 serviste ~$126k/yıl. Bu maliyetle alınan şey kısmi bir görünümdür.</li><li><strong>Terraform state / Helm / ArgoCD</strong> — hangi servisin hangi veritabanına, hangi kuyruğa bağlandığı.</li><li><strong>Veritabanı <code>GRANT</code>&#x27;leri ve migrasyon dosyaları</strong> — bkz. aşağıdaki paylaşılan tablo problemi.</li></ul>
+<p><strong>En büyük tek boşluk — paylaşılan veritabanı kuplajı:</strong> Kurumsal 100 servislik bir estate&#x27;te en yaygın gizli servisler-arası kenar, <strong>iki servisin aynı tabloya yazması</strong>. Altı mercekteki hiçbir araç bunu göremez: statik graf göremez (SQL bir dize), sözleşme kayıt defteri göremez (tablo bir API değil), trace göremez (iki ayrı DB çağrısı, aralarında kenar yok). Görebilecek olanlar: sorgu logları (<code>ACCESS_HISTORY</code>, <code>pg_stat_statements</code>, ClickHouse <code>query_log</code>), migrasyon araçları (Flyway/Liquibase/Atlas — migrasyon dosyası şemanın <strong>sahipliğini</strong> repo başına beyan eder) ve servis hesabı GRANT&#x27;leri. Bu, bu mimarinin diğerlerinden ayrıldığı en somut yer.</p>
+<p class="deck"><strong>İşletme maliyeti:</strong> Kurulum 5–8 gün (kaynak başına 1 gün). Sürdürme ~0,05 FTE — konfigürasyon zaten değişiyor, siz sadece okuyorsunuz. <em>Tahmin.</em></p>
+<p><strong>Ne zaman atlanır:</strong> Düz ağ, NetworkPolicy yok, ACL yok, mesh yok ise okunacak beyan da yok — atlayın. Ama o durumda güvenlik ekibinin de aynı boşluğu vardır ve bu katman iki bütçeden birden fonlanabilir.</p>
+<h3 id="l6" class="katman"><span class="kkod">L6</span><span class="kad">Gözlemlenmiş çalışma-zamanı topolojisi</span></h3>
+<p><strong>Hangi soruyu cevaplar:</strong> &quot;Bu kenar son N günde <strong>gerçekten</strong> kullanıldı mı, ve hangi örnekleme oranıyla?&quot;</p>
+<p><strong>Neden var:</strong> Statik graf var olan her şeyin <strong>üst sınırıdır</strong> (yazılmış ama hiç çalışmayacak kod dahil). Çalışma zamanı <strong>alt sınırdır</strong> (yalnızca çalışan, yalnızca örneklenen, yalnızca enstrümante edilmiş). Gerçek ikisinin arasında sıkışıktır. Bu katmanın tek ürünü, statik grafın üretemeyeceği şeydir: <strong>kenar ağırlığı</strong> — hacim, hata oranı, son görülme.</p>
+<p class="deck"><strong>Ne kurulur, en ucuzdan başlayarak (ve sıra önemlidir):</strong></p>
+<ol><li><strong>Zaten ödenmiş olanı çıkarın.</strong> 100 servislik bir estate&#x27;te Datadog / Dynatrace / Grafana / bir mesh muhtemelen zaten çalışıyor. Datadog&#x27;un MCP sunucusunda <code>search_datadog_service_dependencies</code> var; tanımı birebir &quot;upstream/downstream servis bağımlılıklarını getirir&quot; <span class="koken dogru">doğrulandı</span> — bu, tüm taramadaki <strong>tek doğrulanmış birinci-taraf &quot;bu servisi kim çağırıyor&quot; MCP aracı</strong> ve çalışma-zamanı merceği onu kaçırdı. Sınır: günlük 5.000 çağrı (aylık 50k değil, bağlayıcı olan günlüktür) ve GovCloud uyumsuz <span class="koken dogru">doğrulandı</span>.</li><li><strong>Broker consumer group&#x27;ları + gateway erişim logları.</strong> Neredeyse bedava, ayrıştırma yok, örnekleme yok.</li><li><strong>Veritabanı sorgu logları</strong> — paylaşılan tablo kenarı için tek kaynak.</li><li><strong>Trace tabanlı servicegraph</strong> — ancak zaten bir Collector filosu işletiyorsanız. Bileşen <strong>alpha</strong>; kenarların güvenilir olması için trace-ID&#x27;ye göre shard yapan <strong>iki katmanlı</strong> Collector dağıtımı gerekiyor (katman 1 loadbalancing exporter, katman 2 metrik üretimi) <span class="koken dogru">doğrulandı: README birebir</span>; varsayılanlar <code>ttl 2s</code> ve <code>max_items 1000</code> <span class="koken dogru">doğrulandı</span> ve yetersiz — yavaş hop&#x27;lar pencereden düşer ve kenar <strong>sessizce</strong> kaybolur. Tempo&#x27;nun MCP sunucusundaki sekiz aracın <strong>hiçbiri</strong> servis grafı aracı değil <span class="koken dogru">doğrulandı</span>; ajan &quot;bunu kim çağırıyor&quot; için Prometheus&#x27;a gitmek zorunda.</li><li><strong>eBPF</strong> — yalnızca Cilium&#x27;u zaten işletiyorsanız. Düzeltme: Cilium OSS&#x27;te <strong>akış dışa aktarımı var</strong> (<code>--hubble-export-file-path</code> ve arkadaşları <span class="koken dogru">doğrulandı</span>); yani &quot;90 gündür kim çağırdı&quot; sorusu Enterprise gerektirmiyor, akışı mevcut log deponuza akıtarak cevaplanabilir. Enterprise-only olan <strong>sorgulanabilir tarihsel arayüz</strong>. OBI/Beyla ise 21 Ağustos 2026 itibarıyla <strong>v0.12.1</strong>, 1.0 yok, ve <strong>en son sürüm private-stack çekirdeklerde kernel panic düzeltiyor</strong> <span class="koken dogru">doğrulandı</span>. 100 üretim servisine ayrıcalıklı eBPF DaemonSet dağıtmanın maliyeti kurulum değil, çekirdek matrisi ve her yükseltmedeki node-seviyesi risktir.</li></ol>
+<p><strong>Neden alternatifi değil:</strong> Jaeger&#x27;in Spark tabanlı bağımlılık işi 2026&#x27;da yanlış operasyonel şekil — servicegraph aynı kenarları akış metriği olarak üretiyor. Pixie teknolojik olarak iyi ama son sürüm Ocak 2025 (Temmuz 2024 değil — <span class="koken dogru">doğrulandı: mercek yanlıştı</span>), yani ~19 ay sürüm yok; kurumsal bağımlılık için diskalifiye.</p>
+<p class="deck"><strong>İşletme maliyeti:</strong> Mevcut APM&#x27;den ihraç: 2–3 gün. Broker + gateway + DB log: 5 gün. Kendi Collector filonuz: <strong>durumlu, sharding yapan bir katman</strong> — kurulum 2 hafta, sürdürme 0,2–0,3 FTE, artı TSDB&#x27;de kenar × histogram bucket ile büyüyen <strong>yinelenen</strong> kardinalite faturası. <em>Tahmin; hiçbir mercek bunu para veya kişi olarak saymadı.</em></p>
+<p><strong>Ne zaman atlanır:</strong> Collector filonuz yoksa trace-tabanlı kolu atlayın; broker + gateway + DB log ile başlayın. Cilium işletmiyorsanız eBPF&#x27;yi OBI 1.0&#x27;a kadar tamamen atlayın.</p>
+<h3 id="l7" class="katman"><span class="kkod">L7</span><span class="kad">Sahiplik ve yönetişim (katalog)</span></h3>
+<p><strong>Hangi soruyu cevaplar:</strong> &quot;Sabah 3&#x27;te kimi arayacağım? Bu servis hangi katman, hangi yaşam döngüsünde, hangi uyumluluk kapsamında?&quot;</p>
+<p><strong>Neden var:</strong> Bu bilgi koddan türetilemez. Türetilebilenlerin hepsi zaten L3–L6&#x27;da.</p>
+<p><strong>Mimari tersine çevirme — bu katmanın tek önemli kararı:</strong> Standart Backstage kurulumu 100 takımdan 100 YAML dosyası yazmasını ve <strong>sonsuza kadar bakmasını</strong> ister. &quot;Otomatik keşif&quot; bunu çözmez: GitHub/GitLab discovery provider&#x27;ları <strong>zaten <code>catalog-info.yaml</code> içeren</strong> repoları tarar; dosyası olmayan repolar için varlık üretmek hâlâ açık bir özellik talebi (#18218). Ve <code>spec.dependsOn</code>/<code>providesApis</code>/<code>consumesApis</code> <strong>elle yazılmış insan iddialarıdır</strong>; kod değişince hiçbir şey onları yalanlamaz.</p>
+<p>Doğrusu: <strong>yapıyı türet, sahipliği beyan et.</strong> L3–L6&#x27;yı bir <em>katalog varlık sağlayıcısı</em> olarak bağlayın; bağımlılık ve API ilişkisi alanlarını graf yazsın. Elle yazılan <code>catalog-info.yaml</code>&#x27;da yalnızca <strong>yalnızca insanın bildiği</strong> alanlar kalsın: owner, tier, lifecycle, on-call, uyumluluk kapsamı. Bu, en hızlı çürüyen alanı denklemden çıkarır.</p>
+<p><strong>Al mı yap mı:</strong> 100 serviste Backstage&#x27;i <strong>self-host etmeyin</strong>. Bağımsız olduğunu belirten bir maliyet modeli yıl-1 için $200k–$1,2M ve kalıcı 1–2 FTE veriyor <span class="koken supheli">doğrulanmadı — ve bu merceğin adversarial doğrulaması hiç yapılmadı, aşağıya bakın</span>; yönetilen alternatifler bunun onda birinde. Roadie $24/geliştirici/ay, MCP giriş katmanında dahil, <strong>50 geliştirici minimum</strong> <span class="koken supheli">doğrulanmadı</span>. OpsLevel&#x27;ın MCP&#x27;si tek &quot;dependencies <strong>ve</strong> dependents&quot; çifti sunan yüzey ama <strong>self-host MCP&#x27;yi kullanımdan kaldırdı</strong> — yani katalog trafiği ağınızdan çıkmak zorunda <span class="koken supheli">doğrulanmadı</span>.</p>
+<p><strong>Sahiplik verisinin kendisi çürük — ölçülmüş:</strong> CODEOWNERS&#x27;ta 3 MB üstü dosya hiç yüklenmiyor; <strong>son eşleşen desen kazanır</strong>; geçersiz sözdizimli satır <strong>sessizce atlanıyor</strong>; <code>!</code> negasyonu ve <code>[ ]</code> aralığı desteklenmiyor <span class="koken dogru">doğrulandı</span>. &quot;Son eşleşen kazanır&quot; + &quot;geçersiz satır sessizce atlanır&quot; birleşimi, bu deponun §7&#x27;sindeki CSV olayının birebir aynısı — ve kazanan şey yine kapsamın kendisi. Sourcegraph Own sahipliği <strong>yalnızca CODEOWNERS&#x27;tan</strong> çıkarıyor ve kendi dokümanı büyük repolarda davranışının doğrulanmadığını söylüyor <span class="koken dogru">doğrulandı</span>.</p>
+<p><strong>Skorkartlara dair:</strong> Hakemli bir çoklu-kaynak literatür taraması (88 kaynak, 44 hakemli, Şubat 2026&#x27;ya kadar) skorkartların işe yaradığına dair <strong>hiçbir hakemli kanıt bulamadı</strong> — oysa skorkart bu kategorideki her satıcının birincil yönetişim mekanizması. Aynı tarama &quot;IDP kullananların %89&#x27;u Backstage&quot; rakamının Port&#x27;un kendi n=100 anketinden geldiğini ve bağımsız doğrulaması olmadığını da tespit etti.</p>
+<p><strong>İşletme maliyeti:</strong> Yönetilen: satın alma + 5–8 gün entegrasyon + ~0,1 FTE. Self-host: yukarıdaki model. Varlık sağlayıcısı yazımı: 3–5 gün.</p>
+<p><strong>Ne zaman atlanır:</strong> Çalışan bir on-call sahiplik kaydınız zaten varsa (PagerDuty servis dizini, IdP grupları) katalog <strong>ürününü</strong> atlayın ve o kaydı L0 birleştirme tablosuna bağlayın. Katalog bir ürün değil, bir alandır.</p>
+<p><strong>Kesin atlanacak:</strong> Atlassian Compass — 2026-05-13&#x27;ten beri yeni müşteriye kapalı, tüm erişim 2027-12-31&#x27;de bitiyor. configure8 — 2026&#x27;da sıfır ürün haberi, sıfır MCP.</p>
+<h3 id="l8" class="katman"><span class="kkod">L8</span><span class="kad">Karar kaydı (&quot;neden&quot; katmanı)</span></h3>
+<p><strong>Hangi soruyu cevaplar:</strong> &quot;Neden böyle yapıldı? Neyi bilerek yapmadık? Neyi refactor etmemeliyiz?&quot;</p>
+<p><strong>Neden var, ve neden altı mercekte hiç geçmedi:</strong> Bütün graflar &quot;ne neye bağlı&quot;yı cevaplıyor. Hiçbiri &quot;bunu 2024 kesintisi yüzünden kasten çoğalttık&quot; bilgisini taşımıyor. Blast radius hesaplayabilen ama bunu bilmeyen bir ajan, bir kararı güvenle bozar.</p>
+<p><strong>Bu katmanın taramadaki eşsiz özelliği:</strong> <strong>ADR&#x27;nin bayatlaması tasarım gereği sorun değil.</strong> ADR tarihli bir kayıttır, mevcut durum hakkında bir iddia değil. Katalog YAML&#x27;ının çürümesi yalan üretir; ADR&#x27;nin eskimesi üretmez. Yani ajana beslenebilecek <strong>en güvenli artefakt sınıfı</strong> budur — ve hiç konuşulmamış.</p>
+<p><strong>Ne kurulur:</strong> Ürün gerekmiyor. Üç kaynak, hepsi zaten var:</p>
+<ul><li><strong>ADR</strong> (Nygard/MADR formatı, repo içinde <code>docs/adr/</code>). Standart bir makine-okunur format yok <span class="koken dogru">doğrulandı: adr.github.io bir araç dizini tutuyor ama merkezi index/format yok</span> — yani şemayı siz belirlersiniz, ve bu iyi bir şey.</li><li><strong>PR review yorumları</strong> — zaman damgalı, dosya bazlı, yapılandırılmış, ve &quot;neden <em>öyle</em> yapmadık&quot; bilgisinin rutin olarak yazıldığı tek yer. 100 repoda hazır duran ve kimsenin indekslemeyi önermediği bir korpus.</li><li><strong>Olay/postmortem verisi</strong> — aynı olaylarda birlikte görünen iki servis, kod ne derse desin kuplajlıdır. Bu, elinizdeki <strong>en yüksek sinyalli kenar ağırlıklandırması</strong> ve hiç önerilmemiş.</li></ul>
+<p class="deck"><strong>İşletme maliyeti:</strong> Kurulum 3–4 gün (konvansiyon + index + arama). Sürdürme ~0. <em>Tahmin.</em></p>
+<p><strong>Ne zaman atlanır:</strong> Asla. En ucuz katman, ve tek başına &quot;neden&quot; boyutunu kapatan katman.</p>
+<h3 id="l9" class="katman"><span class="kkod">L9</span><span class="kad">Ajan yüzeyi</span></h3>
+<p>Ayrıntısı §4&#x27;te. Özet: <strong>tek federe MCP sunucusu, az sayıda geniş araç, mekanizmasıyla adlandırılmış.</strong></p>
+<h3 id="l10" class="katman"><span class="kkod">L10</span><span class="kad">Bekçiler</span></h3>
+<p><strong>Hangi soruyu cevaplar:</strong> &quot;Bu graf kırmızı yanabiliyor mu? Yanlışlaştığında bunu bana ne söyleyecek?&quot;</p>
+<p><strong>Neden var:</strong> Bu deponun §5 dersi burada birebir geçerli: kapı eklemek işin yarısıdır; okunmayan kapı, olmayan kapıyla aynı sonucu verir ve üstüne &quot;bu soru sorulmuş&quot; yanılsaması bırakır. Pasif bir indeks yerine <strong>okunan bir kapı</strong> kurun.</p>
+<p class="deck"><strong>Ne kurulur — dört bekçi:</strong></p>
+<ol><li><strong>Bilinmeyen kenar kapısı.</strong> Her PR&#x27;da: bu değişiklik grafın bilmediği bir kenar mı yarattı? Yeni bir HTTP host literal&#x27;i, yeni bir topic adı, yeni bir manifest satırı, yeni bir DB tablosu → kırmızı, ya kaydettir ya gerekçelendir.</li><li><strong>Kimlik kapısı.</strong> repo adı ↔ <code>service.name</code> ↔ katalog varlığı ↔ PURL eşleşmiyorsa kırmızı.</li><li><strong>Tazelik kapısı.</strong> Repo başına &quot;son başarılı indeksleme&quot; metriği; eşik aşılırsa alarm. Bu, terk edilmiş indeksi yakalayan tek mekanizma.</li><li><strong>Kırmızı testi (periyodik).</strong> Bilinen bir cross-repo kenarı sil → ajanın blast-radius cevabının değiştiğini doğrula → geri koy. <strong>Ölç, sonra geri al.</strong> Bu testi geçmeyen bir graf, &quot;bilmiyorum&quot;u &quot;hiçbir şey buna bağlı değil&quot;e çeviren bir makinedir.</li></ol>
+<p><strong>İşletme maliyeti:</strong> Kurulum 5–8 gün. Sürdürme ~0,1 FTE (kırmızıları okumak dahil — ki asıl maliyet budur).</p>
+<p><strong>Ne zaman atlanır:</strong> Asla. Bu katman olmadan üstteki her şey sessizce çürür.</p>
+</section>
+<section id="b3" class="bolum">
+<h2><span class="bnum">3</span><span class="bad">AL vs YAP vs ALMA</span></h2>
+<h3>AL (satın al)</h3>
+<div class="tsar"><table><thead><tr><th>Katman</th><th>Ne</th><th>Fiyat</th><th>Gerekçe</th></tr></thead><tbody><tr><td>L7 Katalog</td><td>Yönetilen Backstage veya SaaS IDP</td><td>Roadie $24/gel/ay, 50 gel. min <span class="koken supheli">doğrulanmadı</span>; OpsLevel medyan ~$28,8k/yıl, Cortex medyan ~$75k/yıl <span class="koken supheli">üçüncü taraf, doğrulanmadı</span></td><td>Self-host&#x27;un tek çıktısı aynı katalog; maliyet farkı 4–40× ve bunun ~%90&#x27;ı headcount</td></tr><tr><td>L6 Gözlem</td><td>Zaten sahip olduğunuz APM</td><td>Mevcut sözleşme</td><td>Kenar listesi zaten var; eksik olan satın alma değil <strong>ihraç ve birleştirme</strong></td></tr><tr><td>L4 (koşullu)</td><td>Barındırılan şema kayıt defteri</td><td>BSR Teams $0,50/tip/ay, Pro $5/tip/ay + $3.000/ay taban <span class="koken dogru">doğrulandı</span></td><td>Yalnızca paylaşılan namespace + sunucu-tarafı onay akışı gerekiyorsa</td></tr><tr><td>L1 (koşullu)</td><td>Sourcebot Pro</td><td>$20/kullanıcı/ay <span class="koken dogru">doğrulandı</span></td><td><strong>Koltuk matematiğini yapın:</strong> 60 mühendiste ~$14,4k/yıl, 67 mühendiste ~$16k — yani Sourcegraph&#x27;in $16K tabanına yakınsıyor, üstelik orada gerçek precise navigation varken burada regex var</td></tr></tbody></table></div>
+<p><strong>Sourcegraph Enterprise özel bir durum.</strong> Yayınlanmış tek rakam &quot;Enterprise, Starting at $16K&quot; <span class="koken dogru">doğrulandı</span>; $49–59/koltuk ve $50–75k taban <span class="koken supheli">doğrulanmadı, alıcı beyanı</span>. Aldığınız şey gerçek: cross-repo <code>go_to_definition</code> derleyici-kesin, MCP resmî, OAuth DCR var. Almadığınız şey de gerçek: <strong>100 CI boru hattında SCIP indeksleyicisi işletmek</strong> ve indeks bayatladığında <strong>hiçbir uyarı olmadan bulanık aramaya düşmek</strong>. Ve kendi flagship instance&#x27;larında 2,8M reponun 45.000&#x27;inde SCIP indeksi var — <strong>%1,6</strong>. Satıcı kendi örneğinde precise navigation&#x27;ı canlı tutamıyorsa, &quot;derleyici-kesin&quot; mutlu-yol tarifidir, kararlı durum değil. Ayrıca <code>sourcegraph-public-snapshot</code> 2024 sonbaharında arşivlendi — OSS kaçış yolu kapalı, ve satıcı 14 ayda iki kez mevcut kullanıcıların aleyhine tek taraflı karar aldı.</p>
+<h3>YAP (içeride yaz)</h3>
+<div class="tsar"><table><thead><tr><th>Ne</th><th>Neden içeride</th><th>Tahmini büyüklük</th></tr></thead><tbody><tr><td><strong>L0 birleştirme tablosu ve CI kapısı</strong></td><td>Şema kararı sizin; satıcı sizin repo↔servis↔artefakt eşlemenizi bilemez</td><td>3–5 gün</td></tr><tr><td><strong>L9 federe MCP sunucusu</strong></td><td>MCP sunmayan katmanları (Zoekt, Dependency-Track, oasdiff, Apicurio, ACL&#x27;ler, DB logları) tek yüzeyde birleştiren şey; hiçbir satıcı bu birleşimi satmıyor</td><td>2–3 hafta</td></tr><tr><td><strong>L10 bekçiler</strong></td><td>Sizin doğruluk tanımınız</td><td>5–8 gün</td></tr><tr><td><strong>Anlaşmazlık yüzeyi</strong></td><td>Beyan edilmiş kenar ile gözlemlenmiş kenar çeliştiğinde <strong>kazananı seçmeyin, çelişkiyi gösterin</strong>. DataHub bunu yapmayıp üzerine-yazma yaşadı <span class="koken dogru">doğrulandı</span></td><td>3–5 gün</td></tr><tr><td><strong>L8 karar kaydı indeksi</strong></td><td>Konvansiyon + index; ürün yok</td><td>3–4 gün</td></tr></tbody></table></div>
+<p class="deck"><strong>Toplam iç geliştirme tahmini: ~8–10 hafta mühendis-zamanı, ardından ~0,5–0,8 FTE sürdürme.</strong> <em>Bu bir tahmindir. Ve &quot;mabl&#x27;ın 850 satırı katalog bakım tuzağıdır&quot; diye reddedilen alternatifin maliyeti hiçbir mercekte fiyatlanmadı — sizin parser filonuzun satır sayısı da sıfır değil.</em></p>
+<h3>ALMA (kurmayın)</h3>
+<div class="tsar"><table><thead><tr><th>Ne</th><th>Neden</th></tr></thead><tbody><tr><td><strong>Repo başına gömme indeksi</strong></td><td>Maliyet 100 × N geliştirici ile çarpılıyor, paylaşılmıyor, sessizce bayatlıyor. <em>Kalite gerekçesi kullanmayın — o kanıt doğrulamada çöktü.</em></td></tr><tr><td><strong>Kod üzerinde GraphRAG</strong></td><td>Bakım modunda, doküman-yönelimli, tree-sitter&#x27;ın deterministik ve bedava verdiğini pahalı LLM çağrılarıyla yeniden türetiyor</td></tr><tr><td><strong>Stack Graphs</strong></td><td>2025-09-09&#x27;da GitHub tarafından arşivlendi <span class="koken dogru">doğrulandı</span>. 2026&#x27;da bunu pazarlayan biri ya özel bir fork&#x27;a bakıyordur ya kontrol etmemiştir</td></tr><tr><td><strong>Bloop</strong></td><td>Depo arşivlenmiş, şirket kapanmış. Onu canlı listeleyen her karşılaştırma sayfası bayat içeriktir</td></tr><tr><td><strong>Atlassian Compass</strong></td><td>Yeni satış kapalı, servis 2027-12-31&#x27;de bitiyor</td></tr><tr><td><strong>Elle küratörlü bağlam kapları</strong> (Copilot Spaces, Repo Clusters)</td><td>Yaptırımsız beyan; çürür ve çürüdüğünü söylemez. Ayrıca GitHub&#x27;ın bulut ajanı hâlâ <strong>repo-kapsamlı</strong> bir <code>GITHUB_TOKEN</code> ile çalışıyor, kardeş repoları okuyamıyor</td></tr><tr><td><strong>Glean&#x27;i kod grafı için</strong></td><td>Kurumsal arama, doğru şekilde öyle. &quot;Bu servisin karar kaydı nerede&quot; için alın, &quot;bu fonksiyonu kim çağırıyor&quot; için asla. <em>Ve isim çakışmasına dikkat: Meta&#x27;nın açık kaynak <code>Glean</code>&#x27;i tamamen farklı bir sistem</em></td></tr><tr><td><strong>Auto-üretilmiş wiki&#x27;yi ground truth olarak</strong></td><td>CodeWikiBench: DeepWiki %64,06 belge kalitesi, C/C++&#x27;ta ~%53 <span class="koken dogru">doğrulandı</span>. Belgelenmiş herkese açık hatalar: LibreOffice&#x27;e yanlış build sistemi atfetmek, LLVM&#x27;de TableGen&#x27;i tamamen atlamak. Tanımadığınız bir servise ilk bakış için mükemmel, cevap olarak güvensiz</td></tr></tbody></table></div>
+<p><strong>Lisans nedeniyle bloke:</strong> GitNexus mimari olarak bu taramadaki en yakın eşleşme (global registry + grup seviyesi araçlar + cross-repo <code>group impact</code>) ama <strong>PolyForm Noncommercial 1.0.0</strong>. Doğrulama iki önemli düzeltme yaptı: (a) merceğin &quot;Go/Kotlin parser boşlukları fatal&quot; ve &quot;cross-repo desteklenmiyor&quot; iddiaları <strong>güncel depoyla çelişiyor</strong> — Go, Kotlin, Rust tam destekli ve cross-repo açıkça var; (b) README ticari lisanslama yolunun var olduğunu söylüyor, yani sıfırdan pazarlık değil. Yine de bu bir satın alma kapısıdır. <strong>Ve bu düzeltmenin daha büyük bir sonucu var:</strong> kod-grafı merceği &quot;piyasa bunu henüz inşa etmedi, fırsat burada&quot; diye bitiriyordu. Piyasa inşa etti. Eksik olan lisans, kod değil.</p>
+</section>
+<section id="b4" class="bolum">
+<h2><span class="bnum">4</span><span class="bad">AJAN YÜZEYİ</span></h2>
+<h3>Şekil kararı, ürün kararından önemli</h3>
+<p><strong>100 repo için ölümcül hata: repo başına bir MCP sunucusu.</strong> Bu aritmetik, ölçülmüş bir sayıya ihtiyaç duymuyor: 100 sunucu × N araç = ajanın ilk kullanıcı mesajından önce yediği bir bağlam vergisi. (Token vergisinin spesifik rakamları — araç tanımı başına 200–500 token, 5–10 sunucu için 50–75k token, sisirilmis arac setinde ~3× seçim doğruluğu kaybı — <strong>hiçbiri doğrulanmadı</strong>; ama argüman rakama gerek duymuyor.)</p>
+<p>Doğru şekil: <strong>tek federe sunucu, birkaç geniş araç.</strong> Microsoft&#x27;un Azure SRE Agent&#x27;ının 100+ dar araçtan ~5 geniş CLI aracına indiği rapor edildi <span class="koken supheli">doğrulanmadı</span> ama yön, bağımsız olarak MCP&#x27;nin bağlam ekonomisinden çıkıyor.</p>
+<h3>Hangi katman MCP sunuyor, hangisi sunmuyor</h3>
+<div class="tsar"><table><thead><tr><th>Katman</th><th>MCP durumu</th></tr></thead><tbody><tr><td>L1 Sourcebot</td><td>Var, <strong>ücretli katmanda</strong> (Basic&#x27;te yok) <span class="koken dogru">doğrulandı</span></td></tr><tr><td>L1 GitHub</td><td><code>github-mcp-server</code> MIT, <code>search_code</code> var. <em>Ama REST code search API&#x27;si kimlik doğrulanmış kullanıcıda <strong>dakikada 10 istek</strong> — çok sorgu atan ajan için gerçek bir tavan</em></td></tr><tr><td>L2 Serena</td><td>Var, MCP-yerli, MIT <span class="koken dogru">doğrulandı</span></td></tr><tr><td>L3 Dependency-Track / GUAC</td><td><strong>Yok</strong> — REST / GraphQL var</td></tr><tr><td>L4 Buf BSR</td><td>Var, resmî — <strong>ve YAZMA yetkili</strong>: token, onaylayan kullanıcının erişimini taşıyor, web UI&#x27;dan çağrılabilen her RPC MCP&#x27;den de çağrılabiliyor</td></tr><tr><td>L4 oasdiff / vacuum / Microcks / Apicurio / Karapace</td><td><strong>Yok</strong> — CLI / REST</td></tr><tr><td>L5 IaC / ACL / NetworkPolicy</td><td><strong>Yok</strong> — kubectl / API</td></tr><tr><td>L6 Datadog</td><td>Var, <strong><code>search_datadog_service_dependencies</code> dahil</strong> <span class="koken dogru">doğrulandı</span> — bu kategorideki tek doğrulanmış upstream/downstream aracı</td></tr><tr><td>L6 Tempo</td><td>Var, 8 araç, <strong>hiçbiri servis grafı değil</strong> <span class="koken dogru">doğrulandı</span></td></tr><tr><td>L6 Kiali</td><td>Var; <code>manage_istio_config</code> &quot;UI-only actions payload&quot; döndürüyor, doğrudan mutasyon yapmıyor <span class="koken dogru">doğrulandı</span></td></tr><tr><td>L6 Dynatrace</td><td>Remote var; <strong>yerel MCP kullanımdan kaldırıldı (2.1.2 son sürüm)</strong> <span class="koken dogru">doğrulandı</span></td></tr><tr><td>L6 Cilium Hubble</td><td>Yok — gRPC Observer API var (kendi köprünüzü yazmak için en temiz hedef)</td></tr><tr><td>L7 Backstage</td><td>Var (<code>@backstage/plugin-mcp-actions-backend</code>) ama <strong>varsayılan olarak hiçbir şey açığa çıkarmıyor</strong>; yapılandırma şart; ve <strong>graf gezinme aracı yok</strong></td></tr><tr><td>L8 ADR/PR/postmortem</td><td>Yok — sizin işiniz</td></tr></tbody></table></div>
+<p><strong>Boşluğu kapatma:</strong> Federe sunucunuz, MCP sunmayan katmanların REST/GraphQL/PromQL/Cypher yüzeylerini sarar. Bu bir avuç araç, 100 değil.</p>
+<h3>Önerilen araç seti (adları mekanizmasıyla)</h3>
+<div class="tsar"><table><thead><tr><th>Araç</th><th>Ne yapar</th><th>Hangi katmanlardan</th></tr></thead><tbody><tr><td><code>search_code_lexical</code></td><td>Trigram/regex arama, kapsam bilgisiyle</td><td>L1</td></tr><tr><td><code>search_code_structural</code></td><td>AST şekli eşleme</td><td>L1</td></tr><tr><td><code>who_depends_on_artifact</code></td><td>Manifest/SBOM ters arama, sürüm ve köken etiketiyle</td><td>L3</td></tr><tr><td><code>contract_change_impact</code></td><td>Şema/spec değişiminin derlenmeyecek tüketicileri</td><td>L3+L4</td></tr><tr><td><code>who_may_call</code></td><td>Beyan edilmiş potansiyel kenar (ACL/policy/route)</td><td>L5</td></tr><tr><td><code>who_did_call</code></td><td>Gözlemlenmiş kenar + <strong>gözlem penceresi + örnekleme oranı + kapsam bayrağı</strong></td><td>L6</td></tr><tr><td><code>who_owns</code></td><td>Sahiplik, tier, on-call</td><td>L7</td></tr><tr><td><code>why_is_this_like_this</code></td><td>ADR + PR yorumu + postmortem</td><td>L8</td></tr><tr><td><code>blast_radius</code></td><td>Yukarıdakileri birleştiren tek çağrı, köken etiketli, <strong>anlaşmazlıkları göstererek</strong></td><td>L3–L6</td></tr></tbody></table></div>
+<p><strong>En yüksek kaldıraçlı ve tamamen bedava karar burada:</strong> araçları <strong>vaat ettikleri şeye değil, yaptıkları şeye göre adlandırın.</strong> <code>\b{sembol}\b</code> regex&#x27;i çalıştıran bir araç <code>find_symbol_references</code> diye adlandırılamaz. Bu, otonom bir tüketiciye yalan söyleyen bir ölçüm aracıdır ve ajanın mod değiştiğini anlamasının hiçbir yolu yoktur — &quot;14 çağıranın hepsini buldum&quot; der. <code>grep_symbol_word_boundary</code> adı ajanın davranışını doğru yönde değiştirir. Aynı şey precise-navigation&#x27;ı bulanık aramaya düşen her yüzey için geçerli: <strong>mod göstergesi cevabın içinde olmalı</strong>, dokümanda değil.</p>
+<h3>Gömme mi graf mı — soru tipine göre yönlendirin</h3>
+<div class="tsar"><table><thead><tr><th>Soru tipi</th><th>Doğru modalite</th><th>Kanıt durumu</th></tr></thead><tbody><tr><td>&quot;Bu dizeyi/ismi bilen dosya&quot;</td><td>Sözcüksel</td><td>Güçlü — ajan zaten yapıyor</td></tr><tr><td>&quot;Bu kod şekli nerede&quot;</td><td>Yapısal (AST)</td><td>Güçlü — ast-grep üretimde</td></tr><tr><td>&quot;Bunu kim çağırıyor / neyi kırarım&quot;</td><td>Graf</td><td>Bu kategorinin var olma sebebi; <strong>ama estate ölçeğinde ölçülmedi</strong></td></tr><tr><td>&quot;Adını bilmediğim şeyi bulmak&quot;</td><td>Gömme</td><td><strong>Zayıf ve iki yönlü belirsiz</strong>: ContextBench semantik aramayı önde gösteriyor ama yazar bir vektör DB satıyor; CORE-Bench ince ayarın açığı kapattığını söylüyor</td></tr></tbody></table></div>
+<p>Kararı ölçüme değil, üç aritmetik gerçeğe dayandırın: gömme indeksi <strong>paylaşılmıyor</strong> (100 × N), <strong>bayatlıyor</strong>, ve graf kenarı <strong>yaklaşıklanamıyor</strong> — bir çağrı ilişkisi ya vardır ya yoktur, benzerlik skoru yoktur.</p>
+<p><strong>Ve en önemli ajan bulgusu, kalite değil benimseme:</strong> CodeCompass çalışmasında grafa erişimi olan denemelerin <strong>%58&#x27;i hiç araç çağrısı yapmadı</strong> — ajan grafa sahipti ve yine grep&#x27;ledi <strong>[iddia doğrulandı: makale gerçek, arXiv 2602.20048, tek yazar, 30 görev, hakemsiz]</strong>. Ve aynı çalışmanın %99,4 rakamıyla bu bulgu iç tutarsız: denemelerin %58&#x27;i grafa dokunmadıysa %99,4&#x27;ün paydası nedir? İki bulgu birbirini yiyor ve mercek ikisini de olumlu alıntıladı. <strong>Yine de operasyonel sonuç sağlam:</strong> üstün bir grafa büyük para harcamadan önce bir hafta araç açıklamalarına ve sistem promptuna harcayın, ve <strong>ajanın grafı gerçekten çağırıp çağırmadığını ölçün.</strong> Değer = kalite × benimseme, ve ikinci çarpan neredeyse hiç ölçülmüyor.</p>
+<h3>Güvenlik — bu mimarinin ürettiği yeni risk sınıfı</h3>
+<p>MCP&#x27;nin kendi güvenlik dokümanı confused deputy, token passthrough (<code>MUST NOT</code>), session hijacking (<code>MUST NOT use sessions for authentication</code>), SSRF ve kapsam minimizasyonunu sayıyor <span class="koken dogru">doğrulandı</span>. Kod indeksleyen bir MCP&#x27;nin <strong>ek bir sınıfı</strong> var ve hiçbir mercekte geçmiyor:</p>
+<p><strong>İndekslenen içerik bir prompt injection taşıyıcısıdır.</strong> 100 repoluk ortak bir indeks, bunu <strong>repolar-arası bir saldırı yüzeyine</strong> çevirir: tek bir repoya yazma yetkisi olan biri, başka bir takımın ajanına talimat geçirebilir. Bu, grafın &quot;correctness artifact&quot; olduğu iddiasının güvenlik ikizidir.</p>
+<p>İkinci sızıntı: <strong>yetki.</strong> Graf sorgusu, çağıranın erişemediği repolardaki kenarları döndürüyor mu? Sourcegraph repo-seviyesi ACL&#x27;i sorguya yansıtır; ev yapımı bir Neo4j katmanı <strong>yansıtmaz</strong>. Ev yapımı grafın en olası uyumluluk arızası budur ve altı mercekte hiç sorulmadı.</p>
+<p>Üçüncüsü: <strong>yazma yetkili MCP&#x27;ler.</strong> Buf BSR&#x27;nin MCP&#x27;si onaylayan kullanıcının tüm erişimini taşıyor; Gravitee&#x27;nin yönetim API&#x27;si üzerinden bir ajan API sağlayabiliyor, politika güncelleyebiliyor, kimlik bilgisi döndürebiliyor. Bunlar üretim-mutasyon yetenekleridir ve bir config dosyasındaki token değil, sert bir yetkilendirme sınırı gerektirir.</p>
+</section>
+<section id="b5" class="bolum">
+<h2><span class="bnum">5</span><span class="bad">BAŞARISIZLIK MODLARI</span></h2>
+<p>Her biri sessizce yanlış çalışır. Her biri için <strong>tespit mekanizması zorunludur</strong> — mekanizma yoksa katman kurulmuş sayılmaz.</p>
+<h3>1 · Bayatlayan katalog</h3>
+<p><strong>Nasıl olur:</strong> Geliştirici bir çağrıyı siler, gönderir, CI yeşil geçer; katalog artık var olmayan bir bağımlılığı iddia etmeye devam eder. Yaptırım yok, dolayısıyla düzeltme baskısı yok. <strong>Nasıl fark edilir:</strong> Beyan edilmiş her kenarı L3/L4/L5/L6&#x27;dan en az bir türetilmiş kenarla eşleştirin. Hiçbiri desteklemiyorsa → <em>&quot;yetim beyan&quot;</em> raporu, haftalık, sahibi olan bir dashboard&#x27;da. Ve bu raporu <strong>okuyan biri</strong> olmalı; okunmayan kapı yok kapıdır.</p>
+<h3>2 · İsim çakışması</h3>
+<p><strong>Nasıl olur:</strong> 100 repoda 100 <code>config.ts</code>, üç serviste <code>UserService</code>, iki serviste <code>ProcessPayment</code>. Repo yolu ile kapsamlanmış bir graf, birleştirilene kadar çalışır; birleştirildiğinde çakışmalar <strong>hata vermez</strong>, yanlış kenar üretir. <strong>Nasıl fark edilir:</strong> L0&#x27;ın SCIP-şekilli kimliği bunu yapı gereği önler. Önlendiğini <strong>ölçün</strong>: kısa adı estate genelinde belirsiz olan sembollerin sayacını yayınlayın, ve belirsiz bir ada yapılan cross-repo sorgu ayrıştırma olmadan sonuç döndürüyorsa uyarı verin.</p>
+<h3>3 · Eksik enstrümantasyon</h3>
+<p><strong>Nasıl olur:</strong> Bir servisin etiketleri kusurlu, trace&#x27;i yok, ya da mesh dışında. Haritada <strong>yok</strong>. &quot;Çağıranı olmayan servis&quot; ile birebir aynı görünür. <strong>Nasıl fark edilir:</strong> L6&#x27;nın düğüm kümesini L7&#x27;nin katalog düğüm kümesiyle karşılaştırın. Fark <strong>her zaman</strong> bir liste üretir: &quot;katalogda var, çalışma zamanında yok&quot;. Bu listedeki her servis ya ölüdür ya enstrümante değildir — ve hangisi olduğunu <strong>bilmek zorundasınız</strong>. <code>uninstrumented</code> birinci sınıf bir durum olarak modellenmeli, asla yokluk olarak değil. (Grafana&#x27;nın Ağustos 2026&#x27;da servis ve workload varlıklarını ayırdığı ve gerekçesinin &quot;kusurlu enstrümantasyonlu bir servis graftan tamamen kaybolabiliyordu&quot; olduğu iddia edildi <span class="koken supheli">doğrulanamadı</span> — ama arıza sınıfı gerçek.)</p>
+<h3>4 · Terk edilmiş indeks<span class="bayrak uyari">mimariyi sessizce öldüren mod</span></h3>
+<p><strong>Nasıl olur:</strong> İndeksleme işi kırılır, kimse fark etmez, sorgular eski enstantaneden <strong>makul görünen</strong> cevaplar döndürmeye devam eder. Hiçbir şey hata vermez. <strong>Nasıl fark edilir:</strong> İki mekanizma, ikisi de zorunlu. (a) <strong>Her cevap indeks zaman damgası ve kapsam bilgisi taşır</strong> — ajan bunu görür, kullanıcı bunu görür. (b) Repo başına &quot;son başarılı indeksleme&quot; tablosu, sahibi olan bir alarm, ve tazelik SLA&#x27;i. 100 repodan webhook fan-in&#x27;i kaç dakikada kapanıyor — bu sayı yazılı olmalı.</p>
+<h3>5 · Sessiz kırpma</h3>
+<p><strong>Nasıl olur:</strong> Zoekt&#x27;in <code>SizeMax</code> varsayılanı 2 MB (1 MB değil — <span class="koken dogru">doğrulandı: <code>index/builder.go:327</code></span>); <code>ShardMax</code> 100 MB <span class="koken dogru">doğrulandı</span>; GitLab dağıtımında proje başına 500k dosya, dosya başına 20k trigram, 30 dk indeksleme zaman aşımı. Bir mikroservis estate&#x27;inde bu eşikleri aşan dosyalar <strong>üretilmiş protobuf ve OpenAPI istemcileridir</strong> — yani servisler-arası sözleşmeyi kodlayan tam o artefaktlar. Cross-repo aramanız en çok görmek istediğiniz sınır için sıfır sonuç döndürür, ve sıfır sonuç &quot;hiçbir şey buna bağlı değil&quot; diye okunur. <strong>Nasıl fark edilir:</strong> Zoekt her atlanan dokümana <code>SkipReason = SkipReasonTooLarge</code> yazıyor <span class="koken dogru">doğrulandı</span> — sinyal <strong>var</strong>, sadece yüzeye çıkmıyor. Atlanan doküman sayacını yayınlayın. Ve azaltıcı önlemi kullanın: <code>LargeFiles</code> / <code>IgnoreSizeMax(name)</code> glob deseniyle (<code>**/*.pb.go</code>, <code>**/schema.d.ts</code>) muafiyet tanıyor <span class="koken dogru">doğrulandı</span> — yani bu tuzak tek satırlık bir config düzeltmesidir, kaçınılmaz değildir.</p>
+<h3>6 · Örnekleme körlüğü</h3>
+<p class="deck"><strong>Nasıl olur:</strong> %1 head sampling nadir yolları siler. servicegraph&#x27;in <code>ttl 2s</code> varsayılanı yavaş hop&#x27;ları düşürür. Trace-ID sharding yoksa eşleşmeyen span&#x27;lar sessizce sayılmaz. Hepsinin sonucu: eksik çizgi, temiz harita. <strong>Nasıl fark edilir:</strong> Her &quot;trafik yok&quot; hükmünün yanına <strong>gözlem penceresi + örnekleme oranı + enstrümantasyon kapsamı</strong> yazın. Niteliksiz bir &quot;90 gündür kullanılmıyor&quot;, verinin destekleyemeyeceği bir iddiadır. Ve kural olarak: <strong>çalışma zamanı kanıtı silme adaylarını SIRALAR, silmeyi YETKİLENDİRMEZ.</strong></p>
+<h3>7 · Sahiplik çürümesi</h3>
+<p><strong>Nasıl olur:</strong> CODEOWNERS&#x27;ta son eşleşen desen kazanır, geçersiz satır sessizce atlanır, 3 MB üstü dosya hiç yüklenmez <span class="koken dogru">doğrulandı</span>. Yeniden yapılanma sonrası <code>owner</code> alanı artık var olmayan bir takımı gösterir. <strong>Nasıl fark edilir:</strong> <code>owner</code> alanını IdP grup listesine <strong>join edin</strong> (bu depoda Keycloak grupları hazır duruyor). Canlı bir gruba çözülmeyen her sahip → kırmızı. Ayrıca CODEOWNERS parse hatalarını CI&#x27;da okuyun — GitHub bunu UI ve API&#x27;de gösteriyor ama <strong>merge&#x27;i durdurmuyor</strong>.</p>
+<h3>8 · Beyan-gözlem uyuşmazlığının sessizce çözülmesi</h3>
+<p><strong>Nasıl olur:</strong> İki kaynak çelişir, sistem birini seçer, çelişki kaybolur. DataHub bunu dokümanına yazmış: elle ve programatik soy ağacı birbirini eziyor <span class="koken dogru">doğrulandı</span>. Bu, komşu kategoride <strong>üretimde yanmış</strong> bir arıza. <strong>Nasıl fark edilir:</strong> Asla uzlaştırmayın. Beyan edilmiş kenar ile gözlemlenmiş kenar çeliştiğinde <strong>ikisini de saklayın ve çelişkiyi bir rapor kalemi yapın</strong>. Beyan edilmiş ama hiç gözlemlenmemiş kenar = bu kategorinin üretebileceği en değerli bulgu; onu &quot;çözerseniz&quot; tek işe yarar sinyali yok etmiş olursunuz.</p>
+<h3>9 · Ajanın grafı hiç çağırmaması</h3>
+<p><strong>Nasıl olur:</strong> Araç oradadır, ajan grep&#x27;ler. Ölçülmüş: %58. <strong>Nasıl fark edilir:</strong> MCP sunucunuzu enstrümante edin. Oturum başına ve soru sınıfı başına araç çağrısı sayın. Çağrı yoksa grafın kalitesi ilgisizdir.</p>
+<h3>10 · Prompt injection ve yetki sızıntısı</h3>
+<p><strong>Nasıl fark edilir:</strong> İndekslenen içeriği ajanın <strong>veri</strong> olarak gördüğünden emin olun, talimat olarak değil; ve graf cevaplarını çağıranın repo izinlerine göre filtreleyin. İkisi de test edilebilir: bilinen bir repoya zararsız bir talimat metni koyun ve ajanın davranışının değişmediğini ölçün; erişimi olmayan bir kullanıcıyla sorgu atın ve kenarların gizlendiğini ölçün.</p>
+<h3>Meta-bekçi: kırmızı testi</h3>
+<p>Bilinen bir cross-repo kenarı silin → ajanın blast-radius cevabının değiştiğini doğrulayın → geri koyun. Bu testi <strong>çalıştırmadan</strong> hiçbir katmanı &quot;hazır&quot; ilan etmeyin. Geçen bir test geçtiğini kanıtlamaz; kırılabildiğini göstermek kanıtlar.</p>
+</section>
+<section id="b6" class="bolum">
+<h2><span class="bnum">6</span><span class="bad">90 GÜNLÜK SIRA</span></h2>
+<p>Her adımın sonunda <strong>cevaplanabilir hâle gelen somut soru</strong> yazılı. Cevaplanamıyorsa adım bitmemiştir.</p>
+<h3>Gün 1–10 · L0 kimlik + envanter</h3>
+<ul><li>Repo envanteri; her repo için: dil(ler), build durumu (CI&#x27;da <strong>yeşil derleniyor mu</strong>), üretilen artefaktlar (PURL), çalışma-zamanı servis adları, manifest formatları.</li><li>Birleştirme tablosu + CI kapısı (repo ↔ service.name ↔ katalog varlığı ↔ PURL).</li><li>Paralel başlat: L8 (ADR konvansiyonu + index) — bedava, kimseyi bloke etmiyor.</li></ul>
+<blockquote><strong>Cevaplanabilir olur:</strong> <em>&quot;Kaç repomuz var, kaçı derleniyor, kaçının çalışma-zamanı adı katalog adıyla eşleşiyor, ve hangi dillerin kuyruğunu taşıyoruz?&quot;</em> Bu dördü, sonraki her satın alma kararının girdisidir ve şu an <strong>hiçbiri bilinmiyor</strong>.</blockquote>
+<h3>Gün 10–25 · L1 sözcüksel taban + L3 manifest/SBOM ingest</h3>
+<ul><li>Zoekt sınıfı indeks (ücretsiz katman), <code>LargeFiles</code> muafiyetleri ayarlı, atlanan doküman sayacı yayında.</li><li>SBOM boru hattı: varsa ingest edin, yoksa Dependency-Track kurun. GitHub Dependency Graph API&#x27;yi taban olarak bağlayın.</li></ul>
+<blockquote><strong>Cevaplanabilir olur:</strong> <em>&quot;X paketini / şemasını / kütüphanesini hangi servisler kullanıyor?&quot;</em> — portföy çapında ters arama. Bu, ilk gerçek cross-repo cevaptır ve maliyeti neredeyse sıfırdır.</blockquote>
+<h3>Gün 25–45 · L4 sözleşme kapıları + L5 beyan edilmiş topoloji</h3>
+<ul><li><code>buf breaking --against .git#branch=main</code> 100 repoda (ücretsiz).</li><li>Spec üretimi olan servislerde oasdiff PR kapısı. <strong>Elle yazılmış spec&#x27;lere kapı koymayın.</strong></li><li>ACL, NetworkPolicy, gateway route, IaC state, DB GRANT ve migrasyon dosyalarını ingest edin.</li></ul>
+<blockquote><strong>Cevaplanabilir olur:</strong> <em>&quot;Bu şemayı değiştirirsem hangi servisler derlenmez?&quot;</em> ve <em>&quot;Bu servisi kim çağırabilir?&quot;</em> Bu iki soru, blast radius&#x27;un yaptırımlı yarısını kapatır — ve buraya kadar <strong>satın alınan hiçbir şey yok</strong>.</blockquote>
+<h3>Gün 45–65 · L6 gözlem, en ucuzdan</h3>
+<p>Sıra önemli: (1) mevcut APM&#x27;den kenar listesi ihracı, (2) broker consumer group&#x27;ları, (3) gateway erişim logları, (4) DB sorgu logları. <strong>Trace tabanlı servicegraph&#x27;i yalnızca zaten Collector filosu işletiyorsanız</strong> ekleyin; eklerseniz iki katmanlı trace-ID sharding şart ve <code>ttl</code>/<code>max_items</code> varsayılanlarını kutudan çıktığı gibi bırakmayın.</p>
+<blockquote><strong>Cevaplanabilir olur:</strong> <em>&quot;Bu kenar son 30 günde gerçekten kullanıldı mı — hangi gözlem penceresi, hangi örnekleme oranı, hangi kapsamla?&quot;</em> Ve ilk kez: <strong>beyan edilmiş ama gözlemlenmemiş kenar listesi.</strong> Bu, tüm kategorinin en değerli çıktısıdır ve iki kaynağın <em>anlaşmazlığından</em> doğar.</blockquote>
+<h3>Gün 65–80 · L9 federe MCP + L10 bekçiler</h3>
+<ul><li>Tek sunucu, yukarıdaki dokuz araç, <strong>mekanizmasıyla adlandırılmış</strong>, her cevap köken etiketi + indeks zaman damgası + kapsam bayrağı taşıyor.</li><li>Dört bekçi CI&#x27;da, sahibi ve alarmı belli.</li><li>Paralel: L7 katalog — türetilmiş alanları graf yazsın, elle yazılan dosyada yalnızca owner/tier/lifecycle/on-call kalsın.</li></ul>
+<blockquote><strong>Cevaplanabilir olur:</strong> <em>&quot;Bir ajan bu soruların hepsini birkaç yüz token&#x27;la cevaplayabiliyor mu, ve cevabının hangi kaynaktan geldiğini söylüyor mu?&quot;</em></blockquote>
+<h3>Gün 80–90 · Kırmızı testi + benimseme ölçümü</h3>
+<ul><li>Bilinen bir cross-repo kenarı silin, blast-radius cevabının değiştiğini ölçün, geri koyun. Rapora <strong>&quot;ölçtüm&quot;</strong> yazın.</li><li>MCP sunucusunun çağrı sayaçlarını okuyun: ajan grafı gerçekten çağırıyor mu, hangi soru sınıflarında çağırmıyor?</li><li>Kararlar: hangi ücretli katman gerçekten gerekiyor, ve kaç koltuk için.</li></ul>
+<blockquote><strong>Cevaplanabilir olur:</strong> <em>&quot;Bu graf kırmızı yanabiliyor mu, ve ajan onu gerçekten çağırıyor mu?&quot;</em> Bu ikisi cevaplanmadan hiçbir ücretli katmanı satın almayın — çünkü ikisi de &quot;hayır&quot; ise satın alma sonucu değiştirmez.</blockquote>
+<p><strong>Neden bu sıra:</strong> Yaptırımlı kenarlar önce, çünkü ucuzlar ve bayatlamıyorlar. Gözlem sonra, çünkü pahalı ve yorum gerektiriyor. Katalog sonra, çünkü türetilen alanları beslemeyi bekliyor. Ajan yüzeyi en son, çünkü ne sunacağı henüz belli değildi. Ve <strong>satın alma en sona kalıyor</strong>, çünkü ilk 65 gün hangi koltuk sayısı ve hangi kapsam için pazarlık edeceğinizi öğretiyor.</p>
+</section>
+<section id="b7" class="bolum">
+<h2><span class="bnum">7</span><span class="bad">NE ÖLÇÜLMEDİ / NE BİLİNMİYOR</span></h2>
+<h3>En önemli meta-gözlem</h3>
+<p><strong>Altı mercekte hiçbir araç kurulmadı, hiçbir sorgu çalıştırılmadı.</strong> Hepsi doküman okuması. Bu deponun kendi §6 kültürüne göre bu, &quot;geçtiğini gördüm&quot; bile değil. Aşağıdaki mimari, doğrulanmış <em>belgelere</em> dayanıyor — doğrulanmış <em>davranışa</em> değil.</p>
+<p>Ve ikincisi: <strong>servis-katalog merceğinin (L7) adversarial doğrulaması hiç yapılmadı</strong> (<code>dogrulama: null</code>). O merceğin bütün fiyatları, Backstage sınırlamaları, Roadie/Cortex/OpsLevel rakamları ve #18218 referansı <strong>tek kaynaklı ve çürütülmemiş</strong> durumda. Diğer beş mercekte doğrulama, iddiaların önemli bir kısmını çürüttü — bu merceğin çürütülmemiş olması güvenilir olduğu anlamına gelmiyor, sadece <strong>bakılmadığı</strong> anlamına geliyor.</p>
+<h3>Doğrulanamayan sayılar — mimarinin ağırlık taşıyanları</h3>
+<div class="tsar"><table><thead><tr><th>İddia</th><th>Durum</th><th>Neyi taşıyordu</th></tr></thead><tbody><tr><td>APIContext &quot;%75 OpenAPI drift&quot;, 650M çağrı</td><td><strong>Bulunamadı</strong>; o başlıkta whitepaper listede yok</td><td>Sözleşme merceğinin &quot;katalog katmanı gereksiz&quot; hükmünün tamamı</td></tr><tr><td>mabl vaka çalışması (79 repo, 850 satır, %17→%70, PR +%291, drift %40→&lt;%5)</td><td><strong>Bulunamadı</strong>; mabl blogunda böyle bir yazı yok</td><td>Ajan merceğinin key_insight&#x27;ının birinci ayağı</td></tr><tr><td>Meta &quot;6.000 → 200 token&quot;</td><td><strong>Bulunamadı</strong></td><td>&quot;200 token şartnamedir&quot; normatif hedefi</td></tr><tr><td>Azure SRE Agent &quot;%45 → %75&quot;</td><td><strong>Bulunamadı</strong></td><td>&quot;Az sayıda geniş araç&quot; tavsiyesi</td></tr><tr><td>GitLab Zoekt boyutlandırma tablosu</td><td><strong>OAuth duvarı arkasında</strong>, teyit edilemedi; ayrıca çekirdek birimlerinde iç tutarsız</td><td>&quot;ONE small VM&quot; kategori hükmünün tamamı</td></tr><tr><td>&quot;100 servis &lt;50GB git&quot;</td><td><strong>Kaynaksız varsayım</strong></td><td>Aynı hükmün ikinci girdisi</td></tr><tr><td>Backstage self-host $200k–1,2M / yıl-1</td><td>Tek modelden; hakemli MLR bakım yükü hakkında <strong>hiçbir titiz veri bulamadı</strong></td><td>&quot;Self-host etme&quot; tavsiyesinin maliyet ayağı</td></tr><tr><td>MCP token vergisi (200–500 tok/araç, 50–75k tok, %72 pencere, 3× doğruluk kaybı)</td><td><strong>Hiçbiri doğrulanmadı</strong></td><td>Federasyon tavsiyesinin nicel gerekçesi</td></tr><tr><td>Netflix 150 subgraph / 3.000 tip</td><td>Birincil kaynaklar <strong>403 / 404</strong></td><td>&quot;Bu merceğin en iyi ölçek kanıtı&quot;</td></tr><tr><td>Kong ~$105/servis/ay, Glean $350–480k/yıl TCO, CodeRabbit 2M repo, Blackbird 480TB/180M repo</td><td><strong>Doğrulanmadı</strong></td><td>Çeşitli fit hükümleri</td></tr></tbody></table></div>
+<h3>Merceklerin kendi içinde ve birbirleriyle çeliştiği yerler</h3>
+<ul><li><strong>CodeCompass:</strong> %58 sıfır-araç-çağrısı ile %99,4 tamamlama aynı çalışmadan ve birbirini yiyor. Mercek ikisini de olumlu alıntıladı.</li><li><strong>Codebase-Memory:</strong> makale 66 dil diyor, README 158; 31 repo <strong>ayrı ayrı</strong> değerlendirildi, federe değil — yani &quot;yayınlanmış coklu-repo ölçümü olan tek seçenek&quot; ifadesi yanlış, cross-repo kenarları <strong>ölçülmedi</strong>.</li><li><strong>Grep vs RAG:</strong> üç dayanaktan üçü de zayıfladı (AAAI &quot;&gt;%90&quot; ve PDF; &quot;Is Grep All You Need&quot; harness sonucu; CORE-Bench fine-tuning sonucu). Mimarinin gömme-almama kararı bu yüzden <strong>ölçüme değil aritmetiğe</strong> dayandırıldı.</li><li><strong>Kod-grafı merceği build-free&#x27;yi hem taşıyıcı ilke yaptı hem SCIP&#x27;i REQUIRED ilan etti</strong> — aynı kusur, ters karar.</li><li><strong>Sourcebot</strong> bir mercekte &quot;strong-fit&quot;, kendi doğrulamasında find-references&#x27;ı regex çıktı; kategorinin var olma gerekçesini karşılamıyor.</li><li><strong>GitNexus</strong> bir mercekte &quot;fatal parser gaps + cross-repo yok&quot; dendi, doğrulama <strong>ikisinin de yanlış</strong> olduğunu buldu; geriye tek gerçek engel olarak lisans kaldı — ve bu, &quot;piyasa henüz inşa etmedi&quot; tezini çürütüyor.</li><li><strong>Sözleşme merceği &quot;manifest&#x27;i neredeyse kimse ayrıştırmıyor&quot;</strong> dedi; SBOM sanayisi tam olarak bunu yapıyor ve portföy çapında ters arama sunuyor.</li><li><strong>Çalışma-zamanı merceği &quot;hiçbir satıcı join key sağlayamaz&quot;</strong> dedi; Backstage varlık modeli, OTel Weaver ve SkyWalking Service Hierarchy bu işin ürünleşmiş parçaları.</li></ul>
+<h3>Ürünler hakkında bayat / yanlış bilgi (düzeltilmiş)</h3>
+<ul><li>Pixie&#x27;nin son sürümü <strong>Ocak 2025</strong>, Temmuz 2024 değil.</li><li>Continue deposu <strong>arşivlenmedi</strong>; 2026-08-20&#x27;de push aldı. Ürün sonlandırıldı, depo canlı.</li><li>Dynatrace&#x27;in <strong>yerel</strong> MCP&#x27;si kullanımdan kaldırıldı (2.1.2 son sürüm).</li><li>OBI/Beyla <strong>v0.12.1</strong> (mercek v0.8.0&#x27;daydı); son sürüm kernel panic düzeltiyor.</li><li>Cilium OSS&#x27;te <strong>akış dışa aktarımı var</strong>; &quot;tarih Enterprise gerektirir&quot; abartılıydı.</li><li>Zoekt <code>SizeMax</code> <strong>2 MB</strong>, <code>ShardMax</code> <strong>100 MB</strong>, <code>LargeFiles</code> muafiyeti <strong>var</strong>, <code>SkipReasonTooLarge</code> işareti <strong>var</strong>.</li><li>Specmatic fiyatı <strong>yayınlanmış</strong> (50 koltuk min. $50/koltuk/ay → 2000+ koltukta $10) — mercek &quot;yayınlanmamış&quot; demişti; ve bu, koltuk-başı model olduğu için merceğin başka araçlarda mahkûm ettiği modelin aynısı.</li><li>Apollo ücretsiz self-hosted router <strong>dakikada 60 istek</strong> ile sınırlı; geliştirici koltuk tavanları var.</li><li>Gravitee&#x27;nin async yeteneği <strong>ayrı bir ürün hattı</strong> (+$1.250/ay giriş).</li><li>Riftmap self-host <strong>yok</strong> (planlı), MCP <strong>yok</strong> (planlı), ücretsiz katmanda <strong>sürekli yeniden tarama yok</strong>.</li><li>Semgrep Team&#x27;de &quot;20.000+ Pro kural&quot; değil, kaynak <strong>600+</strong> diyor.</li><li>Meta Glean ve Glean Inc. <strong>farklı ürünler</strong>; &quot;Glean MCP&quot; araması yanlış satıcıya götürüyor.</li></ul>
+<h3>Bilinmeyen — ve her biri tavsiyeyi değiştiriyor</h3>
+<ol><li><strong>Kaç geliştirici?</strong> 100 servisi 30 mühendis mi 300 mühendis mi işletiyor? Her koltuk-başı fiyat, her minimum (Roadie 50, Harness 20, Port 15) ve Sourcebot-vs-Sourcegraph yakınsaması bu sayıya bağlı. <strong>Sorulmadı.</strong></li><li><strong>100 reponun kaçı bugün CI&#x27;da yeşil derleniyor?</strong> SCIP, CodeQL, Moderne ve her build-gerektiren katmanın gerçek maliyet belirleyicisi bu. <strong>Sorulmadı.</strong></li><li><strong>Kod nerede?</strong> github.com mu, GHES mi, GitLab mı? Blackbird GHES&#x27;te yok; GitLab exact search Premium/Ultimate gerektiriyor. <strong>Sorulmadı.</strong></li><li><strong>Dil kuyruğu ne?</strong> &quot;8 GA dil ailesi&quot; deniyor; kurumsal estate genelde o sekizin dışında bir kuyruk taşır. Kapsam yüzdesi hesaplanmadı.</li><li><strong>Mesh var mı? GraphQL var mı? Kafka var mı?</strong> Kiali sadece Istio&#x27;yu görür; Apollo Federation sadece GraphQL&#x27;i; Stream Lineage sadece Confluent Cloud&#x27;u.</li><li><strong>Tazelik SLA&#x27;i ne olmalı?</strong> Hiçbir mercekte &quot;graf ne kadar bayat olabilir&quot; sorusu yok.</li><li><strong>Yanlış blast-radius&#x27;un geri alma planı ne?</strong> Silme kanıtı bu taramanın en çok övdüğü çıktı ve arıza planı yok.</li><li><strong>Grafın sahibi kim, kırmızısını kim okuyacak?</strong> Bir correctness artifact&#x27;in sahibi yoksa kırmızısı okunmaz.</li><li><strong>Kişisel veri boyutu.</strong> CODEOWNERS + git geçmişi + bus-factor analizi = <strong>çalışan verisi işleme</strong>. Avrupa&#x27;da satın alma bunu sorar; taramada tek kelime yok.</li><li><strong>Alternatif hiç fiyatlanmadı.</strong> &quot;100 repoyu grafla modellemek mi, monorepo&#x27;ya/Copybara ile senkron aynaya taşımak mı ucuz?&quot; Dürüst bir alıcı bunu sorar; altı mercekte bu soru hiç yok, dolayısıyla grafın maliyeti <strong>karşılaştırmasız</strong> kaldı.</li><li><strong>Conway boyutu.</strong> 100 mikroservis 100 takım değil — tipik olarak 15–25 takım. Blast radius teknik olarak 12 servis olabilir ama organizasyonel olarak 3 takımdır, ve maliyeti belirleyen ikinci sayıdır. Hiçbir araç onu veremiyor çünkü sahiplik her yerde elle giriliyor ve o elle girilen şey de kanıtlandığı üzere sessizce çürüyor.</li></ol>
+<h3>Ve bu mimarinin kendisi hakkında dürüst olan şey</h3>
+<p>Yukarıdaki on bir katmanın hiçbiri 100 repoluk bir estate&#x27;te <strong>ölçülmüş</strong> değil. Yayınlanmış tek nicel çoklu-repo kanıtı, tek yazarlı hakemsiz bir preprint (30 görev) ve bir projenin kendi yazarlarının 31-repo değerlendirmesi — ve o değerlendirme de federe değil, tek tek. Bu mimarinin gerekçesi ölçüm değil, <strong>mekanizma</strong>: yaptırımlı kenar yanlış olduğunda bir şey kırılır, yaptırımsız kenar çürür, gözlem eksilir. Bu üç mekanizma tek tek doğrulandı; birleşiminin 100 serviste ne ürettiği <strong>ölçülmedi</strong>.</p>
+<p>O yüzden 90 günün son adımı ölçümdür, kurulum değil. Ve o ölçüm kırmızı yanamıyorsa, elinizde bir bilgi katmanı değil, &quot;bilmiyorum&quot;u &quot;hiçbir şey buna bağlı değil&quot;e çeviren bir makine vardır.</p>
+</section>
+      <div class="dipnot">
+        <p>Yeşil çipler doğrulama turunun kaynakla teyit ettiği iddiaları, sarı çipler teyit edilemeyenleri işaretliyor — belgenin kendi tezi olan “her kenar kökenini taşımalı” kuralı, belgenin kendisine uygulandı.</p>
+        <p>Doğrulama aşamasının bir ajanı (servis kataloğu merceği) 529 hatasıyla düştü; o merceğin iddiaları adversarial kontrolden <em>geçmedi</em> ve buradaki ağırlıkları buna göre okunmalı.</p>
+      </div>
+    </main>
+  </div>
+</div>
+</body>
+</html>
