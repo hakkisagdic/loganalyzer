@@ -199,7 +199,7 @@ services:
     restart: "no"
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.158.0
+    image: otel/opentelemetry-collector-contrib:0.162.0
     command: ["--config=/etc/otel/collector.yaml"]
     depends_on:
       otel-init: { condition: service_completed_successfully }
