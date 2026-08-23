@@ -1,0 +1,55 @@
+version: api.keploy.io/v1beta1
+kind: KeployConfig
+
+# 1. PASİF DİNLEME VE TEST AYARLARI
+Config:
+  # Kaydedilen testlerin yazılacağı dizin
+  path: "./tests/keploy"
+  # OTel Collector ve API'nin ayağa kalkması için tanınan süre (saniye)
+  delay: 15
+  # Uygulamanızın varsayılan portları
+  ports: [3000, 8080, 8123, 5140, 5141]
+
+# 2. GİZLİLİK VE REÇETE (PII MASKING) AYARLARI
+# Bu kurallar, gelen log veya API trafiğindeki hassas verileri yakalayıp maskeler.
+Filter:
+  # Header (Başlık) seviyesinde temizlik
+  headers:
+    - "Authorization"       # Keycloak JWT Bearer Token'ları
+    - "X-API-KEY"           # Servis hesapları anahtarları
+    - "X-Bizigo-Signature"  # Webhook (GitHub, GitLab, Jenkins) imza doğrulamaları
+    - "Cookie"              # Next.js BFF opak oturum çerezleri
+
+  # Gövde (Body) ve Log Satırı seviyesinde Türkçe PII Maskeleme (Regex tabanlı)
+  body:
+    # TC Kimlik Numarası Maskeleme (11 Haneli)
+    - key: "(?i)(tc_no|tckn|tc_kimlik|identity_number)"
+      value: "XXXXXXXXXXX"
+      
+    # Telefon Numarası Maskeleme (Örn: 05xxxxxxxxx veya 5xxxxxxxxx)
+    - key: "(?i)(phone|tel|telefon|gsm|mobile)"
+      value: "05XXXXXXXXX"
+      
+    # E-posta Adresi Maskeleme
+    - key: "(?i)(email|e_posta|mail_address)"
+      value: "user@masked-bizigo.local"
+      
+    # Kullanıcı Şifreleri ve DB Credentials
+    - key: "(?i)(password|parola|sifre|secret|token|client_secret)"
+      value: "******"
+  
+    # Log Analizörüne özel: Cihaz yedeklerindeki PSK (Pre-Shared Key) maskesi
+    - key: "(?i)(psksecret|presharedkey|vpn_key)"
+      value: "<gizli:masked_key>"
+
+# 3. DİNAMİK VERİ (NOISE) AYIKLAMA AYARLARI
+# Her istekte değişen veriler testlerin "flaky" (sahte başarısız) olmasını engellemek için normalize edilir.
+Noise:
+  # Zaman damgaları (Uygulamanın ISO, UNIX ve Syslog tarih formatları için)
+  - "timestamp"
+  - "ts"
+  - "verified_at"
+  - "delivery_id"      # Webhook benzersiz teslimat ID'leri
+  - "request_id"       # HTTP/gRPC takip ID'leri
+  - "uuid"             # Cihaz veya log oturum UUID'leri
+  - "signature_hash"   # Bizigo'nun kendi ürettiği dinamik imza değerleri
