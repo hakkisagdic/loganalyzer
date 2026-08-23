@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bizigo LogAnalyzer — Plugin-based Log Analysis Platform</title>
+  <meta name="description" content="Multi-format, multi-language log analysis platform with agentic root cause analysis.">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #7dd3fc;
+      --border: #334155;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --text: #1e293b;
+        --text-muted: #64748b;
+        --accent: #0284c7;
+        --accent-hover: #0369a1;
+        --border: #e2e8f0;
+      }
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 0;
+    }
+    header .container { display: flex; align-items: center; justify-content: space-between; }
+    header h1 { font-size: 1.25rem; font-weight: 700; }
+    header a { color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+    header a:hover { color: var(--accent-hover); }
+    .hero {
+      text-align: center;
+      padding: 4rem 1rem;
+    }
+    .hero h2 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 2rem;
+    }
+    .badges { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; }
+    .badges img { height: 20px; }
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      padding: 2rem 0 4rem;
+    }
+    .feature {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+    .feature h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .feature p { color: var(--text-muted); font-size: 0.95rem; }
+    .quick-start {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 4rem;
+    }
+    .quick-start h3 { margin-bottom: 1rem; }
+    .quick-start pre {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.8;
+    }
+    .quick-start code { color: var(--accent); }
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>Bizigo LogAnalyzer</h1>
+      <a href="https://github.com/hakkisagdic/loganalyzer">GitHub Repository</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <h2>Plugin-based Log Analysis Platform</h2>
+        <p>Multi-format, multi-language log analysis with agentic root cause analysis. Built for network and infrastructure device logs.</p>
+        <div class="badges">
+          <img src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet" alt=".NET 10">
+          <img src="https://img.shields.io/badge/Next.js-15-000000?logo=next.js" alt="Next.js 15">
+          <img src="https://img.shields.io/badge/ClickHouse-storage-FFCC00?logo=clickhouse&logoColor=000" alt="ClickHouse">
+          <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License">
+        </div>
+      </div>
+    </section>
+
+    <section class="container">
+      <div class="features">
+        <div class="feature">
+          <h3>🔌 Plugin Architecture</h3>
+          <p>Extensible parser engine supporting multiple log formats. Add vendor-specific parsers via the catalog system.</p>
+        </div>
+        <div class="feature">
+          <h3>📊 Real-time Ingest Pipeline</h3>
+          <p>High-throughput ingestion with normalization, dispatching, and raw archival. Sidecar-based collection.</p>
+        </div>
+        <div class="feature">
+          <h3>🔍 Advanced Search &amp; Query</h3>
+          <p>Powered by ClickHouse for fast analytical queries across billions of log entries with full-text search.</p>
+        </div>
+        <div class="feature">
+          <h3>🚨 Alerting &amp; Detection</h3>
+          <p>Sigma rule support, correlation engine, and notification channels for proactive incident detection.</p>
+        </div>
+        <div class="feature">
+          <h3>🖥️ Modern Web UI</h3>
+          <p>Next.js dashboard with OpenAPI-generated type-safe API client, dark/light mode, and responsive design.</p>
+        </div>
+        <div class="feature">
+          <h3>🔐 Enterprise Security</h3>
+          <p>Keycloak-based authentication, JWT validation, multi-tenant isolation, and audit trail.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="container">
+      <div class="quick-start">
+        <h3>Quick Start</h3>
+        <pre><code># Clone the repository
+git clone https://github.com/hakkisagdic/loganalyzer.git
+cd loganalyzer
+
+# Set up git hooks
+git config core.hooksPath .githooks
+
+# Start development environment
+cd deploy && cp .env.example .env && docker compose up -d --wait && cd ..
+
+# Build and test
+dotnet build
+dotnet test tests/Bizigo.UnitTests
+
+# Run the API
+dotnet run --project src/Bizigo.Api
+
+# Run the UI (separate terminal)
+cd ui && cp .env.example .env.local && npm install && npm run dev</code></pre>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2024 Hakkı Sağdıç. Released under the MIT License.</p>
+    </div>
+  </footer>
+</body>
+</html>
