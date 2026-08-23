@@ -22,7 +22,7 @@
     "redis": "^6.2.1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.54.2",
+    "@playwright/test": "^1.62.1",
     "@types/node": "^22.18.0",
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.8",
