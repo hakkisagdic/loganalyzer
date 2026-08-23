@@ -8,10 +8,35 @@ Config:
   # OTel Collector ve API'nin ayağa kalkması için tanınan süre (saniye)
   delay: 15
   # Uygulamanızın varsayılan portları
+  # 
+  # PORT SEÇİM MANTIGI:
+  # - 3000: Next.js UI dev server (kullanıcı arayüzü trafiği)
+  # - 8080: Keycloak OIDC provider (kimlik doğrulama trafiği)
+  # - 8123: ClickHouse HTTP API (sorgu trafiği)
+  # - 5140: Syslog TCP (log ingestion - OTel Collector)
+  # - 5141: Syslog UDP (log ingestion - OTel Collector)
+  #
+  # DIŞLANAN PORTLAR (neden kayıt dışı):
+  # - 5080 (Bizigo API): Kullanıcı isteği üzerine dışlandı - pasif dinleme log trafiğine odaklı
+  # - 9000/9001 (RustFS S3/Console): Dahili S3 depolama, test kaydı için gerekmez
+  # - 9010 (ClickHouse Native): HTTP port 8123 yeterli, native protokol test için gerekmez
+  # - 4318 (OTLP HTTP): İç servis iletişimi, dış trafiğe kapalı
+  # - 6379 (Redis): Dahili durum yönetimi, dış trafiğe kapalı
   ports: [3000, 8080, 8123, 5140, 5141]
 
 # 2. GİZLİLİK VE REÇETE (PII MASKING) AYARLARI
 # Bu kurallar, gelen log veya API trafiğindeki hassas verileri yakalayıp maskeler.
+#
+# NOT: PII MASKING YAKLAŞIMI FARKLILIĞI
+# Keploy'un Filter.body kuralları "key-based" yaklaşım kullanır: alan ADI eşleştiğinde maskeler.
+# Bu, catalog/masks/bizigo-masks.yaml'daki "value-based" yaklaşımdan farklıdır:
+#   - bizigo-masks.yaml: Değer FORMATI eşleştiğinde maskeler (örn: \d{11} = TC Kimlik)
+#   - keploy.yaml: Alan ADI eşleştiğinde maskeler (örn: "tc_no" alanı varsa maskeler)
+#
+# Bu farklılık KASITLIDIR:
+#   - Keploy: Test kaydı sırasında JSON alan adlarına göre hızlı maskeleme
+#   - bizigo-masks.yaml: Runtime'da log içeriğinde format bazlı maskeleme
+# İki sistem birbirini tamamlar - farklı senaryolar için optimize edilmiştir.
 Filter:
   # Header (Başlık) seviyesinde temizlik
   headers:
@@ -53,3 +78,4 @@ Noise:
   - "request_id"       # HTTP/gRPC takip ID'leri
   - "uuid"             # Cihaz veya log oturum UUID'leri
   - "signature_hash"   # Bizigo'nun kendi ürettiği dinamik imza değerleri
+  - "template_id"      # Drain3 template ID'leri (sidecar yeniden başlatıldığında değişebilir)
