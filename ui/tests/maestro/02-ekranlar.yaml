@@ -23,6 +23,13 @@ env:
   KULLANICI: analyst.core
   PAROLA: analyst
 ---
+# `launchApp` ZORUNLU ve yokluğu SESSİZ: `url:` başlığı yalnızca hedefi
+# BİLDİRİYOR, tarayıcıyı oraya götürmüyor. Onsuz akış boş bir sayfada
+# ilk `assertVisible`da bekliyor — ölçüldü: 12 dakika, chromium %0 CPU,
+# uygulamaya tek istek gitmemiş. Hiçbir yerde "gezinmedim" yazmıyor.
+- launchApp:
+    clearState: true
+
 - runFlow: altakimlar/giris.yaml
 
 # ---------------------------------------------------------------- kaynaklar
