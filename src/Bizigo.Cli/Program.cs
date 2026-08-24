@@ -314,7 +314,15 @@ fieldsValuesCommand.SetAction(parse => FieldsCommandHandlers.Values(
     parse.GetValue(migrationsOption)?.FullName ?? Path.Combine("db", "clickhouse"),
     parse.GetValue(rulesOption)?.FullName,
     parse.GetValue(pipelineOption)?.FullName
-        ?? Path.Combine("prototypes", "t30-sigma", "bizigo_pipeline.py")));
+        // ÜRÜNÜN pipeline'ı, prototipin değil.
+        //
+        // Varsayılan `prototypes/t30-sigma/bizigo_pipeline.py` idi ve T31
+        // kalıcı modülü yazdıktan sonra o dosya **bayat** kaldı: prototipte 28
+        // alan, üründe 32 (`http_method`, `user_name`, `cs_method`,
+        // `TargetUserName` eksikti). Yani erişilebilirlik ölçümü, ürünün
+        // eşlediği dört alanı "eşlenmemiş" sayıyordu — `SigmaFieldMap`'in
+        // kendi yorumunun uyardığı hatanın bir kademe yukarısı.
+        ?? Path.Combine("sidecar", "app", "sigma_pipeline.py")));
 
 var fieldsCommand = new Command("fields", "Alan kapsamı ölçümleri.");
 fieldsCommand.Subcommands.Add(fieldsCoverageCommand);

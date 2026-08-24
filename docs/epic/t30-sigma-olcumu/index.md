@@ -88,6 +88,9 @@ kalıcı pipeline'ı yazılırken çıktı** — ve son üçü ancak üretilen S
 | 5 | **`type_uid` bizde yok** | **Yeni.** `ocsf_pipeline` sınıf ayırıcısını `type_uid` ile ekliyor; K8 gereği yazılan tek OCSF kolonu `class_uid` + `activity_id`. `type_uid` şart koşan bir pipeline **derlenip koşmayan** SQL üretir |
 | 6 | **`attrs` anahtarları ad alanlı** | **Yeni, T31'de çıktı.** `unmapped['url']` yazmak plandı ve yanlıştı: `EventNormalizer` parser'ın `otel:` bloğunu `otel.` önekiyle yazıyor, gerçek anahtar `otel.url.path`. Düz ad **hata vermez** — eksik Map anahtarı boş dizge döner, sorgu koşar, sonsuza kadar sıfır döndürür |
 | 7 | **`IPv6` kolonunda metin operatörü** | **Yeni, T31'de çıktı.** `src_endpoint_ip ILIKE '10.%'` tip hatası verir; ama düz `toString()` **daha kötü**: ClickHouse IPv4'ü `::ffff:10.0.0.1` saklıyor, sorgu koşar ve hiçbir zaman tutmaz. Önek sökülüyor |
+| 9 | **Vendor'a göre boş kalan kolon** | **Yeni.** `action` → `activity_name` doğru eşleme, kolon var, SQL makul — ama RouterOS'ta o kolon **bilinçli olarak boş**. Ne sözlüğe ne SQL'e bakarak görülür; yalnızca **veriye sorularak**. `VENDOR_EMPTY_COLUMNS` |
+| 11 | **Kolonun değeri ham satırda hiç geçmiyor** | **Yeni.** Bir eşleme tablosu cihazın sözcüğünü normalleştiriyorsa (`failed → failure`), kuralın aradığı değer ham satırda **hiç** bulunmaz. Metin ekseninde bakan ölçüm "örneklem boşluğu" der; doğru kural bu sebeple bir kez **bozuldu**. Kolonun kapalı değer uzayına bakmak gerekiyor |
+| 10 | **Kural, vendor'ın sözlüğünü kullanmıyor** | **Yeni, ve üç kez görüldü.** Üretilen SQL doğru, kolon doğru, veri de var — yalnızca **dizge** yanlış. Aşağıya bakınız |
 | 8 | **Backend ifadeleri backtick'liyor** | **Yeni, T31'de çıktı.** `field_quote_pattern` varsayılanı `^[a-zA-Z0-9_]*$`; `unmapped['otel.url.path']` backtick'lenip kolon adı sanılıyordu. Yalnızca üretilen SQL okununca görüldü |
 
 Beşincisi T30'un aradığı tuzak sınıfının tam örneği: derleme başarılı, SQL
@@ -97,6 +100,29 @@ yanlış, ve hiçbir şey kırmızı yanmıyor.
 görüldü** — tablolara bakarak değil. Üçünün de ortak imzası: sorgu koşar, hata
 vermez, sonsuza kadar boş döner. Prototip aşamasında "eşleme doğru mu" diye
 sözlüğe bakmak bunların hiçbirini yakalamazdı.
+
+**9 ve 10 bir adım daha derinde:** üretilen SQL okunarak da görülmüyorlar.
+Dokuzuncuda kolon doğru ama o vendor'da hiç dolmuyor; onuncuda her şey doğru,
+yalnızca aranan **dizge** vendor'ın yazdığı sözcük değil.
+
+### 10. tuzak: kural, vendor'ın yazdığını değil yazacağını varsaydığımızı arıyor
+
+Üç kez göründü ve üçünün sebebi **farklı sanılıyordu**:
+
+| Kural | Arıyor | Vendor yazıyor | Nasıl bulundu |
+| --- | --- | --- | --- |
+| `asa_teardown_rst` | `RST` | `Reset-I` / `Reset-O` | Eşleşiyordu — `first`/`burst` içine denk geliyordu |
+| `routeros_forward_new` | `action: forward` | zincir adı `fw_chain`'de | Kapı 3, canlı ClickHouse |
+| `fortigate_user_auth_fail` | `status: failure` | `status="failed"` | Yakın-sözcük uyarısı |
+
+Üçü de dışarıdan *"eşleşmiyor"* diye görünüyordu; birincisi **eşleşiyordu bile**
+ve o daha kötü.
+
+Ayırt edici soru: **dizge örneklerde hiç yok mu, yoksa yakını mı var?** Yakını
+varsa bu bir örneklem boşluğu değil, düzeltilebilir bir kural hatası — ve
+ikisinin cevabı zıt. `explain_misses.py` bunu ayrı raporluyor; ayırmasaydı
+`fortigate_user_auth_fail` "örneklem kusuru" kutusunda kalır ve **kapsam
+sayısı yanlış hesaplanırdı**.
 
 `unmapped` için tespit edilen 9 alan ayrı bir maliyet kalemi: Map erişimi
 ClickHouse'ta çalışıyor ama **indekslenmiyor**. Yani bedeli doğruluk değil hız —
@@ -318,25 +344,75 @@ değil, ama aynı büyüklük mertebesinde ve o kadarı yeter.
 "ölçemedik" demiyor: `no_data` *"veri yüklenmemiş"*, `blocked` ise *"bu şemada
 hiç ölçülemez"*. Birincisi fixture'ın eksikliği, ikincisi ürünün sınırı.
 
-### Karar tablosunun söylediği
+### Payda düzeltildi: kapsam **6/14**, `%25` değil
 
-`%25` → **`< %40`** dalı: tek vendor (FortiGate), ve *"T31 önce `unmapped`
-alanlarını kolona terfi etsin"*.
+Üçüncü ölçüm (`explain_misses.py`) 24 kuralın **10'unun** aradığı dizgenin
+altın örneklerde **hiç olmadığını** gösterdi. O kurallar bu örneklemle
+eşleşemezdi; `matches=false` olmaları eşlemenin değil örneklemin sonucu.
 
-⚠️ Bu dalın gerekçesi **artık kısmen yanlış**. Tablo yazıldığında `unmapped`
-dalı hiç bağlı değildi; bugün bağlı ve 5 kural onu kullanıyor. Yani düşük oranın
-sebebi "eşleme eksik" değil. Üç sebep kaldı ve üçü farklı iş:
+| Payda | Oran | Neyi ölçüyor |
+| --- | --- | --- |
+| 24 (hepsi) | %25 | — **hiçbir şey**; iki farklı sebebi tek sayıda topluyor |
+| **14** (deseni olanlar) | **≈%43** | **Eşlemenin kapsamı** — kapsam kararının dayanağı |
 
-1. **Altın örnekler dar.** 24 kuralın 6'sı eşleşti; eşleşmeyenlerin kaçının
-   sebebi verinin o deseni hiç içermemesi olduğu **ölçülmedi**. Bu, kapsamın
-   değil örneklemin kusuru olabilir ve tablonun paydası bunu ayırmıyor.
-2. **3 kural şema boşluğunda** — DNS. Bir DNS parser'ı üçünü birden açar.
-3. Kalan kurallar koşuyor ama satır döndürmüyor; sebebi bilinmiyor.
+⚠️ **Bu payda hâlâ kesin değil ve sebebi 11. tuzak.** `absent` kutusu bir
+**üst sınır**: her elemanı örneklem boşluğu değil.
 
-**Kapsam kararı bu tablodan doğrudan okunmamalı.** 1. madde ölçülmeden `%25`
-kapsamın mı örneklemin mi sayısı olduğu bilinemez — ve bu, aynı belgede iki kez
-düşülen tuzağın üçüncü hâli. Ölçülecek şey: eşleşmeyen her kural için, aradığı
-desen altın örneklerde **var mı**.
+`fortigate_user_auth_fail` bunu gösterdi. Kural `status: 'failure'` arıyor, ham
+FortiGate satırı `status="failed"` yazıyor — metin ekseni "yok" dedi ve kural
+`failed`'a **çevrildi**. Düzeltme kuralı **bozdu**: `catalog/mappings/
+auth_outcome.yaml` ingest sırasında `failed → failure` çeviriyor, yani kolonda
+duran değer zaten `failure`'dı. Kural baştan doğruydu; geri alındı.
+
+Araç artık kolonun **kapalı değer uzayına** da bakıyor (görünüm → parser →
+sözlük zinciri). Ama kalan 9 `absent` kuralın kaçının aynı sebeple orada
+olduğu **ölçülmedi** — `catalog/mappings/` altında birden çok sözlük var ve
+her biri bir kolonun değer uzayını çeviriyor.
+
+**Kapsam oranı bu yüzden çivilenmiyor.** Dalın `%40–%70` olarak kalması
+muhtemel ama payda kesinleşmeden sayı yazılmamalı.
+
+`no_data` paydadan düşülüyordu; **`absent` de düşülmeliydi** ve aynı gerekçeyle:
+ikisi de *"ölçülemedi"*, *"eşleşmedi"* değil. Fark kozmetik değil — `%25`
+karar tablosunun `< %40` dalına, `%43` ise `%40–%70` dalına düşüyor. **İki
+farklı kapsam.**
+
+Bu belge aynı tuzağa üçüncü kez düşmedi ama **ilk iki koşumda düştü**: `%25`
+koordinatöre "kapsam sayısı" diye verildi ve öyle okundu.
+
+### Kapsam kararı
+
+`≈%43` → **`%40 – %70`** dalı: **yalnızca `firewall` + `network_connection`**.
+
+Tablonun bu dal için yazdığı gerekçe *"DNS kategorileri `unmapped`'e en çok
+düşen taraf"*tı ve **artık geçerli değil** — `unmapped` bağlandı. Ama karar
+aynı kalıyor, gerekçesi değişerek:
+
+* DNS kategorisinin **verisi yok**. Hiçbir parser DNS sorgu adı üretmiyor
+  (`SCHEMA_GAPS`), yani DNS kuralları derlenmiyor bile. Kapsama alınması
+  pipeline satırı değil **bir DNS parser'ı** gerektiriyor.
+* `firewall` + `network_connection` dört vendor'da da dolu ve eşleşen 6
+  kuralın tamamı bu iki kategoride.
+
+**Kararı geçersiz kılacak tek bulgu:** deseni olan 14 kuraldan 8'inin neden
+eşleşmediği hâlâ ölçülmedi. Hepsinin sebebi eşleme kusuru çıkarsa oran
+düşmez ama *"eşlemeyi düzelt"* önceliği kapsamın önüne geçer.
+
+## Korpus tasarımı kalemi — tuzak değil
+
+`nginx_dns_rebind` bugün eşleşmiyor ve **kural doğru**. `nginx.access` parser'ı
+iki biçim tanıyor: `combined` `core.host`'u `http_vhost`'tan dolduruyor, `json`
+doldurmuyor. Kural combined satırlara vurur ve doğru sonuç verir; altın
+örneklerimizin ağırlıklı json olması bir **korpus** özelliği.
+
+9. tuzakla karıştırılmamalı: orada kolon o vendor'da **hiç** dolmuyordu, burada
+doluyor. `logsource` ile daraltmak şemamızın sınırını kuralın içine gömmek
+olurdu — kurallar dışarıdan geliyor ve bizim biçim ayrımımıza göre yeniden
+yazılmamalı (T31'de CIDR'ın reddedilme gerekçesinin aynısı).
+
+**Kalem:** altın örneklerimiz bir vendor'ın iki biçiminden yalnızca birini
+temsil ediyor. Kapsam ölçümü bunu bilmeden okunursa, korpusun darlığı kuralın
+kusuru sanılır.
 
 ## Hâlâ ölçülmedi
 

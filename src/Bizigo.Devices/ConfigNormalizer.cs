@@ -108,21 +108,32 @@ public static partial class ConfigNormalizer
     /// çevriliyor — "hangi sır değişti" görünür, "sır ne" görünmez.
     ///
     /// <para>
-    /// Anahtar kelimenin önünde <b>bir</b> belirtece izin veriliyor
-    /// (<c>snmp-server community …</c>, <c>set psksecret ENC …</c>) ve ayırıcı
-    /// hem boşluk hem <c>=</c> olabiliyor (MikroTik <c>password=…</c> yazıyor).
-    /// Serbest bir <c>.*?</c> öneki yerine sınırlı bir belirteç: desen geri
+    /// Anahtar kelimenin önünde <b>en çok dört</b> belirtece izin veriliyor
+    /// (<c>snmp-server community …</c>, <c>set psksecret ENC …</c>,
+    /// <c>ikev2 remote-authentication pre-shared-key …</c>) ve ayırıcı hem
+    /// boşluk hem <c>=</c> olabiliyor (MikroTik <c>password=…</c> yazıyor).
+    /// Serbest bir <c>.*?</c> öneki yerine <b>sınırlı</b> tekrar: desen geri
     /// izlemeye düşmüyor ve maliyeti satır uzunluğunda doğrusal kalıyor.
     /// </para>
     ///
     /// <para>
-    /// <b>Bir kez kırıldı:</b> desen anahtar kelimeyi satır başına bağlıyordu ve
-    /// ASA'nın <c>snmp-server community …</c> satırı maskelenmeden kalıyordu.
-    /// Bir birim testi yakaladı.
+    /// <b>İki kez kırıldı, ikisi de aynı sınıf.</b> Önce desen anahtar
+    /// kelimeyi satır başına bağlıyordu ve ASA'nın <c>snmp-server community …</c>
+    /// satırı maskelenmeden kalıyordu; bir belirteç eklendi. Sonra ASA'nın
+    /// gerçek IKEv2 söz dizimi <b>iki</b> belirteç taşıdığı için
+    /// (<c>ikev2 remote-authentication pre-shared-key</c>) ham anahtar yine
+    /// normalize edilmiş metinde kalıyordu — bunu simülatör fixture'ı ilk
+    /// koşumunda yakaladı (FS · S01).
+    /// </para>
+    ///
+    /// <para>
+    /// Sınır <b>dört</b> — ASA'nın yaygın <c>snmp-server host &lt;arayüz&gt; &lt;ip&gt; community &lt;anahtar&gt;</c> biçimi dört belirteç taşıyor. Asıl kısıt "kaç kelime" değil "serbest joker
+    /// yok". Fazla maskelemek sızdırmaktan ucuz; bu yüzden sınır cömert
+    /// tutuldu ama sonsuz değil.
     /// </para>
     /// </summary>
     [GeneratedRegex(
-        @"^(?<prefix>\s*(?:[\w./-]+[\s=]+)?(?:password|passwd|psksecret|secret|pre-shared-key|wpa2-pre-shared-key|snmp-community|community|auth-key|key-string)[\s=]+(?:ENC[\s=]+|encrypted[\s=]+|[78][\s=]+)?)(?<value>\S.*)$",
+        @"^(?<prefix>\s*(?:[\w./-]+[\s=]+){0,4}(?:password|passwd|psksecret|secret|pre-shared-key|wpa2-pre-shared-key|snmp-community|community|auth-key|key-string)[\s=]+(?:ENC[\s=]+|encrypted[\s=]+|[78][\s=]+)?)(?<value>\S.*)$",
         RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture)]
     private static partial Regex SecretAssignment();
 
@@ -266,11 +277,40 @@ public static partial class ConfigNormalizer
     /// Gizli değerin yerine kısa bir özet. Aynı sır → aynı özet, farklı sır →
     /// farklı özet: rotasyon fark olarak görünüyor, değer hiçbir yere yazılmıyor.
     /// </summary>
+    /// <summary>
+    /// Serbest metin alanları — burada geçen anahtar kelime bir <b>ayar adı
+    /// değil</b>, açıklamanın içindeki bir sözcük.
+    ///
+    /// <para>
+    /// Önek sınırı genişletildiğinde doğan kusur: <c>description "shared secret
+    /// for site B"</c> satırında <c>secret</c> üçüncü sözcük, desen tutuyor ve
+    /// açıklamanın geri kalanı maskeleniyordu. Sır sızıntısı değil ama
+    /// <b>sessiz veri kaybı</b>: fark raporu operatörün yazdığı açıklamayı bir
+    /// özete çeviriyor ve kimse silindiğini görmüyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Cihazların hepsinde bu alanlar var ve hepsinde serbest metin:
+    /// FortiGate <c>set comments</c>, ASA <c>description</c>/<c>remark</c>,
+    /// RouterOS <c>comment=</c>.
+    /// </para>
+    /// </summary>
+    [GeneratedRegex(
+        @"(?:^|[\s=])(?:description|descr|remark|comment|comments|banner|message)(?:[\s=]|$)",
+        RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture | RegexOptions.NonBacktracking)]
+    private static partial Regex FreeTextField();
+
     internal static string Mask(string line)
     {
         var match = SecretAssignment().Match(line);
 
         if (!match.Success)
+        {
+            return line;
+        }
+
+        // Anahtar kelime bir açıklamanın İÇİNDE geçiyorsa dokunma.
+        if (FreeTextField().IsMatch(match.Groups["prefix"].Value))
         {
             return line;
         }

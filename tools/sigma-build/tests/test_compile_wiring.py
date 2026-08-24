@@ -164,3 +164,20 @@ def test_korpus_doluyken_eksik_kurulum_atiyor(monkeypatch, tmp_path):
 
     with pytest.raises(RuntimeError, match="kurulu değil"):
         compile_module.collect_outcomes()
+
+
+def test_bayat_civiyle_yazma_reddediliyor(monkeypatch, tmp_path, capsys):
+    """Yarım hâl — kurallar yeni, çivi eski — bu turda CI'ı kırmızı yaktı.
+
+    `--write` o gün hiçbir şey söylemeden yeni SQL üretti; tutarsızlığı ancak
+    çivi kapısı, bir sonraki koşumda söyledi. Komut artık kendi girdisinin
+    tutarlı olduğunu görmeden yazmıyor.
+    """
+    from sigma_build import compile as compile_module
+
+    monkeypatch.setattr("sigma_build.ruleset.verify", lambda catalog: ["değişmiş: x.yml"])
+    kod = compile_module.main(["--write", "--output", str(tmp_path / "cikti")])
+
+    assert kod == 1
+    assert not (tmp_path / "cikti").exists()
+    assert "ruleset --refresh" in capsys.readouterr().err

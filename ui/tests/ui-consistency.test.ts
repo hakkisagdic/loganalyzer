@@ -313,7 +313,29 @@ describe("aynı işi yapan iki yardımcı yok", () => {
    * saat</b>). Aynı hatanın ekrana göre başka metinle çıkması ve aynı anın
    * ekrana göre başka saatle görünmesi, "yedi ayrı ürün" hissinin tam kaynağı.
    */
-  const FRAMEWORK_EXPORTS = new Set(["dynamic", "metadata", "revalidate", "runtime", "default"]);
+  /**
+   * Çerçevenin <b>adını dayattığı</b> dışa açımlar. Bunlar yardımcı değil;
+   * Next bu adları arıyor ve başka bir ad koymak ucun hiç çalışmaması demek.
+   *
+   * <p>HTTP metot adları listeye ikinci `route.ts` gelince eklendi: tek uç
+   * dosyası varken yinelenme doğmuyordu, yani bekçi bu boşluğu ancak
+   * `api/telemetry` ile birlikte gösterdi. Kusur bekçide değil kapsamındaydı —
+   * ve tam olarak bunu göstermek için orada.</p>
+   */
+  const FRAMEWORK_EXPORTS = new Set([
+    "dynamic",
+    "metadata",
+    "revalidate",
+    "runtime",
+    "default",
+    "GET",
+    "HEAD",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+    "OPTIONS",
+  ]);
 
   it("dışa açılan yardımcı adları benzersiz", () => {
     const seen = new Map<string, string[]>();

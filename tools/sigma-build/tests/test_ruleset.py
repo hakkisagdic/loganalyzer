@@ -124,3 +124,46 @@ def test_civi_kaynagini_dogru_soyluyor():
     assert "bizigo" in pin.source
     assert pin.is_pinned
     assert len(pin.rules) == 24
+
+
+# --------------------------------------------------------------------------- #
+# `--refresh` — bugünkü kırmızının kök sebebi
+# --------------------------------------------------------------------------- #
+
+def test_refresh_civiyi_agactan_yeniden_uretiyor(tmp_path):
+    from sigma_build.ruleset import refresh_pin
+
+    catalog = make_catalog(tmp_path, {"a.yml": "title: A\n"})
+    (catalog / RULES_SUBDIR / "a.yml").write_text("title: Başkası\n", encoding="utf-8")
+    assert verify(catalog) == ["değişmiş: a.yml"]
+
+    refresh_pin(catalog)
+    assert verify(catalog) == []
+
+
+def test_refresh_ustveriyi_korumali(tmp_path):
+    """`source`, `commit`, `license` **kararlar**, özet değil.
+
+    Yeniden üretim onlara dokunsaydı "hangi sürümden geldi" sorusunun cevabı
+    sessizce kaybolurdu — ve çivinin var olma sebebi tam olarak o soru.
+    """
+    from sigma_build.ruleset import refresh_pin
+
+    catalog = make_catalog(tmp_path, {"a.yml": "title: A\n"}, commit="çivilenmiş-sürüm")
+    (catalog / RULES_SUBDIR / "b.yml").write_text("title: B\n", encoding="utf-8")
+
+    yeni = refresh_pin(catalog)
+    assert yeni.commit == "çivilenmiş-sürüm"
+    assert yeni.source == "https://github.com/SigmaHQ/sigma"
+    assert set(yeni.rules) == {"a.yml", "b.yml"}
+
+
+def test_refresh_silinen_kurali_da_dusuruyor(tmp_path):
+    """Ekleme kadar silme de yansımalı; yoksa çivi var olmayan bir kuralı iddia eder."""
+    from sigma_build.ruleset import refresh_pin
+
+    catalog = make_catalog(tmp_path, {"a.yml": "title: A\n", "b.yml": "title: B\n"})
+    (catalog / RULES_SUBDIR / "b.yml").unlink()
+
+    assert set(refresh_pin(catalog).rules) == {"a.yml"}
+    assert verify(catalog) == []

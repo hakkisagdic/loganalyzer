@@ -61,6 +61,8 @@ __all__ = [
     "rule_titles",
     "EXPECT_AT_LEAST_ONE",
     "EXPECT_NONE",
+    "CLASS_INVARIANT",
+    "CLASS_CORPUS_GAP",
     "Expectation",
     "PrecheckResult",
     "load_expectations",
@@ -84,6 +86,23 @@ EXPECT_NONE = "none"
 
 _EXPECTATIONS = frozenset({EXPECT_AT_LEAST_ONE, EXPECT_NONE})
 
+#: `none` beklentisinin **hangi iddiayı** taşıdığı. İki tür var ve kırmızı
+#: yandıklarında **zıt** şeyler söylüyorlar:
+#:
+#: * `invariant` — "bu kural bu veride asla eşleşmemeli". Kırmızı = **kötü
+#:   haber**: kural ya eşleme bozuldu, yanlış pozitif doğdu.
+#: * `corpus_gap` — "bu desen altın örneklerde henüz yok". Kırmızı = **iyi
+#:   haber**: korpus genişledi, artık veri var, beyan `at_least_one`'a
+#:   dönüştürülebilir.
+#:
+#: Tek kutuda dursalardı kırmızının anlamı okunamazdı — ve sayıları da
+#: karışırdı: biri azalması beklenmeyen, diğeri azalması **beklenen** taraf.
+#: Bu turda aynı ayrımı dördüncü kez kuruyoruz (`gated_closeable` /
+#: `gated_upstream`, `EXPECTED_GATED_*`, `undeclared`, ve şimdi bu).
+CLASS_INVARIANT = "invariant"
+CLASS_CORPUS_GAP = "corpus_gap"
+_CLASSES = frozenset({CLASS_INVARIANT, CLASS_CORPUS_GAP})
+
 #: Altın örneklerin taşıdığı vendor'lar (F1 kataloğu). Ön kontrol her birinin
 #: veride görünüp görünmediğine ayrı bakıyor: biri eksikse o vendor'ın kuralları
 #: **ölçülemez** ve sonuçları "kural bozuk" diye okunmamalı.
@@ -103,6 +122,9 @@ class Expectation:
     #: Beklentinin **neden** o olduğu. Boş bırakılamaz: gerekçesiz bir beklenti,
     #: bir gün kırıldığında "herhâlde veri değişmiştir" diye gevşetilir.
     why: str
+    #: Yalnızca `none` için: `invariant` mı `corpus_gap` mı. Kırmızının anlamı
+    #: buna bağlı ve `none` beyanlarında **zorunlu**.
+    kind: str | None = None
 
     def __post_init__(self) -> None:
         if self.expect not in _EXPECTATIONS:
@@ -114,6 +136,18 @@ class Expectation:
             raise ValueError(
                 f"{self.rule_id}: beklentinin gerekçesi yok. Gerekçesiz bir beklenti, "
                 "kırıldığı gün 'herhâlde veri değişmiştir' diye gevşetilir."
+            )
+        if self.expect == EXPECT_NONE:
+            if self.kind not in _CLASSES:
+                raise ValueError(
+                    f"{self.rule_id}: `{EXPECT_NONE}` beklentisi `kind` istiyor "
+                    f"({CLASS_INVARIANT} | {CLASS_CORPUS_GAP}). Kırmızı yandığında "
+                    "'kural bozuldu' mu 'korpus genişledi' mi dediği buna bağlı — "
+                    "ikisi zıt haberler."
+                )
+        elif self.kind is not None:
+            raise ValueError(
+                f"{self.rule_id}: `kind` yalnızca `{EXPECT_NONE}` beklentileri için."
             )
 
 
@@ -170,6 +204,7 @@ def load_expectations(path: Path) -> list[Expectation]:
             file_name=entry["file_name"],
             expect=entry["expect"],
             why=entry["why"],
+            kind=entry.get("kind"),
         )
         for entry in document.get("expectations", [])
     ]
@@ -220,6 +255,7 @@ def expectations_text(
                         "rule_id": expectation.rule_id,
                         "file_name": expectation.file_name,
                         "expect": expectation.expect,
+                        **({"kind": expectation.kind} if expectation.kind else {}),
                         "why": expectation.why,
                     }
                     for expectation in sorted(expectations, key=lambda e: e.rule_id)

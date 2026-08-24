@@ -20,6 +20,66 @@ public enum AlertRuleType
     Silence = 2,
 }
 
+/// <summary>
+/// Kuralın <b>nereden geldiği</b> (T33).
+///
+/// <para>
+/// Kullanıcı için ikisi de "beni uyaran şey" ve bu yüzden tek listede
+/// duruyorlar. Ama aynı şeyi <b>yapamıyorlar</b>: Sigma kuralı burada
+/// yazılmıyor, düzenlenemiyor, <c>Gated</c> olabiliyor ve çivili bir sürümü
+/// var. Kaynağı göstermeyen bir liste, kullanıcının "neden bunu
+/// düzenleyemiyorum" sorusuna cevap veremez.
+/// </para>
+/// </summary>
+public enum AlertRuleSource
+{
+    /// <summary>Kullanıcının burada yazdığı kural. Düzenlenebilir.</summary>
+    Bizigo = 0,
+
+    /// <summary>
+    /// Yukarı akıştan gelen Sigma kuralı. Derleme hattı üretiyor (T32), burada
+    /// yazılmıyor — <c>SearchJson</c> yerine derlenmiş SQL koşuyor.
+    /// </summary>
+    Sigma = 1,
+}
+
+/// <summary>
+/// Kuralın durumu — <b>üç değer, iki değil</b> (T33).
+///
+/// <para>
+/// <c>Disabled</c> ile <c>Gated</c>'i tek "kapalı" değerine indirgemek,
+/// <i>"kullanıcı istemedi"</i> ile <i>"biz yapamadık"</i>ı karıştırmak olurdu.
+/// Ekranda ikisi tek renk olsaydı kullanıcı kapalı bir kuralı açmayı dener,
+/// açılmaz, ve sebebini de göremezdi.
+/// </para>
+///
+/// <para>
+/// Aynı sınıfın başka örnekleri bu depoda pahalıya patladı: <c>Pending</c> ile
+/// <c>Exempt</c>'in ayrı listede durması (§8), <c>Empty</c> ("baktık, yok") ile
+/// <c>NeverFed</c> ("bakamadık") ayrımı.
+/// </para>
+/// </summary>
+public enum AlertRuleStatus
+{
+    /// <summary>Koşuyor. Kullanıcının kararı.</summary>
+    Enabled = 0,
+
+    /// <summary>Koşmuyor ama <b>koşabilirdi</b>. Kullanıcının kararı.</summary>
+    Disabled = 1,
+
+    /// <summary>
+    /// <b>Koşamaz</b> — SQL üretilemedi. Yetenek sınırı, kullanıcının kararı değil.
+    ///
+    /// <para>
+    /// ⚠️ Test tuzağı: <c>Gated</c> bir kural <i>"pasif kural hiç sorgu
+    /// üretmiyor"</i> kriterini <b>tanım gereği</b> sağlıyor — zaten SQL'i yok.
+    /// İkisini karıştıran bir test <c>Disabled</c> yolunu hiç sınamaz ve yeşil
+    /// kalır.
+    /// </para>
+    /// </summary>
+    Gated = 2,
+}
+
 /// <summary>Eşik karşılaştırması. Serbest ifade yok — kapalı küme.</summary>
 public enum AlertComparison
 {
@@ -103,7 +163,60 @@ public sealed class AlertRuleEntity
     /// </summary>
     public int RepeatIntervalSeconds { get; set; } = 3600;
 
-    public bool Enabled { get; set; } = true;
+    /// <summary>
+    /// Üç değerli durum. Eskiden <c>bool Enabled</c>'dı; <c>Gated</c> eklenebilsin
+    /// diye genişletildi.
+    ///
+    /// <para>
+    /// Sözleşme değişikliği <b>şimdi</b> yapıldı çünkü tek tüketici ürünün kendi
+    /// ekranı (§8 — "kırmak bedava iken kır"). Dışarıdan bir tüketici doğduktan
+    /// sonra aynı düzeltme ya pahalı olur ya hiç yapılmaz.
+    /// </para>
+    /// </summary>
+    public AlertRuleStatus Status { get; set; } = AlertRuleStatus.Enabled;
+
+    /// <summary>Kural nereden geldi — kullanıcı mı yazdı, derleme hattı mı üretti.</summary>
+    public AlertRuleSource Source { get; set; } = AlertRuleSource.Bizigo;
+
+    /// <summary>
+    /// Sigma kuralının yukarı akıştaki kimliği (<c>id:</c> alanı). Bizigo
+    /// kurallarında boş.
+    /// </summary>
+    [MaxLength(64)]
+    public string SigmaRuleId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// <b>Üretilen SQL'in</b> özeti — değişiklik bildiriminin TEK ölçütü.
+    ///
+    /// <para>
+    /// Kriter <c>SigmaSourceSha</c> değil bu: pipeline değiştiğinde kaynak kural
+    /// aynı kalıyor ama kuralın <b>ne yakaladığı</b> oynuyor. Kaynağa bakan bir
+    /// kriter o durumda sessiz kalır ve kullanıcı, açtığı kuralın hâlâ aynı şeyi
+    /// yakaladığını sanır — bu depoda beş kez ısıran şeklin aynısı.
+    /// </para>
+    /// </summary>
+    [MaxLength(64)]
+    public string SigmaOutputSha { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Kaynak kuralın özeti. Bildirim ölçütü DEĞİL — yalnızca <b>sebebi</b>
+    /// okumak için: <c>SigmaOutputSha</c> değişip bu aynı kaldıysa değişen şey
+    /// pipeline'dır, kural değil.
+    /// </summary>
+    [MaxLength(64)]
+    public string SigmaSourceSha { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Kural neden <c>Gated</c>. Boşsa gated değil.
+    ///
+    /// <para>
+    /// Sessiz bir "kapalı" rozeti listeyi çöp kutusuna çevirir: kullanıcı neyin
+    /// kapatacağını göremezse liste hiç boşalmaz. T32'nin <c>remedy</c>
+    /// sözlüğüyle aynı değerler.
+    /// </para>
+    /// </summary>
+    [MaxLength(512)]
+    public string GatedReason { get; set; } = string.Empty;
 
     /// <summary>Zamanlayıcının bir sonraki tur hesabı. <c>null</c> ise ilk turda koşar.</summary>
     public DateTimeOffset? NextRunAt { get; set; }

@@ -20,8 +20,8 @@ drain3 @ git+https://github.com/logpai/Drain3@0fb6d6e1828838fa05c8f6fa5cda878e02
 jsonpickle==4.1.2
 cachetools==7.1.7
 
-fastapi==0.121.2
-uvicorn[standard]==0.42.0
+fastapi==0.124.0
+uvicorn[standard]==0.46.0
 pydantic==2.13.4
 
 # Redis persistence (K14: dosya değil).

@@ -365,6 +365,102 @@ düzeltme). Kuralın nasıl düzeltileceği bir **detection kararı** (iki koşu
 listeye mi alınmalı, `RST` alt dizgi araması yeterli mi) ve tek başıma
 vermedim.
 
+### KARAR · `none` beyanı iki farklı iddia taşıyor
+
+`none` beklentilerinin hepsi "sıfır satır dönmeli" diyor ama **aynı şeyi
+söylemiyorlar**, ve kırmızı yandıklarında zıt haberler veriyorlar:
+
+| `kind` | İddia | Kırmızı ne demek |
+| --- | --- | --- |
+| `invariant` | Bu kural bu veride **asla** eşleşmemeli | **Kötü haber** — yanlış pozitif doğdu |
+| `corpus_gap` | Bu desen örneklemde **henüz** yok | **İyi haber** — korpus genişledi |
+
+Tek kutuda dursalardı kırmızının anlamı okunamazdı, ve sayıları da karışırdı:
+biri sabit kalması beklenen, diğeri **azalması** beklenen taraf. `none`
+beklentileri bu yüzden zorunlu bir `kind` taşıyor; `at_least_one`'da `kind`
+reddediliyor (orada süs olurdu).
+
+Bu, T32 boyunca aynı ayrımın **dördüncü** kuruluşu: `gated_closeable` /
+`gated_upstream` → `EXPECTED_GATED_*` → beyanlı / bilerek beyansız → ve bu.
+Tekrar eden tek desen bu.
+
+### Ölçüldü · Kapsam `%25` değil `%43` — payda hatası
+
+24 kuralın **10'unun deseni altın örneklerde hiç yok**. Yani bu korpusla tavan
+14 ve 6'sı eşleşiyor: `6/14 = %43`. `6/24 = %25` **paydayı yanlış alıyor**.
+
+T30'un protokolü bunu zaten yazıyordu — *"verisi olmayan kural oranın paydasından
+düşülüyor"*, ve o bölüm iki farklı payda için "iki farklı dal" diyor. Protokol
+vardı, bu turda uygulanmamıştı. Kuralın **cümle** olarak durması ile
+**mekanizma** olarak durması arasındaki farkın bu turdaki üçüncü örneği.
+
+### Bulgu · "Vendor'ın sözcüğü" ailesinin dördüncü üyesi — ve farklı bir katman
+
+Dört kural, kolonun/vendor'ın **gerçekte ne tuttuğuna** bakılmadan yazılmış:
+
+| Kural | Aranan | Gerçekte |
+| --- | --- | --- |
+| `asa_teardown_rst` | `RST` | `Reset-I` / `Reset-O` |
+| `routeros_forward_new` | `action` | `fw_chain` |
+| `fortigate_user_auth_fail` | `failure` | `failed` |
+| `nginx_5xx_burst` | `status` = `'5…'` | `success` / `failure` |
+
+**Dördüncüsü farklı bir katman ve bu yüzden ayrı yazılıyor.** İlk üçünde dizge
+*vendor'ın sözlüğünde* yoktu; `nginx_5xx_burst`'te dizge **kolonun sözlüğünde**
+yok: `status` → `outcome`, ve `catalog/mappings/http_status_outcome.yaml` HTTP
+kodunu `success`/`failure`'a çeviriyor. Kolonda hiçbir zaman sayı durmuyor, yani
+`status|startswith: '5'` **asla** doğru olamaz — örneklemde 5xx olsa bile.
+
+Önerilen katalog kuralı bu yüzden iki yarımlı: *bir kuraldaki her sabit dizge,
+(a) o vendor'ın örneğinde geçtiği **ve** (b) gittiği kolonun o değeri
+tutabildiği görülerek yazılmalı.* İkinci yarım eşleme tablosuna bakmayı
+gerektiriyor ve ilk üç örnek onu göstermiyordu.
+
+### KARAR · Üç beyan **bilerek kırmızı** — eşleme boşluğu bir iş kalemi
+
+`asa_acl_hit`, `routeros_login_failure`, `fortigate_high_port_scan`: deseni
+örneklemde **var**, kural derleniyor, koşuyor ve **sıfır** dönüyor. `at_least_one`
+beyanı bugün kırmızı yanıyor ve yanması **doğru** — kapının var olma sebebi tam
+olarak bu boşluğu göstermek.
+
+Kırmızının okunabilir olması için her birinin kanıtı gerekçede: kırmızı "bir
+şeyler bozuk" demiyor, "**şu** satırlar var ama kural bulmuyor" diyor.
+`fortigate_high_port_scan`'in sebebi zaten biliniyor (tamsayı ↔
+`LowCardinality(String)`, Kapı 2'nin `--self-test`'inde duruyor); diğer ikisinin
+sebebi **ölçülmedi** ve bu da gerekçede yazılı.
+
+### Risk · Beyanların dayandığı varsayım — FS ve TTL
+
+Beyanların gerekçesi *"şu örnek dosyada şu satır var/yok"* diyor. İki şey bu
+varsayımı tehdit edebilir; biri ölçüldü ve **tehdit değil**, diğeri **gerçek**.
+
+**Cihaz simülatörleri (FS) — tehdit değil.** `docs/epic/fs-simulatorler/`
+okundu: profiller örnek log satırlarını **kopyalamıyor, işaret ediyor**
+(`catalog/parsers/<id>/samples/`), ve bir bekçi işaret edilen dosyanın varlığını
+sınıyor. Yani simülatör aynı kaynağın ikinci bir tüketicisi; beyanların
+gerekçeleri geçerli kalıyor.
+
+⚠️ Bu, simülatörler **kendi** satırlarını üretmeye başladığı gün değişir:
+o zaman ClickHouse'daki altın veri `samples/` ile örtüşmez ve bir `corpus_gap`
+beyanı, örnek dosyada olmayan bir satır yüzünden kırmızı yanar. Gerekçe "dosyada
+yok" derken veri "var" diyor olur.
+
+**TTL — gerçek bir risk ve bugün ölçüldü (FS belgesi, kök neden analizi).**
+`events` tablosunda `TTL toDateTime(ts) + INTERVAL 90 DAY` var, ve
+`catalog/parsers/*/samples/` altındaki vendor örnekleri **2015–2022** tarihleri
+taşıyor. ClickHouse süresi dolmuş satırı parçayı oluştururken atıyor — **ama
+istemciye "yazdım" diyor.**
+
+Kapı 3 için sonucu şu: bir satır örnek dosyada **var** olabilir ve
+ClickHouse'da **olmayabilir**. O zaman
+* bir `at_least_one` beyanı, kuralla hiç ilgisi olmayan bir sebeple düşer,
+* bir `corpus_gap` beyanı **yanlış sebeple** geçer.
+
+Ön kontrol bunun tamamını yakalamıyor: vendor başına satır sayısına bakıyor,
+yani toplu bir TTL süpürmesini görür ama **kısmi** bir düşmeyi görmez. Bu, Kapı
+3'ün bilinen sınırı ve burada kayıtlı — gerekçelerin "ölçtüm" ağırlığı bu sınırın
+içinde geçerli.
+
 ### KARAR · Kapı 1'den geçemeyen kural dosya üretmez
 
 Manifest'e `gated` olarak sebebiyle yazılır (`unknown_column: url`). Böylece

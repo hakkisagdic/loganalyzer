@@ -184,6 +184,18 @@ public sealed class RawManifestEntity
     public DateTimeOffset? LastScrubbedAt { get; set; }
 
     public RawObjectState State { get; set; } = RawObjectState.Uploaded;
+
+    /// <summary>
+    /// Kaç kez kurtarılmaya çalışıldı (T40).
+    ///
+    /// <para>
+    /// Kurtarma tespitten tetikleniyor, yani bozuk bir S3 yapılandırmasında her
+    /// scrub turu yeniden denerdi. Sayaç o döngüyü sınırlıyor: üst sınıra
+    /// ulaşan nesne <see cref="RawObjectState.Unrecoverable"/> oluyor ve sessizce
+    /// denenmeye devam etmiyor.
+    /// </para>
+    /// </summary>
+    public int RecoveryAttempts { get; set; }
 }
 
 public enum RawObjectState
@@ -192,6 +204,18 @@ public enum RawObjectState
     Verified = 1,
     ChecksumMismatch = 2,
     Missing = 3,
+
+    /// <summary>
+    /// Kurtarılamadı: kaynak segment yok, ya da deneme üst sınırı doldu (T40).
+    ///
+    /// <para>
+    /// <c>Missing</c>'den <b>ayrı</b> bir durum olması gerekiyor. İkisi tek
+    /// değerde toplansaydı "kurtarma sırasını bekliyor" ile "kurtarma denendi ve
+    /// olmadı" ayırt edilemezdi — ve operatörün bakması gereken tek liste
+    /// ikincisi.
+    /// </para>
+    /// </summary>
+    Unrecoverable = 4,
 }
 
 /// <summary>

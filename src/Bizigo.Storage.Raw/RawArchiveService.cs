@@ -1,3 +1,5 @@
+using Bizigo.ControlPlane;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -17,6 +19,7 @@ public sealed class RawArchiveService(
     RawArchiveUploader uploader,
     RawArchiveScrubber scrubber,
     IRawObjectStore store,
+    IDbContextFactory<ControlPlaneDbContext> factory,
     IOptions<RawStoreOptions> options,
     ILogger<RawArchiveService> logger,
     TimeProvider? timeProvider = null) : BackgroundService
@@ -27,6 +30,7 @@ public sealed class RawArchiveService(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await store.EnsureBucketAsync(stoppingToken);
+        await WarnIfSweepOutrunsRetentionAsync(stoppingToken);
 
         var uploadLoop = RunLoopAsync(
             "yükleyici",
@@ -59,10 +63,80 @@ public sealed class RawArchiveService(
                         report.Mismatched,
                         report.MissingObjects);
                 }
+
+                // Kurtarma AYNI TURDA, ayrı bir zamanlamada değil (T40).
+                //
+                // Bağlayıcı kısıt saklama penceresi: kurtarma kendi takvimiyle
+                // koşsaydı tespit ile kurtarma arasına ikinci bir gecikme girer
+                // ve 48 saatlik bütçe iki bağımsız periyot arasında bölünürdü.
+                // Burada pencerenin tamamı tespite kalıyor ve bütçeyi tek bir
+                // sayı belirliyor: tam tarama süresi.
+                var recovery = await uploader.RecoverAsync(ct);
+                if (recovery.Attempted > 0)
+                {
+                    logger.LogWarning(
+                        "Kurtarma: {Attempted} nesne denendi, {Recovered} geri yüklendi, " +
+                        "{Unrecoverable} kurtarılamaz işaretlendi.",
+                        recovery.Attempted,
+                        recovery.Recovered,
+                        recovery.Unrecoverable);
+                }
             },
             stoppingToken);
 
         await Task.WhenAll(uploadLoop, scrubLoop);
+    }
+
+    /// <summary>
+    /// Tam tarama süresi ile kurtarma penceresini karşılaştırır (T40).
+    ///
+    /// <para>
+    /// <b>Neden bir bekçi gerekiyordu:</b> üç sayı birbirinden habersiz
+    /// seçilmişti. Scrub 6 saatte 20 nesne tarıyor, saklama penceresi 48 saat —
+    /// yani pencere içinde ancak 160 nesneye bakılabiliyor. Arşiv bundan
+    /// büyükse kayıp, kurtarma kaynağı silindikten <b>sonra</b> fark ediliyor
+    /// ve koruma, kodu yazılmış olsa bile <b>aritmetik olarak erişilemez</b>
+    /// hale geliyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Bekçi sayıyı değil <b>ilişkiyi</b> sınıyor: doğru <c>ScrubSampleSize</c>
+    /// gerçek arşiv boyutuna bağlı ve onu buradan bilemeyiz. Bilebileceğimiz
+    /// tek şey, bugünkü yapılandırmayla tam turun pencereyi aşıp aşmadığı.
+    /// </para>
+    /// </summary>
+    private async Task WarnIfSweepOutrunsRetentionAsync(CancellationToken cancellationToken)
+    {
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+        var objects = await db.RawManifest.CountAsync(cancellationToken);
+
+        if (objects == 0 || _options.ScrubSampleSize <= 0)
+        {
+            return;
+        }
+
+        var rounds = Math.Ceiling((double)objects / _options.ScrubSampleSize);
+        var sweep = TimeSpan.FromTicks((long)(_options.ScrubInterval.Ticks * rounds));
+
+        if (sweep <= _options.SegmentRetention)
+        {
+            logger.LogInformation(
+                "Ham arşiv: {Objects} nesne, tam tarama ~{Sweep:F1} saat, kurtarma penceresi {Window:F1} saat.",
+                objects,
+                sweep.TotalHours,
+                _options.SegmentRetention.TotalHours);
+
+            return;
+        }
+
+        logger.LogWarning(
+            "Ham arşiv taraması kurtarma penceresinden UZUN: {Objects} nesne için tam tarama " +
+            "~{Sweep:F1} saat sürüyor, pencere {Window:F1} saat. Bu yapılandırmada bir kayıp, " +
+            "kaynak WAL segmenti silindikten sonra fark edilebilir ve kurtarma çalışmaz. " +
+            "ScrubSampleSize artırılmalı ya da SegmentRetention uzatılmalı.",
+            objects,
+            sweep.TotalHours,
+            _options.SegmentRetention.TotalHours);
     }
 
     private async Task RunLoopAsync(

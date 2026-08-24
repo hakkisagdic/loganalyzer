@@ -265,4 +265,90 @@ public sealed class RawArchiveTests(DevStackFixture stack) : IAsyncLifetime
         // Manifest olmasa bu kayıp fark edilmezdi — tablonun varlık sebebi bu.
         Assert.Equal(1, report.MissingObjects);
     }
+    /// <summary>
+    /// Koşturulduğunda kanıtladığı şey: <b>gerçek depoda</b> kaybolan bir nesne,
+    /// scrub tarafından işaretleniyor ve yerel WAL segmentinden geri yükleniyor
+    /// — ve geri okuma gerçek depodan geliyor (T40).
+    ///
+    /// <para>
+    /// Dokuz birim bekçisi manifest ve segment kararlarını tutuyor; onların
+    /// kapsayamadığı tek şey <b>depo davranışı</b>: yazma gerçekten kalıcı mı,
+    /// geri okuma yazılanı mı veriyor, sha256 gidiş-dönüşte korunuyor mu.
+    /// Burada sınanan o.
+    /// </para>
+    ///
+    /// <para>
+    /// Zincirin tamamı tek testte çünkü değeri zincirde: tespit olmadan kurtarma
+    /// tetiklenmez, kurtarma olmadan tespit bir kayıt satırından ibaret kalır.
+    /// </para>
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task Kayip_nesne_gercek_depoda_kurtariliyor()
+    {
+        var options = Options();
+
+        var store = new FakeObjectStoreOverS3(new S3RawObjectStore(
+            Microsoft.Extensions.Options.Options.Create(options)));
+
+        await store.EnsureBucketAsync(TestContext.Current.CancellationToken);
+
+        var segments = new FakeSegmentSource();
+        segments.Add(
+            "segment-recover",
+            [(ReadOnlyMemory<byte>)RawRecordCodec.ToLine(Record("kurtarilacak veri", "10.1.2.3"))]);
+
+        var uploader = new RawArchiveUploader(
+            segments,
+            store,
+            _factory,
+            new SourceDirectory(_factory),
+            new NullRawRefSink(),
+            Microsoft.Extensions.Options.Options.Create(options),
+            NullLogger<RawArchiveUploader>.Instance);
+
+        await uploader.RunOnceAsync(TestContext.Current.CancellationToken);
+
+        string key;
+        byte[] original;
+
+        await using (var db = await _factory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        {
+            key = await db.RawManifest.Select(m => m.ObjectKey)
+                .SingleAsync(TestContext.Current.CancellationToken);
+        }
+
+        original = (await store.GetAsync(key, TestContext.Current.CancellationToken))!;
+        Assert.NotNull(original);
+
+        // Nesne depodan kayboluyor; scrub bunu bulmalı.
+        store.Lose(key);
+
+        var scrubber = new RawArchiveScrubber(
+            store,
+            _factory,
+            Microsoft.Extensions.Options.Options.Create(options),
+            NullLogger<RawArchiveScrubber>.Instance);
+
+        var scrub = await scrubber.RunOnceAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(1, scrub.MissingObjects);
+
+        // Kurtarma: segmentten yeniden kur, sha256'sı tutan adayı yaz.
+        var recovery = await uploader.RecoverAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, recovery.Attempted);
+        Assert.Equal(1, recovery.Recovered);
+
+        // Geri okuma GERÇEK depodan: yazılan baytlar kaybolanla birebir aynı.
+        var restored = await store.GetAsync(key, TestContext.Current.CancellationToken);
+        Assert.Equal(original, restored);
+
+        await using var check = await _factory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var entry = await check.RawManifest.SingleAsync(
+            m => m.ObjectKey == key, TestContext.Current.CancellationToken);
+
+        Assert.Equal(RawObjectState.Verified, entry.State);
+        Assert.NotNull(entry.VerifiedAt);
+    }
+
 }

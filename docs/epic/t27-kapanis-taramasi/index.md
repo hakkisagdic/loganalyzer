@@ -125,26 +125,107 @@ Bu, yük altında ölçmekten **daha iyi** bir cevap: yük testi "bu koşulda
 bozulmadı" der, buradaki çözüm bozulabileceği durumu ortadan kaldırıyor ve
 kalan tek yolu görünür bir karara bağlıyor.
 
+## 3.5 · İkinci tur: "aramadım" listesi kapatıldı
+
+İlk taramada üç kalem *"aramadım"* diye işaretlenmişti. İkisi bu turda tarandı
+ve ikisi de aynı şeyi gösterdi: **sayı ile kapsam farklı şeyler.**
+
+### 3.5.1 · `AlertingTests` — altı testin ikisi T27'nin kriteri
+
+| Test | Neyi kapatıyor |
+| --- | --- |
+| `Sessizlik_alarmi_susan_kaynagi_gercek_veriyle_yakaliyor` | **T27 akış 3, halka 1** — cihaz sustu, alarm yakaladı |
+| `Zamanlayici_turu_gercek_semada_tetiklenme_ve_teslim_yaziyor` | **T27 akış 3, halka 2** — tetiklenme ve teslim kaydı yazılıyor |
+| `Kaynak_etkinligi_kapsam_disini_gostermiyor` | T27 çapraz · kapsam (API katmanı) |
+| `Esik_kurali_baska_ekibin_olaylarini_saymiyor` | T27 çapraz · kapsam (API katmanı) |
+| `Bakim_penceresi_gercek_semada_bastiriyor` | **T21'in kendi kriteri**, T27'nin değil |
+| `Sessizlik_kurali_susan_her_kaynak_icin_ayri_tetiklenme_uretiyor` | **T21'in kendi kriteri**, T27'nin değil |
+
+**Altı testin ikisi akış 3'ün halkası.** Üçüncü halka — bağlantının **doğru
+aramayı** açması — bu dosyada hiç yoktu ve `AlertChainTests` ile geldi.
+
+Yani "alarm tarafında altı entegrasyon testi var" cümlesi doğru ama T27 için
+**iki** şey söylüyor. Sayı, kapsamın yerine geçmiyor.
+
+### 3.5.2 · UI paketi — 324 koşan test, 270 iddia satırı, ve 18'i tek iddia
+
+| Ölçü | Sayı |
+| --- | --- |
+| Varsayılan koşumda **koşan** test | **324** |
+| Kaynakta **yazılı** `it(`/`test(` satırı | **270** |
+| Aradaki fark | **54** — tablo/döngü genişlemesi |
+
+Dört dosya tablo sürüyor:
+
+| Dosya | Yazılı | Koşan | Ayrı iddia |
+| --- | --- | --- | --- |
+| `contrast.test.ts` | 2 | 26 | 2 (kontrast çiftleri × tema) |
+| `screenshots/capture.test.tsx` | 1 (`it.each`) | 18 | **1** |
+| `redirects.test.ts` | 1 | 8 | 1 (rota tablosu) |
+| `session-store.test.ts` | 18 | 23 | 18 (+5, aynı sözleşme iki uygulamaya) |
+
+**En dikkat çekeni ekran görüntüsü paketi.** 18 koşan testin tamamı tek bir
+`it.each`'ten geliyor (9 sahne × 2 tema) ve gövdesindeki **tek** iddia şu:
+sayfanın arka planı saydam değil — yani *"boyandı"*. Yerleşimi, hizayı, taşmayı
+sınayan hiçbir şey yok; görüntüler bir insanın bakması için üretilen
+**çıktılar**.
+
+Bu, bu depoda bir kez ödenmiş bir bedelin ta kendisi: ilk koşumda hücreler
+ortalanmış, rozetler düz metin olmuş ve kırpma çalışmamıştı — **ve test
+geçmişti**, çünkü sayfanın boyandığını kontrol ediyordu. T28'in bulgularını
+tutan bekçiler `ui-consistency` ve `contrast`'ta; ekran görüntüsü paketi
+onların yerine geçmiyor.
+
+Sonuç: "299 UI testi" (ya da bugün 324) bir kapsam ölçüsü **değil**. Kapsam
+ölçüsü, kaç ayrı kararın sınandığı — ve o sayı daha küçük.
+
+> Bu, 7'nin `ScopeNegativeTests`'te bulduğuyla aynı şekil: on iki test sekiz
+> yolu kapatıyordu. İki farklı pakette aynı ayrışma.
+
+### 3.5.3 · T27'nin kriterleri — ikinci tur sonrası
+
+| Kabul kriteri | Durum |
+| --- | --- |
+| 4 akış otomatik koşuyor | ✅ dördü de zincir — ikisi zaten vardı, ikisi T27'de yazıldı (`F2ChainTests`, `AlertChainTests`) |
+| İki çapraz doğrulama bekçi olarak duruyor | ✅ API + **ekran** (önbellek yolu) · yanıt/çerez + **`localStorage`** |
+| `Pending` boş, `Exempt` sabit | ✅ 16/16 |
+| Replay canlı ingest'i bozmuyor | ✅ tehlike kaldırıldı |
+| Kuru koşu = gerçek koşu | ✅ |
+
+**`status` hâlâ 1 ve sebebi tek:** T27'de yazılan dört testin dördü de
+Testcontainers istiyor ve **bu dalda koşturulmadı** (§2). Koşturulmamış bir
+testi yeşil sayıp ticket'ı kapatmak, bu belgenin baştan sona karşı çıktığı
+şeyin kendisi olurdu. Koordinatörün koşumu geçtiğinde `status` 2'ye çekilebilir.
+
 ## 4 · Aramadım
 
 Dürüstlük için ayrı: aşağıdakilere **bakmadım**, dolayısıyla haklarında bir şey
 söylemiyorum.
 
-- `AlertingTests`'in altı testinin hangi kabul kriterine denk düştüğünü dosya
-dosya eşlemedim; yalnızca akışla ilgili üçünü okudum.
-- `ui/tests/` altındaki 24 dosyanın tamamını okumadım — kapsam ayrışması ve
-`localStorage` için hedefli arama yaptım.
+- ~~`AlertingTests` eşlemesi~~ → **§3.5.1'de tarandı.**
+- ~~24 UI dosyasının taranması~~ → **§3.5.2'de tarandı.**
 - CI'da dört akışın **gerçekten koştuğunu** koşum çıktısından doğrulamadım;
-`integration` işinin paketi koşturduğunu okudum, tek tek testleri değil.
+`integration` işinin paketi koşturduğunu okudum, tek tek testleri değil. **Bu
+kalem bende kapanmıyor** — koordinatör push sonrası koşum logundan bakacak.
+- UI paketindeki 270 iddia satırının **içeriğini** tek tek okumadım; sayım ve
+tablo genişlemesi ölçüldü, her iddianın ne söylediği değil. Yani §3.5.2'nin
+söylediği "sayı kapsam değil"; söylemediği "kapsam yeterli mi".
 - `f2-kapanis`'in §1'deki ölçümlerini (Keycloak, K35, Sigma) yeniden ölçmedim.
 
-## 5 · Sonuç: F2 kapanmadı
+## 5 · Sonuç: birinci turda F2 kapanmamıştı
 
 Ticket'ın kendi şartı: dört akış otomatik koşacak ve iki çapraz doğrulama bekçi
-olarak duracak. Bugün **iki akış ve bir buçuk çapraz doğrulama** var.
+olarak duracak. **Birinci turda iki akış ve bir buçuk çapraz doğrulama vardı.**
 
 `Pending` boş — ama o, bitiş şartlarından **biriydi**, tamamı değil.
-`f2-kapanis` belgesi §6'da yalnızca `Pending`'i bitiş şartı olarak anlatıyor ve
-dört akışa hiç değinmiyor; belge bu yüzden eksik, yanlış değil.
+`f2-kapanis` belgesi §6'da yalnızca `Pending`'i bitiş şartı olarak anlatıyordu
+ve dört akışa hiç değinmiyordu; belge eksikti, yanlış değil. Eksik satır o
+belgeye eklendi.
 
-Ticket `status` **1'de kalıyor**.
+**İkinci turda eksikler yazıldı** (§3.5.3): dört akış da zincir, iki çapraz
+doğrulama da bekçi hâlinde. Kalan tek engel koşum — T27'de yazılan dört
+entegrasyon testi bu dalda **koşturulmadı** ve koşturulmamış bir testi yeşil
+saymak bu belgenin baştan sona karşı çıktığı şey.
+
+Ticket `status` **1'de kalıyor**; koordinatörün Testcontainers koşumu geçtiğinde
+2'ye çekilebilir.

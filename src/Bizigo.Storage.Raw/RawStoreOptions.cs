@@ -40,4 +40,15 @@ public sealed class RawStoreOptions
 
     /// <summary>Her scrub turunda kaç nesne örnekleneceği.</summary>
     public int ScrubSampleSize { get; set; } = 20;
+
+    /// <summary>
+    /// Bir nesne kaç kez kurtarılmaya çalışılır (T40).
+    ///
+    /// <para>
+    /// Sınır olmasaydı bozuk bir S3 yapılandırması sonsuz yeniden yazma
+    /// döngüsü üretirdi. Sınıra ulaşan nesne <c>Unrecoverable</c> oluyor —
+    /// yani "hâlâ deniyor" ile "artık denemiyor" ayırt edilebiliyor.
+    /// </para>
+    /// </summary>
+    public int MaxRecoveryAttempts { get; set; } = 3;
 }

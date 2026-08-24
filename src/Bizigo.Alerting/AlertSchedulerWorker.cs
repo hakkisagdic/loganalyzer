@@ -116,7 +116,14 @@ public sealed class AlertSchedulerWorker(
         await using var db = await factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
 
         var due = await db.AlertRules
-            .Where(r => r.Enabled && (r.NextRunAt == null || r.NextRunAt <= now))
+            // `Status == Enabled` — yani `Disabled` DE `Gated` DE sorgu üretmiyor.
+            //
+            // İkisi aynı sonucu veriyor ama aynı şey değil ve kriter ikisini
+            // ayrı sınamak zorunda: `Gated` bir kural "kapalı kural sorgu
+            // üretmiyor" kriterini TANIM GEREĞİ sağlıyor (zaten SQL'i yok),
+            // dolayısıyla ikisini karıştıran bir test `Disabled` yolunu hiç
+            // sınamaz ve yeşil kalır.
+            .Where(r => r.Status == AlertRuleStatus.Enabled && (r.NextRunAt == null || r.NextRunAt <= now))
             .OrderBy(r => r.NextRunAt)
             .Take(options.MaxRulesPerTurn)
             .ToListAsync(cancellationToken)

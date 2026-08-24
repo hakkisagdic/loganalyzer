@@ -41,7 +41,23 @@ public sealed record AlertRuleResponse(
     [property: JsonPropertyName("comparison")] string Comparison,
     [property: JsonPropertyName("silence_seconds")] int SilenceSeconds,
     [property: JsonPropertyName("repeat_interval_seconds")] int RepeatIntervalSeconds,
-    [property: JsonPropertyName("enabled")] bool Enabled,
+    // `enabled` bool GİTTİ, yerine üç değerli `status` (T33).
+    //
+    // `pasif` ile `gated`'i tek bool'da toplamak, "kullanıcı istemedi" ile "biz
+    // yapamadık"ı karıştırmak olurdu: ekranda tek renk görünürler, kullanıcı
+    // kapalı bir kuralı açmayı dener, açılmaz ve sebebini de göremez.
+    //
+    // Kırmak şu an bedava — tek tüketici ürünün kendi ekranı (§8).
+    [property: JsonPropertyName("status")] string Status,
+
+    // Kaynak ayırt edilmeli: kullanıcı için ikisi de "beni uyaran şey" ama
+    // Sigma kuralı düzenlenemiyor. Kaynağı göstermeyen bir liste, "neden bunu
+    // düzenleyemiyorum" sorusuna cevap veremez.
+    [property: JsonPropertyName("source")] string Source,
+
+    // `gated` ise NEDEN gated. Sessiz bir "kapalı" rozeti listeyi çöp kutusuna
+    // çevirir — kullanıcı neyin kapatacağını göremezse liste hiç boşalmaz.
+    [property: JsonPropertyName("gated_reason")] string GatedReason,
     [property: JsonPropertyName("next_run_at")] DateTimeOffset? NextRunAt,
     [property: JsonPropertyName("last_run_at")] DateTimeOffset? LastRunAt,
     [property: JsonPropertyName("last_fired_at")] DateTimeOffset? LastFiredAt,
@@ -130,7 +146,15 @@ public sealed record AlertTriggerResponse(
     [property: JsonPropertyName("source_id")] string SourceId,
     [property: JsonPropertyName("owner_group")] string OwnerGroup,
     [property: JsonPropertyName("summary")] string Summary,
-    [property: JsonPropertyName("deliveries")] AlertDeliveryResponse[] Deliveries);
+    [property: JsonPropertyName("deliveries")] AlertDeliveryResponse[] Deliveries,
+
+    // Asgari yaşam döngüsü (T38). Ekran açık ile kapalıyı ayırt edebilmeli;
+    // ayrı bir uçtan çekilseydi liste satır başına bir istek atardı ve çoğu
+    // ekran bunu yapmayıp hepsini açık gösterirdi.
+    [property: JsonPropertyName("state")] string State,
+    [property: JsonPropertyName("closed_at")] DateTimeOffset? ClosedAt,
+    [property: JsonPropertyName("closed_by")] string? ClosedBy,
+    [property: JsonPropertyName("review_id")] Guid? ReviewId);
 
 public sealed record AlertTriggerListResponse(
     [property: JsonPropertyName("count")] int Count,
@@ -192,7 +216,7 @@ public sealed record NotificationChannelResponse(
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("channel_type")] string ChannelType,
     [property: JsonPropertyName("owner_group")] string OwnerGroup,
-    [property: JsonPropertyName("enabled")] bool Enabled,
+[property: JsonPropertyName("enabled")] bool Enabled,
     [property: JsonPropertyName("secret_set")] bool SecretSet,
     [property: JsonPropertyName("settings")] ChannelSettingsResponse Settings,
     [property: JsonPropertyName("created_at")] DateTimeOffset CreatedAt,
@@ -226,4 +250,16 @@ public sealed record AlertingStatsResponse(
     [property: JsonPropertyName("timed_out")] long TimedOut,
     [property: JsonPropertyName("failed")] long Failed,
     [property: JsonPropertyName("scoped_queries")] long ScopedQueries,
-    [property: JsonPropertyName("notifications")] AlertingNotificationStats Notifications);
+    [property: JsonPropertyName("notifications")] AlertingNotificationStats Notifications,
+
+    /// <summary>
+    /// Son <c>ingested_at</c>'i değerlendiricinin şimdisinden ileride olan kaynak
+    /// sayısı (T27). Sıfırdan büyükse <b>sessizlik alarmları gecikiyor</b>.
+    ///
+    /// <para>
+    /// Tele çıkması bilinçli: sayaç yalnızca süreç içinde dursaydı, hiç kimsenin
+    /// bakmadığı bir sayı olurdu. Bu, kendini belli etmeyen arıza sınıfı —
+    /// <see cref="AlertingStats"/>'in var olma sebebiyle aynı.
+    /// </para>
+    /// </summary>
+    [property: JsonPropertyName("clock_skewed_sources")] long ClockSkewedSources);

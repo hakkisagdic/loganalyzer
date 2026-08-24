@@ -26,6 +26,10 @@ public static class QueryServiceCollectionExtensions
         services.AddSingleton<ClickHouseContext>();
         services.AddSingleton<ClickHouseMigrator>();
         services.AddSingleton<EventWriter>();
+
+        // Sink arayüz üstünden alıyor (sınanabilirlik); tekil örnek aynı kalsın
+        // diye yeni bir kayıt değil, var olana yönlendirme.
+        services.AddSingleton<IEventWriter>(sp => sp.GetRequiredService<EventWriter>());
         services.AddSingleton<EventReader>();
         services.AddSingleton<ChangeEventReader>();
         services.AddSingleton<CorrelationReader>();

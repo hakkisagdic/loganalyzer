@@ -48,9 +48,6 @@ import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-#: Korpusun kanonik yeri (T32 terfisi). Prototip dizini emekli.
-CORPUS = Path("catalog/sigma/rules")
-
 #: `logsource.product` → altın örnek dizini.
 SAMPLES: dict[str, str] = {
     "fortigate": "catalog/parsers/fortinet.fortigate/samples",
@@ -62,6 +59,150 @@ SAMPLES: dict[str, str] = {
 ABSENT = "absent"
 PRESENT = "present"
 SUBSTRING_ONLY = "substring_only"
+
+
+def free_text_fields() -> frozenset[str]:
+    """`raw_data`'ya inen Sigma alanları — kutu 2'nin **tek** geçerli alanı.
+
+    Neden alan türü önemli
+    ----------------------
+    Kutu 2 (*"yalnızca daha uzun sözcüğün içinde"*) `asa_teardown_rst`'ten
+    doğdu: `message|contains: 'RST'` serbest metinde `burst`'ün içine denk
+    geliyordu ve bu gürültüydü.
+
+    Ama ölçüm bir **yanlış pozitif** üretti: `fortigate_admin_from_wan`
+    `srcip|startswith: '203.0.113.'` yazıyor ve bu tam olarak istenen şey —
+    `203.0.113.7` ile eşleşiyor. Ham metinde bakınca "daha uzun bir sözcüğün
+    içinde" görünüyor, çünkü IP'lerde nokta sözcük sınırı değil.
+
+    Ayrım alanın **türünde**: serbest metinde içinde-geçmek gürültü, yapısal
+    bir alanda önek eşleşmesi **anlam**. Yapısal alan zaten kolonun kendisinde
+    karşılaştırılıyor; ham gövdedeki komşuluğu bir şey söylemiyor.
+
+    Liste ürünün eşleme tablosundan türetiliyor, elle yazılmıyor: `message`
+    bir gün başka bir kolona giderse burası kendiliğinden izliyor.
+    """
+    shipping = _shipping()
+
+    if shipping is None:
+        # Sessizce boş küme dönmek, kutu 2'yi bütün alanlarda çalıştırırdı —
+        # yani bugünkü yanlış pozitifi geri getirirdi. Bilinmiyorsa ölçüm
+        # yapılmamalı; çağıran bunu bir arıza olarak görüyor.
+        raise RuntimeError(
+            "`sidecar/app/sigma_pipeline` import edilemedi; serbest metin alanları "
+            "bilinemiyor. Araç depo ağacından koşmalı."
+        )
+
+    return frozenset(
+        field for field, column in shipping.FIELD_MAP.items() if column == "raw_data"
+    )
+
+
+def _shipping():
+    """Ürünün eşleme modülü. Kopyalanmıyor — kopya sessizce ayrışır."""
+    import importlib
+    import sys
+
+    root = repo_root()
+
+    if root is None:
+        return None
+
+    sidecar = str(root / "sidecar")
+
+    if sidecar not in sys.path:
+        sys.path.insert(0, sidecar)
+
+    return importlib.import_module("app.sigma_pipeline")
+
+
+def column_value_spaces(root: Path) -> dict[str, frozenset[str]]:
+    """`events_ocsf` kolonu → o kolonun **kapalı değer uzayı** (yoksa yok).
+
+    Neden gerekiyor — ölçülmüş bir hata
+    -----------------------------------
+    Araç `fortigate_user_auth_fail`'in `status: 'failure'` değerini "örneklerde
+    yok" diye raporladı ve o rapora dayanarak kural `failed`'a çevrildi.
+    **Düzeltme kuralı bozdu.**
+
+    Ham FortiGate satırı gerçekten `status="failed"` yazıyor. Ama
+    `catalog/mappings/auth_outcome.yaml` ingest sırasında `failed → failure`
+    **çeviriyor** — kolonda duran değer `failure`. Kural baştan doğruydu.
+
+    Metin ekseni bunu göremez, çünkü çeviri ham satırda değil **ingest'te**
+    oluyor. Bu yüzden `absent` kutusu bir **üst sınır**: her elemanı örneklem
+    boşluğu değil, bir kısmı normalleştirilmiş değer.
+
+    Zincir üç halka ve üçü de mekanik, elle yazılmıyor:
+
+    1. `db/clickhouse/0003` → `<core> AS <ocsf>` çiftleri
+    2. `catalog/parsers/*` → `<core>: {{ table: <ad> }}`
+    3. `catalog/mappings/<ad>.yaml` → tablonun **değerleri**
+    """
+    import yaml
+
+    view = (root / "db" / "clickhouse" / "0003_ocsf_otel_views.sql").read_text(encoding="utf-8")
+    core_to_ocsf = dict(re.findall(r"^\s+(\w+)\s+AS\s+(\w+),", view, re.M))
+
+    # Hangi core alanı hangi sözlükle dolduruluyor.
+    tables: dict[str, set[str]] = {}
+
+    for parser in sorted((root / "catalog" / "parsers").rglob("*.yaml")):
+        text = parser.read_text(encoding="utf-8")
+
+        for core, table in re.findall(r"^\s{4}(\w+):\s*\{[^}]*table:\s*(\w+)", text, re.M):
+            tables.setdefault(core, set()).add(table)
+
+    spaces: dict[str, frozenset[str]] = {}
+
+    for core, names in tables.items():
+        ocsf = core_to_ocsf.get(core)
+
+        if ocsf is None:
+            continue
+
+        values: set[str] = set()
+
+        for name in names:
+            path = root / "catalog" / "mappings" / f"{name}.yaml"
+
+            if not path.is_file():
+                continue
+
+            document = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            # Anahtar cihazın sözcüğü, DEĞER kolona yazılan. Kural
+            # normalleştirilmiş değeri arıyor, yani değerlere bakıyoruz.
+            values.update(str(item) for item in document.values())
+
+        if values:
+            spaces[ocsf] = frozenset(values)
+
+    return spaces
+
+
+def corpus_dir(root: Path) -> Path:
+    """Korpusun yeri — **T32'nin sabitinden**, elle yazılmadan.
+
+    Yol burada tekrar yazılsaydı üçüncü bir bildirim olurdu ve bu turda tam
+    olarak o ayrışmanın bedeli ödendi: korpus `catalog/sigma/rules/`'a terfi
+    ettirilirken bir ajan eski dizinde düzeltme yaptı, derleme hattı
+    düzeltilmemiş kopyayı derledi, Kapı 3 iki koşum boyunca eski SQL'i sınadı
+    ve hiçbir şey bunu söylemedi.
+
+    Import edilemiyorsa **sessizce geri çekilmiyor**: bilinmeyen bir yolu
+    tahmin etmek, o ayrışmayı yeniden kurmak olurdu.
+    """
+    import importlib
+    import sys
+
+    tools = str(root / "tools" / "sigma-build")
+
+    if tools not in sys.path:
+        sys.path.insert(0, tools)
+
+    ruleset = importlib.import_module("sigma_build.ruleset")
+
+    return root / ruleset.CATALOG_DIR / ruleset.RULES_SUBDIR
 
 
 def repo_root() -> Path | None:
@@ -106,6 +247,14 @@ class Literal:
     #: `RST`/`Reset` ile aynı sınıf: kural vendor'ın sözlüğünü değil kendi
     #: sözlüğünü kullanıyor.
     near_misses: list[str] = field(default_factory=list)
+
+    #: Değer, kolonun **kapalı değer uzayında** bulundu mu.
+    #:
+    #: Bulunduysa `absent` değil `present`: ham satırda geçmemesi önemli değil,
+    #: ingest onu oraya çeviriyor. Bu alan kararın SEBEBİNİ taşıyor — çünkü
+    #: "örneklerde yok ama kolonda var" tek başına şaşırtıcı ve gerekçesiz
+    #: bir sonuç.
+    in_value_space: bool = False
 
 
 @dataclass
@@ -201,12 +350,17 @@ def rule_literals(rule_text: str) -> list[Literal]:
     return found
 
 
-def classify(value: str, corpus: str) -> tuple[str, list[str], int]:
+def classify(value: str, corpus: str, free_text: bool = True) -> tuple[str, list[str], int]:
     """Dizgenin örnek gövdesindeki durumu: (karar, yutan sözcükler, satır sayısı).
 
     Ölçüt **sözcük sınırı**. `RST` örneklerde geçiyordu ama yalnızca `first` ve
     `burst` içinde; bir varlık kontrolü onu "var" der ve kuralı sağlam sanardı.
     Aranan şey dizgenin kendi başına durup durmadığı.
+
+    `free_text=False` ise sözcük sınırı **aranmıyor**: yapısal bir alanda
+    (IP, port, eşlenmiş kolon) önek eşleşmesi kuralın kastettiği şeyin ta
+    kendisi. `srcip|startswith: '203.0.113.'` ham gövdede `203.0.113.7`'nin
+    içinde görünüyor ve bu bir kusur değil, **doğru davranış**.
     """
     if not value:
         return PRESENT, [], 0
@@ -226,7 +380,7 @@ def classify(value: str, corpus: str) -> tuple[str, list[str], int]:
         r"(?<![A-Za-z0-9])" + re.escape(needle) + r"(?![A-Za-z0-9])"
     )
 
-    if bounded.search(lowered):
+    if bounded.search(lowered) or not free_text:
         return PRESENT, [], lines
 
     # Yalnızca daha uzun sözcüklerin içinde. Yutanları topluyoruz: iddia değil
@@ -287,14 +441,39 @@ def load_samples(root: Path, product: str) -> str:
     )
 
 
-def examine(rule_text: str, name: str, samples: str, product: str) -> RuleReport:
+def examine(
+    rule_text: str,
+    name: str,
+    samples: str,
+    product: str,
+    text_fields: frozenset[str],
+    spaces: dict[str, frozenset[str]] | None = None,
+    columns: dict[str, str] | None = None,
+) -> RuleReport:
     report = RuleReport(name=name, product=product)
+    spaces = spaces or {}
+    columns = columns or {}
 
     for literal in rule_literals(rule_text):
-        literal.verdict, literal.swallowed_by, literal.lines = classify(literal.value, samples)
+        literal.verdict, literal.swallowed_by, literal.lines = classify(
+            literal.value, samples, free_text=literal.field in text_fields
+        )
 
         if literal.verdict == ABSENT:
-            literal.near_misses = near_misses(literal.value, samples)
+            # ÖNCE kapalı değer uzayı, sonra yakın sözcük.
+            #
+            # Sıra önemli: değer kolonda gerçekten duruyorsa bu bir kelime
+            # hatası DEĞİL ve `⚠ yakın sözcük` uyarısı yanlış yönlendirirdi —
+            # bir tur boyunca tam olarak öyle oldu ve doğru bir kural
+            # "düzeltilerek" bozuldu.
+            space = spaces.get(columns.get(literal.field, ""))
+
+            if space and literal.value in space:
+                literal.verdict = PRESENT
+                literal.in_value_space = True
+            else:
+                literal.near_misses = near_misses(literal.value, samples)
+
         report.literals.append(literal)
 
     return report
@@ -302,7 +481,7 @@ def examine(rule_text: str, name: str, samples: str, product: str) -> RuleReport
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Eşleşmeyen kural neden eşleşmiyor (T30)")
-    parser.add_argument("--corpus", default="", help=f"varsayılan {CORPUS}")
+    parser.add_argument("--corpus", default="", help="varsayılan: T32 korpusu")
     parser.add_argument("--json", default="")
     args = parser.parse_args(argv)
 
@@ -312,7 +491,7 @@ def main(argv: list[str] | None = None) -> int:
         print("Depo kökü bulunamadı (`Bizigo.sln`). Araç depo ağacından koşmalı.", file=sys.stderr)
         return 2
 
-    corpus = Path(args.corpus) if args.corpus else root / CORPUS
+    corpus = Path(args.corpus) if args.corpus else corpus_dir(root)
 
     # Boş korpusa "0 kural incelendi" demek, ölçümün yapıldığı izlenimi
     # bırakırdı. Korpus T32'de taşındı; eski yolu okuyan bir araç sessizce
@@ -335,6 +514,10 @@ def main(argv: list[str] | None = None) -> int:
 
     cache: dict[str, str] = {}
     reports: list[RuleReport] = []
+    text_fields = free_text_fields()
+    spaces = column_value_spaces(root)
+    shipping = _shipping()
+    columns = dict(shipping.FIELD_MAP) if shipping else {}
 
     for path in rules:
         text = path.read_text(encoding="utf-8")
@@ -348,7 +531,9 @@ def main(argv: list[str] | None = None) -> int:
         if product not in cache:
             cache[product] = load_samples(root, product)
 
-        reports.append(examine(text, path.name, cache[product], product))
+        reports.append(
+            examine(text, path.name, cache[product], product, text_fields, spaces, columns)
+        )
 
     buckets = {ABSENT: [], SUBSTRING_ONLY: [], PRESENT: []}
 
@@ -369,6 +554,19 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{'desen YOK':<18} {len(buckets[ABSENT]):>6}   örneklem kusuru — kapsam kararına GİRMEZ")
     print(f"{'yalnızca içinde':<18} {len(buckets[SUBSTRING_ONLY]):>6}   eşleşse bile YANLIŞ sebeple")
     print(f"{'desen var':<18} {len(buckets[PRESENT]):>6}   eşleşmiyorsa suç EŞLEMEDE")
+
+    translated = [
+        (r.name, l) for r in reports for l in r.literals if l.in_value_space
+    ]
+
+    if translated:
+        print(
+            f"\n{len(translated)} dizge ham satırda YOK ama kolonun kapalı değer "
+            "uzayında VAR — ingest onu çeviriyor, yani kural doğru:"
+        )
+
+        for name, literal in translated:
+            print(f"  {name:<34} {literal.field} = {literal.value!r}")
 
     for title, key in (
         ("Örneklemde deseni olmayan kurallar", ABSENT),

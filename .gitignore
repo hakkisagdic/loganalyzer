@@ -37,3 +37,29 @@ venv/
 # iCloud sync duplikatları (bkz. CLAUDE.md)
 * 2.*
 *\ 2/
+
+# obsidian-wiki — ÜÇÜNCÜ TARAF araç, `git clone` ile geliyor (8,4 MB).
+#
+# Depoya vendor edilmiyor çünkü ürünün parçası değil: bilgi tabanını üreten bir
+# makine aracı. Vendor edilseydi yükseltmesi bir merge işi olurdu ve deponun
+# geçmişi başka bir projenin sürümleriyle dolardı. Kurulumu README'de yazılı.
+tools/obsidian-wiki/
+
+# Graphify bilgi grafiği (bkz. docs/graphify.md)
+#
+# Grafiğin KENDİSİ commitleniyor: graph.json sorgulanabilir çıktı, GRAPH_REPORT.md
+# ve graph.html insanın okuduğu yüzler. Ayrı ayrı yazıldı — `graphify-out/*` gibi
+# geniş bir desen yarın eklenecek bir çıktıyı sessizce yutardı ve yukarıdaki
+# `**/wal/` olayının aynısı olurdu.
+#
+# Dışarıda kalan tek şey `cache/`: yeniden derlemeyi hızlandıran 16 MB'lık ara
+# ürün. İçinde grafikte olmayan hiçbir bilgi yok, ve her koşumda değişiyor.
+/graphify-out/cache/
+
+# Graphify'in her tazelemede biraktigi TARIHLI yedek dizin — onceki grafin
+# kopyasi. graph.json'un kendisi commitleniyor, yedegi degil: her koşum
+# gecmise 12 MB'lik ikinci bir kopya eklerdi.
+#
+# Desen dar tutuldu (dort-iki-iki rakam) — `graphify-out/*/` yarin eklenecek
+# bir alt dizini de yutardi.
+/graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/

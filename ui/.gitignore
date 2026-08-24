@@ -11,3 +11,9 @@ next-env.d.ts
 
 # Ekran görüntüsü ara dosyaları (afterAll siliyor; ağ kesilirse kalabilir)
 .screenshots-tmp/
+
+# Playwright'ın koşum çıktısı: iz, video ve hata bağlamı. Yalnızca DÜŞEN
+# koşumda doluyor (`retain-on-failure`) ve teşhis içindir — ekran görüntüleri
+# buraya değil `docs/ekran-goruntuleri/uctan-uca/` altına yazılıyor, onlar işin
+# ürünü ve commitleniyor.
+.playwright/

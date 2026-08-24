@@ -9,6 +9,8 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { api } from "@/lib/api/client";
 import { describeError } from "@/lib/api/errors";
 import type { RcaBundleSummary, RcaReport } from "@/lib/rca/report";
+import { track } from "@/lib/telemetry/client";
+import { rcaFailureShape, rcaShape } from "@/lib/telemetry/measure";
 import { screenState } from "@/lib/ui/screen-state";
 
 import styles from "./rca.module.css";
@@ -78,6 +80,11 @@ export function RcaLauncher({ initialBundles, initialError }: RcaLauncherProps) 
     const baselineTo = from;
     const baselineFrom = new Date(baselineTo.getTime() - Number(baselineDays) * 86_400_000);
 
+    // Ölçülen şey KULLANICININ BEKLEDİĞİ süre: ağ + sunucu + kanıt toplama.
+    // Sunucunun kendi hesaplama süresi ayrı bir sayı ve buradan görünmüyor;
+    // `duration_ms`'i o sanmak, ağ yavaşlığını sunucuya yazmak olurdu.
+    const started = performance.now();
+
     try {
       const report = (await api.post("/v1/rca", {
         body: {
@@ -90,8 +97,30 @@ export function RcaLauncher({ initialBundles, initialError }: RcaLauncherProps) 
         },
       })) as RcaReport;
 
+      // Olayın yeri BURASI — rapor ekranı değil. `rca_run` "RCA koşturuldu"
+      // demek; raporu açmak ayrı bir hareket ve `screen_viewed` ile ölçülüyor.
+      //
+      // Rapor `track`'e OLDUĞU GİBİ verilmiyor: `findings[].summary` bir olay
+      // cümlesi, `payload` ham alan sözlüğü, `window.source_ids` müşteri
+      // envanteri. `rcaShape` üçünü de dışarıda bırakıp yalnızca sayıyı,
+      // süreyi ve bandı türetiyor (bkz. telemetry/measure.ts).
+      //
+      // `router.push`'tan ÖNCE: gezinme bu bileşeni söküyor ve sökülmüş bir
+      // bileşenin göndermediği olay hiçbir yerde iz bırakmaz.
+      track("rca_run", rcaShape(report, { durationMs: performance.now() - started }));
+
       router.push(`/rca/${report.bundle_id}`);
     } catch (cause) {
+      // Düşen koşum da basılıyor — AYNI olay, daha AZ alanla. Yalnızca
+      // başarılıları saymak "RCA hep çalışıyor" diyen bir pano üretirdi;
+      // düşenler zaten sayılmadığı için. `event_search_run` düşen aramada
+      // aynısını yapıyor ve gerekçesi orada yazılı.
+      //
+      // `signal_count` ve `trust_band` YOK: elde rapor olmadığı için ikisi de
+      // BİLİNMİYOR — sıfır değil. `signal_count: 0` "hiçbir şey bulamadı" der,
+      // "patladı" demez; ikisini tek kovaya koymak §7'nin sınıfı.
+      track("rca_run", rcaFailureShape(cause, { durationMs: performance.now() - started }));
+
       setRunError(describeError(cause));
       setRunning(false);
     }

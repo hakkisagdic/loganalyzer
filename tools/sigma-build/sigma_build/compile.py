@@ -425,6 +425,23 @@ def main(argv: list[str] | None = None) -> int:
     header = current_header()
 
     if args.write:
+        # Çivi bayatsa yazma. Yarım hâl — kurallar yeni, çivi eski — bu turda
+        # CI'ı kırmızı yaktı: bir ajan kuralı düzeltti, çiviyi yenilemedi, ve
+        # `--write` hiçbir şey söylemeden yeni SQL üretti. Komut artık kendi
+        # girdisinin tutarlı olduğunu görmeden yazmıyor.
+        from sigma_build.ruleset import CATALOG_DIR as _CATALOG, verify as _verify_pin  # noqa: PLC0415
+
+        sorunlar = _verify_pin(repo_root() / _CATALOG)
+        if sorunlar:
+            for sorun in sorunlar:
+                print(f"  {sorun}", file=sys.stderr)
+            print(
+                "\n✗ Kural ağacı çivisiyle uyuşmuyor; SQL üretilmedi.\n"
+                "  Önce: `python -m sigma_build.ruleset --refresh`",
+                file=sys.stderr,
+            )
+            return 1
+
         write_output(target, outcomes, header)
         counts = json.loads(build_manifest(outcomes, header))["counts"]
         print(f"✓ {OUTPUT_DIR} güncellendi — {counts}")

@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { chromium, type Browser } from "playwright";
+import { chromium, type Browser, type Page } from "playwright";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -137,4 +137,161 @@ describe("ekran görüntüleri", () => {
     },
     60_000,
   );
+});
+
+/**
+ * **Geometri bekçileri** (T27).
+ *
+ * <p>
+ * Yukarıdaki paket 18 test <b>koşuyor</b> ama tek bir şey <b>iddia ediyor</b>:
+ * sayfanın arka planı saydam değil — yani boyandı. Bu, bu depoda bir kez
+ * ödenmiş bedelin aynısı: ilk koşumda hücreler ortalanmış, rozetler düz metin
+ * ve kırpma yoktu, <b>ve test geçti</b>. Görüntüler bir insanın bakması için
+ * üretilen çıktılar; bakan olmazsa hiçbir şey söylemiyorlar.
+ * </p>
+ *
+ * <h3>Neden T28'in bekçilerinin kopyası değil</h3>
+ *
+ * <p>
+ * <c>ui-consistency</c> ve <c>contrast</c>'ın <b>hepsi statik</b>: kaynak
+ * tarıyor, sınıf adı okuyor, <c>tokens.css</c> ayrıştırıyor. Hiçbiri
+ * <b>yerleşim</b> sorusuna cevap veremez, çünkü cevabı yalnızca bir yerleşim
+ * motoru biliyor: metin taştı mı, kırpma gerçekten kesti mi, satır hücrenin
+ * dışına çıktı mı.
+ * </p>
+ *
+ * <p>
+ * <c>ui.module.css</c>'in kendi yorumu bunu zaten söylüyor: <i>"Ekran
+ * görüntüsünde yakalandı; hiçbir birim testi bunu göremezdi."</i> Buradaki iş,
+ * o cümledeki <b>"görüntüde yakalandı"</b>yı <b>"bir iddia tutuyor"</b>a
+ * çevirmek.
+ * </p>
+ *
+ * <h3>Tema başına tekrarlanmıyor — bilerek</h3>
+ *
+ * <p>
+ * Geometri temadan bağımsız. Aynı sondaları iki temaya koşturmak koşan test
+ * sayısını iki katına çıkarır ve <b>tek bir yeni iddia</b> üretmezdi — bu
+ * paketin zaten eleştirilen yanı tam olarak buydu.
+ * </p>
+ */
+describe("geometri — yalnızca tarayıcının bilebileceği", () => {
+  /** Sahneyi açıp sondayı koşturuyor; sekme her koşulda kapanıyor (§3). */
+  async function probe<T>(sceneId: string, fn: (tab: Page) => Promise<T>): Promise<T> {
+    const scene = SCENES.find((s) => s.id === sceneId);
+
+    // Sahne yeniden adlandırılırsa test SESSİZCE hiçbir şey sınamaz hâle
+    // gelmesin: bulunamayan sahne bir hata.
+    if (!scene) {
+      throw new Error(`'${sceneId}' sahnesi yok — geometri bekçisi bayatlamış.`);
+    }
+
+    const file = join(WORK, `${scene.id}-geometri.html`);
+    writeFileSync(
+      file,
+      page(scene.title, "light", unhash(renderToStaticMarkup(scene.node)), scene.styles),
+      "utf8",
+    );
+
+    const tab = await browser.newPage({ viewport: VIEWPORT });
+
+    try {
+      await tab.goto(`file://${file}`);
+      return await fn(tab);
+    } finally {
+      await tab.close();
+    }
+  }
+
+  it.each(SCENES.map((scene) => scene.id))(
+    "%s — sayfa yatayda taşmıyor",
+    async (sceneId) => {
+      // Ekrandan taşan bir tablo, kullanıcıda yatay kaydırma çubuğu ve kesilmiş
+      // sütun demek. DOM'dan görünmüyor; yalnızca yerleşim motoru biliyor.
+      const overflow = await probe(sceneId, (tab) =>
+        tab.evaluate(() => ({
+          scroll: document.documentElement.scrollWidth,
+          client: document.documentElement.clientWidth,
+        })),
+      );
+
+      expect(
+        overflow.scroll,
+        `${sceneId}: sayfa ${overflow.scroll}px, görünüm ${overflow.client}px`,
+      ).toBeLessThanOrEqual(overflow.client + 1);
+    },
+    60_000,
+  );
+
+  it("uzun gövde dört satırda kesiliyor — ve kesilecek kadar uzun", async () => {
+    const bodies = await probe("olaylar-dolu", (tab) =>
+      tab.evaluate(() =>
+        [...document.querySelectorAll(".cellBodyText")].map((el) => {
+          const style = getComputedStyle(el);
+          return {
+            height: el.getBoundingClientRect().height,
+            lineHeight: Number.parseFloat(style.lineHeight),
+            scrollHeight: el.scrollHeight,
+            clientHeight: el.clientHeight,
+          };
+        }),
+      ),
+    );
+
+    // Sahne kırpılacak gövde taşımıyorsa iddia boş kümede geçer ve hiçbir şey
+    // ifade etmez — bu depodaki "yeşil ama anlamsız" sınıfı.
+    expect(bodies.length).toBeGreaterThan(0);
+    expect(
+      bodies.some((b) => b.scrollHeight > b.clientHeight),
+      "hiçbir gövde kırpılacak kadar uzun değil — sahne iddiayı taşımıyor",
+    ).toBe(true);
+
+    for (const body of bodies) {
+      expect(body.height).toBeLessThanOrEqual(body.lineHeight * 4 + 1);
+    }
+  }, 60_000);
+
+  it("rozet düz metin değil — zemini ve dolgusu var", async () => {
+    const badges = await probe("rozetler", (tab) =>
+      tab.evaluate(() =>
+        [...document.querySelectorAll(".badge")].map((el) => {
+          const style = getComputedStyle(el);
+          return {
+            background: style.backgroundColor,
+            paddingBlock: Number.parseFloat(style.paddingBlockStart),
+            paddingInline: Number.parseFloat(style.paddingInlineStart),
+          };
+        }),
+      ),
+    );
+
+    expect(badges.length).toBeGreaterThan(0);
+
+    for (const badge of badges) {
+      // Saydam zemin = düz metin. İlk koşumda tam olarak bu olmuştu.
+      expect(badge.background).not.toBe("rgba(0, 0, 0, 0)");
+      expect(badge.paddingBlock).toBeGreaterThan(0);
+      expect(badge.paddingInline).toBeGreaterThan(0);
+    }
+  }, 60_000);
+
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // YAZILDI, ÖLÇÜLEMEDİ, ÇIKARILDI — iki iddia (T27).
+  //
+  // "Kırpılan gövde satırın dışına taşmıyor" ve "hücre metni ortalanmıyor"
+  // yazıldı ve YEŞİL yandı, ama kırmızı yanabildikleri GÖSTERİLEMEDİ:
+  //
+  //   * kırpmayı `.cellBody`'ye (hücrenin kendisine) taşıdım — ölçülmüş asıl
+  //     kusurun birebir hâli — paket 31/31 yeşil kaldı;
+  //   * sahne çerçevesine `td { text-align: center }` koydum — orijinal
+  //     belirtilerden biri — yine 31/31 yeşil.
+  //
+  // Yani ikisi de bir şey tuttuğunu kanıtlayamadı. Sevk edilseler koşan test
+  // sayısını artırıp iddia sayısını artırmazlardı, ki bu paketin eleştirilme
+  // sebebi tam olarak buydu (§6: kırmızı yanabildiğini ölç, sonra geri al).
+  //
+  // Bir sonraki denemeye not: sentetik sahnede satır boyutlanması gerçek
+  // ekrandakinden farklı davranıyor olabilir; kusuru üretmenin yolu önce
+  // bulunmalı, iddia sonra yazılmalı.
 });

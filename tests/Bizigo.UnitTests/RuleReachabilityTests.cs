@@ -133,10 +133,18 @@ public sealed class RuleReachabilityTests
     public void Alan_cevirisi_pipeline_dosyasindan_okunuyor()
     {
         var map = SigmaFieldMap.Read(Path.Combine(
-            RepositoryLayout.Root, "prototypes", "t30-sigma", "bizigo_pipeline.py"));
+            RepositoryLayout.Root, "sidecar", "app", "sigma_pipeline.py"));
 
         Assert.Equal("src_endpoint_ip", map["srcip"]);
         Assert.Equal("connection_info_protocol_name", map["proto"]);
+
+        // ÜRÜNÜN dosyası okunuyor, prototipin değil — ve bu satır farkı
+        // çiviliyor. Test eskiden prototipi okuyordu ve orada bu alanlar YOK:
+        // T31 kalıcı modülü yazdıktan sonra prototip bayat kaldı, ölçüm ürünün
+        // eşlediği dört alanı "eşlenmemiş" saydı. Prototipe geri dönülürse bu
+        // satır kırmızı yanıyor.
+        Assert.Equal("activity_name", map["http_method"]);
+        Assert.Equal("actor_user_name", map["user_name"]);
     }
 
     /// <summary>

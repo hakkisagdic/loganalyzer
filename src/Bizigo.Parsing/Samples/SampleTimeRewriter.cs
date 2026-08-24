@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using Bizigo.Parsing.Schema;
 
-namespace Bizigo.Cli.Seeding;
+namespace Bizigo.Parsing.Samples;
 
 /// <param name="Text">Yeniden yazılmış satır.</param>
 /// <param name="Rewritten">

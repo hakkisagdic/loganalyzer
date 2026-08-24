@@ -204,8 +204,139 @@ def test_kisa_dizge_yakinlik_aranmiyor() -> None:
     assert em.near_misses("RST", "burst first reset") == []
 
 
+
+
+def test_yapisal_alanda_onek_eslesmesi_ANLAM_gurultu_degil() -> None:
+    """**Kutu 2 bir yanlış pozitif üretti ve sezgisel bu yüzden daraltıldı.**
+
+    `fortigate_admin_from_wan` `srcip|startswith: '203.0.113.'` yazıyor ve
+    `203.0.113.7` ile eşleşiyor — tam istenen şey. Ham gövdede bakınca "daha
+    uzun bir sözcüğün içinde" görünüyor, çünkü IP'lerde nokta sözcük sınırı
+    değil.
+
+    Ayrım alanın TÜRÜNDE: serbest metinde içinde-geçmek gürültü, yapısal bir
+    alanda önek eşleşmesi anlam. Yapısal alan zaten kolonun kendisinde
+    karşılaştırılıyor.
+    """
+    corpus = "srcip=203.0.113.7 srcport=443 dstip=10.1.100.11"
+
+    assert em.classify("203.0.113.", corpus, free_text=False)[0] == em.PRESENT
+    # Serbest metin sayılsaydı şüpheli kutusuna düşerdi — eski davranış.
+    assert em.classify("203.0.113.", corpus, free_text=True)[0] == em.SUBSTRING_ONLY
+
+
+def test_serbest_metin_alanlari_URUNDEN_tureiyor() -> None:
+    """Elle yazılsaydı `message` başka bir kolona gittiği gün sessizce ayrışırdı."""
+    fields = em.free_text_fields()
+
+    assert "message" in fields
+    # Yapısal alanlar listede OLMAMALI: olsalardı kutu 2 onlarda da çalışır
+    # ve bugünkü yanlış pozitifi geri getirirdi.
+    assert "srcip" not in fields
+    assert "action" not in fields
+
+
+def test_kapali_deger_uzayindaki_deger_ABSENT_degil() -> None:
+    """**Bu kör nokta doğru bir kuralı bozdu ve ölçüldükten sonra geri alındı.**
+
+    `fortigate_user_auth_fail` `status: 'failure'` arıyor. Ham FortiGate satırı
+    `status="failed"` yazıyor, dolayısıyla metin ekseni `failure`'ı bulamıyor
+    ve "örneklem boşluğu" diyor.
+
+    Ama `catalog/mappings/auth_outcome.yaml` ingest sırasında
+    `failed → failure` ÇEVİRİYOR: kolonda duran değer `failure`. Kural baştan
+    doğruydu ve `failed`'a çevrilmesi onu kolonun hiç taşımadığı bir değere
+    bağladı.
+
+    Yani `absent` kutusu bir ÜST SINIR: her elemanı örneklem boşluğu değil.
+    """
+    root = em.repo_root()
+    spaces = em.column_value_spaces(root)
+
+    assert "status" in spaces, "`status` kolonunun değer uzayı çözülemedi"
+    assert "failure" in spaces["status"]
+    # Cihazın kendi sözcüğü ANAHTAR, kolona yazılan DEĞER. Kural değeri arıyor.
+    assert "failed" not in spaces["status"]
+
+    report = em.examine(
+        "logsource:\n  product: fortigate\n"
+        "detection:\n  selection:\n    status: 'failure'\n  condition: selection\n",
+        "x.yml",
+        'type="event" status="failed" user="admin"',
+        "fortigate",
+        frozenset(),
+        spaces,
+        {"status": "status"},
+    )
+
+    assert report.verdict == em.PRESENT
+    assert report.literals[0].in_value_space
+
+
+def test_deger_uzayi_bulunamayan_alan_ABSENT_kaliyor() -> None:
+    """Bekçinin ölçüsü: her `absent`'i "çevrilmiştir" saysaydı kutu boşalırdı.
+
+    `url` bir kapalı uzay taşımıyor — serbest bir dizge. Örneklerde yoksa
+    gerçekten yok.
+    """
+    root = em.repo_root()
+    spaces = em.column_value_spaces(root)
+
+    report = em.examine(
+        "logsource:\n  product: nginx\n"
+        "detection:\n  selection:\n    url|contains: '/admin'\n  condition: selection\n",
+        "y.yml",
+        '198.51.100.13 - - "GET /test1 HTTP/1.1" 404',
+        "nginx",
+        frozenset(),
+        spaces,
+        {"url": "unmapped['otel.url.path']"},
+    )
+
+    assert report.verdict == em.ABSENT
+    assert not report.literals[0].in_value_space
+
+
+def test_deger_uzaylari_UC_kaynaktan_zincirleniyor() -> None:
+    """Zincir elle yazılmıyor: görünüm → parser → sözlük. Üçü de tek kaynak.
+
+    Elle yazılsaydı yeni bir sözlük eklendiği gün sessizce eksik kalırdı — bu
+    depoda elle liste dört kez patladı.
+    """
+    spaces = em.column_value_spaces(em.repo_root())
+
+    # `outcome AS status` (görünüm) + `outcome: {table: auth_outcome}` (parser)
+    assert "failure" in spaces["status"] and "success" in spaces["status"]
+    # `proto AS connection_info_protocol_name` + `ip_proto_name`
+    assert "tcp" in spaces["connection_info_protocol_name"]
+
+
 def main() -> int:
+    """Koşucu.
+
+    **Dosyadaki `def test_` sayısı ile koşulan sayı karşılaştırılıyor** ve bu
+    bir kolaylık değil bir bekçi: koşucu dosyanın sonunda olmadığı için
+    altına eklenen testler `globals()` dolduğunda henüz tanımlı değildi ve
+    **hiç koşmadan** paket yeşil kalıyordu. Bu, iki kez oldu — ikisinde de
+    sayıya bakıp geçilebilirdi.
+
+    §7'nin deseni: bir bekçinin sessizce atlaması, bekçinin kendisinden
+    tehlikeli.
+    """
+    import re
+    from pathlib import Path
+
     tests = [value for name, value in sorted(globals().items()) if name.startswith("test_")]
+    declared = len(re.findall(r"^def (test_\w+)", Path(__file__).read_text(encoding="utf-8"), re.M))
+
+    if declared != len(tests):
+        print(
+            f"✗ KOŞUM EKSİK: dosyada {declared} test tanımlı, {len(tests)} tanesi toplandı.\n"
+            "  Koşucu dosyanın SONUNDA değil; altına eklenen testler hiç koşmuyor.",
+            file=sys.stderr,
+        )
+        return 1
+
     failed = 0
 
     for test in tests:

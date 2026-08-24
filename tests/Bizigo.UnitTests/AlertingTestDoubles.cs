@@ -9,7 +9,26 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 namespace Bizigo.UnitTests;
 
 /// <summary>Sahte olay: yalnızca kapsam ve filtre testleri için gereken alanlar.</summary>
-internal sealed record FakeEvent(string OwnerGroup, string SourceId, DateTimeOffset Ts, string Action);
+/// <param name="IngestedAt">
+/// <b>Ne zaman haber aldık</b> — <c>Ts</c> ile aynı DEĞİL ve ayrılabilmesi
+/// gerekiyor (T27).
+///
+/// <para>
+/// Sessizlik değerlendiricisi <c>ingested_at</c> okuyor, <c>ts</c> değil; gerçek
+/// okuyucu da <c>ts</c>'yi pencereyle sınırlarken <c>max(ingested_at)</c>'i
+/// sınırsız alıyor. Sahte ikisini <b>aynı değere bağlıyordu</b>, dolayısıyla
+/// ikisinin ayrıştığı hiçbir durum birim testinde temsil edilemiyordu — saat
+/// kayması tam olarak o durum.
+/// </para>
+///
+/// <para>Verilmezse <c>Ts</c>'ye eşit: var olan testler değişmiyor.</para>
+/// </param>
+internal sealed record FakeEvent(
+    string OwnerGroup,
+    string SourceId,
+    DateTimeOffset Ts,
+    string Action,
+    DateTimeOffset? IngestedAt = null);
 
 /// <summary>
 /// <see cref="IScopedQuery"/> sahtesi.
@@ -94,7 +113,7 @@ internal sealed class FakeScopedQuery : IScopedQuery, IAlertQuerySource
                     g.Key.OwnerGroup,
                     g.Key.SourceId,
                     g.Max(e => e.Ts),
-                    g.Max(e => e.Ts),
+                    g.Max(e => e.IngestedAt ?? e.Ts),
                     g.Count()))
         ];
 

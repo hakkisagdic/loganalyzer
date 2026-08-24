@@ -5,9 +5,15 @@ title: "T37 — Rapor ekranı: dört durumu ayakta tutmak"
 
 # T37 — Rapor ekranı ve export
 
-`t37-rapor-ekrani` dalı, iki commit: sunucu yüzeyi (`1255423`) ve ekran
-(`de70129`). Ölçülen durum: **18 proje 0 uyarı · 815 birim testi · 296 UI
-testi · `tsc` temiz · `api:check` birebir**.
+`t37-rapor-ekrani` dalı. Ölçülen durum (`1ebebe8`): **18 proje 0 uyarı · 843
+birim testi · 306 UI testi · `tsc` temiz · `api:check` birebir**.
+
+> **Güncelleme (`3f634a0` sonrası).** İnceleme tablosu birleştirildi: T37'nin
+> `evidence_reviews`'ü silindi, kayıt artık T38'in `golden_reviews`'ünde ve
+> `state` alanı `verdict` oldu. Değerler **dört**: `correct` · `incomplete` ·
+> `wrong` · `unknown`. Ayrıca `contradicting_evidence` eklendi
+> (`not_present` / `sound` / `trivial` / `unknown`). Ayrıntı için T38 belgesi;
+> §5 aşağıda güncellendi. **§1'in çivilenmiş değişmezi etkilenmedi.**
 
 Bu belgenin asıl konusu tek bir şey: **arayüz, yalnızca sözcüklerde var olan
 bir ayrımı yok etmekte alışılmadık derecede iyi.**
@@ -96,24 +102,51 @@ yazıyor.
 
 ## 5 · T38'e devredilenler — altın kümeyi kuran için
 
-`evidence_reviews` tablosu (`AddEvidenceReviews` göçü) T38'in girdisi. Dört
-karar önceden bilinmeli:
+Tablo artık **T38'in `golden_reviews`'ü** (T37'nin `evidence_reviews`'ü
+silindi). Ekranın dayandığı kararlar:
 
-1. **Üzerine yazmıyor, ekliyor.** Aynı paket birden çok kez incelenebilir: ilk
-   bakan "kısmen" der, kök neden sonradan anlaşılınca ikinci kayıt düşer.
-   İncelemenin **değişmesi** kalite ölçümü için bir veri. Son sözü
-   `ReviewedAt` söylüyor; `EvidenceReviewStore.GetLatestAsync` onu veriyor.
+1. **Üzerine yazmıyor, ekliyor.** Aynı paketi iki kişi inceleyebilir ve
+   incelemenin **değişmesi** kalite ölçümü için bir veri; F4 *"insanlar
+   birbiriyle ne kadar anlaşıyor"* sorusunu bunlardan soracak. Ekran "son söz
+   ne" sorduğu için ilkini alıyor.
 2. **İnceleyen token'dan geliyor**, gövdeden değil — aksi hâlde herkes
-   başkasının adına oy yazabilirdi ve altın küme kimin ne dediğini kaybederdi.
-3. **Durumlar dizgi**: `correct` / `partially` / `wrong`. Enum değil, çünkü
-   saklanan bir kayıt ve sayısal karşılıklar bir gün kayarsa geçmiş satırlar
-   sessizce başka bir şey ifade eder. Bilinmeyen durum `SaveAsync`'te
-   reddediliyor.
-4. **`ActualRootCause` zorunlu değil.** Zorunlu yapmak, acelesi olanın düğmeye
-   hiç basmamasına yol açardı ve o zaman elde ne oy ne kök neden kalır.
+   başkasının adına oy yazabilirdi.
+3. **Dört karar**: `correct` · `incomplete` · `wrong` · `unknown`.
+   `unknown` bir kaçış kapısı değil bir **ölçüm**: seçenek olmasaydı gerçekten
+   bilmeyen kişi rastgele birini seçer ve altın küme sessizce gürültüyle
+   dolardı. Doğruluk oranının paydasına girmiyor.
+4. **`ActualRootCause` zorunlu değil** ve **boşluğu bilgi taşıyor**: `wrong`
+   olup burası boşsa inceleyen yanlışı görmüş ama doğrusunu bilmiyor demektir.
+5. **`contradicting_evidence` ayrı bir soru** ve karara **bağlı değil**
+   (RCA riski #5). Ekranda karar düğmelerinin yanında duruyor, varsayılanı
+   `unknown`. Gerekçesi §5.1.
+
+### 5.1 · Çelişen kanıt neden karara bağlanmadı
+
+Alt soru yapmak cazipti ve belirli bir yönde başarısız oluyor: tiyatronun
+tehlikeli hâli, raporun **bütün olarak doğru** olduğu ve o bölümü yine de
+doldurmuş olduğu hâl. Soruyu olumsuz karara bağlamak, ölçümün **var olma
+sebebi olan durumu hiç örneklememesi** demek — kendi en kötü durumunu göremeyen
+şey ölçüm değil.
+
+İkinci bir zorunlu tık da ters yönden yanlış: inceleme yorgunluğu canlı bir
+risk ve altın küme, hiç yapılmayan incelemelerden kimsenin doldurmadığı bir
+boyuttan kazandığından fazlasını kaybeder. Seçilen orta yol: **tek tık
+korunuyor, boyut yine de her incelemede soruluyor.**
+
+Varsayılan `unknown`, `not_present` değil — bugün doğru olan bir varsayılan
+yarın sessizce yanlış olur ve kimse geri dönüp sormaz.
+
+### 5.2 · Tel adları dil sınırının iki yanında çivili
+
+Ekran bu dizgileri **elle** yazıyor; TypeScript C# enum'unu okuyamıyor, yani
+derleyicinin kovaladığı bir bağ yok. `RcaReviewWireTests` sunucu tarafına,
+`rca-screen.test.tsx` ekran tarafına çivi çakıyor — **ve C# tarafı enum'un
+eleman sayısını da sabitliyor**: bugünkü değerleri çivilemek, beşinci bir değer
+eklendiğinde yeşil kalırdı ve o değer hiçbir ekrana ulaşmadan yaşardı.
 
 **T38'in asıl işi bu tablo değil, ona ulaşan yol.** RCA belgesinin 2. riski —
-inceleme yorgunluğu — bugün açık: ekrandaki üç düğme çalışıyor ama kimse o
+inceleme yorgunluğu — bugün açık: ekrandaki düğmeler çalışıyor ama kimse o
 ekrana gitmek zorunda değil. Karşı önlem plandan aynen alınmalı: *alarm tetikli
 RCA'larda inceleme, alarmı kapatma akışının zorunlu parçası.*
 
@@ -134,5 +167,5 @@ RCA'larda inceleme, alarmı kapatma akışının zorunlu parçası.*
   ile hiç çalışmadı. Faz sonu doğrulamasının listesinde olmalı.
 - **Ekran gerçek bir tarayıcıda açılmadı.** `renderToStaticMarkup` ile
   sınandı; T28'in denetimi ve ekran görüntüsü bekçileri ayrı iş.
-- `evidence_reviews` göçü **uygulanmadı** — Postgres'e karşı koşulması
-  koordinatörde.
+- Göçler **uygulanmadı** (`AddActualRootCauseToGoldenReview`) — Postgres'e
+  karşı koşulması koordinatörde.

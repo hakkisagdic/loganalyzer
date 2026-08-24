@@ -48,7 +48,8 @@ namespace Bizigo.IntegrationTests;
 /// <item><term>1 · giriş</term><description>Canlı Keycloak'a karşı elle doğrulandı (is-envanteri); <c>ui/tests/token-isolation.test.ts</c></description></item>
 /// <item><term>1 · arama</term><description><c>ui/tests/events-screen.test.tsx</c>, <c>EventPaginationTests</c></description></item>
 /// <item><term>1 · detay</term><description><c>OcsfOtelViewTests</c></description></item>
-/// <item><term>1 · ham bayt</term><description><c>RawEventLocatorTests</c> + <b>bu dosyada</b> <c>Ham_bayt_sadakati_zincir_boyunca_korunuyor</c></description></item>
+/// <item><term>1 · ham bayt</term><description><c>RawEventLocatorTests</c>; gövde sadakati <b>bu dosyada</b> <c>Coklu_alfabeli_govde_depolamada_bozulmuyor</c></description></item>
+/// <item><term>1 · <b>halkaların birbirine bağlandığı</b></term><description><c>F2ChainTests.Arama_detay_ham_bayt_ayni_olayi_tasiyor</c> — T27'de yazıldı; <b>bir parça listesi zincir değildir</b></description></item>
 ///
 /// <item><term>2 · parser yaz/dene</term><description><c>ParserAuthoringTests</c>, <c>ParserEngineTests</c></description></item>
 /// <item><term>2 · yayınla</term><description><c>ParserPublishGateTests</c>, <c>ParserAuthoringTests</c></description></item>
@@ -197,19 +198,31 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
     // ---------------------------------------------- 1 · ham bayt sadakati
 
     /// <summary>
-    /// <b>Koşturulduğunda kanıtlayacağı:</b> olayın <c>raw_ref</c>'i üzerinden
-    /// inilen baytların sha256'sı, cihazın gönderdiği baytların sha256'sıyla
-    /// birebir aynı — yani arama → detay → ham iniş zinciri boyunca hiçbir
-    /// katman baytları değiştirmiyor.
+    /// <b>Koşturulduğunda kanıtlayacağı:</b> çok alfabeli bir gövde
+    /// (Türkçe + Arapça + CJK) ClickHouse'a yazılıp geri okunduğunda
+    /// baytlarının sha256'sı değişmiyor — <b>depolama katmanı</b> gövdeyi
+    /// bozmuyor.
     ///
     /// <para>
-    /// F1'de bu zincir <b>beş kez</b> kırıldı ve her kırık bir öncekini
-    /// düzeltmeden görünmüyordu. Burada tek testte duruyor ki altıncısı ilk
-    /// denemede görünsün.
+    /// <b>ADI T27'de DARALTILDI ve sebebi kayda değer.</b> Eski adı
+    /// <c>Ham_bayt_sadakati_zincir_boyunca_korunuyor</c>'du ve okuyan kişi
+    /// "arama → detay → ham iniş zinciri doğrulanmış" diye anlıyordu. Gövdesi
+    /// ise bir olay yazıp <c>body</c>'nin sha256'sını okuyor: ne giriş, ne
+    /// arama, ne olay detayı, ne de <c>raw_ref</c> üzerinden arşive iniş var.
+    /// Yani test doğruydu, <b>adı iddiasından genişti</b> — ve yeşil yanan bir
+    /// test okuyanı yanlış bir güvene bırakıyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// Adı daraltmak tek başına iddiayı <b>sessizce düşürmek</b> olurdu; o
+    /// yüzden zincir gerçekten yazıldı ve ayrı duruyor:
+    /// <c>F2ChainTests.Arama_detay_ham_bayt_ayni_olayi_tasiyor</c>. Bu test
+    /// kendi dar iddiasıyla kalıyor, çünkü kodlama sadakatini üç alfabeyle
+    /// sınayan tek yer burası.
     /// </para>
     /// </summary>
     [Fact]
-    public async Task Ham_bayt_sadakati_zincir_boyunca_korunuyor()
+    public async Task Coklu_alfabeli_govde_depolamada_bozulmuyor()
     {
         // Türkçe + Arapça + CJK: F1'in arşivinde gerçek örnekleri var ve
         // kodlama tespiti bu üçünde kırılıyordu.

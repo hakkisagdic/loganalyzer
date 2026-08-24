@@ -201,6 +201,30 @@ tip yok ama sızıntı var, üstelik sessiz.
 `Izin_listesi_bosaldi_mi` listeyi boş tutuyor. Yeni bir satır eklemek serbest
 ama bedeli görünür: o test kırmızı yanıyor ve F2'nin kapandığı iddiası düşüyor.
 
+### `Pending` bitiş şartlarından **biriydi**, tamamı değil
+
+Bu bölüm bir kez yazıldı ve **eksik yazıldı**: T27'nin kabul kriterleri
+`Pending`'in yanında dört uçtan uca akış ve iki çapraz doğrulama da istiyordu,
+ve bu belge onlara hiç değinmiyordu. Eksiklik T27 taramasında bulundu
+([tarama](../t27-kapanis-taramasi/index.md)).
+
+Bugünkü durum:
+
+| Bitiş şartı | Durum |
+| --- | --- |
+| `Pending` boş, `Exempt` sabit | ✅ |
+| Replay sırasında canlı ingest bozulmuyor | ✅ ölçüldü — ve F1'in varsayımı **yanlış** çıktı (§2'ye eklendi) |
+| Kuru koşu = gerçek koşu | ✅ |
+| 4 uçtan uca akış | ⚠️ **ikisi akış, ikisi parça** — parser ve değişiklik akışları var; giriş→arama→detay→ham bayt ile sussun→alarm→bildirim yalnızca parça hâlinde |
+| Kapsam ayrışması bekçisi | API'de ✅ · ekranda ✅ (T27'de eklendi: sunucuda kapsamlı veri çizen sayfa önbelleklenemiyor) |
+| Token sızıntısı bekçisi | yanıt/çerez ✅ · `localStorage` ✅ (T27'de eklendi) |
+
+**Gözlem, öneri değil:** bir kapanış belgesinin *"fazın bitiş şartı"* bölümü
+eksik olduğunda, belge okuyanı **"faz bitti"** diye bırakıyor — ve bu belge tam
+olarak onu yaptı. Kapanış belgelerinin ticket'ın kabul kriterlerini tek tek
+karşılayan bir kontrol listesi taşıması gerekiyor olabilir. Kaydı burada
+duruyor.
+
 ## 7 · Bilerek yapılmayanlar
 
 | Ne | Neden |

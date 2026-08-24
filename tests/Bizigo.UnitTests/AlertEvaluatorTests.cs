@@ -21,8 +21,21 @@ public sealed class AlertEvaluatorTests
 
     private static readonly DateTimeOffset Now = new(2026, 8, 19, 12, 0, 0, TimeSpan.Zero);
 
-    private static AlertEvaluator Evaluator(AlertingOptions options, TimeProvider? time = null) =>
-        new(options, new AlertingStats(), NullLogger<AlertEvaluator>.Instance, time);
+    /// <summary>
+    /// <paramref name="stats"/> verilmezse yeni bir örnek kuruluyor.
+    ///
+    /// <para>
+    /// <b>Dikkat:</b> sayaçlar iki yere veriliyor — değerlendiriciye ve
+    /// <see cref="AlertEvaluationContext"/>'e. Sayaç iddiası olan bir test
+    /// ikisine de <b>aynı</b> örneği vermeli; yoksa artan sayaç, iddia edilen
+    /// örnek olmuyor ve test sıfır görüp yanlış yeri arattırıyor (T27'de oldu).
+    /// </para>
+    /// </summary>
+    private static AlertEvaluator Evaluator(
+        AlertingOptions options,
+        TimeProvider? time = null,
+        AlertingStats? stats = null) =>
+        new(options, stats ?? new AlertingStats(), NullLogger<AlertEvaluator>.Instance, time);
 
     private static AlertEvaluationContext Context(
         FakeScopedQuery query,
@@ -49,6 +62,80 @@ public sealed class AlertEvaluatorTests
             SilenceSeconds = silenceSeconds,
             SearchJson = AlertSearchCodec.Serialize(search ?? new AlertSearch()),
         };
+
+    /// <summary>
+    /// <b>Saati ileride bir kaynak sessizce atlanmıyor</b> (T27).
+    ///
+    /// <para>
+    /// <c>since = now - lastIngestedAt</c> negatif çıkabiliyor: ingest eden
+    /// makinenin saati değerlendirenden ileriyse son ingest zamanı "gelecekte"
+    /// görünür. Eski davranışta negatif değer eşiğin altında kalıyor ve kaynak
+    /// <b>sessizce</b> atlanıyordu — susan bir cihaz, saat farkı kapanana kadar
+    /// izlenmiyordu ve hiçbir yerde belirti yoktu.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Beklenti "tetikliyor" DEĞİL, ve bu ölçülerek öğrenildi.</b> Kaymalı
+    /// kaynak bu turda susmuş sayılmıyor — <c>ingested_at</c> ileride olduğu
+    /// sürece susma iddiasını destekleyen kanıt yok. İlk tasarımda "kaymayı
+    /// sıfıra kırparsak eşikten sonra tetikler" varsayılmıştı; değerlendirici
+    /// tur başına durumsuz olduğu için kırpmak tetiklenme anını değiştirmiyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Dolayısıyla testin tuttuğu şey davranış değişikliği değil
+    /// <b>görünürlük</b>: sonuç <c>Quiet</c> ama kayma sayaçta. Eski hâlde
+    /// ikisi de yoktu — ne sayaç, ne günlük, ne belirti.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Saati_ileride_kaynak_sessizce_atlanmiyor()
+    {
+        var query = new FakeScopedQuery();
+        query.Sources.Add(FakeScopedQuery.Source("fw-core-01", "network/core", Now.AddDays(-30)));
+
+        // Olay penceresinin içinde ama HABER ALMA zamanı şimdiden 10 dk ileride:
+        // ingest eden makinenin saati kaymış.
+        query.Events.Add(new FakeEvent(
+            "network/core", "fw-core-01", Now.AddMinutes(-30), "accept",
+            IngestedAt: Now.AddMinutes(10)));
+
+        var stats = new AlertingStats();
+        var rule = Rule(AlertRuleType.Silence, "network/core", silenceSeconds: 900);
+
+        var outcome = await Evaluator(new AlertingOptions(), stats: stats)
+            .EvaluateAsync(rule, Context(query, stats), Token);
+
+        // Kaynak susmuş SAYILMIYOR: ileride damgalı bir ingest, susma iddiasını
+        // desteklemiyor. Buradaki iddia bu değil.
+        Assert.Equal(AlertRunState.Quiet, outcome.State);
+
+        // İDDİA BU: kayma artık sessiz değil. Eski hâlde bu sayı hiç yoktu ve
+        // kaynak hiçbir iz bırakmadan atlanıyordu.
+        Assert.Equal(1, stats.ClockSkewedSources);
+    }
+
+    /// <summary>
+    /// Saati <b>düzgün</b> bir kaynakta kayma sayacı artmıyor — sayacın kendi
+    /// bekçisi. Artsaydı sayı gürültüye döner ve "sıfırdan büyükse sorun var"
+    /// cümlesi anlamını kaybederdi.
+    /// </summary>
+    [Fact]
+    public async Task Saati_duzgun_kaynakta_kayma_sayilmiyor()
+    {
+        var query = new FakeScopedQuery();
+        query.Sources.Add(FakeScopedQuery.Source("fw-core-01", "network/core", Now.AddDays(-30)));
+        query.Events.Add(new FakeEvent("network/core", "fw-core-01", Now.AddMinutes(-30), "accept"));
+
+        var stats = new AlertingStats();
+        var rule = Rule(AlertRuleType.Silence, "network/core", silenceSeconds: 900);
+
+        var outcome = await Evaluator(new AlertingOptions(), stats: stats)
+            .EvaluateAsync(rule, Context(query, stats), Token);
+
+        Assert.Equal(AlertRunState.Fired, outcome.State);
+        Assert.Equal(0, stats.ClockSkewedSources);
+    }
 
     [Fact]
     public async Task Esik_kurali_sinir_asilinca_tetikleniyor()

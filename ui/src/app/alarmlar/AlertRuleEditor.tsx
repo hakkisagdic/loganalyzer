@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
@@ -21,6 +21,10 @@ import {
   type NotificationChannel,
   type RuleType,
 } from "@/lib/alerts/types";
+import { errorKind, errorStatus } from "@/lib/telemetry/classify";
+import { track } from "@/lib/telemetry/client";
+import { alertShape } from "@/lib/telemetry/measure";
+import { scrubPathname } from "@/lib/telemetry/scrub";
 
 import { PreviewPanel } from "./PreviewPanel";
 import styles from "./alerts.module.css";
@@ -71,7 +75,10 @@ function initialState(rule: AlertRule | null, channelIds: readonly string[]): Fo
     comparison: (rule?.comparison as Comparison) ?? "gt",
     silenceSeconds: rule ? toNumber(rule.silence_seconds) : 900,
     repeatIntervalSeconds: rule ? toNumber(rule.repeat_interval_seconds) : 3600,
-    enabled: rule?.enabled ?? true,
+    // `status` üç değerli; düzenleyicinin onay kutusu ikisini temsil ediyor.
+    // `gated` buradan verilemez ve alınamaz: yetenek sınırı, kullanıcının
+    // kararı değil — sunucu da o isteği yok sayıyor.
+    enabled: rule ? rule.status === "enabled" : true,
     channelIds: [...channelIds],
   };
 }
@@ -109,6 +116,11 @@ export function AlertRuleEditor({
   channels,
 }: AlertRuleEditorProps) {
   const router = useRouter();
+  // Telemetriye giden rota BURADAN türüyor, elle yazılmıyor: aynı bileşen iki
+  // yolda çiziliyor (`/alarmlar/yeni` ve `/alarmlar/:id`) ve sabit bir metin
+  // ikisini tek kovaya koyardı. `scrubPathname` kimliği kalıba indiriyor —
+  // ham yol, PostHog'daki liste müşterinin kural envanteri demek olurdu.
+  const pathname = usePathname();
   const [form, setForm] = useState<FormState>(() => initialState(rule, channelIds));
   const [preview, setPreview] = useState<AlertPreview | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -206,17 +218,55 @@ export function AlertRuleEditor({
     setSaving(true);
     setSaveError(null);
 
+    // Gövde BİR KEZ okunuyor: isteğe giden nesne ile telemetriye giden şekil
+    // aynı nesneden türüyor. İki ayrı `bodyRef.current()` çağrısı ikisinin
+    // ayrışabildiği bir pencere bırakırdı — ve ayrıştığı gün telemetri,
+    // gönderilmemiş bir kuralı anlatırdı.
+    const gonderilen = bodyRef.current();
+
     try {
       if (rule) {
-        await api.put("/v1/alerts/rules/{id}", { path: { id: rule.id }, body: bodyRef.current() });
+        await api.put("/v1/alerts/rules/{id}", { path: { id: rule.id }, body: gonderilen });
       } else {
-        await api.post("/v1/alerts/rules", { body: bodyRef.current() });
+        await api.post("/v1/alerts/rules", { body: gonderilen });
       }
+
+      // Kaydın ŞEKLİ gidiyor, kuralın kendisi değil — türetme `measure.ts`'te,
+      // ekranın içinde değil: "bu alan gönderilebilir mi" telemetri modülünün
+      // sorusu (bkz. `alertShape`).
+      //
+      // `is_new`, kaydetmenin hangi uca gittiğiyle AYNI koşuldan türüyor:
+      // "yeni mi" sorusunun tek bir kaynağı var. İki tane olsaydı bir gün
+      // ayrışırlar ve pano güncellemeleri yeni kural diye sayardı.
+      track("alert_saved", alertShape(gonderilen, rule === null));
 
       router.push("/alarmlar");
       router.refresh();
     } catch (cause) {
       setSaveError(describeError(cause));
+
+      // Düşen kaydetme `alert_saved` BASMIYOR, ve bu `event_search_run`'ın
+      // düşen aramayı saymasından bilinçli bir sapma.
+      //
+      // Orada olayın ölçtüğü şey aramanın KOŞMASI: süresi ve şekli düşen
+      // aramada da gerçek, ve yalnızca başarılıları saymak "aramalar hızlı"
+      // diyen bir panoya yol açardı. Burada olayın ölçtüğü şey bir DURUM
+      // DEĞİŞİKLİĞİ — "bir kural kaydedildi". Düşen kaydetmede ortada kural
+      // yok, katalogda da "başarısız" diyebilecek bir alan yok: basılan olay
+      // var olmayan kuralları sayan bir panoya dönüşürdü. (`rca_run` için de
+      // aynı karar verildi.)
+      //
+      // Ama deneme yine de ölçülüyor — doğru olayla: ekranda bir hata
+      // GÖSTERİLİYOR ve `error_shown` tam olarak onu sayıyor. Böylece "kaç
+      // kaydetme düştü" sorusu veride cevaplanabilir kalıyor; sessizleşen
+      // yalnızca yanlış olay oluyor. Giden şey sınıflandırılmış hata:
+      // `describeError`'ın ekrana yazdığı cümle DEĞİL, çünkü o cümle bir grup
+      // adı ya da bir sınır değeri taşıyabilir (bkz. `classify.ts`).
+      track("error_shown", {
+        route: scrubPathname(pathname),
+        error_kind: errorKind(cause),
+        status: errorStatus(cause),
+      });
     } finally {
       setSaving(false);
     }

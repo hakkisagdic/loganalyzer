@@ -6,9 +6,12 @@ import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { describeError } from "@/lib/api/errors";
 import { serverApi } from "@/lib/api/server";
 import { currentUser } from "@/lib/auth/currentUser";
+import type { GoldenSetQuality } from "@/lib/rca/quality";
 import type { RcaBundleSummary } from "@/lib/rca/report";
 
+import { QualityBadge } from "./QualityBadge";
 import { RcaLauncher } from "./RcaLauncher";
+import rca from "./rca.module.css";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +44,17 @@ export default async function RcaPage() {
     error = describeError(cause);
   }
 
+  // Gösterge ayrı çekiliyor: paket listesi düşerse gösterge yine görünsün ve
+  // tersi. Tek `try` içinde olsalardı biri diğerini sessizce yutardı.
+  let quality: GoldenSetQuality | null = null;
+  let qualityError: string | null = null;
+
+  try {
+    quality = (await serverApi.get("/v1/rca/quality")) as GoldenSetQuality;
+  } catch (cause) {
+    qualityError = describeError(cause);
+  }
+
   return (
     <div className={styles.shell}>
       <a className="skip-link" href="#icerik">
@@ -57,7 +71,11 @@ export default async function RcaPage() {
       </header>
 
       <main className={styles.main} id="icerik">
-        <h1>RCA raporları</h1>
+        <div className={rca.headRow}>
+          <h1>RCA raporları</h1>
+          <QualityBadge quality={quality} error={qualityError} />
+        </div>
+
         <RcaLauncher initialBundles={bundles} initialError={error} />
       </main>
     </div>

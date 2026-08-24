@@ -48,7 +48,8 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-__all__ = ["CATALOG_DIR", "PIN_NAME", "RULES_SUBDIR", "Pin", "load_pin", "verify", "pin_text"]
+__all__ = ["CATALOG_DIR", "PIN_NAME", "RULES_SUBDIR", "Pin", "load_pin", "verify",
+           "pin_text", "refresh_pin", "hash_tree"]
 
 #: Kaynak kurallar **girdi**, o yüzden `catalog/` altında — `detections/` çıktı
 #: için. `catalog/patterns/` ile aynı desen: kopyalanmış üçüncü taraf içerik.
@@ -104,6 +105,37 @@ def pin_text(pin: Pin) -> str:
     return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
 
 
+def hash_tree(catalog_dir: Path) -> dict[str, str]:
+    """Kopyalanmış ağacın `yol → sha256` haritası."""
+    rules_dir = catalog_dir / RULES_SUBDIR
+    if not rules_dir.is_dir():
+        return {}
+    return {
+        path.relative_to(rules_dir).as_posix(): _sha256_bytes(path.read_bytes())
+        for path in sorted(rules_dir.rglob("*.yml"))
+    }
+
+
+def refresh_pin(catalog_dir: Path) -> Pin:
+    """Çiviyi diskteki ağaçtan yeniden üretir; **üstverisi korunur**.
+
+    Neden bir komut: çivi bu turda üç kez elle yenilendi ve dördüncüsünde
+    yenilenmedi — bir ajan kuralı düzeltti, çiviyi yenilemedi, CI kırmızı yandı.
+    Kapı doğru bağırdı ama tekrarı kesindi: elle yapılan bir adım unutulur.
+
+    `source`, `commit` ve `license` **değişmiyor**. Bunlar kararlar, özet değil;
+    yeniden üretim onlara dokunursa "hangi sürümden geldi" sorusunun cevabı
+    sessizce kaybolur. Kural setini gerçekten yükseltmek (yeni `commit`) ayrı bir
+    hareket ve ağ gerektiriyor; bu komut yalnızca **yerel** ağacı çiviyle
+    hizalıyor.
+    """
+    mevcut = load_pin(catalog_dir)
+    yeni = Pin(source=mevcut.source, commit=mevcut.commit, license=mevcut.license,
+               rules=hash_tree(catalog_dir))
+    (catalog_dir / PIN_NAME).write_text(pin_text(yeni), encoding="utf-8")
+    return yeni
+
+
 def verify(catalog_dir: Path) -> list[str]:
     """Kopyalanmış ağaç çiviye uyuyor mu. Boş liste = uyuyor. **Ağ kullanmıyor.**
 
@@ -145,9 +177,29 @@ def _main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Kural setinin çivisini doğrular.")
     parser.add_argument("--catalog", type=Path, default=None)
     parser.add_argument("--verify", action="store_true", help="Kopyalanmış ağaç çiviye uyuyor mu (ağsız)")
+    parser.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Çiviyi diskteki ağaçtan yeniden üretir (üstveri korunur, ağsız)",
+    )
     args = parser.parse_args(argv)
 
     catalog_dir = args.catalog or (repo_root() / CATALOG_DIR)
+
+    if args.refresh:
+        onceki = load_pin(catalog_dir)
+        yeni = refresh_pin(catalog_dir)
+        degisen = sorted(
+            set(onceki.rules) ^ set(yeni.rules)
+            | {k for k in set(onceki.rules) & set(yeni.rules) if onceki.rules[k] != yeni.rules[k]}
+        )
+        if degisen:
+            print(f"✓ Çivi yenilendi — {len(yeni.rules)} kural, değişen: {degisen}")
+            print("  ⚠️ Üretilen SQL de yenilenmeli: `python -m sigma_build.compile --write`")
+        else:
+            print(f"✓ Çivi zaten güncel — {len(yeni.rules)} kural.")
+        return 0
+
     pin = load_pin(catalog_dir)
 
     if not args.verify:

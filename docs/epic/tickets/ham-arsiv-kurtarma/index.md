@@ -1,7 +1,7 @@
 ---
 title: "T40 — Ham arşiv kurtarma: kayıp nesneyi WAL segmentinden geri yükle"
 kind: ticket
-status: 0
+status: 2
 ---
 
 # T40 — Kayıp nesnenin yerel segmentten geri yüklenmesi
@@ -176,6 +176,46 @@ teslim edilir.
 Sonuncusu dışında hiçbiri konteyner istemiyor: `IRawObjectStore` zaten arayüz ve
 `RawArchiveTestDoubles` var. Bu bilerek böyle — F1 kapanışının notu, beş
 hatanın dördünün konteyner gerektirmeden yakalanabildiğiydi.
+
+## Uygulama sonucu
+
+| Madde | Durum |
+| --- | --- |
+| 1 · Silme kapısı `State`'e duyarlı | ✅ Kırmızı **ölçülerek** yazıldı: bugünkü kodla iki bekçi düştü |
+| 2 · Kurtarma yolu | ✅ `RawArchiveUploader.RecoverAsync`; nesne sha256'sından tanınıyor |
+| 3 · Tetikleme tespite bağlı | ✅ Scrub turunun içinde; elle uç yazılmadı (aşağıda) |
+| 4 · Tarama/pencere ilişkisi görünür | ✅ Açılışta hesaplanıp loglanıyor, aşan yapılandırmada **uyarı** |
+
+**Kurulum yolu paylaşıldı, kopyalanmadı** (§9): `BuildObjects` ayrıldı ve
+yükleme ile kurtarma onu birlikte kullanıyor. İkinci bir kurulum yolu yazılsaydı
+ayrışma tam olarak kurtarmanın yakalayamayacağı yerde ortaya çıkardı — yeniden
+kurulan nesne farklı bir sha256 üretir, kurtarma "manifest yanlış" diye durur ve
+gerçek sebep başka bir dosyada aranırdı.
+
+### Yazarken çıkan, ticket'ta olmayan iki şey
+
+**Kurtarma saklama saatini yeniden başlatıyor.** `VerifiedAt` tazeleniyor, yani
+segment kurtarmadan sonra 48 saat daha tutuluyor. Kasıtlı ve pencerenin kendi
+gerekçesinden çıkıyor: pencere, kaybın en olası olduğu dönemi kapsamak için var
+ve *az önce yazılmış* bir nesne tam olarak o dönemde. Bedeli kayıtta dursun —
+aynı nesne tekrar tekrar kaybolursa segmenti uzun süre tutar; deneme üst sınırı
+bunu sınırlıyor.
+
+**`Unrecoverable` ayrı bir durum oldu.** `Missing`'de kalsaydı *"kurtarma
+sırasını bekliyor"* ile *"denendi, olmadı"* ayırt edilemezdi ve operatörün
+bakması gereken tek liste ikincisi.
+
+### Yapılmayanlar
+
+- **Elle tetiklenen uç yazılmadı.** Ticket ikincil diyordu ve tetikleme tespite
+  bağlandığı için bugün bir boşluk doldurmuyor. Operatörün scrub sırasını
+  beklemeden kurtarma istediği bir durum çıkarsa eklenir.
+- **Uçtan uca kurtarma gerçek RustFS'e karşı koşturulmadı** (§2). Birim
+  seviyesindeki dokuz bekçi manifest ve segment kararlarını tutuyor; depo
+  davranışı koordinatörün koşumunda.
+- Scrub örnekleme oranı ve saklama süresi hâlâ **ölçülmedi** (T04 açık kalem #2,
+  #3). Bu ticket ilişkiyi görünür kıldı; doğru sayıları gerçek arşiv boyutuyla
+  seçmek ayrı iş.
 
 ## Notlar
 

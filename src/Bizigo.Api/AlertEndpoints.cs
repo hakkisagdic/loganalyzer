@@ -360,7 +360,14 @@ public static class AlertEndpoints
 
                 // Redaksiyondan geçmiş hâli; gönderici gizli bilgiyi buraya
                 // yazamıyor (T22 bekçisi).
-                d.LastError))]))
+                d.LastError))],
+            t.State.ToString().ToLowerInvariant(),
+            t.ClosedAt,
+
+            // Boş dize yerine `null`: "kapatan yok" ile "kapatanın adı boş"
+            // aynı şey değil ve ekranın ikisini ayırt edebilmesi gerekiyor.
+            string.IsNullOrEmpty(t.ClosedBySubject) ? null : t.ClosedBySubject,
+            t.ReviewId))
             .ToArray();
 
         return Results.Ok(new AlertTriggerListResponse(triggers.Length, triggers));
@@ -533,7 +540,9 @@ public static class AlertEndpoints
             ComparisonName(rule.Comparison),
             rule.SilenceSeconds,
             rule.RepeatIntervalSeconds,
-            rule.Enabled,
+            rule.Status.ToString().ToLowerInvariant(),
+            rule.Source.ToString().ToLowerInvariant(),
+            rule.GatedReason,
             rule.NextRunAt,
             rule.LastRunAt,
             rule.LastFiredAt,
@@ -572,5 +581,6 @@ public static class AlertEndpoints
             snapshot.NotificationsQueued,
             snapshot.NotificationsDelivered,
             snapshot.NotificationsRetried,
-            snapshot.NotificationsAbandoned));
+            snapshot.NotificationsAbandoned),
+        snapshot.ClockSkewedSources);
 }

@@ -12,7 +12,7 @@
   -->
   <ItemGroup Label="Depolama">
     <PackageVersion Include="ClickHouse.Driver" Version="1.3.0" />
-    <PackageVersion Include="AWSSDK.S3" Version="4.0.102.1" />
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.102.3" />
     <!--
       Saf yönetilen zstd portu. Yerel kütüphane bağlamayan sürüm bilinçli tercih:
       konteyner imajına ek .so girmiyor ve arm64/x64 ayrımı yok.
@@ -35,7 +35,7 @@
 
   <ItemGroup Label="Ingest">
     <!-- OTLP çözücü: yalnızca mesaj sınıfları üretilir (GrpcServices=None), gRPC yok. -->
-    <PackageVersion Include="Google.Protobuf" Version="3.35.1" />
+    <PackageVersion Include="Google.Protobuf" Version="3.36.0" />
     <PackageVersion Include="Grpc.Tools" Version="2.83.0" />
     <!-- WAL segment CRC'si. -->
     <PackageVersion Include="System.IO.Hashing" Version="10.0.11" />

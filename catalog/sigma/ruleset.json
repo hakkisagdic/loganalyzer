@@ -50,7 +50,7 @@
     },
     {
       "path": "fortigate_user_auth_fail.yml",
-      "sha256": "sha256:d22bf875d663afd7eb443c12b2d892b641cb5ff3257a63242d172adb58bf68ed"
+      "sha256": "sha256:3a44f8c4cd3454e327eed1f1afd62262c75a1d195bfb0b90f3666b809d35f709"
     },
     {
       "path": "nginx_5xx_burst.yml",

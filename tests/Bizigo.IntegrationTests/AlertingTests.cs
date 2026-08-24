@@ -446,18 +446,7 @@ public sealed class AlertingTests(DevStackFixture stack) : IAsyncLifetime
         return Path.Combine(dir!.FullName, relative);
     }
 
-    /// <summary>
-    /// Testte tek bir <see cref="IScopedQuery"/> paylaşılıyor.
-    ///
-    /// <para>
-    /// Üretimde her kiralama yeni bir DI kapsamı açıyor, çünkü değerlendirmeler
-    /// paralel koşuyor ve <c>DbContext</c> paylaşılamaz. Burada tur içindeki
-    /// kural sayısı bir olduğu için paylaşım güvenli — ve testin ölçtüğü şey
-    /// zaten kapsam kiralaması değil, SQL.
-    /// </para>
-    /// </summary>
-    private sealed class SingleQuerySource(IScopedQuery query) : IAlertQuerySource
-    {
-        public AlertQueryLease Lease() => new(query, null);
-    }
+    // `SingleQuerySource` T27'de `AlertQuerySources.cs`'ye taşındı:
+    // `AlertChainTests` de aynı sahteye ihtiyaç duydu ve ikinci bir kopya
+    // yazmak, biri değiştiğinde ötekinin sessizce ayrışması demekti (§9).
 }

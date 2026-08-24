@@ -194,10 +194,13 @@ public sealed class ProducesContractTests
             typeof(EvidenceBundleFactory), typeof(EvidenceBundleStore),
 
             // T37 incelemeyi T38'in altın küme deposuna yazıyor; ayrı bir
-            // inceleme tablosu yok. İki ajan bunu paralel yazınca iki tablo
-            // doğmuştu (§9 — kesişen sözleşme önceden çivilenmeli); tek kalan
-            // bu.
+            // inceleme tablosu YOK. İkisi paralel yazılınca iki tablo doğmuştu
+            // (§9 — kesişen sözleşme önceden çivilenmeli); tek kalan bu.
             typeof(GoldenReviewStore),
+
+            // T38'in alarm kapatma ucu. Aynı kalıp; kapatma inceleme ile tek
+            // işlem olduğu için servis de tek.
+            typeof(AlertClosureService),
         })
         {
             var captured = type;
@@ -288,7 +291,7 @@ public sealed class ProducesContractTests
     ///
     /// <para>
     /// Bu test yansıma keşfinin gerçekten iş gördüğünü sabitliyor: bugün bilinen
-    /// on iki uzantının hepsi bulunuyor ve hepsi çağrıldığı için hepsinin uçları
+    /// on üç uzantının hepsi bulunuyor ve hepsi çağrıldığı için hepsinin uçları
     /// denetime giriyor. Yeni bir uç dosyası eklendiğinde burada bir şey
     /// güncellemek gerekmiyor — sayı kendiliğinden artıyor ve <b>uçları da
     /// otomatik denetime giriyor</b>; kapatılan delik tam olarak buydu.
@@ -303,7 +306,8 @@ public sealed class ProducesContractTests
         // bilinçli bir hareket olur.
         Assert.Equal(
             [
-                "MapAlerts", "MapAuth", "MapChangeConnectors", "MapChangeWebhooks", "MapChanges",
+                "MapAlertClosure", "MapAlerts", "MapAuth",
+                "MapChangeConnectors", "MapChangeWebhooks", "MapChanges",
                 "MapEvents",
                 "MapNotificationChannels", "MapOtlpLogs", "MapParserAuthoring", "MapParsers",
                 "MapPipelineHealth", "MapRca", "MapReplay", "MapSources",

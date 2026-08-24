@@ -63,9 +63,11 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("description");
 
-                    b.Property<bool>("Enabled")
-                        .HasColumnType("boolean")
-                        .HasColumnName("enabled");
+                    b.Property<string>("GatedReason")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("gated_reason");
 
                     b.Property<int>("IntervalSeconds")
                         .HasColumnType("integer")
@@ -124,9 +126,35 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasColumnType("text")
                         .HasColumnName("search_json");
 
+                    b.Property<string>("SigmaOutputSha")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("sigma_output_sha");
+
+                    b.Property<string>("SigmaRuleId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("sigma_rule_id");
+
+                    b.Property<string>("SigmaSourceSha")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("sigma_source_sha");
+
                     b.Property<int>("SilenceSeconds")
                         .HasColumnType("integer")
                         .HasColumnName("silence_seconds");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("integer")
+                        .HasColumnName("source");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
 
                     b.Property<double>("Threshold")
                         .HasColumnType("double precision")
@@ -143,8 +171,11 @@ namespace Bizigo.ControlPlane.Migrations
                     b.HasKey("Id")
                         .HasName("pk_alert_rules");
 
-                    b.HasIndex("Enabled", "NextRunAt")
-                        .HasDatabaseName("ix_alert_rules_enabled_next_run_at");
+                    b.HasIndex("SigmaRuleId")
+                        .HasDatabaseName("ix_alert_rules_sigma_rule_id");
+
+                    b.HasIndex("Status", "NextRunAt")
+                        .HasDatabaseName("ix_alert_rules_status_next_run_at");
 
                     b.ToTable("alert_rules", "bizigo");
                 });
@@ -954,6 +985,10 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("owner_group");
+
+                    b.Property<int>("RecoveryAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("recovery_attempts");
 
                     b.Property<string>("Sha256")
                         .IsRequired()

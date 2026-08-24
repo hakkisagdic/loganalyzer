@@ -1,0 +1,37 @@
+# Keycloak uzerinden giris. Akislarin hepsi bunu `runFlow` ile cagiriyor.
+#
+# IKINCI KOPYA YAZMA (CLAUDE.md §9): alan kimlikleri (`username`, `password`,
+# `kc-login`) Keycloak'in kendi giris temasindan geliyor ve `ui/tests/e2e/`
+# altindaki Playwright paketi de aynilarini kullaniyor. Ikisi ayrisirsa sebebi
+# Keycloak temasinin degismesidir ve o gun IKISI birden kirilmali.
+#
+# Kullanici `admin` DEGIL, bilerek: `admin` kapsam filtresinden muaf
+# (`AccessScope.System`). Onunla giren bir akis, urunun en pahali hata
+# sinifinin tam ortasini atlar — kapsamin gercekten uygulandigini hicbir sey
+# gostermez. `analyst.core` `/network/core` claim'iyle geliyor ve gordugu her
+# satir ayni zamanda kapsam yolunun kaniti.
+appId: bizigo
+---
+# SECICILER METIN TABANLI, `id:` DEGIL — olculdu: Keycloak sayfasinda
+# `id="kc-login"` HTML'de duruyor ama Maestro'nun web surucusu onu bulmuyor
+# (surucu erisilebilirlik metnine bakiyor, ham `id` niteligine degil).
+# Maestro'nun kendi rehberi de "kullaniciya gorunen metni" onceliyor.
+#
+# Metinler INGILIZCE cunku realm'de Turkce yerel yok; eklenirse bu satirlar
+# kirilir ve kirilmasi DOGRU olur — o gun Playwright paketi de kirilacak.
+- extendedWaitUntil:
+    visible: "Sign In"
+    timeout: 90000
+
+- tapOn: "Username or email"
+- inputText: ${KULLANICI}
+
+- tapOn: "Password"
+- inputText: ${PAROLA}
+
+- tapOn: "Sign In"
+
+# Giris sonrasi urune donus. Kabuk cizildiginde oturum gercekten kurulmustur.
+- extendedWaitUntil:
+    visible: "Bizigo Log Analyzer"
+    timeout: 90000

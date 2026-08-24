@@ -168,7 +168,24 @@ export function AlertsOverview() {
                 render: (row) => (
                   <span className={styles.deliveryRow}>
                     <RunStateBadge rule={row} />
-                    {row.enabled ? null : <Badge>pasif</Badge>}
+                    {/*
+                      Üç durum, iki değil. `pasif` ile `gated`'i tek rozette
+                      toplamak, "kullanıcı istemedi" ile "biz yapamadık"ı
+                      karıştırmak olurdu: kullanıcı kapalı bir kuralı açmayı
+                      dener, açılmaz, ve sebebini de göremez.
+
+                      `gated` rozeti sebebini TAŞIYOR — sessiz bir "kapalı",
+                      listeyi kullanıcının neyin kapatacağını göremediği bir
+                      çöp kutusuna çevirir.
+                    */}
+                    {row.status === "enabled" ? null : row.status === "gated" ? (
+                      <span title={row.gated_reason || undefined}>
+                        <Badge>koşamaz</Badge>
+                      </span>
+                    ) : (
+                      <Badge>pasif</Badge>
+                    )}
+                    {row.source === "sigma" ? <Badge>Sigma</Badge> : null}
                   </span>
                 ),
               },

@@ -152,7 +152,6 @@ export function honestyLines(report: RcaReport): readonly HonestyLine[] {
   return lines;
 }
 
-/** İnceleme düğmelerinin durumları — sunucunun kabul ettiği üç değer. */
 /**
  * İnceleme kararları — sunucudaki `ReviewVerdict` ile **birebir**.
  *
@@ -167,3 +166,76 @@ export const REVIEW_STATES = [
   { value: "wrong", label: "Yanlış" },
   { value: "unknown", label: "Bilmiyorum" },
 ] as const;
+
+/**
+ * Çelişen kanıt hakkında <b>ayrı</b> karar — sunucudaki
+ * `ContradictingEvidenceVerdict` ile birebir (RCA riski #5).
+ *
+ * <p>
+ * <b>Neden ayrı bir soru ve neden "yanlış/eksik" seçilince açılan bir alt soru
+ * DEĞİL:</b> tiyatronun en tehlikeli hâli, raporun <b>bütün olarak doğru</b>
+ * olduğu hâl. Model çelişen kanıt alanını doldurmak için önemsiz bir şey
+ * uydurmuş olabilir ve rapor yine de "doğru" kararını alır. Soruyu karara
+ * bağlasaydık, ölçüm tam da görmesi gereken durumu <b>sistematik olarak</b>
+ * hiç örneklemezdi — kendi en kötü durumunu göremeyen bir ölçüm, ölçüm değil.
+ * </p>
+ *
+ * <p>
+ * <b>Neden ikinci bir düğme grubu da değil:</b> kararı iki tıka çıkarmak
+ * inceleme yorgunluğunu (RCA riski #2) büyütürdü ve altın küme, kazandığı
+ * boyuttan çok kaybettiği satırdan zarar görürdü. Seçim tek tıkı bozmadan
+ * yanında duruyor: hangi karar düğmesine basılırsa basılsın bu değer onunla
+ * birlikte gidiyor.
+ * </p>
+ *
+ * <p>
+ * <b>Varsayılan <c>unknown</c>, <c>not_present</c> değil.</b> Bugün F3'ün
+ * deterministik raporunda çelişen kanıt bölümü <b>yok</b> (o F4'ün), yani
+ * <c>not_present</c> çoğu rapor için doğru cevap. Ama ekran bunu
+ * <b>bilemiyor</b>: yanıt böyle bir alan taşımıyor ve ekranın kullanıcı adına
+ * çıkarım yapması, F4 bölümü eklediğinde birinin hatırlamasına kadar sessizce
+ * yanlış iddia etmeye devam etmek olurdu. İddia, raporu gerçekten gören
+ * kişide kalıyor.
+ * </p>
+ */
+export const CONTRADICTING_CHOICES = [
+  { value: "unknown", label: "Bilmiyorum" },
+  { value: "not_present", label: "Bölüm yoktu" },
+  { value: "sound", label: "Vardı, yerindeydi" },
+  { value: "trivial", label: "Vardı, önemsizdi" },
+] as const;
+
+export interface ReviewRequestBody {
+  readonly verdict: string;
+  readonly contradicting_evidence: string;
+  readonly actual_root_cause: string;
+  readonly note: string;
+}
+
+/**
+ * İnceleme isteğinin gövdesi — <b>tek yerde</b>.
+ *
+ * <p>
+ * Ayrı bir fonksiyon olmasının sebebi sınanabilirlik: düğmeye tıklamayı
+ * sınamak DOM ortamı isterdi, oysa asıl soru "hangi gövde gidiyor". Aynı kalıp
+ * <c>changeWriteRequest</c>'te de var.
+ * </p>
+ *
+ * <p>
+ * <c>reviewer</c> gövdede <b>yok</b>: sunucu onu token'dan alıyor. İstemciden
+ * göndermek, herkesin başkasının adına oy yazabilmesi demek olurdu.
+ * </p>
+ */
+export function reviewRequest(
+  verdict: string,
+  contradictingEvidence: string,
+  actualRootCause: string,
+  note = "",
+): ReviewRequestBody {
+  return {
+    verdict,
+    contradicting_evidence: contradictingEvidence,
+    actual_root_cause: actualRootCause.trim(),
+    note,
+  };
+}

@@ -12,6 +12,7 @@ using Bizigo.Parsing.Grok;
 using Bizigo.Parsing.Testing;
 using Bizigo.Storage.ClickHouse;
 using Microsoft.Extensions.Logging.Abstractions;
+using Bizigo.Parsing.Samples;
 
 namespace Bizigo.Cli.Seeding;
 
