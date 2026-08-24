@@ -11,7 +11,7 @@ relationships:
   - target: "[[skills/paralel-ajan-koordinasyonu]]"
     type: related_to
 sources: [CLAUDE.md, docs/epic/f2-kapanis/index.md]
-source_digest: "sha256-12/v1 CLAUDE.md=3984257f89e8 docs/epic/f2-kapanis/index.md=c701d88f78fd"
+source_digest: "sha256-12/v1 CLAUDE.md=6d1fc1f38840 docs/epic/f2-kapanis/index.md=c701d88f78fd"
 summary: Bu depoda en pahalı hata sınıfı; hata, sayaç ve belirti üretmeden yanlış sonuç veren davranış. Ölçülmeyen şey çalışıyor sayılmaz.
 provenance:
   extracted: 0.85
@@ -47,6 +47,11 @@ Hepsi gerçek olay; `CLAUDE.md` §7'de tek tek sayılı duruyor:
 - `REPLACE PARTITION` atomik diye replay'in canlı ingest'i bozmadığı
   varsayılmıştı; okuma ile değiştirme arasındaki pencerede yazılan satırlar
   sessizce siliniyor.
+- **Bu sayfanın kendisi de o sınıfa girebiliyor.** Bir vault sayfası kaynağından
+  ayrıldığında hiçbir şey bozulmuyor — sayfa hâlâ okunuyor, hâlâ ikna edici,
+  ve **ölçülmüş gibi okunuyor**. `CLAUDE.md` §11'in vault kuralı bu yüzden
+  yazıldı: aynı kırmızı üç ayrı turda main'i kırdı ve her seferinde farklı bir
+  ajanın belgesi yüzünden. Sorun dikkatte değil, kuralın yazılı olmamasındaydı.
 
 ## Ortak şekil
 
