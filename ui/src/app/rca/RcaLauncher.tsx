@@ -10,7 +10,7 @@ import { api } from "@/lib/api/client";
 import { describeError } from "@/lib/api/errors";
 import type { RcaBundleSummary, RcaReport } from "@/lib/rca/report";
 import { track } from "@/lib/telemetry/client";
-import { rcaShape } from "@/lib/telemetry/measure";
+import { rcaFailureShape, rcaShape } from "@/lib/telemetry/measure";
 import { screenState } from "@/lib/ui/screen-state";
 
 import styles from "./rca.module.css";
@@ -111,13 +111,16 @@ export function RcaLauncher({ initialBundles, initialError }: RcaLauncherProps) 
 
       router.push(`/rca/${report.bundle_id}`);
     } catch (cause) {
-      // Düşen koşum için olay YOK ve bu bilinçli: `rca_run`'ın katalogdaki üç
-      // alanının hiçbiri "başarısız" diyemiyor, dolayısıyla basılacak tek şey
-      // başarı ŞEKLİNDE bir olay olurdu — `signal_count: 0` bir koşumun hiçbir
-      // şey bulamadığını söyler, patladığını değil. İkisini tek kovaya koymak
-      // bu depodaki en pahalı hata sınıfı (§7). Katalog `succeeded`/`error_kind`
-      // ile genişletilirse (ikisi de `EventFieldTypes`'ta zaten var ve
-      // `parser_compiled` ikisini de kullanıyor) burası da basmalı.
+      // Düşen koşum da basılıyor — AYNI olay, daha AZ alanla. Yalnızca
+      // başarılıları saymak "RCA hep çalışıyor" diyen bir pano üretirdi;
+      // düşenler zaten sayılmadığı için. `event_search_run` düşen aramada
+      // aynısını yapıyor ve gerekçesi orada yazılı.
+      //
+      // `signal_count` ve `trust_band` YOK: elde rapor olmadığı için ikisi de
+      // BİLİNMİYOR — sıfır değil. `signal_count: 0` "hiçbir şey bulamadı" der,
+      // "patladı" demez; ikisini tek kovaya koymak §7'nin sınıfı.
+      track("rca_run", rcaFailureShape(cause, { durationMs: performance.now() - started }));
+
       setRunError(describeError(cause));
       setRunning(false);
     }

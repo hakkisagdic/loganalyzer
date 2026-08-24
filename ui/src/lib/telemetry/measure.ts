@@ -2,7 +2,7 @@ import type { AlertRuleRequest } from "@/lib/alerts/types";
 import type { SearchCriteria, QueryVerdict } from "@/lib/events/criteria";
 import type { RcaReport } from "@/lib/rca/report";
 
-import { trustBand } from "./classify";
+import { errorKind, trustBand } from "./classify";
 import type { EventPayload } from "./events";
 
 /**
@@ -139,6 +139,35 @@ export function rcaShape(
     signal_count: report.findings.length,
     duration_ms: Math.round(measured.durationMs),
     trust_band: trustBand(report.trust),
+    succeeded: true,
+  };
+}
+
+/**
+ * **Düşen** RCA koşumunun şekli.
+ *
+ * <p>
+ * Ayrı bir fonksiyon çünkü ayrı bir bilgi kümesi: elde rapor yok, dolayısıyla
+ * <c>signal_count</c> ve <c>trust_band</c> <b>bilinmiyor</b> — sıfır değil.
+ * İkisini de dışarıda bırakmak zorunlu: <c>signal_count: 0</c> "koşum hiçbir
+ * şey bulamadı" der, "koşum patladı" demez, ve bu ikisini tek kovaya koymak
+ * bu deponun en pahalı hata sınıfı (§7).
+ * </p>
+ *
+ * <p>
+ * Süre yine gidiyor ve bilerek: bir RCA'nın <b>ne kadar sonra</b> düştüğü
+ * anlamlı — hemen dönen bir doğrulama hatası ile zaman aşımına giden bir koşum
+ * aynı şey değil.
+ * </p>
+ */
+export function rcaFailureShape(
+  cause: unknown,
+  measured: { readonly durationMs: number },
+): EventPayload<"rca_run"> {
+  return {
+    duration_ms: Math.round(measured.durationMs),
+    succeeded: false,
+    error_kind: errorKind(cause),
   };
 }
 

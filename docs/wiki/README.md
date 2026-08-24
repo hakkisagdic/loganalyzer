@@ -102,11 +102,20 @@ kasa. Bu deponun §7'de tarif ettiği sınıf.
 açan biri Obsidian'a o yolu kaydettirir ve aynı yere geri döner. Yeni bir
 kurulumda vault yolu **daima ana checkout'u** göstermeli.
 
-**İkinci kopya hâlâ duruyor ve bir karar bekliyor.** Aynı değer iki yerde:
+**İkinci kopya kapandı — ve nasıl kapandığı önemli.** Aynı değer iki yerdeydi:
 `tools/obsidian-wiki/.env` ve `~/.obsidian-wiki/config`. Çözüm sırası önce
-CWD'den yukarı `.env`, sonra `config` — yani biri değişip diğeri kalırsa iki
-skill koşumu **iki farklı vault'a** yazar ve hiçbiri hata vermez. Tek kaynağa
-indirmek bir tercih; bu belge yalnızca riski adlandırıyor.
+`.env`'i okuyor, yani **yol `.env`'de durduğu sürece profil sembolik bağını
+değiştirmek vault'u değiştirmiyordu** — iki proje aynı kasaya yazıyor ve hiçbir
+şey hata vermiyordu. Profil mekanizması dekoratif kalmıştı.
+
+Çözüm: `OBSIDIAN_VAULT_PATH` artık **yalnızca profil dosyasında**. `.env` diğer
+29 ayarı taşımaya devam ediyor; yolun bilerek orada olmadığı, sebebiyle birlikte
+dosyanın içine yazıldı.
+
+Aynı turda iki bayat yol daha bulundu ve düzeltildi: `OBSIDIAN_WIKI_REPO` ve
+`OBSIDIAN_SOURCES_DIR` de worktree'yi gösteriyordu, ve aracın klonu **yalnızca
+worktree'de** duruyordu — o dizin silindiğinde vault yolu düzelmiş olsa bile
+araç kaybolacaktı. Klon ana checkout'a taşındı.
 
 ## Vault yapısı
 

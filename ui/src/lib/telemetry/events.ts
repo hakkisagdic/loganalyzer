@@ -227,14 +227,16 @@ export const EVENTS = {
    */
   rca_run: event({
     name: "rca_run",
-    properties: ["signal_count", "duration_ms", "trust_band"],
+    properties: ["signal_count", "duration_ms", "trust_band", "succeeded", "error_kind"],
     describes:
       "RCA koşumu. `signal_count` raporun BULGU SAYISI — özetleri, zaman damgaları ve " +
       "paylodları gitmiyor; onlar log satırı taşıyor. `duration_ms` KULLANICININ BEKLEDİĞİ " +
       "süre (ağ + sunucu), sunucunun hesaplama süresi değil. `trust_band` pencerenin ZAMAN " +
       "güvenilirliği (bkz. classify.ts) — incelemelerin doğruluğu DEĞİL, o ayrı bir " +
-      "gösterge (`GoldenSetQuality`). Koşum düşerse olay HİÇ gitmiyor: katalogda " +
-      "\"başarısız\" diyebilecek bir alan yok ve başarı şeklinde bir olay basmak yalan olurdu.",
+      "gösterge (`GoldenSetQuality`). Düşen koşum da basılıyor: aynı olay " +
+      "`succeeded: false` ve sınıflandırılmış `error_kind` ile, ama `signal_count` ve " +
+      "`trust_band` OLMADAN — o iki alan bilinmiyor, sıfır değil. `signal_count: 0` " +
+      "\"hiçbir şey bulamadı\" der, \"patladı\" demez.",
   }),
 
   /**
