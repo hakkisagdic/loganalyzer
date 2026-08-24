@@ -58,6 +58,16 @@ public sealed record AlertRuleResponse(
     // `gated` ise NEDEN gated. Sessiz bir "kapalı" rozeti listeyi çöp kutusuna
     // çevirir — kullanıcı neyin kapatacağını göremezse liste hiç boşalmaz.
     [property: JsonPropertyName("gated_reason")] string GatedReason,
+
+    // Yukarı akış kimliği: kullanıcı kuralı SigmaHQ'da arayabilmeli.
+    [property: JsonPropertyName("sigma_rule_id")] string SigmaRuleId,
+
+    // Kuralın ürettiği SQL en son ne zaman DEĞİŞTİ.
+    //
+    // Kriter "kuralın ürettiği SQL değiştiğinde kullanıcı bunu görüyor" diyor.
+    // Bilgi bir turdur kayda yazılıyordu ama yanıtta yoktu — yani veri vardı,
+    // yüzey yoktu ve kriter kapanmış GÖRÜNÜYORDU. Bu satır onu kapatıyor.
+    [property: JsonPropertyName("sigma_changed_at")] DateTimeOffset? SigmaChangedAt,
     [property: JsonPropertyName("next_run_at")] DateTimeOffset? NextRunAt,
     [property: JsonPropertyName("last_run_at")] DateTimeOffset? LastRunAt,
     [property: JsonPropertyName("last_fired_at")] DateTimeOffset? LastFiredAt,

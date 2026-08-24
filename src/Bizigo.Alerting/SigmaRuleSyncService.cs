@@ -117,6 +117,10 @@ public sealed class SigmaRuleSyncService(IDbContextFactory<ControlPlaneDbContext
             }
 
             Apply(stored, rule, decision);
+
+            // Damga KALICI: kullanıcı senkron koşarken orada değil ve dönüş
+            // değeri koşum bitince kayboluyor.
+            stored.SigmaChangedAt = DateTimeOffset.UtcNow;
             changed++;
             changedIds.Add(rule.RuleId);
         }

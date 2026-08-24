@@ -2397,6 +2397,8 @@
           "status",
           "source",
           "gated_reason",
+          "sigma_rule_id",
+          "sigma_changed_at",
           "next_run_at",
           "last_run_at",
           "last_fired_at",
@@ -2476,6 +2478,16 @@
           },
           "gated_reason": {
             "type": "string"
+          },
+          "sigma_rule_id": {
+            "type": "string"
+          },
+          "sigma_changed_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           },
           "next_run_at": {
             "type": [

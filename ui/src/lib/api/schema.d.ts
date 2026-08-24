@@ -890,6 +890,9 @@ export interface components {
             status: string;
             source: string;
             gated_reason: string;
+            sigma_rule_id: string;
+            /** Format: date-time */
+            sigma_changed_at: null | string;
             /** Format: date-time */
             next_run_at: null | string;
             /** Format: date-time */

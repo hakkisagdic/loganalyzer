@@ -60,6 +60,18 @@ sınırı sanır.
 ClickHouse'a atılan eşzamanlı sorgu sayısı sınırlı.
 - **Kuralın ürettiği SQL değiştiğinde** kullanıcı bunu görüyor.
 
+  Bir artım boyunca **yarım** durdu ve bilerek öyle işaretlendi: senkron
+  değişikliği tespit ediyordu, kayda yazıyordu, ama `AlertRuleResponse` onu
+  taşımıyordu. Yani **veri vardı, yüzey yoktu** — kriter *"kullanıcı bunu
+  görüyor"* diyor ve kullanıcı görmüyordu.
+
+  Kapandı: değişiklik damgası kalıcı (`SigmaChangedAt`), yanıt onu ve
+  `sigma_rule_id`'yi taşıyor, listede **"SQL değişti"** rozeti duruyor.
+
+  İşaretin bir artım boyunca durması kayda değer: kapanmamış bir kriterin
+  kapanmış **görünmesi** bu depoda en pahalıya patlayan sınıf, ve yarımlığı
+  yazmak onu görünür tutan tek şeydi.
+
   Kriter eskiden *"kaynak kural sürümü değiştiğinde"* diyordu ve **iki
   değişiklik olayından yalnızca birini** kapsıyordu. T32'nin manifesti ikisini
   mekanik olarak ayırıyor:
