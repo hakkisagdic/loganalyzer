@@ -97,10 +97,19 @@ public sealed class ClickHouseEventSink : IParsedEventSink, IAsyncDisposable
     /// <b>Yazıldı denip yok olan satırlar (S02a).</b>
     ///
     /// <para>
-    /// Zaman damgası saklama penceresinin dışında kalan bir satırı ClickHouse
-    /// parçayı oluştururken atıyor ve istemciye <b>yazdım diyor</b>: ölçüldü,
-    /// tek bir INSERT içindeki 2020 ve 2026 tarihli iki satırdan yalnızca
-    /// ikincisi tabloya girdi, dönen <c>written_rows</c> ise ikisini de saydı.
+    /// Zaman damgası saklama penceresinin dışında kalan bir satır TTL ile
+    /// siliniyor, ama istemciye <b>yazdım deniyor</b>: ölçüldü, tek bir INSERT
+    /// içindeki 2020 ve 2026 tarihli iki satırdan yalnızca ikincisi tabloya
+    /// girdi, dönen <c>written_rows</c> ise ikisini de saydı.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Silmenin ANI garanti değil</b> ve bu ayrım ölçülerek öğrenildi: aynı
+    /// beş satırlık koşum yerel sunucuda insert anında ayıklandı, CI'nın taze
+    /// sunucusunda ayıklanmadı ve satırlar bir sonraki birleştirmeye kadar
+    /// tabloda durdu. Yani sayaç "şu anda tabloda kaç satır var" demiyor —
+    /// <b>"TTL çalıştıktan sonra kaçı kalacak"</b> diyor. Kalıcı olan iddia bu,
+    /// ve raporlanması gereken de bu: anlık sayı bir süre sonra yalan oluyor.
     /// </para>
     ///
     /// <para>
@@ -212,10 +221,11 @@ public sealed class ClickHouseEventSink : IParsedEventSink, IAsyncDisposable
         {
             var result = await _writer.WriteEventsAsync(_buffer, cancellationToken);
 
-            // `RowsWritten` GÖNDERİLENİ sayıyor, hayatta kalanı değil: pencere
-            // dışındaki satırlar ClickHouse tarafında parça oluşturulurken
-            // atılıyor ama dönen sayıya dahil ediliyor. Düşülmezse `Written`
-            // tabloda olmayan satırları sayar ve sayacın tamamı anlamsızlaşır.
+            // `RowsWritten` GÖNDERİLENİ sayıyor, KALICI OLANI değil: pencere
+            // dışındaki satırlar TTL ile siliniyor (insert anında ya da bir
+            // sonraki birleştirmede) ama dönen sayıya dahil ediliyor.
+            // Düşülmezse `Written` yarın var olmayacak satırları bugün sayar —
+            // ve düzeltilmek istenen hata tam olarak buydu.
             Interlocked.Add(ref _written, result.RowsWritten - _expiredInBuffer);
 
             if (_expiredInBuffer > 0)

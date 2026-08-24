@@ -42,10 +42,34 @@ namespace Bizigo.IntegrationTests;
 /// <h3>Koşturulduğunda ne kanıtlar</h3>
 ///
 /// <para>
-/// Üç şey: (1) pencere dışı satır tabloya girmiyor, (2) sink bunu <c>Expired</c>
-/// olarak sayıyor, (3) <c>Written</c> tabloda gerçekten duran satır sayısına
-/// <b>eşit</b>. Üçüncüsü asıl iddia; ilk ikisi onsuz yalnızca kendi kendini
-/// doğrulayan sayaçlar olurdu.
+/// Üç şey: (1) pencere dışı satır tabloda kalmıyor, (2) sink bunu
+/// <c>Expired</c> olarak sayıyor, (3) <c>Written</c> tabloda gerçekten duran
+/// satır sayısına <b>eşit</b>. Üçüncüsü asıl iddia; ilk ikisi onsuz yalnızca
+/// kendi kendini doğrulayan sayaçlar olurdu.
+/// </para>
+///
+/// <h3>TTL'in NE ZAMAN uygulandığı ölçüme karışıyordu — düzeltildi</h3>
+///
+/// <para>
+/// Bu testin ilk hâli yerelde geçti ve <b>CI'da düştü</b>: <c>Expected 5,
+/// Actual 3</c> — yani tabloda beş satır vardı, sink üç diyordu. Sebep bir ürün
+/// hatası değildi: ClickHouse süresi dolmuş satırı yerelde insert anında
+/// atmıştı, CI'nın taze sunucusunda ise atmamıştı. TTL bir <b>birleştirme</b>
+/// (merge) davranışı; insert anında uygulanması garanti değil.
+/// </para>
+///
+/// <para>
+/// Yani testin geçme sebebi duvar saatine — daha doğrusu ClickHouse'un merge
+/// zamanlamasına — bağlıydı, ve §6 tam olarak bunu yasaklıyor. Yerelde geçmesi
+/// hiçbir şey kanıtlamıyordu.
+/// </para>
+///
+/// <para>
+/// Düzeltme iki parça: test <b>kendi veritabanını</b> alıyor (paylaşılan tabloda
+/// TTL'i zorlamak başka testlerin satırlarını da etkilerdi) ve TTL
+/// <c>MATERIALIZE TTL … mutations_sync = 2</c> ile <b>açıkça ve senkron</b>
+/// uygulanıyor. Ölçülen şey artık "şu anda tabloda ne var" değil,
+/// <b>"TTL çalıştıktan sonra ne kalıyor"</b> — sayacın iddia ettiği de bu.
 /// </para>
 /// </summary>
 [Collection(DevStackCollection.Name)]
@@ -57,22 +81,24 @@ public sealed class EventRetentionChainTests(DevStackFixture stack) : IAsyncLife
 
     private readonly EventSinkOptions _options = new();
 
+    private const string Group = "s02a";
+
     private ClickHouseContext _context = null!;
     private ClickHouseEventSink _sink = null!;
-    private string _group = null!;
 
     public async ValueTask InitializeAsync()
     {
-        _context = stack.CreateClickHouseContext();
+        // KENDİ veritabanı. Paylaşılan tabloda TTL'i zorlamak (`MATERIALIZE
+        // TTL`) yan etkisi olan bir iş: aynı tablodaki başka testlerin
+        // satırlarını da değerlendirir ve onları sebepsiz kaybettirebilir.
+        // İzole veritabanında hem ucuz hem yalnızca bu testi ilgilendiriyor.
+        _context = await stack.CreateIsolatedClickHouseContextAsync(
+            TestContext.Current.CancellationToken);
 
         var migrator = new ClickHouseMigrator(_context);
         await migrator.MigrateAsync(
             BaselineWindowMeasurement.RepoPath("db/clickhouse"),
             TestContext.Current.CancellationToken);
-
-        // Kendi kapsam grubu: paylaşılan bir ad, başka bir testin satırlarını
-        // bu testin sayımına karıştırırdı ve fark iddiası anlamsızlaşırdı.
-        _group = "s02a_" + Guid.NewGuid().ToString("N")[..8];
 
         var time = new FakeTimeProvider(Now);
 
@@ -84,7 +110,11 @@ public sealed class EventRetentionChainTests(DevStackFixture stack) : IAsyncLife
             time);
     }
 
-    public async ValueTask DisposeAsync() => await _sink.DisposeAsync();
+    public async ValueTask DisposeAsync()
+    {
+        await _sink.DisposeAsync();
+        _context.Dispose();
+    }
 
     /// <summary>
     /// <b>Sink'in "yazdım" dediği sayı tabloda duran satır sayısına eşit.</b>
@@ -110,10 +140,22 @@ public sealed class EventRetentionChainTests(DevStackFixture stack) : IAsyncLife
 
         await _sink.FlushAsync(TestContext.Current.CancellationToken);
 
+        var connection = _context.Options.ConnectionString;
+
+        // TTL AÇIKÇA uygulanıyor. Bunu beklemek yerine zorlamak zorunlu:
+        // ClickHouse süresi dolmuş satırı insert anında atabilir de atmayabilir
+        // de — ölçüldü, yerelde attı, CI'da atmadı. Beklemek testi merge
+        // zamanlamasına bağlar; `mutations_sync = 2` mutasyon bitene kadar
+        // döndürmüyor, yani sayım deterministik.
+        await stack.QueryScalarAsync(
+            connection,
+            "ALTER TABLE events MATERIALIZE TTL SETTINGS mutations_sync = 2",
+            TestContext.Current.CancellationToken);
+
         var tabloda = long.Parse(
             await stack.QueryScalarAsync(
-            stack.ClickHouseConnectionString,
-            $"SELECT count() FROM bizigo.events WHERE owner_group = '{_group}'",
+                connection,
+                $"SELECT count() FROM events WHERE owner_group = '{Group}'",
                 TestContext.Current.CancellationToken),
             System.Globalization.CultureInfo.InvariantCulture);
 
@@ -135,13 +177,13 @@ public sealed class EventRetentionChainTests(DevStackFixture stack) : IAsyncLife
             EventId = Guid.CreateVersion7(Now),
             ReceivedAt = Now,
             SourceKey = "10.1.1.1",
-            OwnerGroup = _group,
+            OwnerGroup = Group,
             SourceId = "s02a",
             Body = Encoding.UTF8.GetBytes("gövde"),
         },
         "gövde",
         "utf-8",
-        new ResolvedSource("s02a", _group, "firewall", "auto", string.Empty, IsKnown: true),
+        new ResolvedSource("s02a", Group, "firewall", "auto", string.Empty, IsKnown: true),
         new ParseResult
         {
             ParserId = "fortinet.fortigate.traffic",
