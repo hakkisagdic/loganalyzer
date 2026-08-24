@@ -21,7 +21,7 @@ sources:
   - docs/epic/tickets-f3/sigma-pipeline/index.md
   - docs/epic/sigma-clickhouse-arastirmasi/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=3984257f89e8 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=84daadf9f9fc docs/epic/tickets-f3/sigma-derleme/index.md=d117ba100cfd docs/epic/tickets-f3/sigma-pipeline/index.md=1246a8a22b15"
+source_digest: "sha256-12/v1 CLAUDE.md=3984257f89e8 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=457cb125d0d3 docs/epic/tickets-f3/sigma-derleme/index.md=d117ba100cfd docs/epic/tickets-f3/sigma-pipeline/index.md=1246a8a22b15"
 summary: Derlendi ile koşuyor ve doğru şeyi buluyor üç ayrı iddia; her biri farklı bir yerde sınanıyor çünkü tek yere koymak yakalayamadığı sınıfı sessizce geçiriyor.
 provenance:
   extracted: 0.85
@@ -242,10 +242,30 @@ T33 ajanının cümlesi tasarımı değiştirdi. Sonuçları:
   geçiş `git diff`'ten okunuyor (`--summary`). Kalıcılaştırmak ikinci bir gerçek
   kaynak yaratırdı.
 
-## Sıra — 1–4 ölçümü beklemiyor
+## Kapı 3'ün bilinen sınırı: kayıt kaybolabilir
+
+Kapı 3 "beyan edilen kural beklediğini buluyor mu" diye soruyor ve beyanların
+gerekçesi **örnek dosyadan** geliyor. Arada bir katman var: satırın örnek
+dosyada olması, veritabanında olmasını garanti etmiyor.
+
+`events` tablosunda `TTL toDateTime(ts) + INTERVAL 90 DAY` var ve vendor örnek
+dosyaları 2015–2022 tarihleri taşıyor. ClickHouse süresi dolmuş satırı parçayı
+oluştururken atıyor — **ama istemciye "yazdım" diyor.**
+
+Sonucu: bir `at_least_one` kuralla ilgisi olmayan bir sebeple düşer, bir
+`corpus_gap` yanlış sebeple geçer.
+
+**Bugün risk değil, ölçüldü** — 90 günü aşan satır yok; yükleyici (`GoldenSamplePlan`)
+satırları bir `Anchor` etrafına yayıyor, dosyanın kendi tarihini taşımıyor. Ama
+sınır **yapısal değil, yükleyicinin davranışına bağlı**: dosyanın kendi tarihine
+geçilirse anında geçerli olur. Ön kontrol vendor başına satır sayısına bakıyor,
+yani toplu bir süpürmeyi görür, **kısmi** bir düşmeyi görmez.
+
+## Sıra — hepsi tamamlandı
 
 Tasarımın en pratik çıktısı: hattın **kapsamdan bağımsız** olan yarısı önce
-yazılabilir.
+yazılabilir. Sıra tutuldu ve **yedisi de kapandı**; tablo tarihsel kayıt olarak
+duruyor.
 
 | Sıra | İş | Bloklayan |
 | --- | --- | --- |
@@ -257,7 +277,9 @@ yazılabilir.
 | 6 | Gerçek derleme | T31 |
 | 7 | Kriter D (canlı ClickHouse + altın örnek) | koordinatör |
 
-**Korpus değişir, hat değişmez.**
+**Korpus değişir, hat değişmez.** Ve değişti: korpus T30 prototipinden terfi
+ettirildi, hat dokunulmadan kaldı — 21 kural derleniyor, 3'ü `gated`, Kapı 3
+canlıda sekiz beyanın sekizini geçirdi.
 
 ## Kaynaklar
 

@@ -14,7 +14,7 @@ sources:
   - docs/epic/pazar-arastirmasi-ve-feature-parity/index.md
   - docs/epic/is-envanteri/index.md
   - docs/epic/fs-simulatorler/index.md
-source_digest: "sha256-12/v1 docs/epic/fs-simulatorler/index.md=22bb02d19d29 docs/epic/is-envanteri/index.md=c2120314afbc docs/epic/pazar-arastirmasi-ve-feature-parity/index.md=5ce5d91ed46b"
+source_digest: "sha256-12/v1 docs/epic/fs-simulatorler/index.md=22bb02d19d29 docs/epic/is-envanteri/index.md=c1ee55fd6048 docs/epic/pazar-arastirmasi-ve-feature-parity/index.md=5ce5d91ed46b"
 summary: Pazar araştırması bir kod bütçesi çizdi — collector, depo, şema, kural seti ve arayüz yazılmayacaktı. İki kalem tuttu, iki kalem tutmadı; sınırın nerede kaydığı ve neden kaydığı ölçülebilir durumda.
 provenance:
   extracted: 0.7

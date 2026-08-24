@@ -17,7 +17,7 @@ sources:
   - docs/epic/is-envanteri/index.md
   - docs/epic/fs-simulatorler/index.md
   - docs/epic/t36-devir-notu/index.md
-source_digest: "sha256-12/v1 docs/epic/devir-notu-kota-kesintisi/index.md=769f322740d7 docs/epic/fs-simulatorler/index.md=22bb02d19d29 docs/epic/is-envanteri/index.md=c2120314afbc docs/epic/t36-devir-notu/index.md=5027982dbb85"
+source_digest: "sha256-12/v1 docs/epic/devir-notu-kota-kesintisi/index.md=769f322740d7 docs/epic/fs-simulatorler/index.md=22bb02d19d29 docs/epic/is-envanteri/index.md=c1ee55fd6048 docs/epic/t36-devir-notu/index.md=5027982dbb85"
 summary: İki devir notunun (kota kesintisi ve T36→T37) ve envanterin birlikte çizdiği durum fotoğrafı — faz durumu, devreden borç, koordinatörde biriken canlı doğrulamalar ve gitmeyen iki mesaj.
 provenance:
   extracted: 0.92

@@ -14,7 +14,7 @@ sources:
   - docs/epic/fs-simulatorler/index.md
   - docs/epic/is-envanteri/index.md
   - docs/epic/devir-notu-kota-kesintisi/index.md
-source_digest: "sha256-12/v1 docs/epic/devir-notu-kota-kesintisi/index.md=769f322740d7 docs/epic/fs-simulatorler/index.md=22bb02d19d29 docs/epic/is-envanteri/index.md=c2120314afbc"
+source_digest: "sha256-12/v1 docs/epic/devir-notu-kota-kesintisi/index.md=769f322740d7 docs/epic/fs-simulatorler/index.md=22bb02d19d29 docs/epic/is-envanteri/index.md=c1ee55fd6048"
 summary: Boru hattını test verisiyle besleyen kestirme yol (doğrudan ClickHouse'a yazan seed) canlı yolu yıllarca ölçüsüz bıraktı; ilk gerçek syslog koşumu 385 satırın 372'sinin sessizce kaybolduğunu gösterdi. S02a ile kök neden bulundu ve kapandı.
 provenance:
   extracted: 0.9

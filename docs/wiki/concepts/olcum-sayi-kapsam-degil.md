@@ -16,7 +16,7 @@ sources:
   - docs/epic/t30-sigma-olcumu/index.md
   - docs/epic/t39-alan-kapsami/index.md
   - docs/epic/t02-kararlar/index.md
-source_digest: "sha256-12/v1 docs/epic/t02-kararlar/index.md=b3cf84aad7ba docs/epic/t27-ad-govde-kesfi/index.md=e14d05d8d833 docs/epic/t27-kapanis-taramasi/index.md=fc23cd892d11 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t39-alan-kapsami/index.md=d05b57cf00ab"
+source_digest: "sha256-12/v1 docs/epic/t02-kararlar/index.md=b3cf84aad7ba docs/epic/t27-ad-govde-kesfi/index.md=e14d05d8d833 docs/epic/t27-kapanis-taramasi/index.md=fc23cd892d11 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t39-alan-kapsami/index.md=2c77e0540320"
 summary: Test sayısı kaç kararın sınandığını söylemez; oranın paydası hangi soruya cevap verdiğini belirler. Bu depoda aynı ölçüm üç farklı paydayla üç farklı karara çıktı.
 provenance:
   extracted: 0.85

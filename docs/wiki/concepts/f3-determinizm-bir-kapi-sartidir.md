@@ -17,7 +17,7 @@ sources:
   - docs/epic/t36-kanit-paketi/index.md
   - docs/epic/sigma-clickhouse-arastirmasi/index.md
   - docs/epic/tickets-f3/sigma-derleme/index.md
-source_digest: "sha256-12/v1 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/t32-derleme-tasarimi/index.md=84daadf9f9fc docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/tickets-f3/sigma-derleme/index.md=d117ba100cfd"
+source_digest: "sha256-12/v1 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/t32-derleme-tasarimi/index.md=457cb125d0d3 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/tickets-f3/sigma-derleme/index.md=d117ba100cfd"
 summary: F3'te iki ilgisiz alt sistem (Sigma SQL derlemesi ve kanıt paketi) aynı kurala vardı — karşılaştırılan çıktıya duvar saati, ağ ya da sıra belirsizliği karışırsa kapı ya kalkar ya yumuşatılır.
 provenance:
   extracted: 0.8
@@ -118,6 +118,25 @@ Eşit `window_count`'lu iki değer koşumdan koşuma yer değiştirir, hash kaya
 
 Bu tam olarak [[concepts/sessiz-yanlis-davranis]]: kabul kriteri yeşil görünen
 bir mekanizmayla ölçülemez hâle geliyordu.
+
+## Ağ tarafı: aynı şart yükseltmeye de uygulanıyor
+
+"Cron yok, ağ yok" bugünkü hattın özelliği; kural seti bir gün SigmaHQ'dan
+çekilecek ve o yol tasarlandığında **aynı şart** dört karara dönüştü:
+
+| Karar | Determinizm gerekçesi |
+| --- | --- |
+| Çivilenmiş commit'in **tarball'ı**, `git clone` değil | Tarball tanım gereği tekrarlanabilir; klonlama ayrıca 7.400+ kurallık bir deponun tüm geçmişini indirir |
+| Seçim bir **liste**, filtre değil | Yukarı akışa karşı **duran** bir filtre, yukarı akış kural eklediğinde korpusu sessizce değiştirir — girdi değişmiş olur ama kimse istememiştir |
+| Ölçüt **`logsource`**, dizin değil | SigmaHQ'nun dizin ağacı `logsource.category` ile örtüşmüyor; dizine göre seçmek kategorilerden birini kaçırır |
+| İndirilen ağaç geçici dizine, sonra **takas** | Yarım bir yükseltme kısmen yeni kısmen eski bir korpus bırakamaz |
+
+Üçüncüsü ile ikincisi aynı ilkenin iki yüzü: **filtre bir insan kararının girdisi
+olabilir, hattın çalışma zamanı davranışı olamaz.**
+
+Dördüncüsü replay'in `REPLACE PARTITION` yarasının kardeşi — orada da atomiklik
+varsayılmıştı ve okuma ile değiştirme arasındaki pencerede yazılan satırlar
+sessizce siliniyordu.
 
 ## Determinizmin ikinci yüzü: etiket sürüklenmesi
 
