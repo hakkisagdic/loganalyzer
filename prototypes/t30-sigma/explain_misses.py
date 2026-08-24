@@ -60,6 +60,53 @@ ABSENT = "absent"
 PRESENT = "present"
 SUBSTRING_ONLY = "substring_only"
 
+#: Her yüklem örneklerde **var**, ama hiçbir satır hepsini birden taşımıyor.
+#:
+#: Neden ayrı bir kutu — ölçülmüş vaka
+#: -----------------------------------
+#: `fortigate_user_auth_fail`: `status="failed"` 4 satırda, `user="admin"` 2
+#: satırda, **kesişim 0**. Kutu yüklemleri tek tek sayıyordu, dolayısıyla kural
+#: `present` görünüyordu ve *"eşleşmiyorsa suç eşlemede"* diye okunuyordu.
+#: Oysa `condition: selection` bir **AND**: kural hepsini aynı satırda ister.
+#:
+#: Aynı sınıfın daha keskin hâli MikroTik'te: `system` parser'ı kimlik
+#: alanlarını, `firewall` ağ alanlarını dolduruyor ve **hiçbir satır ikisini
+#: birden taşımıyor**. Buradan çıkan kural yazım kısıtı somut:
+#: `logsource.category` taşımayan bir kural MikroTik'te iki alanı birden
+#: isteyemez.
+#:
+#: ⚠️ **Bu kutu bir ALT SINIR ve sebebi metin ekseninin yapısal sınırı.**
+#:
+#: Araç yüklemi **alanına kısıtlayamıyor**: `user|contains: 'admin'` yüklemi
+#: `user` kolonunu kastediyor, ama ham satırda `admin` aramak `Administrator`
+#: sözcüğünün içine de denk geliyor. Ölçüldü: `fortigate_user_auth_fail` için
+#: araç kesişimi {1,2,3,4} buluyor, oysa o satırlarda `user` değerleri
+#: `philipp`, `name.lastname` — hiçbirinde `admin` yok.
+#:
+#: Asimetri bilinçli ve tek yönü sağlam:
+#:
+#: * Kesişim **boş** ise kural o korpusta **kesinlikle** eşleşemez. Sağlam.
+#: * Kesişim **dolu** ise eşleşebilir**miş gibi** görünür — ama vuruşlar yanlış
+#:   alanda olabilir. Araç bunu doğrulayamaz.
+#:
+#: Yani gerçek sayı bu kutunun gösterdiğinden **büyük**. Kesin sayı ayrıştırılmış
+#: kolonlara bakan ölçümden gelir; bu araç metin ekseninde kalıyor ve
+#: kaldıramayacağı iddiayı **kurmuyor**.
+#:
+#: `absent` ile kardeş: ikisi de **korpus** kalemi, eşleme sorusu değil —
+#: 6'nın `corpus_gap` beyanıyla aynı listede buluşuyorlar. Ayrı durmalarının
+#: sebebi cevaplarının farklı olması: `absent` *"örneklem o deseni hiç
+#: taşımıyor"*, bu ise *"taşıyor ama birlikte değil"*. İkincisi tek bir örnek
+#: satırı eklenerek kapanır, birincisi kapanmaz.
+NEVER_TOGETHER = "never_together"
+
+#: Korpusun kusuru olan kutular — kapsam kararının paydasından düşülüyorlar.
+#:
+#: Tek listede toplanmalarının sebebi §8: iki farklı iş kalemi tek kutuda
+#: durunca "liste boşaldı mı" sorusunun cevabı asla evet olamıyor. Ayrı
+#: kutular, ortak payda.
+CORPUS_VERDICTS = frozenset({ABSENT, NEVER_TOGETHER})
+
 
 def free_text_fields() -> frozenset[str]:
     """`raw_data`'ya inen Sigma alanları — kutu 2'nin **tek** geçerli alanı.
@@ -116,7 +163,7 @@ def _shipping():
     return importlib.import_module("app.sigma_pipeline")
 
 
-def column_value_spaces(root: Path) -> dict[str, frozenset[str]]:
+def column_value_spaces(root: Path) -> dict[str, dict[str, dict[str, frozenset[str]]]]:
     """`events_ocsf` kolonu → o kolonun **kapalı değer uzayı** (yoksa yok).
 
     Neden gerekiyor — ölçülmüş bir hata
@@ -144,24 +191,47 @@ def column_value_spaces(root: Path) -> dict[str, frozenset[str]]:
     view = (root / "db" / "clickhouse" / "0003_ocsf_otel_views.sql").read_text(encoding="utf-8")
     core_to_ocsf = dict(re.findall(r"^\s+(\w+)\s+AS\s+(\w+),", view, re.M))
 
-    # Hangi core alanı hangi sözlükle dolduruluyor.
-    tables: dict[str, set[str]] = {}
+    # Hangi core alanı, HANGİ VENDOR'da, hangi sözlükle dolduruluyor.
+    #
+    # Vendor kırılımı şart ve eksikliği ölçüldü: `auth_outcome` (FortiGate,
+    # Cisco, MikroTik) ile `http_status_outcome` (nginx) **aynı** `core.outcome`
+    # alanını dolduruyor. Kolon başına birleştirilince FortiGate'in `status`
+    # değer uzayına nginx'in HTTP kodları (`400`, `500`…) karışıyordu — ve o
+    # kodlar FortiGate satırlarında bayt sayısı olarak geçtiği için satır
+    # kümesi 4'ten 16'ya şişiyordu.
+    #
+    # Sonuç: kesişim yanlış yerde dolu çıkıyor ve "birlikte yok" kutusu
+    # gerçekte olduğundan boş görünüyordu.
+    by_product = {directory.split("/")[-2]: product for product, directory in SAMPLES.items()}
+    tables: dict[tuple[str, str], set[str]] = {}
 
     for parser in sorted((root / "catalog" / "parsers").rglob("*.yaml")):
+        product = by_product.get(parser.parent.name, "")
+
+        if not product:
+            continue
+
         text = parser.read_text(encoding="utf-8")
 
         for core, table in re.findall(r"^\s{4}(\w+):\s*\{[^}]*table:\s*(\w+)", text, re.M):
-            tables.setdefault(core, set()).add(table)
+            tables.setdefault((product, core), set()).add(table)
 
-    spaces: dict[str, frozenset[str]] = {}
+    # Kolon → normalleştirilmiş değer → o değeri üreten **cihaz sözcükleri**.
+    #
+    # Yalnızca değer kümesi tutmak yetmiyordu: değer-uzayından gelen bir
+    # yüklem `present` sayılıp kesişimin DIŞINDA bırakılıyordu, oysa o yüklem
+    # de satırları kısıtlıyor. `status='failure'` yalnızca ham satırında
+    # `failed` geçen satırlarda tutuyor; kesişime girmezse kural olduğundan
+    # iyimser görünüyor.
+    spaces: dict[str, dict[str, dict[str, frozenset[str]]]] = {}
 
-    for core, names in tables.items():
+    for (product, core), names in tables.items():
         ocsf = core_to_ocsf.get(core)
 
         if ocsf is None:
             continue
 
-        values: set[str] = set()
+        by_value: dict[str, set[str]] = {}
 
         for name in names:
             path = root / "catalog" / "mappings" / f"{name}.yaml"
@@ -170,12 +240,17 @@ def column_value_spaces(root: Path) -> dict[str, frozenset[str]]:
                 continue
 
             document = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-            # Anahtar cihazın sözcüğü, DEĞER kolona yazılan. Kural
-            # normalleştirilmiş değeri arıyor, yani değerlere bakıyoruz.
-            values.update(str(item) for item in document.values())
 
-        if values:
-            spaces[ocsf] = frozenset(values)
+            # Anahtar cihazın sözcüğü, DEĞER kolona yazılan. Kural
+            # normalleştirilmiş değeri arıyor; ham satırda aranacak olan ise
+            # o değeri üreten anahtarlar.
+            for device_word, column_value in document.items():
+                by_value.setdefault(str(column_value), set()).add(str(device_word))
+
+        if by_value:
+            spaces.setdefault(product, {})[ocsf] = {
+                value: frozenset(words) for value, words in by_value.items()
+            }
 
     return spaces
 
@@ -236,6 +311,11 @@ class Literal:
     #: eşleşme, örneklemin o deseni zar zor taşıdığını söylüyor.
     lines: int = 0
 
+    #: **Hangi** satırlarda geçtiği. Sayı yetmiyor: kural bütün yüklemlerini
+    #: AYNI satırda istiyor (`condition: selection` bir AND), dolayısıyla
+    #: kesişim hesaplanmadan "bu kural eşleşebilir" denemez.
+    line_numbers: list[int] = field(default_factory=list)
+
     #: `absent` için: örneklerde duran **yakın** sözcükler.
     #:
     #: Ölçülmüş bir vaka: `fortigate_user_auth_fail` `status: 'failure'`
@@ -265,12 +345,17 @@ class RuleReport:
 
     @property
     def verdict(self) -> str:
-        """Kuralın kutusu — **en kötü** dizgeden geliyor.
+        """Kuralın kutusu — **en kötü** dizgeden, sonra **kesişimden**.
 
-        Gerekçe: kural bütün koşullarını sağlamak zorunda (`condition:
-        selection` bir AND). Tek bir dizge örneklerde yoksa kural eşleşemez,
-        diğerleri ne kadar sağlam olursa olsun. İyimser tarafa yuvarlamak,
-        eşleşmeyen bir kuralı "eşleme sorunu" diye raporlardı.
+        `condition: selection` bir **AND**: kural bütün yüklemlerini AYNI
+        satırda ister. Kutu eskiden yüklemleri tek tek sayıyordu ve bu yeterli
+        değildi — `fortigate_user_auth_fail`'in iki yüklemi 4 ve 2 satırda
+        vardı, kesişim **0**, ve kural yine de `present` görünüyordu. Yani
+        *"eşleşmiyorsa suç eşlemede"* diye okunan bir kural aslında hiçbir
+        satırda eşleşemezdi.
+
+        İyimser tarafa yuvarlamak, örneklemin darlığını ürünün yetersizliği
+        gibi gösterirdi.
         """
         if not self.literals:
             return PRESENT
@@ -282,7 +367,24 @@ class RuleReport:
         if SUBSTRING_ONLY in verdicts:
             return SUBSTRING_ONLY
 
-        return PRESENT
+        # Buraya gelen her yüklem örneklerde VAR. Soru artık hepsinin aynı
+        # satırda birlikte bulunup bulunmadığı.
+        #
+        # Kapalı değer uzayından gelen yüklemler de kesişime GİRİYOR — ama
+        # cihazın sözcükleri üzerinden. `status='failure'` yalnızca ham
+        # satırında `failed` geçen satırlarda tutuyor; dışarıda bırakmak o
+        # yüklemi kısıtlamıyormuş gibi göstermek olurdu.
+        countable = [item for item in self.literals if item.line_numbers]
+
+        if len(countable) < 2:
+            return PRESENT
+
+        shared = set(countable[0].line_numbers)
+
+        for item in countable[1:]:
+            shared &= set(item.line_numbers)
+
+        return PRESENT if shared else NEVER_TOGETHER
 
 
 #: `detection:` bloğundaki `alan|operatör: değer` satırları.
@@ -350,8 +452,10 @@ def rule_literals(rule_text: str) -> list[Literal]:
     return found
 
 
-def classify(value: str, corpus: str, free_text: bool = True) -> tuple[str, list[str], int]:
-    """Dizgenin örnek gövdesindeki durumu: (karar, yutan sözcükler, satır sayısı).
+def classify(
+    value: str, corpus: str, free_text: bool = True
+) -> tuple[str, list[str], list[int]]:
+    """Dizgenin örnek gövdesindeki durumu: (karar, yutan sözcükler, **satır no'ları**).
 
     Ölçüt **sözcük sınırı**. `RST` örneklerde geçiyordu ama yalnızca `first` ve
     `burst` içinde; bir varlık kontrolü onu "var" der ve kuralı sağlam sanardı.
@@ -363,17 +467,20 @@ def classify(value: str, corpus: str, free_text: bool = True) -> tuple[str, list
     içinde görünüyor ve bu bir kusur değil, **doğru davranış**.
     """
     if not value:
-        return PRESENT, [], 0
+        return PRESENT, [], []
 
     lowered = corpus.lower()
     needle = value.lower()
 
     if needle not in lowered:
-        return ABSENT, [], 0
+        return ABSENT, [], []
 
 
 
-    lines = sum(1 for line in corpus.splitlines() if needle in line.lower())
+    hits = [
+        index for index, line in enumerate(corpus.splitlines()) if needle in line.lower()
+    ]
+    lines = len(hits)
 
     # Sözcük sınırında en az bir kez geçiyor mu.
     bounded = re.compile(
@@ -381,7 +488,7 @@ def classify(value: str, corpus: str, free_text: bool = True) -> tuple[str, list
     )
 
     if bounded.search(lowered) or not free_text:
-        return PRESENT, [], lines
+        return PRESENT, [], hits
 
     # Yalnızca daha uzun sözcüklerin içinde. Yutanları topluyoruz: iddia değil
     # gözlem sunmak için.
@@ -393,7 +500,7 @@ def classify(value: str, corpus: str, free_text: bool = True) -> tuple[str, list
         }
     )[:5]
 
-    return SUBSTRING_ONLY, swallowed, lines
+    return SUBSTRING_ONLY, swallowed, hits
 
 
 #: Yakınlık ölçütü: dizgenin ilk bu kadar karakteri.
@@ -455,9 +562,10 @@ def examine(
     columns = columns or {}
 
     for literal in rule_literals(rule_text):
-        literal.verdict, literal.swallowed_by, literal.lines = classify(
+        literal.verdict, literal.swallowed_by, literal.line_numbers = classify(
             literal.value, samples, free_text=literal.field in text_fields
         )
+        literal.lines = len(literal.line_numbers)
 
         if literal.verdict == ABSENT:
             # ÖNCE kapalı değer uzayı, sonra yakın sözcük.
@@ -466,11 +574,28 @@ def examine(
             # hatası DEĞİL ve `⚠ yakın sözcük` uyarısı yanlış yönlendirirdi —
             # bir tur boyunca tam olarak öyle oldu ve doğru bir kural
             # "düzeltilerek" bozuldu.
-            space = spaces.get(columns.get(literal.field, ""))
+            space = spaces.get(product, {}).get(columns.get(literal.field, ""))
 
             if space and literal.value in space:
                 literal.verdict = PRESENT
                 literal.in_value_space = True
+
+                # Cihazın sözcükleri üzerinden satırları buluyoruz: yüklem
+                # `present` ama HANGİ satırlarda olduğu kesişim için gerekli.
+                # Boş bırakmak, o yüklemi kısıtlamıyormuş gibi göstermek olurdu.
+                found: set[int] = set()
+
+                for word in space[literal.value]:
+                    # Salt sayısal cihaz sözcüğü ham metinde AYIRT EDİLEMİYOR:
+                    # `500` bir HTTP kodu da olabilir bayt sayısı da. Aynı
+                    # gerekçeyle `rule_literals` sayıları zaten atlıyor.
+                    if word.isdigit():
+                        continue
+
+                    found.update(classify(word, samples)[2])
+
+                literal.line_numbers = sorted(found)
+                literal.lines = len(found)
             else:
                 literal.near_misses = near_misses(literal.value, samples)
 
@@ -535,7 +660,7 @@ def main(argv: list[str] | None = None) -> int:
             examine(text, path.name, cache[product], product, text_fields, spaces, columns)
         )
 
-    buckets = {ABSENT: [], SUBSTRING_ONLY: [], PRESENT: []}
+    buckets = {ABSENT: [], NEVER_TOGETHER: [], SUBSTRING_ONLY: [], PRESENT: []}
 
     for report in reports:
         buckets[report.verdict].append(report)
@@ -551,7 +676,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Korpus: {shown} · {len(reports)} kural\n")
     print(f"{'Kutu':<18} {'Kural':>6}   Anlamı")
     print(f"{'-'*18} {'-'*6}   {'-'*46}")
-    print(f"{'desen YOK':<18} {len(buckets[ABSENT]):>6}   örneklem kusuru — kapsam kararına GİRMEZ")
+    print(f"{'desen YOK':<18} {len(buckets[ABSENT]):>6}   korpus kusuru — kapsam kararına GİRMEZ")
+    print(
+        f"{'birlikte YOK':<18} {len(buckets[NEVER_TOGETHER]):>6}   "
+        "korpus kusuru — yüklemler var, aynı satırda değil"
+    )
     print(f"{'yalnızca içinde':<18} {len(buckets[SUBSTRING_ONLY]):>6}   eşleşse bile YANLIŞ sebeple")
     print(f"{'desen var':<18} {len(buckets[PRESENT]):>6}   eşleşmiyorsa suç EŞLEMEDE")
 
@@ -568,8 +697,22 @@ def main(argv: list[str] | None = None) -> int:
         for name, literal in translated:
             print(f"  {name:<34} {literal.field} = {literal.value!r}")
 
+    corpus_items = sum(len(buckets[key]) for key in CORPUS_VERDICTS)
+    print(
+        f"\n→ Korpus kusuru **en az** {corpus_items} kural. Kapsam oranının paydasından\n"
+        "  düşülmeleri gerekiyor: `matches=false` olmaları eşlemenin değil altın\n"
+        "  örneklerin sonucu."
+    )
+    print(
+        "  ⚠️ 'birlikte YOK' bir ALT SINIR: araç yüklemi alanına kısıtlayamıyor\n"
+        "     (`user|contains: 'admin'` ham satırda `Administrator`'a da denk gelir),\n"
+        "     dolayısıyla DOLU bir kesişim eşleşmeyi KANITLAMIYOR. Boş kesişim\n"
+        "     kanıtlıyor. Kesin sayı ayrıştırılmış kolonlara bakan ölçümden gelir."
+    )
+
     for title, key in (
         ("Örneklemde deseni olmayan kurallar", ABSENT),
+        ("Yüklemleri VAR ama aynı satırda hiç birlikte olmayan kurallar", NEVER_TOGETHER),
         ("Yalnızca daha uzun sözcüklerin içinde geçenler", SUBSTRING_ONLY),
     ):
         if not buckets[key]:

@@ -23,7 +23,9 @@ def test_dizge_hic_yoksa_ABSENT() -> None:
 
     assert verdict == em.ABSENT
     assert swallowed == []
-    assert lines == 0
+    # Üçüncü değer artık **satır no'ları**, sayı değil: kural bütün yüklemlerini
+    # AYNI satırda istiyor ve sayı kesişim hesaplamaya yetmiyor.
+    assert lines == []
 
 
 def test_sozcuk_sinirinda_varsa_PRESENT() -> None:
@@ -31,7 +33,7 @@ def test_sozcuk_sinirinda_varsa_PRESENT() -> None:
     verdict, _, lines = em.classify("Reset", "%ASA-6-302014: Teardown TCP connection Reset-I")
 
     assert verdict == em.PRESENT
-    assert lines == 1
+    assert lines == [0]
 
 
 def test_yalnizca_sozcuk_ICINDE_ise_SUBSTRING_ONLY() -> None:
@@ -52,7 +54,7 @@ def test_yalnizca_sozcuk_ICINDE_ise_SUBSTRING_ONLY() -> None:
 
     assert verdict == em.SUBSTRING_ONLY
     assert "burst" in swallowed and "first" in swallowed
-    assert lines == 2
+    assert lines == [0, 1]
 
 
 def test_hem_icinde_hem_sinirinda_ise_PRESENT() -> None:
@@ -253,10 +255,11 @@ def test_kapali_deger_uzayindaki_deger_ABSENT_degil() -> None:
     root = em.repo_root()
     spaces = em.column_value_spaces(root)
 
-    assert "status" in spaces, "`status` kolonunun değer uzayı çözülemedi"
-    assert "failure" in spaces["status"]
-    # Cihazın kendi sözcüğü ANAHTAR, kolona yazılan DEĞER. Kural değeri arıyor.
-    assert "failed" not in spaces["status"]
+    assert "status" in spaces["fortigate"], "`status` kolonunun değer uzayı çözülemedi"
+    assert "failure" in spaces["fortigate"]["status"]
+    # Cihazın kendi sözcüğü ANAHTAR, kolona yazılan DEĞER. Kural değeri arıyor;
+    # `failed` bir anahtar, dolayısıyla değer olarak listede YOK.
+    assert "failed" not in spaces["fortigate"]["status"]
 
     report = em.examine(
         "logsource:\n  product: fortigate\n"
@@ -305,10 +308,67 @@ def test_deger_uzaylari_UC_kaynaktan_zincirleniyor() -> None:
     """
     spaces = em.column_value_spaces(em.repo_root())
 
-    # `outcome AS status` (görünüm) + `outcome: {table: auth_outcome}` (parser)
-    assert "failure" in spaces["status"] and "success" in spaces["status"]
-    # `proto AS connection_info_protocol_name` + `ip_proto_name`
-    assert "tcp" in spaces["connection_info_protocol_name"]
+    # Zincir artık dört halka: VENDOR → görünüm → parser → sözlük.
+    # Vendor kırılımı eklendi çünkü iki sözlük aynı kolonu dolduruyor ve
+    # birleştirilince biri diğerinin değer uzayını kirletiyordu.
+    assert "failure" in spaces["fortigate"]["status"]
+    assert "success" in spaces["fortigate"]["status"]
+    assert "tcp" in spaces["fortigate"]["connection_info_protocol_name"]
+
+
+def test_kesisim_BOS_ise_kesin_DOLU_ise_degil() -> None:
+    """**Kutu 4'ün asimetrisi — ve neden bir alt sınır.**
+
+    Araç yüklemi alanına kısıtlayamıyor: `user|contains: 'admin'` yüklemi `user`
+    kolonunu kastediyor ama ham satırda `admin` aramak `Administrator`
+    sözcüğünün içine de denk geliyor. Ölçüldü: `fortigate_user_auth_fail` için
+    kesişim {1,2,3,4} çıkıyor, oysa o satırlarda `user` değerleri `philipp` ve
+    `name.lastname`.
+
+    Bu yüzden tek yön sağlam:
+
+    * kesişim BOŞ → kural o korpusta kesinlikle eşleşemez
+    * kesişim DOLU → eşleşebilirmiş gibi görünür, kanıt değil
+
+    Aracın kaldıramayacağı iddiayı kurmaması, sayıyı güzelleştirmekten önemli.
+    """
+    report = em.RuleReport(name="x", product="asa")
+    report.literals = [
+        em.Literal("a", "contains", "x", em.PRESENT, line_numbers=[1, 2]),
+        em.Literal("b", "contains", "y", em.PRESENT, line_numbers=[5, 6]),
+    ]
+
+    assert report.verdict == em.NEVER_TOGETHER
+
+    # Kesişim dolduğunda `present` — ama bu bir üst sınır, kanıt değil.
+    report.literals[1].line_numbers = [2, 5]
+    assert report.verdict == em.PRESENT
+
+
+def test_deger_uzayi_VENDORA_gore_ayriliyor() -> None:
+    """**Ayrılmamış olması satır kümesini dörtten on altıya şişiriyordu.**
+
+    `auth_outcome` (FortiGate/Cisco/MikroTik) ile `http_status_outcome` (nginx)
+    **aynı** `core.outcome` alanını dolduruyor. Kolon başına birleştirilince
+    FortiGate'in `status` değer uzayına nginx'in HTTP kodları karışıyordu — ve
+    `500` FortiGate satırlarında bayt sayısı olarak geçtiği için kesişim yanlış
+    yerde dolu çıkıyor, "birlikte yok" kutusu gerçekte olduğundan boş
+    görünüyordu.
+    """
+    spaces = em.column_value_spaces(em.repo_root())
+
+    fortigate = spaces["fortigate"]["status"]["failure"]
+    nginx = spaces["nginx"]["status"]["failure"]
+
+    assert "failed" in fortigate
+    assert not any(word.isdigit() for word in fortigate), "HTTP kodları sızmış"
+    assert any(word.isdigit() for word in nginx), "nginx'in kodları kaybolmuş"
+
+
+def test_korpus_kutulari_ORTAK_paydada() -> None:
+    """İki kutu ayrı ama payda ortak: ikisi de korpusun kusuru, eşlemenin değil."""
+    assert em.CORPUS_VERDICTS == {em.ABSENT, em.NEVER_TOGETHER}
+    assert em.PRESENT not in em.CORPUS_VERDICTS
 
 
 def main() -> int:
