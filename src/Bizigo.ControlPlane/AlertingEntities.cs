@@ -218,6 +218,21 @@ public sealed class AlertRuleEntity
     [MaxLength(512)]
     public string GatedReason { get; set; } = string.Empty;
 
+    /// <summary>
+    /// <c>gated</c> kuralın değişiklik parmak izi: kaynak özeti <b>artı</b>
+    /// engeller.
+    ///
+    /// <para>
+    /// Ayrı bir alan, çünkü <c>SigmaOutputSha</c> bu kurallarda boş — ve boş
+    /// dizge her zaman boş dizgeye eşit olurdu, yani kural sonsuza kadar
+    /// "değişmemiş" görünürdü. Yalnızca kaynağa bakmak da yetmiyor: pipeline
+    /// kuralı başka bir kolonda takılmaya başlarsa kaynak aynı kalır ama
+    /// kullanıcıya gösterilen sebep sessizce bayatlar.
+    /// </para>
+    /// </summary>
+    [MaxLength(512)]
+    public string GatedFingerprint { get; set; } = string.Empty;
+
     /// <summary>Zamanlayıcının bir sonraki tur hesabı. <c>null</c> ise ilk turda koşar.</summary>
     public DateTimeOffset? NextRunAt { get; set; }
 
