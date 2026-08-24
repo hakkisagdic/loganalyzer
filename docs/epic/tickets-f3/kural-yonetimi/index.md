@@ -1,7 +1,7 @@
 ---
 title: "T33 — Kural yönetimi ve alarm motoruna bağlama"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # T33 — Kural yönetimi ve alarm motoruna bağlama
@@ -50,8 +50,16 @@ sınırı sanır.
 
 - Bir Sigma kuralı etkinleştirildiğinde tetikleniyor ve bildirim gidiyor.
 
-  Zincir testi yazıldı (`SigmaRuleChainTests`) ama **koşturulmadı** — Docker
-  gerektiriyor ve §2 gereği koordinatörün işi. Her testin özet yorumunda
+  ✅ **Koşturuldu ve geçti:** `SigmaRuleChainTests` 4/4, tam entegrasyon
+  paketi 160 geçti · 0 kırmızı.
+
+  Zincir bir kez **sınıfla düştü, tek başına geçti** — ve sebebi sızıntı
+  değil **iddianın kapsamıydı**: test *"bu kural sorgu üretmiyor"* demek
+  isterken *"hiçbir yerde tetiklenme yok"* diyordu, yani sahip olmadığı bir
+  şey hakkında. Temizlik olmadan da doğru olan bir iddia, temizliğe muhtaç
+  olandan sağlam.
+
+  Zincir testi §2 gereği ajanda **yazıldı**, koordinatörde koşturuldu. Her testin özet yorumunda
   koşturulduğunda ne kanıtlayacağı yazılı.
 
   Zincir olarak kuruldu, parça listesi olarak değil: her adımın girdisi bir

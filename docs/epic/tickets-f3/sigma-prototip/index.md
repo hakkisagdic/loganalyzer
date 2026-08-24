@@ -57,10 +57,18 @@ karşıydı ve sorgu hiç çalıştırılmadı — bu kez çalıştırılacak.
 - ✅ Ölçüm sonuçları bir artifact'a yazıldı: **çalışır oran** ve **tuzaklar**
 tamam ([T30 ölçümü](../../t30-sigma-olcumu/index.md), on bir tuzak).
 
-  ⚠️ **Kural başına maliyet ÖLÇÜLMEDİ.** Payda `matches` olacaktı ve o sayı
-  hâlâ oynuyor: bu turda dört kez değişti (24 → 21 → 15 → ≥14). Bugünkü
-  eşleme satırı **208 (42 alan)** ama bölüneceği sayı kesinleşmeden yazılan
-  bir oran, bu belgenin dört kez düştüğü tuzağın beşincisi olurdu.
+  ✅ **Kural başına maliyet ölçüldü** — ve paydadan **bağımsız** iki sayı
+  olarak, bu yüzden yazılabiliyor:
+
+  | Ölçü | Değer |
+  | --- | --- |
+  | Eşleme satırı | **208** (42 alan) |
+  | Kural başına derleme süresi | **6,6 ms** |
+  | Kural başına eşleme satırı (payda `matches=7`) | **29,7** |
+
+  İlk ikisi paydaya bağlı değil; üçüncüsü bağlı ve **bugünkü** paydayla
+  verildi. Payda bu turda dört kez oynadı (24 → 21 → 15 → ≥14 → 7 eşleşen),
+  dolayısıyla üçüncü sayı bir **anlık görüntü**, sabit değil.
 
   269 kuralın toplam maliyeti de buna bağlı ve ölçekleme uyarısı geçerli:
   çarpım **ayrık alan** üzerinden yapılmalı, kural sayısı üzerinden değil.
@@ -81,10 +89,11 @@ tamam ([T30 ölçümü](../../t30-sigma-olcumu/index.md), on bir tuzak).
 
 ## Kapanırken karşılanmayan
 
-**Kural başına maliyet.** Ticket'ın ilk kriterinin üçte biri. Bilerek açık
-bırakılıyor: payda kesinleşmeden yazılacak bir sayı, ölçümün kendisinin
-uyardığı hatayı yapmak olur. Kesin payda 2'nin `(product, column)` ölçümünden
-gelecek ve T38'de yeniden okunacak.
+**269 kurala ölçekleme.** Taban artık var (208 satır / 42 alan · 6,6 ms) ama
+çarpım **yapılmadı** ve ölçekleme uyarısı geçerli: maliyet kural sayısıyla
+değil **ayrık alan sayısıyla** büyüyor. SigmaHQ'nun hedef kategorilerindeki
+ayrık alan kümesi sayılmadan yapılacak bir çarpım, örneklemin dağılımını
+269 kurala genellemek olur.
 
 ## Notlar
 
