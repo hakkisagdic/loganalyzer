@@ -1,0 +1,118 @@
+# Sigma kural yazım kılavuzu
+
+Bu dizindeki kurallar derleme zamanında ClickHouse SQL'ine çevriliyor
+(`tools/sigma-build`). Aşağıdaki şartların her biri **yaşanmış bir hatadan**
+doğdu; gerekçesi olmayan madde yok.
+
+Kuralların kaynağı `ruleset.json` çivisinde yazılı ve bugün **SigmaHQ değil**:
+24 kural T30 örnekleminden terfi ettirildi.
+
+---
+
+## Bir kural yazarken üç şart
+
+Üçü de aynı kök soruya bakıyor: **kuralın aradığı şey, verinin gerçekten
+taşıdığı şey mi?** Kuralı yazan kişi bunu varsayarsa kural derlenir, koşar,
+hiçbir sayaç artmaz ve "çalışıyor" görünür.
+
+### 1 · Her sabit dizge, o vendor'ın örneğinde **geçtiği görülerek**
+
+```bash
+grep -n 'Reset' catalog/parsers/cisco.asa/samples/network.log
+```
+
+Vendor'ın sözlüğü bizim varsayımımız değil. Ölçülen üç örnek:
+
+| Kural | Aranan | Vendor'ın yazdığı |
+| --- | --- | --- |
+| `asa_teardown_rst` | `RST` | `Reset-I` / `Reset-O` |
+| `routeros_forward_new` | `action` | `fw_chain` |
+| `fortigate_user_auth_fail` | `failure` | `failed` (kolona `failure` olarak eşleniyor) |
+
+Birincisi en pahalıydı: `RST` örneklerde yalnızca **`first` ve `burst`**
+sözcüklerinin içine denk geliyordu. Kural "eşleşiyor" görünüyordu ve ölçüm aracı
+onu `present` kutusuna koymuştu — **yanlış sebeple eşleşen bir kural, hiç
+eşleşmeyenden tehlikeli.**
+
+### 2 · **ve** gittiği kolonun o değeri **tutabildiği görülerek**
+
+Alan adının var olması yetmiyor; kolonun **sözlüğü** de tutmalı.
+
+`nginx_5xx_burst` bunu gösterdi: kural `status|startswith: '5'` arıyor, `status`
+kolonu `outcome`'dan geliyor ve `catalog/mappings/http_status_outcome.yaml` HTTP
+kodunu `success`/`failure`'a çeviriyor. **Kolonda hiçbir zaman sayı durmuyor**,
+yani örneklemde 5xx olsa bile kural asla eşleşemez.
+
+Bakılacak yer: `catalog/mappings/` ve `db/clickhouse/0003_ocsf_otel_views.sql`.
+
+Aynı şart tip için de geçerli — `fortigate_high_port_scan` `proto: 6` yazıyor,
+kolon `LowCardinality(String)`. ClickHouse reddediyor (Kapı 2 yakalıyor).
+
+### 3 · **ve** istenen alanların o vendor'da **aynı satırda dolabildiği görülerek**
+
+Bir kural iki alanı `AND` ile bağladığında, ikisinin **ayrı ayrı** dolu olması
+yetmez; **aynı olayda** birlikte dolmaları gerekiyor.
+
+Çok-parser'lı bir vendor'da bu sık kırılıyor: MikroTik'te `system` parser'ı
+kimlik alanlarını, `firewall` parser'ı ağ alanlarını dolduruyor — ölçülen
+**12 alan çifti** ayrı ayrı dolu ama aynı satırda hiç birlikte değil
+(Fortinet'te 3 çift).
+
+Ölçülen üç örnek, üçü de aynı şekilde kaçtı:
+
+| Kural | İlk yarım | İkinci yarım | Kesişim |
+| --- | --- | --- | --- |
+| `routeros_dhcp_offer` | `proto UDP` 4 satır | `dstport 68` | **0** |
+| `fortigate_user_auth_fail` | `status="failed"` 4 satır | `user="admin"` 2 satır | **0** |
+| `nginx_large_upload` | `POST` | `/upload` | **0** (ikisi de yok) |
+
+⚠️ Kapsam ölçüm aracı yüklemleri **tek tek** arıyor, kural onları aynı olayda
+istiyor. Aracın `present` kutusu bu yüzden *"yüklemleri ayrı ayrı geçiyor"*
+demek, *"kural eşleşebilir"* demek değil.
+
+**Kontrol yolu:** iki yüklemi tek `grep` zincirinde ara.
+
+```bash
+grep 'status="failed"' catalog/parsers/fortinet.fortigate/samples/event.log \
+  | grep -c 'user="admin"'
+```
+
+`logsource.category` taşımayan bir kural bu tuzağa daha açık: parser ayrımı
+kaybolduğu için iki farklı olay ailesinden alan istemesi kolaylaşıyor.
+
+---
+
+## Yazdıktan sonra
+
+```bash
+cd tools/sigma-build
+python -m sigma_build.ruleset --refresh   # çivi
+python -m sigma_build.compile --write     # üretilen SQL
+python -m sigma_build.compile --check     # sürüklenme kapısı
+```
+
+Çivi yenilenmezse CI kırmızı yanar — bu bir kez oldu ve bir CI turu ile bir push
+turu yedi. `compile --write` artık bayat çiviyle **yazmıyor**.
+
+Beklenti (`catalog/sigma/expectations.json`) yazarken gerekçe **örnek
+dosyasından** gelsin, ClickHouse sayısından değil. Sayıdan yazılan bir gerekçe
+bugünkü verinin fotoğrafı olur; `asa_teardown_rst` tam olarak öyle
+kutsanabilirdi.
+
+## Tekrarlanan YAML anahtarı
+
+```yaml
+    message|contains: 'Teardown'
+    message|contains: 'RST'      # ← YAML sonuncuyu alır, ilki SESSİZCE düşer
+```
+
+AND isteniyorsa `|all` kullanın; **düz bir liste Sigma'da OR'dur.**
+
+```yaml
+    message|contains|all:
+      - 'Teardown'
+      - 'Reset'
+```
+
+CI'da `yamllint`in `key-duplicates` kuralı bu dizini tarıyor ve bu kusuru
+gerçekten yakaladı.

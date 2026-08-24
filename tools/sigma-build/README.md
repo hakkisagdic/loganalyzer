@@ -45,6 +45,21 @@ python -m sigma_build.compile --write     # üretilen SQL
 özet değil. Kural setini gerçekten yükseltmek (yeni `commit`) ayrı bir hareket ve
 ağ gerektiriyor; bu komut yalnızca yerel ağacı çiviyle hizalıyor.
 
+### Ölçek — sentetik ağaçla ölçüldü
+
+Bugün 24 kural var; hat bir gün SigmaHQ alt kümesiyle koşacak. Alt dizinlere
+yayılmış sentetik ağaçlarla:
+
+| Kural | `--refresh` | `--verify` | Çivi boyutu |
+| --- | --- | --- | --- |
+| 24 | 1,3 ms | 1,0 ms | 3,7 KB |
+| **269** | **7,7 ms** | **7,2 ms** | **38 KB** |
+| 1000 | 40,7 ms | 35,5 ms | 141 KB |
+
+Doğrusaldan biraz kötü ama hiçbir ölçekte kalem değil. Alt dizin yolları çivide
+korunuyor (`kategori0/kural_0.yml`), yani SigmaHQ'nun ağaç yapısı düzleşmiyor —
+düzleşseydi iki farklı dizindeki aynı adlı kural sessizce tek kayda çökerdi.
+
 `compile --write` çivi bayatken **yazmıyor** ve `--refresh`'i adıyla söylüyor.
 Gerekçe ölçüldü: bir ajan kuralı düzeltti, çiviyi yenilemedi, `--write` hiçbir şey
 söylemeden yeni SQL üretti ve tutarsızlığı ancak bir sonraki koşumda çivi kapısı
