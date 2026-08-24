@@ -9,7 +9,7 @@ relationships:
   - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
     type: related_to
 sources: [CLAUDE.md, README.md]
-source_digest: "sha256-12/v1 CLAUDE.md=6d1fc1f38840 README.md=dc51f8de9a8c"
+source_digest: "sha256-12/v1 CLAUDE.md=d76db5d0b76a README.md=dc51f8de9a8c"
 summary: Bu depoda iş bir koordinatör ve paralel uygulayıcı ajanlarla yürüyor. Test bölünmesi, worktree yaşam döngüsü ve birleştirme sırası ölçülmüş olaylardan doğdu.
 provenance:
   extracted: 0.85
@@ -87,6 +87,15 @@ Kural: `git push`'un ardından `gh run list` ile koşumun sonucuna bak. Kırmız
 sıradaki ticket'ı verme. Aynı ders README'de kanca olarak da çivilenmiş —
 `.githooks/pre-push` `main`'e push'tan önce önceki CI koşumuna bakıp kırmızıysa
 durduruyor.
+
+**Simetrisi de doğru ve ölçüldü:** `posthog-js` bir merge ile `package.json`'a
+girdi, `node_modules`'a girmedi. **CI yeşildi** çünkü orada `npm ci` koşuyor;
+yerelde çalışan herkes iki `tsc` hatası görüyordu. Yani CI temiz bir ortamı
+ölçüyor — ve **kimsenin çalışmadığı** ortamı.
+
+İkisi farklı soru soruyor: CI *"temiz bir makinede kurulur mu"*, yerel *"bu
+makinede bugün çalışır mı"*. Birinin yeşili diğerinin yerine geçmiyor, ve
+merge sonrası `npm install` bu yüzden bir alışkanlık değil bir kural (B16).
 
 ## Worktree yaşam döngüsü
 

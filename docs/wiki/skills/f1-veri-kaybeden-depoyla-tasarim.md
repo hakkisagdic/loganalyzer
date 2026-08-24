@@ -20,7 +20,7 @@ sources:
   - docs/epic/tickets/replay/index.md
   - docs/epic/f1-kapanis/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=6d1fc1f38840 docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=c9cae79ad905 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/tickets/ham-arsiv-kurtarma/index.md=791799eef7a1 docs/epic/tickets/ham-arsiv/index.md=f7b6e1d7e3a0 docs/epic/tickets/replay/index.md=a6e378b9614b"
+source_digest: "sha256-12/v1 CLAUDE.md=d76db5d0b76a docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=c9cae79ad905 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/tickets/ham-arsiv-kurtarma/index.md=791799eef7a1 docs/epic/tickets/ham-arsiv/index.md=f7b6e1d7e3a0 docs/epic/tickets/replay/index.md=a6e378b9614b"
 summary: Olgunlaşmamış bir nesne deposu (RustFS 1.0-beta) replay'in tek kaynağıyken tasarımın veri kaybını varsayması gerekiyor. Beş koruma, en değerlisi manifest — ve T40'ın gösterdiği şey belgelenmiş bir korumanın mekanizmasız kalabildiği.
 provenance:
   extracted: 0.87

@@ -152,6 +152,17 @@ gördüğü şey senin koşmadığın şeydir, zaten o yüzden orada.
 eklemek işin yarısı; okunmayan kapı, olmayan kapıyla aynı sonucu veriyor ve
 üstüne "bu soru sorulmuş" yanılsaması bırakıyor.
 
+**Simetrisi de doğru: yerelin gördüğü şey CI'nın koşmadığı şey olabilir.**
+`posthog-js` bir merge ile `package.json`'a girdi ve `node_modules`'a girmedi;
+CI **yeşildi** çünkü orada `npm ci` koşuyor, ama yerelde çalışan herkes iki
+`tsc` hatası görüyordu. Yani CI temiz bir ortamı ölçüyor ve **kimsenin
+çalışmadığı** ortamı ölçüyor.
+
+İkisi farklı soru soruyor ve ikisi de gerekli: CI *"temiz bir makinede kurulur
+mu"*, yerel *"bu makinede bugün çalışır mı"*. Birinin yeşili diğerinin yerine
+geçmiyor — ve `npm install`'ı merge sonrası koşturmak (B16) bu yüzden bir
+alışkanlık değil bir kural.
+
 ---
 
 ## 6 · Ölçüm kültürü

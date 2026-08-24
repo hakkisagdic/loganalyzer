@@ -19,7 +19,7 @@ sources:
   - docs/epic/t12-kararlar/index.md
   - docs/epic/t27-kapanis-taramasi/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=6d1fc1f38840 docs/epic/t12-kararlar/index.md=454710cef295 docs/epic/t27-kapanis-taramasi/index.md=fc23cd892d11 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t39-alan-kapsami/index.md=7d06bfcf6e0c"
+source_digest: "sha256-12/v1 CLAUDE.md=d76db5d0b76a docs/epic/t12-kararlar/index.md=454710cef295 docs/epic/t27-kapanis-taramasi/index.md=fc23cd892d11 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t39-alan-kapsami/index.md=7d06bfcf6e0c"
 summary: Hangi sayının hangi kararı vereceği, ölçüm koşmadan önce bağlanıyor — sonuç geldikten sonra gerekçe uydurulmasın diye. Ön kontrol, geçersizleme kriteri, payda ve zayıf halka önceden yazılı.
 provenance:
   extracted: 0.85
