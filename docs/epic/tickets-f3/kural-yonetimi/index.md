@@ -49,6 +49,20 @@ sınırı sanır.
 ## Kabul kriterleri
 
 - Bir Sigma kuralı etkinleştirildiğinde tetikleniyor ve bildirim gidiyor.
+
+  Zincir testi yazıldı (`SigmaRuleChainTests`) ama **koşturulmadı** — Docker
+  gerektiriyor ve §2 gereği koordinatörün işi. Her testin özet yorumunda
+  koşturulduğunda ne kanıtlayacağı yazılı.
+
+  Zincir olarak kuruldu, parça listesi olarak değil: her adımın girdisi bir
+  öncekinin **çıktısı**. Kural kimliği, kapsamı ve eşiği elle yazılmıyor,
+  senkronun kayda bıraktığı satırdan okunuyor — senkron varsayılanı
+  değiştirirse ya da zamanlayıcı başka bir alana bakmaya başlarsa test düşer.
+
+  Son halka **tetiklenmenin kayda düşmesi**, bildirimin kanala teslimi değil;
+  o `NotificationDispatcherTests`'te sahte kanalla duruyor ve gerçek bir uca
+  istek atmak testi ağa bağlardı. Bir sonraki okuyucu bunu "bildirim
+  gönderildi" diye okumasın.
 - Kural **sahibinin kapsamıyla** koşuyor; başka grubun verisini görmüyor.
 - Pasif kural hiç sorgu üretmiyor — kapalı kuralın maliyeti sıfır olmalı.
 
