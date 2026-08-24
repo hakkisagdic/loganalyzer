@@ -35,6 +35,13 @@
     <ProjectReference Include="..\..\src\Bizigo.Evidence\Bizigo.Evidence.csproj" />
 
     <!--
+      S03: `SshDeviceTransport` gerçek bir SSH sunucusuna karşı koşuyor.
+      Cihaz katmanı buraya ilk kez giriyor — F1'de yazıldığından beri hiçbir
+      test onu ağa çıkarmamıştı.
+    -->
+    <ProjectReference Include="..\..\src\Bizigo.Devices\Bizigo.Devices.csproj" />
+
+    <!--
       T39: altın örnek yükleyicisi CLI'da duruyor ve `GoldenSeedClickHouseTests`
       onu canlı ClickHouse'a karşı koşturuyor. Yükleyiciyi test için ikinci kez
       yazmak, ölçüm verisini üreten yolun kendisini sınamamak olurdu.

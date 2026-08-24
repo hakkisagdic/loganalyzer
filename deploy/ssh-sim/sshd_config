@@ -1,0 +1,28 @@
+# N2 simülatörünün sshd yapılandırması (S03).
+#
+# Bu dosya BİR TEST ZEMİNİ içindir; üretim sunucusu değildir. Buradaki
+# gevşetmelerin hiçbiri ürünün kendi yapılandırmasına örnek değil.
+
+Port 22
+PermitRootLogin no
+PasswordAuthentication yes
+PubkeyAuthentication no
+
+# Boş parola YASAK. Testin "yanlış parola reddediliyor" iddiası, boş parolanın
+# kabul edildiği bir sunucuda anlamsız olurdu — reddedilen şey parola değil
+# yokluğu olurdu.
+PermitEmptyPasswords no
+
+# HER oturum dağıtıcıya gidiyor. Kullanıcının kabuğu ne olursa olsun, gelen
+# komut `SSH_ORIGINAL_COMMAND` içinde dağıtıcıya düşüyor.
+#
+# Zorlanmış komut olmasaydı `exec` isteği doğrudan kabukta koşardı ve
+# simülatör, cihaz gibi değil bir Linux kutusu gibi davranırdı: `ls` çalışır,
+# vendor komutu çalışmazdı. Cihazlar kabuk vermiyor.
+ForceCommand /usr/local/bin/komut-dagitici
+
+# Test zemini: bağlantı kurulumu hızlı olsun, DNS beklemesin.
+UseDNS no
+
+# Günlükler konteyner çıktısına.
+LogLevel INFO
