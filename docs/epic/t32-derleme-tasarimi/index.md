@@ -429,6 +429,38 @@ Kırmızının okunabilir olması için her birinin kanıtı gerekçede: kırmı
 `LowCardinality(String)`, Kapı 2'nin `--self-test`'inde duruyor); diğer ikisinin
 sebebi **ölçülmedi** ve bu da gerekçede yazılı.
 
+### Risk · Beyanların dayandığı varsayım — FS ve TTL
+
+Beyanların gerekçesi *"şu örnek dosyada şu satır var/yok"* diyor. İki şey bu
+varsayımı tehdit edebilir; biri ölçüldü ve **tehdit değil**, diğeri **gerçek**.
+
+**Cihaz simülatörleri (FS) — tehdit değil.** `docs/epic/fs-simulatorler/`
+okundu: profiller örnek log satırlarını **kopyalamıyor, işaret ediyor**
+(`catalog/parsers/<id>/samples/`), ve bir bekçi işaret edilen dosyanın varlığını
+sınıyor. Yani simülatör aynı kaynağın ikinci bir tüketicisi; beyanların
+gerekçeleri geçerli kalıyor.
+
+⚠️ Bu, simülatörler **kendi** satırlarını üretmeye başladığı gün değişir:
+o zaman ClickHouse'daki altın veri `samples/` ile örtüşmez ve bir `corpus_gap`
+beyanı, örnek dosyada olmayan bir satır yüzünden kırmızı yanar. Gerekçe "dosyada
+yok" derken veri "var" diyor olur.
+
+**TTL — gerçek bir risk ve bugün ölçüldü (FS belgesi, kök neden analizi).**
+`events` tablosunda `TTL toDateTime(ts) + INTERVAL 90 DAY` var, ve
+`catalog/parsers/*/samples/` altındaki vendor örnekleri **2015–2022** tarihleri
+taşıyor. ClickHouse süresi dolmuş satırı parçayı oluştururken atıyor — **ama
+istemciye "yazdım" diyor.**
+
+Kapı 3 için sonucu şu: bir satır örnek dosyada **var** olabilir ve
+ClickHouse'da **olmayabilir**. O zaman
+* bir `at_least_one` beyanı, kuralla hiç ilgisi olmayan bir sebeple düşer,
+* bir `corpus_gap` beyanı **yanlış sebeple** geçer.
+
+Ön kontrol bunun tamamını yakalamıyor: vendor başına satır sayısına bakıyor,
+yani toplu bir TTL süpürmesini görür ama **kısmi** bir düşmeyi görmez. Bu, Kapı
+3'ün bilinen sınırı ve burada kayıtlı — gerekçelerin "ölçtüm" ağırlığı bu sınırın
+içinde geçerli.
+
 ### KARAR · Kapı 1'den geçemeyen kural dosya üretmez
 
 Manifest'e `gated` olarak sebebiyle yazılır (`unknown_column: url`). Böylece
