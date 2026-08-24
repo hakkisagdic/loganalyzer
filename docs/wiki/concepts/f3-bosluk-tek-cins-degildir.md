@@ -21,7 +21,7 @@ sources:
   - docs/epic/t30-sigma-olcumu/index.md
   - docs/epic/tickets-f3/kural-yonetimi/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=3984257f89e8 docs/epic/t30-sigma-olcumu/index.md=33217d5fdb53 docs/epic/t32-derleme-tasarimi/index.md=84daadf9f9fc docs/epic/t32-t33-acik-sorular/index.md=131d289ee01f docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/kural-yonetimi/index.md=32a8b042b2b7"
+source_digest: "sha256-12/v1 CLAUDE.md=3984257f89e8 docs/epic/t30-sigma-olcumu/index.md=33217d5fdb53 docs/epic/t32-derleme-tasarimi/index.md=457cb125d0d3 docs/epic/t32-t33-acik-sorular/index.md=131d289ee01f docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/kural-yonetimi/index.md=32a8b042b2b7"
 summary: F3'ün en çok tekrarlanan kararı — "bir şey yok" diyen farklı olgular aynı boş kutuya düşerse okuyucu iyimser yanılır ve hiçbir hata mesajı bunu bozmaz. Faz boyunca en az yedi kez ayrı ayrı kuruldu.
 provenance:
   extracted: 0.85
@@ -60,6 +60,7 @@ beyanı bölümü). Belgeler yan yana konduğunda sayı daha da yüksek: F3 boyu
 | **Derleme durumu** | `gated` (derlendi, koşmuyor) ↔ `failed` (derlenemedi = build kırık) | `docs/epic/t32-derleme-tasarimi/index.md` §4 |
 | **Beyan** | `none.kind = invariant` (yanlış pozitif doğdu) ↔ `corpus_gap` (korpus genişledi) | `docs/epic/t32-derleme-tasarimi/index.md` §3 |
 | **Ölçüm paydası** | `no_data` (veri yüklenmemiş) ↔ `blocked` (bu şemada hiç ölçülemez) ↔ `absent` (desen örneklemde yok) | `docs/epic/t30-sigma-olcumu/index.md` |
+| **Depoda yokluk** | "örnek dosyada yok" ↔ **"örnek dosyada var, veritabanında yok"** (TTL sildi) | `docs/epic/t32-derleme-tasarimi/index.md` §3, FS kök neden analizi |
 
 ## Neden her biri pahalı
 
@@ -130,6 +131,30 @@ T37'nin cümlesi bu sayfanın en pratik uyarısı:
 Beş durumun beşi de **doğal olarak boş bir kutu** gibi çizilir. Çizildiği an
 rapor, bakmadığı bir şeye bakmış gibi görünür. Bu yüzden ayrımın son sınavı
 sözleşmede değil **ekranda ve export'ta**.
+
+## Sekizincisi ayrımın kendisine bir sınır koyuyor
+
+Yedi kuruluşun hepsi **kararı** ayırıyor: "hangi anlamda yok?" Sekizincisi farklı
+bir şey söylüyor — **kaydın kendisi kaybolabilir.**
+
+`events` tablosunda `TTL toDateTime(ts) + INTERVAL 90 DAY` var ve vendor örnek
+dosyaları 2015–2022 tarihleri taşıyor. ClickHouse süresi dolmuş satırı parçayı
+oluştururken atıyor, **ama istemciye "yazdım" diyor.** Yani bir satır örnek
+dosyada var olabilir ve veritabanında olmayabilir.
+
+Kapı 3 için sonucu: bir `at_least_one` beyanı kuralla **hiç ilgisi olmayan** bir
+sebeple düşer, bir `corpus_gap` beyanı **yanlış sebeple** geçer. İkisi de
+ayrımın kendisini bozuyor — çünkü ayrım "yokluk hangi cinsten" diye soruyor ve
+bu cins **soruyu soran tarafın göremediği** bir yerden geliyor.
+
+**Bugün risk değil, ölçüldü:** `count() WHERE ts < now() - INTERVAL 90 DAY → 0`;
+altın satırların `min(ts)`'si 17 gün önce, çünkü `GoldenSamplePlan` satırları bir
+`Anchor` etrafına yayıyor ve dosyanın kendi tarihini taşımıyor.
+
+**Ama sınır yapısal değil, yükleyicinin davranışına bağlı** — ve simülatörler
+dosyanın kendi tarihini kullanma yönüne gidebilir. Ön kontrol vendor başına satır
+sayısına bakıyor, yani **toplu** bir süpürmeyi görür, **kısmi** bir düşmeyi
+görmez. Yedi ayrımı kuran mekanizmaların hiçbiri bu sekizincisini yakalamıyor.
 
 ## Açık soru
 

@@ -17,7 +17,7 @@ sources:
   - docs/epic/t30-sigma-olcumu/index.md
   - docs/epic/t32-derleme-tasarimi/index.md
   - docs/epic/f3-yol-haritasi/index.md
-source_digest: "sha256-12/v1 docs/epic/f3-yol-haritasi/index.md=27055ee43212 docs/epic/t30-sigma-olcumu/index.md=33217d5fdb53 docs/epic/t32-derleme-tasarimi/index.md=84daadf9f9fc docs/epic/t39-alan-kapsami/index.md=d05b57cf00ab"
+source_digest: "sha256-12/v1 docs/epic/f3-yol-haritasi/index.md=27055ee43212 docs/epic/t30-sigma-olcumu/index.md=33217d5fdb53 docs/epic/t32-derleme-tasarimi/index.md=457cb125d0d3 docs/epic/t39-alan-kapsami/index.md=2c77e0540320"
 summary: Bir kural sıfır satır döndürdüğünde sebep en az beş farklı şey olabilir ve tabloda hepsi aynı görünür. Üç bağımsız eksen — metin, alan, değer uzayı — birbirini tamamlayarak sebebi ayırıyor.
 provenance:
   extracted: 0.85
@@ -189,13 +189,50 @@ Dört kural, kolonun/vendor'ın **gerçekte ne tuttuğuna** bakılmadan yazılm�
 Dördüncüsü farklı bir katman ve ayrı yazılıyor: ilk üçünde dizge *vendor'ın
 sözlüğünde* yoktu; burada dizge **kolonun sözlüğünde** yok.
 
-Buradan çıkan katalog kuralı iki yarımlı:
+Buradan çıkan katalog kuralı **üç** yarımlı:
 
-> Bir kuraldaki her sabit dizge, **(a)** o vendor'ın örneğinde geçtiği **ve**
-> **(b)** gittiği kolonun o değeri tutabildiği görülerek yazılmalı.
+> Bir kuraldaki her sabit dizge, **(a)** o vendor'ın örneğinde geçtiği,
+> **(b)** gittiği kolonun o değeri tutabildiği, **ve (c)** istenen alanların o
+> vendor'da **aynı satırda dolabildiği** görülerek yazılmalı.
 
 İkinci yarım eşleme tablosuna bakmayı gerektiriyor ve ilk üç örnek onu
 göstermiyordu.
+
+### Üçüncü yarım: **konusu bölünmüş** vendor
+
+Bir kural iki alanı `AND` ile bağladığında ikisinin ayrı ayrı dolu olması
+yetmiyor; **aynı olayda** dolmaları gerekiyor. Ölçülen üç kaçış, üçü de aynı
+şekilde:
+
+| Kural | İlk yarım | İkinci yarım | Kesişim |
+| --- | --- | --- | --- |
+| `routeros_dhcp_offer` | `proto UDP` 4 satır | `dstport 68` | **0** |
+| `fortigate_user_auth_fail` | `status="failed"` 4 satır | `user="admin"` 2 satır | **0** |
+| `nginx_large_upload` | `POST` | `/upload` | **0** (ikisi de yok) |
+
+**Kısıtın kaynağı parser *sayısı* değil, parser'ların neyi böldüğü.** Ölçüldü —
+dört vendor'ın dördünde de iki parser var ama biri hiç çift üretmiyor:
+
+| Vendor | Kalıcı çift | Parser'lar neyi bölüyor |
+| --- | --- | --- |
+| MikroTik | **12** | konu: sistem ↔ güvenlik duvarı |
+| Cisco | **4** | konu: kimlik ↔ ağ |
+| Fortinet | **3** | konu: olay ↔ trafik |
+| NGINX | **0** | **biçim**: aynı erişim logu, iki yazım |
+
+nginx'in ikisi aynı konuyu iki biçimde anlatıyor, yani aynı kolonları
+dolduruyorlar ve köprü var. Diğer üçü konuyu bölüyor.
+
+Uygulanabilir ölçüt bu yüzden *"çok parser'lı vendor"* değil **"konusu bölünmüş
+vendor"** — ve yeni bir vendor eklendiğinde sorulacak soru tek: parser'lar
+**biçim mi bölüyor, konu mu?**
+
+19 çiftin 19'u **kalıcı**; hiçbiri örnek dosya eklenerek kapanmaz.
+
+⚠️ Kapsam ölçüm aracı yüklemleri **tek tek** arıyor, kural onları aynı olayda
+istiyor. Aracın `present` kutusu bu yüzden *"yüklemleri ayrı ayrı geçiyor"*
+demek, *"kural eşleşebilir"* demek değil — üç kural bu yüzden yanlış kutuda
+duruyordu.
 
 ## En tehlikeli kutu: yanlış sebeple eşleşen kural
 

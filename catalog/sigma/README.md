@@ -53,10 +53,24 @@ kolon `LowCardinality(String)`. ClickHouse reddediyor (Kapı 2 yakalıyor).
 Bir kural iki alanı `AND` ile bağladığında, ikisinin **ayrı ayrı** dolu olması
 yetmez; **aynı olayda** birlikte dolmaları gerekiyor.
 
-Çok-parser'lı bir vendor'da bu sık kırılıyor: MikroTik'te `system` parser'ı
-kimlik alanlarını, `firewall` parser'ı ağ alanlarını dolduruyor — ölçülen
-**12 alan çifti** ayrı ayrı dolu ama aynı satırda hiç birlikte değil
-(Fortinet'te 3 çift).
+Kısıtın kaynağı parser **sayısı** değil, parser'ların **neyi böldüğü** — ölçüldü,
+dört vendor'ın dördünde de iki parser var ama biri hiç çift üretmiyor:
+
+| Vendor | Kalıcı çift | Parser'lar neyi bölüyor |
+| --- | --- | --- |
+| MikroTik | **12** | konu: sistem ↔ güvenlik duvarı |
+| Cisco | **4** | konu: kimlik ↔ ağ |
+| Fortinet | **3** | konu: olay ↔ trafik |
+| NGINX | **0** | **biçim**: aynı erişim logu, iki yazım |
+
+nginx'in iki parser'ı **aynı konuyu** iki biçimde anlatıyor, yani aynı kolonları
+dolduruyorlar ve köprü var. Diğer üçü **konuyu** bölüyor.
+
+Yani sorulacak soru *"vendor'ın kaç parser'ı var"* değil: **parser'lar biçim mi
+bölüyor, konu mu?** Konu bölünmüşse iki alanı `AND` ile bağlamadan önce
+kesişimi ölçün.
+
+19 çiftin 19'u **kalıcı** — hiçbiri örnek dosya eklenerek kapanmaz.
 
 Ölçülen üç örnek, üçü de aynı şekilde kaçtı:
 

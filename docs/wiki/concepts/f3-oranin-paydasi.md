@@ -17,7 +17,7 @@ sources:
   - docs/epic/t32-derleme-tasarimi/index.md
   - docs/epic/t39-alan-kapsami/index.md
   - docs/epic/f3-yol-haritasi/index.md
-source_digest: "sha256-12/v1 docs/epic/f3-yol-haritasi/index.md=27055ee43212 docs/epic/t30-sigma-olcumu/index.md=33217d5fdb53 docs/epic/t32-derleme-tasarimi/index.md=84daadf9f9fc docs/epic/t39-alan-kapsami/index.md=d05b57cf00ab"
+source_digest: "sha256-12/v1 docs/epic/f3-yol-haritasi/index.md=27055ee43212 docs/epic/t30-sigma-olcumu/index.md=33217d5fdb53 docs/epic/t32-derleme-tasarimi/index.md=457cb125d0d3 docs/epic/t39-alan-kapsami/index.md=2c77e0540320"
 summary: Sigma kapsam oranı beş koşumda %0, %8, %25, %29 ve %43 çıktı; hiçbiri yanlış hesaplanmadı, hepsi farklı payda kullandı. İki payda arasındaki fark bir karar dalını değiştiriyor.
 provenance:
   extracted: 0.9
