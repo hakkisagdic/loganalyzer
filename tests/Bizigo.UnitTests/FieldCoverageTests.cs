@@ -267,9 +267,40 @@ public sealed class FieldCoverageTests
         Assert.Equal(1, vendor.Populated["connection_info_protocol_name"]);
 
         // …ama aynı satırda hiç birlikte değiller.
-        Assert.Contains(
-            ("activity_name", "connection_info_protocol_name"),
-            vendor.NeverTogether);
+        var pair = Assert.Single(
+            vendor.NeverTogether,
+            entry => entry is { First: "activity_name", Second: "connection_info_protocol_name" });
+
+        // Aynı parser ikisini de doldurabiliyor → ayrılık ÖRNEKLEM tesadüfü,
+        // kalıcı bir şema kısıtı değil. Ayrım iş emrini belirliyor.
+        Assert.False(pair.Structural);
+    }
+
+    /// <summary>
+    /// <b>Kalıcı ayrılık.</b> İki kolonu dolduran parser kümeleri ayrıksa hiçbir
+    /// satır ikisini birden taşıyamaz — örneklem büyüse de. Bu bir kural yazım
+    /// kısıtı; örneklem tesadüfü ise bir örnek dosya kalemi. İkisini aynı
+    /// listede tutmak, zıt iki iş emrini karıştırmak olurdu.
+    /// </summary>
+    [Fact]
+    public void Ayrik_parser_kumeleri_kalici_ayrilik()
+    {
+        var report = FieldCoverage.Measure(
+            [
+                Event("bir", action: "deny", parserId: "vendor.auth"),
+                Event("iki", action: string.Empty, proto: "tcp", parserId: "vendor.network"),
+            ],
+            Columns);
+
+        var vendor = Assert.Single(report.Vendors);
+
+        var pair = Assert.Single(
+            vendor.NeverTogether,
+            entry => entry is { First: "activity_name", Second: "connection_info_protocol_name" });
+
+        Assert.True(pair.Structural);
+        Assert.Equal(["vendor.auth"], pair.FirstParsers);
+        Assert.Equal(["vendor.network"], pair.SecondParsers);
     }
 
     /// <summary>
@@ -306,8 +337,10 @@ public sealed class FieldCoverageTests
         string action,
         string vendor = "Acme",
         string proto = "",
+        string parserId = "acme.tek",
         IReadOnlyDictionary<string, string>? attrs = null) => new()
         {
+            ParserId = parserId,
             EventId = Guid.NewGuid(),
             Timestamp = DateTimeOffset.UnixEpoch,
             OwnerGroup = "golden",

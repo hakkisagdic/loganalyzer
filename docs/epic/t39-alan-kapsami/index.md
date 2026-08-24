@@ -136,6 +136,45 @@ MikroTik'in 12 çifti tek bir sebebin sonucu: `system` parser'ı kimlik alanlar�
 taşımıyor**. Yani `activity_name` ile bir port isteyen kural, iki alan da "dolu"
 görünse bile eşleşemez. Bu, `MissingIn` listesinin satır düzeyindeki kardeşi.
 
+### Kalıcı mı, bugünkü örneklemin tesadüfü mü — ve cevap kesin
+
+İlk hâli tek listeydi ve bu turun her ölçümünde geri alınan hatayı tekrarlıyordu:
+*"hiçbir zaman olmayacak"* ile *"bugün yok"* aynı biçimde basılıyordu. Çiftler
+artık **iki kolonu dolduran parser kümelerine** göre ayrılıyor:
+
+- **Kümeler ayrık** → hiçbir satır ikisini birden taşıyamaz, örneklem ne kadar
+büyürse büyüsün. Bu bir **kural yazım kısıtı**.
+- **Kümeler kesişiyor** → en az bir parser ikisini birden doldurabiliyor;
+birlikte görülmemeleri bugünkü örneklemin tesadüfü. Bu bir **örnek dosya
+kalemi**.
+
+**Ölçülen: 19 çiftin 19'u da kalıcı. Tesadüf sıfır.**
+
+### Çok-parser'lı vendor kısıtı genel mi? — hayır, "çok parser" değil "ayrık konu"
+
+| Vendor | Parser | Kalıcı çift | Tesadüf |
+| --- | --- | --- | --- |
+| MikroTik | 2 (`system`, `firewall`) | **12** | 0 |
+| Cisco | 2 (`auth`, `network`) | **4** | 0 |
+| Fortinet | 2 (`event`, `traffic`) | **3** | 0 |
+| NGINX | 2 (`combined`, `json`) | **0** | 0 |
+
+**Dört vendor'ın dördünde de iki parser var**, ama biri hiç çift üretmiyor.
+Yani kısıtın kaynağı parser sayısı değil, parser'ların **neyi böldüğü**:
+
+- nginx'in iki parser'ı **aynı konuyu** iki biçimde anlatıyor (erişim logu) ve
+aynı kolonları dolduruyor → köprü var, çift yok.
+- Diğer üçü **konuyu** bölüyor: kimlik ↔ ağ, olay ↔ trafik, sistem ↔ güvenlik
+duvarı. Hiçbir satır iki yarıyı birden taşımıyor.
+
+**Kural yazım kılavuzuna girecek üçüncü şart bu:**
+
+> …ve istenen alanların o vendor'da **aynı satırda dolabildiği** görülerek.
+
+İlk iki şart (dizgenin örnekte geçmesi, kolonun o değeri tutabilmesi) yüklemleri
+tek tek doğruluyor; üçüncüsü onları **birlikte** doğruluyor. Üçü olmadan bir
+kural "her yüklemi geçti" görünüp hiçbir satır bulmayabiliyor.
+
 **Sınırı açık:** bu *alan* düzeyinde kesişim, *değer* düzeyinde değil. "Aynı
 satırda ikisi de dolu" ile "aynı satırda ikisi de kuralın aradığı değeri
 taşıyor" farklı sorular; ikincisi kural değerlendirmesidir ve ürünün SQL yolunda

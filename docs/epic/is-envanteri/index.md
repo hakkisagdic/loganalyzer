@@ -270,15 +270,26 @@ Bekçinin kendisi değil, **onu koşturan satır** yalan söylüyor.
 | `cmd && … | tail -3` | `tail` her hâlükârda `0` dönüyor; kırmızı bir test "geçmiş" görünüyor ve üstüne commit ediliyor |
 | `$?`'ı boru hattının **ardından** okumak | Ölçülen şey son komutun çıkışı; kapı `✗` yazarken `cikis=0` okunuyor |
 | Testleri koşucunun **altına** eklemek | Üç test hiç toplanmıyor, paket `13/13 yeşil` diyor |
+| `komut_a && komut_b >/dev/null 2>&1` | `komut_a`'nın **hatası da** yutuluyor; T39'da derleme hata verdi, test **bayat ikiliyle** koştu ve kırmızı ölçüm "bulgu yok" gibi göründü |
 
-Üçü de 2026-08-21'de yaşandı; birincisi bir ajanda, ikincisi koordinatörde iki
-kez, üçüncüsü bir ajanda **ikinci kez**. Üçüncüsüne yapısal bekçi kondu:
-dosyadaki `def test_` sayısı ile toplanan sayı karşılaştırılıyor —
+Dördü de 2026-08-21'de yaşandı; birincisi bir ajanda, ikincisi koordinatörde iki
+kez, üçüncüsü bir ajanda **ikinci kez**, dördüncüsü T39'da. Üçüncüsüne yapısal
+bekçi kondu: dosyadaki `def test_` sayısı ile toplanan sayı karşılaştırılıyor —
 *"sessizce atlanan test, yanlış testten tehlikeli."*
+
+**Neden ölçüm aracının yalanıyla aynı sınıf:** ikisinde de *"ölçemedim"* ile
+*"sorun yok"* aynı çıktıya iniyor. Farkı, buradaki kusurun **koda hiç
+dokunmaması** — hiçbir test, hiçbir bekçi bunu yakalayamaz, çünkü kusur testin
+kendisinde değil onu koşturan satırda.
+
+**Uygulanacak alışkanlık:** ölçüm koşumlarında boru hattı kırpma amaçlı
+kullanılmaz; çıktı gerekiyorsa önce dosyaya yazılıp sonra kırpılır, ya da
+`set -o pipefail` açılır. `>/dev/null` ile susturulan bir adımın ardından `&&`
+gelmez — susturulan adım başarısız olabilir ve zincir onu görmez.
 
 ### Ölçüm aracının **kendi** sessiz yanlışı
 
-Yukarıdaki bölüm bekçilerle ilgiliydi. Bu ayrı bir sınıf ve bu turda **iki kez**
+Yukarıdaki bölüm bekçilerle ilgiliydi. Bu ayrı bir sınıf ve bu turda **üç kez**
 çıktı: kusur ürünün değil, **ölçüm aracının** kendisinde ve aracın çıktısı
 yeşil.
 
@@ -289,11 +300,16 @@ Farkı şu: bozuk bir bekçi bir kusuru göremez. Bozuk bir ölçüm aracı ise
 | --- | --- | --- | --- | --- |
 | 1 | Sigma kapsam ölçümü (`measure.py`) ön kontrolü | "Veri var, ölçebilirim" | Tablodaki 1M satır tek-vendor'lu sentetik kıyaslama verisiydi; ölçüm `%0` üretti ve o sıfır eşlemenin değil **verinin** sonucuydu | Kontrol bir **yokluk** kanıtı arıyordu ("tablo boş mu"), **varlık** kanıtı değil ("doğru veri mi") |
 | 2 | Alan kapsamı ölçümü (`fields coverage`) kutu 1 | "Hiçbir vendor'da yakalanmamış metin yok" → *parser her şeyi yakalamış* | ASA'nın `Reset-I`'si dahil, satırların bir kısmı hiçbir alana inmiyor | `attrs['message']` satırın **birebir kendisi**; kapsama sayılınca gövdede hiçbir aralık boşta kalmıyordu |
+| 3 | Alan kapsamı ölçümü, doluluk oranı | "`device_hostname` dört vendor'da da **%100 dolu**" | nginx satırlarının **22/24**'ünde değer cihazın adı değil, bizim ürettiğimiz kaynak kimliği | `EventNormalizer` `core.host` boşken kolonu `source.Raw.SourceKey` ile dolduruyor; kolon **hiçbir zaman boş görünmüyor** |
 
-**İkisinin ortak imzası:** araç, ölçemediği durumu ölçebildiği durumdan ayırt
-edemiyordu ve ayırt edememenin çıktısı **başarılı bir koşum**du.
+**Üçünün ortak imzası:** araç, bir **ayrımı çıktı tarafında kaybediyor**.
+*"Ölçemedim"* ile *"sorun yok"* aynı satıra iniyor; üçüncüsünde *"kolon dolu"*
+ile *"bilgi satırdan geldi"* aynı yüzdeye iniyor. Ayrım kaybolduğu an, okuyanın
+elinde onu geri getirecek bir şey kalmıyor.
 
-**İkisinin düzeltmesi de aynı biçimde:** *yokluk kanıtı yerine varlık kanıtı.*
+**Üçünün düzeltmesi de aynı biçimde:** *yokluk kanıtı yerine varlık kanıtı,*
+ya da ayrımı **ayrı bir sayaca** çıkarmak — üçüncüsünde "değeri ham satırda
+geçmeyen satır" sayacı.
 Sigma ön kontrolü artık altın örnek dosyasından türetilmiş bir sondayı gövdede
 **arıyor**; kutu 1 artık gövdenin kopyasını kapsama **saymıyor** — içinde başka
 bir yakalanmış değer geçen alan üst hâl sayılıyor. İkincisi bir eşik değil
@@ -305,40 +321,6 @@ parametresinin özelliği olacaktı. Önleyen şey bir uyarı değil bir **imza*
 `BaselineFixtureVerdict.Compare` iki eğri olmadan derlenmiyor.
 
 Ayrıntı: [`t39-alan-kapsami`](../t39-alan-kapsami/index.md).
-
-#### Koşum düzeninin sessiz yanlışı
-
-Yukarıdakiler aracın kendisiyle ilgiliydi. Bunun bir kardeşi var ve **kod hiç
-değişmiyor**: araç doğru, ölçüm doğru, ama **çıkış kodu kimseye ulaşmıyor.**
-
-Kalıp tek satır:
-
-```bash
-dotnet test … 2>&1 | tail -5        # tail 0 döndürüyor, test kırmızıysa bile
-komut_a && komut_b >/dev/null 2>&1  # a'nın çıktısı da hatası da yutuluyor
-```
-
-Kabuk boru hattının çıkış kodu **son** komutundan gelir ve `tail` her hâlükârda
-başarılı. Sonuç: kırmızı bir koşum "geçmiş" görünüyor, `&&` zinciri devam
-ediyor, ve bir sonraki adım **bayat ikiliyle** koşuyor.
-
-Bu turda dört kez oldu:
-
-| Kim | Nasıl | Sonucu |
-| --- | --- | --- |
-| Sigma tarafı | `&&` zinciri `tail` ile bitiyordu | Bir testi **kırmızıyken commit etti** |
-| Koordinatör | `$?`'ı `tail`'in ardından okudu | İki kez; koşum "geçti" göründü |
-| T39 | Mutasyon sonrası `dotnet build … >/dev/null 2>&1` | Derleme **hata verdi**, test bayat ikiliyle koştu ve "bulgu yok" gibi göründü. Kırmızı ölçümü tekrarlamak gerekti |
-
-**Neden ölçüm aracının yalanıyla aynı sınıf:** her ikisinde de "ölçemedim" ile
-"sorun yok" aynı çıktıya iniyor. Farkı, buradaki kusurun **koda hiç
-dokunmaması** — hiçbir test, hiçbir bekçi bunu yakalayamaz, çünkü kusur testin
-kendisinde değil onu koşturan satırda.
-
-**Uygulanacak alışkanlık:** ölçüm koşumlarında boru hattı **kırpma amaçlı
-kullanılmaz**; çıktı gerekiyorsa önce dosyaya yazılıp sonra kırpılır, ya da
-`set -o pipefail` açılır. `>/dev/null` ile susturulan bir adımın ardından `&&`
-gelmez — susturulan adım başarısız olabilir ve zincir onu görmez.
 
 Bu üç bölüm birlikte okunmalı: **bekçinin körlüğü → ölçüm aracının yalanı →
 koşum düzeninin sessizliği.** Üçü de aynı soruyu farklı katmanda soruyor:
