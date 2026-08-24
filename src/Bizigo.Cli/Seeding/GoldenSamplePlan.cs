@@ -1,4 +1,5 @@
 using System.Globalization;
+using Bizigo.Parsing.Samples;
 
 namespace Bizigo.Cli.Seeding;
 
@@ -146,7 +147,7 @@ public static class GoldenSamplePlan
             for (var i = 0; i < count; i++)
             {
                 var at = start.AddSeconds(random.NextInt64(seconds + 1));
-                occurrences.Add(new PlannedOccurrence(group, lines[i % lines.Count], Truncate(at)));
+                occurrences.Add(new PlannedOccurrence(group, lines[i % lines.Count], SampleClock.Truncate(at)));
             }
         }
 
@@ -244,11 +245,5 @@ public static class GoldenSamplePlan
         return items;
     }
 
-    /// <summary>
-    /// Tam saniyeye indiriyor. Syslog ve <c>dd/MMM/yyyy:HH:mm:ss</c> biçimleri
-    /// saniyenin altını taşımıyor; ekilen an saniyenin altında bir şey içerseydi
-    /// yeniden yazılan satır onu kaybeder ve doğrulama her satırda patlardı.
-    /// </summary>
-    private static DateTimeOffset Truncate(DateTimeOffset value) =>
-        new(value.Ticks - (value.Ticks % TimeSpan.TicksPerSecond), value.Offset);
+
 }

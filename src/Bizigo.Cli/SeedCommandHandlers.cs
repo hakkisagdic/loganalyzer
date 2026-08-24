@@ -3,12 +3,14 @@ using Bizigo.Cli.Seeding;
 using Bizigo.Contracts;
 using Bizigo.Parsing.Dispatch;
 using Bizigo.Parsing.Grok;
+using Bizigo.Parsing.Samples;
 using Bizigo.Storage.ClickHouse;
 
 namespace Bizigo.Cli;
 
 /// <param name="Catalog">Parser kataloğu dizini (altın örnekler burada).</param>
 /// <param name="MaskFile">Maskeleme sözlüğü — <c>signature_hash</c>'in tanımı.</param>
+/// <param name="Migrations">ClickHouse göç dizini — saklama süresi oradan okunuyor.</param>
 /// <param name="ConnectionString">ClickHouse bağlantısı; <c>--dry-run</c> ile kullanılmıyor.</param>
 /// <param name="OwnerGroup">Yükleyicinin yazdığı <b>tek</b> kapsam grubu.</param>
 /// <param name="Plan">Zaman yayılımının parametreleri.</param>
@@ -18,6 +20,7 @@ namespace Bizigo.Cli;
 internal sealed record SeedGoldenRequest(
     string Catalog,
     string MaskFile,
+    string Migrations,
     string ConnectionString,
     string OwnerGroup,
     SeedPlanOptions Plan,
@@ -81,6 +84,29 @@ internal static class SeedCommandHandlers
 
         Describe(request, samples.Count, signatures, plan.Count, timeSensitive);
 
+        // TTL KAPISI — yazmadan ÖNCE.
+        //
+        // Süresi dolmuş bir satır yazıldığında ClickHouse hata vermiyor: yazımı
+        // kabul ediyor, satır sayısını dönüyor, sonra siliyor. Yani yükleyici
+        // "yazdım" diyor ve tabloda hiçbir şey yok. Sonradan sormanın yolu yok,
+        // çünkü ortada bir hata yok.
+        var retention = EventRetention.Read(request.Migrations);
+        var earliest = SampleClock.EarliestWritable(request.Plan.Anchor, retention);
+        var expired = plan.Count(occurrence => occurrence.At < earliest);
+
+        if (expired > 0)
+        {
+            Console.Error.WriteLine(string.Create(
+                CultureInfo.InvariantCulture,
+                $"""
+                 hata   Planlanan {plan.Count} satırın {expired} tanesi saklama süresinin DIŞINDA
+                        (TTL {retention.TotalDays:0} gün, en eski yazılabilir an {earliest:yyyy-MM-dd HH:mm}Z).
+                        ClickHouse bunları hata vermeden kabul edip siler; yükleyici
+                        "yazdım" der ve tabloda hiçbir şey olmaz. --span-days'i küçültün.
+                 """));
+            return 1;
+        }
+
         if (request.DryRun)
         {
             // Kuru koşum ClickHouse'a bağlanmıyor ama **doğrulamayı atlamıyor**:
@@ -124,6 +150,25 @@ internal static class SeedCommandHandlers
                 CultureInfo.InvariantCulture,
                 $"siliniyor  owner_group='{request.OwnerGroup}' ({existing} satır) — başka grup etkilenmiyor"));
             await maintenance.DeleteAsync(request.OwnerGroup, cancellationToken);
+
+            // SİLME DOĞRULANIYOR. `ALTER TABLE … DELETE` bir mutasyon ve
+            // `mutations_sync = 2` beklemesi sunucu tarafında geçersiz kılınabiliyor;
+            // beklemediği hâlde beklemiş gibi dönerse eski satırlar kalır, yeniler
+            // eklenir ve veri **çoğalır**. Hiçbir hata çıkmaz — yalnızca hacme
+            // dayanan her ölçüm sessizce yanlışlanır.
+            var left = await maintenance.CountAsync(request.OwnerGroup, cancellationToken);
+
+            if (left > 0)
+            {
+                Console.Error.WriteLine(string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"""
+                     hata   Silme tamamlanmadı: `{request.OwnerGroup}` grubunda hâlâ {left} satır var.
+                            Yazmaya devam etmek veriyi ÇOĞALTIRDI. Mutasyonun bitmesini bekleyip
+                            tekrar deneyin (`SELECT * FROM system.mutations WHERE is_done = 0`).
+                     """));
+                return 1;
+            }
         }
 
         var writer = new EventWriter(context);

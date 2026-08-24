@@ -1,6 +1,7 @@
 using System.CommandLine;
 using Bizigo.Cli;
 using Bizigo.Cli.Seeding;
+using Bizigo.Parsing.Samples;
 using Bizigo.Storage.ClickHouse;
 
 var patternsOption = new Option<DirectoryInfo?>("--patterns")
@@ -190,11 +191,17 @@ var dryRunOption = new Option<bool>("--dry-run")
     Description = "ClickHouse'a hiç dokunma: üret, zaman damgası bekçisini koştur, raporla.",
 };
 
+var migrationsOption = new Option<DirectoryInfo?>("--migrations")
+{
+    Description = "ClickHouse göç dizini — saklama süresi (TTL) ve görünüm kolonları oradan okunuyor.",
+};
+
 var seedGoldenCommand = new Command(
     "golden",
     "Altın örnekleri gerçek boru hattından geçirip ClickHouse'a yazar (T39).");
 seedGoldenCommand.Arguments.Add(seedCatalogArgument);
 seedGoldenCommand.Options.Add(masksOption);
+seedGoldenCommand.Options.Add(migrationsOption);
 seedGoldenCommand.Options.Add(clickHouseOption);
 seedGoldenCommand.Options.Add(ownerGroupOption);
 seedGoldenCommand.Options.Add(spanOption);
@@ -213,14 +220,18 @@ seedGoldenCommand.SetAction((parse, cancellationToken) =>
 
     // Saniyeye indiriliyor: örnek biçimlerin çoğu saniyenin altını taşımıyor ve
     // ekilen an ile yeniden yazılan satır birbirini tutmak zorunda.
-    var anchor = parse.GetValue(anchorOption) ?? DateTimeOffset.UtcNow;
-    anchor = new DateTimeOffset(anchor.Ticks - (anchor.Ticks % TimeSpan.TicksPerSecond), anchor.Offset)
-        .ToUniversalTime();
+    // Kural tek yerde: SampleClock. Dört ayrı yerde yazılıydı ve beşincisi
+    // simülatör olacaktı; ayrışmaları sessiz (biri TTL'e takılır, diğeri takılmaz).
+    var anchor = parse.GetValue(anchorOption) is { } given
+        ? SampleClock.Truncate(given)
+        : SampleClock.Anchor();
 
     var request = new SeedGoldenRequest(
         Catalog: catalog.FullName,
         MaskFile: parse.GetValue(masksOption)?.FullName
             ?? Path.Combine(catalog.Parent?.FullName ?? ".", "masks", "bizigo-masks.yaml"),
+        Migrations: parse.GetValue(migrationsOption)?.FullName
+            ?? Path.Combine("db", "clickhouse"),
         ConnectionString: parse.GetValue(clickHouseOption)
             ?? Environment.GetEnvironmentVariable("BIZIGO_CLICKHOUSE")
             ?? "Host=localhost;Port=8123;Database=bizigo;Username=bizigo;Password=bizigo",
@@ -248,11 +259,6 @@ seedCommand.Subcommands.Add(seedGoldenCommand);
 // Kapı 3'ün boş kuralları iki bambaşka sebepten boş olabiliyor: eşleme
 // eksikliği ya da örneklemde desen olmaması. Tabloda ikisi de "boş kolon"
 // görünüyor.
-var migrationsOption = new Option<DirectoryInfo?>("--migrations")
-{
-    Description = "ClickHouse göç dizini — `events_ocsf` kolon listesi oradan okunuyor.",
-};
-
 var fieldsCoverageCommand = new Command(
     "coverage",
     "Altın örneklerin taşıdığı bilginin ne kadarının events_ocsf'e ALAN olarak indiğini ölçer.");
@@ -267,8 +273,9 @@ fieldsCoverageCommand.Options.Add(mappingsOption);
 fieldsCoverageCommand.SetAction((parse, cancellationToken) =>
 {
     var catalog = parse.GetValue(seedCatalogArgument)!;
-    var anchor = (parse.GetValue(anchorOption) ?? DateTimeOffset.UtcNow).ToUniversalTime();
-    anchor = new DateTimeOffset(anchor.Ticks - (anchor.Ticks % TimeSpan.TicksPerSecond), anchor.Offset);
+    var anchor = parse.GetValue(anchorOption) is { } given
+        ? SampleClock.Truncate(given)
+        : SampleClock.Anchor();
 
     var request = new FieldCoverageRequest(
         Catalog: catalog.FullName,

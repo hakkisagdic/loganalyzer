@@ -4,6 +4,7 @@ using Bizigo.Contracts;
 using Bizigo.Parsing.Dispatch;
 using Bizigo.Parsing.Engine;
 using Bizigo.Parsing.Grok;
+using Bizigo.Parsing.Samples;
 using Bizigo.Storage.ClickHouse;
 
 namespace Bizigo.IntegrationTests;
@@ -193,8 +194,7 @@ public sealed class BaselineWindowMeasurement(DevStackFixture stack)
         // Duvar saatinden alınmasının tek sebebi, syslog biçimlerinin yılsız
         // olması: `SYSLOG` ayrıştırıcısı yılı bugünden çıkarıyor, yani çapa
         // gerçek "şimdi"nin yakınında olmak zorunda.
-        var anchor = DateTimeOffset.UtcNow;
-        anchor = new DateTimeOffset(anchor.Ticks - (anchor.Ticks % TimeSpan.TicksPerSecond), anchor.Offset);
+        var anchor = SampleClock.Anchor();
 
         Say("=== T35 · baseline penceresi süpürmesi ===");
         Say(string.Create(
