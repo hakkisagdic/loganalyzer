@@ -14,6 +14,24 @@ public sealed class EventSinkOptions
 
     /// <summary>Bu süre dolunca kısmi batch de yazılır.</summary>
     public TimeSpan FlushInterval { get; set; } = TimeSpan.FromSeconds(2);
+
+    /// <summary>
+    /// <c>events</c> tablosunun saklama penceresi.
+    ///
+    /// <para>
+    /// <b>Bu sayı tablonun TTL'i ile AYNI olmak zorunda</b>
+    /// (<c>db/clickhouse/0001_events.sql</c>: <c>TTL toDateTime(ts) + INTERVAL 90 DAY</c>).
+    /// Ayrışırlarsa sink ya olmayan bir kaybı raporlar ya da gerçek kaybı
+    /// göremez — ikisi de sayacın kendisini işe yaramaz kılar. Ayrışmayı
+    /// <c>EventRetentionTests</c> DDL'i okuyarak sınıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Burada duruyor çünkü sink'in bilmesi gereken şey retention politikası
+    /// değil, <b>hangi satırın yazıldıktan sonra yok olacağı</b>.
+    /// </para>
+    /// </summary>
+    public TimeSpan EventRetention { get; set; } = TimeSpan.FromDays(90);
 }
 
 /// <summary>
@@ -33,7 +51,7 @@ public sealed class EventSinkOptions
 /// </summary>
 public sealed class ClickHouseEventSink : IParsedEventSink, IAsyncDisposable
 {
-    private readonly EventWriter _writer;
+    private readonly IEventWriter _writer;
     private readonly EventNormalizer _normalizer;
     private readonly EventSinkOptions _options;
     private readonly ILogger<ClickHouseEventSink> _logger;
@@ -45,10 +63,16 @@ public sealed class ClickHouseEventSink : IParsedEventSink, IAsyncDisposable
 
     private long _written;
     private long _dropped;
+    private long _expired;
     private int _disposed;
 
+    // Tampondaki satırların kaçı pencere dışında ve en eskisi hangisi. Yazım
+    // sonucundan düşülecekleri için tampondan AYRI tutuluyorlar.
+    private int _expiredInBuffer;
+    private DateTimeOffset? _oldestExpired;
+
     public ClickHouseEventSink(
-        EventWriter writer,
+        IEventWriter writer,
         EventNormalizer normalizer,
         IOptions<EventSinkOptions> options,
         ILogger<ClickHouseEventSink> logger,
@@ -69,6 +93,56 @@ public sealed class ClickHouseEventSink : IParsedEventSink, IAsyncDisposable
     /// <summary>ClickHouse'a yazılamamış satırlar. Sıfırdan büyükse replay gerekir.</summary>
     public long Dropped => Interlocked.Read(ref _dropped);
 
+    /// <summary>
+    /// <b>Yazıldı denip yok olan satırlar (S02a).</b>
+    ///
+    /// <para>
+    /// Zaman damgası saklama penceresinin dışında kalan bir satırı ClickHouse
+    /// parçayı oluştururken atıyor ve istemciye <b>yazdım diyor</b>: ölçüldü,
+    /// tek bir INSERT içindeki 2020 ve 2026 tarihli iki satırdan yalnızca
+    /// ikincisi tabloya girdi, dönen <c>written_rows</c> ise ikisini de saydı.
+    /// </para>
+    ///
+    /// <para>
+    /// Bu sayaç olmadan kayıp hiçbir yerde görünmüyordu: 100 satır basıldığında
+    /// <c>accepted</c> 100, <c>processed</c> 100, INSERT başarılı, tabloda sıfır
+    /// satır ve tek bir hata kaydı yok. Sahadaki tetikleyicisi test verisi değil
+    /// — <b>saati yanlış bir cihaz</b>, retention'dan eski bir arşivin replay'i,
+    /// ya da <c>ts</c> alanını yanlış seçen bir parser. Sonuncusunda parser
+    /// hatası görünür yanlış değer yerine görünmez veri kaybına dönüşüyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Satır yine de gönderiliyor: ham arşiv duruyor, yani parser ya da saat
+    /// düzeldikten sonra K12 replay ile geri kazanılabilir bir kayıp bu.
+    /// </para>
+    /// </summary>
+    public long Expired => Interlocked.Read(ref _expired);
+
+    /// <summary>
+    /// Henüz yazılmamış, tamponda bekleyen satırlar.
+    ///
+    /// <para>
+    /// Kayıp farkı okunurken bilinmek zorunda: yoksa her ölçüm boşaltma aralığı
+    /// kadar yanlış görünür ve sağlıklı bir boru hattı kayıp veriyor sanılır.
+    /// </para>
+    /// </summary>
+    public int Buffered
+    {
+        get
+        {
+            _lock.Wait();
+            try
+            {
+                return _buffer.Count;
+            }
+            finally
+            {
+                _lock.Release();
+            }
+        }
+    }
+
     public async ValueTask HandleAsync(
         IReadOnlyList<ParsedEvent> batch,
         CancellationToken cancellationToken)
@@ -78,9 +152,26 @@ public sealed class ClickHouseEventSink : IParsedEventSink, IAsyncDisposable
         await _lock.WaitAsync(cancellationToken);
         try
         {
+            // Kesim NOKTASI batch başına bir kez alınıyor: satır başına saat
+            // okumak aynı batch'in satırlarını farklı pencerelerde
+            // değerlendirebilirdi ve testin geçme sebebi duvar saatine bağlanırdı.
+            var cutoff = _time.GetUtcNow() - _options.EventRetention;
+
             foreach (var parsed in batch)
             {
-                _buffer.Add(_normalizer.Normalize(parsed));
+                var normalized = _normalizer.Normalize(parsed);
+
+                if (normalized.Timestamp < cutoff)
+                {
+                    _expiredInBuffer++;
+
+                    if (_oldestExpired is null || normalized.Timestamp < _oldestExpired)
+                    {
+                        _oldestExpired = normalized.Timestamp;
+                    }
+                }
+
+                _buffer.Add(normalized);
             }
 
             if (_buffer.Count >= _options.BatchRows
@@ -120,10 +211,35 @@ public sealed class ClickHouseEventSink : IParsedEventSink, IAsyncDisposable
         try
         {
             var result = await _writer.WriteEventsAsync(_buffer, cancellationToken);
-            Interlocked.Add(ref _written, result.RowsWritten);
+
+            // `RowsWritten` GÖNDERİLENİ sayıyor, hayatta kalanı değil: pencere
+            // dışındaki satırlar ClickHouse tarafında parça oluşturulurken
+            // atılıyor ama dönen sayıya dahil ediliyor. Düşülmezse `Written`
+            // tabloda olmayan satırları sayar ve sayacın tamamı anlamsızlaşır.
+            Interlocked.Add(ref _written, result.RowsWritten - _expiredInBuffer);
+
+            if (_expiredInBuffer > 0)
+            {
+                Interlocked.Add(ref _expired, _expiredInBuffer);
+
+                // Boşaltma başına TEK kayıt: satır başına loglamak gerçek bir
+                // arıza sırasında (saati 2020'de kalmış bir cihaz) log'u
+                // boğardı ve uyarı kendi gürültüsünde kaybolurdu.
+                _logger.LogWarning(
+                    "{Rows} satır saklama penceresinin ({Days} gün) dışında; ClickHouse " +
+                    "yazıldı dese de tabloya girmiyorlar. En eskisi {Oldest:u}. " +
+                    "Muhtemel sebep: cihaz saati yanlış ya da parser yanlış alanı ts sanıyor. " +
+                    "Ham arşiv duruyor, replay ile geri kazanılabilir.",
+                    _expiredInBuffer,
+                    _options.EventRetention.TotalDays,
+                    _oldestExpired);
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            // Yazım hiç olmadı: pencere dışındakiler de ClickHouse'a ulaşmadı,
+            // yani burada `expired` değil `dropped` sayılıyorlar. İkisini birden
+            // saymak aynı satırı iki kez kaybetmiş göstermek olurdu.
             Interlocked.Add(ref _dropped, _buffer.Count);
 
             // Yutuluyor ama sessiz değil. Veri WAL'da ve ham arşivde duruyor;
@@ -136,6 +252,8 @@ public sealed class ClickHouseEventSink : IParsedEventSink, IAsyncDisposable
         finally
         {
             _buffer.Clear();
+            _expiredInBuffer = 0;
+            _oldestExpired = null;
             _lastFlush = _time.GetUtcNow();
         }
     }

@@ -336,14 +336,101 @@ Kayıp *aşağıdakilerin* kusuru değil; hepsi ayrı ayrı ölçüldü:
 | Basıcının teslimi | API sayacı gönderilen sayıyla **birebir** tutuyor (385) |
 | Ayrıştırma zinciri | Ulaşan kayıtta OCSF sınıfı, `attrs`, ve **`raw_ref` dolu** |
 
-### Açık kalem
+### S02a — kapandı: canlı ingest yolunda kayıp kaydı
 
-**S02a — canlı ingest yolunda kayıp kaydı.** Kök neden `ClickHouseEventSink`
-ile `IngestPipeline` arasında; ilk bakılacak yer `Ingest:WorkerCount` (bugün
-`0`) ve sink'in flush yolu. Kabul ölçütü: basılan satır sayısı ile tabloya
-ulaşan satır sayısı arasındaki farkı **sayan bir sayaç**, ve fark sıfır
-olmadığında kırmızı yanan bir bekçi. Sayacı olmayan bir kayıp, düzeltildiğini
-de kanıtlayamaz.
+**Kök neden tahmin edilenin hiçbiri değildi.** Şüpheliler `Ingest:WorkerCount`
+ve sink'in flush yoluydu; ikisi de ölçüldü ve temiz çıktı. Kayıp boru hattında
+değil, **ClickHouse'a yazıldıktan sonra** gerçekleşiyordu.
+
+`events` tablosunda `TTL toDateTime(ts) + INTERVAL 90 DAY` var. Parser `ts`'yi
+satırın kendisinden çıkarıyor ve `catalog/parsers/*/samples/` altındaki vendor
+örnekleri 2015–2022 tarihleri taşıyor. ClickHouse süresi dolmuş satırı parçayı
+oluştururken atıyor — **ama istemciye yazdım diyor**.
+
+Ölçülen zincir:
+
+| Aşama | Ne diyordu |
+| --- | --- |
+| Basıcı | 100 satır, 66 717 bayt |
+| `accepted_records` | +100 |
+| `processed_records` | +100 |
+| ClickHouse `query_log` | `INSERT … written_rows = 3`, 2 sn'de bir |
+| `events` tablosu | **+0** |
+| Hata / log / sayaç | **hiçbiri** |
+
+Kesin kanıt: tek bir `INSERT` içinde 2020 ve 2026 tarihli iki satır yazıldı;
+yalnızca ikincisi tabloya girdi, dönen sayı ikisini de saydı. Hayatta kalan
+satırların tamamının `ts`'si son 90 gün içindeydi — yani **hangi satırın
+yaşadığını parse'ın başarısı belirliyordu**: parse başarısız olduğunda `ts`
+alınma zamanına düşüp satır kurtuluyor, başarılı olduğunda satır ölüyordu.
+
+#### Neden bu bir ürün hatası (test verisi değil)
+
+Örnek dosyalar düzeltilse bile mekanizma duruyor. Sahadaki üç tetikleyicisi:
+**saati yanlış cihaz**, retention'dan eski bir arşivin replay'i, ve `ts` alanını
+yanlış seçen bir parser. Sonuncusu en kötüsü — parser hatası *görünür yanlış
+değer* yerine *görünmez veri kaybına* dönüşüyor.
+
+#### Düzeltme
+
+Karar: **say + logla, satır yine düşsün.** `ts`'yi pencereye çekmek kaybı başka
+bir sessiz yanlışla değiştirirdi (saati yanlış cihazın olayları bugüne yığılır
+ve korelasyon sessizce bozulur). Ham arşiv duruyor, yani K12 replay ile geri
+kazanılabilir bir kayıp bu.
+
+- `ClickHouseEventSink.Expired` — pencere dışı satırları sayıyor, boşaltma
+başına tek uyarı logluyor (kaynak ve en eski damga ile).
+- **`Written` düzeltildi**: `InsertBinaryAsync` *gönderileni* döndürüyor,
+hayatta kalanı değil. Düşülmeseydi sayaç tabloda olmayan satırları sayardı ve
+düzeltmenin tamamı anlamsız olurdu.
+- `/internal/ingest/stats` artık `stored { written, expired, dropped, buffered }`
+ve hesaplanan **`unaccounted`** alanını veriyor. `processed_records` her zaman
+*çözülen* kaydı sayıyordu, depolananı değil — `unaccounted` o okuma hatasını
+imkânsız kılıyor.
+- Basıcı örnek satırın damgasını **şimdiye kaydırıyor** (`SyslogEmitter.WireLine`).
+Kaydırıcı yeni yazılmadı: `SampleTimeRewriter` zaten vardı, ortak eve taşındı
+(`Bizigo.Cli.Seeding` → `Bizigo.Parsing.Samples`).
+
+#### Bekçiler — dördü de kırmızı yanabildiği ölçülüp geri alındı
+
+| Bekçi | Kırmızı yandığı ölçüm |
+| --- | --- |
+| `Pencere_disindaki_satir_yazildi_sayilmiyor` | `Expired` artışı sabitlendi → `Expected 3, Actual 0` |
+| aynı test, `Written` iddiası | Düşme kaldırıldı → `Written` 2 yerine 5 |
+| `Simulatorun_bastigi_satirlar_eski_tarih_tasimiyor` | `WireLine` kaydırmayı bıraktı → kırmızı |
+| `Sinkin_penceresi_tablonun_ttl_i_ile_ayni` | Pencere 90 → 60 → kırmızı |
+
+**Bekçinin kendisi de ölçüldü ve ilk hâli kaybetti.** Simülatör bekçisi
+başlangıçta `SampleTimeRewriter`'ı doğrudan çağırıyordu; basıcıdan kaydırma
+kaldırıldığında **yeşil kalıyordu** — koruduğunu iddia ettiği şeyi
+korumuyordu (§7). Basıcıya tek bir dikiş yeri (`WireLine`) açıldı ve bekçi
+oradan geçirildi; ancak ondan sonra kırmızı yandı.
+
+Ayrıca ilk hâli çıplak yıl arayıp **dört yanlış pozitif** verdi:
+`10.10.10.10/1985` bir UDP portu, `2001:db8::` ve `2001:470::` IPv6 önekleri.
+Tarih bağlamı arayacak biçimde daraltıldı.
+
+#### Uçtan uca doğrulama
+
+| | Öncesi | Sonrası |
+| --- | --- | --- |
+| Basılan | 100 | 30 |
+| Çözülen (`processed`) | +100 | +30 |
+| **Tabloya giren** | **0** | **30** |
+
+Sonraki koşumda 30 satırın tamamı `parse_status = ok`, `time_source = parsed`
+ve damgalar 20 saniyelik basım penceresine yayılmış durumda.
+
+#### Yapılmayanlar
+
+- **`EventRetentionChainTests` yazıldı, koşturulmadı.** Testcontainers gerekiyor
+ve ölçüm anında swap %89'daydı; makine kuralı bu eşikte yeni ağır iş
+başlatmayı yasaklıyor. Koşturulduğunda kanıtlayacağı şey sayaç-sayaç değil
+**sayaç-tablo** eşitliği: sink "3 yazdım" dediğinde tabloda gerçekten 3 satır
+olduğu. Sessiz makinede koşturulmalı.
+- **API imajı yeni sayaçlarla yeniden kurulmadı** (aynı sebep). Uçtaki
+`stored`/`unaccounted` alanları bu yüzden canlı yığında henüz görünmüyor;
+uçtan uca ölçüm basıcı düzeltmesiyle yapıldı ve o host tarafında.
 
 ---
 

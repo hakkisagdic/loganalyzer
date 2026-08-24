@@ -14,7 +14,26 @@ public sealed record WriteResult(long RowsWritten, TimeSpan Duration);
 /// Yazım yolunda kapsam filtresi <b>yoktur</b>: <c>owner_group</c> olayın kendisinde
 /// taşınıyor ve kaynaktan (envanterden) atanıyor (F1 §8). Filtre okuma tarafının işi.
 /// </summary>
-public sealed class EventWriter(ClickHouseContext context)
+/// <summary>
+/// Sink'in yazıcıdan ihtiyaç duyduğu TEK metot.
+///
+/// <para>
+/// Arayüz dar tutuldu çünkü amacı soyutlama değil <b>sınanabilirlik</b>:
+/// <see cref="ClickHouseEventSink"/>'in kayıp muhasebesi (S02a) ClickHouse
+/// olmadan sınanmak zorunda — §2 ajanların Docker'a dokunmasını yasaklıyor ve
+/// sayacın kendisi bir bekçi olduğu için her koşumda yanabilmeli.
+/// <see cref="EventWriter"/>'ın geri kalan yüzeyi (change_events, replay)
+/// buraya girmiyor; girseydi ikame etmek bütün yazma yolunu taklit etmek olurdu.
+/// </para>
+/// </summary>
+public interface IEventWriter
+{
+    Task<WriteResult> WriteEventsAsync(
+        IReadOnlyCollection<LogEvent> events,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed class EventWriter(ClickHouseContext context) : IEventWriter
 {
     /// <summary>
     /// <c>internal</c>: <see cref="EventFieldKinds"/> bu listenin <b>tamamını</b>

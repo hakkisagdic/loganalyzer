@@ -75,26 +75,73 @@ public sealed partial class CiCoverageTests
     /// olması diğeri hakkında hiçbir şey söylemiyor.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// <b>CI'nın checkout ettiği dosyalar</b> — yani <c>git</c>'in izledikleri.
+    ///
+    /// <para>
+    /// Önceki hâli dosya sistemini tarıyor ve <c>bin/</c>, <c>obj/</c>,
+    /// <c>node_modules/</c>, <c>.venv/</c>, <c>.next/</c> desenlerini elle
+    /// eliyordu. O liste, bu sınıfın kendi belgesinin kaybettiğini söylediği
+    /// şeyin ta kendisiydi ve kaybetti: <c>tools/obsidian-wiki/</c> — üçüncü
+    /// taraf bir klon, <c>.gitignore</c>'da — altındaki pytest paketi listede
+    /// olmadığı için "CI'da koşmuyor" diye kırmızı yaktı. Bekçi haklıydı ama
+    /// <b>soru yanlıştı</b>: CI o dizini hiç checkout etmiyor, dolayısıyla
+    /// oradaki bir paketi koşturması ne mümkün ne de istenen.
+    /// </para>
+    ///
+    /// <para>
+    /// Doğru ölçüt elle beslenen bir desen listesi değil, CI'nın kendi kaynağı.
+    /// <c>git ls-files</c> hem üretilmiş ağaçları hem indirilmiş klonları tek
+    /// bir soruyla eliyor ve yeni bir yok sayılan dizin eklendiğinde bakım
+    /// gerektirmiyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Git yoksa <b>sessizce dosya sistemine düşmüyor</b>: sessizce
+    /// bozulan bir bekçi, olmayan bir bekçiden tehlikeli (§7).
+    /// </para>
+    /// </summary>
+    private static IReadOnlyList<string> TrackedFiles(string root)
+    {
+        using var git = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("git")
+        {
+            ArgumentList = { "ls-files" },
+            WorkingDirectory = root,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+        }) ?? throw new InvalidOperationException("git başlatılamadı; bekçi kapsamını belirleyemez.");
+
+        var output = git.StandardOutput.ReadToEnd();
+        git.WaitForExit();
+
+        if (git.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"`git ls-files` {git.ExitCode} ile döndü: {git.StandardError.ReadToEnd()}");
+        }
+
+        var files = output.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim())
+            .Where(line => line.Length > 0)
+            .ToArray();
+
+        if (files.Length == 0)
+        {
+            throw new InvalidOperationException(
+                "`git ls-files` hiçbir dosya döndürmedi; bekçi her paketi kapsanmış sanardı.");
+        }
+
+        return files;
+    }
+
     private static IReadOnlyList<Suite> TestSuites()
     {
         var root = RepositoryLayout.Root;
         var suites = new SortedSet<Suite>(SuiteOrder.Instance);
 
-        foreach (var marker in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+        foreach (var relative in TrackedFiles(root))
         {
-            var relative = Path.GetRelativePath(root, marker).Replace('\\', '/');
-
-            // Üretilmiş ve indirilmiş ağaçlar denetlenmiyor: orada bulunan bir
-            // yapılandırma bizim testimiz değil, bir bağımlılığınki.
-            if (relative.Contains("/bin/", StringComparison.Ordinal)
-                || relative.Contains("/obj/", StringComparison.Ordinal)
-                || relative.Contains("node_modules/", StringComparison.Ordinal)
-                || relative.Contains("/.venv/", StringComparison.Ordinal)
-                || relative.Contains("/.next/", StringComparison.Ordinal))
-            {
-                continue;
-            }
-
+            var marker = Path.Combine(root, relative);
             var name = Path.GetFileName(relative);
 
             var family = name switch

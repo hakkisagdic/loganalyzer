@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net.Sockets;
 using System.Text;
+using Bizigo.Parsing.Samples;
 
 namespace Bizigo.Simulators;
 
@@ -37,6 +38,24 @@ public sealed record EmitResult(int Lines, long Bytes, TimeSpan Elapsed);
 /// <c>iso-8859-1</c> onları birebir taşıyor, ürün de kendi tespitini yapıyor.
 /// Her şeyi UTF-8 basmak, F1'in en pahalı kararlarından birini (K24) hiç
 /// sınamamak olurdu.
+/// </para>
+///
+/// <h3>Zaman damgası ŞİMDİYE kaydırılıyor</h3>
+///
+/// <para>
+/// Örnek dosyalar gerçek vendor örnekleri ve 2015–2022 tarihleri taşıyor.
+/// Olduğu gibi basmak, saati altı yıl geride kalmış bir cihazı simüle etmek
+/// olurdu — ve <c>events</c> tablosunun 90 günlük TTL'i o satırları
+/// <b>yazıldı denildikten sonra</b> sessizce siliyor. Ölçüldü: 100 satır,
+/// <c>processed 100</c>, INSERT başarılı, tabloda sıfır satır.
+/// </para>
+///
+/// <para>
+/// Kaydırıcı <see cref="SampleTimeRewriter"/> — <b>yeni yazılmadı</b>,
+/// <c>GoldenSampleSeeder</c> zaten kullanıyordu ve ortak eve taşındı (§9).
+/// <c>Rewritten: false</c> dönmesi hata değil: zaman damgası taşımayan ASA
+/// satırında ürün alınma zamanına düşüyor, üretimde de öyle oluyor. Ürün
+/// tarafındaki sayaç <c>ClickHouseEventSink.Expired</c>.
 /// </para>
 ///
 /// <h3>Bu basıcının SINIRI — cihaz kimliği</h3>
@@ -109,6 +128,25 @@ public static class SyslogEmitter
             : await EmitTcpAsync(lines, encoding, host, port, count, delay, clock, cancellationToken);
     }
 
+    /// <summary>
+    /// <b>Tele giden satır.</b> TCP ve UDP kolları ikisi de burayı çağırıyor.
+    ///
+    /// <para>
+    /// Ayrı bir metot olmasının sebebi ölçüldü: kaydırma iki kolda ayrı ayrı
+    /// yazılıyken bekçi <see cref="SampleTimeRewriter"/>'ı doğrudan çağırıyordu
+    /// ve basıcının onu <b>kullandığını hiç sınamıyordu</b> — kaydırma
+    /// basıcıdan kaldırıldığında test yeşil kalıyordu. Yani bekçi, korumayı
+    /// iddia ettiği şeyi korumuyordu (§7).
+    /// </para>
+    ///
+    /// <para>
+    /// Şimdi tek giriş var ve bekçi buradan geçiyor: kaydırma kaldırılırsa
+    /// kırmızı yanıyor, ölçüldü.
+    /// </para>
+    /// </summary>
+    public static string WireLine(string sample, DateTimeOffset at) =>
+        SampleTimeRewriter.Rewrite(sample, at).Text;
+
     private static async Task<EmitResult> EmitTcpAsync(
         IReadOnlyList<string> lines,
         Encoding encoding,
@@ -129,7 +167,9 @@ public static class SyslogEmitter
         for (var i = 0; i < count; i++)
         {
             // Satır sonu ASCII: kodlama gövdeyi etkiliyor, ayırıcıyı değil.
-            var payload = encoding.GetBytes(lines[i % lines.Count]);
+            // Damga BASILDIĞI AN alınıyor — gerçek cihaz da öyle yapıyor.
+            var payload = encoding.GetBytes(
+                WireLine(lines[i % lines.Count], DateTimeOffset.UtcNow));
 
             await stream.WriteAsync(payload, cancellationToken);
             await stream.WriteAsync("\n"u8.ToArray(), cancellationToken);
@@ -182,7 +222,8 @@ public static class SyslogEmitter
         {
             // UDP'de her datagram bir satır; ayırıcı yine de yazılıyor çünkü
             // alıcının `line_end_pattern` varsayılanı onu bekliyor.
-            var payload = encoding.GetBytes(lines[i % lines.Count] + "\n");
+            var payload = encoding.GetBytes(
+                WireLine(lines[i % lines.Count], DateTimeOffset.UtcNow) + "\n");
 
             await client.SendAsync(payload, cancellationToken);
             bytes += payload.Length;

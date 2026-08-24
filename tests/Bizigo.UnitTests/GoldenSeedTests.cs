@@ -3,6 +3,7 @@ using Bizigo.Contracts;
 using Bizigo.Parsing.Dispatch;
 using Bizigo.Parsing.Engine;
 using Bizigo.Parsing.Grok;
+using Bizigo.Parsing.Samples;
 
 namespace Bizigo.UnitTests;
 

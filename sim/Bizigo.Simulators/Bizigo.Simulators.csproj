@@ -25,6 +25,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bizigo.Devices\Bizigo.Devices.csproj" />
+
+    <!--
+      `SampleTimeRewriter` için. Basıcı örnek satırın zaman damgasını şimdiye
+      kaydırmak zorunda (S02a) ve o kaydırıcı ZATEN VAR — `GoldenSampleSeeder`
+      kullanıyor. İkinci bir kopya yazmak yerine ortak eve taşındı
+      (`Bizigo.Cli.Seeding` → `Bizigo.Parsing.Samples`), çünkü `Bizigo.Parsing`
+      ikisinin de görebildiği en dar ortak nokta.
+    -->
+    <ProjectReference Include="..\..\src\Bizigo.Parsing\Bizigo.Parsing.csproj" />
   </ItemGroup>
 
   <ItemGroup>

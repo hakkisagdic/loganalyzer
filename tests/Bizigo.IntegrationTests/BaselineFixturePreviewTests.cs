@@ -1,6 +1,7 @@
 using System.Globalization;
 using Bizigo.Cli.Seeding;
 using Bizigo.Parsing.Grok;
+using Bizigo.Parsing.Samples;
 
 namespace Bizigo.IntegrationTests;
 

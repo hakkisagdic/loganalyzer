@@ -154,22 +154,59 @@ app.MapAlertClosure();
 
 // Ingest sayaçları: "boru hattı akıyor mu" sorusunun tek bakışta cevabı.
 // `declared_encoding_mismatches` sıfırdan büyükse envanterdeki `encoding` yanlış.
-app.MapGet("/internal/ingest/stats", (IngestStats stats, WriteAheadLog wal) => Results.Ok(new
+//
+// `stored` ve `unaccounted` SONRADAN eklendi; sebebi ölçüldü (S02a). Simülatör
+// 100 satır bastığında bu uç `accepted 100 / processed 100` diyor, INSERT
+// başarılı dönüyor ve tabloya SIFIR satır giriyordu. Hiçbir sayaç, hiçbir hata,
+// hiçbir belirti yoktu.
+//
+// Kritik ayrım: `processed_records` **ÇÖZÜLEN** kaydı sayıyor, depolananı değil
+// — `IngestPipeline` onu çözümlemeden hemen sonra, sink'e vermeden ARTIRIYOR.
+// Yani "processed" hiçbir zaman bir depolama iddiası değildi ama öyle okunuyordu.
+//
+// `unaccounted` o okuma hatasını imkânsız kılıyor: çözülen ile hesabı verilen
+// (yazılan + süresi dolan + düşürülen + tamponda bekleyen) arasındaki fark.
+// Sıfırdan büyükse kayıt ne tabloya ulaşmış ne de kaybı raporlanmış demektir.
+app.MapGet("/internal/ingest/stats", (
+    IngestStats stats,
+    WriteAheadLog wal,
+    ClickHouseEventSink sink) =>
 {
-    accepted_batches = stats.AcceptedBatches,
-    accepted_records = stats.AcceptedRecords,
-    processed_records = stats.ProcessedRecords,
-    rejected_full = stats.RejectedFull,
-    rejected_invalid = stats.RejectedInvalid,
-    non_utf8_records = stats.NonUtf8Records,
-    declared_encoding_mismatches = stats.DeclaredEncodingMismatches,
-    wal = new
+    var written = sink.Written;
+    var expired = sink.Expired;
+    var dropped = sink.Dropped;
+    var buffered = sink.Buffered;
+
+    return Results.Ok(new
     {
-        total_bytes = wal.TotalBytes,
-        is_full = wal.IsFull,
-        recovery = wal.Recovery,
-    },
-}));
+        accepted_batches = stats.AcceptedBatches,
+        accepted_records = stats.AcceptedRecords,
+        processed_records = stats.ProcessedRecords,
+        rejected_full = stats.RejectedFull,
+        rejected_invalid = stats.RejectedInvalid,
+        non_utf8_records = stats.NonUtf8Records,
+        declared_encoding_mismatches = stats.DeclaredEncodingMismatches,
+        stored = new
+        {
+            written,
+
+            // Sıfırdan büyükse tabloya girmeyen satır var: cihaz saati ya da
+            // parser'ın ts alanı yanlış. Ayrıntı sink'in uyarı kaydında.
+            expired,
+            dropped,
+            buffered,
+        },
+
+        // Negatif olamaz; olursa sayaçlardan biri fazla sayıyor demektir.
+        unaccounted = Math.Max(0, stats.ProcessedRecords - written - expired - dropped - buffered),
+        wal = new
+        {
+            total_bytes = wal.TotalBytes,
+            is_full = wal.IsFull,
+            recovery = wal.Recovery,
+        },
+    });
+});
 
 // Keşif yolu (T12). Devre kesici **görünür olmak zorunda** (F1 §9): sidecar
 // sıcak yolda olmadığı için arızası hiçbir alarmı tetiklemez; tek belirti
