@@ -88,6 +88,15 @@ public sealed class SigmaRuleChainTests(DevStackFixture stack) : IAsyncLifetime
 
         await using var db = await _factory.CreateDbContextAsync(Token);
         await db.Database.MigrateAsync(Token);
+        // Tetiklenmeler de siliniyor — kurallar zaten siliniyordu ama
+        // tetiklenmeler kalıyordu ve **sınıfın ikinci testi birincinin
+        // bıraktığını buluyordu**.
+        //
+        // Bu temizlik yine de asıl düzeltme DEĞİL: asıl kusur, testin sahip
+        // olmadığı bir şey hakkında iddia kurmasıydı (aşağıya bakınız).
+        // Temizlik olmadan da doğru olan bir iddia, temizliğe muhtaç olandan
+        // sağlam.
+        await db.AlertTriggers.ExecuteDeleteAsync(Token);
         await db.AlertRules.ExecuteDeleteAsync(Token);
 
         var writer = new EventWriter(_context);
@@ -177,7 +186,9 @@ public sealed class SigmaRuleChainTests(DevStackFixture stack) : IAsyncLifetime
         await using var check = await _factory.CreateDbContextAsync(Token);
         var trigger = await check.AlertTriggers.SingleAsync(t => t.RuleId == ruleId, Token);
 
-        Assert.Equal(AlertRunState.Fired, (await check.AlertRules.SingleAsync(Token)).LastRunState);
+        Assert.Equal(
+            AlertRunState.Fired,
+            (await check.AlertRules.SingleAsync(r => r.Id == ruleId, Token)).LastRunState);
 
         // Pencere kuralın kendi penceresi: elle yazılmış bir aralık değil.
         Assert.True(trigger.WindowTo > trigger.WindowFrom);
@@ -205,8 +216,23 @@ public sealed class SigmaRuleChainTests(DevStackFixture stack) : IAsyncLifetime
 
         Assert.Equal(AlertTurn.Idle, turn);
 
+        // İddia BU KURALIN tetiklenmesi üzerine — tablonun tamamı üzerine değil.
+        //
+        // Eski hâli `Assert.Empty(db.AlertTriggers)` idi ve sınıfla koşarken
+        // düşüyordu, tek başına geçiyordu. Sebep "kararsız test" değil:
+        // sınıfın önceki testi bir kural açıp tetiklenme üretiyor ve o
+        // tetiklenme kayıtta kalıyordu.
+        //
+        // Asıl kusur sızıntı değil **iddianın kapsamı**: test "bu kural sorgu
+        // üretmiyor" demek istiyordu, ama "hiçbir yerde tetiklenme yok"
+        // diyordu. İkincisi testin sahip olmadığı bir şey hakkında ve ancak
+        // yalıtım kazasıyla doğru.
         await using var db = await _factory.CreateDbContextAsync(Token);
-        Assert.Empty(db.AlertTriggers);
+        var rule = await db.AlertRules.SingleAsync(r => r.SigmaRuleId == SigmaId, Token);
+
+        Assert.False(
+            await db.AlertTriggers.AnyAsync(t => t.RuleId == rule.Id, Token),
+            "senkronun indirdiği kural açılmadan tetiklenme üretti");
     }
 
     /// <summary>
@@ -231,7 +257,7 @@ public sealed class SigmaRuleChainTests(DevStackFixture stack) : IAsyncLifetime
         Assert.Equal(AlertTurn.Idle, turn);
 
         await using var db = await _factory.CreateDbContextAsync(Token);
-        var stored = await db.AlertRules.SingleAsync(Token);
+        var stored = await db.AlertRules.SingleAsync(r => r.SigmaRuleId == SigmaId, Token);
 
         Assert.Equal(AlertRuleStatus.Gated, stored.Status);
         Assert.Contains("dns_query_name", stored.GatedReason, StringComparison.Ordinal);
@@ -266,7 +292,7 @@ public sealed class SigmaRuleChainTests(DevStackFixture stack) : IAsyncLifetime
 
         await using (var db = await _factory.CreateDbContextAsync(Token))
         {
-            var stored = await db.AlertRules.SingleAsync(Token);
+            var stored = await db.AlertRules.SingleAsync(r => r.SigmaRuleId == SigmaId, Token);
 
             // Kapsam senkronun yazdığı hâliyle okunuyor, elle kurulmuyor.
             Assert.Equal(Group, stored.OwnerGroups);
@@ -278,7 +304,8 @@ public sealed class SigmaRuleChainTests(DevStackFixture stack) : IAsyncLifetime
         await Worker(new FakeTimeProvider(Now)).RunTurnAsync(Token);
 
         await using var check = await _factory.CreateDbContextAsync(Token);
-        var trigger = await check.AlertTriggers.SingleAsync(Token);
+        var rule = await check.AlertRules.SingleAsync(r => r.SigmaRuleId == SigmaId, Token);
+        var trigger = await check.AlertTriggers.SingleAsync(t => t.RuleId == rule.Id, Token);
 
         // Tetiklenme kuralın kendi grubunda: başka grubun iki olayı sayıya
         // GİRMEMELİ. Girseydi değer 4 olurdu.
