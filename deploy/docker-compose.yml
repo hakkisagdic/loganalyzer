@@ -353,6 +353,54 @@ services:
       retries: 30
       start_period: 30s
 
+  # --------------------------------------------------------------------------
+  # N2 — gerçek SSH sunucusu (S03)
+  #
+  # PROFİL ARKASINDA ve bu pazarlığa açık değil: `docker compose up -d` bunu
+  # başlatmamalı. Makine 16 GB ve beş simülatör + üç altyapı servisi aynı anda
+  # kalkarsa koşum swap'e düşüyor (§3). Başlatmak için:
+  #
+  #     docker compose --profile simulators up -d ssh-sim
+  #
+  # TAŞIYICI İDDİA: `SshDeviceTransport` F1'de yazıldı ve o günden beri tek bir
+  # test onu ağa çıkarmadı. Bu servis, o kodun ilk kez gerçekten koştuğu yer.
+  # --------------------------------------------------------------------------
+  ssh-sim:
+    profiles: ["simulators"]
+    build:
+      context: ./ssh-sim
+    environment:
+      # Hangi cihazın taklit edileceği. Tek container tek profil: filo (S05)
+      # geldiğinde bu servis ölçeklenir, ama bugün beş container açmak S03'ün
+      # sınadığı şeye hiçbir şey eklemezdi.
+      SIM_PROFILE: ${SIM_PROFILE:-fw-ankara-01}
+      SIM_USERNAME: ${SIM_USERNAME:-bizigo-ro}
+
+      # Parola compose dosyasında DEĞİL, ortamdan. Varsayılan yalnızca yerel
+      # geliştirme içindir ve profil YAML'ındaki `credential_env` ile aynı
+      # kaynağı gösteriyor.
+      SIM_PASSWORD: ${SIM_FW_ANKARA_PASSWORD:-sim-parola}
+
+      # Senaryo boşsa baseline. Fark testleri bunu değiştirip container'ı
+      # yeniden başlatıyor.
+      SIM_SCENARIO: ${SIM_SCENARIO:-}
+    volumes:
+      # SALT OKUNUR: simülatör katalogu değiştiremez. Değiştirebilseydi bir
+      # test koşumu, sonraki koşumun girdisini sessizce bozabilirdi.
+      - ../catalog/simulators:/sim:ro
+    ports:
+      # 2222 — 22 değil: geliştirme makinesinde 22 çoğu zaman doludur ve
+      # çakışma "bağlanamadı" diye okunurdu.
+      - "2222:22"
+    healthcheck:
+      # Sunucunun banner'ı: SSH gerçekten dinliyor mu. `sshd -t` yalnızca
+      # yapılandırmayı sınardı, dinlemeyi değil.
+      test: ["CMD", "sh", "-c", "printf '' | nc -w 2 127.0.0.1 22 | grep -q SSH"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
 volumes:
   api_wal:
   clickhouse_data:
