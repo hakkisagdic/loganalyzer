@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using Bizigo.Contracts;
 using Bizigo.Storage.ClickHouse;
@@ -265,23 +266,87 @@ public sealed class StorageSchemaTests(DevStackFixture stack) : IAsyncLifetime
         Assert.Equal("3", match.Details["rules"]);
     }
 
+    /// <summary>
+    /// <b>Koşturulduğunda kanıtlayacağı:</b> 100 000 satırlık tek bir toplu
+    /// yazım tabloya <b>eksiksiz</b> iniyor — satırlar sorgulanabilir, sayı
+    /// tabloya sorularak doğrulanıyor ve 50 kaynağın hepsi yerinde.
+    ///
+    /// <para>
+    /// <b>Adı eskiden <c>Toplu_yazim_hizi_olculuyor</c>'du ve hız hakkında hiçbir
+    /// iddiada bulunmuyordu.</b> Hız <c>TestOutputHelper</c>'a basılıyordu, tek
+    /// <c>Assert</c> satır sayısındaydı: yazım iki katına yavaşlasa test yeşil
+    /// kalırdı. Ad bir iddia kuruyor, gövde başka bir şey ölçüyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Hız bütçesi konmadı — bilinçli.</b> Bu testin kabul kriteri (F1)
+    /// zaten "ölçülüp CI çıktısında <i>raporlanıyor</i>" diyor, "şu eşiğin
+    /// altında kalıyor" değil. Mutlak bir bütçe koymak <c>GrokPropertyTests</c>'in
+    /// düştüğü tuzağa düşmek olurdu: 2 saniyelik bütçe pattern'i değil
+    /// <b>makineyi</b> ölçmeye başlamıştı ve yüklü bir makinede sağlıklı kodu
+    /// suçluyordu. Toplu yazım hızı da aynı biçimde makineye, diske ve o anda
+    /// koşan diğer konteynerlere bağlı.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Asıl düzeltilen:</b> eski iddia <c>WriteResult.RowsWritten</c>'a
+    /// bakıyordu, o da <b>sürücünün kendi sayısı</b> — tabloya hiç sorulmuyordu.
+    /// Insert kabul edilip satırlar tabloya inmeseydi (motor reddi, bozuk
+    /// materyalize görünüm) sürücü yine 100 000 derdi ve test yeşil yanardı.
+    /// Şimdi sayı <b>tablodan</b> geliyor.
+    /// </para>
+    /// </summary>
     [Fact]
     [Trait("Category", "Integration")]
-    public async Task Toplu_yazim_hizi_olculuyor()
+    public async Task Toplu_yazim_yuz_bin_satiri_eksiksiz_indiriyor()
     {
-        // Kabul kriteri: 1M satır bulk insert ölçülüp CI çıktısında raporlanıyor.
-        // CI'da tam 1M pahalı; ölçek burada 100k, oran raporlanıyor.
         const int rowCount = 100_000;
+        const int sourceCount = 50;
+
+        // Grup KOŞUM BAŞINA benzersiz. Bu sınıf ClickHouse'u üç test sınıfıyla
+        // PAYLAŞIYOR ve sayım artık tabloya soruluyor; sabit bir grup adı,
+        // paket ikinci kez koşturulduğunda önceki koşumun satırlarını da
+        // sayardı ve test kendi artığı yüzünden düşerdi. Sürücünün kendi
+        // sayısına bakan eski hâl bu soruna bağışıktı; geri okuma onu getirdi,
+        // benzersiz ad geri götürüyor.
+        var group = "network-bulk-" + Guid.NewGuid().ToString("N")[..8];
+
         var ts = DateTimeOffset.UtcNow.AddHours(-2);
         var events = Enumerable.Range(0, rowCount)
-            .Select(i => Sample("network-bulk", $"fg-{i % 50}", $"bulk satır {i}", ts.AddMilliseconds(i)))
+            .Select(i => Sample(group, $"fg-{i % sourceCount}", $"bulk satır {i}", ts.AddMilliseconds(i)))
             .ToArray();
 
         var result = await _writer.WriteEventsAsync(events, TestContext.Current.CancellationToken);
 
+        // Sürücünün kendi sayısı: yanlışsa aşağıdaki tablo sayımıyla ayrışır ve
+        // ikisinin ayrışması tek başına bir bulgudur.
         Assert.Equal(rowCount, result.RowsWritten);
+
+        // TABLOYA SORULAN sayı. Bu satır olmadan test, yazma yolunun kendi
+        // raporunu doğruluyordu.
+        var stored = await stack.QueryScalarAsync(
+            _context.Options.ConnectionString,
+            $"SELECT count() FROM events WHERE owner_group = '{group}'",
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(rowCount.ToString(CultureInfo.InvariantCulture), stored);
+
+        // Satırlar birbirinin kopyası değil: toplu yazım aynı satırı 100 000 kez
+        // yazsaydı yukarıdaki sayım yine tutardı.
+        var sources = await stack.QueryScalarAsync(
+            _context.Options.ConnectionString,
+            $"SELECT uniqExact(source_id) FROM events WHERE owner_group = '{group}'",
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(sourceCount.ToString(CultureInfo.InvariantCulture), sources);
+
+        // Hız RAPORLANIYOR, iddia edilmiyor — kabul kriterinin istediği bu.
+        // Sayı CI çıktısında duruyor ki bir gün düzen değişirse (batch boyutu,
+        // paralellik, sıkıştırma) etkisi görülebilsin. Bir eşiğe bağlanması için
+        // önce "hangi makinede" sorusunun cevabı olmalı; bugün yok.
         TestContext.Current.TestOutputHelper?.WriteLine(
             $"bulk insert: {rowCount} satır / {result.Duration.TotalSeconds:F2} sn " +
-            $"= {rowCount / Math.Max(result.Duration.TotalSeconds, 0.001):F0} satır/sn");
+            $"= {rowCount / Math.Max(result.Duration.TotalSeconds, 0.001):F0} satır/sn " +
+            "(RAPOR — bütçe değil, bkz. özet)");
     }
 }
