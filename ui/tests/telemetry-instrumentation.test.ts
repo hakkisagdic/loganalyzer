@@ -1,6 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
@@ -13,11 +11,14 @@ import {
   TransportError,
   describeError,
 } from "@/lib/api/errors";
+import type { AlertRuleRequest } from "@/lib/alerts/types";
 import type { SearchCriteria } from "@/lib/events/criteria";
 import { errorKind, errorStatus } from "@/lib/telemetry/classify";
 import { allowedProperties } from "@/lib/telemetry/events";
-import { rangeHours, searchShape, yamlLines } from "@/lib/telemetry/measure";
+import { alertShape, rangeHours, searchShape, yamlLines } from "@/lib/telemetry/measure";
 import { scrubProperties } from "@/lib/telemetry/scrub";
+
+import { kaynakDosyalari } from "./source-tree";
 
 /**
  * Enstrümantasyonun bekçileri — ekranlardan telemetriye giden yolun kendisi.
@@ -274,24 +275,13 @@ describe("error_kind kapalı sözlüğün DIŞINA çıkamıyor", () => {
     expect(zorlamalar("error_kind: errorKind(cause)")).toEqual([]);
   });
 
-  const KAYNAK_DOSYALARI = (() => {
-    const kok = fileURLToPath(new URL("..", import.meta.url));
-    const sonuc: string[] = [];
-
-    // TÜM `src` — üç alt dizin DEĞİL. İnceleme `src/middleware.ts`'in denetim
-    // dışında kaldığını gösterdi: elle sayılan bir kapsam, sayılmayan dosyayı
-    // görünmez yapıyor ve görünmezliği hiçbir yerde yazmıyor.
-    {
-      const dizin = "src";
-      for (const girdi of readdirSync(join(kok, dizin), { withFileTypes: true, recursive: true })) {
-        if (girdi.isFile() && /\.tsx?$/.test(girdi.name)) {
-          sonuc.push(join(girdi.parentPath ?? girdi.path, girdi.name));
-        }
-      }
-    }
-
-    return sonuc;
-  })();
+  // TÜM `src` — üç alt dizin DEĞİL. İnceleme `src/middleware.ts`'in denetim
+  // dışında kaldığını gösterdi: elle sayılan bir kapsam, sayılmayan dosyayı
+  // görünmez yapıyor ve görünmezliği hiçbir yerde yazmıyor. Yürütecin kendisi
+  // artık `source-tree.ts`'te ve olay üreticisi bekçisiyle PAYLAŞILIYOR (§9):
+  // iki kopya bir gün ayrışır, ve ayrışan kopyanın körlüğü hiçbir yerde
+  // yazmaz — bu dosyanın kendi geçmişi tam olarak o.
+  const KAYNAK_DOSYALARI = kaynakDosyalari();
 
   it("depoda tipi zorlayan hiçbir yer yok", () => {
     const ihlaller: string[] = [];
@@ -328,5 +318,89 @@ describe("yamlLines — boyut gidiyor, içerik değil", () => {
 
     expect(String(yamlLines(yaml))).not.toContain("admin");
     expect(String(yamlLines(yaml))).not.toContain("src_ip");
+  });
+});
+
+/**
+ * Gerçekçi bir alarm kuralı: adında segment, tam metninde bir IP ve bir
+ * kullanıcı adı, kaynaklarında cihaz adları, kanalında bir kimlik.
+ */
+const KURAL: AlertRuleRequest = {
+  name: "golden segmentinde deny patlaması",
+  description: "fw-core-01 üzerinde admin oturumları",
+  ruleType: "threshold",
+  ownerGroups: ["golden"],
+  fullText: "src_ip=10.0.4.17 AND user=admin",
+  filters: [],
+  sourceIds: ["fw-core-01", "fw-core-02"],
+  windowSeconds: 300,
+  intervalSeconds: 60,
+  threshold: 100,
+  comparison: "gt",
+  silenceSeconds: 900,
+  repeatIntervalSeconds: 3600,
+  enabled: true,
+  channelIds: ["3f7b1c22-8a41-4d0e-9b1a-2c6f5e0d7a93"],
+};
+
+/** Kuralın çıktının hiçbir yerinde geçmemesi gereken parçaları. */
+const KURAL_KANARYALARI = [
+  "golden",
+  "deny",
+  "fw-core-01",
+  "fw-core-02",
+  "10.0.4.17",
+  "admin",
+  "src_ip",
+  "3f7b1c22-8a41-4d0e-9b1a-2c6f5e0d7a93",
+];
+
+describe("alertShape — kuralın şekli, kuralın kendisi değil", () => {
+  const shape = alertShape(KURAL, true);
+
+  it.each(KURAL_KANARYALARI)('"%s" gönderilen paylodda GEÇMİYOR', (kanarya) => {
+    expect(JSON.stringify(shape)).not.toContain(kanarya);
+  });
+
+  it("süzgeçten geçen paylod TAM OLARAK üç sayıdan/bayraktan ibaret", () => {
+    // Eşitlik testi bilerek: "kanarya geçmiyor" bir gün eklenen bir alanı
+    // görmez, "tam olarak bu" görür.
+    expect(scrubProperties(shape as Record<string, unknown>, allowedProperties("alert_saved"))).toEqual({
+      criteria_count: 3,
+      is_new: true,
+      has_threshold: true,
+    });
+  });
+
+  it("ölçüt SAYISI değer başına — hangi ölçütler olduğu değil", () => {
+    // Tam metin (1) + iki kaynak (2) + alan filtresi yok (0) = 3.
+    // `searchShape` çok değerli filtreyi aynı şekilde sayıyor.
+    expect(shape.criteria_count).toBe(3);
+
+    expect(alertShape({ ...KURAL, fullText: null }, true).criteria_count).toBe(2);
+    expect(alertShape({ ...KURAL, sourceIds: [] }, true).criteria_count).toBe(1);
+    expect(
+      alertShape(
+        { ...KURAL, filters: [{ field: "action", op: "eq", values: ["deny"] }] },
+        true,
+      ).criteria_count,
+    ).toBe(4);
+  });
+
+  it("kapsam ölçüt SAYILMIYOR — o daraltma değil sahiplik", () => {
+    // Form en az bir grup seçilmeden kaydetmiyor; saymak her kurala sabit
+    // bir artı eklemek, yani hiçbir şey söylememek olurdu.
+    expect(alertShape({ ...KURAL, ownerGroups: ["golden", "network"] }, true).criteria_count).toBe(3);
+  });
+
+  it("has_threshold kuralın EŞİĞE BAĞLI olup olmadığını söylüyor", () => {
+    // Sessizlik kuralı verinin YOKLUĞUNDA tetikleniyor; gövdedeki `threshold`
+    // orada formun varsayılanından kalma bir artık ve motor onu hiç okumuyor.
+    expect(alertShape({ ...KURAL, ruleType: "silence" }, true).has_threshold).toBe(false);
+    expect(alertShape({ ...KURAL, ruleType: "ratio" }, true).has_threshold).toBe(true);
+  });
+
+  it("is_new güncellemede false", () => {
+    expect(alertShape(KURAL, false).is_new).toBe(false);
   });
 });

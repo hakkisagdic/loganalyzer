@@ -9,6 +9,8 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/ui/States";
 import { api } from "@/lib/api/client";
 import { describeError } from "@/lib/api/errors";
 import type { RcaBundleSummary, RcaReport } from "@/lib/rca/report";
+import { track } from "@/lib/telemetry/client";
+import { rcaShape } from "@/lib/telemetry/measure";
 import { screenState } from "@/lib/ui/screen-state";
 
 import styles from "./rca.module.css";
@@ -78,6 +80,11 @@ export function RcaLauncher({ initialBundles, initialError }: RcaLauncherProps) 
     const baselineTo = from;
     const baselineFrom = new Date(baselineTo.getTime() - Number(baselineDays) * 86_400_000);
 
+    // Ölçülen şey KULLANICININ BEKLEDİĞİ süre: ağ + sunucu + kanıt toplama.
+    // Sunucunun kendi hesaplama süresi ayrı bir sayı ve buradan görünmüyor;
+    // `duration_ms`'i o sanmak, ağ yavaşlığını sunucuya yazmak olurdu.
+    const started = performance.now();
+
     try {
       const report = (await api.post("/v1/rca", {
         body: {
@@ -90,8 +97,27 @@ export function RcaLauncher({ initialBundles, initialError }: RcaLauncherProps) 
         },
       })) as RcaReport;
 
+      // Olayın yeri BURASI — rapor ekranı değil. `rca_run` "RCA koşturuldu"
+      // demek; raporu açmak ayrı bir hareket ve `screen_viewed` ile ölçülüyor.
+      //
+      // Rapor `track`'e OLDUĞU GİBİ verilmiyor: `findings[].summary` bir olay
+      // cümlesi, `payload` ham alan sözlüğü, `window.source_ids` müşteri
+      // envanteri. `rcaShape` üçünü de dışarıda bırakıp yalnızca sayıyı,
+      // süreyi ve bandı türetiyor (bkz. telemetry/measure.ts).
+      //
+      // `router.push`'tan ÖNCE: gezinme bu bileşeni söküyor ve sökülmüş bir
+      // bileşenin göndermediği olay hiçbir yerde iz bırakmaz.
+      track("rca_run", rcaShape(report, { durationMs: performance.now() - started }));
+
       router.push(`/rca/${report.bundle_id}`);
     } catch (cause) {
+      // Düşen koşum için olay YOK ve bu bilinçli: `rca_run`'ın katalogdaki üç
+      // alanının hiçbiri "başarısız" diyemiyor, dolayısıyla basılacak tek şey
+      // başarı ŞEKLİNDE bir olay olurdu — `signal_count: 0` bir koşumun hiçbir
+      // şey bulamadığını söyler, patladığını değil. İkisini tek kovaya koymak
+      // bu depodaki en pahalı hata sınıfı (§7). Katalog `succeeded`/`error_kind`
+      // ile genişletilirse (ikisi de `EventFieldTypes`'ta zaten var ve
+      // `parser_compiled` ikisini de kullanıyor) burası da basmalı.
       setRunError(describeError(cause));
       setRunning(false);
     }

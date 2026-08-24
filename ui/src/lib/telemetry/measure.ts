@@ -1,5 +1,8 @@
+import type { AlertRuleRequest } from "@/lib/alerts/types";
 import type { SearchCriteria, QueryVerdict } from "@/lib/events/criteria";
+import type { RcaReport } from "@/lib/rca/report";
 
+import { trustBand } from "./classify";
 import type { EventPayload } from "./events";
 
 /**
@@ -101,4 +104,105 @@ export function rangeHours(from: string, to: string): number | undefined {
 /** YAML'ın **satır sayısı**. İçeriğinden hiçbir şey türemiyor. */
 export function yamlLines(yaml: string): number {
   return yaml.length === 0 ? 0 : yaml.split("\n").length;
+}
+
+/**
+ * RCA koşumunun **şekli** — raporun içeriği değil.
+ *
+ * <p>
+ * <c>searchShape</c> ile aynı gerekçe ve aynı yer: "bu alan gönderilebilir mi"
+ * sorusu telemetri modülünün sorusu, ekranın değil. Ekranın elinde
+ * <c>RcaReport</c> var ve o nesne <b>müşterinin log'unun kendisi</b>:
+ * <c>findings[].summary</c> bir olay cümlesi, <c>findings[].payload</c> ham
+ * alan sözlüğü, <c>window.source_ids</c> / <c>window.owner_groups</c> müşteri
+ * envanteri, <c>bundle_id</c> ise tek bir koşumu adresleyen kimlik. Raporu
+ * <c>track</c>'e verip beyaz listeye güvenmek "süzgeç tutar" demek olurdu —
+ * tutardı, ama tuttuğunu kimse okumazdı.
+ * </p>
+ *
+ * <p>
+ * Geriye giden üç şey: <b>bir sayı</b>, <b>bir süre</b>, <b>bir bant</b>.
+ * </p>
+ *
+ * @param report Sunucudan dönen rapor.
+ * @param measured Ölçülen süre — <b>kullanıcının beklediği</b> süre.
+ */
+export function rcaShape(
+  report: RcaReport,
+  measured: { readonly durationMs: number },
+): EventPayload<"rca_run"> {
+  return {
+    // Bulguların SAYISI. `timeline` de bulgu taşıyor ama sunucuda aynı
+    // `ranked` listesinin zamana göre dizilişi — "ayrı bir veri değil"
+    // (`DeterministicReport.From`). İkisini toplamak aynı şeyi iki kez
+    // saymak olurdu.
+    signal_count: report.findings.length,
+    duration_ms: Math.round(measured.durationMs),
+    trust_band: trustBand(report.trust),
+  };
+}
+
+/**
+ * Alarm kuralının **şekli** — kuralın kendisi değil.
+ *
+ * <p>
+ * Kuralın adı, açıklaması, aradığı tam metin ve izlediği kaynak kimlikleri
+ * <b>gitmiyor</b>. Üçü de müşterinin envanterinden birer satır: kaynak kimliği
+ * cihazın adı, tam metin analistin aradığı şey, kural adı çoğu zaman ikisini
+ * birden taşıyor ("golden segmentte deny patlaması").
+ * </p>
+ *
+ * <p>
+ * <c>criteria_count</c> <b>gönderilen gövdeden</b> sayılıyor, formun
+ * alanlarından değil. Sebep: form yarın yeni bir ölçüt kazandığında sayı
+ * kendiliğinden doğru kalıyor. Sayımı ekranın içine yazsaydık o alanı ekleyen
+ * kişinin ayrıca burayı hatırlaması gerekirdi — ve hatırlamadığı gün sayı
+ * <b>sessizce</b> eksik kalırdı, hiçbir kapı kırmızı yanmadan.
+ * </p>
+ *
+ * <p>
+ * Çok değerli bir ölçüt <b>değer başına</b> sayılıyor (iki kaynak = iki),
+ * çünkü <c>searchShape</c> aynı alanı aynı şekilde sayıyor
+ * (<c>parseStatuses.length</c>) ve <c>criteria_count</c> iki olayda da
+ * <b>aynı alan</b>. İki farklı sayma kuralı, iki olayı yan yana koyan panoyu
+ * sessizce yalancı yapardı.
+ * </p>
+ *
+ * <p>
+ * <b>Kapsam (<c>ownerGroups</c>) ölçüt sayılmıyor.</b> O bir daraltma değil
+ * kuralın sahipliği, ve form en az bir grup seçilmeden kaydetmiyor — sayıya
+ * katmak her kurala sabit bir artı eklemek, yani hiçbir şey söylememek olurdu.
+ * </p>
+ *
+ * <p>
+ * Sayı <b>isteğin</b> şekli, motorun yorumu değil: sessizlik kuralında tam
+ * metin sunucuda okunmuyor ama gönderildiyse burada sayılıyor. Aksini yapmak,
+ * hangi kural tipinin hangi ölçütü okuduğunu tarayıcıda <b>ikinci kez</b>
+ * tarif etmek olurdu — ve o kopya, motor değiştiği gün sessizce ayrışırdı.
+ * </p>
+ */
+export function alertShape(request: AlertRuleRequest, isNew: boolean): EventPayload<"alert_saved"> {
+  // `fullText` şemada `null` da olabiliyor; uzunluğa bakmadan önce tek şekle
+  // indiriyoruz — `null.length` çalışma zamanında patlar, ve bu fonksiyonun
+  // patlaması kaydetme akışını bozardı.
+  const fullText = request.fullText ?? "";
+
+  return {
+    criteria_count:
+      (fullText.length > 0 ? 1 : 0) +
+      (request.sourceIds?.length ?? 0) +
+      (request.filters?.length ?? 0),
+    is_new: isNew,
+    // "Eşiği olan kural" = tetiklenmesi bir eşiğe BAĞLI kural. Sessizlik
+    // kuralı verinin YOKLUĞUNDA tetikleniyor ve onu yöneten sayı
+    // `silenceSeconds`; gövdedeki `threshold` orada formun varsayılanından
+    // kalma bir artık, motor hiç okumuyor (`AlertEvaluator.EvaluateSilenceAsync`
+    // yalnızca `SilenceSeconds` kullanıyor).
+    //
+    // Bu alan "kullanıcı eşiği ELLEDİ mi" sorusunu cevaplamıyor ve
+    // cevaplayamaz: form 100 ile açılıyor, yani bilerek 100 yazan kullanıcı
+    // ile alana hiç dokunmayan birebir aynı gövdeyi üretiyor. O ayrımı
+    // uydurmak panoya sessiz bir yalan koymak olurdu.
+    has_threshold: (request.ruleType ?? "threshold") !== "silence",
+  };
 }

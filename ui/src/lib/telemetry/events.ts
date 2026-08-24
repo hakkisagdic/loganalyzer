@@ -1,4 +1,4 @@
-import type { ErrorKind } from "./classify";
+import type { ErrorKind, TrustBand } from "./classify";
 import type { TelemetryProperties } from "./scrub";
 
 /**
@@ -49,8 +49,18 @@ export interface EventFieldTypes {
 
   is_new: boolean;
   has_threshold: boolean;
+  /** Raporun taşıdığı bulgu SAYISI. Bulguların kendisi gitmiyor. */
   signal_count: number;
-  quality_band: string;
+  /**
+   * RCA penceresinin zaman güvenilirliği. `classify.ts`'in kapalı sözlüğü.
+   *
+   * <p>
+   * Adı <b>`quality_band` değil</b>: bu üründe "kalite"nin sahibi
+   * <c>GoldenSetQuality</c> (incelemelerin doğruluk oranı, aynı ekranda
+   * <c>QualityBadge</c>). Gerekçenin tamamı <c>classify.ts</c>'te.
+   * </p>
+   */
+  trust_band: TrustBand;
 }
 
 /**
@@ -184,18 +194,47 @@ export const EVENTS = {
       "oran ölçülebilir bir şey ve ürün için anlamlı.",
   }),
 
-  /** Alarm ölçütü kaydedildi. */
+  /**
+   * Alarm kuralı **kaydedildi** — kaydetmeye çalışıldı değil.
+   *
+   * <p>Olayın yeri <c>AlertRuleEditor.save()</c>, ve yalnızca istek
+   * döndükten sonra basılıyor. Düşen kaydetme bu olayı BASMIYOR; gerekçesi
+   * ve düşen denemenin nerede sayıldığı çağrı yerinde yazılı.</p>
+   */
   alert_saved: event({
     name: "alert_saved",
     properties: ["criteria_count", "is_new", "has_threshold"],
-    describes: "Alarm kuralı kaydı. Kuralın metni gitmiyor, şekli gidiyor.",
+    describes:
+      "Alarm kuralı kaydı. Kuralın adı, açıklaması, aradığı METİN ve izlediği KAYNAK " +
+      "KİMLİKLERİ gitmiyor — üçü de müşterinin envanterinden birer satır. `criteria_count` " +
+      "gönderilen gövdedeki ölçüt sayısı (tam metin 1, her kaynak 1, her alan filtresi 1; " +
+      "kapsam DEĞİL, o sahiplik) ve `event_search_run`'daki alanla aynı sayma kuralını " +
+      "izliyor — yoksa iki olayı yan yana koyan pano sessizce yalan söylerdi. `is_new` yeni " +
+      "kural mı güncelleme mi. `has_threshold` kuralın tetiklenmesi bir EŞİĞE BAĞLI mı " +
+      "(sessizlik kuralında değil, orada `silenceSeconds` yönetiyor); \"kullanıcı eşiği " +
+      "elledi mi\" DEĞİL — form varsayılanla açıldığı için o soru gövdeden türetilemiyor. " +
+      "Düşen kaydetme burada değil `error_shown`'da sayılıyor: bu olay bir DURUM " +
+      "DEĞİŞİKLİĞİNİ anlatıyor ve düşen kaydetmede ortada kural yok.",
   }),
 
-  /** Kök neden analizi çalıştırıldı. */
+  /**
+   * Kök neden analizi **koşturuldu** — raporu okumak değil.
+   *
+   * <p>Olayın yeri <c>RcaLauncher.gather()</c>: kanıt toplayan çağrı orası.
+   * Rapor ekranını açmak ayrı bir şey ve zaten <c>screen_viewed</c> ile
+   * ölçülüyor; ikisini tek olaya bindirmek "kaç RCA koşturuldu" sorusunu
+   * cevaplanamaz yapardı.</p>
+   */
   rca_run: event({
     name: "rca_run",
-    properties: ["signal_count", "duration_ms", "quality_band"],
-    describes: "RCA koşumu ve kalite bandı.",
+    properties: ["signal_count", "duration_ms", "trust_band"],
+    describes:
+      "RCA koşumu. `signal_count` raporun BULGU SAYISI — özetleri, zaman damgaları ve " +
+      "paylodları gitmiyor; onlar log satırı taşıyor. `duration_ms` KULLANICININ BEKLEDİĞİ " +
+      "süre (ağ + sunucu), sunucunun hesaplama süresi değil. `trust_band` pencerenin ZAMAN " +
+      "güvenilirliği (bkz. classify.ts) — incelemelerin doğruluğu DEĞİL, o ayrı bir " +
+      "gösterge (`GoldenSetQuality`). Koşum düşerse olay HİÇ gitmiyor: katalogda " +
+      "\"başarısız\" diyebilecek bir alan yok ve başarı şeklinde bir olay basmak yalan olurdu.",
   }),
 
   /**
