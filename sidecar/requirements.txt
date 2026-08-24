@@ -17,22 +17,22 @@
 drain3 @ git+https://github.com/logpai/Drain3@0fb6d6e1828838fa05c8f6fa5cda878e02ea79c7
 
 # drain3'ün kendi bağımlılıkları — dolaylı gelseler de sabitleniyor.
-jsonpickle==4.1.3
-cachetools==7.2.0
+jsonpickle==4.1.2
+cachetools==7.1.7
 
 fastapi==0.124.0
 uvicorn[standard]==0.46.0
-pydantic==2.14.0
+pydantic==2.13.4
 
 # Redis persistence (K14: dosya değil).
-redis==6.6.0
+redis==6.4.0
 
 # Maskeleme sözlüğü (catalog/masks/bizigo-masks.yaml).
-PyYAML==6.0.4
+PyYAML==6.0.3
 
 # Sigma derlemesi — yalnızca /v1/sigma/compile. Sıcak yolda değil (F3 build-time).
 # ⚠️ pysigma-backend-clickhouse SigmaHQ'nun resmî backend'i DEĞİL; üçüncü taraf
 #    ve genç bir paket. Sürüm sabit, import tembel: yüklenemezse yalnızca
 #    /v1/sigma/compile 503 döner, mining etkilenmez (sigma_compile.py).
-pySigma==1.6.0
+pySigma==1.5.0
 pysigma-backend-clickhouse==1.1.1

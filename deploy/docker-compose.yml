@@ -209,7 +209,16 @@ services:
     restart: "no"
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.162.0
+    # 0.162.0 YAYIMLANMAMIŞ bir etiketti ve yığının tamamını kullanılamaz
+    # yapıyordu: `up` "failed to resolve reference … not found" ile düşüyor.
+    # Ölçüldü — `docker manifest inspect` 0.162.0'ı çözemiyor, Docker Hub'ın
+    # etiket listesinde de yok; 0.159.0 çekilebiliyor.
+    #
+    # Bunun `compose config --quiet` kapısından geçmesi tesadüf değil: o kapı
+    # SÖZDİZİMİNİ doğruluyor, imajın var olduğunu değil. Dosya ayrıştırılabilir
+    # olduğu sürece yeşil yanıyor ve kırığı yalnızca yığını gerçekten kaldıran
+    # görüyor — §5'in tarif ettiği sınıfın bir katman yukarısı.
+    image: otel/opentelemetry-collector-contrib:0.159.0
     command: ["--config=/etc/otel/collector.yaml"]
     depends_on:
       otel-init: { condition: service_completed_successfully }
