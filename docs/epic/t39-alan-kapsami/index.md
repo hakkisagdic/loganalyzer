@@ -361,6 +361,66 @@ fortigate_user_auth_fail.yml (DÜZELTME SONRASI) [Fortinet] status = 'failed'
 `failed → failure` çeviriyor. Yani kolonda hiçbir zaman `failed` durmuyor.
 Düzeltme, çalışan bir kuralı hiç eşleşmeyen bir kurala çevirir.
 
+## Çapa tek yerde — ve TTL bir kapıya dönüştü (FS S02)
+
+Örnek dosyalar 2015–2022 tarihli ve **hiçbir tüketici onları olduğu gibi
+basmıyor**: yükleyici geçmişe yayarken, simülatör basım anına kaydırırken aynı
+kuralı uyguluyor. Kural iki cümle ve ikisinin de gerekçesi ölçülmüş:
+
+1. **Çapa "şimdi"dir.** `events` tablosunda `TTL ts + 90 gün` var ve süresi
+dolmuş bir satır yazıldığında ClickHouse **hata vermiyor** — yazımı kabul
+ediyor, satır sayısını dönüyor, sonra siliyor. İstemci "yazdım" diye okuyor ve
+tabloda hiçbir şey yok.
+2. **Çapa tam saniyeye iniyor.** Syslog ve HTTP biçimlerinde saniyenin altı yok;
+kesirli bir an ekilirse yeniden yazılan satır onu kaybeder ve "ektiğim an ile
+yazılan an aynı" doğrulaması her satırda düşer. O doğrulama düşünce onunla
+birlikte **gerçek** kaymaları da göremeyiz.
+
+Kural `Bizigo.Parsing.Samples.SampleClock`'ta, tek kopya. Öncesinde **dört ayrı
+yerde** yazılıydı (CLI'ın iki komutu, yayılım planı, baseline ölçümü) ve
+beşincisi simülatör olacaktı.
+
+### TTL artık bir kapı, bir varsayım değil
+
+`seed golden` yazmadan **önce** soruyor: planlanan satırların kaçı saklama
+süresinin dışında? Sıfır değilse duruyor.
+
+```
+hata   Planlanan 2028 satırın 210 tanesi saklama süresinin DIŞINDA
+       (TTL 90 gün, en eski yazılabilir an 2026-05-26 22:24Z).
+       ClickHouse bunları hata vermeden kabul edip siler.
+```
+
+**Süre şemadan okunuyor** (`EventRetention`), C# tarafına `90` yazılmadı: şema
+değiştiği gün ikisi sessizce ayrışır ve kapı yanlış cevabı verirdi. `TTL`
+bulunamazsa "sınırsız saklama" varsayılmıyor, **atılıyor** — okuyamama hâli
+sınırsızlık diye okunsaydı kapı hiç kapanmazdı.
+
+Ölçüldü: `--span-days 100` çıkış kodu **1**, varsayılan 30 gün **0**.
+
+### `--replace` artık sildiğini doğruluyor
+
+`ALTER TABLE … DELETE` bir **mutasyon**. `mutations_sync = 2` beklemesi sunucu
+tarafında geçersiz kılınabiliyor; beklemediği hâlde beklemiş gibi dönerse eski
+satırlar kalır, yeniler eklenir ve veri **çoğalır** — hiçbir hata çıkmadan.
+Silmeden sonra sayım tekrarlanıyor ve sıfır değilse yazıma geçilmiyor.
+
+## Yükleyicinin idempotansı — karar ve gerekçe
+
+**Yükleyici *reddederek* idempotent, *tekilleştirerek* değil.** Grup doluysa
+duruyor; yeniden yüklemek `--replace` istiyor ve o da yalnızca kendi grubunu
+siliyor.
+
+| Seçenek | Neden seçilmedi |
+| --- | --- |
+| Yazarken tekilleştirme | `events` düz bir `MergeTree`; tekillik garantisi yok. `ReplacingMergeTree`'ye geçmek, bir fixture uğruna **ürünün şemasını** değiştirmek olurdu |
+| "Çağıran temizler" | Yükü, sonucunu göremeyecek kişiye yıkıyor. Çoğalmış veri hata vermiyor; yalnızca hacme dayanan ölçümü sessizce yanlışlıyor |
+| Üstüne yazmak | Sessiz çoğalma — bu belgenin baştan sona engellemeye çalıştığı hata sınıfı |
+
+Reddetmenin bedeli açık: bir kereye mahsus üst üste yükleme yapmak isteyen
+`--owner-group` ile ayrı bir gruba yazmak zorunda. Bu bedel kabul edildi, çünkü
+alternatifinin bedeli **sessiz**.
+
 ## Açık kalem
 
 **`Reset-I` yapısal olarak adreslenemiyor.** ASA teardown satırlarında `reason`
