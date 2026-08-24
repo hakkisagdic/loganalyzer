@@ -1,7 +1,7 @@
 ---
 title: "T30 — Sigma pipeline prototipi"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # T30 — Sigma pipeline prototipi
@@ -54,10 +54,37 @@ karşıydı ve sorgu hiç çalıştırılmadı — bu kez çalıştırılacak.
 
 ## Kabul kriterleri
 
-- Ölçüm sonuçları bir artifact'a yazıldı: kural başına maliyet, çalışır oran,
-karşılaşılan tuzaklar.
-- En az bir kural **canlı ClickHouse'ta** koşup doğru sonucu verdi.
-- Kapsam önerisi gerekçesiyle yazıldı: hangi kategoriler/vendor'lar F3'e girsin.
+- ✅ Ölçüm sonuçları bir artifact'a yazıldı: **çalışır oran** ve **tuzaklar**
+tamam ([T30 ölçümü](../../t30-sigma-olcumu/index.md), on bir tuzak).
+
+  ⚠️ **Kural başına maliyet ÖLÇÜLMEDİ.** Payda `matches` olacaktı ve o sayı
+  hâlâ oynuyor: bu turda dört kez değişti (24 → 21 → 15 → ≥14). Bugünkü
+  eşleme satırı **208 (42 alan)** ama bölüneceği sayı kesinleşmeden yazılan
+  bir oran, bu belgenin dört kez düştüğü tuzağın beşincisi olurdu.
+
+  269 kuralın toplam maliyeti de buna bağlı ve ölçekleme uyarısı geçerli:
+  çarpım **ayrık alan** üzerinden yapılmalı, kural sayısı üzerinden değil.
+  Artifact'ın "Hâlâ ölçülmedi" bölümünde duruyor.
+
+- ✅ En az bir kural canlı ClickHouse'ta koştu ve **doğru sonucu verdi**:
+`routeros_forward_new`, Kapı 3'ün `at_least_one` beyanıyla, 1 satır.
+
+  *"Doğru sonuç"*un ayrıca sınanması gerekiyordu ve gerekçesi ölçüldü:
+  `asa_teardown_rst` **eşleşiyordu** ama `RST` yalnızca `first`/`burst`
+  sözcüklerinin içine denk geliyordu. Eşleşme sayısı doğruluk kanıtı değil.
+
+- ✅ Kapsam önerisi gerekçesiyle yazıldı: **`firewall` + `network_connection`**.
+
+  Karar orandan değil **verinin varlığından** çıkıyor — DNS'in verisi yok,
+  hiçbir parser sorgu adı üretmiyor, o kurallar derlenmiyor bile. Oran
+  (`≤%43`, payda `≥14`) bir **alt sınır** ve öyle yazıldı.
+
+## Kapanırken karşılanmayan
+
+**Kural başına maliyet.** Ticket'ın ilk kriterinin üçte biri. Bilerek açık
+bırakılıyor: payda kesinleşmeden yazılacak bir sayı, ölçümün kendisinin
+uyardığı hatayı yapmak olur. Kesin payda 2'nin `(product, column)` ölçümünden
+gelecek ve T38'de yeniden okunacak.
 
 ## Notlar
 

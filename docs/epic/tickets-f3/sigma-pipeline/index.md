@@ -1,7 +1,7 @@
 ---
 title: "T31 — Bizigo ProcessingPipeline"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # T31 — Bizigo `ProcessingPipeline`
@@ -46,11 +46,43 @@ yapmıyor. Maliyeti sıfır ama faydası da sıfır; koyulacaksa gerekçesi yaz�
 
 ## Kabul kriterleri
 
-- T30'un önerdiği kapsamdaki kuralların hepsi derleniyor **ve** üretilen SQL
-canlı ClickHouse'ta koşuyor.
-- Her logsource ailesi için altın örnekle doğrulanmış en az bir kural.
-- Eşlenemeyen kural **sessizce geçmiyor**: derleme hattı onu işaretliyor
-(T32'nin kapısı).
+- ✅ Derlenen her kuralın SQL'i canlı ClickHouse'ta **koşuyor**:
+`compiled == runs == 21`, reddedilen kolon **yok**.
+
+  Prototipte 24'ün 10'u ClickHouse'a çarpıyordu. Fark üç ayrı sebepten
+  doğuyordu ve üçü de kapandı: ad alanlı `attrs` anahtarları, `IPv6` kolonunda
+  metin operatörü, backend'in ifadeleri backtick'lemesi.
+
+  ⚠️ O koşum `fw_chain` düzeltmesinden ve `VENDOR_EMPTY_COLUMNS`'tan **önce**
+  alındı. Sonraki değişiklikler derleme sayısını düşürüyor (bekçi çalıştığı
+  için) ama `runs == compiled` iddiası **yeniden ölçülmedi**.
+
+- ⚠️ **KARŞILANMADI — `nginx` ailesi.** Kapı 3'ün beyanları:
+
+  | Aile | `at_least_one` | `none` |
+  | --- | --- | --- |
+  | asa | 3 | 3 |
+  | fortigate | 2 | 2 |
+  | routeros | 2 | 2 |
+  | **nginx** | **0** | 5 |
+
+  nginx'in **hiçbir kuralı altın örnekle doğrulanmadı** ve sebebi eşleme
+  değil **korpus**: altın örneklerimiz ağırlıklı `access-json` biçiminde,
+  o biçim `core.host`'u doldurmuyor, ve `/admin` · `POST` · `sqlmap` ·
+  `UNION SELECT` · `upload` örneklerde **sıfır kez** geçiyor.
+
+  Kapatan şey bir pipeline satırı değil, **combined biçimli bir altın örnek**.
+  Ayrıntı: [T30 ölçümü → korpus tasarımı kalemi](../../t30-sigma-olcumu/index.md).
+
+- ✅ Eşlenemeyen kural sessizce geçmiyor. Dört ayrı sınıf, dördü de derlemeyi
+düşürüyor ve sebebini taşıyor: şema boşluğu, tanınmayan alan, vendor'a göre
+boş kolon, ve T32'nin kapıları.
+
+## Kapanırken karşılanmayan
+
+**nginx ailesinin altın örnek doğrulaması.** Bir korpus kalemi, eşleme kalemi
+değil — ve bu ayrımın kendisi ölçülerek bulundu. `status:2` ile kapanıyor ama
+kriter **açık**; kapatan şey T38'in altın küme işi.
 
 ## Notlar
 
