@@ -163,10 +163,23 @@ internal static class FieldsCommandHandlers
             Console.WriteLine("  KUTU 3b — burada boş, başka vendor'da dolu:");
             Console.WriteLine("    " + (emptyHere.Count == 0 ? "(yok)" : string.Join(", ", emptyHere)));
 
-            Console.WriteLine("  KESİŞİM — ikisi de dolu ama AYNI SATIRDA hiç birlikte değil:");
-            Console.WriteLine("    " + (vendor.NeverTogether.Count == 0
+            var permanent = vendor.NeverTogether.Where(static pair => pair.Structural).ToList();
+            var incidental = vendor.NeverTogether.Where(static pair => !pair.Structural).ToList();
+
+            Console.WriteLine(string.Create(
+                CultureInfo.InvariantCulture,
+                $"  KESİŞİM — ikisi de dolu ama AYNI SATIRDA hiç birlikte değil " +
+                $"({permanent.Count} kalıcı, {incidental.Count} örneklem tesadüfü):"));
+
+            Console.WriteLine("    KALICI (parser kümeleri ayrık — örneklem büyüse de değişmez):");
+            Console.WriteLine("      " + (permanent.Count == 0
                 ? "(yok)"
-                : string.Join(", ", vendor.NeverTogether.Select(static pair => $"{pair.First}+{pair.Second}"))));
+                : string.Join(", ", permanent.Select(static pair => $"{pair.First}+{pair.Second}"))));
+
+            Console.WriteLine("    ÖRNEKLEM TESADÜFÜ (bir parser ikisini de doldurabiliyor):");
+            Console.WriteLine("      " + (incidental.Count == 0
+                ? "(yok)"
+                : string.Join(", ", incidental.Select(static pair => $"{pair.First}+{pair.Second}"))));
 
             var substituted = vendor.Substituted
                 .Where(pair => pair.Value > 0)

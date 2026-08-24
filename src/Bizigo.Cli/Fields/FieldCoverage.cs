@@ -22,6 +22,33 @@ public sealed record UncapturedFragment(string Text, int Lines);
 /// </param>
 public sealed record RelocatedField(string Key, int Lines, string Sample, bool FromLine, string Note);
 
+/// <param name="First">Birinci kolon (takma ad).</param>
+/// <param name="Second">İkinci kolon.</param>
+/// <param name="Structural">
+/// Ayrılık <b>kalıcı</b> mı.
+///
+/// <para>
+/// İki kolonu dolduran parser kümeleri <b>ayrıksa</b> hiçbir satır ikisini
+/// birden taşıyamaz — bu bir şema özelliği ve örneklem büyüse de değişmez.
+/// Kesişiyorlarsa en az bir parser ikisini birden doldurabiliyor demektir ve
+/// birlikte görülmemeleri <b>bugünkü örneklemin</b> tesadüfü.
+/// </para>
+///
+/// <para>
+/// Ayrım bu turun her ölçümünde tekrarlanan ayrımın aynısı: "hiçbir zaman
+/// olmayacak" ile "bugün yok". Verdikleri iş emri zıt — birincisi kural yazım
+/// kısıtı, ikincisi örnek dosya kalemi.
+/// </para>
+/// </param>
+/// <param name="FirstParsers">Birinci kolonu dolduran parser'lar.</param>
+/// <param name="SecondParsers">İkinci kolonu dolduran parser'lar.</param>
+public sealed record ColumnPair(
+    string First,
+    string Second,
+    bool Structural,
+    IReadOnlyList<string> FirstParsers,
+    IReadOnlyList<string> SecondParsers);
+
 /// <param name="Vendor"><c>vendor</c> değeri — ClickHouse'taki <c>device_vendor_name</c>.</param>
 /// <param name="Lines">Bu vendor'ın örnek satır sayısı.</param>
 /// <param name="Populated">Görünüm takma adı → dolduğu satır sayısı.</param>
@@ -67,7 +94,7 @@ public sealed record VendorFieldReport(
     int Lines,
     IReadOnlyDictionary<string, int> Populated,
     IReadOnlyDictionary<string, int> AttributeKeys,
-    IReadOnlyList<(string First, string Second)> NeverTogether,
+    IReadOnlyList<ColumnPair> NeverTogether,
     IReadOnlyDictionary<string, int> Substituted,
     IReadOnlyList<RelocatedField> Relocated,
     IReadOnlyList<UncapturedFragment> Uncaptured,
@@ -210,6 +237,10 @@ public static class FieldCoverage
         var substituted = new Dictionary<string, int>(StringComparer.Ordinal);
         var together = new Dictionary<(string, string), int>();
 
+        // Kolonu HANGİ parser'ın doldurduğu: ayrılığın kalıcı mı tesadüfi mi
+        // olduğunu ancak bu söylüyor.
+        var fillers = new Dictionary<string, SortedSet<string>>(StringComparer.Ordinal);
+
         foreach (var logEvent in events)
         {
             var values = ColumnValues(logEvent);
@@ -236,6 +267,14 @@ public static class FieldCoverage
                     // ya bir sabit ya bir geri düşüş. `fields values` sabitleri
                     // ayrıca listeliyor; buradaki sayı ikisini birlikte
                     // gösteriyor ve raporda öyle okunuyor.
+                    if (!fillers.TryGetValue(column.Alias, out var parsers))
+                    {
+                        parsers = new SortedSet<string>(StringComparer.Ordinal);
+                        fillers[column.Alias] = parsers;
+                    }
+
+                    parsers.Add(logEvent.ParserId.Length == 0 ? "<eşleşmedi>" : logEvent.ParserId);
+
                     if (!logEvent.Body.Contains(value, StringComparison.Ordinal))
                     {
                         substituted[column.Alias] = substituted.GetValueOrDefault(column.Alias) + 1;
@@ -284,16 +323,26 @@ public static class FieldCoverage
             .OrderBy(static alias => alias, StringComparer.Ordinal)
             .ToList();
 
-        var neverTogether = new List<(string First, string Second)>();
+        var neverTogether = new List<ColumnPair>();
 
         for (var i = 0; i < structural.Count; i++)
         {
             for (var j = i + 1; j < structural.Count; j++)
             {
-                if (together.GetValueOrDefault((structural[i], structural[j])) == 0)
+                if (together.GetValueOrDefault((structural[i], structural[j])) != 0)
                 {
-                    neverTogether.Add((structural[i], structural[j]));
+                    continue;
                 }
+
+                var first = fillers.GetValueOrDefault(structural[i], []);
+                var second = fillers.GetValueOrDefault(structural[j], []);
+
+                neverTogether.Add(new ColumnPair(
+                    structural[i],
+                    structural[j],
+                    Structural: !first.Overlaps(second),
+                    [.. first],
+                    [.. second]));
             }
         }
 
