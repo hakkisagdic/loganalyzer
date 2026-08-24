@@ -1,13 +1,67 @@
 ---
 title: "T39 — `specificity` seçim ölçütü: kim, neye göre?"
 kind: ticket
-status: 0
+status: 2
 ---
 
 # T39 — `specificity` seçim ölçütü: kim, neye göre?
 
 **Bağımlılık:** — · **Sonraki:** —
 **Kaynak:** [T06 kararları](../../t06-kararlar/index.md) — *"seçim ölçütü kayıtta yok"*
+
+> ## Kapandı — ve cevabın yarısı "soru bugün yok"
+>
+> Ticket'ın kendi içinde bıraktığı varsayım **ölçüldü ve doğrulandı**, üstelik
+> yazıldığından daha güçlü çıktı. 87 altın örnek satırı, 8 parser:
+>
+> | | |
+> | --- | --- |
+> | Tek adaylı satır | **70** |
+> | İki adaylı satır | **17** |
+> | Vendor'lar arası aday üreten satır | **0** |
+> | Birden çok adayın `ok` döndüğü satır | **0** |
+>
+> Dispatcher "ilk `ok` kazanır" dediği için sıralama ancak birden çok aday `ok`
+> döndüğünde sonucu değiştirir. **Hiçbir satırda olmuyor** — yani `specificity`
+> bugün hiçbir satırın hangi parser'a düştüğünü belirlemiyor.
+>
+> Bu, ticket'ın üç sorusundan ikisini kapatıyor:
+>
+> - **Vendor'lar arası karşılaştırma** hiç koşmuyor → o sayıları birbirine göre
+> gerekçelendirmek gereksiz. Ölçüt **vendor içi**dir, dışı tanımsızdır ve
+> tanımsız kalması bir eksiklik değil.
+> - **Mutlak değerler** sonucu belirlemediği için anlamsız; 95/85 ile 2/1 aynı
+> şeyi söylüyor.
+> - **Eşitlik** bugün zararsız (sıralama sonucu değiştirmiyor), dolayısıyla
+> yasaklanmasına gerek yok. Alfabetik çözüm belgelendi.
+>
+> **Ölçüt yazılmadı — çünkü yazılabilecek olan zaten koddaki üç yorumdu:** aynı
+> vendor içinde dardan genele. `catalog/parsers/README.md`'ye o hâliyle,
+> ölçümüyle birlikte yazıldı.
+>
+> **Asıl teslim bekçi.** `SpecificityRelevanceTests` iki ölçümü her koşumda
+> tekrarlıyor: birden çok adayın `ok` dönmediği, ve vendor'lar arası aday
+> oluşmadığı. Kırmızı yandığı gün ölçüt **gerçekten gerekli** hâle gelmiş
+> demektir. Bugün cevabı uydurmak yerine, sorunun doğduğu anı yakalayan bir şey
+> bırakıldı.
+>
+> **Ölçüldü:** nginx parser'ının `contains` listesine `%ASA-` eklendiğinde
+> `Vendorlar_arasi_siralama_hic_kosmuyor` kırmızı yanıyor ve çakışan satırları
+> adlarıyla basıyor — sonra geri alındı. Üçüncü test (`Olcum_bos_gecmiyor`)
+> iddianın boş geçmesini engelliyor: ön filtre gerçekten 17 satırda birden çok
+> aday üretiyor.
+>
+> ### Karşılanmayan kabul kriteri — bilerek
+>
+> *"Bugünkü sekiz değerin her birinin ya gerekçesi var ya değeri değişti"*
+> **karşılanmadı**: dördü hâlâ yorumsuz. Karşılamak, sonucu belirlemediği
+> ölçülmüş sekiz sayı için gerekçe **uydurmak** olurdu — ticket'ın kendi son
+> cümlesinin yasakladığı şey. Ölçüm kriteri geçersizleştirdi: gerekçelendirilmesi
+> gereken bir karar yok, çünkü ortada karar yok.
+>
+> Değerleri silmek de düşünüldü ve **yapılmadı**: alan şemada duruyor, katalog
+> büyüdüğünde gerekecek, ve bugün zarar vermiyor. Silmek "bir gün gerekecek" ile
+> "bugün işe yaramıyor"u karıştırmak olurdu.
 
 ## Amaç
 
