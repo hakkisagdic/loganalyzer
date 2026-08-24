@@ -62,7 +62,7 @@ function RunStateBadge({ rule }: { rule: AlertRule }) {
  *
  * Sebep metni senkronun yazdığı biçimde geliyor: `[remedy] kolon: mesaj`.
  */
-function gatedLabel(reason: string | undefined): string {
+export function gatedLabel(reason: string | undefined): string {
   if (!reason) return "koşamaz";
 
   const remedy = /^\[([a-z_]+)\]/.exec(reason)?.[1];
@@ -82,6 +82,19 @@ export function AlertsOverview() {
   const [triggers, setTriggers] = useState<readonly AlertTrigger[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  /**
+   * Kaynak filtresi — **sekme değil**.
+   *
+   * Ticket "F2'nin alarm ekranına eklenen bir sekme" diyordu; sonraki karar
+   * **tek liste, üçüncü durum** oldu ve bu onun ekrandaki karşılığı.
+   *
+   * Sekme, kullanıcı hangi sekmede olduğunu unuttuğunda *"kuralım nerede"*
+   * sorusunu üretiyor: aynı amaca hizmet eden iki şey iki ayrı yerde
+   * aranıyor. Filtre aynı kalabalığı çözüyor ve listeyi bölmüyor —
+   * varsayılan "hepsi", yani hiçbir şey saklanmıyor.
+   */
+  const [source, setSource] = useState<"all" | "bizigo" | "sigma">("all");
 
   const load = useCallback(async (signal?: AbortSignal) => {
     setError(null);
@@ -141,6 +154,25 @@ export function AlertsOverview() {
 
       {error ? <ErrorState title="Son işlem başarısız" hint={error} /> : null}
 
+      {/*
+        Filtre yalnızca iki kaynak varken gösteriliyor: tek kaynaklı bir
+        listede seçenek sunmak, olmayan bir ayrımı varmış gibi göstermek olur.
+      */}
+      {rules.some((r) => r.source === "sigma") && rules.some((r) => r.source !== "sigma") ? (
+        <div className={styles.toolbar} role="group" aria-label="Kaynak filtresi">
+          {(["all", "bizigo", "sigma"] as const).map((option) => (
+            <Button
+              key={option}
+              variant={source === option ? "primary" : "secondary"}
+              onClick={() => setSource(option)}
+              aria-pressed={source === option}
+            >
+              {option === "all" ? "Hepsi" : option === "sigma" ? "Sigma" : "Kendi kurallarım"}
+            </Button>
+          ))}
+        </div>
+      ) : null}
+
       {rules.length === 0 ? (
         <Card>
           <EmptyState
@@ -158,7 +190,12 @@ export function AlertsOverview() {
           <DataTable
             caption="Tanımlı kurallar"
             rowKey={(row) => row.id}
-            rows={rules}
+            rows={
+              source === "all"
+                ? rules
+                : rules.filter((r) =>
+                    source === "sigma" ? r.source === "sigma" : r.source !== "sigma")
+            }
             columns={[
               {
                 key: "name",
