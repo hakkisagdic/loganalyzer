@@ -445,7 +445,25 @@ o zaman ClickHouse'daki altın veri `samples/` ile örtüşmez ve bir `corpus_ga
 beyanı, örnek dosyada olmayan bir satır yüzünden kırmızı yanar. Gerekçe "dosyada
 yok" derken veri "var" diyor olur.
 
-**TTL — gerçek bir risk ve bugün ölçüldü (FS belgesi, kök neden analizi).**
+**TTL — ölçüldü, bugün risk DEĞİL; ama sınır gerçek.**
+
+Canlı ClickHouse'a soruldu (koordinatör):
+
+```
+count() WHERE ts < now() - INTERVAL 90 DAY   →  0
+altın örneklerin min(ts)                     →  2026-08-07  (17 gün önce)
+```
+
+Sebebi kazara değil: `GoldenSamplePlan` bir `Anchor` alıyor ve satırları onun
+etrafına yayıyor — örnek dosyanın kendi tarihini **taşımıyor**. Yani beyanlar
+şans eseri geçmiyor.
+
+**Ama aşağıdaki sınır duruyor ve yükleyicinin bugünkü davranışına bağlı.**
+Yükleyici bir gün örnek dosyanın kendi tarihini kullanmaya başlarsa — FS'in
+simülatörleri o yöne gidebilir — sınır anında geçerli olur. Not bu yüzden
+kalıyor: o günün sessiz geçmemesi için.
+
+**Sınırın kendisi (FS belgesi, kök neden analizi).**
 `events` tablosunda `TTL toDateTime(ts) + INTERVAL 90 DAY` var, ve
 `catalog/parsers/*/samples/` altındaki vendor örnekleri **2015–2022** tarihleri
 taşıyor. ClickHouse süresi dolmuş satırı parçayı oluştururken atıyor — **ama
@@ -460,6 +478,71 @@ ClickHouse'da **olmayabilir**. O zaman
 yani toplu bir TTL süpürmesini görür ama **kısmi** bir düşmeyi görmez. Bu, Kapı
 3'ün bilinen sınırı ve burada kayıtlı — gerekçelerin "ölçtüm" ağırlığı bu sınırın
 içinde geçerli.
+
+### Tasarım · Ağ tarafındaki yükseltme yolu (yazılmadı, kararları burada)
+
+`--refresh` yerel ağacı çiviyle hizalıyor. Gerçek yükseltme — SigmaHQ'dan
+**çekme** — T30'un kapsam kararını bekliyor, ama kararları bugün verilebilir ve
+o gün aceleye gelmesin diye burada duruyor.
+
+#### Ne çekilecek — **liste**, filtre değil
+
+Seçim bir kez, **yükseltme anında** yapılıyor ve sonucu depoya kopyalanmış bir
+liste oluyor. Filtre ile liste arasındaki fark §4'te zaten yazılı: yukarı akışa
+karşı **duran** bir filtre, yukarı akış kural eklediğinde korpusu sessizce
+değiştirir. Seçimin kendisi bir filtre ifadesi olabilir — ama o ifade bir
+**insan kararının girdisi**, hattın çalışma zamanı davranışı değil.
+
+Seçim ölçütü **`logsource`**, dizin değil: SigmaHQ'nun dizin ağacı
+(`rules/network/`, `rules/web/`, …) `logsource.category` ile birebir örtüşmüyor
+ve dizine göre seçmek bizim kategorilerimizden birini kaçırır. Ölçüt bizim
+şemamızın tanıdığı kategoriler + F1 kataloğunun dört vendor'ı.
+
+#### Nasıl çekilecek
+
+**Çivilenmiş commit'in tarball'ı**, `git clone` değil. Üç gerekçe: tarball tek
+istek ve `git` ikilisi gerektirmiyor; commit'e çivili bir tarball
+tanım gereği tekrarlanabilir; ve klonlama tüm geçmişi indirir — 7.400+ kurallık
+bir depoda bu, ihtiyacımız olanın yüzlerce katı.
+
+İndirilen ağaç **doğrudan `catalog/sigma/rules/`'a yazılmıyor**: seçim
+uygulanıyor, sonuç bir geçici dizine kuruluyor, sonra takas ediliyor — üretilen
+SQL'de olduğu gibi (§4). Yarım bir yükseltme, kısmen yeni kısmen eski bir korpus
+bırakamamalı.
+
+#### Yükseltme bir **inceleme** üretmeli
+
+`--refresh`'ten farkı bu. Yükseltme sonrası:
+
+* `ruleset.json`'da `commit` değişiyor → **tek satırlık**, göze çarpan bir diff
+* `catalog/sigma/rules/` altında eklenen/silinen/değişen kurallar
+* `detections/sigma/` yeniden üretildiğinde `--summary`'nin `source_changed`
+  listesi, hangi kuralın anlamının oynadığını **mekanik** olarak veriyor
+
+Yani yükseltme, "269 dosya değişti" diye okunamaz bir diff bırakmıyor; §4'ün üç
+olay ayrımı burada da işliyor.
+
+#### Lisans — **DRL 1.1**, ve bu bir kalem
+
+SigmaHQ kuralları Apache/MIT **değil**, Detection Rule License altında ve DRL
+yeniden dağıtımda **atıf** istiyor. Yükseltme çivilendiği gün:
+
+* `THIRD-PARTY-NOTICES.md`'ye bölüm — kaynak depo, commit, lisans adı
+  (`catalog/patterns/` biçimi hazır; not zaten orada duruyor)
+* kopyalanan kural dosyalarının **kendi başlıkları korunuyor** — SigmaHQ
+  kuralları `author` ve `id` taşıyor ve o `id` atfın kendisi; yeniden
+  üretilmemeli
+* `ruleset.json`'daki `license` alanı `DRL-1.1` olacak (bugün `MIT (bizigo)`)
+
+Lisans alanının **çivide** durması bilinçli: korpus bir gün karışık kaynaklı
+olursa (kendi kurallarımız + SigmaHQ) tek bir `license` alanı yetmez ve o gün
+alanın kural başına taşınması gerekir. Bugün tek kaynak, tek alan.
+
+#### CI ağa çıkmıyor — bu değişmiyor
+
+Çekme **elle** koşan bir komut. CI'nın yaptığı tek şey kopyanın çiviye uyduğunu
+doğrulamak, ve o doğrulama ağsız. Yükseltme bir insan kararı olduğu için CI'ın
+onu tetiklemesi zaten yanlış olurdu.
 
 ### KARAR · Kapı 1'den geçemeyen kural dosya üretmez
 
