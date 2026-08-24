@@ -53,9 +53,20 @@ yapmıyor. Maliyeti sıfır ama faydası da sıfır; koyulacaksa gerekçesi yaz�
   doğuyordu ve üçü de kapandı: ad alanlı `attrs` anahtarları, `IPv6` kolonunda
   metin operatörü, backend'in ifadeleri backtick'lemesi.
 
-  ⚠️ O koşum `fw_chain` düzeltmesinden ve `VENDOR_EMPTY_COLUMNS`'tan **önce**
-  alındı. Sonraki değişiklikler derleme sayısını düşürüyor (bekçi çalıştığı
-  için) ama `runs == compiled` iddiası **yeniden ölçülmedi**.
+  ✅ **Yeniden ölçüldü** (`fw_chain` düzeltmesi ve `VENDOR_EMPTY_COLUMNS`
+  sonrası): `compiled == runs == 21` **hâlâ doğru**.
+
+  Uyarı doğruydu — ölçüm bayattı — ama yön **tahmin edilenin tersi** çıktı:
+  değişiklikler derleme sayısını düşürmedi, **eşleşmeyi artırdı**.
+
+  | | Önce | Sonra |
+  | --- | --- | --- |
+  | Satır döndürdü | 6 | **7** |
+  | Eşleşme oranı | %25 | **%29** |
+  | `unmapped` kullanan | 5 | **6** |
+
+  `routeros_forward_new` artık gerçekten eşleşiyor — `action` yerine
+  `fw_chain` düzeltmesinin canlı karşılığı.
 
 - ⚠️ **KARŞILANMADI — `nginx` ailesi.** Kapı 3'ün beyanları:
 
