@@ -233,6 +233,24 @@ public sealed class AlertRuleEntity
     [MaxLength(512)]
     public string GatedFingerprint { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Kuralın ürettiği SQL'in (ya da <c>gated</c> ise engelinin) <b>en son ne
+    /// zaman değiştiği</b>. Hiç değişmediyse <c>null</c>.
+    ///
+    /// <para>
+    /// Kayda yazılıyor çünkü kriter *"kullanıcı bunu görüyor"* diyor ve
+    /// kullanıcı senkron koşarken orada değil. Yalnızca senkronun dönüş
+    /// değerinde tutulsaydı bilgi koşum bitince kaybolurdu — veri üretilip
+    /// kimseye ulaşmaması, bu depoda en sessiz kayıp sınıfı.
+    /// </para>
+    ///
+    /// <para>
+    /// Kullanıcının <b>gördüğünü</b> işaretlemesi ayrı bir hareket olacak;
+    /// bugün yalnızca "değişti" bilgisi taşınıyor.
+    /// </para>
+    /// </summary>
+    public DateTimeOffset? SigmaChangedAt { get; set; }
+
     /// <summary>Zamanlayıcının bir sonraki tur hesabı. <c>null</c> ise ilk turda koşar.</summary>
     public DateTimeOffset? NextRunAt { get; set; }
 

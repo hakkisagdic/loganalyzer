@@ -543,6 +543,8 @@ public static class AlertEndpoints
             rule.Status.ToString().ToLowerInvariant(),
             rule.Source.ToString().ToLowerInvariant(),
             rule.GatedReason,
+            rule.SigmaRuleId,
+            rule.SigmaChangedAt,
             rule.NextRunAt,
             rule.LastRunAt,
             rule.LastFiredAt,

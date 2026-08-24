@@ -52,6 +52,31 @@ function RunStateBadge({ rule }: { rule: AlertRule }) {
 }
 
 /** Kural listesi ve tetiklenme geçmişi (T23). */
+/**
+ * `gated` rozetinin metni — **`remedy`'ye göre**.
+ *
+ * *"31'i şema bekliyor, 11'i asla derlenmeyecek"* iki farklı cümle ve ikincisi
+ * kullanıcıya bir **kapsam sınırı** olarak sunulmalı, iş kalemi olarak değil.
+ * Tek bir "koşamaz" rozeti ikisini aynı şeye indirger ve liste, kullanıcının
+ * neyin kapatacağını göremediği bir çöp kutusuna döner.
+ *
+ * Sebep metni senkronun yazdığı biçimde geliyor: `[remedy] kolon: mesaj`.
+ */
+function gatedLabel(reason: string | undefined): string {
+  if (!reason) return "koşamaz";
+
+  const remedy = /^\[([a-z_]+)\]/.exec(reason)?.[1];
+
+  // `upstream` "kimsenin yapamayacağı iş" demek ve bir iş kalemi DEĞİL;
+  // ayrı bir sözcük hak ediyor. Diğerleri birinin yapabileceği bir işi
+  // adlandırıyor.
+  if (remedy === "upstream") return "desteklenmiyor";
+  if (remedy === "schema") return "şema bekliyor";
+  if (remedy === "pipeline" || remedy === "pipeline_or_schema") return "eşleme bekliyor";
+
+  return "koşamaz";
+}
+
 export function AlertsOverview() {
   const [rules, setRules] = useState<readonly AlertRule[] | null>(null);
   const [triggers, setTriggers] = useState<readonly AlertTrigger[]>([]);
@@ -180,12 +205,22 @@ export function AlertsOverview() {
                     */}
                     {row.status === "enabled" ? null : row.status === "gated" ? (
                       <span title={row.gated_reason || undefined}>
-                        <Badge>koşamaz</Badge>
+                        <Badge>{gatedLabel(row.gated_reason)}</Badge>
                       </span>
                     ) : (
                       <Badge>pasif</Badge>
                     )}
                     {row.source === "sigma" ? <Badge>Sigma</Badge> : null}
+                    {/*
+                      "Kuralın ürettiği SQL değiştiğinde kullanıcı bunu görüyor."
+                      Bilgi bir turdur kayda yazılıyordu ama ekranda yoktu —
+                      yani kriter kapanmış GÖRÜNÜYORDU. Bu rozet onu kapatıyor.
+                    */}
+                    {row.sigma_changed_at ? (
+                      <span title={`Ürettiği SQL değişti: ${formatInstant(row.sigma_changed_at)}`}>
+                        <Badge>SQL değişti</Badge>
+                      </span>
+                    ) : null}
                   </span>
                 ),
               },
