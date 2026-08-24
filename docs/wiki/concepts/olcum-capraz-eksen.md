@@ -17,7 +17,7 @@ sources:
   - docs/epic/t08-kararlar/index.md
   - docs/epic/t12-kararlar/index.md
   - docs/epic/t01-kararlar/index.md
-source_digest: "sha256-12/v1 docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t08-kararlar/index.md=0ef90b5576bc docs/epic/t12-kararlar/index.md=454710cef295 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f docs/epic/t30-sigma-olcumu/index.md=33217d5fdb53 docs/epic/t39-alan-kapsami/index.md=d05b57cf00ab"
+source_digest: "sha256-12/v1 docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t08-kararlar/index.md=0ef90b5576bc docs/epic/t12-kararlar/index.md=454710cef295 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t39-alan-kapsami/index.md=d05b57cf00ab"
 summary: Aynı soruya iki bağımsız yoldan bakmak, tek bir aracın "buldum" demesinden farklı bir kanıt üretiyor — ve bir eksenin sistematik sapması ancak öbür eksenden görünüyor.
 provenance:
   extracted: 0.85

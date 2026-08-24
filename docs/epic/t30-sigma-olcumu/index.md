@@ -344,59 +344,70 @@ değil, ama aynı büyüklük mertebesinde ve o kadarı yeter.
 "ölçemedik" demiyor: `no_data` *"veri yüklenmemiş"*, `blocked` ise *"bu şemada
 hiç ölçülemez"*. Birincisi fixture'ın eksikliği, ikincisi ürünün sınırı.
 
-### Payda düzeltildi: kapsam **6/14**, `%25` değil
+### Payda: kapsam **6/≥14** — ve sayının cinsi "en az"
 
-Üçüncü ölçüm (`explain_misses.py`) 24 kuralın **10'unun** aradığı dizgenin
-altın örneklerde **hiç olmadığını** gösterdi. O kurallar bu örneklemle
-eşleşemezdi; `matches=false` olmaları eşlemenin değil örneklemin sonucu.
+Üçüncü ölçüm (`explain_misses.py`) korpusun kusuru olan iki kutuyu ayırıyor ve
+ikisi de paydadan düşülüyor:
+
+| Kutu | Kural | Neden paydadan düşüyor |
+| --- | --- | --- |
+| `absent` | 9 | Aradığı dizge altın örneklerde **hiç yok** |
+| `never_together` | 1 | Her yüklem var ama **hiçbir satır hepsini birden taşımıyor** |
+| **Korpus kusuru** | **≥10** | `matches=false` olmaları eşlemenin değil örneklemin sonucu |
 
 | Payda | Oran | Neyi ölçüyor |
 | --- | --- | --- |
-| 24 (hepsi) | %25 | — **hiçbir şey**; iki farklı sebebi tek sayıda topluyor |
-| **14** (deseni olanlar) | **≈%43** | **Eşlemenin kapsamı** — kapsam kararının dayanağı |
+| 24 (hepsi) | %25 | — **hiçbir şey**; farklı sebepleri tek sayıda topluyor |
+| **≥14** | **≤%43** | **Eşlemenin kapsamı** — kapsam kararının dayanağı |
 
-⚠️ **Bu payda hâlâ kesin değil ve sebebi 11. tuzak.** `absent` kutusu bir
-**üst sınır**: her elemanı örneklem boşluğu değil.
+`no_data` zaten düşülüyordu; `absent` ve `never_together` **aynı gerekçeyle**
+düşülüyor: üçü de *"ölçülemedi"*, *"eşleşmedi"* değil.
 
-`fortigate_user_auth_fail` bunu gösterdi. Kural `status: 'failure'` arıyor, ham
-FortiGate satırı `status="failed"` yazıyor — metin ekseni "yok" dedi ve kural
-`failed`'a **çevrildi**. Düzeltme kuralı **bozdu**: `catalog/mappings/
-auth_outcome.yaml` ingest sırasında `failed → failure` çeviriyor, yani kolonda
-duran değer zaten `failure`'dı. Kural baştan doğruydu; geri alındı.
+#### Neden "en az" — ve neden bu, belgenin dört kez düştüğü tuzak DEĞİL
 
-Araç artık kolonun **kapalı değer uzayına** da bakıyor (görünüm → parser →
-sözlük zinciri). Ama kalan 9 `absent` kuralın kaçının aynı sebeple orada
-olduğu **ölçülmedi** — `catalog/mappings/` altında birden çok sözlük var ve
-her biri bir kolonun değer uzayını çeviriyor.
+`never_together` bir **alt sınır**. Araç yüklemi alanına kısıtlayamıyor:
+`user|contains: 'admin'` `user` **kolonunu** kastediyor, ama ham satırda `admin`
+aramak `Administrator` sözcüğüne de denk geliyor. Ölçüldü —
+`fortigate_user_auth_fail` için kesişim `{1,2,3,4}` çıkıyor, oysa o satırlarda
+`user` değerleri `philipp` ve `name.lastname`.
 
-**Kapsam oranı bu yüzden çivilenmiyor.** Dalın `%40–%70` olarak kalması
-muhtemel ama payda kesinleşmeden sayı yazılmamalı.
+Asimetri tek yönde sağlam ve araç bunu **kodunda** taşıyor:
 
-`no_data` paydadan düşülüyordu; **`absent` de düşülmeliydi** ve aynı gerekçeyle:
-ikisi de *"ölçülemedi"*, *"eşleşmedi"* değil. Fark kozmetik değil — `%25`
-karar tablosunun `< %40` dalına, `%43` ise `%40–%70` dalına düşüyor. **İki
-farklı kapsam.**
+* Kesişim **boş** → kural o korpusta **kesinlikle** eşleşemez.
+* Kesişim **dolu** → eşleşebilirmiş gibi görünür, **kanıt değil**.
 
-Bu belge aynı tuzağa üçüncü kez düşmedi ama **ilk iki koşumda düştü**: `%25`
-koordinatöre "kapsam sayısı" diye verildi ve öyle okundu.
+Yani gerçek korpus kusuru sayısı 10'dan **büyük**, payda 14'ten **küçük**, oran
+%43'ten **düşük**. Kesin sayı ayrıştırılmış kolonlara bakan ölçümden gelecek
+(T32/T36 ekseni) ve T38'de yeniden okunacak.
 
-### Kapsam kararı
+Kesin olmayan bir sayıyı **kesin** yazmak bu belgenin dört kez düştüğü tuzaktı.
+**Alt sınır olarak yazmak o tuzak değil** — tam tersine, sayının cinsini
+söylemek.
 
-`≈%43` → **`%40 – %70`** dalı: **yalnızca `firewall` + `network_connection`**.
+`never_together`'ın bugün tek üyesi var (`asa_acl_hit`) ve tek üyeli bir kutu
+şüphelidir: kutu 2'nin tek üyesi bir yanlış pozitif çıkmıştı. Bu doğrulandı ve
+sağlam: korpustaki tek `access-list` satırı **`permitted`** diyor, `denied`
+geçen iki satırda ise `access-list` yok.
 
-Tablonun bu dal için yazdığı gerekçe *"DNS kategorileri `unmapped`'e en çok
-düşen taraf"*tı ve **artık geçerli değil** — `unmapped` bağlandı. Ama karar
-aynı kalıyor, gerekçesi değişerek:
+## Kapsam kararı — **çivilendi**
 
-* DNS kategorisinin **verisi yok**. Hiçbir parser DNS sorgu adı üretmiyor
-  (`SCHEMA_GAPS`), yani DNS kuralları derlenmiyor bile. Kapsama alınması
-  pipeline satırı değil **bir DNS parser'ı** gerektiriyor.
-* `firewall` + `network_connection` dört vendor'da da dolu ve eşleşen 6
+**`firewall` + `network_connection`.** DNS ve diğer kategoriler kapsam dışı.
+
+Karar tablosunun `%40–%70` dalı, ve oran alt sınırdan aşağı inse bile (`< %40`)
+kararın kendisi değişmiyor — o dal *"tek vendor (FortiGate)"* diyor ve
+gerekçesi (*"T31 önce `unmapped` alanlarını kolona terfi etsin"*) **artık
+geçersiz**: `unmapped` bağlandı, 6 kural kullanıyor.
+
+Kararın bugünkü gerekçesi:
+
+* **DNS'in verisi yok.** Hiçbir parser DNS sorgu adı üretmiyor (`SCHEMA_GAPS`),
+  o kurallar derlenmiyor bile. Kapsama alınması pipeline satırı değil **bir DNS
+  parser'ı** gerektiriyor.
+* **`firewall` + `network_connection` dört vendor'da da dolu** ve eşleşen 6
   kuralın tamamı bu iki kategoride.
 
-**Kararı geçersiz kılacak tek bulgu:** deseni olan 14 kuraldan 8'inin neden
-eşleşmediği hâlâ ölçülmedi. Hepsinin sebebi eşleme kusuru çıkarsa oran
-düşmez ama *"eşlemeyi düzelt"* önceliği kapsamın önüne geçer.
+Yani karar orandan değil **verinin varlığından** çıkıyor; oranın alt sınır
+olması kararı bekletmek için sebep değil.
 
 ## Korpus tasarımı kalemi — tuzak değil
 
