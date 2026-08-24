@@ -20,7 +20,7 @@ sources:
   - docs/epic/t36-devir-notu/index.md
   - docs/epic/t37-rapor-ekrani/index.md
   - docs/epic/tickets-f3/altin-kume/index.md
-source_digest: "sha256-12/v1 docs/epic/rca-raporu-ozelligi/index.md=a2ceeabe9a98 docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t35-korelasyonlar/index.md=90159516d982 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/altin-kume/index.md=9bb15adc35bc"
+source_digest: "sha256-12/v1 docs/epic/rca-raporu-ozelligi/index.md=ea61d3fffdb9 docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t35-korelasyonlar/index.md=90159516d982 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/altin-kume/index.md=9bb15adc35bc"
 summary: RCA'nın tek gerçek riski inandırıcı ama yanlış rapor; tasarımın tamamı bu tek riske karşı kurulu. F3 kanıtı LLM'siz üretiyor, saklıyor ve raporun her dürüstlük satırını mekanizmaya bağlıyor.
 provenance:
   extracted: 0.85
@@ -51,9 +51,15 @@ RCA belgesinden alınıp F3'te birer mekanizmaya çevrildi:
    bile kullanıcı *"pencerede ilk kez şu 3 imza göründü, öncesinde şu config
    değişti, şu 12 cihaz sustu"* raporunu alır. Kabul kriteri de bu:
    *"model kapalıyken rapor okunabiliyor ve işe yarıyor"* — K22'nin tek sınavı.
-2. **Her cümle bir kanıt kimliğine bağlanır.** Referanssız cümle raporda
-   **desteklenmemiş** rozetiyle görünür ve güven skoruna katkı vermez. F4'te
+2. **Her cümle bir kanıt kimliğine bağlanır.** F4'te
    `evidence_ids_must_exist` **motorda zorlanacak**, prompt'ta rica edilmeyecek.
+
+   **Referanssız cümle rapora hiç girmiyor — ama atıldığı sayılıyor ve
+   gösteriliyor** (karar 2026-08-24; önceki hâli *"rozetle göster"*di).
+   İçerik atılıyor, sayı kalıyor: kullanıcı uydurmayı görmüyor ama modelin ne
+   kadar uydurduğunu **biliyor**. Yalnızca göstermek bir rozeti okumayanı ikna
+   ederdi; yalnızca atmak kaliteyi ölçülemez yapardı — *"ölçemedim"* ile
+   *"sorun yok"*un aynı çıktıya inmesi.
 3. **Kanıt paketi saklanır → rapor tekrar üretilebilir.** Aynı paket üzerinde
    farklı model/prompt koşturulabiliyor; "yerel model yeterli mi" sorusunun tek
    ölçülebilir hâli bu.

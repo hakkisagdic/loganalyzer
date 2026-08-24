@@ -18,9 +18,9 @@
     "semantic_hash": ""
   },
   "catalog/sigma/expectations.json": {
-    "mtime": 1787608231.6299703,
-    "seen": 1787610824.201067,
-    "ast_hash": "dac51e6361fd9c008372369671c18bd2",
+    "mtime": 1787611783.8535542,
+    "seen": 1787611804.1274629,
+    "ast_hash": "4bf588a7e77acfd967f3fc67688855fc",
     "semantic_hash": ""
   },
   "catalog/sigma/ruleset.json": {
@@ -2556,9 +2556,9 @@
     "semantic_hash": ""
   },
   "tools/sigma-build/tests/test_golden_gate.py": {
-    "mtime": 1787266842.421849,
-    "seen": 1787610824.201456,
-    "ast_hash": "4732bc925e3b73a31f9a6a07890fa7d6",
+    "mtime": 1787611783.8544874,
+    "seen": 1787611804.127958,
+    "ast_hash": "a28d846abd94d16f38ca9ad4f81d92a2",
     "semantic_hash": ""
   },
   "tools/sigma-build/tests/test_manifest.py": {
@@ -5112,15 +5112,15 @@
     "semantic_hash": ""
   },
   "docs/wiki/concepts/elle-tutulan-liste-bekciyi-korlestirir.md": {
-    "mtime": 1787597623.0733461,
-    "seen": 1787610824.201737,
-    "ast_hash": "10ea3800d4a410cc3a71a3ddc9823117",
+    "mtime": 1787611754.3267548,
+    "seen": 1787611804.128305,
+    "ast_hash": "777157f18cb32ccf82ee3a4a8985b96e",
     "semantic_hash": ""
   },
   "docs/wiki/concepts/f1-duvar-saati-tuzagi.md": {
-    "mtime": 1787597623.0738103,
-    "seen": 1787610824.2017379,
-    "ast_hash": "836e3b977028b443df90f8bddc9b8275",
+    "mtime": 1787611754.335682,
+    "seen": 1787611804.128305,
+    "ast_hash": "aecd61ebf388089ec565e5608b56f029",
     "semantic_hash": ""
   },
   "docs/wiki/concepts/f1-gecmis-biriktiren-sey-ertelenmez.md": {
@@ -5178,9 +5178,9 @@
     "semantic_hash": ""
   },
   "docs/wiki/concepts/f3-bosluk-tek-cins-degildir.md": {
-    "mtime": 1787610790.813792,
-    "seen": 1787610824.201746,
-    "ast_hash": "085c0aaa9e6e4a50c8ca08b264cfb750",
+    "mtime": 1787611754.3762271,
+    "seen": 1787611804.128333,
+    "ast_hash": "fdb97c52f68c32b51a0e9cb7e661bd14",
     "semantic_hash": ""
   },
   "docs/wiki/concepts/f3-determinizm-bir-kapi-sartidir.md": {
@@ -5196,9 +5196,9 @@
     "semantic_hash": ""
   },
   "docs/wiki/concepts/f3-oranin-paydasi.md": {
-    "mtime": 1787610790.8243966,
-    "seen": 1787610824.201748,
-    "ast_hash": "60b5eac95fca3f9058eb452253a92d90",
+    "mtime": 1787611586.8404105,
+    "seen": 1787611804.128336,
+    "ast_hash": "6a3905fc1499fa410e2dbb00c2aac8b8",
     "semantic_hash": ""
   },
   "docs/wiki/concepts/kapsam-kestirme-besleme-yolu.md": {
@@ -5220,15 +5220,15 @@
     "semantic_hash": ""
   },
   "docs/wiki/concepts/olcum-capraz-eksen.md": {
-    "mtime": 1787610790.83793,
-    "seen": 1787610824.201751,
-    "ast_hash": "eb27634bb037d8b04be605efa3a3cfa2",
+    "mtime": 1787611586.8412006,
+    "seen": 1787611804.12834,
+    "ast_hash": "57cd6ba77f9d89cb11d16f62e606a15a",
     "semantic_hash": ""
   },
   "docs/wiki/concepts/olcum-duvar-saati.md": {
-    "mtime": 1787597623.0859225,
-    "seen": 1787610824.201752,
-    "ast_hash": "9cc4dce1acd7f54a58779635a3de19c9",
+    "mtime": 1787611754.397051,
+    "seen": 1787611804.128341,
+    "ast_hash": "8b52ed7039d8b86fa9fe6cbed693fbeb",
     "semantic_hash": ""
   },
   "docs/wiki/concepts/olcum-gerekcesiz-sabit.md": {
@@ -5238,21 +5238,21 @@
     "semantic_hash": ""
   },
   "docs/wiki/concepts/olcum-kirmizi-yanamayan-sayi.md": {
-    "mtime": 1787597623.0866096,
-    "seen": 1787610824.2017531,
-    "ast_hash": "3aa088526f661e3427c399c5aa748d10",
+    "mtime": 1787611754.4106152,
+    "seen": 1787611804.128343,
+    "ast_hash": "89f28f401c02d9dde8b1ae83764298df",
     "semantic_hash": ""
   },
   "docs/wiki/concepts/olcum-sayi-kapsam-degil.md": {
-    "mtime": 1787610790.855361,
-    "seen": 1787610824.201754,
-    "ast_hash": "c6c75cea3c054eea52704aff54f6b22c",
+    "mtime": 1787611586.8418732,
+    "seen": 1787611804.128343,
+    "ast_hash": "8cb15a00f15b6077cc5a9f515e178cf1",
     "semantic_hash": ""
   },
   "docs/wiki/concepts/sessiz-yanlis-davranis.md": {
-    "mtime": 1787597623.087562,
-    "seen": 1787610824.2017548,
-    "ast_hash": "6cdd5e176936b03e0f5b6b97227cf78c",
+    "mtime": 1787611754.4144094,
+    "seen": 1787611804.128344,
+    "ast_hash": "b1d13527bfbc747ca0093897b013a616",
     "semantic_hash": ""
   },
   "docs/wiki/hot.md": {
@@ -5274,9 +5274,9 @@
     "semantic_hash": ""
   },
   "docs/wiki/projects/bizigo-loganalyzer/bizigo-loganalyzer.md": {
-    "mtime": 1787597623.0908947,
-    "seen": 1787610824.201757,
-    "ast_hash": "a73a9721add7b2e35a4ad65756a44d39",
+    "mtime": 1787611754.4230385,
+    "seen": 1787611804.1283479,
+    "ast_hash": "63a27d6e6e8f74ebda728c9d2622fb91",
     "semantic_hash": ""
   },
   "docs/wiki/references/f2-kapanis.md": {
@@ -5298,9 +5298,9 @@
     "semantic_hash": ""
   },
   "docs/wiki/references/kapsam-feature-parity-matrisi.md": {
-    "mtime": 1787610722.8910415,
-    "seen": 1787610824.20176,
-    "ast_hash": "2cc95cb1b2f60e54c4a7bcd0362f4458",
+    "mtime": 1787611754.434218,
+    "seen": 1787611804.128352,
+    "ast_hash": "237d7c0d010088ec164f78fa24b9057b",
     "semantic_hash": ""
   },
   "docs/wiki/references/kapsam-nerede-kalindi.md": {
@@ -5316,9 +5316,9 @@
     "semantic_hash": ""
   },
   "docs/wiki/skills/f1-veri-kaybeden-depoyla-tasarim.md": {
-    "mtime": 1787597623.0971284,
-    "seen": 1787610824.201762,
-    "ast_hash": "4219fdc9e3843bd836c37f6d5a73d34f",
+    "mtime": 1787611754.4545875,
+    "seen": 1787611804.128354,
+    "ast_hash": "f21bc4b26a587302367070ba751b8fdb",
     "semantic_hash": ""
   },
   "docs/wiki/skills/f2-atomik-yayin-akisi.md": {
@@ -5334,39 +5334,39 @@
     "semantic_hash": ""
   },
   "docs/wiki/skills/f3-eslesmeyen-kural-teshisi.md": {
-    "mtime": 1787610790.882772,
-    "seen": 1787610824.201764,
-    "ast_hash": "f4d2969b5db72d9af45c1533f217d4b2",
+    "mtime": 1787611586.8425283,
+    "seen": 1787611804.128358,
+    "ast_hash": "08936ca297f600b55091f70653dc34e6",
     "semantic_hash": ""
   },
   "docs/wiki/skills/f3-sigma-derleme-kapilari.md": {
-    "mtime": 1787610790.8859475,
-    "seen": 1787610824.201765,
-    "ast_hash": "e80f42f01ab64bf881e047cec5ff3e59",
+    "mtime": 1787611754.4677684,
+    "seen": 1787611804.128358,
+    "ast_hash": "362d2df1a3420a99e675a66bc4370852",
     "semantic_hash": ""
   },
   "docs/wiki/skills/kapsam-kapanacak-ile-kapanmayacagi-ayirmak.md": {
-    "mtime": 1787610722.8936646,
-    "seen": 1787610824.2017658,
-    "ast_hash": "731d962765aa26586fa56e81d8ee9c39",
+    "mtime": 1787611754.4727905,
+    "seen": 1787611804.1283588,
+    "ast_hash": "d13e3fc9a14a3beeb3c1de06b1f4dbf9",
     "semantic_hash": ""
   },
   "docs/wiki/skills/olcum-bekciyi-kirmizi-yakmak.md": {
-    "mtime": 1787610790.8942628,
-    "seen": 1787610824.2017658,
-    "ast_hash": "d0aba570acd02644eaeebc5fe2a1ad63",
+    "mtime": 1787611754.4778547,
+    "seen": 1787611804.12836,
+    "ast_hash": "b2d5820d94c9c035103886ee0859de2a",
     "semantic_hash": ""
   },
   "docs/wiki/skills/olcum-protokolu-sonuctan-once.md": {
-    "mtime": 1787610790.8975956,
-    "seen": 1787610824.201767,
-    "ast_hash": "9c44ca454598f38133e6f591df136aa3",
+    "mtime": 1787611754.4802253,
+    "seen": 1787611804.128361,
+    "ast_hash": "272495bc3cce7eef610b465ebf9c4fc9",
     "semantic_hash": ""
   },
   "docs/wiki/skills/paralel-ajan-koordinasyonu.md": {
-    "mtime": 1787597623.0994418,
-    "seen": 1787610824.201768,
-    "ast_hash": "3346e70da149dc0828f931c895f2e6b8",
+    "mtime": 1787611754.4831352,
+    "seen": 1787611804.128362,
+    "ast_hash": "d95f44fddf41cd968bca7de5fcd106a1",
     "semantic_hash": ""
   },
   "ui/tests/maestro/asili-kalan-sayfa.html": {

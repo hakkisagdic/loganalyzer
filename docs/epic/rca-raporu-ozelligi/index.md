@@ -61,9 +61,35 @@ flowchart LR
  Model kapalıyken bile kullanıcı "pencerede ilk kez şu 3 imza göründü, öncesinde
  şu config değişti, şu 12 cihaz sustu" raporunu alır. Ürün LLM'e bağımlı değil.
 2. **Her cümle bir kanıt kimliğine bağlanır.** Rapordaki her bulgu `evidence_id`
- referansı taşır. Referanssız cümle raporda **"desteklenmemiş"** rozetiyle
- gösterilir ve güven skoruna katkı vermez. Halüsinasyona karşı tek işe yarayan
- savunma bu.
+ referansı taşır. Halüsinasyona karşı tek işe yarayan savunma bu.
+
+ **Referanssız cümle rapora hiç girmiyor — ama atıldığı sayılıyor ve
+ gösteriliyor.** *"Model 12 cümle üretti, 3'ü kanıta bağlanamadı ve
+ çıkarıldı."*
+
+ <details>
+ <summary>Karar değişti — önceki hâli "rozetle göster"di (2026-08-24)</summary>
+
+ Bu belge önce *"referanssız cümle **desteklenmemiş** rozetiyle gösterilir ve
+ güven skoruna katkı vermez"* diyordu. Değiştirildi, çünkü o bir **gösterme**
+ kararıydı: model uydurursa rapor onu gösteriyor ama **engellemiyor**.
+
+ Bu depoda *göstermek* ile *engellemek* arasındaki fark yedi kez ölçüldü ve her
+ seferinde aynı yöne çıktı — bir rozeti okumayan kullanıcı ikna oluyor, ve
+ rozetin kendisi bir süre sonra arayüz gürültüsüne dönüşüyor.
+
+ Ama **yalnızca atmak** da yeterli değildi: o zaman model ne kadar uydurursa
+ uydursun kullanıcı bunu göremez ve kalite ölçülemez hâle gelir — *"ölçemedim"*
+ ile *"sorun yok"*un aynı çıktıya inmesi, bu deponun dört kez adını koyduğu
+ sınıf.
+
+ Seçilen üçüncü yol ikisini ayırıyor: **içerik atılıyor, sayı kalıyor.**
+ Kullanıcı uydurmayı görmüyor ama modelin ne kadar uydurduğunu **biliyor**.
+
+ O sayı F4'ün kalite göstergesi oluyor — T38'in `unknown_ratio`'suyla aynı
+ rolde: bir oran yüksekse ya kanıt paketi yetersiz ya model uygun değil, ve
+ ikisi de kararı gerektiren bilgi.
+ </details>
 3. **Kanıt paketi saklanır → rapor tekrar üretilebilir.** Aynı paket üzerinde farklı
  modelle rapor yeniden koşturulabilir. Bu, model değiştiğinde regresyon testi
  yapmayı ve iki modeli aynı girdide karşılaştırmayı mümkün kılar.
