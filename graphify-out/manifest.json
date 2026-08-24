@@ -714,9 +714,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/AlertingEntities.cs": {
-    "mtime": 1787266954.418644,
-    "seen": 1787610824.2012002,
-    "ast_hash": "e42d268d7e53d38f5dc6909f37cdcf0f",
+    "mtime": 1787612218.2978876,
+    "seen": 1787612958.647198,
+    "ast_hash": "42816e143ca987e052e9eeeb39fa5211",
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/Bizigo.ControlPlane.csproj": {
@@ -912,9 +912,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/Migrations/ControlPlaneDbContextModelSnapshot.cs": {
-    "mtime": 1787266954.4203765,
-    "seen": 1787610824.201232,
-    "ast_hash": "e2b10feb4d5463a3fbbc92f6ebd785e4",
+    "mtime": 1787612218.3018775,
+    "seen": 1787612958.647234,
+    "ast_hash": "01a5d7c87b037af38c703afedef11217",
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/SourceDirectory.cs": {
@@ -3810,9 +3810,9 @@
     "semantic_hash": ""
   },
   "docs/epic/rca-raporu-ozelligi/index.md": {
-    "mtime": 1786825542.0,
-    "seen": 1787610824.201668,
-    "ast_hash": "7562fdee55ef88f44cd0cb2eb3c18a44",
+    "mtime": 1787612770.1509018,
+    "seen": 1787612958.648161,
+    "ast_hash": "f25c0043b58ff36f228039b946aaf942",
     "semantic_hash": ""
   },
   "docs/epic/sigma-clickhouse-arastirmasi/index.md": {
@@ -5190,9 +5190,9 @@
     "semantic_hash": ""
   },
   "docs/wiki/concepts/f3-kanit-once-akil-sonra.md": {
-    "mtime": 1787597623.0836742,
-    "seen": 1787610824.201747,
-    "ast_hash": "3db6e46bca67a8c94b9dd32fda7c59a6",
+    "mtime": 1787612835.769496,
+    "seen": 1787612958.64835,
+    "ast_hash": "2059bde8fded3f249bcc23862e96209f",
     "semantic_hash": ""
   },
   "docs/wiki/concepts/f3-oranin-paydasi.md": {
@@ -5286,9 +5286,9 @@
     "semantic_hash": ""
   },
   "docs/wiki/references/f3-detection-ve-rca-kaniti.md": {
-    "mtime": 1787597623.092145,
-    "seen": 1787610824.2017589,
-    "ast_hash": "254a1c675e8bf2360305c570afd338d3",
+    "mtime": 1787612835.8197777,
+    "seen": 1787612958.648371,
+    "ast_hash": "c4b42a6595d20d8a500aa50486160826",
     "semantic_hash": ""
   },
   "docs/wiki/references/graphify-depo-bilgi-grafigi.md": {
@@ -5547,6 +5547,30 @@
     "mtime": 1787610877.158641,
     "seen": 1787611043.294134,
     "ast_hash": "faba741c7aeb309df8bb1206f47b6b24",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Alerting/SigmaRuleSyncService.cs": {
+    "mtime": 1787612218.2969017,
+    "seen": 1787612958.647041,
+    "ast_hash": "64ed381d7eb37376406558b699375ea5",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/Migrations/20260824224928_AddSigmaGatedFingerprint.Designer.cs": {
+    "mtime": 1787612218.300196,
+    "seen": 1787612958.6472309,
+    "ast_hash": "5d8100251b61b76e6c0a57ee10e7f64e",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/Migrations/20260824224928_AddSigmaGatedFingerprint.cs": {
+    "mtime": 1787612218.3005383,
+    "seen": 1787612958.647233,
+    "ast_hash": "3598dfb3c2be3ab181b082e0ea72a753",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/SigmaRuleSyncServiceTests.cs": {
+    "mtime": 1787612218.3023486,
+    "seen": 1787612958.647692,
+    "ast_hash": "a47e0113891ac03024dcfe5aa5c7bdfa",
     "semantic_hash": ""
   }
 }
