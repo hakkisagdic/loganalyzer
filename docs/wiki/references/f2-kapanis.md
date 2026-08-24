@@ -11,6 +11,7 @@ relationships:
   - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
     type: derived_from
 sources: [docs/epic/f2-kapanis/index.md, README.md]
+source_digest: "sha256-12/v1 README.md=dc51f8de9a8c docs/epic/f2-kapanis/index.md=c701d88f78fd"
 summary: docs/epic/f2-kapanis/index.md özeti — F2'nin ölçülen kısıtları, yanlış çıkan altı iddiası, bekçilerin durumu ve F3'e devredilen beş soru.
 provenance:
   extracted: 0.9
@@ -108,6 +109,8 @@ bitiş şartlarından biriydi, tamamı değil — dört uçtan uca akış ve iki
 doğrulama da isteniyordu ve belge onlara hiç değinmiyordu.
 
 Bugünkü tabloda dört uçtan uca akış hâlâ ⚠️: **ikisi akış, ikisi parça.**
+Akış olan ikiden biri parser yayını — yordamı
+[[skills/f2-atomik-yayin-akisi]].
 
 Belgenin kendi üstüne yazdığı gözlem, bu vault için de geçerli bir uyarı: ^[inferred]
 

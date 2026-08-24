@@ -11,6 +11,32 @@ dizini okuyor. Araç depoya vendor **edilmiyor** — `tools/obsidian-wiki/`
 
 Depo tarafındaki gerekçeler README kökünde: "Bilgi tabanı — Obsidian vault".
 
+Katalog [[index]], bugünkü durum [[hot]], işlem kaydı [[log]], etiket sözlüğü
+[[_meta/taxonomy]].
+
+---
+
+## 0 · Kapsam kararı — bu vault neye ait, neye ait değil
+
+**Bu vault yalnızca `bizigo-loganalyzer` deposuna ait ve geçicidir.**
+
+- **Kaynağı tek bir depo.** Her sayfa bu deponun kendi belgelerinden
+  (`docs/epic/`, `CLAUDE.md`, `README.md`, `docs/graphify.md`,
+  `docs/ekran-goruntuleri/`) damıtıldı ve frontmatter'ında o dosyaları
+  **yolla** gösteriyor. Başka bir deponun, başka bir vault profilinin ya da
+  oturum geçmişinin bilgisi buraya girmiyor.
+- **Projeler arası hafıza değil.** Bu vault "geçmişte ne konuşmuştuk" deposu
+  olarak kullanılmıyor. Aynı makinede başka profiller var
+  (`~/.obsidian-wiki/config.*`); onlar ayrı kalıyor ve bu vault onlara
+  yazmıyor.
+- **Geçici.** Ömrü, damıttığı belgelerin işe yaradığı süre kadar. Kaynak
+  belgeler arşive kalktığında ya da faz kapanışları anlamını yitirdiğinde
+  vault da kalkar; kalıcı olması hedeflenmiyor.
+
+Gerekçe §9'un kuralı: **ikinci kopya yazma.** Bu sayfalar `docs/epic/`'in
+kopyası değil, belgelerin *arasından* geçen kararların damıtılmış hâli. Kapsam
+genişlerse bu ayrım kaybolur ve vault yavaşça ikinci bir belge yığınına döner.
+
 ---
 
 ## 1 · Aracı getir (klon başına bir kez)
@@ -138,6 +164,63 @@ Kök dosyalar: `index.md` (katalog), `log.md` (append-only işlem kaydı),
 
 `.obsidian/workspace.json` ve `cache` **commitlenmiyor** (`docs/wiki/.gitignore`)
 — makineye özgü çalışma zamanı durumu.
+
+## Bayatlama bekçisi — `source_digest`
+
+Vault sayfaları depo belgelerinden **damıtıldı**. O belgeler değiştiğinde
+damıtılmış cümle sessizce yanlış olur: derleme geçer, testler yeşil kalır, sayfa
+yerinde durur — yalnızca artık doğru değildir. Hata yok, sayaç yok, belirti yok;
+`CLAUDE.md` §7'nin adını koyduğu sınıfın ta kendisi
+([[concepts/sessiz-yanlis-davranis]]).
+
+**Mekanizma.** Her sayfa frontmatter'ında `sources:` taşıyor. Bekçi o
+kaynakların **içeriğinden** deterministik bir dizge üretip sayfadaki
+`source_digest:` alanıyla karşılaştırıyor:
+
+```
+source_digest: "sha256-12/v1 CLAUDE.md=3984257f89e8 docs/epic/f2-kapanis/index.md=c701d88f78fd"
+```
+
+Biçim yola göre sıralı, kaynak **başına** bir kısa hash. Tek bir toplam hash
+bilerek kullanılmadı: toplam hash "bir şey değişti" der, *hangi kaynağın*
+değiştiğini söyleyemez — bekçinin işe yaraması tam olarak o cümleye bağlı.
+
+Kod: `tests/Bizigo.UnitTests/WikiSourceDigest.cs` (hesap),
+`WikiSourceDigestTests.cs` (bekçi), `WikiSourceDigestStamper.cs` (damgalayıcı).
+Denetlenen küme **taranıyor**, elle listeden gelmiyor
+([[concepts/elle-tutulan-liste-bekciyi-korlestirir]]); elle kalan tek şey beş
+satırlık muafiyet listesi (`index.md`, `hot.md`, `log.md`, `README.md`,
+`_meta/taxonomy.md` — kaynağı olmayan gezinme/yapılandırma sayfaları) ve onu
+büyütmek `ExpectedExemptCount` sabitini de değiştirmeyi gerektiriyor.
+
+### Kırmızı yandığında ne yapılır
+
+Sıra **önce oku, sonra damgala**:
+
+1. **Gözden geçir.** Bekçi hangi sayfanın hangi kaynağı yüzünden bayatladığını
+   söylüyor. O kaynağı aç ve sor: değişiklik sayfadaki cümleyi *yanlışlıyor mu*?
+   Yanlışlıyorsa **önce sayfayı düzelt**.
+2. **Yeniden damgala.**
+
+   ```bash
+   BIZIGO_WIKI_STAMP=1 dotnet test tests/Bizigo.UnitTests      --filter FullyQualifiedName~WikiSourceDigestStamper
+   ```
+
+3. **Değişkeni kaldırıp bekçiyi yeniden koştur.** Damgalayıcı ile bekçi aynı
+   koşumda buluşamaz — buluşursa bekçi kendi çıktısını doğrular ve hiçbir şey
+   kanıtlamaz. Bu iki taraflı kapatıldı: `BIZIGO_WIKI_STAMP=1` ile koşulduğunda
+   bekçi kırmızı yanıyor.
+
+Ters sıra — önce damgalayıp sonra bakmak — damgayı bir kayıt olmaktan çıkarıp
+**gürültü bastırıcıya** çevirir. Bekçinin bütün değeri o sıradan geliyor.
+
+**Yeni sayfa eklendiğinde** damgalayıcıyı koşturmak birleştirmenin parçası:
+`sources` bildiren ama damgası olmayan sayfa bekçiyi kırmızı yakıyor, çünkü
+üçüncü hâl (*kaynağı yok, sessizce atlanıyor*) bekçiyi tam da yeni sayfalarda
+kör bırakırdı.
+
+**`source_digest` elle düzenlenmez.** Elle yazılan damga, bekçiyi kaynağın
+değil yazanın hafızasının bekçisi yapar.
 
 ## Sayfa yazarken
 
