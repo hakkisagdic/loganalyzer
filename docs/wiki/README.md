@@ -56,7 +56,7 @@ değil** (`~/Library/Application Support/obsidian/obsidian.json` yok). İlk aç�
 3. Şu dizini seç:
 
 ```
-/Users/hakkisagdic/Projects/bizigo-loganalyzer/.claude/worktrees/proje-ozeti-tanitim-353f6e/docs/wiki
+/Users/hakkisagdic/Projects/bizigo-loganalyzer/docs/wiki
 ```
 
 4. Obsidian "Trust author and enable plugins?" diye sorarsa — bu vault'ta
@@ -66,7 +66,7 @@ değil** (`~/Library/Application Support/obsidian/obsidian.json` yok). İlk aç�
 Kısayol (aynı işi yapar, vault'u kaydeder):
 
 ```bash
-open "obsidian://open?path=%2FUsers%2Fhakkisagdic%2FProjects%2Fbizigo-loganalyzer%2F.claude%2Fworktrees%2Fproje-ozeti-tanitim-353f6e%2Fdocs%2Fwiki"
+open "obsidian://open?path=%2FUsers%2Fhakkisagdic%2FProjects%2Fbizigo-loganalyzer%2Fdocs%2Fwiki"
 ```
 
 Açıldıktan sonra sol altta **Graph view** (`Ctrl/Cmd+G`) düğümlerin birbirine
@@ -84,36 +84,29 @@ Hiçbiri zorunlu değil; vault onlarsız da tam çalışıyor.
 
 ---
 
-## ⚠️ Bilinen sorun: vault yolu bir **worktree**'yi gösteriyor
+## Vault yolu — kapandı, ama neden yazılı kalıyor
 
-`~/.obsidian-wiki/config.bizigo` ve `tools/obsidian-wiki/.env` şu an
-`.claude/worktrees/proje-ozeti-tanitim-353f6e/docs/wiki` yolunu taşıyor.
-`CLAUDE.md` §4'e göre **iş `main`'e girip doğrulandıktan sonra worktree
-siliniyor** — o an bu yol boşa düşer: Obsidian vault'u bulamaz, skill'ler
-yazacak yer bulamaz.
+`~/.obsidian-wiki/config.bizigo` ve `tools/obsidian-wiki/.env` bir dönem
+`.claude/worktrees/proje-ozeti-tanitim-353f6e/docs/wiki` yolunu taşıyordu.
+`CLAUDE.md` §4'e göre iş `main`'e girdikten sonra worktree siliniyor — o gün
+Obsidian olmayan bir vault açacaktı: hata yok, uyarı yok, sadece kaybolmuş bir
+kasa. Bu deponun §7'de tarif ettiği sınıf.
 
-Bu dal `main`'e girdikten **sonra** iki dosyayı da ana depo yoluna çevir:
+İkisi de artık kalıcı yolu gösteriyor:
 
-```bash
-NEW=/Users/hakkisagdic/Projects/bizigo-loganalyzer
-
-# 1) profil
-sed -i '' "s#/Users/hakkisagdic/Projects/bizigo-loganalyzer/.claude/worktrees/[^/]*#$NEW#g" \
-  ~/.obsidian-wiki/config.bizigo
-
-# 2) araç .env (aynı değeri ikinci kez tutuyor)
-sed -i '' "s#/Users/hakkisagdic/Projects/bizigo-loganalyzer/.claude/worktrees/[^/]*#$NEW#g" \
-  "$NEW/tools/obsidian-wiki/.env"
-
-# 3) doğrula
-grep -n OBSIDIAN_VAULT_PATH ~/.obsidian-wiki/config.bizigo "$NEW/tools/obsidian-wiki/.env"
+```
+/Users/hakkisagdic/Projects/bizigo-loganalyzer/docs/wiki
 ```
 
-Obsidian tarafında da vault yeniden açılmalı (eski yol kayıtlı kalır): önce
-**"Open folder as vault"** ile yeni yolu aç, sonra eskisini vault listesinden
-kaldır.
+**Bölüm silinmedi çünkü tuzak tekrar kurulabilir.** Vault'u bir worktree'den
+açan biri Obsidian'a o yolu kaydettirir ve aynı yere geri döner. Yeni bir
+kurulumda vault yolu **daima ana checkout'u** göstermeli.
 
----
+**İkinci kopya hâlâ duruyor ve bir karar bekliyor.** Aynı değer iki yerde:
+`tools/obsidian-wiki/.env` ve `~/.obsidian-wiki/config`. Çözüm sırası önce
+CWD'den yukarı `.env`, sonra `config` — yani biri değişip diğeri kalırsa iki
+skill koşumu **iki farklı vault'a** yazar ve hiçbiri hata vermez. Tek kaynağa
+indirmek bir tercih; bu belge yalnızca riski adlandırıyor.
 
 ## Vault yapısı
 
