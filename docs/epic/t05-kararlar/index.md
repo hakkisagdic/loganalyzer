@@ -94,9 +94,59 @@ davranıştan çıkarıldı.
 | # | Ne | Durum |
 | --- | --- | --- |
 | T08 #5 | `map` dallanamıyor → `extends:` | **Açık.** F2'ye ertelendi, T19 kapsamına alınmadı: parser'lar arası kalıtım motor işi ve tasarımı tek başına bir tartışma |
-| T08 #10 | `matchTimeout` duvar saati ölçüyor | **Açık.** Yük altında sağlıklı satır `failed` düşüyor; öneriler (`engine_busy` statüsü, karantinanın orana bakması, doğrusal ifadede `InfiniteMatchTimeout`) yazıldı, uygulanmadı |
+| T08 #10 | `matchTimeout` duvar saati ölçüyor | **Açık, ama tarifi düzeltildi** — aşağıdaki iki ölçüme bakınız. Üç öneriden biri **zaten uygulanmış**, ve asıl sorun tarif edilenden geniş |
 | — | 50 ms `matchTimeout` değerinin gerekçesi | **Kayıtta yok** |
 | T08 #4 | `match` bir doğruluk garantisi değil | **Kısmen.** Katalog kuralı "kapı adımı" oldu; formatta yazılı değil. T19'un editör iskeleti bunu yorumla öğretiyor |
+
+### T08 #10 hakkında iki ölçüm (T05 borcu alınırken)
+
+**1 · Üçüncü öneri kapalı — liste bayattı.**
+
+*"Doğrusal ifadede `InfiniteMatchTimeout`"* önerisi **uygulanmış**:
+`GrokCompiler:93` doğrusal (`NonBacktracking`) yolda `Regex.InfiniteMatchTimeout`
+kullanıyor ve gerekçesi yanında yazılı. `matchTimeout` yalnızca **geri izlemeli
+geri düşüş** yolunda (`GrokCompiler:104`) uygulanıyor — Logstash'in `IPV4`
+pattern'i lookbehind kullandığı için o yol "nadir değil, olağan".
+
+Açık sanılan bir kalemin kapalı olması, kapalı sanılan bir kalemin açık olması
+kadar pahalı: ikisi de "liste boşaldı mı" sorusunun cevabını bozuyor.
+
+**2 · Zaman aşımı kayda HİÇ girmiyor — ve bu, tarif edilenden ağır.**
+
+```csharp
+// StepExecutors.cs — zaman aşımı yakalanıyor
+context.MarkTimedOut();
+
+// ParseContext.cs — ama Status onu HİÇ okumuyor
+public ParseStatus Status => Aborted ? Failed : Degraded ? Partial : Ok;
+```
+
+`MarkTimedOut()` `parse_status`'ü etkilemiyor: zaman aşımının hangi statüye
+yansıdığı **adım türüne** bağlı (zorunlu adımsa `Aborted` üzerinden `Failed`,
+değilse `Partial` ya da `Ok`). `TimedOut` bayrağı `ParseResult`'a çıkıyor,
+`EventComposer` onu **yalnızca logluyor**, `Dispatcher` yalnızca
+`Status != Failed` diye bakıyor.
+
+Sonuç: **zaman aşımı bilgisi ClickHouse'a hiç ulaşmıyor.** Operatör *"bu 400
+satır neden `failed`"* diye sorduğunda cevap üründe **yok** — yalnızca bir log
+satırında.
+
+Bu, ticket'ın yazdığı *"sağlıklı satır `failed` düşüyor"* cümlesinden geniş bir
+sorun ve `50` sayısının gerekçesinden **bağımsız yaşıyor**. Bu depoda sık
+kurulan *"veri var, yüzey yok"* ayrımının bir adım ötesi: veri kayda hiç
+girmiyor.
+
+**Sıra bu yüzden tersine çevrildi:** önce *"bu ne ölçmeli"*, sonra *"kaç
+olmalı"*. Bugün ölçtüğü şey belirsiz — ne `parse_status`'e tutarlı yansıyor, ne
+kayda giriyor. O belirsizlik dururken `50`'nin gerekçesini aramak, yanlış
+sorunun cevabını aramak olur.
+
+**Henüz ölçülmedi** (sonraki tur): zaman aşımı bugün hangi `parse_status`'leri
+üretiyor (adım türüne göre), ve karantina neye bakıyor. İkisi ölçülmeden
+kalan iki öneri (`engine_busy` statüsü · karantinanın orana bakması) arasında
+seçim yapmak, gerekçesiz bir karar olur. `engine_busy` ayrıca bir **tel
+sözleşmesi** (§8): eklenecekse tüketicisi olmalı — bugün `failed` gören bir
+ekran onu ne yapacak?
 
 **Kapanan:** T08 #6 (`expect` "alan yok" diyemiyor) T19'da kapandı — düz
 `null`/`~` skaleri artık gerçek `null`. Ayrıntısı

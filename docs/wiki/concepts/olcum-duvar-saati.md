@@ -18,7 +18,7 @@ sources:
   - docs/epic/t07-kararlar/index.md
   - docs/epic/t12-kararlar/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=d76db5d0b76a docs/epic/t05-kararlar/index.md=cfa52cd42adb docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t08-kararlar/index.md=0ef90b5576bc docs/epic/t08-motor-geri-beslemesi/index.md=5ce87e36f831 docs/epic/t12-kararlar/index.md=454710cef295 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f"
+source_digest: "sha256-12/v1 CLAUDE.md=d76db5d0b76a docs/epic/t05-kararlar/index.md=42f651e08f8b docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t08-kararlar/index.md=0ef90b5576bc docs/epic/t08-motor-geri-beslemesi/index.md=5ce87e36f831 docs/epic/t12-kararlar/index.md=454710cef295 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f"
 summary: Mutlak süre bütçesi pattern'in davranışını değil makinenin o anki hızını ölçer. Bu depoda üç kez oldu; ikisi teste, biri ürünün kendisine sızdı.
 provenance:
   extracted: 0.85
