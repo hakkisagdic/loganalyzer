@@ -297,6 +297,36 @@ Kural: **depo yazılabilir kaynak, epic dizini görüntü.** Ters yönde
 `.gitignore`'daki `artifacts/` satırı .NET derleme çıktısı içindir; `docs/epic/`
 onu etkilemez.
 
+### Bir epic belgesini değiştirdiysen vault sayfasını da gözden geçir
+
+`docs/wiki/` altındaki sayfalar epic belgelerinden **damıtılmış** ve her biri
+kaynaklarının özetini (`source_digest`) taşıyor. `WikiSourceDigestTests` o
+özetleri her koşumda yeniden hesaplıyor; kaynak değişip sayfa güncellenmediyse
+**birim paketi kırmızı yanıyor**.
+
+Bu bir gürültü değil, kapının kendisi: damıtılmış bir sayfa kaynağından
+ayrıldığı an **ölçülmüş gibi okunan yanlış bir metne** dönüşüyor.
+
+Kural: bir `docs/epic/**` belgesine yazdıysan, o belgeyi kaynak gösteren vault
+sayfalarını **oku ve gerekiyorsa güncelle**, sonra damgala:
+
+```bash
+BIZIGO_WIKI_STAMP=1 dotnet test tests/Bizigo.UnitTests \
+  --filter FullyQualifiedName~WikiSourceDigestStamper
+```
+
+**Okumadan damgalama.** Damga *"sayfa kaynağıyla uyumlu"* demek; *"kaynağı
+okudum"* demek değil. Körlemesine damgalamak bekçiyi bir kayıt olmaktan çıkarıp
+gürültü bastırıcıya çevirir — bu deponun beş kez adını koyduğu şey.
+
+Bir sayfa **etkilenmediyse** onu da commit mesajına yaz. Damganın yenilenmesi
+her iki hâlde de aynı görünüyor; yazılmazsa bir sonraki kişi *"bakılmadı mı,
+bakıldı mı"* diye ayırt edemiyor.
+
+Gerekçe ölçüldü: bu kural konulana kadar aynı kırmızı **üç ayrı turda** main'i
+kırdı ve her seferinde farklı bir ajanın belgesi yüzünden — T32, T30, T39.
+Sorun ajanların dikkatinde değil, kuralın yazılı olmamasındaydı.
+
 ---
 
 ## 12 · Ortam
