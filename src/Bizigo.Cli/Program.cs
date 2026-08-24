@@ -335,11 +335,67 @@ var fieldsCommand = new Command("fields", "Alan kapsamı ölçümleri.");
 fieldsCommand.Subcommands.Add(fieldsCoverageCommand);
 fieldsCommand.Subcommands.Add(fieldsValuesCommand);
 
+// --- sigma sync ---------------------------------------------------------
+//
+// Senkron bir DAĞITIM hareketi, kullanıcı hareketi değil: kural seti çivili
+// bir commit'ten geliyor ve manifest üretilmiş bir dosya. Kapsam beyanı da
+// burada doğal duruyor — bir uçta olsaydı "kim hangi kapsamla tetikliyor"
+// sorusu her çağrıda yeniden sorulurdu.
+var manifestOption = new Option<FileInfo?>("--manifest")
+{
+    Description = $"Derleme hattının manifesti (varsayılan {SigmaSyncCommandHandler.DefaultManifest}).",
+};
+
+var ownerSubjectOption = new Option<string>("--owner-subject")
+{
+    Description = "Kuralları kaydeden kimlik — denetim kaydına giriyor.",
+    Required = true,
+};
+
+// Kapsam ZORUNLU ve türetilmiyor: `logsource`'tan çıkarmak akla yatkın ama
+// yanlış — vendor ile grup aynı şey değil. Beyanı zorunlu kılmak, "sınırsız
+// kapsamlı kural yok" değişmezinin tek satırda delinmesini engelliyor (§8).
+var sigmaOwnerGroupOption = new Option<string[]>("--owner-group")
+{
+    Description = "Kuralların koşacağı owner_group kümesi. Birden çok kez verilebilir.",
+    Required = true,
+    AllowMultipleArgumentsPerToken = true,
+};
+
+var connectionOption = new Option<string?>("--connection")
+{
+    Description = "ControlPlane bağlantı dizgesi (yoksa BIZIGO_CONTROLPLANE).",
+};
+
+var sigmaDryRunOption = new Option<bool>("--dry-run")
+{
+    Description = "Hiçbir şey yazmaz; manifestin ne getireceğini gösterir.",
+};
+
+var sigmaSyncCommand = new Command(
+    "sync", "Derleme hattının manifestini alarm kurallarına yazar.");
+sigmaSyncCommand.Options.Add(manifestOption);
+sigmaSyncCommand.Options.Add(ownerSubjectOption);
+sigmaSyncCommand.Options.Add(sigmaOwnerGroupOption);
+sigmaSyncCommand.Options.Add(connectionOption);
+sigmaSyncCommand.Options.Add(sigmaDryRunOption);
+sigmaSyncCommand.SetAction((parse, token) => SigmaSyncCommandHandler.RunAsync(
+    parse.GetValue(manifestOption)?.FullName ?? SigmaSyncCommandHandler.DefaultManifest,
+    parse.GetValue(ownerSubjectOption)!,
+    parse.GetValue(sigmaOwnerGroupOption) ?? Array.Empty<string>(),
+    parse.GetValue(connectionOption),
+    parse.GetValue(sigmaDryRunOption),
+    token));
+
+var sigmaCommand = new Command("sigma", "Sigma kural seti işlemleri.");
+sigmaCommand.Subcommands.Add(sigmaSyncCommand);
+
 var root = new RootCommand("bizigo — log analyzer CLI");
 root.Subcommands.Add(parserCommand);
 root.Subcommands.Add(schemaCommand);
 root.Subcommands.Add(seedCommand);
 root.Subcommands.Add(fieldsCommand);
+root.Subcommands.Add(sigmaCommand);
 
 return await root.Parse(args).InvokeAsync().ConfigureAwait(false);
 

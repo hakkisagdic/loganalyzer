@@ -168,5 +168,56 @@ public sealed class SigmaRuleSyncServiceTests : IDisposable
         Assert.Empty(db.AlertRules);
     }
 
+    /// <summary>
+    /// <b>Koşumun kendisi kayda giriyor.</b>
+    ///
+    /// <para>
+    /// CLI çıktısı bir terminalde yaşıyor ve orada ölüyor — <c>ChangedRuleIds</c>
+    /// ile aynı sınıf, bir katman yukarıda. Bir dağıtım hareketinin izinin
+    /// yalnızca terminalde olması, altı ay sonra *"bu 269 kural nereden geldi"*
+    /// sorusunun cevapsız kalması demek.
+    /// </para>
+    ///
+    /// <para>
+    /// Yeni bir tablo açılmıyor: <c>audit_log</c> zaten *"kim, hangi kapsam, ne
+    /// yaptı"* sorusunun yeri.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Kosumun_kendisi_denetim_kaydina_giriyor()
+    {
+        await Service().SyncAsync(
+            Manifest(Written("r1", "sha256:a"), Gated("r2", "dns_query_name")),
+            "sub-1", ["/ekip/ag", "/ekip/guvenlik"], Token);
+
+        await using var db = _factory.CreateDbContext();
+        var entry = db.AuditLog.Single();
+
+        Assert.Equal("sigma.sync", entry.Action);
+        Assert.Equal("sub-1", entry.Subject);
+
+        // Kapsam kayda giriyor: "bu kurallar hangi grup adına indi" sorusu
+        // altı ay sonra da cevaplanabilmeli.
+        Assert.Contains("/ekip/ag", entry.Scope, StringComparison.Ordinal);
+        Assert.Equal(2, entry.RowCount);
+    }
+
+    /// <summary>
+    /// Değişen kuralların kimlikleri de kayda giriyor — sayı *"bir şey oynadı"*
+    /// diyor, kayda değer olan <b>hangisi</b>.
+    /// </summary>
+    [Fact]
+    public async Task Degisen_kurallarin_kimlikleri_kayitta()
+    {
+        await Service().SyncAsync(Manifest(Written("r1", "sha256:a")), "s", ["/g"], Token);
+        await Service().SyncAsync(Manifest(Written("r1", "sha256:b")), "s", ["/g"], Token);
+
+        await using var db = _factory.CreateDbContext();
+        var last = db.AuditLog.OrderByDescending(a => a.Id).First();
+
+        Assert.Contains("r1", last.Details, StringComparison.Ordinal);
+        Assert.Contains("değişti 1", last.Details, StringComparison.Ordinal);
+    }
+
     public void Dispose() => _factory.Dispose();
 }
