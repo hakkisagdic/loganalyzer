@@ -71,7 +71,7 @@ jobs:
             "| Koşum | [$RUN_TITLE]($RUN_URL) |" \
             "| Commit | \`$RUN_SHA\` |" \
             "" \
-            "Bu konu **kendiliğinden kapanmıyor**. Kırmızı giderildiğinde elle kapatın." \
+            "Bu konu, main yeşile döndüğü ilk CI koşumunda **kendiliğinden kapanır**." \
             "" \
             "Gerekçe: bu depoda bir kapı dört merge boyunca kırmızı yandı ve" \
             "okunmadı (B18/B19). Konu, koşum listesine bakma alışkanlığının" \
@@ -85,3 +85,49 @@ jobs:
           else
             gh issue create --title "$MARKER" --body "$govde"
           fi
+
+  kapat:
+    name: Yeşile dönünce konuyu kapat
+    # Açma dalının aynadaki eşi. Bu olmadan işaret tek yönlü çalışıyordu: konu
+    # kırmızıda açılıyor, yeşilde açık kalıyordu. Açık kalan bir konu bir sonraki
+    # kırmızıda YENİ bildirim üretmez — yalnızca yoruma düşer — yani işaret,
+    # ilk kullanımından sonra tam da uyarması gereken anda susuyordu.
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Açık konu varsa kapat
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RUN_TITLE: ${{ github.event.workflow_run.display_title }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+
+          # Açma dalıyla AYNI işaret ve AYNI yerel tam-başlık eşleşmesi. İkisi
+          # ayrışırsa kapatma dalı hiçbir zaman bir şey bulamaz ve sessizce
+          # başarılı görünür.
+          MARKER="CI kırmızı — main"
+
+          existing=$(gh issue list --state open --limit 100 --json number,title \
+            --jq ".[] | select(.title == \"$MARKER\") | .number" | head -1)
+
+          if [ -z "$existing" ]; then
+            echo "Açık konu yok; kapatılacak bir şey de yok."
+            exit 0
+          fi
+
+          govde=$(printf '%s\n' \
+            "main'deki CI koşumu yeşile döndü; bu konu kendiliğinden kapatıldı." \
+            "" \
+            "| | |" \
+            "| --- | --- |" \
+            "| Koşum | [$RUN_TITLE]($RUN_URL) |" \
+            "| Commit | \`$RUN_SHA\` |")
+
+          gh issue close "$existing" --comment "$govde"
+          echo "Konu kapatıldı: #$existing"
