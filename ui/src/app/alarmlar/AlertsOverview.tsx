@@ -211,7 +211,7 @@ export function AlertsOverview() {
       )}
 
       <h2>Tetiklenme geçmişi</h2>
-      <TriggerHistory triggers={triggers} />
+      <TriggerHistory triggers={triggers} onClosed={() => void load()} />
     </div>
   );
 }

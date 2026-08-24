@@ -3,8 +3,10 @@
 import { Badge, Card } from "@/components/ui/Field";
 import { DataTable } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/States";
+import { isOpen } from "@/lib/alerts/closure";
 import { formatInstant, type AlertDelivery, type AlertTrigger } from "@/lib/alerts/types";
 
+import { CloseTriggerPanel } from "./CloseTriggerPanel";
 import styles from "./alerts.module.css";
 
 /**
@@ -59,8 +61,49 @@ function Deliveries({ deliveries }: { deliveries: readonly AlertDelivery[] }) {
   );
 }
 
+/**
+ * Tetiklenmenin durumu ve — açıksa — kapatma akışı (T38).
+ *
+ * <p>
+ * Kapalı bir tetiklenmede düğme <b>hiç görünmüyor</b>: sunucu ikinci kapatmayı
+ * reddediyor ve reddedilecek bir düğmeyi göstermek, kullanıcıya var olmayan bir
+ * seçenek sunmak olurdu.
+ * </p>
+ *
+ * <p>
+ * Kapalıda kapatan kişi de yazılı. "Kim kapattı" sorusunun cevabı olmadan
+ * kapatma bir kayıt değil, yalnızca bir durum değişikliği olurdu.
+ * </p>
+ */
+function TriggerState({
+  trigger,
+  onClosed,
+}: {
+  trigger: AlertTrigger;
+  onClosed?: () => void;
+}) {
+  if (!isOpen(trigger)) {
+    return (
+      <div className={styles.closedInfo}>
+        <Badge tone="neutral">kapatıldı</Badge>
+        <span className={styles.muted}>
+          {trigger.closed_by ?? "—"} · {formatInstant(trigger.closed_at)}
+        </span>
+      </div>
+    );
+  }
+
+  return <CloseTriggerPanel trigger={trigger} onClosed={() => onClosed?.()} />;
+}
+
 /** Tetiklenme geçmişi: ne zaman, hangi değerle, hangi kanala gitti, ulaştı mı. */
-export function TriggerHistory({ triggers }: { triggers: readonly AlertTrigger[] }) {
+export function TriggerHistory({
+  triggers,
+  onClosed,
+}: {
+  triggers: readonly AlertTrigger[];
+  onClosed?: () => void;
+}) {
   if (triggers.length === 0) {
     return (
       <Card>
@@ -102,15 +145,21 @@ export function TriggerHistory({ triggers }: { triggers: readonly AlertTrigger[]
           {
             key: "summary",
             header: "Özet",
-            width: "24%",
+            width: "16%",
             freeText: true,
             render: (row) => row.summary,
           },
           {
             key: "deliveries",
             header: "Bildirim",
-            width: "24%",
+            width: "16%",
             render: (row) => <Deliveries deliveries={row.deliveries} />,
+          },
+          {
+            key: "state",
+            header: "Durum",
+            width: "22%",
+            render: (row) => <TriggerState trigger={row} onClosed={onClosed} />,
           },
         ]}
       />

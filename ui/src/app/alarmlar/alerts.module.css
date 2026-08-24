@@ -196,3 +196,69 @@
   /* Hata metni uzun olabiliyor; satır taşırmasın. */
   overflow-wrap: anywhere;
 }
+
+/* --- Alarm kapatma ve inceleme (T38) ------------------------------------- */
+
+.closePanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.closeLead {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--text-muted);
+}
+
+.closeField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-sm);
+}
+
+/*
+  Dört düğme eşit genişlikte. "Bilmiyorum"u küçültmek onu bir kaçış gibi
+  gösterirdi; oysa ölçümün kendisi ve diğer üçüyle aynı ağırlıkta.
+*/
+.closeButtons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-1);
+}
+
+.closeButtons button {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-sm);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.closeButtons button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.closeHint {
+  margin: 0;
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
+
+.closeError {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--danger-text);
+}
+
+.closeDone,
+.closedInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-sm);
+}
