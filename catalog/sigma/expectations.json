@@ -51,8 +51,9 @@
     {
       "rule_id": "19506570-0000-4000-8000-000000000000",
       "file_name": "19506570-0000-4000-8000-000000000000.sql",
-      "expect": "at_least_one",
-      "why": "asa_acl_hit — `message|contains: 'access-list'` VE `action: 'denied'`. catalog/parsers/cisco.asa/samples/network.log içinde `access-list` geçen 1 satır var ve örnekte `Deny tcp` satırları da mevcut. Desen VAR, kural koşuyor, sıfır dönüyor: eşleme boşluğu. BU BEYAN BUGÜN KIRMIZI — iş kalemi olarak duruyor."
+      "expect": "none",
+      "kind": "corpus_gap",
+      "why": "asa_acl_hit — kural `message|contains: 'access-list'` VE `action: 'denied'` istiyor. catalog/parsers/cisco.asa/samples/network.log içinde `access-list` geçen tek satır **`permitted`** diyor (`%ASA-6-106100: access-list fw111_out permitted tcp ...`); `Deny` satırları var ama onlarda `access-list` yok. **KESİŞİM SIFIR.** ⚠️ İlk beyanım bunu `at_least_one` yazmıştı ve gerekçesinde 'örnekte Deny satırları da mevcut' diyordu — iki yüklemi ayrı ayrı görüp deseni var saymak, kılavuzun 3. şartının uyardığı tuzağın ta kendisi. Kılavuzu yazan kişi aynı hataya düştü; düzeltme burada kayıtlı. Deny edilen bir ACL satırı gelirse kırmızı yanar."
     },
     {
       "rule_id": "21934394-0000-4000-8000-000000000000",
@@ -76,8 +77,9 @@
     {
       "rule_id": "34775915-0000-4000-8000-000000000000",
       "file_name": "34775915-0000-4000-8000-000000000000.sql",
-      "expect": "at_least_one",
-      "why": "fortigate_high_port_scan — `proto: 6` VE `dstport|gte: 30000`; traffic.log içinde `proto=6` 8 satırda var. Sebebi BİLİNİYOR ve Kapı 2'nin `--self-test`'inde duruyor: `connection_info_protocol_name` `LowCardinality(String)`, kural tamsayı `6` yazıyor. Aynı aile: RST↔Reset-I, action↔fw_chain, failure↔failed. Kural `'tcp'` yazmalı. BU BEYAN BUGÜN KIRMIZI."
+      "expect": "none",
+      "kind": "corpus_gap",
+      "why": "fortigate_high_port_scan — kural `proto: 6` VE `dstport|gte: 30000` istiyor. catalog/parsers/fortinet.fortigate/samples/traffic.log içinde `proto=6` 8 satırda var ama hiçbirinde hedef port 30000'in üstünde değil: **KESİŞİM SIFIR.** Bu kuralın AYRICA bir tip kusuru var (`proto: 6` tamsayı, kolon `LowCardinality(String)`; Kapı 2'nin `--self-test`'i onu tutuyor) — ama o kusur düzeltilse bile desen olmadığı için eşleşmezdi. İki bağımsız sebep; birinin kapanması diğerini kapatmıyor. ⚠️ İlk beyanım `at_least_one` yazıp yalnızca tip kusurunu anmıştı, yani eksik sebep."
     },
     {
       "rule_id": "43129827-0000-4000-8000-000000000000",
