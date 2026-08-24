@@ -125,6 +125,28 @@ public sealed class SigmaRuleSyncService(IDbContextFactory<ControlPlaneDbContext
             changedIds.Add(rule.RuleId);
         }
 
+        // KOŞUMUN KENDİSİ kayda giriyor.
+        //
+        // CLI çıktısı bir terminalde yaşıyor ve orada ölüyor — `ChangedRuleIds`
+        // ile aynı sınıf, bir katman yukarıda. Bir DAĞITIM hareketinin izinin
+        // yalnızca terminalde olması, altı ay sonra "bu 269 kural nereden
+        // geldi" sorusunun cevapsız kalması demek.
+        //
+        // Yeni bir tablo açılmıyor: `audit_log` zaten "kim, hangi kapsam, ne
+        // yaptı" sorusunun yeri ve ikinci bir kopya yazmak §9'un yasakladığı şey.
+        db.AuditLog.Add(new AuditLogEntity
+        {
+            Subject = ownerSubject,
+            Action = "sigma.sync",
+            Resource = "alert_rules",
+            Scope = groups,
+            RowCount = created + changed,
+            Details = changedIds.Count == 0
+                ? $"yeni {created} · değişti {changed} · aynı {unchanged}"
+                : $"yeni {created} · değişti {changed} · aynı {unchanged} · "
+                  + $"değişenler: {string.Join(",", changedIds)}",
+        });
+
         await db.SaveChangesAsync(cancellationToken);
 
         return new SigmaSyncResult(created, changed, unchanged, changedIds);
