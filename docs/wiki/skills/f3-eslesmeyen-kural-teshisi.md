@@ -17,7 +17,7 @@ sources:
   - docs/epic/t30-sigma-olcumu/index.md
   - docs/epic/t32-derleme-tasarimi/index.md
   - docs/epic/f3-yol-haritasi/index.md
-source_digest: "sha256-12/v1 docs/epic/f3-yol-haritasi/index.md=27055ee43212 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=457cb125d0d3 docs/epic/t39-alan-kapsami/index.md=2c77e0540320"
+source_digest: "sha256-12/v1 docs/epic/f3-yol-haritasi/index.md=27055ee43212 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=457cb125d0d3 docs/epic/t39-alan-kapsami/index.md=7d06bfcf6e0c"
 summary: Bir kural sıfır satır döndürdüğünde sebep en az beş farklı şey olabilir ve tabloda hepsi aynı görünür. Üç bağımsız eksen — metin, alan, değer uzayı — birbirini tamamlayarak sebebi ayırıyor.
 provenance:
   extracted: 0.85
@@ -133,17 +133,41 @@ değerleri (`UDP` → `udp`) de yakalıyor.
 Ölçüm yüklemleri tek tek arıyordu, **kural onları aynı olayda istiyor**. Sigma
 tarafı bu kusuru buldu, alan tarafında da aynısı vardı ve düzeltildi.
 
-| Vendor | Ayrı ayrı dolu, **aynı satırda hiç birlikte olmayan** çift |
-| --- | --- |
-| **MikroTik** | **12** |
-| Cisco | 4 |
-| Fortinet | 3 |
-| NGINX | yok |
+| Vendor | Parser | **Kalıcı** çift | Örneklem tesadüfü |
+| --- | --- | --- | --- |
+| **MikroTik** | 2 (`system`, `firewall`) | **12** | 0 |
+| Cisco | 2 (`auth`, `network`) | 4 | 0 |
+| Fortinet | 2 (`event`, `traffic`) | 3 | 0 |
+| NGINX | 2 (`combined`, `json`) | **yok** | 0 |
 
 MikroTik'in 12 çifti tek bir sebebin sonucu: `system` parser'ı kimlik
 alanlarını, `firewall` parser'ı ağ alanlarını dolduruyor ve **hiçbir satır
 ikisini birden taşımıyor.** Yani `activity_name` ile bir port isteyen kural, iki
 alan da "dolu" görünse bile eşleşemez.
+
+#### Kalıcı mı, bugünkü örneklemin tesadüfü mü
+
+Çiftler **iki kolonu dolduran parser kümelerine** göre ayrılıyor. Kümeler
+ayrıksa hiçbir satır ikisini birden taşıyamaz, örneklem ne kadar büyürse
+büyüsün — bu bir **kural yazım kısıtı**. Kesişiyorlarsa en az bir parser ikisini
+de doldurabiliyor ve birlikte görülmemeleri bugünkü örneklemin tesadüfü — bu bir
+**örnek dosya kalemi**. İkisi tek listede durursa zıt iki iş emri karışır.
+
+**Ölçülen: 19 çiftin 19'u da kalıcı, tesadüf sıfır.** Yani hiçbiri örnek dosya
+eklenerek kapanmaz.
+
+#### Kısıt "çok parser"da değil, "ayrık konu"da
+
+Dört vendor'ın **dördünde de iki parser var** ve biri hiç çift üretmiyor. nginx'in
+`combined` ile `json`'u **aynı konuyu** iki biçimde anlatıyor ve aynı kolonları
+dolduruyor; diğer üçü **konuyu** bölüyor — kimlik ↔ ağ, olay ↔ trafik, sistem ↔
+güvenlik duvarı. Yani yeni bir vendor eklendiğinde sorulacak soru *"kaç parser
+var"* değil, **"parser'lar biçim mi bölüyor, konu mu?"**
+
+Kural yazım kılavuzunun üçüncü şartı buradan geliyor: dizgenin örnekte geçmesi ve
+kolonun o değeri tutabilmesi yüklemleri **tek tek** doğruluyor; üçüncüsü —
+*istenen alanların o vendor'da aynı satırda dolabildiği* — onları **birlikte**
+doğruluyor.
 
 Sınırı açık: bu **alan** düzeyinde kesişim, **değer** düzeyinde değil. Ölçüm
 yalnızca **sıfırın sıfır olduğunu** gösteriyor — hiç birlikte dolmuyorlarsa değer

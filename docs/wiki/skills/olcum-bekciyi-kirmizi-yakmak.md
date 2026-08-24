@@ -24,7 +24,7 @@ sources:
   - docs/epic/t09-kararlar/index.md
   - docs/epic/t10-kararlar/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=3984257f89e8 docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t09-kararlar/index.md=b21d65bda95a docs/epic/t10-kararlar/index.md=98995baaaacf docs/epic/t27-ad-govde-kesfi/index.md=e14d05d8d833 docs/epic/t27-kapanis-taramasi/index.md=fc23cd892d11 docs/epic/t28-denetim-bulgulari/index.md=7f6ce6b9f3f7 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t39-alan-kapsami/index.md=2c77e0540320"
+source_digest: "sha256-12/v1 CLAUDE.md=3984257f89e8 docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t09-kararlar/index.md=b21d65bda95a docs/epic/t10-kararlar/index.md=98995baaaacf docs/epic/t27-ad-govde-kesfi/index.md=e14d05d8d833 docs/epic/t27-kapanis-taramasi/index.md=fc23cd892d11 docs/epic/t28-denetim-bulgulari/index.md=7f6ce6b9f3f7 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t39-alan-kapsami/index.md=7d06bfcf6e0c"
 summary: Geçen bir test geçtiğini kanıtlar, kırılabildiğini değil. Bu depoda bekçiler koruduğu hata geri konularak sınanıyor; yanlış pozitif vermediği de ayrıca ölçülüyor.
 provenance:
   extracted: 0.85
@@ -98,6 +98,26 @@ Aynı sınıf T39'da "sürüklenemeyen iki liste" başlığıyla geçiyor: gör�
 kolonları göç dosyasından **okunuyor**; elle yazılsaydı görünüme eklenen bir
 kolon hiç sorulmaz ve eksik tablo tam görünürdü — `Produces` kapısının 16 ucu
 görmemesiyle aynı sınıf.
+
+Üçüncü üye saklama süresi: `EventRetention` `TTL … INTERVAL N DAY`'i şemadan
+okuyor. C# tarafına `90` yazmak, şema değiştiği gün kapının **yanlış cevabı
+vermesi** demekti. Ve bulunamadığında *"sınırsız saklama"* varsayılmıyor,
+**atılıyor** — okuyamama hâli sınırsızlık diye okunsaydı kapı hiç kapanmaz,
+yani var olmayan bir kapı olurdu.
+
+### İki yeni kapı, ikisi de "hata vermeyen kayıp"a karşı
+
+T39'un iki eklemesi aynı sınıfı hedefliyor: ClickHouse'un **hata vermeden**
+veri kaybettiği ya da çoğalttığı yollar.
+
+| Kapı | Ne yakalıyor | Kırmızı yandığı ölçüldü |
+| --- | --- | --- |
+| TTL kapısı | Saklama süresinin dışındaki satır — ClickHouse kabul edip **siliyor**, yazan "yazdım" diye okuyor | `--span-days 100` → çıkış **1**, 2028 satırın 210'u dışarıda; varsayılan 30 gün → çıkış **0** |
+| `--replace` doğrulaması | `ALTER TABLE … DELETE` bir **mutasyon**; `mutations_sync = 2` sunucu tarafında geçersiz kılınabiliyor ve beklemeden dönerse eski satırlar kalır, yeniler eklenir, **veri çoğalır** | Silmeden sonra sayım tekrarlanıyor; sıfır değilse yazıma hiç geçilmiyor |
+
+İkincisinin izi ölçümde de görünüyordu: altın örnek sayıları bir gün **2476×3 =
+7428** değil **7426** çıkmıştı — tam katı olmaması, kısmen tamamlanmış bir
+mutasyonun bıraktığı iz.
 
 ## Adım 5 — kuralı yazmadan önce ölç; literal hâli yanlış olabilir
 

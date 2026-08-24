@@ -17,7 +17,7 @@ sources:
   - docs/epic/t08-kararlar/index.md
   - docs/epic/t12-kararlar/index.md
   - docs/epic/t01-kararlar/index.md
-source_digest: "sha256-12/v1 docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t08-kararlar/index.md=0ef90b5576bc docs/epic/t12-kararlar/index.md=454710cef295 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t39-alan-kapsami/index.md=2c77e0540320"
+source_digest: "sha256-12/v1 docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t08-kararlar/index.md=0ef90b5576bc docs/epic/t12-kararlar/index.md=454710cef295 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t39-alan-kapsami/index.md=7d06bfcf6e0c"
 summary: Aynı soruya iki bağımsız yoldan bakmak, tek bir aracın "buldum" demesinden farklı bir kanıt üretiyor — ve bir eksenin sistematik sapması ancak öbür eksenden görünüyor.
 provenance:
   extracted: 0.85
@@ -130,11 +130,17 @@ kopya** olmamalı; farklı bir soruyu farklı bir varsayım kümesiyle sormalı.
 
 ## Açık sorular
 
-- T39 kesişim ölçümünde MikroTik'in 12 çifti tek bir sebepten doğuyor: `system`
-  parser'ı kimlik alanlarını, `firewall` parser'ı ağ alanlarını dolduruyor ve
-  hiçbir satır ikisini birden taşımıyor. Bu, `docs/epic/t08-kararlar/index.md`
-  §2'nin *"OCSF sınıfı ailesi başına bir parser"* kararının ölçülmemiş bir yan etkisi mi, yoksa cihazın kendi
-  davranışı mı — belgelerde ayrılmamış. ^[ambiguous]
+- ~~T39 kesişim ölçümünde MikroTik'in 12 çifti…~~ — **ölçüldü.** Çiftler artık
+  iki kolonu dolduran **parser kümelerine** göre ayrılıyor: kümeler ayrıksa
+  ayrılık kalıcı, kesişiyorsa bugünkü örneklemin tesadüfü. Sonuç **19 çiftin
+  19'u da kalıcı**, tesadüf sıfır. Ve belirleyici olan parser *sayısı* değil:
+  dört vendor'ın dördünde de iki parser var, ama nginx'in ikisi **aynı konuyu**
+  iki biçimde anlatıp aynı kolonları doldurduğu için **hiç çift üretmiyor**.
+  Diğer üçü konuyu bölüyor (kimlik ↔ ağ, olay ↔ trafik, sistem ↔ güvenlik
+  duvarı). Yani kaynak, cihazın davranışı değil **kataloğun parser'ları neye
+  göre böldüğü** — `docs/epic/t08-kararlar/index.md` §2'nin kararının ölçülmüş
+  bir yan etkisi. Yeni bir vendor eklendiğinde sorulacak soru: *parser'lar
+  biçim mi bölüyor, konu mu?*
 
 ## Kaynaklar
 
