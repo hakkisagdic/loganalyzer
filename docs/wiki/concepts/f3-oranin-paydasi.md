@@ -17,7 +17,7 @@ sources:
   - docs/epic/t32-derleme-tasarimi/index.md
   - docs/epic/t39-alan-kapsami/index.md
   - docs/epic/f3-yol-haritasi/index.md
-source_digest: "sha256-12/v1 docs/epic/f3-yol-haritasi/index.md=27055ee43212 docs/epic/t30-sigma-olcumu/index.md=33217d5fdb53 docs/epic/t32-derleme-tasarimi/index.md=84daadf9f9fc docs/epic/t39-alan-kapsami/index.md=d05b57cf00ab"
+source_digest: "sha256-12/v1 docs/epic/f3-yol-haritasi/index.md=27055ee43212 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=84daadf9f9fc docs/epic/t39-alan-kapsami/index.md=d05b57cf00ab"
 summary: Sigma kapsam oranı beş koşumda %0, %8, %25, %29 ve %43 çıktı; hiçbiri yanlış hesaplanmadı, hepsi farklı payda kullandı. İki payda arasındaki fark bir karar dalını değiştiriyor.
 provenance:
   extracted: 0.9
@@ -49,9 +49,29 @@ Bu, [[concepts/sessiz-yanlis-davranis]] sınıfının ölçüm aracındaki hâli
 | 3 | **%25** | Payda 24 = örneklemin tamamı — bekçinin bilerek düşürdüğü 3 kural da içinde |
 | 3′ | **%29** | Payda 21 = bloke olanlar hariç |
 | 3″ | **%43** | Payda 14 = deseni altın örneklerde **var olan** kurallar |
+| 3‴ | **≤%43** | Payda **≥14** — dördüncü kutu (`never_together`) da korpus kusuru sayıldı |
 
-Sonuncusu bile kesin değil: `docs/epic/t39-alan-kapsami/index.md` bir kuralı
-`absent` kutusundan çıkardı ve payda **15** oldu.
+Sonuncusu bile kesin değil ve **artık kesin olmadığı yazılı**. İki kez oynadı:
+`docs/epic/t39-alan-kapsami/index.md` bir kuralı `absent` kutusundan çıkardı
+(payda 15), sonra dördüncü kutu bir kural daha korpus kusuruna aldı (payda 14).
+
+Ama asıl mesele sayı değil **cinsi**: dördüncü kutu bir **alt sınır**. Araç
+yüklemi alanına kısıtlayamıyor — `user|contains: 'admin'` `user` kolonunu
+kastediyor, ham satırda `admin` aramak `Administrator`'a da denk geliyor.
+Asimetri tek yönde sağlam:
+
+* kesişim **boş** → kural o korpusta **kesinlikle** eşleşemez
+* kesişim **dolu** → eşleşebilirmiş gibi görünür, **kanıt değil**
+
+Yani gerçek korpus kusuru sayısı daha büyük, payda daha küçük, oran `%43`'ten
+**düşük**. Beşinci koşumun dersi bu: **bir oranı kesin yazmak yerine cinsini
+söylemek.** Kesin olmayan bir sayıyı kesin yazmak bu belgede dört kez oldu;
+"en az" diye yazmak o tuzak değil.
+
+`docs/epic/t30-sigma-olcumu/index.md` kapsam kararını bu alt sınırla
+**çiviledi** — ve çivileyebildi, çünkü karar orandan değil **verinin
+varlığından** çıkıyor: DNS'in verisi yok, dolayısıyla oran nereye düşerse
+düşsün o kategori kapsama giremez.
 
 ## Ayrımın kendisi
 
