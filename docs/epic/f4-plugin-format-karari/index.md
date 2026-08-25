@@ -134,7 +134,16 @@ olmaktan çıkıyor. Açıksa K20'nin *"dördü tek kuyrukta buluşur; debounce,
 koruması ve kota tek yerde"* garantisi yeni değerler için **tanımsız**.
 
 Bu kesişme benim alanım değil — **kuyruk ve kota soru 2'nin**, zincir/döngü
-koruması **soru 1'in**. Kararı vermiyorum, bildiriyorum (§9).
+koruması **soru 1'in**. Kararı vermedim, bildirdim.
+
+> **Karar geldi (koordinatör):** `schedule` **beşinci tetikleyici olarak
+> K20'ye giriyor** ve değer kümesi **kapalı** kalıyor. Gerekçe: bir formatın ilk
+> iki gerçek tüketicisinin çekirdeği değiştirmek zorunda kalması, formatın değil
+> **K20'nin** eksikliği. Küme kapalı çünkü açık olsaydı tek-kuyruk garantisi
+> yeni değerler için tanımsız kalırdı — yeni tetikleyici eklemek bir **çekirdek**
+> kararı, plugin kararı değil.
+>
+> K20/§5 metnini bu belge **değiştirmiyor**; taşıma koordinatörde (§9).
 
 ### 3.2 · `constraint` her senaryoda uygulanamıyor — ve uygulanamadığı sessiz
 
@@ -315,6 +324,29 @@ duruyor — kısmi rapor üretilmiyor.
 varsayımı kota tarafında **bilinmeden** plan yapılmasını engelliyor. Kararı
 vermiyorum; soru 2'nin sahibine iletilmesi gerek.
 
+### 6.1 · Aynı bölme, ikinci kez: zarf çekirdeğin, içerik sağlayıcının
+
+§5.2 `evidence` bloğunu sağlayıcıya bıraktı ve bu bir gerilim doğurdu: bozuk bir
+blok artık **koşum anında** mı patlayacak? Çekirdek şekli bilemiyorsa yükleme
+anında yakalayamaz.
+
+Gerilimi kaldıran şey, §6'da tek sandığım kapıyı ikiye bölen ayrımın **aynısı**:
+
+| | Yükleme anında | Koşum anında |
+| --- | --- | --- |
+| Kim biliyor | **Çekirdek** — zarf | **Sağlayıcı** — içerik |
+| Ne doğrulanıyor | Sağlayıcı adı kayıtlı mı · blok iyi biçimli mi · `constraints` ya da `constraints_waived` var mı | Alanlar sağlayıcının kendi şemasına uyuyor mu |
+| İhlalde | Senaryo **yüklenmiyor** | Koşum, adı konmuş bir hatayla duruyor |
+
+**Çekirdeğin şekli bilmesi gerekmiyor — zarfı bilmesi yeterli.** §3.3'ün
+*"çekirdek şekli bilemez"* dediği şey **içerik**; zarf onun kapsamında değil.
+Yani bozuk bir blok yükleme anında yakalanabiliyor; koşuma kalan tek şey
+**hangi** bozukluk olduğu.
+
+Bu ayrımın kendisi bu belgenin yöntemsel çıktısı: iki kez, tek sanılan bir kapı
+ikiye bölününce hem gerilim kalktı hem de her yarı kendi işini eksiksiz yapar
+hâle geldi.
+
 ---
 
 ## 7 · Cevap
@@ -349,6 +381,11 @@ görünmüyor.
   taslaklamadım.** İkisi de RCA'ya daha yakın şekilli görünüyor — ikisi de olay
   penceresi ve kimlikli kanıt kullanıyor — yani formatı benim seçtiğim ikili
   kadar zorlamazlardı. **Bu bir tahmin, ölçüm değil.**
+
+  Ama bir şey daha: **formatı zorlayan ikiliyi seçmek bir seçimdi.** Kolay
+  ikiliyi seçseydim iki senaryo da oturur, format **çivilenebilir görünürdü** —
+  ve §3.2'nin sessiz boşluğu bulunmazdı. Yöntem, bulgunun parçası: bir formatı
+  sınamak, ona **uyan** örnekler yazmak değil, **uymayanı aramak**.
 - **`parse.failures` sağlayıcısının maliyetine bakmadım.** Parser kalite
   senaryosu bugün var olmayan bir sağlayıcı istiyor; taslak onu varmış gibi
   yazdı çünkü sorulan şey formatın şekliydi.
@@ -360,17 +397,25 @@ görünmüyor.
 
 ## 9 · Tereddütler
 
-1. **`constraints_waived` bir kaçış kapısı üretiyor.** Amacı kaçışı görünür
-   kılmak, ama görünür bir kaçış yine bir kaçış. `Exempt` kalıbında sayı sabit
-   tutuluyor (`ExpectedExemptCount`); buradaki karşılığı ne olurdu — muafiyetli
-   senaryo sayısını sabitlemek mi, yoksa her muafiyeti tek tek onaylamak mı?
-   Karar veremedim.
+1. ~~`constraints_waived` bir kaçış kapısı üretiyor.~~ **Çözüldü — ikisi
+   birden, ve alternatif değiller.**
 
-2. **`evidence` bloğunu serbest belge yapmak, doğrulamayı sağlayıcıya taşıyor.**
-   T34'ün çözümüyle tutarlı, ama bir bedeli var: bozuk bir `evidence` bloğu
-   artık yükleme anında değil **koşum anında** patlar. Yükleme anında yakalamak
-   için çekirdeğin şekli bilmesi gerekir — ki §3.3 tam olarak onun mümkün
-   olmadığını söylüyor. Bu gerilim çözülmedi.
+   `Exempt`'in dersi *"muafiyet görünür olsun"* değil, **"muafiyet eklemek iki
+   ayrı bilinçli hareket gerektirsin"**di. Karşılığı:
+
+   - **(a)** Muafiyet gerekçesini dosyada taşır; **boş dize kabul edilmez**.
+   - **(b)** Muaf senaryo **sayısı** bir test sabitiyle tutulur —
+     `ExpectedExemptCount`'un aynısı.
+
+   İkisi birlikte olunca muafiyet eklemek *plugin'i düzenle* **ve** *sabiti
+   düzenle* demek. Tek başına (a) kaçış kapısı; tek başına (b) gerekçesiz sayı.
+
+   Tereddüdüm doğruydu ama eksikti: **kaçışı pahalı yapan şey görünürlük değil,
+   ikinci hareket.**
+
+2. ~~`evidence` bloğunun doğrulaması koşum anına kayıyor.~~ **Çözüldü —
+   §6.1.** Gerilimi kaldıran şey, bulgu 1'de kullanılan bölmenin aynısı:
+   çekirdek **zarfı**, sağlayıcı **içeriği** doğruluyor.
 
 3. **`schedule` tetikleyicisini iki taslakta da kullandım** ve K20'nin dördünde
    yok. Kullanmasaydım iki senaryo da tetiklenemezdi; kullanınca K20'yi kendi
