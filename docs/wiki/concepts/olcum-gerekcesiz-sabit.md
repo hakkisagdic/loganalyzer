@@ -22,7 +22,8 @@ sources:
   - docs/epic/t10-kararlar/index.md
   - docs/epic/t12-kararlar/index.md
   - docs/epic/t29-sicak-yol-olcumu/index.md
-source_digest: "sha256-12/v1 docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t02-kararlar/index.md=b3cf84aad7ba docs/epic/t03-kararlar/index.md=0eafdbfe4ce2 docs/epic/t04-kararlar/index.md=f5befc3ecf24 docs/epic/t05-kararlar/index.md=fa28e6db349e docs/epic/t06-kararlar/index.md=3a34fdcba4c4 docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t09-kararlar/index.md=b21d65bda95a docs/epic/t10-kararlar/index.md=98995baaaacf docs/epic/t12-kararlar/index.md=454710cef295 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f"
+  - docs/epic/rca-raporu-ozelligi/index.md
+source_digest: "sha256-12/v1 docs/epic/rca-raporu-ozelligi/index.md=19b24b4f53e3 docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t02-kararlar/index.md=b3cf84aad7ba docs/epic/t03-kararlar/index.md=0eafdbfe4ce2 docs/epic/t04-kararlar/index.md=f5befc3ecf24 docs/epic/t05-kararlar/index.md=fa28e6db349e docs/epic/t06-kararlar/index.md=3a34fdcba4c4 docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t09-kararlar/index.md=b21d65bda95a docs/epic/t10-kararlar/index.md=98995baaaacf docs/epic/t12-kararlar/index.md=454710cef295 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f"
 summary: "Ticket belgelerinin çoğunda bir 'gerekçesi kayıtta yok' tablosu var. Bedeli T04'te ölçüldü — birbirine bağlı üç sayı birbirinden habersiz seçilmiş ve koruma penceresi kapanmıyor."
 provenance:
   extracted: 0.85
@@ -64,13 +65,24 @@ dolgu** koyuyor.
 | `ScrubSampleSize = 20` · `SegmentRetention = 48:00:00` | ham arşiv | `t04-kararlar` #2, #3 |
 | `MaxTotalBytes = 8 GB` · `RetryAfterSeconds = 5` | WAL / ingest kapısı | `t03-kararlar` #5 |
 | `PermitLimit = 4` · `QueueLimit = 8` | hız sınırı | `t10-kararlar` §2.6, §4.5 |
-| `lead: 30m` · `baseline: 7d` · `max_items: 400` · `max_duration: 60s` · `max_items: 3` · `max_items: 2` | **RCA senaryo plugin formatı** | `rca-raporu-ozelligi` §8.1 |
+| `lead: 30m` · ~~`baseline: 7d`~~ · `max_items: 400` · `max_duration: 60s` · `max_items: 3` · `max_items: 2` | **RCA senaryo plugin formatı** — `baseline` 2026-08-25'te **formattan çıkarıldı** | `rca-raporu-ozelligi` §8.1 |
 | `FailureThreshold=5` · `BreakDuration=5dk` · `Timeout=2sn` · `QueueCapacity=2048` · `SampleRate=%1` · `TemplateCacheCapacity=50 000` | sidecar | `t12-kararlar` §3 |
 | `sparseGrams(3, 20, 5)` | tam metin indeksi | `t02-kararlar` #2 |
 | `CA1863 = suggestion` · `InvariantGlobalization=false` · `rollForward: latestFeature` | derleme ayarları | `t01-kararlar` §2.2, §4 |
 | `admin`'in kapsam muafiyeti · denetim alanlarının `Truncate` edilmesi | kimlik | `t09-kararlar` §2.3, §4.4 |
 | `specificity` sıralamasının nasıl belirlendiği | dispatcher | `t06-kararlar` §6 |
 | `core` kümesinin neden tam bu on bir alan olduğu | normalizasyon | `t07-kararlar` §4.5 |
+
+### Bu sayfa kendi anlattığı boşluğa düşmüştü
+
+Altı RCA sabiti 2026-08-25'te envantere eklendi ve tablosunda kaynak olarak
+`rca-raporu-ozelligi` §8.1 yazıyordu — ama sayfanın `sources:` bildirimi o
+belgeyi **içermiyordu.** Yani sayfa ona dayanıyordu ve damga bekçisi onu
+izlemiyordu: §8.1 değiştiğinde sayfa bayat sayılmayacaktı.
+
+Gövdede anılan ile frontmatter'da bildirilen ayrıştığında bekçi **yeşil yanmaya
+devam eder** — bu sayfanın anlattığı sınıfın, sayfanın kendisine uygulanmış
+hâli. Kaynak 2026-08-25'te eklendi.
 
 ## Üç farklı boşluk, tek başlık altında
 
@@ -88,6 +100,19 @@ Belgeler farkı kendileri çiziyor:
 
 Üçüncüsü en sinsi: bir yorumun varlığı gerekçenin de yazıldığı izlenimini
 veriyor. ^[inferred]
+
+4. **Sayı iki yerde ve ikisi aynı şeyi söylemiyor.** 2026-08-25'te RCA
+   formatının beş kalan sabiti gözden geçirilirken ikisinde belgeyle kodun
+   ayrıştığı ölçüldü: format `max_duration: 60s` diyor, `GatherBudget.Default`
+   **20 saniye**; format `budget:` bloğunu altı sağlayıcının üstünde tek blok
+   olarak gösterip **toplam** gibi okutuyor, kodun yorumu ise *"tavan
+   **sağlayıcı başına** uygulanıyor"* diyor — altı sağlayıcıda 400 değil 2400'e
+   kadar. (`rca-raporu-ozelligi` §8.1)
+
+   Bu, ilk üçünden farklı: orada gerekçe eksikti, burada **sayının kendisi iki
+   farklı sayı**. Ve ikisi de sessiz — YAML'ı okuyan bir bütçe bekliyor, motor
+   başka birini uyguluyor. Ölçüm yapmadan önce hangisinin doğru olduğuna karar
+   verilmesi gerekiyor; yoksa ölçüm hangi sayıyı ölçtüğünü bilmez.
 
 ## Bedeli bir kez ölçüldü — T04'ün üç sayısı
 
@@ -170,3 +195,5 @@ bağlı sabitler birlikte seçilsin** — T04'ün üç sayısı ayrı ayrı maku
 - `docs/epic/t02-kararlar/index.md` — `ORDER BY` notu, açıkta kalanlar #2
 - `docs/epic/t05-kararlar/index.md` — §1, §4
 - `docs/epic/t29-sicak-yol-olcumu/index.md` — §3, örnekleme oranı
+- `docs/epic/rca-raporu-ozelligi/index.md` — §8.1: altı format sabiti, `baseline`'ın
+  formattan çıkarılması, belge↔kod ayrışması, kalan beşin ölçüm tarifi

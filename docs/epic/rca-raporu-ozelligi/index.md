@@ -563,8 +563,15 @@ spec:
   evidence:
     providers: [logs.first-seen, logs.volume, logs.silence,
                 logs.attribute-lift, logs.propagation, change.feed]
-    window: { lead: 30m, baseline: 7d }   # ⚠ ikisi de ölçülmedi — bkz. §8.1
-    budget: { max_items: 400, max_duration: 60s }   # ⚠ ölçülmedi — §8.1
+    window:
+      lead: 30m          # ⚠ seçildi, ölçülmedi — §8.1
+      # `baseline` BİLEREK ÖRNEKLENMİYOR. T35 süpürmesi bir sayı üretmedi:
+      # dik kuyruk → 7g, düz kuyruk → 1g, "seçilebilir taban yok". Buraya bir
+      # sayı yazmak, aksi ölçülmüş bir sayıyı ölçülmüş gibi çoğaltmak olurdu.
+      # Senaryoyu yazan kendi verisinde ölçüp yazacak — ölçümün tarifi §8.1'de.
+      # ŞART (F4 motoru): `baseline` zorunlu alan olmalı ve eksikse senaryo
+      # YÜKLENMEMELİ. Varsayılan verilirse bu satırın hiçbir anlamı kalmaz.
+    budget: { max_items: 400, max_duration: 60s }   # ⚠ ölçülmedi VE koddan farklı — §8.1
   steps:
     - id: rank-hypotheses
       task: "Kanıt listesinden en fazla 3 hipotez sırala."
@@ -597,9 +604,9 @@ an tartışılan alternatifler kayıtta değil.
 | Sabit | Ne yapıyor | Bugünkü zemin |
 | --- | --- | --- |
 | `lead: 30m` | Olay penceresi | Seçildi. Ölçülmedi |
-| `baseline: 7d` | Taban penceresi | **Ölçüldü ve çürüdü** — aşağıda |
-| `max_items: 400` | Kanıt bütçesi | Seçildi. Ölçülmedi |
-| `max_duration: 60s` | Toplama tavanı | Seçildi. Ölçülmedi |
+| ~~`baseline: 7d`~~ | Taban penceresi | **Ölçüldü, çürüdü, formattan ÇIKARILDI** (2026-08-25) — aşağıda |
+| `max_items: 400` | Kanıt bütçesi | Seçildi, ölçülmedi, **ve koddaki karşılığıyla aynı şeyi söylemiyor** |
+| `max_duration: 60s` | Toplama tavanı | Seçildi, ölçülmedi, **kodda 20s** |
 | `max_items: 3` | Hipotez tavanı | Seçildi. Ölçülmedi |
 | `max_items: 2` | Aksiyon tavanı | Seçildi. Ölçülmedi |
 
@@ -628,6 +635,13 @@ sayfasının anlattığı boşluğun aynısı, ve o sayfanın envanteri bu altı
 içermiyordu — çünkü onlar koddaki sabitleri sayıyordu, **bir tasarım
 belgesindeki format örneğini** değil.
 
+Altısı 2026-08-25'te o sayfaya eklendi, ve eklenirken ikinci bir boşluk çıktı:
+sayfa tablosunda kaynak olarak bu belgeyi gösteriyordu ama `sources:`
+bildiriminde **yoktu** — yani damga bekçisi onu izlemiyordu ve §8.1
+değiştiğinde sayfa bayat sayılmayacaktı. Gövdede anılan ile frontmatter'da
+bildirilenin ayrışması, sayfanın kendi anlattığı sınıfın kendisine uygulanmış
+hâli. Kaynak eklendi.
+
 #### Kural
 
 Bir spec örneğindeki her sayı ya **ölçülmüş** ya **seçilmiş ve gerekçeli** ya
@@ -637,6 +651,90 @@ edilemez.
 
 F4 başladığında altısı da ölçülecek. `7d` ise ölçülene kadar formatta
 **kalmamalı**: aksi ölçülmüş bir sayı, gerekçesiz bir sayıdan daha kötü.
+
+#### `baseline` formattan çıkarıldı — yerine ne kondu (2026-08-25)
+
+Ölçüt şuydu: **format örneği kopyalanarak çoğalır; kopyalayan ne görmeli?**
+Dört seçenek tartıldı:
+
+| Seçenek | Kopyalayan ne görür | Neden seçilmedi |
+| --- | --- | --- |
+| Anahtarı tamamen sil | Taban penceresi diye bir kavram yokmuş gibi | Kavram şart — "ilk-görülen imza" tabansız çalışmıyor. Ölçülmemiş olan sayı, kavram değil |
+| `baseline: null` | Yüklenen ama tabansız bir senaryo | Sessiz yanlış davranış: taban yokken her imza "ilk-görülen" olur ve ürün gürültü makinesine döner |
+| Başka bir sayı (`14d`, `30d`…) | Ölçülmüş bir sayı | Aynı kusurun yeni değeri. Süpürme *"seçilebilir taban yok"* dedi; herhangi bir sayı o cümleyi yalanlar |
+| **Anahtar örneklenmiyor + şart yazılı** | Yazması gereken bir alan, ve nasıl ölçüleceği | **Seçilen.** Kopyalayan eksik alanla kalıyor ve motor onu reddediyor — sessizce çalışan bir senaryo doğmuyor |
+
+Seçilenin bedeli açık: örnek YAML **olduğu gibi yüklenmiyor**. Kabul edildi —
+yüklenebilir bir örnek, ancak ölçülmemiş bir sayı taşıyarak yüklenebilirdi.
+
+**Şart F4 motoruna yazıldı:** `baseline` zorunlu alan olmalı ve eksikse senaryo
+yüklenmemeli. Varsayılan verilirse bu bölümün tamamı etkisiz kalır — varsayılan,
+formattaki sayının kod tarafındaki hâlidir.
+
+#### Formattaki iki sayı koddakiyle aynı şeyi söylemiyor (2026-08-25)
+
+`baseline`'ı çıkarırken diğer beşine bakıldı ve ikisinde **belgeyle kodun
+ayrıştığı** görüldü. Bu, "ölçülmemiş sayı"dan ayrı ve daha sinsi bir kusur:
+sayı yalnızca gerekçesiz değil, **iki yerde farklı**.
+
+| | Belge (§8 YAML) | Kod (`GatherBudget`) |
+| --- | --- | --- |
+| Birim | `budget:` tek blok, üstünde **altı** sağlayıcı → **toplam** gibi okunuyor | *"Tavan **sağlayıcı başına** uygulanıyor"* — açık yorum |
+| `max_items` | 400 | 400 · **sağlayıcı başına** → altı sağlayıcıda 2400'e kadar |
+| `max_duration` | **60s** | **20s** |
+
+İkisi de sessiz: YAML'ı okuyan 400 kanıt bekliyor, motor 2400'e kadar
+toplayabiliyor; 60 saniye bekliyor, sağlayıcı başına 20 saniye uygulanıyor.
+Hangisinin doğru olduğu bir **karar** ve bu bölümün sahibinin tek başına
+vereceği bir karar değil — burada yalnızca ayrışma kaydediliyor ve YAML'a
+işaretlendi. F4'ün ilk işi bu ikisini tek gerçeğe indirmek olmalı; ölçüm ondan
+sonra anlamlı.
+
+#### Kalan beş sabit — sayı önerilmiyor, **ölçüm tarif ediliyor**
+
+Bu bölümün kuralı gereği buraya sayı yazılmadı. Yazılan şey, *ne ölçülürse o
+sayının seçilebileceği*.
+
+| Sabit | Ölçülecek şey | Ön koşul | Dirseğin anlamı |
+| --- | --- | --- | --- |
+| `lead: 30m` | Altın kümedeki her olay için, pencere büyüdükçe (5dk…4sa) olayın **gerçek kanıtının** ne kadarı içeri giriyor ve ne kadar ilgisiz kanıt giriyor | Altın küme, **etiketli kanıtla** | Geri çağırmanın doyduğu yer |
+| `max_items: 400` | Kanıt sayısı arttıkça (25·50·100·200·400·800) **en üst hipotez kaç kez değişiyor** | Altın küme + sabit model | Hipotezin değişmeyi bıraktığı yer |
+| `max_duration` | Sessiz makinede toplama süresinin **dağılımı** (p50/p95), tek sayı değil | Sessiz makine (§6) | — |
+| `max_items: 3` | Altın kümede **gerçek kök nedenin sırası**: kaçıncı hipotezde çıkıyor | Altın küme, **etiketli kök nedenle** | Marjinal geri çağırmanın durduğu sıra |
+| `max_items: 2` | **Ölçülemiyor** — aşağıda | — | — |
+
+**`lead` ile `baseline` ayrı ayrı ölçülemez.** T35 süpürmesi tabanı süpürürken
+olay penceresini **45 dakikada sabitledi**; `lead` değişirse eğri de değişir.
+İkisi tek bir yüzey olarak süpürülmeli, yoksa ikinci sayı birincinin
+varsayımına dayanmış olur ve o varsayım kayıtta durmaz.
+
+**`max_duration` bir duvar saati sayısı ve §6 doğrudan uygulanıyor:** yüklü
+makinede sağlıklı bir toplama tavanı aşar, hızlı makinede tehlikeli bir toplama
+sığar. Tek bir saniye seçmek yerine ölçülmesi gereken şey dağılım; tavan da
+mutlak yerine **aynı koşumda alınan bir tabana oran** olmalı. Bugünkü `60s`/`20s`
+ikilisi zaten bu tartışmanın hiç yapılmadığının kanıtı.
+
+**`max_items: 2` (aksiyon) bu araçlarla ölçülemez.** Diğer dördü bir geri
+çağırma ya da yakınsama sorusu; bu bir **insan dikkati** sorusu ve cevabı ancak
+sahadan gelir (önerilen aksiyonların kaçı uygulandı). Buraya bir ölçüm tarif
+etmek, ölçülemeyecek bir şeyi ölçülebilir göstermek olurdu. Bölümün üçüncü hâli
+tam da bunun için var: **açıkça işaretli**. Kalıcı olarak öyle kalabilir.
+
+#### Aramadıklarım
+
+- **Altın kümenin (T37/T38) etiketli kanıt ve etiketli kök neden taşıyıp
+taşımadığına bakmadım.** Yukarıdaki dört ölçümün üçü buna dayanıyor; taşımıyorsa
+o üçü de ölçülemez ve önce küme etiketlenmeli.
+- **K6'nın yerel model bağlam bütçesini token cinsinden kaydedip
+kaydetmediğine bakmadım.** `max_items: 400`'ün ikinci gerekçesi (prompt'a kaç
+kanıt sığıyor) buna dayanıyor.
+- §2.1'e (prompt'a ne giriyor) baktım: **kanıt sayısına dair bir sınır yok** —
+içerik düzeyi ayarlanabilir bir parametre, adet sınırı değil. Yani `max_items`
+prompt tarafından ikinci kez sınırlanmıyor.
+- Kanıt toplayıcının kırpmayı **bildirip bildirmediğine baktım: bildiriyor.**
+`EvidenceSlice.Truncated` var ve `EvidenceBundle` onu paket düzeyine taşıyor.
+Yani bütçe aşıldığında rapor "eksik kanıtla kuruldu" diyebiliyor; bu kalem
+kapalı.
 
 `constraint: evidence_ids_must_exist` **motorda zorlanır**, prompt'ta rica edilmez:
 var olmayan bir `evidence_id` üreten adım reddedilir ve bir kez yeniden denenir.
