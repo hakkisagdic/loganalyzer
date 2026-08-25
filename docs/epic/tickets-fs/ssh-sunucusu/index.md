@@ -1,7 +1,7 @@
 ---
 title: "S03 — N2: gerçek SSH sunucusu"
 kind: ticket
-status: 0
+status: 1
 ---
 
 # S03 — N2: gerçek SSH sunucusu (container)
