@@ -275,6 +275,15 @@ public sealed class ScenarioEngineFlowTests
         //
         // Karşılaştırma aynı koşumdan alınan bir tabana yapılmalı, mutlak bir
         // sayıya değil (§6): yüklü makinede mutlak bütçe makineyi ölçer.
-        Assert.Fail("Koşturulmadı — üstteki Skip gerekçesine bakın.");
+
+        // ⚠ BU SATIRI SİLMEYİN — `Skip` ile birlikte çalışıyor.
+        //
+        // `Skip` kaldırıldığı gün gövde boş olsaydı test SESSİZCE GEÇERDİ ve
+        // ölçülmemiş bir iddia ölçülmüş görünürdü. Bu depoda "bekçinin sessizce
+        // atlaması, bekçinin kendisinden tehlikelidir" diye ölçülmüş bir sınıf;
+        // içi boş bir iskeletin yeşil dönmesi sahte yeşildir.
+        //
+        // Gövde yazıldığında bu satır onunla birlikte gider.
+        Assert.Fail("İskelet: gövde yazılmadan bu test geçmemeli. Skip gerekçesine bakın.");
     }
 }
