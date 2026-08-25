@@ -21,7 +21,7 @@ sources:
   - docs/epic/t37-rapor-ekrani/index.md
   - docs/epic/tickets-f3/altin-kume/index.md
   - docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md
-source_digest: "sha256-12/v1 docs/epic/rca-raporu-ozelligi/index.md=0b8e30f57aa9 docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t35-korelasyonlar/index.md=90159516d982 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/altin-kume/index.md=9bb15adc35bc docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=ac521c3bdece"
+source_digest: "sha256-12/v1 docs/epic/rca-raporu-ozelligi/index.md=0b8e30f57aa9 docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t35-korelasyonlar/index.md=90159516d982 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/altin-kume/index.md=9bb15adc35bc docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=75e5f331bd85"
 summary: RCA'nın tek gerçek riski inandırıcı ama yanlış rapor; tasarımın tamamı bu tek riske karşı kurulu. F3 kanıtı LLM'siz üretiyor, saklıyor ve raporun her dürüstlük satırını mekanizmaya bağlıyor.
 provenance:
   extracted: 0.85
@@ -83,13 +83,19 @@ RCA belgesinden alınıp F3'te birer mekanizmaya çevrildi:
    döndü (T41): dört aday bileşenden `SecretRedactor` **ikame** yarısını zaten
    çözüyor — bilinen bir dizgeyi parça parça söküyor. Eksik olan ona *neyi*
    maskeleyeceğini söyleyecek taraf. Yani taban bir **ikame** sorunu değil bir
-   **keşif** sorunu, ve o keşfin ölçütleri hâlâ açık: entropi mi, bilinen
-   anahtar biçimleri mi, üretici söz dizimi mi.
+   **keşif** sorunu.
 
    Keşfin asimetrisi burada da aynı aileden: **sırrı kaçırmak görünmüyor**
    (hata yok, sayaç yok), **fazla maskelemek görünüyor** — 2. kuralın atılan
    cümle sayacı yükseliyor. İki hata yönü eşit değil, ve eşit olmayan taraf
    ölçülebilirlik.
+
+   **Ve bu asimetri kapının şeklini belirledi** (T41, aynı gün): üç katman —
+   üretici söz dizimi ve dar bir bilinen-biçim kümesi (PEM, JWT,
+   `Authorization`) **maskeliyor**, entropi **yalnızca sayıyor**. Entropinin
+   gölgede tutulmasının tek sebebi yukarıdaki satır: maliyeti fazla maskeleme
+   olan katman, ürüne girmeden önce kaç şeye dokunacağını ölçüyor. Terfi ayrı
+   bir karar.
 
 ## Sınırın nereden geçtiği
 
