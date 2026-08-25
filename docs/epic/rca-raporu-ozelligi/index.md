@@ -94,6 +94,61 @@ flowchart LR
  modelle rapor yeniden koşturulabilir. Bu, model değiştiğinde regresyon testi
  yapmayı ve iki modeli aynı girdide karşılaştırmayı mümkün kılar.
 
+### 2.1 · Prompt'a ne giriyor — karar (2026-08-25)
+
+K6 *"log verisi kurum dışına çıkmaz"* diyor ve bu **ağ sınırını** çiziyor.
+Prompt'un **içeriği** ayrı bir soru: yerel bir model de olsa prompt'un içinde
+müşteri log satırları ve onların taşıdığı sırlar var.
+
+İki uç da yanlış:
+
+| | Ham `raw_data` gider | Yalnızca kanıt özetleri gider |
+| --- | --- | --- |
+| Model ne görür | Log satırının kendisi | *"12 cihaz sustu, 3 yeni imza"* |
+| Riski | Prompt'ta müşteri verisi ve sırlar | Bağlam kaybı → **uydurma artar** |
+
+İkincisinin riski sezgiye aykırı ama ölçülebilir: içeriği kısmak halüsinasyonu
+azaltmıyor, **artırıyor** — ve §2'nin *"referanssız cümleyi at"* kararı bunun
+maliyetini doğrudan yükseltiyor.
+
+**Karar: içerik düzeyi ayarlanabilir bir parametre, sınır değil.**
+
+Üç düzey — `summary` · `masked` · `raw` — ve hangisinin işe yaradığını
+**ölçüm söylüyor**: §2 gereği atılan cümle zaten sayılıyor, §3 gereği paket
+saklanıyor, yani **aynı paket üzerinde iki düzey karşılaştırılabiliyor.**
+Sınırı baştan çizmek yerine sınırı ölçen bir düzenek kuruluyor.
+
+#### Ama bir taban var ve o ayarlanabilir değil
+
+Sır içeren bir satır **hiçbir düzeyde** prompt'a girmemeli. Bu bir parametre
+değil bir değişmez.
+
+Ve bugün o tabanı sağlayacak bir bileşen **yok**. Üçü de aday görünüyor ve
+üçü de değil:
+
+| Bileşen | Gerçekte ne yapıyor | Neden taban olamaz |
+| --- | --- | --- |
+| `catalog/masks/*.yaml` | Şablon madenciliği — `IPV4`, `NUMBER` gibi **değişken** kısımları gizliyor | Amacı imza kararlılığı, redaksiyon değil. Maskeleri grok pattern adları; modelin ihtiyacı olan bağlamı siler, sırrı kaçırır |
+| `SecretProtector` | Saklanan kanal sırlarını AES-256-GCM ile **şifreliyor** | Girdisi yapılandırma alanı, log metni değil |
+| Config scrub (T04) | Cihaz config'inde sır maskeliyor | Girdisi cihaz config'i, log satırı değil |
+
+Birincisinin yetmeyeceği ayrıca **ölçüldü**: ASA'nın gerçek IKEv2 söz dizimi
+belirteç sınırını aşıyordu ve ham anahtar normalize edilmiş metinde kalıyordu
+(FS S01'in fixture'ları buldu). Yani maske kataloğu **kanıtlanmış biçimde**
+bir sır redaksiyon kapısı değil.
+
+#### Sonucu: bugün yalnızca `summary` sevk edilebilir
+
+`masked` ve `raw` düzeyleri **taban var olana ve kırmızı yanabildiği
+ölçülene kadar açılmıyor**. Bu bir erteleme değil bir sıralama: tabanı
+olmayan bir düzeyi "şimdilik" açmak, bu deponun yedi kez adını koyduğu şeyi
+yapmak olurdu — ölçülmemiş bir sınırı çalışıyor saymak.
+
+Taban ayrı bir kalem ve F4'ün önkoşulu. Kapsamı: log metninde sır tanıma,
+kırmızı yanabildiğinin ölçülmesi, ve **neyi tanıyamadığının yazılması** —
+çünkü hiçbir redaksiyon kapısı tam değildir ve tam olduğu iddiası, olmadığı
+iddiasından tehlikelidir.
+
 ## 3. Kanıt sağlayıcı sözleşmesi (F3'te beş tür de tanımlı)
 
 RCA motoru ClickHouse'u **doğrudan sorgulamaz**. Sağlayıcılara sorar:

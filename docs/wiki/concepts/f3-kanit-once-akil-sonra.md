@@ -20,7 +20,7 @@ sources:
   - docs/epic/t36-devir-notu/index.md
   - docs/epic/t37-rapor-ekrani/index.md
   - docs/epic/tickets-f3/altin-kume/index.md
-source_digest: "sha256-12/v1 docs/epic/rca-raporu-ozelligi/index.md=ea61d3fffdb9 docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t35-korelasyonlar/index.md=90159516d982 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/altin-kume/index.md=9bb15adc35bc"
+source_digest: "sha256-12/v1 docs/epic/rca-raporu-ozelligi/index.md=d84d34e70f61 docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t35-korelasyonlar/index.md=90159516d982 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/altin-kume/index.md=9bb15adc35bc"
 summary: RCA'nın tek gerçek riski inandırıcı ama yanlış rapor; tasarımın tamamı bu tek riske karşı kurulu. F3 kanıtı LLM'siz üretiyor, saklıyor ve raporun her dürüstlük satırını mekanizmaya bağlıyor.
 provenance:
   extracted: 0.85
@@ -63,6 +63,19 @@ RCA belgesinden alınıp F3'te birer mekanizmaya çevrildi:
 3. **Kanıt paketi saklanır → rapor tekrar üretilebilir.** Aynı paket üzerinde
    farklı model/prompt koşturulabiliyor; "yerel model yeterli mi" sorusunun tek
    ölçülebilir hâli bu.
+
+   **Ve F4'ün prompt kararı buna dayanıyor** (2026-08-25): içerik düzeyi
+   (`summary` · `masked` · `raw`) bir **sınır değil ayarlanabilir parametre**,
+   çünkü hangisinin işe yaradığını ölçüm söyleyebiliyor — atılan cümle 2.
+   kural gereği sayılıyor, paket bu kural gereği saklanıyor, yani aynı paket
+   üzerinde iki düzey karşılaştırılabiliyor.
+
+   Ama **taban ayarlanabilir değil**: sır içeren satır hiçbir düzeyde prompt'a
+   girmemeli, ve bugün o tabanı sağlayan bileşen **yok**. Maske kataloğu
+   şablon madenciliği için yazıldı ve bir sır redaksiyon kapısı **olmadığı
+   ölçüldü** — ASA'nın IKEv2 söz dizimi belirteç sınırını aşıyordu, ham anahtar
+   normalize edilmiş metinde kalıyordu. Bu yüzden bugün yalnızca `summary`
+   sevk edilebilir; `masked` ve `raw` taban ölçülene kadar kapalı.
 
 ## Sınırın nereden geçtiği
 
