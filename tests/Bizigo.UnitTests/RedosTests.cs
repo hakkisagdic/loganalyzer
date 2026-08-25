@@ -109,6 +109,32 @@ public sealed class RedosTests
         Assert.Contains(findings, f => f.Code == "GROK003");
     }
 
+    /// <summary>
+    /// <b><c>GROK003</c> karantina iddiasında bulunmuyor.</b>
+    ///
+    /// <para>
+    /// Mesaj eskiden *"50 ms zaman aşımı ve <b>karantina devrede</b>"* diyordu.
+    /// Karantina hiçbir yerde sıcak yola bağlı değil (T05 ölçümü:
+    /// <c>ParserQuarantine</c> üretimde hiç örneklenmiyor, <c>parsers.quarantined</c>
+    /// kolonuna kimse yazmıyor), yani bir bekçi operatöre <b>yanlış</b> söylüyordu —
+    /// bu deponun en pahalı hata sınıfı (§7), üstelik bekçinin kendi ağzından.
+    /// </para>
+    ///
+    /// <para>
+    /// Bu test metnin yokluğunu tutuyor, varlığını değil: doğru düzeltme iddiayı
+    /// <b>kaldırmak</b>, yerine *"karantina devrede değil"* koymak değil. İkincisi
+    /// bugün doğru olurdu ve karantina bağlandığı gün yeniden yanlışlaşırdı.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Geri_izleme_bulgusu_karantina_iddiasinda_bulunmuyor()
+    {
+        var finding = Assert.Single(
+            RedosLinter.Inspect(Bare.Compile(@"(?<!x)abc")), f => f.Code == "GROK003");
+
+        Assert.DoesNotContain("karantina", finding.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void Yan_yana_jokerler_uyari_uretir()
     {

@@ -42,12 +42,21 @@ public sealed class EventComposer(
 
         var result = dispatcher.Dispatch(record.Decoded.Body, source.ParserId);
 
-        if (result.Result.TimedOut)
+        // Zaman aşımı karantina sinyali (F1 §4.1 kademe 3); görünür olmalı.
+        //
+        // Dispatcher'ın listesinden okunuyor, DÖNEN sonucun bayrağından değil:
+        // zaman aşımına uğrayan parser çoğu zaman dönmüyor. Varsayılan
+        // `on_failure: fail` ile zaman aşımı `failed` üretiyor, dispatcher da
+        // `failed` sonucu "uymadı" diye eleyip sıradakine geçiyor. Eskiden bu
+        // satır `result.Result.TimedOut`'a bakıyordu ve sevk edilen kataloğun
+        // tamamında — 14 grok adımının hiçbiri `on_failure` yazmıyor — HİÇ
+        // ateşlenmiyordu (T05 ölçümü).
+        foreach (var timedOut in result.TimedOutParsers)
         {
-            // Zaman aşımı karantina sinyali (F1 §4.1 kademe 3); görünür olmalı.
             logger.LogWarning(
-                "Parser {Parser} zaman aşımına uğradı ({Source}).",
-                result.Result.ParserId,
+                "Parser {Parser}@{Version} zaman aşımına uğradı ({Source}).",
+                timedOut.ParserId,
+                timedOut.ParserVersion,
                 source.SourceId);
         }
 

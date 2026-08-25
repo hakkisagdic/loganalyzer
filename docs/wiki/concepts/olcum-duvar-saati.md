@@ -18,7 +18,7 @@ sources:
   - docs/epic/t07-kararlar/index.md
   - docs/epic/t12-kararlar/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=d76db5d0b76a docs/epic/t05-kararlar/index.md=42f651e08f8b docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t08-kararlar/index.md=0ef90b5576bc docs/epic/t08-motor-geri-beslemesi/index.md=5ce87e36f831 docs/epic/t12-kararlar/index.md=454710cef295 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f"
+source_digest: "sha256-12/v1 CLAUDE.md=d76db5d0b76a docs/epic/t05-kararlar/index.md=fa28e6db349e docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t08-kararlar/index.md=0ef90b5576bc docs/epic/t08-motor-geri-beslemesi/index.md=5ce87e36f831 docs/epic/t12-kararlar/index.md=454710cef295 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f"
 summary: Mutlak süre bütçesi pattern'in davranışını değil makinenin o anki hızını ölçer. Bu depoda üç kez oldu; ikisi teste, biri ürünün kendisine sızdı.
 provenance:
   extracted: 0.85
@@ -75,20 +75,39 @@ Somut gözlem, makine swap %89'dayken tek oturumda:
 | `parser test` bir koşumda | düz literal alternasyonu bir pattern "zaman aşımına uğradı" dedi — lookaround yok, `NonBacktracking` ile derleniyor, girdide doğrusal |
 | `dotnet test` bir koşumda | 4 test düştü; ardışık koşumda 301/301 geçti |
 
-Bedeli üç yönlü ve belgede sayılı: (1) sonuç `failed`, yani *"motor meşguldü"*
-ile *"bu satır bu parser'a uymuyor"* ayırt edilemiyor ve satır keşif kuyruğuna
-düşüyor; (2) sürekli timeout veren parser karantinaya alındığı için **sağlıklı
-bir parser karantinaya girebilir** — arıza pattern'de değil makinede; (3)
-`parser coverage` kapısı `failed > 0` ise kırıyor, yani yüklü bir runner'da
-rastgele kırılma.
+Bedeli üç yönlü yazılmıştı: (1) sonuç `failed`, yani *"motor meşguldü"* ile
+*"bu satır bu parser'a uymuyor"* ayırt edilemiyor ve satır keşif kuyruğuna
+düşüyor; (2) sürekli timeout veren parser karantinaya alındığı için sağlıklı bir
+parser karantinaya girebilir; (3) `parser coverage` kapısı `failed > 0` ise
+kırıyor, yani yüklü bir runner'da rastgele kırılma.
 
-Madde **hâlâ açık**: öneriler (ayrı bir `engine_busy` statüsü, karantinanın
-orana bakması, doğrusal ifadede `Regex.InfiniteMatchTimeout`) yazıldı,
-uygulanmadı. (`docs/epic/t08-motor-geri-beslemesi/index.md` §10 ve
-`docs/epic/t08-kararlar/index.md` §3, satır 10)
+> **İkinci madde ölçüldü ve doğru değil** (T05, bu tur). Karantina hiçbir yerde
+> sıcak yola bağlı değil: `ParserQuarantine` üretimde **hiç örneklenmiyor** ve
+> `parsers.quarantined` kolonuna **kimse yazmıyor**. Yani sağlıklı bir parser
+> karantinaya giremez — hiçbir parser giremez. Tehlike gerçek değil; **bekçi
+> yok**. (`docs/epic/t05-kararlar/index.md` §4, ölçüm 4)
+
+Maddenin bugünkü hâli, yazıldığı hâlinden farklı ve üç öneri de aynı yerde
+durmuyor:
+
+| Öneri | Durum |
+| --- | --- |
+| Doğrusal ifadede `Regex.InfiniteMatchTimeout` | **Uygulanmış.** `GrokCompiler:93`, gerekçesi yanında yazılı |
+| Ayrı bir `engine_busy` statüsü | **Reddedildi.** Tüketicisi yok (§8) *ve* üreticisi ateşlenmezdi |
+| Karantinanın orana bakması | **Reddedildi.** Sınıf zaten pencere içi sayı, yani bir hız — ve hiçbir yere bağlı değil |
+
+Reddedilen ikisinin ortak önkoşulu vardı ve o kapandı: zaman aşımı bilgisi
+dispatcher'da düşüyordu. Varsayılan `on_failure: fail` ile zaman aşımı `failed`
+üretiyor, dispatcher da `failed` sonucu *"uymadı"* diye eleyip sıradakine
+geçiyordu — bayrak da elenen sonucun içinde eleniyordu. Sevk edilen katalogda
+**14 grok adımının hiçbiri `on_failure` yazmıyor**, yani bu yol istisna değil
+**tek yol**du. `DispatchResult.TimedOutParsers` bilgiyi taşıyor.
+(`docs/epic/t05-kararlar/index.md` §4, ölçüm 3)
 
 Bu, [[concepts/sessiz-yanlis-davranis]] sınıfının bu dilimdeki en temiz örneği:
-hata yok, sayaç yok, yalnızca farklı bir sonuç.
+hata yok, sayaç yok, yalnızca farklı bir sonuç. Karantina bulgusu ise bir adım
+ötesi — **belirti üretmeyen davranış değil, hiç var olmayan mekanizma**, üstelik
+üç ayrı yerde (belge, linter mesajı, DB süzgeci) var gibi görünen.
 
 ## Örnek 3 — doğru biçim: mutlak bütçe yerine aynı süreçte oran
 
@@ -142,6 +161,11 @@ seyrek yanıltıcı yapar. ^[inferred]
 - 50 ms `matchTimeout` değerinin nereden geldiği üç belgede de *"kayıtta yok"*
   diye işaretli — bkz. [[concepts/olcum-gerekcesiz-sabit]]. Duvar saati sorunu
   çözülse bile o sayı yerinde kalıyor. ^[ambiguous]
+- T05 bu soruyu **bilerek ikinci sıraya aldı**: *"kaç olmalı"*nın cevabı
+  `matchTimeout`'un **ne ölçmesi gerektiğine** bağlı, ve bugün ürettiği bilgi
+  kayda hiç girmediği için sayının ölçülebilir bir zemini yoktu. Zeminin ilk
+  taşı (bilginin taşınması) bu turda kondu; sayının kendisi hâlâ açık.
+  ^[ambiguous]
 
 ## Kaynaklar
 
