@@ -75,6 +75,17 @@ public sealed class SimulatedDeviceTransport : IDeviceTransport
                 $"'{_profile.Id}' profilinin config yüzeyi yok."));
         }
 
+        // ÖNCE YÜZEY, SONRA PROFİL (S04).
+        //
+        // Sıra önemli: `saat-kaymasi` config sözlüğünde aranırsa bulunamaz ve
+        // hata "profilde böyle bir senaryo yok" der — yani arıza profil
+        // dosyasında aranır. Oysa senaryo var, yalnızca BAŞKA BİR YÜZEYE ait.
+        // Motor bunu önce söylüyor.
+        if (Scenarios.Reject(_scenario, ScenarioSurface.Config) is { } yuzeyHatasi)
+        {
+            return Task.FromResult(new DeviceCommandResult(false, string.Empty, yuzeyHatasi));
+        }
+
         var relative = _scenario.Length == 0
             ? _profile.Config.Baseline
             : _profile.Config.Scenarios.TryGetValue(_scenario, out var senaryoYolu)
@@ -83,15 +94,16 @@ public sealed class SimulatedDeviceTransport : IDeviceTransport
 
         if (relative is null)
         {
-            // Bilinmeyen senaryo SESSİZCE baseline'a düşmüyor. Düşseydi, adı
-            // yanlış yazılmış bir senaryo testi yeşil bırakır ve "fark yok"
-            // sonucu doğru sanılırdı.
+            // Buraya düşen senaryo TANINIYOR ve config yüzeyine ait — ama bu
+            // profil onu taşımıyor. Yukarıdaki hatadan farklı bir durum ve
+            // farklı bir cümle: eksik olan senaryo değil, profilin o senaryoyu
+            // karşılayan dosyası.
             var bilinen = string.Join(", ", _profile.Config.Scenarios.Keys.Order(StringComparer.Ordinal));
 
             return Task.FromResult(new DeviceCommandResult(
                 false,
                 string.Empty,
-                $"'{_profile.Id}' profilinde '{_scenario}' senaryosu yok. Bilinenler: {bilinen}"));
+                $"'{_profile.Id}' profilinde '{_scenario}' senaryosu tanımlı değil. Bu profilde olanlar: {bilinen}"));
         }
 
         var path = Path.Combine(_profileDirectory, relative);
