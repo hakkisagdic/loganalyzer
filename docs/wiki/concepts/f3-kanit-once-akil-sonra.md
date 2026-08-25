@@ -20,7 +20,8 @@ sources:
   - docs/epic/t36-devir-notu/index.md
   - docs/epic/t37-rapor-ekrani/index.md
   - docs/epic/tickets-f3/altin-kume/index.md
-source_digest: "sha256-12/v1 docs/epic/rca-raporu-ozelligi/index.md=4ebf1418e87b docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t35-korelasyonlar/index.md=90159516d982 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/altin-kume/index.md=9bb15adc35bc"
+  - docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md
+source_digest: "sha256-12/v1 docs/epic/rca-raporu-ozelligi/index.md=4ebf1418e87b docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t35-korelasyonlar/index.md=90159516d982 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/altin-kume/index.md=9bb15adc35bc docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=75e5f331bd85"
 summary: RCA'nın tek gerçek riski inandırıcı ama yanlış rapor; tasarımın tamamı bu tek riske karşı kurulu. F3 kanıtı LLM'siz üretiyor, saklıyor ve raporun her dürüstlük satırını mekanizmaya bağlıyor.
 provenance:
   extracted: 0.85
@@ -73,9 +74,34 @@ RCA belgesinden alınıp F3'te birer mekanizmaya çevrildi:
    Ama **taban ayarlanabilir değil**: sır içeren satır hiçbir düzeyde prompt'a
    girmemeli, ve bugün o tabanı sağlayan bileşen **yok**. Maske kataloğu
    şablon madenciliği için yazıldı ve bir sır redaksiyon kapısı **olmadığı
-   ölçüldü** — ASA'nın IKEv2 söz dizimi belirteç sınırını aşıyordu, ham anahtar
-   normalize edilmiş metinde kalıyordu. Bu yüzden bugün yalnızca `summary`
-   sevk edilebilir; `masked` ve `raw` taban ölçülene kadar kapalı.
+   ölçüldü** — kendi altın kümesinde `Failed password for admin from 10.1.2.3`
+   girdisi `Failed password for admin from <IPV4>` çıkıyor: **IP gitti,
+   "password" durdu.** Bu yüzden bugün yalnızca `summary` sevk edilebilir;
+   `masked` ve `raw` taban ölçülene kadar kapalı.
+
+   Aynı boşluğun ikinci ölçümü redaksiyon yapan tarafta: ASA'nın IKEv2 söz
+   dizimi `ConfigNormalizer`'ın belirteç sınırını aşıyordu ve ham anahtar
+   normalize edilmiş metinde kalıyordu. İkisi farklı bileşen ve farklı hata —
+   biri **yanlış şeyi** siliyor, diğeri **doğru şeyi eksik** siliyor — ama
+   ikisi de aynı sonuca çıkıyor: sır tabanı bugün hiçbir bileşenin işi değil.
+
+   Tabanın **niye** yok olduğu 2026-08-25'te keskinleşti ve ayrı bir ticket'a
+   döndü (T41): dört aday bileşenden `SecretRedactor` **ikame** yarısını zaten
+   çözüyor — bilinen bir dizgeyi parça parça söküyor. Eksik olan ona *neyi*
+   maskeleyeceğini söyleyecek taraf. Yani taban bir **ikame** sorunu değil bir
+   **keşif** sorunu.
+
+   Keşfin asimetrisi burada da aynı aileden: **sırrı kaçırmak görünmüyor**
+   (hata yok, sayaç yok), **fazla maskelemek görünüyor** — 2. kuralın atılan
+   cümle sayacı yükseliyor. İki hata yönü eşit değil, ve eşit olmayan taraf
+   ölçülebilirlik.
+
+   **Ve bu asimetri kapının şeklini belirledi** (T41, aynı gün): üç katman —
+   üretici söz dizimi ve dar bir bilinen-biçim kümesi (PEM, JWT,
+   `Authorization`) **maskeliyor**, entropi **yalnızca sayıyor**. Entropinin
+   gölgede tutulmasının tek sebebi yukarıdaki satır: maliyeti fazla maskeleme
+   olan katman, ürüne girmeden önce kaç şeye dokunacağını ölçüyor. Terfi ayrı
+   bir karar.
 
 ## Sınırın nereden geçtiği
 
