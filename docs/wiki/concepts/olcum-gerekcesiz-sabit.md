@@ -48,12 +48,23 @@ reddedilen alternatifler kayıtta yok.* Ama boşluk yalnızca alternatifte deği
 
 ## Envanter
 
+Envanter önce yalnızca **koddaki** sabitleri sayıyordu. 2026-08-25'te altı
+tanesi bir **tasarım belgesinin format örneğinden** eklendi ve o ayrım kayda
+değer: bir spec örneğindeki sayı kopyalanarak çoğalıyor, yani gerekçesizliği
+koddakinden hızlı yayılıyor.
+
+İçlerinden biri (`baseline: 7d`) yalnızca gerekçesiz değil **aksi ölçülmüş** —
+T35'in süpürmesi *"seçilebilir taban yok"* dedi. Aksi ölçülmüş bir sayı,
+gerekçesiz bir sayıdan kötü: ilki boşluk bırakıyor, ikincisi **yanlış bir
+dolgu** koyuyor.
+
 | Sabit | Nerede | Belge |
 | --- | --- | --- |
 | `matchTimeout = 50 ms` | grok motoru | `t05-kararlar` §1, §4 · `t08-motor-geri-beslemesi` §10 |
 | `ScrubSampleSize = 20` · `SegmentRetention = 48:00:00` | ham arşiv | `t04-kararlar` #2, #3 |
 | `MaxTotalBytes = 8 GB` · `RetryAfterSeconds = 5` | WAL / ingest kapısı | `t03-kararlar` #5 |
 | `PermitLimit = 4` · `QueueLimit = 8` | hız sınırı | `t10-kararlar` §2.6, §4.5 |
+| `lead: 30m` · `baseline: 7d` · `max_items: 400` · `max_duration: 60s` · `max_items: 3` · `max_items: 2` | **RCA senaryo plugin formatı** | `rca-raporu-ozelligi` §8.1 |
 | `FailureThreshold=5` · `BreakDuration=5dk` · `Timeout=2sn` · `QueueCapacity=2048` · `SampleRate=%1` · `TemplateCacheCapacity=50 000` | sidecar | `t12-kararlar` §3 |
 | `sparseGrams(3, 20, 5)` | tam metin indeksi | `t02-kararlar` #2 |
 | `CA1863 = suggestion` · `InvariantGlobalization=false` · `rollForward: latestFeature` | derleme ayarları | `t01-kararlar` §2.2, §4 |

@@ -20,7 +20,7 @@ sources:
   - docs/epic/tickets-f3/index.md
   - docs/epic/rca-raporu-ozelligi/index.md
   - docs/epic/sigma-clickhouse-arastirmasi/index.md
-source_digest: "sha256-12/v1 docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=dff063df9345 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=e6589b0ed6b1"
+source_digest: "sha256-12/v1 docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=2bb9073c04d2 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=e6589b0ed6b1"
 summary: F3'ün iki kolu (Sigma detection ve RCA kanıtı), planı yarı yarıya değiştiren template_id bulgusu, on ticket'ın bugünkü durumu ve fazın sayılarının neden bağlayıcı olmadığı.
 provenance:
   extracted: 0.85

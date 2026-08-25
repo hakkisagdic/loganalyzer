@@ -467,15 +467,15 @@ spec:
   evidence:
     providers: [logs.first-seen, logs.volume, logs.silence,
                 logs.attribute-lift, logs.propagation, change.feed]
-    window: { lead: 30m, baseline: 7d }
-    budget: { max_items: 400, max_duration: 60s }
+    window: { lead: 30m, baseline: 7d }   # ⚠ ikisi de ölçülmedi — bkz. §8.1
+    budget: { max_items: 400, max_duration: 60s }   # ⚠ ölçülmedi — §8.1
   steps:
     - id: rank-hypotheses
       task: "Kanıt listesinden en fazla 3 hipotez sırala."
       input: evidence.summary
       output:                      # tek iş, tek sözleşme
         schema: hypothesis_list
-        max_items: 3
+        max_items: 3            # ⚠ seçildi, ölçülmedi — §8.1
     - id: bind-evidence
       task: "Her hipotezi destekleyen ve çelişen kanıt kimliklerini eşle."
       input: [steps.rank-hypotheses, evidence.items]
@@ -487,10 +487,60 @@ spec:
       input: steps.bind-evidence
       output:
         schema: action_list
-        max_items: 2
+        max_items: 2            # ⚠ seçildi, ölçülmedi — §8.1
   publish:
     requires_review: true          # K16 — aksiyon alan senaryo onaysız yayınlanmaz
 ```
+
+### 8.1 · Formattaki sayıların hiçbiri ölçülmedi (2026-08-25)
+
+Yukarıdaki YAML **altı sabit** taşıyor ve altısının da gerekçesi hiçbir yerde
+yok. Ölçüldü: her biri bu belgede **tam bir kez** geçiyor — yani seçildikleri
+an tartışılan alternatifler kayıtta değil.
+
+| Sabit | Ne yapıyor | Bugünkü zemin |
+| --- | --- | --- |
+| `lead: 30m` | Olay penceresi | Seçildi. Ölçülmedi |
+| `baseline: 7d` | Taban penceresi | **Ölçüldü ve çürüdü** — aşağıda |
+| `max_items: 400` | Kanıt bütçesi | Seçildi. Ölçülmedi |
+| `max_duration: 60s` | Toplama tavanı | Seçildi. Ölçülmedi |
+| `max_items: 3` | Hipotez tavanı | Seçildi. Ölçülmedi |
+| `max_items: 2` | Aksiyon tavanı | Seçildi. Ölçülmedi |
+
+**`baseline: 7d` özel bir durum ve bu belgenin en tehlikeli satırı.** T35'in
+baseline süpürmesi koştu ve şunu üretti:
+
+```
+dik kuyruk (zipf 2.0) → dirsek 7g
+düz kuyruk (zipf 1.4) → dirsek 1g
+SEÇİLEBİLİR TABAN YOK.
+```
+
+Dirsek tohumlama düğmesiyle **yedi kat** kayıyor. Yani `7d` yalnızca
+gerekçesiz değil — **aksi ölçülmüş** bir sayı. Formatta durması onu ölçülmüş
+gibi gösteriyor, ve bir format örneği kopyalanarak çoğalır.
+
+#### Bunun nasıl bulunduğu, bulunanın kendisinden önemli
+
+`7d`'yi fark ettim çünkü **onu ölçmüştüm**. Diğer beşini aramadım — ve
+arayınca beşinin de aynı durumda olduğu çıktı. Yani ilk tepkim *"şu sayıyı
+düzelteyim"* olsaydı, bildiğim biri düzelir, bilmediğim beşi
+**ölçülmüş görünmeye devam ederdi.**
+
+Bu, [gerekçesi kayıtta olmayan sabit](../../wiki/concepts/olcum-gerekcesiz-sabit.md)
+sayfasının anlattığı boşluğun aynısı, ve o sayfanın envanteri bu altısını
+içermiyordu — çünkü onlar koddaki sabitleri sayıyordu, **bir tasarım
+belgesindeki format örneğini** değil.
+
+#### Kural
+
+Bir spec örneğindeki her sayı ya **ölçülmüş** ya **seçilmiş ve gerekçeli** ya
+da **açıkça işaretli** olmalı. Üçüncüsü kabul edilebilir; işaretsiz olan
+değil — çünkü işaretsiz bir sayı, okuyan için ölçülmüş bir sayıdan ayırt
+edilemez.
+
+F4 başladığında altısı da ölçülecek. `7d` ise ölçülene kadar formatta
+**kalmamalı**: aksi ölçülmüş bir sayı, gerekçesiz bir sayıdan daha kötü.
 
 `constraint: evidence_ids_must_exist` **motorda zorlanır**, prompt'ta rica edilmez:
 var olmayan bir `evidence_id` üreten adım reddedilir ve bir kez yeniden denenir.
