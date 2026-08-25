@@ -131,6 +131,17 @@ Ve bugün o tabanı sağlayacak bir bileşen **yok**. Üçü de aday görünüyo
 | `catalog/masks/*.yaml` | Şablon madenciliği — `IPV4`, `NUMBER` gibi **değişken** kısımları gizliyor | Amacı imza kararlılığı, redaksiyon değil. Maskeleri grok pattern adları; modelin ihtiyacı olan bağlamı siler, sırrı kaçırır |
 | `SecretProtector` | Saklanan kanal sırlarını AES-256-GCM ile **şifreliyor** | Girdisi yapılandırma alanı, log metni değil |
 | Config scrub (T04) | Cihaz config'inde sır maskeliyor | Girdisi cihaz config'i, log satırı değil |
+| **`SecretRedactor`** | **Bilinen** bir sırrı metinden söküyor — parça parça, altı karakter tabanıyla | Girdisi *"şu dizgeyi maskele"*; **keşif yapmıyor.** Prompt'un ihtiyacı ters yön: bilinmeyen bir sırrı **tanımak** |
+
+Son satır bir düzeltme ve nasıl bulunduğu kayda değer: bu tablo önce üç satırdı
+ve *"böyle bir bileşen yok"* diyordu. `SecretRedactor` **vardı** ve benim
+aramam bulamadı — `graphify query` buldu. Yani tablonun ilk hâli, bu deponun
+adını koyduğu şeyin kendisiydi: **aranmamış bir şeyin yok sayılması.**
+
+Sonuç değişmedi ama gerekçe keskinleşti, ve bu fark önemli: taban bir
+**ikame** sorunu değil bir **keşif** sorunu. `SecretRedactor` ikame yarısını
+zaten çözüyor ve §9 gereği ikinci kopyası yazılmamalı — eksik olan, ona *neyi*
+maskeleyeceğini söyleyecek taraf.
 
 Birincisinin yetmeyeceği ayrıca **ölçüldü**: ASA'nın gerçek IKEv2 söz dizimi
 belirteç sınırını aşıyordu ve ham anahtar normalize edilmiş metinde kalıyordu
