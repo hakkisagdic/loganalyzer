@@ -42,6 +42,13 @@
     <ProjectReference Include="..\..\src\Bizigo.Devices\Bizigo.Devices.csproj" />
 
     <!--
+      S04: senaryo motoru simülatör projesinde yaşıyor ve yedi akış testi onu
+      çağırıyor. Motoru teste kopyalamak, adlandırılmış geçişlerin ikinci bir
+      listesi demekti (§9).
+    -->
+    <ProjectReference Include="..\..\sim\Bizigo.Simulators\Bizigo.Simulators.csproj" />
+
+    <!--
       T39: altın örnek yükleyicisi CLI'da duruyor ve `GoldenSeedClickHouseTests`
       onu canlı ClickHouse'a karşı koşturuyor. Yükleyiciyi test için ikinci kez
       yazmak, ölçüm verisini üreten yolun kendisini sınamamak olurdu.

@@ -78,18 +78,36 @@ public sealed record EmitResult(int Lines, long Bytes, TimeSpan Elapsed);
 public static class SyslogEmitter
 {
     /// <summary>
+    /// <c>saat-kaymasi</c> senaryosunun ileri kaydırdığı süre.
+    ///
+    /// <para>
+    /// ⚠ <b>İşaretli sabit:</b> seçildi, ölçülmedi. Ölçüt "kaç dakika" değil,
+    /// ürünün kaymayı <b>görünür</b> kılıp kılmadığı — yani bu sayının doğru
+    /// değeri, kaymanın ürünün pencere mantığını aşacak kadar büyük ve
+    /// olayı tümden görünmez yapmayacak kadar küçük olması. İkisinin arası
+    /// ölçülmedi.
+    /// </para>
+    /// </summary>
+    public static readonly TimeSpan SkewAhead = TimeSpan.FromMinutes(45);
+
+    /// <summary>
     /// Profilin örneklerini basar.
     /// </summary>
     /// <param name="profile">Basılacak cihaz.</param>
     /// <param name="repositoryRoot">Örnek yollarının çözüleceği kök.</param>
     /// <param name="host">Collector adresi.</param>
     /// <param name="count">Basılacak satır sayısı; örnekler döngüye alınıyor.</param>
+    /// <param name="scenario">
+    /// Basıcı tarafındaki adlandırılmış geçiş (S04). Boş ya da
+    /// <c>baseline</c> ise değişim yok.
+    /// </param>
     public static async Task<EmitResult> EmitAsync(
         SimulatorProfile profile,
         string repositoryRoot,
         string host,
         int count,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? scenario = null)
     {
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentException.ThrowIfNullOrWhiteSpace(repositoryRoot);
@@ -110,7 +128,34 @@ public static class SyslogEmitter
                 $"'{profile.Id}' örnek dosyalarında hiç satır yok.");
         }
 
-        var encoding = ResolveEncoding(profile.Encoding);
+        // YÜZEY KONTROLÜ ÖNCE (S04): `kural-eklendi` config senaryosu ve
+        // basıcıya verilirse hiçbir şey yapmaz. Sessizce yok saymak, senaryonun
+        // koştuğu sanılan bir test bırakırdı — bu fazın kaçındığı tam olarak o.
+        if (Scenarios.Reject(scenario, ScenarioSurface.Syslog) is { } yuzeyHatasi)
+        {
+            throw new InvalidOperationException(yuzeyHatasi);
+        }
+
+        var applied = Scenarios.Find(scenario);
+
+        // `bozuk-kodlama`: profil UTF-8 diyor, tel latin-1 gidiyor.
+        //
+        // Kodlamayı BOZMAK, örnek dosyayı bozmakla aynı şey değil: dosya
+        // olduğu gibi kalıyor ve yalnızca tele yazılırken başka bir kod
+        // sayfasıyla yazılıyor. Ürünün karşılaştığı gerçek durum bu — cihaz
+        // doğru metni yanlış kodlamayla basıyor.
+        var encoding = applied?.Name == "bozuk-kodlama"
+            ? System.Text.Encoding.Latin1
+            : ResolveEncoding(profile.Encoding);
+
+        // `saat-kaymasi`: damga ileri kayıyor.
+        //
+        // Kayma İLERİ, geri değil: geri kayan bir damga pencerenin dışına
+        // düşüp olayı görünmez yapardı ve test "kayma yakalanmadı" ile
+        // "olay hiç gelmedi"yi ayırt edemezdi.
+        var skew = applied?.Name == "saat-kaymasi"
+            ? SkewAhead
+            : TimeSpan.Zero;
         var udp = string.Equals(profile.Syslog.Transport, "udp", StringComparison.OrdinalIgnoreCase);
         var port = udp ? 5141 : 5140;
 
@@ -124,8 +169,8 @@ public static class SyslogEmitter
         var clock = Stopwatch.StartNew();
 
         return udp
-            ? await EmitUdpAsync(lines, encoding, host, port, count, delay, clock, cancellationToken)
-            : await EmitTcpAsync(lines, encoding, host, port, count, delay, clock, cancellationToken);
+            ? await EmitUdpAsync(lines, encoding, host, port, count, delay, skew, clock, cancellationToken)
+            : await EmitTcpAsync(lines, encoding, host, port, count, delay, skew, clock, cancellationToken);
     }
 
     /// <summary>
@@ -154,6 +199,7 @@ public static class SyslogEmitter
         int port,
         int count,
         TimeSpan delay,
+        TimeSpan skew,
         Stopwatch clock,
         CancellationToken cancellationToken)
     {
@@ -169,7 +215,7 @@ public static class SyslogEmitter
             // Satır sonu ASCII: kodlama gövdeyi etkiliyor, ayırıcıyı değil.
             // Damga BASILDIĞI AN alınıyor — gerçek cihaz da öyle yapıyor.
             var payload = encoding.GetBytes(
-                WireLine(lines[i % lines.Count], DateTimeOffset.UtcNow));
+                WireLine(lines[i % lines.Count], DateTimeOffset.UtcNow + skew));
 
             await stream.WriteAsync(payload, cancellationToken);
             await stream.WriteAsync("\n"u8.ToArray(), cancellationToken);
@@ -210,6 +256,7 @@ public static class SyslogEmitter
         int port,
         int count,
         TimeSpan delay,
+        TimeSpan skew,
         Stopwatch clock,
         CancellationToken cancellationToken)
     {
@@ -223,7 +270,7 @@ public static class SyslogEmitter
             // UDP'de her datagram bir satır; ayırıcı yine de yazılıyor çünkü
             // alıcının `line_end_pattern` varsayılanı onu bekliyor.
             var payload = encoding.GetBytes(
-                WireLine(lines[i % lines.Count], DateTimeOffset.UtcNow) + "\n");
+                WireLine(lines[i % lines.Count], DateTimeOffset.UtcNow + skew) + "\n");
 
             await client.SendAsync(payload, cancellationToken);
             bytes += payload.Length;
