@@ -3810,9 +3810,9 @@
     "semantic_hash": ""
   },
   "docs/epic/rca-raporu-ozelligi/index.md": {
-    "mtime": 1787620229.2109475,
-    "seen": 1787620583.903313,
-    "ast_hash": "7150d00c95c774df3ffbc3c9123697ed",
+    "mtime": 1787620691.1422381,
+    "seen": 1787621001.7241468,
+    "ast_hash": "03c565058c96d0b7aca4ca28f1d2e3bd",
     "semantic_hash": ""
   },
   "docs/epic/sigma-clickhouse-arastirmasi/index.md": {
@@ -5190,8 +5190,8 @@
     "semantic_hash": ""
   },
   "docs/wiki/concepts/f3-kanit-once-akil-sonra.md": {
-    "mtime": 1787620341.146204,
-    "seen": 1787620583.9034061,
+    "mtime": 1787620713.6923,
+    "seen": 1787621001.7242382,
     "ast_hash": "8523cd1c2b4c32c72a22ed1335f04df4",
     "semantic_hash": ""
   },
@@ -5286,9 +5286,9 @@
     "semantic_hash": ""
   },
   "docs/wiki/references/f3-detection-ve-rca-kaniti.md": {
-    "mtime": 1787620341.2302108,
-    "seen": 1787620583.90342,
-    "ast_hash": "ae66d0ed353680c3315eecd64f5925db",
+    "mtime": 1787620691.150646,
+    "seen": 1787621001.7242508,
+    "ast_hash": "62ae27502283b4e1b1874def3840fbd3",
     "semantic_hash": ""
   },
   "docs/wiki/references/graphify-depo-bilgi-grafigi.md": {
@@ -5601,6 +5601,12 @@
     "mtime": 1787613725.395184,
     "seen": 1787618363.4365141,
     "ast_hash": "f6f86c0886b780b36da81c121be38742",
+    "semantic_hash": ""
+  },
+  "docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md": {
+    "mtime": 1787620691.143732,
+    "seen": 1787621001.7241979,
+    "ast_hash": "0d20f4d51322480fd8cb1f784178e20a",
     "semantic_hash": ""
   }
 }
