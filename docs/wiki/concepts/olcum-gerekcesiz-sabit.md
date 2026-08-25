@@ -22,7 +22,7 @@ sources:
   - docs/epic/t10-kararlar/index.md
   - docs/epic/t12-kararlar/index.md
   - docs/epic/t29-sicak-yol-olcumu/index.md
-source_digest: "sha256-12/v1 docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t02-kararlar/index.md=b3cf84aad7ba docs/epic/t03-kararlar/index.md=0eafdbfe4ce2 docs/epic/t04-kararlar/index.md=f5befc3ecf24 docs/epic/t05-kararlar/index.md=42f651e08f8b docs/epic/t06-kararlar/index.md=3a34fdcba4c4 docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t09-kararlar/index.md=b21d65bda95a docs/epic/t10-kararlar/index.md=98995baaaacf docs/epic/t12-kararlar/index.md=454710cef295 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f"
+source_digest: "sha256-12/v1 docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t02-kararlar/index.md=b3cf84aad7ba docs/epic/t03-kararlar/index.md=0eafdbfe4ce2 docs/epic/t04-kararlar/index.md=f5befc3ecf24 docs/epic/t05-kararlar/index.md=fa28e6db349e docs/epic/t06-kararlar/index.md=3a34fdcba4c4 docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t09-kararlar/index.md=b21d65bda95a docs/epic/t10-kararlar/index.md=98995baaaacf docs/epic/t12-kararlar/index.md=454710cef295 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f"
 summary: "Ticket belgelerinin çoğunda bir 'gerekçesi kayıtta yok' tablosu var. Bedeli T04'te ölçüldü — birbirine bağlı üç sayı birbirinden habersiz seçilmiş ve koruma penceresi kapanmıyor."
 provenance:
   extracted: 0.85

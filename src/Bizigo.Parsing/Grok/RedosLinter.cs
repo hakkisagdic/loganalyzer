@@ -62,8 +62,16 @@ public static class RedosLinter
             findings.Add(new RedosFinding(
                 RedosSeverity.Warning,
                 "GROK003",
+                // KARANTİNA CÜMLESİ BİLEREK YOK. Eskiden "50 ms zaman aşımı ve
+                // karantina devrede" yazıyordu; karantina hiçbir yerde sıcak yola
+                // bağlı değil, yani bir bekçi operatöre yanlış söylüyordu (T05
+                // ölçümü). Yerine "karantina devrede DEĞİL" yazmak da doğru
+                // olmazdı: bir linter bulgusu, olmayan bir mekanizmanın
+                // yokluğunu duyurmak için değil — ve karantina bağlandığı gün o
+                // cümle yeniden yanlışlaşırdı. En az iddia eden hâl en
+                // dayanıklısı: mesaj yalnızca bildiği şeyi söylüyor.
                 "Pattern doğrusal motorla derlenemedi, geri izlemeli motora düşüldü " +
-                $"(neden: {grok.FallbackReason}). 50 ms zaman aşımı ve karantina devrede, " +
+                $"(neden: {grok.FallbackReason}). 50 ms zaman aşımı devrede, " +
                 "ama sıcak yolda tercih edilen bu değil.",
                 0,
                 Truncate(grok.Expression)));

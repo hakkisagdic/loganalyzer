@@ -177,6 +177,74 @@ public sealed class DispatcherTests
         Assert.Equal(1, stats.Unmatched);
     }
 
+    /// <summary>
+    /// <b>Zaman aşımına uğrayan parser, kazanan başkası olsa bile görünüyor.</b>
+    ///
+    /// <para>
+    /// Ölçülen kırık şuydu: varsayılan <c>on_failure: fail</c> ile zaman aşımı
+    /// <c>Failed</c> üretiyor, dispatcher da <c>Failed</c> sonucu "uymadı" diye
+    /// eleyip bir sonraki adaya geçiyor. Elenen sonuçla birlikte
+    /// <see cref="ParseResult.TimedOut"/> de gidiyordu, yani
+    /// <c>EventComposer</c>'ın zaman aşımı uyarısı sevk edilen katalogda
+    /// <b>hiç ateşlenmiyordu</b> — katalogdaki 14 grok adımının hiçbiri
+    /// <c>on_failure</c> yazmıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Bu testin geçme sebebi duvar saati değil</b> (§6): iddia "yavaş" değil
+    /// <b>felçli</b> bir pattern üstüne kurulu. <c>(?<!x)</c> doğrusal motoru
+    /// kapatıyor, <c>(a+)+$</c> eşleşmeyen girdide üstel geri izliyor — yani
+    /// 50 ms'i aşması makine hızından bağımsız. Aynı desen
+    /// <c>RedosTests.Zaman_asimi_asilirsa_TimedOut_doner</c>'da da bu gerekçeyle
+    /// kullanılıyor. Ölçülen bir süre yok; ölçülen tek şey kimliğin taşınması.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Zaman_asimina_ugrayan_parser_kazanan_baskasi_olsa_bile_bildiriliyor()
+    {
+        var felcli = Parser("vendor.felcli", "devid=", @"(?<!x)^devid=(a+)+$", specificity: 1);
+        var saglikli = Parser("vendor.saglikli", "devid=", "devid=%{WORD:devid}", specificity: 10);
+
+        var (dispatcher, _, _) = Build(felcli, saglikli);
+
+        // Bağlı parser felçli olan: sevk edilen kataloğun gerçek şekli.
+        var result = dispatcher.Dispatch("devid=" + new string('a', 60) + "!", "vendor.felcli");
+
+        // Davranış DEĞİŞMEDİ — bu ticket bilgiyi taşıyor, kararı değiştirmiyor.
+        Assert.Equal("vendor.saglikli", result.Result.ParserId);
+        Assert.Equal(ParseStatus.Ok, result.Result.Status);
+
+        // Kazanan sonucun kendi bayrağı hâlâ `false`: zaman aşımı ONA ait değil.
+        // Bilginin buradan okunamıyor olması kırığın ta kendisiydi.
+        Assert.False(result.Result.TimedOut);
+
+        var timedOut = Assert.Single(result.TimedOutParsers);
+        Assert.Equal("vendor.felcli", timedOut.ParserId);
+        Assert.Equal("1.0.0", timedOut.ParserVersion);
+    }
+
+    /// <summary>
+    /// Yukarıdaki iddianın <b>boş geçmesini</b> engelleyen bekçi: sağlıklı bir
+    /// satırda liste boş kalmalı.
+    ///
+    /// <para>
+    /// Olmasaydı, "her dağıtımda parser'ı listeye ekle" gibi bir uygulama da
+    /// üstteki testi yeşil yapardı ve zaman aşımı hakkında hiçbir şey
+    /// söylemezdi.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Zaman_asimi_yoksa_liste_bos_kaliyor()
+    {
+        var saglikli = Parser("vendor.saglikli", "devid=", "devid=%{WORD:devid}");
+        var (dispatcher, _, _) = Build(saglikli);
+
+        var result = dispatcher.Dispatch("devid=FG100E", "vendor.saglikli");
+
+        Assert.Equal(ParseStatus.Ok, result.Result.Status);
+        Assert.Empty(result.TimedOutParsers);
+    }
+
     [Fact]
     public void Bos_katalogda_satir_kaybolmuyor()
     {
