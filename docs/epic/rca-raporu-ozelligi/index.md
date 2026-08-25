@@ -143,10 +143,29 @@ Sonuç değişmedi ama gerekçe keskinleşti, ve bu fark önemli: taban bir
 zaten çözüyor ve §9 gereği ikinci kopyası yazılmamalı — eksik olan, ona *neyi*
 maskeleyeceğini söyleyecek taraf.
 
-Birincisinin yetmeyeceği ayrıca **ölçüldü**: ASA'nın gerçek IKEv2 söz dizimi
-belirteç sınırını aşıyordu ve ham anahtar normalize edilmiş metinde kalıyordu
-(FS S01'in fixture'ları buldu). Yani maske kataloğu **kanıtlanmış biçimde**
-bir sır redaksiyon kapısı değil.
+Birincisinin yetmeyeceği ayrıca **ölçüldü** — dosyanın kendi altın kümesinden:
+`Failed password for admin from 10.1.2.3` girdisi
+`Failed password for admin from <IPV4>` çıkıyor. **IP gitti, "password"
+durdu.** Yani maske kataloğu, modelin ihtiyacı olan bağlamı silerken sır
+sınıfına hiç bakmıyor; kanıtlanmış biçimde bir redaksiyon kapısı değil.
+
+<details>
+<summary>Düzeltme: bu paragraf önce yanlış bir ölçüme dayanıyordu (2026-08-25)</summary>
+
+Önceki hâli şuydu: *"ASA'nın gerçek IKEv2 söz dizimi belirteç sınırını
+aşıyordu ve ham anahtar normalize edilmiş metinde kalıyordu (FS S01'in
+fixture'ları buldu)."*
+
+O ölçüm gerçek, ama **maske kataloğunun değil** — `ConfigNormalizer`'ın
+(T04 config scrub, tablonun üçüncü satırı). "Belirteç sınırı" oradaki
+`SecretAssignment` deseninin `{0,4}` öneki, "normalize edilmiş metin" de
+`ConfigNormalizer.Normalize` çıktısı; ikisi de sınıfın kendi XML yorumunda
+yazılı. Yani sonuç doğruydu, **dayanağı yanlış satıra bağlanmıştı**.
+
+Yerine konan ölçüm daha doğrudan: kanıt maske kataloğunun kendi
+`golden:` bloğunda duruyor, başka bir bileşenden ödünç alınmıyor.
+Ayrıntısı [T41 §2](../tickets-f4/prompt-redaksiyon-tabani/index.md).
+</details>
 
 #### Sonucu: bugün yalnızca `summary` sevk edilebilir
 
@@ -159,6 +178,14 @@ Taban ayrı bir kalem ve F4'ün önkoşulu. Kapsamı: log metninde sır tanıma,
 kırmızı yanabildiğinin ölçülmesi, ve **neyi tanıyamadığının yazılması** —
 çünkü hiçbir redaksiyon kapısı tam değildir ve tam olduğu iddiası, olmadığı
 iddiasından tehlikelidir.
+
+O kalem **[T41 — prompt redaksiyon tabanı](../tickets-f4/prompt-redaksiyon-tabani/index.md)**
+olarak yazıldı. Ticket bu bölümün bıraktığı soruyu *"log satırında sır neye
+benzer?"* üç yaklaşımla (entropi · bilinen anahtar biçimleri · üretici söz
+dizimi) açıyor ve **seçmiyor**: seçim ölçütleriyle birlikte açık duruyor.
+Yanlış pozitiflerin asimetrisi de orada ölçülü hâliyle duruyor — 87 satırlık
+altın korpusta anahtar kelime taraması 3 satır buluyor ve üçünde de sır
+**yok**.
 
 ## 3. Kanıt sağlayıcı sözleşmesi (F3'te beş tür de tanımlı)
 

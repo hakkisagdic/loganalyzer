@@ -20,7 +20,8 @@ sources:
   - docs/epic/t36-devir-notu/index.md
   - docs/epic/t37-rapor-ekrani/index.md
   - docs/epic/tickets-f3/altin-kume/index.md
-source_digest: "sha256-12/v1 docs/epic/rca-raporu-ozelligi/index.md=dff063df9345 docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t35-korelasyonlar/index.md=90159516d982 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/altin-kume/index.md=9bb15adc35bc"
+  - docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md
+source_digest: "sha256-12/v1 docs/epic/rca-raporu-ozelligi/index.md=0b8e30f57aa9 docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t35-korelasyonlar/index.md=90159516d982 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/altin-kume/index.md=9bb15adc35bc docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=ac521c3bdece"
 summary: RCA'nın tek gerçek riski inandırıcı ama yanlış rapor; tasarımın tamamı bu tek riske karşı kurulu. F3 kanıtı LLM'siz üretiyor, saklıyor ve raporun her dürüstlük satırını mekanizmaya bağlıyor.
 provenance:
   extracted: 0.85
@@ -31,7 +32,7 @@ lifecycle: draft
 lifecycle_changed: 2026-08-24
 tier: core
 created: 2026-08-24T18:40:00Z
-updated: 2026-08-24T18:40:00Z
+updated: 2026-08-25T00:00:00Z
 ---
 
 # Kanıt önce, akıl sonra
@@ -73,9 +74,22 @@ RCA belgesinden alınıp F3'te birer mekanizmaya çevrildi:
    Ama **taban ayarlanabilir değil**: sır içeren satır hiçbir düzeyde prompt'a
    girmemeli, ve bugün o tabanı sağlayan bileşen **yok**. Maske kataloğu
    şablon madenciliği için yazıldı ve bir sır redaksiyon kapısı **olmadığı
-   ölçüldü** — ASA'nın IKEv2 söz dizimi belirteç sınırını aşıyordu, ham anahtar
-   normalize edilmiş metinde kalıyordu. Bu yüzden bugün yalnızca `summary`
-   sevk edilebilir; `masked` ve `raw` taban ölçülene kadar kapalı.
+   ölçüldü** — kendi altın kümesinde `Failed password for admin from 10.1.2.3`
+   girdisi `Failed password for admin from <IPV4>` çıkıyor: **IP gitti,
+   "password" durdu.** Bu yüzden bugün yalnızca `summary` sevk edilebilir;
+   `masked` ve `raw` taban ölçülene kadar kapalı.
+
+   Tabanın **niye** yok olduğu 2026-08-25'te keskinleşti ve ayrı bir ticket'a
+   döndü (T41): dört aday bileşenden `SecretRedactor` **ikame** yarısını zaten
+   çözüyor — bilinen bir dizgeyi parça parça söküyor. Eksik olan ona *neyi*
+   maskeleyeceğini söyleyecek taraf. Yani taban bir **ikame** sorunu değil bir
+   **keşif** sorunu, ve o keşfin ölçütleri hâlâ açık: entropi mi, bilinen
+   anahtar biçimleri mi, üretici söz dizimi mi.
+
+   Keşfin asimetrisi burada da aynı aileden: **sırrı kaçırmak görünmüyor**
+   (hata yok, sayaç yok), **fazla maskelemek görünüyor** — 2. kuralın atılan
+   cümle sayacı yükseliyor. İki hata yönü eşit değil, ve eşit olmayan taraf
+   ölçülebilirlik.
 
 ## Sınırın nereden geçtiği
 
@@ -221,3 +235,5 @@ Kümenin kendisinin de dürüstlük kuralları var ve hepsi aynı aileden:
 - `docs/epic/t36-devir-notu/index.md` — `RankedEvidence` ne değildir, uyarıların yeri
 - `docs/epic/t37-rapor-ekrani/index.md` — paket okuma kapsamı, drilldown rozeti, inceleme kararları
 - `docs/epic/tickets-f3/altin-kume/index.md` — beş karar ve gerekçeleri
+- `docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md` — T41: tabanın neden
+  bir keşif sorunu olduğu, üç yaklaşım ve ölçütleri, yanlış pozitif asimetrisi

@@ -20,7 +20,8 @@ sources:
   - docs/epic/tickets-f3/index.md
   - docs/epic/rca-raporu-ozelligi/index.md
   - docs/epic/sigma-clickhouse-arastirmasi/index.md
-source_digest: "sha256-12/v1 docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=dff063df9345 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=e6589b0ed6b1"
+  - docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md
+source_digest: "sha256-12/v1 docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=0b8e30f57aa9 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=e6589b0ed6b1 docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=ac521c3bdece"
 summary: F3'ün iki kolu (Sigma detection ve RCA kanıtı), planı yarı yarıya değiştiren template_id bulgusu, on ticket'ın bugünkü durumu ve fazın sayılarının neden bağlayıcı olmadığı.
 provenance:
   extracted: 0.85
@@ -31,7 +32,7 @@ lifecycle: draft
 lifecycle_changed: 2026-08-24
 tier: core
 created: 2026-08-24T18:40:00Z
-updated: 2026-08-24T18:40:00Z
+updated: 2026-08-25T00:00:00Z
 ---
 
 # F3 — Detection ve RCA kanıtı
@@ -135,6 +136,7 @@ paragrafı okumalı.
 | Ne | Nerede | Gerekçe |
 | --- | --- | --- |
 | LLM yorumu, dört tetikleyici, kuyruk/kota | F4 | K22 — kanıt önce |
+| Prompt redaksiyon tabanı (T41) | F4 **önkoşulu** | 2026-08-25: prompt'a giden metinde sır tanıyan bileşen yok; olmadan `masked`/`raw` düzeyleri açılmıyor |
 | Metrik · trace · topoloji sağlayıcıları | F5 | K21'in bedeli; sözleşme beşini de tanıyor, uygulaması yok |
 | Sigma korelasyon kuralları | sonra | backend destekliyor ama önce tekiller otursun |
 | PDF export | kapsam dışı | Markdown var; PDF gelirse **aynı metinden** üretilmeli |
@@ -151,3 +153,4 @@ tanıması bu sıralamanın taşıyıcısı.
 - `docs/epic/tickets-f3/index.md` — on ticket, bağımlılık grafiği, bitti tanımı
 - `docs/epic/rca-raporu-ozelligi/index.md` — K19–K22, piyasa konumu, riskler
 - `docs/epic/sigma-clickhouse-arastirmasi/index.md` — backend seçiminin doğrulaması
+- `docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md` — T41, F4'ün önkoşulu
