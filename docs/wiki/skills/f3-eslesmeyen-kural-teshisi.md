@@ -17,7 +17,7 @@ sources:
   - docs/epic/t30-sigma-olcumu/index.md
   - docs/epic/t32-derleme-tasarimi/index.md
   - docs/epic/f3-yol-haritasi/index.md
-source_digest: "sha256-12/v1 docs/epic/f3-yol-haritasi/index.md=27055ee43212 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=457cb125d0d3 docs/epic/t39-alan-kapsami/index.md=7d06bfcf6e0c"
+source_digest: "sha256-12/v1 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=457cb125d0d3 docs/epic/t39-alan-kapsami/index.md=7d06bfcf6e0c"
 summary: Bir kural sıfır satır döndürdüğünde sebep en az beş farklı şey olabilir ve tabloda hepsi aynı görünür. Üç bağımsız eksen — metin, alan, değer uzayı — birbirini tamamlayarak sebebi ayırıyor.
 provenance:
   extracted: 0.85

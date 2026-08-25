@@ -5,12 +5,16 @@ title: "Kalan işin haritası — F3 ve devreden borç"
 
 # Kalan işin haritası
 
-Bu belge **2026-08-21** günündeki durumu anlatıyor. Ticket durumları, ölçülmüş
+Bu belge **2026-08-25** günündeki durumu anlatıyor. Ticket durumları, ölçülmüş
 sayılar ve kimin neyi beklediği o günün fotoğrafı; sonraki bir tur bunu
 geçersiz kılar.
 
 Amacı tek şey: *"ne kaldı ve neyi bekliyor"* sorusunun cevabını, dağılmış
 ticket dosyalarını tek tek açmadan verebilmek.
+
+> Bir önceki hâli 2026-08-21'e aitti ve bayatladı: F2'yi açık, F3'ün Sigma
+> kolunu açık gösteriyordu. Dördü de kapandı. **Bu belgenin kendisi bayatlayan
+> bir belge** — okurken tarihine bak.
 
 ---
 
@@ -18,120 +22,83 @@ ticket dosyalarını tek tek açmadan verebilmek.
 
 | Faz | Kapsam | Durum |
 | --- | --- | --- |
-| **F1** — Boru hattı | ingest → parser → OCSF/OTel → ClickHouse, ham arşiv, replay, envanter, OIDC | 12/12 ticket **kodu indi** · borcu §4'te |
-| **F2** — Görünürlük | Next.js UI, arama, parser editörü, katalog, alarm + bildirim, change feed | 15/16 · **T27 açık** (fazın kendi doğrulaması) |
-| **F3** — Detection + RCA kanıtı | Sigma → SQL, kural yönetimi, kanıt sağlayıcı, RCA raporu | **buradayız** — aşağısı |
-| F4 — Agentic | senaryo plugin, MCP server, LLM yorumu, dört tetikleyici | başlamadı |
+| **F1** — Boru hattı | ingest → parser → OCSF/OTel → ClickHouse, ham arşiv, replay, envanter, OIDC | **12/12 kapalı** · borcu §4'te |
+| **F2** — Görünürlük | Next.js UI, arama, parser editörü, katalog, alarm + bildirim, change feed | **16/16 kapalı** — T27 kapandı |
+| **F3** — Detection + RCA kanıtı | Sigma → SQL, kural yönetimi, kanıt sağlayıcı, RCA raporu | **buradayız** — 9/11 kapalı |
+| F4 — Agentic | senaryo plugin, MCP server, LLM yorumu, dört tetikleyici | başlamadı · **ilk kararı verildi** (§6) |
 | F5 — Kanıt genişletme | metrik, trace, topoloji sağlayıcıları | başlamadı |
-| **FS** — Cihaz simülatörleri | SSH config çekimi, syslog basımı, değişiklik bildirimi; filo + kapsam yayılımı | **paralel**, F3'ü bloke etmiyor — [belge](../fs-simulatorler/index.md) |
+| **FS** — Cihaz simülatörleri | SSH config çekimi, syslog basımı, değişiklik bildirimi; filo + kapsam yayılımı | **paralel** · 2/7 · [belge](../fs-simulatorler/index.md) |
 
 F5 sonrası tanıtım materyali var, henüz kapsamlandırılmadı.
 
 **FS neden bu tabloda ve neden numarasız:** ekip gerçek cihazlara erişmiyor,
-dolayısıyla `Bizigo.Devices` ve ingest'in canlı yolu bugün hiçbir yerde
-koşmuyor. Ayrı bir faz çünkü üç yüzeye dokunuyor; **paralel** çünkü F3'ün
-kritik yolundaki ölçümle hiçbir bağı yok ve ihtiyaç duyduğu her şey F1'de
-indi. Ticket'ları `S` önekli (S01…S07) — `T` dizisiyle araya girmesi "hangi
-ticket hangi fazın" sorusunu numaradan okunamaz hâle getirirdi.
+dolayısıyla `Bizigo.Devices` ve ingest'in canlı yolu bugüne kadar hiçbir yerde
+koşmuyordu. Ayrı bir faz çünkü üç yüzeye dokunuyor; **paralel** çünkü F3'ün
+kritik yoluyla hiçbir bağı yok. Ticket'ları `S` önekli (S01…S07).
 
 ---
 
-## 2 · F3'ün on ticket'ı
+## 2 · F3 — dokuzu kapandı, ikisi açık
 
-```mermaid
-flowchart TB
-  subgraph done["Bitti"]
-    T29["T29 · signature_hash"]
-    T34["T34 · kanıt sözleşmesi"]
-    T35["T35 · beş korelasyon"]
-    T36["T36 · kanıt paketi"]
-  end
-
-  subgraph sigma["Sigma kolu — açık"]
-    T30["T30 · prototip<br/>kapsam kararı BEKLİYOR"]
-    T31["T31 · ProcessingPipeline"]
-    T32["T32 · derleme + üç kapı"]
-  end
-
-  subgraph screens["Ekran kolu — açık"]
-    T33["T33 · kural yönetimi"]
-    T37["T37 · rapor ekranı"]
-    T38["T38 · altın küme"]
-  end
-
-  T31 --> T32
-  T31 --> T33
-  T32 --> T33
-  T34 --> T36 --> T37 --> T38
-  M["3 kutulu ölçüm<br/>(1'de)"] --> T30
-  M --> T32
-```
-
-| Ticket | Durum | Sahip | Neyi bekliyor |
+| Ticket | Durum | Sahip | Kalan |
 | --- | --- | --- | --- |
 | T29 · `signature_hash` | ✅ | — | — |
+| T30 · Sigma prototipi | ✅ | — | 269'a ölçekleme **yapılmadı** (§3) |
+| T31 · ProcessingPipeline | ✅ | — | nginx ailesinin altın örnek doğrulaması **yok** (§3) |
+| T33 · kural yönetimi | ✅ | — | açık yok |
 | T34 · kanıt sözleşmesi | ✅ | — | — |
-| T35 · beş korelasyon | ✅ | — | — |
+| T35 · beş korelasyon | ✅ | — | kapsam negatif testleri **sonradan** eklendi (D7) |
 | T36 · kanıt paketi | ✅ | — | — |
-| T30 · Sigma prototipi | 🔄 | 1 | **kapsam kararı** — 3 kutulu ölçüme bağlı |
-| T31 · ProcessingPipeline | 🔄 | 1 | ölçüm, sonra T33 |
-| T32 · derleme + kapılar | 🔄 | 6 | 12 beyan — ölçümü bekliyor |
-| T33 · kural yönetimi | 🔄 | 1 | ölçüm bitince başlıyor |
-| T37 · rapor ekranı | 🔄 | 4 | UI yarısı (`npm ci` koşuyor) |
-| T38 · altın küme | 🔄 | 7 | beş karar verildi, veri katmanı yazılıyor |
+| T37 · rapor ekranı | ✅ | — | canlı yığın doğrulaması §5'te |
+| T39 · `specificity` ölçütü | ✅ | — | soru **bugün yok**; bekçi doğduğu gün yanacak |
+| **T32** · derleme + üç kapı | 🔄 | **6** | beyanların kesişim düzeltmesi sonrası gözden geçirilmesi |
+| **T38** · altın küme | 🔄 | **7** | ekran yarısı indi; **nginx combined örneği** T31'den devredildi |
 
-### Sigma kolunun ölçülmüş hâli
+### Sigma kolunun ölçülmüş hâli (2026-08-25)
 
 ```
 manifest : total 24 · written 21 · gated 3 · gated_upstream 0 · failed 0
-Kapı 3   : beyanlı 8 · bilerek beyansız 1 · ölçüm bekleyen 12
-kapsam   : compiled/runs eşit · eşleşme %25 (kapsam) / %29 (eşleme kalitesi)
+Kapı 3   : beyanlı 19 · bilerek beyansız 1 · ölçüm bekleyen 0
+kapsam   : compiled == runs == 21 · 7 kural satır döndürüyor · %29
+maliyet  : kural başına 6,6 ms · eşleme satırı 208 (42 alan)
 ```
 
-`gated` üçünün de alanı ve çaresi yazılı, yani yol haritası okunuyor:
-`dns_query_name` eklenirse **iki** kural, `action` RouterOS için çözülürse
-**bir** kural açılıyor.
+**Kapsam kararı çivilendi:** `firewall` + `network_connection`. Payda **≥14**
+ve oran **≤%43** — alt sınır olarak yazıldı, çünkü kesişim dolu olması kanıt
+değil (aracın asimetrisi, §2'de kodda).
 
-### Fazın açık kalan tek kararı
+Kararı belirleyen şey oran değil **verinin varlığı**: DNS'in verisi yok,
+hiçbir parser sorgu adı üretmiyor, o kurallar derlenmiyor bile. Oran nereye
+düşerse düşsün o kategori kapsama giremez.
 
-**T30'un kapsam kararı.** `%25`'in *kapsamın* mı *örneklemin* mi sayısı olduğu
-ölçülmedi; eşleşmeyen 15 kuralın kaçı eşleme eksikliğinden, kaçı örneklemde o
-desen hiç olmadığından boş olduğu bilinmiyor. Ölçülmeden gerçek SigmaHQ alt
-kümesi seçilemez.
+### Bu turda yönü yanlış tahmin ettiğimiz yer
 
-Ölçüm üç kutulu olacak, ve üçüncüsü bu turda doğdu:
+`fw_chain` düzeltmesinin ve `VENDOR_EMPTY_COLUMNS`'ın derleme sayısını
+**düşüreceğini** sandık — ikimiz de. Ölçüm tersini gösterdi:
 
-1. **eşleme eksik** — alan var, biz bağlamamışız
-2. **örneklemde desen yok** — bağlasak da eşleşmez
-3. **yanlış sebeple eşleşiyor** — sayı yeşil, sebep yanlış
+| | Önce | Sonra |
+| --- | --- | --- |
+| Satır döndürdü | 6 | **7** |
+| Eşleşme oranı | %25 | **%29** |
 
-Üçüncü kutunun bugünkü üyesi `asa_teardown_rst`: `raw_data ILIKE '%RST%'` ile
-`first` ve `burst` sözcüklerine denk geliyordu. Ne kapı ne `--discover` bunu
-söyleyebildi; örnek dosyanın **içeriğini** okuyan gördü.
+**Bekçi eklemek kapsamı daraltmadı, genişletti.**
 
 ---
 
-## 3 · F2'de kalan tek ticket
+## 3 · Kapanan ticket'ların taşıdığı açıklar
 
-**T27 — F2 doğrulaması**, sahibi 3.
+Kapanmış bir ticket'ın açık kalemi olması bir çelişki değil — kriter
+karşılanmadıysa **yazılı** olduğu sürece kapanabilir. Bu turda üç kez bunu
+yaptık ve üçünde de kapatan kişi **kendi işini sayarak** buldu.
 
-Kapanmış olanlar ölçüldü: `ProducesContractTests` 16/16, `Pending` **boş**,
-`Exempt` **6** ve `ExpectedExemptCount = 6`. `POST /v1/replay` kararı da
-uygulanmış — `ReplayResponse` bir response record ve `Plan`'ı bilerek dışarıda
-bırakıyor.
-
-Taranacak üç kalem — hepsi *"aradım, yok"* ile *"aramadım"* ayrımıyla
-yazılacak:
-
-| # | Soru | Bugünkü bilgi |
+| Nereden | Ne | Kim kapatacak |
 | --- | --- | --- |
-| 1 | Dört akış CI'da koşuyor mu | `F2FlowTests`'te **üç** görünüyor; kalan ikisi başka dosyada mı, hiç mi yok — bakılmadı |
-| 2 | İki çapraz doğrulama ekran katmanında mı | API'de var; ekranda sınanıyor mu — bakılmadı |
-| 3 | Replay sırasında canlı ingest bozulmuyor | kuru koşu eşitliği var; **yük altındaki replay yok** |
+| T30 | 269 kurala ölçekleme yapılmadı; çarpım **ayrık alan** üzerinden, kural sayısı üzerinden değil | T30'un gerçek korpusu geldiğinde |
+| T31 | **nginx ailesinin `at_least_one` beyanı yok** — beş beyanının hepsi `none`. Sebebi eşleme değil korpus: örneklerimiz `access-json`, o biçim `core.host` doldurmuyor | **T38** — combined biçimli altın örnek |
+| T35 | Beş korelasyon sağlayıcısının kapsam negatif testi ticket kapandıktan **sonra** yazıldı (D7) | ✅ kapandı |
 
-Üçüncüsü F1'den devrediyor ve envanterdeki uyarıya bağlı: `REPLACE PARTITION`
-atomik diye replay'in canlı ingest'i bozmadığı *varsayılmıştı*; okuma ile
-değiştirme arasındaki pencerede yazılan satırlar sessizce siliniyor.
+nginx bulgusu tek başına kayda değer: **vendor kırılımını saymak beş saniyelik
+işti** ve T31'in *"tam kapandı"* diye kapanmasını engelledi.
 
 ---
 
@@ -144,136 +111,113 @@ olmayan** şeyler — bu deponun en pahalı hata sınıfı (§7).
 | --- | --- | --- |
 | T03 · çift yazma | Zaman aşımı penceresinde aynı batch WAL'a iki kez yazılıyor | **ölçüldü, var** |
 | T03 · kimlik | İki kayıt birbirine bağlanamıyor — `EventId` her çözümlemede yeniden üretiliyor | tekilleştirme anahtarı **açık soru** |
-| T40 · kurtarma | 48 saatlik WAL penceresinin sebebi bir kurtarma, kodu yok | ticket yazıldı |
-| T40 · yarış | Silme kararı `State`'e hiç bakmıyor — mekanizma kendi kaynağını silebilir | ticket'ın 1. maddesi |
-| T40 · aritmetik | 6sa × 20 → 48 saatte ~10 GB; arşiv büyükse koruma **erişilemez** | kabul kriteri yazıldı |
-| T02 · ölçen ama yargılamayan | `Toplu_yazim_hizi_olculuyor` hızı basıyor, `Assert` satır sayısında | açık |
-| T02 · elle liste | `ScopeNegativeTests` on iki yolu tek tek sayıyor | açık kalem yazıldı |
-| T05 | `matchTimeout=50 ms` gerekçesi | **kayıtta yok** |
-| T39 · `specificity` | Seçim ölçütü hiçbir yerde yok | ticket yazıldı |
+| T40 · ham arşiv kurtarma | ✅ **kapandı** — kurtarma nesneyi sha256'sından tanıyor, tutan yoksa hiçbir şey yazmıyor | kalan: gerçek RustFS koşumu (§5) |
+| **T05 · karantina hiç bağlı değil** | `ParserQuarantine` üretimde **hiç örneklenmiyor**; `parsers.quarantined` kolonuna hiçbir yerde yazılmıyor | **ayrı ticket** — yazma yolu ve operatör yüzeyi kararı |
+| T05 · `matchTimeout=50 ms` | Gerekçesi kayıtta yok | zemini oluştu, **8**'de |
+| T02 · ölçen ama yargılamayan | ✅ **kapandı** — sayı artık tablodan geliyor, sürücünün raporundan değil | — |
+| T02 · elle liste | ✅ **kapandı** — `ScopeNegativeTests` yansımayla keşfediliyor, `Pending` boş | — |
 | T12 / D3 | *"Sidecar arızalıyken throughput düşmüyor"* | mantıklı ama **ölçülmemiş** |
 | B14 | Şema tamamlama listesi istemcide motorun kopyası | gerekçeli kabul |
-| B16 | Worktree `node_modules` bayatlığı | yapısal, azaltıldı |
+| B16 | Worktree `node_modules` bayatlığı | yapısal; **merge sonrası `npm install` bir kural** |
 
-`T02 · ölçen ama yargılamayan` kapatılırken dikkat: mutlak bir hız bütçesi
-`GrokPropertyTests`'in düştüğü tuzak, makineyi ölçmeye başlar. Kapatılacaksa
-**aynı süreçte alınan bir tabana oran** ile.
+### T05'in bulduğu şey ticket'ından büyük çıktı
 
----
+Üç katman, üçü de ölçüldü:
 
-## 5 · Bu turda kapanan borçlar
+1. **`TimedOut` Dispatcher'dan sağ çıkmıyordu** → `EventComposer`'ın uyarısı
+   sevk edilen konfigürasyonda **hiç ateşlenmiyordu**. Belge *"yalnızca
+   logluyor"* diyordu; gerçek bir kademe kötüydü — **log satırı bile yoktu**.
+   ✅ Düzeltildi.
+2. **`ParserQuarantine` üretimde hiç örneklenmiyor**, ve `parsers.quarantined`
+   kolonuna hiçbir yerde `true` yazılmıyor. `PublishedParserLoader`'ın süzgeci
+   **kimsenin yazmadığı bir kolona** bakıyor.
+3. **`RedosLinter` operatöre *"karantina devrede"* diyordu** — bir bekçinin
+   ağzından çıkan yanlış cümle. ✅ İddia kaldırıldı, yerine karşı-iddia
+   konmadı.
 
-| Kalem | Ne olmuştu |
-| --- | --- |
-| **B18** · compose | İki ajan ayrı ayrı `redis` eklemiş; YAML **hiç ayrıştırılamıyordu**. `redis` / `redis-session` ayrıldı, `key-duplicates` bekçisi üç kapsamda koşuyor |
-| **B19** · okunmayan CI | Kapı vardı, dört merge boyunca kırmızı yandı, kimse bakmadı. `pre-push` kancası + `workflow_run` → issue; ikisi de koordinatörün disiplinine dayanmıyor |
-| **D6** · baseline | Süpürme kendi verisini tohumluyor, imzası **iki eğri** istiyor (tek eğriyle derlenmiyor) |
-| **B7** · canlı Redis | `describe.skip` kalktı, dışlama yapılandırmaya taşındı; test artık dosya düzenlemeden koşuyor |
-| F1 karar belgeleri | On iki ticket'ın hepsi yazıldı, geriye dönük olduğu her birinin başında yazılı |
-
-### Baseline'ın teslim ettiği şey bir sayı değil
-
-```
-dik kuyruk (zipf 2.0) → dirsek 7g
-düz kuyruk (zipf 1.4) → dirsek 1g
-SEÇİLEBİLİR TABAN YOK.
-```
-
-Dirsek tohumlama düğmesiyle **yedi kat** kayıyor. Tek eğri koşturan bir araç
-"7 gün" derdi ve o sayı verinin değil `--zipf 2.0`'ın karakteri olurdu.
-Bağlayıcı taban **gerçek müşteri verisi** istiyor; bu bir eksiklik değil,
-ölçümün sınırının ölçülmüş hâli.
-
-Üç sebebi var ve üçü de aynı yöne bakıyor: düğme kayması · 87 örnek satırın ~81
-imzayla tükenmesi · **ay adı maskesinin olmaması** (31 günlük yayılım bir ay
-sınırı içeriyor, tabanı ayın birinden öteye uzatmak oranı beklendiği kadar
-düşürmüyor).
+İkincisi ayrı bir ticket ve **bilinen bir erteleme değil**: `t12-kararlar` ve
+`tickets/sidecar` karantinadan hiç bahsetmiyor; `f1-kapanis`'teki tek satır
+**riski** tarif ediyor, bağlantıyı iddia etmiyor. İki kişi aradı, ikisi de
+bulamadı.
 
 ---
 
-## 6 · Bu turda adı konan hata sınıfları
+## 5 · Koordinatörde biriken canlı doğrulamalar
 
-Dördü de "yeşil ama anlamsız" ailesinden ve dördü de **ölçülerek** bulundu.
+Hepsi Docker gerektiriyor, hepsi faz sonu için:
 
-### Adı ile gövdesi ayrışan bekçi
+- **Göçler uygulanmadı** — `AddGoldenReviews`, `AddActualRootCauseToGoldenReview`
+- `POST /v1/rca`, `GET /v1/rca/quality` **canlı yığına karşı hiç koşmadı**
+- Uçtan uca **ham arşiv kurtarma** gerçek RustFS'te koşmadı
+- Scrub örnekleme oranı ve saklama süresi **ölçülmedi** (T04 #2, #3)
 
-| Bekçi | İddia ettiği | Gerçekte sınadığı |
+---
+
+## 6 · F4'ün verilmiş tek kararı
+
+Faz başlamadı ama bir karar çivilendi ve RCA belgesinin 2. kuralını
+**değiştirdi**:
+
+> **Referanssız cümle rapora hiç girmiyor — ama atıldığı sayılıyor ve
+> gösteriliyor.** *"Model 12 cümle üretti, 3'ü kanıta bağlanamadı ve
+> çıkarıldı."*
+
+Önceki hâli *"desteklenmemiş rozetiyle göster"*di. Değişti çünkü o bir
+**gösterme** kararıydı: model uydurursa rapor onu gösteriyor ama
+**engellemiyor**. Yalnızca atmak da yetmezdi — o zaman kalite ölçülemez olurdu.
+İçerik atılıyor, **sayı kalıyor**, ve o sayı F4'ün kalite göstergesi.
+
+**Hâlâ açık:** prompt'a ne kadar içerik girecek (ham `raw_data` mı, kanıt
+özetleri mi), anomali tetikleyicisinin hangi sinyalden doğacağı, kotanın neyi
+koruduğu, ve senaryo plugin formatının dört senaryo yazılmadan çivilenip
+çivilenemeyeceği.
+
+---
+
+## 7 · FS — 2/7
+
+| Ticket | Durum | Not |
 | --- | --- | --- |
-| `ProducesContractTests` | 16 uç sözleşmeli | listedeki uçlar |
-| yaşam süresi bekçisi | DI grafiği doğrulanıyor | `AddBizigoAuthentication` hariç |
-| `sigma_build` Kapı 2 | tip uyuşmazlığı yakalanıyor | AST'nin ayrıştırılabilirliği |
-| `Ayni_id_icin_en_yuksek_surum_kazaniyor` | sürüm çözümlemesi | `specificity` sıralaması |
+| S01 · cihaz profili | ✅ | Dört profil, `SimulatedDeviceTransport` |
+| S02 · syslog basıcı | 🔄 | Çapa `SampleClock`'a taşındı; TTL artık **kapı** |
+| S03 · SSH sunucusu | 🔄 | Container yazıldı; **`SshDeviceTransport` F1'den beri ilk kez koştu ve geçti** |
+| S04 · senaryo motoru | ⬜ | S02+S03'ü bekliyor |
+| S05 · filo + kapsam | ⬜ | FS-a'nın kapanış ticket'ı |
+| S06 · CLI öykünmesi | ⬜ | FS-b |
+| S07 · webhook üreteci | ⬜ | FS-b |
 
-Üçü elle tutulan liste yansımaya çevrilince, biri kapının kendi `--self-test`
-kipiyle, biri yeni test yazılırken bulundu.
-
-### Sigma tuzakları — dördüncüsü yeni bir sınıf
-
-| # | Tuzak | Nasıl görülür |
-| --- | --- | --- |
-| 6 | `attrs` anahtarları ad alanlı — `unmapped['url']` sonsuza kadar sıfır döner | üretilen SQL |
-| 7 | `IPv6` kolonunda metin operatörü — `toString()` tip hatasından beter | üretilen SQL |
-| 8 | Backend ifadelerimizi backtick'liyor | üretilen SQL |
-| **9** | Gerçek kolon, temiz derleme, makul SQL — **ama o vendor'da hep boş** | **yalnızca veriye sorularak** |
-
-9'un örneği `routeros_forward_new`: `activity_name`'e bakıyor, RouterOS parser'ı
-onu **bilerek** boş bırakıyor (`accept`/`drop` yazmak uydurma olurdu), zincir
-adı `fw_chain`'e gidiyor. Kayıp değil **yer değiştirme**.
-
-Çözümü de küresel olamıyor: `FIELD_MAP` küresel, boşluk **logsource'a bağlı**.
-`VENDOR_EMPTY_COLUMNS` bu yüzden doğdu, ve `action`'ın FortiGate'te hâlâ
-derlendiğini ayrı bir bekçi çiviliyor.
-
-### Aynı girdinin iki kopyası
-
-Korpus `catalog/sigma/rules/`'a terfi etti, düzeltme `prototypes/`'ta yapıldı,
-`measure.py` biri ile Kapı 3 diğerini okudu. Sürüklenme kapısı bunu göremez —
-**çıktıyı girdiye karşı tutuyor**, bir girdinin kendi kopyasından ayrışmasını
-değil. Bekçi artık **içeriğe** bakıyor (`detection:` + `logsource:` taşıyan her
-YAML), ada değil; kopya başka adla düşse de görülüyor.
-
-Sebep bir kişinin hatası değil **iki talimatın kesişimiydi**: koordinatör
-korpusun taşındığını düzeltmeyi yapan ajana söylemedi.
+**Faz ikiye bölündü.** FS-a (S01–S05) ürünün gerçek cihaz olmadan uçtan uca
+koşmasını sağlıyor — diğer fazların beklediği kapı bu. FS-b (S06–S07)
+toplayıcının **doğru** koştuğunu sağlıyor. İkisi ayrı sorular.
 
 ---
 
-## 7 · Sıralama
+## 8 · Bugünün ölçülmüş hâli
 
-Kritik yol tek bir ölçümden geçiyor.
+```
+CI (push, 2026-08-25) → success, DOKUZ işin dokuzu
 
-```mermaid
-flowchart LR
-  M["3 kutulu ölçüm<br/>1'de"] --> S["T30 kapsam kararı"]
-  M --> B["12 beyan<br/>6'da"]
-  S --> C["Gerçek SigmaHQ<br/>alt kümesi"]
-  M --> T33["T33 başlıyor"]
-  T37["T37 · ekran"] --> T38["T38 · altın küme"]
-  T27["T27 · F2 kapanışı"] -.->|bağımsız| X[" "]
+birim         965 · UI          477 · entegrasyon 160/161
+sigma-build   180 · sidecar      52 · derleme 19 proje 0 uyarı
 ```
 
-**Ekran kolu Sigma kolundan bağımsız** ilerliyor — T37 ve T38 ölçümü
-beklemiyor. T27 de üçüncü bağımsız kol.
-
-Yani üç kol paralel:
-
-1. **Sigma** — ölçüm → kapsam kararı → gerçek korpus (1 ve 6)
-2. **Ekran** — T37 → T38 (4 ve 7)
-3. **F2 kapanışı** — T27 (3)
-
-Dördüncü kol, altın örneklerin veri sadakati (2): alan kapsamı aracı bugün
-`Reset-I`'yi bağımsız olarak buldu ve `asa_teardown_rst` teşhisini doğruladı.
+Yerelde koştururken kapı listemi **sekiz** sanmıştım; dokuzuncu iş
+(*"Uçtan uca — çalışan ürün"*) paralel oturumdan gelmişti ve listemde yoktu.
+Yani "tam" diye koşturduğum liste tam değildi, ve bunu ancak CI söyledi —
+envanterdeki *"CI'nın gördüğü şey senin koşmadığın şeydir"* maddesinin
+bugünkü örneği.
 
 ---
 
-## 8 · Bu belgenin bilmediği şey
+## 9 · Bu belgenin bilmediği şey
 
 **Gerçek müşteri verisi olmadan kapanmayacak** iki kalem var ve ikisi de
 "yapılacak iş" değil:
 
-- Baseline pencere uzunluğu (§5)
-- Sigma kapsam oranının anlamı — `%25`'in örneklemin mi ürünün mü sayısı
-  olduğu, ölçüm bittiğinde bile bir kısmı örnekleme bağlı kalacak
+- **Baseline pencere uzunluğu.** Dirsek tohumlama düğmesiyle yedi kat kayıyor;
+  bağlayıcı bir taban bu fixture'dan çıkmıyor.
+- **Sigma kapsam oranının anlamı.** Payda bu turda **dört kez** oynadı
+  (24 → 14 → 15 → ≥14) ve alt sınır olarak yazıldı.
 
-İkisi de F3'ü bloke etmiyor ama **F3'ün sayıları bağlayıcı değil** demek. Bunu
-yazan yer burası; bir sonraki fazda birinin bu sayılara dayanması gerekirse
-önce bu paragrafı okusun.
+İkisi de F3'ü bloke etmiyor ama **F3'ün sayıları bağlayıcı değil** demek. Bir
+sonraki fazda birinin bu sayılara dayanması gerekirse önce bu paragrafı okusun.

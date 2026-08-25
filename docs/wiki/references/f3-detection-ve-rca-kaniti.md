@@ -20,7 +20,7 @@ sources:
   - docs/epic/tickets-f3/index.md
   - docs/epic/rca-raporu-ozelligi/index.md
   - docs/epic/sigma-clickhouse-arastirmasi/index.md
-source_digest: "sha256-12/v1 docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=27055ee43212 docs/epic/rca-raporu-ozelligi/index.md=ea61d3fffdb9 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=e6589b0ed6b1"
+source_digest: "sha256-12/v1 docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=ea61d3fffdb9 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=e6589b0ed6b1"
 summary: F3'ün iki kolu (Sigma detection ve RCA kanıtı), planı yarı yarıya değiştiren template_id bulgusu, on ticket'ın bugünkü durumu ve fazın sayılarının neden bağlayıcı olmadığı.
 provenance:
   extracted: 0.85
@@ -90,11 +90,11 @@ devam eder.
 yazıyor: **T29 ve T30 kod değil sayı teslim ediyor**, çünkü F1'in dersi
 doğrulanmamış her katmanın kırık çıktığıydı.
 
-| Kol | Ticket'lar | Durum (`docs/epic/f3-yol-haritasi/index.md`, 2026-08-21) |
+| Kol | Ticket'lar | Durum (`docs/epic/f3-yol-haritasi/index.md`, **2026-08-25**) |
 | --- | --- | --- |
-| **Detection** | T30 prototip → T31 pipeline → T32 derleme → T33 kural yönetimi | dördü de açık; hepsi tek bir ölçüme bakıyor |
-| **Kanıt** | T29 → T34 sözleşme → T35 korelasyonlar → T36 paket → T37 ekran | T29/T34/T35/T36 **bitti**, T37 açık |
-| **Buluşma** | T38 altın küme | T33 ve T37'yi bekliyor |
+| **Detection** | T30 prototip → T31 pipeline → T32 derleme → T33 kural yönetimi | T30/T31/T33 **kapandı**; **T32 açık** |
+| **Kanıt** | T29 → T34 sözleşme → T35 korelasyonlar → T36 paket → T37 ekran | **beşi de kapandı** |
+| **Buluşma** | T38 altın küme | **tek açık kol** — ekran yarısı indi; T31'den devredilen nginx örneği burada |
 
 Yol haritası ayrıca üçüncü bir bağımsız kol sayıyor: F2'nin kapanış
 doğrulaması (T27).
