@@ -191,15 +191,84 @@ kalite hiç ölçülemez.
 
 ## 5. Tetikleyiciler (K20 — dördü de)
 
-Dört yol tek kuyrukta buluşuyor. Ayrı yollar olsaydı kota ve döngü koruması dört
-kez yazılacaktı.
+**Üç kaynak, bir devam kuralı** — dördü de tek kuyrukta buluşuyor. Ayrı yollar
+olsaydı kota ve döngü koruması dört kez yazılacaktı.
 
 | Tetikleyici | Giriş | Özel gereksinim |
 | --- | --- | --- |
-| **Alarm / Sigma** | detection motoru `AlertRaised` yayınlar | **Debounce + birleştirme**: alarm fırtınasında 500 alarm → 1 RCA. Anahtar: `(rule_id, scope, 10dk pencere)` |
+| **Alarm / Sigma** | `alert_triggers` tablosuna düşen **satır** | **Debounce + birleştirme**: alarm fırtınasında 500 alarm → 1 RCA. Anahtar: `(rule_id, scope, 10dk pencere)` |
 | **Kullanıcı (UI)** | zaman aralığı + kapsam + belirti metni | Kullanıcı başına eşzamanlılık limiti |
-| **Anomali zinciri** | senaryo → senaryo | **Zincir derinliği ≤ 2** ve döngü tespiti. Yoksa senaryo A → RCA → alarm → senaryo A |
 | **Dış API** | `POST /api/v1/rca` + `Idempotency-Key` | Aynı anahtar → aynı rapor, yeni koşu değil |
+| **Anomali zinciri** ⟳ | *bir kaynak değil:* bir **RCA koşumunun** bulgusu | **Soyağacı**: `root_run_id` + `depth`. `depth ≥ 2` **ya da** tetikleyici anahtarı soyağacında zaten varsa reddedilir |
+
+Dördüncü satır tabloda **kaynak değil devam** olarak duruyor ve sırası bilerek
+sonda: girdisi bir sinyal değil, **daha önce koşmuş bir RCA**. Zincirin ilk
+halkası her zaman üstteki üç kaynaktan biri.
+
+### `AlertRaised` diye bir olay **yok** — ve tasarım onu varsayıyordu
+
+Ölçüldü: `AlertRaised` adında bir olay, tip ya da yayın depoda **hiç yok**;
+ad yalnızca bu belgede geçiyordu. Bugün gerçekten var olan sinyal
+`alert_triggers` tablosuna düşen satır — Sigma kuralı da, kullanıcının yazdığı
+alarm kuralı da aynı zamanlayıcıdan (`AlertSchedulerWorker`) aynı tabloya
+düşüyor, aralarında çalışma zamanında **hiçbir yol farkı yok**.
+
+Bu bir *"henüz yazılmadı"* değil: tasarım bir **olay veri yolu varsayıyordu ve
+öyle bir şey yok.** Fark önemli, çünkü birincisi *"gelince bağlarız"* diye
+okunur ve F4 planlamasına sıfır maliyetli görünür; ikincisi ise bir olay veri
+yolu isteniyorsa **yazılacak iş** olduğunu söylüyor.
+
+### Döngü tespiti neden debounce anahtarıyla yapılamaz
+
+`(rule_id, scope, pencere)` **aynı tetikleyicinin tekrarını** yakalıyor ve
+yukarıda alarm satırında tam bu iş için duruyor. Ama `A → B → A` zincirinde
+her halka **farklı** bir `rule_id` taşıyabilir; anahtar döngüyü **kaçırır**.
+
+`depth ≤ 2` de tek başına yetmiyor: döngüyü **kısaltır ama engellemez.**
+`A → B → A` derinlik 2'de duruyor — ama `A` ikinci kez koştu, aynı rapor iki kez
+üretildi ve **kota iki kez ödendi**.
+
+Bu yüzden iki mekanizma birlikte: soyağacı zincirin kendisini, debounce
+anahtarı tek tetikleyicinin tekrarını tutuyor. İkisini tek anahtara yüklemek,
+farklı iki soruyu aynı yere sormak olurdu.
+
+**Reddedilen koşum kayda geçiyor ve sebebi ayrı tutuluyor:** `depth` sınırı ile
+ata tekrarı farklı şeyler söylüyor — biri *"zincir yeterince derine indi"*,
+diğeri *"bu zaten koştu"*. Sessizce düşürmek, *"neden RCA üretilmedi"*
+sorusunu cevapsız bırakır.
+
+> ⚠️ **Açık, kota kararına bağlı:** reddedilen bir koşum kotadan düşülüyor mu?
+> Düşülürse bir döngü kotayı **hiç rapor üretmeden** tüketebilir; düşülmezse
+> reddedilen koşum bedava olur ve bir hata döngüsü kotayı hiç zorlamaz.
+> Karar kota açık sorusunda.
+
+<details>
+<summary>Eski hâli (dört kaynak, <code>AlertRaised</code>) ve neden değişti</summary>
+
+Tablo dördüncü satırı bir **kaynak** olarak sayıyordu ve alarm satırının girişi
+`AlertRaised` yayını diye yazılıydı:
+
+| Tetikleyici | Giriş | Özel gereksinim |
+| --- | --- | --- |
+| **Alarm / Sigma** | detection motoru `AlertRaised` yayınlar | Debounce + birleştirme… |
+| **Anomali zinciri** | senaryo → senaryo | Zincir derinliği ≤ 2 ve döngü tespiti |
+
+İki düzeltme, ikisi de ölçümle
+([F4 tetikleyici kararı](../f4-tetikleyici-karari/index.md)):
+
+1. **`AlertRaised` kodda yok.** Bağlanma noktası bir tablo satırı.
+2. **Dördüncü satır bir kaynak değil.** Zinciri başlatan ilk anomalinin nereden
+   doğduğu hiçbir yerde yazılı değildi ve üç aday ölçüldüğünde hiçbiri
+   tutmadı: F3'ün korelasyonları bugün **tetiklenemiyor** (hiçbir zamanlanmış
+   değerlendirici onları okumuyor), Sigma **zaten** birinci tetikleyici, ve
+   geriye yalnızca *"RCA'nın RCA doğurması"* kalıyor — o da bir özyineleme.
+
+Eski hâli saklanıyor çünkü *"dört kaynak"* okuması F4 kapsamını **büyütüyordu**:
+tabloda diğerleriyle aynı görünen bir satır, arkasında eşiği ve sıklığı
+kararlaştırılmamış bir **dedektör** saklıyordu. Bu deponun "sessiz yanlış
+davranış" dediği şeyin planlama katmanındaki hâli.
+
+</details>
 
 Kuyruk risk #6'nın (gürültülü komşu) karşılığı: **eşzamanlılık limiti, koşu başına**
 **süre tavanı, token bütçesi ve grup başına günlük RCA kotası** kuyrukta uygulanır,

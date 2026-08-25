@@ -187,6 +187,37 @@ Bu ayrım bilerek yazılı: *"aradım, yok"* ile *"aramadım"* farklı şeyler.
 
 ---
 
+## Ayrı bir açık soru — F4'ün değil, ama görünür olmalı
+
+**Ürünün bugün push modda anomali tespiti yok.**
+
+Ölçüm 1'in bulgusu F4'ün kapsamına girmiyor ama bir kenara atılmamalı: beş
+korelasyon çekme modelinde duruyor ve hiçbir zamanlanmış değerlendirici onları
+okumuyor. Yani ürün *"bir şey oldu"* diyen bir bileşen **taşımıyor**; yalnızca
+sorulduğunda cevap veren bir yüzey taşıyor.
+
+> **Açık soru:** Korelasyonlar zamanlanmış bir değerlendiriciye bağlanacak mı?
+
+**Sahibi yok, fazı yok, kararı verilmedi** — ve burada karar da verilmiyor.
+Yazılmasının tek sebebi görünür olması: F4 bittiğinde bu soru hâlâ açıksa, o
+bir **eksiklik değil bilinen bir sınır** olur. Yazılmasaydı ikisi ayırt
+edilemezdi.
+
+## Kesişme — kota ajanına iletilecek
+
+Soyağacı önerisi kota kararına değiyor ve **kararı burada verilmiyor**:
+
+> Reddedilen bir koşum (derinlik sınırı ya da ata tekrarı) kotadan **düşülüyor
+> mu**?
+
+İki cevap da savunulabilir ve zıt sonuç veriyor: düşülürse bir döngü, kotayı
+hiç rapor üretmeden tüketebilir; düşülmezse reddedilen koşum bedava olur ve
+bir hata döngüsü kotayı hiç zorlamaz.
+
+§9 gereği kendi kararımı vermiyorum ve doğrudan da iletmiyorum — koordinatör
+kota ajanına iletecek. Burada **kesişme olarak işaretli** duruyor ki cevap
+geldiğinde nereye yazılacağı belli olsun.
+
 ## Tereddüt ettiğim yer
 
 *"Anomali zinciri"* ifadesini **devam kuralı** diye okumam bir yorum. Belgeyi
