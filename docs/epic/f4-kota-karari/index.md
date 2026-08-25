@@ -409,3 +409,36 @@ seçilirse ortadan kalkar: doğrudan **token kotası** koymak sayıyı tek baş�
 anlamlı yapar. Ama kullanıcıya *"bugün 40 RCA hakkınız var"* demek,
 *"1,2M token"* demekten okunaklı. Ben ikisini önerdim (§7 madde 2), tek birime
 inmek de savunulabilir.
+
+---
+
+## 9 · Bu belgeye katılacak dört bulgu — **henüz katılmadı**
+
+Bu soruyu iki ajan birbirinden habersiz cevapladı; koordinatörün hatası, ikisinin
+değil. Bu belge taban olarak seçildi, ama diğer sürüm (`6fc87fa`) burada
+**olmayan** dört şey taşıyor. Katılana kadar bu bölüm duruyor:
+
+1. **"Reddedilen koşum düşülmez" yalnızca *girişte* reddedilen için geçerli.**
+Süre ya da token tavanına takılan koşum reddedilmedi, **başarısız oldu** — kanıt
+topladı, belki modeli çağırdı, maliyeti gerçekten ödendi ve kotadan düşülmeli.
+İkisini aynı kefeye koymak kotayı gerçek harcamadan koparır.
+2. **Eşzamanlılık bir ret değil bir bekletme.** *"Sıranı bekliyorsun"* ile
+*"kotan doldu"* kullanıcı için tamamen farklı; tek bir *"şu an çalıştırılamıyor"*
+mesajı ikisini birleştirir ve kullanıcıyı bekleyeceği yerde kotasını sorgulamaya
+gönderir.
+3. **Kapalı durum kümesinin emsali depoda ve gerekçesi kayıtlı:**
+`AlertRunState`. Zaman aşımı `Quiet` sayılsaydı *"yavaş bir sorgu sessizce her
+şey yolunda'ya dönüşürdü"*. Aynı ayrım burada `Empty` (bakıldı, bulunamadı) ≠
+`QuotaExceeded` (**hiç bakılmadı**) ≠ `Cancelled` (başladı, yarıda kesildi).
+Sonuncusu özellikle önemli: yarıda kesilen koşum kanıt toplamış olabilir ve o
+kanıt *"bulunamadı"* diye sunulursa **yanlış bir olumsuzluk** üretir.
+4. **İki emsal sayı var ve ikisi de ölçülerek değil kararla konmuş:**
+`MaxConcurrentEvaluations = 4` ve `GatherBudget = (400, 20 sn)`. RCA koşumu
+alarm değerlendirmesinden ağır; **aynı sayı devralınmamalı**.
+
+Ayrıca `Cancelled` / `Failed` sınırının ölçütü karara bağlandı ve buraya
+yazılmalı: **operatör yapılandırmaya bakarak öngörebilir miydi?** Öngörebilirse
+`Cancelled` (sistem bildiği bir sınırda kasten durdu), öngöremezse `Failed`
+(sağlayıcı hatası, tekrardan sonra hâlâ bozuk çıktı). Kota ekseni bundan
+**bağımsız**: token bütçesi dolan koşum `Cancelled` **ve** düşülüyor. İki eksen
+olduğu yazılmazsa *"iptal edildi, o hâlde bedava"* çıkarımı doğar.
