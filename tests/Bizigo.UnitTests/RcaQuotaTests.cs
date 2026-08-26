@@ -1,4 +1,5 @@
 using Bizigo.ControlPlane;
+using Bizigo.Contracts;
 using Bizigo.Rca;
 using Microsoft.Extensions.Time.Testing;
 
@@ -155,7 +156,7 @@ public sealed class RcaQuotaTests : IDisposable
         const int reserve = 25;
 
         // Olay tetikli üç kaynak tam havuzu görüyor.
-        foreach (var source in new[] { RcaTriggerSource.Alert, RcaTriggerSource.User, RcaTriggerSource.Api })
+        foreach (var source in new[] { RcaTriggerSource.Alert, RcaTriggerSource.Manual, RcaTriggerSource.External })
         {
             Assert.Equal(daily, RcaQuotaGate.EffectiveLimit(daily, reserve, source));
         }

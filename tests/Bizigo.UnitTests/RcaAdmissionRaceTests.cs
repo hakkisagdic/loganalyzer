@@ -1,4 +1,5 @@
 using Bizigo.ControlPlane;
+using Bizigo.Contracts;
 using Bizigo.Rca;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -43,7 +44,7 @@ public sealed class RcaAdmissionRaceTests : IDisposable
 
     private static RcaTriggerRequest Request(string key) => new()
     {
-        Source = RcaTriggerSource.Api,
+        Source = RcaTriggerSource.External,
         Identity = "integration-client",
         OwnerGroup = "network/core",
         WindowFrom = Noon.AddMinutes(-15),
@@ -89,7 +90,7 @@ public sealed class RcaAdmissionRaceTests : IDisposable
 
         var request = new RcaTriggerRequest
         {
-            Source = RcaTriggerSource.User,
+            Source = RcaTriggerSource.Manual,
             Identity = "analyst",
             OwnerGroup = "network/core",
             WindowFrom = Noon.AddMinutes(-15),
@@ -160,7 +161,7 @@ internal sealed class RaceInjectingFactory : IDbContextFactory<ControlPlaneDbCon
         var winner = new RcaRunEntity
         {
             OwnerGroup = "network/core",
-            Source = RcaTriggerSource.Api,
+            Source = RcaTriggerSource.External,
             IdempotencyKey = idempotencyKey,
             State = RcaRunState.Queued,
             Accepted = true,

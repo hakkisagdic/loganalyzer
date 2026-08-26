@@ -1,4 +1,9 @@
+// `RcaTriggerSource` T45'in bağlama turunda `Bizigo.Contracts`'a taşındı:
+// `Bizigo.ScenarioPlugin` onu görmek zorunda ve zinciri ControlPlane'i
+// içermiyor. Bu satırın eksikliği T42/T46 merge'inde derlemeyi kırdı — §5'in
+// "git'in göremediği çakışma" sınıfı: iki dal da metinsel olarak temizdi.
 using Bizigo.ControlPlane;
+using Bizigo.Contracts;
 using Microsoft.EntityFrameworkCore;
 
 namespace Bizigo.Rca;
