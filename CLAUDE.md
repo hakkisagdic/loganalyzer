@@ -190,6 +190,27 @@ alışkanlık değil bir kural.
 **Bekçinin kırmızı yanabildiğini ölç, sonra geri al.** Geçen bir test geçtiğini
 kanıtlamaz; kırılabildiğini göstermek kanıtlar. Rapora "ölçtüm" diye yaz.
 
+**Kusuru uyguladıktan sonra dosyada gerçekten olduğunu doğrula, sonra koştur.**
+Kırmızı ölçümünde yeşil bir sonuç iki şey anlatabiliyor: *"kusur etkisiz"* ya
+da **"kusur hiç uygulanmadı"**. İkisi aynı çıktıyı veriyor ve birincisi
+varsayılıyor.
+
+Bir turda **üç ajan bağımsız olarak** aynı tuzağa düştü ve üçü de kendi
+yakaladı — üç örnek bir desen:
+
+| Ne oldu | Sonuç |
+| --- | --- |
+| `python3 -c` içinde tırnak kaçışı tutmadı | Dosya **hiç değişmedi**, test yeşil geldi |
+| Kusur uygulandı ama ölçüme sabit bir zaman damgası verildi | Kova hiç değişmedi, testler yeşil kaldı — "kusur yok" hâliyle **aynı şey** ölçülmüştü |
+| Yeni bir kavram eklenirken onu görecek eski kod aranmadı | İki gösterim doğdu, birim paketi sessiz kaldı, CI kırmızı yandı |
+
+Yordam: kusuru yaz → dosyayı **oku** ve kusurun orada olduğunu **iddia et**
+(`assert 'KIRMIZI' in dosya`) → koştur → geri al. İddia adımı olmazsa ölçüm
+kendi başarısızlığını sessizce başarı diye raporluyor — yani ölçüm aracının
+kendisi bu deponun §7'de tarif ettiği sınıfa giriyor.
+
+> **Yeşil bir sonuç, ölçümün yapılmadığı anlamına da gelebiliyor.**
+
 **Bir testin geçme sebebinin duvar saatiyle ilgisi olmamalı.** Bu depoda iki kez
 yaşandı:
 - `DiscoveryWorkerTests` sidecar zaman aşımını 200 ms'ye çekiyordu; aynı sınıfta

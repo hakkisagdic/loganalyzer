@@ -24,7 +24,7 @@ sources:
   - docs/epic/t09-kararlar/index.md
   - docs/epic/t10-kararlar/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=ec55cf4c830b docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t09-kararlar/index.md=b21d65bda95a docs/epic/t10-kararlar/index.md=98995baaaacf docs/epic/t27-ad-govde-kesfi/index.md=e14d05d8d833 docs/epic/t27-kapanis-taramasi/index.md=fc23cd892d11 docs/epic/t28-denetim-bulgulari/index.md=7f6ce6b9f3f7 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t39-alan-kapsami/index.md=7d06bfcf6e0c"
+source_digest: "sha256-12/v1 CLAUDE.md=dd011df5a833 docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t09-kararlar/index.md=b21d65bda95a docs/epic/t10-kararlar/index.md=98995baaaacf docs/epic/t27-ad-govde-kesfi/index.md=e14d05d8d833 docs/epic/t27-kapanis-taramasi/index.md=fc23cd892d11 docs/epic/t28-denetim-bulgulari/index.md=7f6ce6b9f3f7 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t39-alan-kapsami/index.md=7d06bfcf6e0c"
 summary: Geçen bir test geçtiğini kanıtlar, kırılabildiğini değil. Bu depoda bekçiler koruduğu hata geri konularak sınanıyor; yanlış pozitif vermediği de ayrıca ölçülüyor.
 provenance:
   extracted: 0.85
@@ -64,6 +64,32 @@ T29 aynısını üç bekçiye uyguladı (hash ham satırdan alınıyor → `Sign
 5 iddia; `ParsingSink` imzayı yazmıyor → `SignatureHotPathTests` 7'de 5;
 `ReplayDiff` imzayı karşılaştırmıyor → `ReplayDiffTests`). T39 blob kuralını
 kaldırıp iki kutu-1 testinin düştüğünü ölçtü ve geri aldı.
+
+### Adım 1.5 — kusurun dosyada **gerçekten** olduğunu iddia et
+
+`CLAUDE.md` §6'ya 2026-08-26'da eklendi ve sebebi bir turda **üç bağımsız
+örnek**: kırmızı ölçümünde yeşil bir sonuç iki şey anlatabiliyor — *"kusur
+etkisiz"* ya da **"kusur hiç uygulanmadı"**. İkisi aynı çıktıyı veriyor ve
+birincisi varsayılıyor.
+
+| Ne oldu | Yeşilin sebebi |
+| --- | --- |
+| `python3 -c` içinde tırnak kaçışı tutmadı | Dosya **hiç değişmedi** |
+| Kusur uygulandı ama ölçüme sabit bir zaman damgası verildi | Kova hiç değişmedi — *"kusur yok"* hâliyle **aynı şey** ölçüldü |
+| Yeni kavram eklenirken onu görecek eski kod aranmadı | Kusur başka bir katmanda kaldı; birim paketi sessiz, CI kırmızı |
+
+Yordam: kusuru yaz → dosyayı **oku** ve kusurun orada olduğunu **iddia et**
+(`assert 'KIRMIZI' in dosya`) → koştur → geri al.
+
+İddia adımı olmazsa ölçüm kendi başarısızlığını sessizce başarı diye
+raporluyor. Yani **ölçüm aracının kendisi**
+[[concepts/sessiz-yanlis-davranis]] sınıfına giriyor — bu sayfanın tarif ettiği
+disiplinin kendi üstüne kapanan hâli.
+
+> **Yeşil bir sonuç, ölçümün yapılmadığı anlamına da gelebiliyor.**
+
+Üçünün de kendi ajanı tarafından yakalanması ayrıca bir veri: tuzak bir dikkat
+eksikliği değil, **ölçüm yordamının eksik bir adımı**ydı. ^[extracted]
 
 ## Adım 2 — yanmaması gereken yerde yanmadığını da ölç
 
@@ -180,7 +206,7 @@ kendisi olurdu."*
 
 ## Kontrol listesi
 
-- [ ] Hatayı geri koy, kırmızı yandığını gör, geri al.
+- [ ] Hatayı geri koy, **dosyada gerçekten olduğunu iddia et**, kırmızı yandığını gör, geri al.
 - [ ] Yanmaması gereken bir değişiklikle yeşil kaldığını gör.
 - [ ] Yeşil kaldıysa: bekçi mi kırık, yoksa veri mi şanslı?
 - [ ] Bekçinin bağlı olduğu yerin taşınabileceğini düşün; yeri de tut.

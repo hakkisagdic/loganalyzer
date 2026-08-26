@@ -9,7 +9,7 @@ relationships:
   - target: "[[references/f2-kapanis]]"
     type: derived_from
 sources: [docs/epic/f2-kapanis/index.md, CLAUDE.md]
-source_digest: "sha256-12/v1 CLAUDE.md=ec55cf4c830b docs/epic/f2-kapanis/index.md=c701d88f78fd"
+source_digest: "sha256-12/v1 CLAUDE.md=dd011df5a833 docs/epic/f2-kapanis/index.md=c701d88f78fd"
 summary: Denetlenen kümeyi elle tutulan bir listeden toplayan bekçi, listede olmayanı hiç görmez ve yine de yeşil yanar. Çözüm kümeyi yansımayla bulmak.
 provenance:
   extracted: 0.8

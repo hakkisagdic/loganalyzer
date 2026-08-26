@@ -16,7 +16,7 @@ sources:
   - docs/epic/fs-simulatorler/index.md
   - docs/epic/t36-devir-notu/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=ec55cf4c830b docs/epic/fs-simulatorler/index.md=22bb02d19d29 docs/epic/is-envanteri/index.md=c1ee55fd6048 docs/epic/pazar-arastirmasi-ve-feature-parity/index.md=5ce5d91ed46b docs/epic/t36-devir-notu/index.md=5027982dbb85"
+source_digest: "sha256-12/v1 CLAUDE.md=dd011df5a833 docs/epic/fs-simulatorler/index.md=22bb02d19d29 docs/epic/is-envanteri/index.md=c1ee55fd6048 docs/epic/pazar-arastirmasi-ve-feature-parity/index.md=5ce5d91ed46b docs/epic/t36-devir-notu/index.md=5027982dbb85"
 summary: 2026-08-14 parity matrisinin MVP/v2/Diff sınıflaması ve bugünkü envanterde karşılığı — hangi MVP indi, hangi v2 erken geldi, hangi Diff hâlâ kanıtsız.
 provenance:
   extracted: 0.75
