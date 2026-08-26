@@ -188,8 +188,57 @@ public sealed class RcaAdmission(
         run.RejectionDetail = detail;
         run.Accepted = rejection == RcaRejectionReason.None;
 
+        // Kabul edilen talep kuyruğa giriyor ve **slot bekliyor** — koşmuyor.
+        // Eşzamanlılık bir ret değil bir bekletme (F4 kota kararı §9 bulgu 2):
+        // "sıranı bekliyorsun" ile "kotan doldu" kullanıcı için tamamen farklı
+        // ve tek bir "şu an çalıştırılamıyor" mesajı ikisini birleştirirdi.
+        run.State = run.Accepted ? RcaRunState.Queued : RcaRunState.Rejected;
+
+        // Kota damgası **kabul anında** basılıyor ve geri alınmıyor. §9'un
+        // birinci bulgusu: yalnızca GİRİŞTE reddedilen düşülmez. Süre ya da
+        // token tavanına takılan koşum reddedilmedi, başarısız oldu — kanıt
+        // topladı, belki modeli çağırdı, maliyeti gerçekten ödendi. İade
+        // edilebilir olsaydı "iptal et, yeniden dene" bir kota atlatma yolu
+        // olurdu.
+        run.CountsAgainstQuota = RcaRunLifecycle.CountsAgainstQuota(run.State);
+
         db.RcaRuns.Add(run);
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateException)
+        {
+            // Okuma-sonra-yazma yarışı: iki eşzamanlı istek de yukarıdaki
+            // idempotency sorgusunda "yok" gördü, ikisi de ekledi, biri
+            // benzersiz indekse çarptı. Bu bir HATA DEĞİL, yarışın sonucu —
+            // ve çağıran açısından ikisi de "aynı anahtarla istedim" diyor,
+            // yani kaybeden de başarılı bir cevap almalı.
+            var winner = await ExistingByKeyAsync(request.IdempotencyKey, cancellationToken).ConfigureAwait(false);
+
+            if (winner is null)
+            {
+                // Çarpışma başka bir kısıttan geldi. Yutmak, sessiz yanlış
+                // davranışın ta kendisi olurdu (§7): koşum yazılmadı ve çağıran
+                // yazıldığını sanırdı.
+                throw;
+            }
+
+            // `Existing: true` bilinçli ve uçtaki 200/201 ayrımını taşıyor: bu
+            // istek hiçbir şey YARATMADI. `EvidenceEndpoints` zaten bu bayrağa
+            // bakıp 200 dönüyor, kabul edilen yeni koşum ise 201 alıyor — yani
+            // çağıran "benim isteğim mi koşum başlattı" sorusunu durum kodundan
+            // cevaplayabiliyor. İkisini aynı koda koymak, T45'te 410 ile
+            // kapatılan hatanın aynısı olurdu: aynı durumda iki farklı anlam,
+            // TS tarafında ayırt edilemeyen bir birleşim.
+            logger.LogInformation(
+                "RCA idempotency yarışı: {Key} anahtarında var olan koşum döndürüldü ({RunId}).",
+                request.IdempotencyKey,
+                winner.Id);
+
+            return new RcaAdmissionResult(winner, Existing: true);
+        }
 
         if (!run.Accepted)
         {
@@ -206,6 +255,44 @@ public sealed class RcaAdmission(
     }
 
     /// <summary>
+    /// Yarışı kazanan satırı <b>taze bir bağlamdan</b> okur.
+    ///
+    /// <para>
+    /// Taze olması şart: <see cref="DbSet{TEntity}.Add"/> edilip düşen varlık
+    /// eski bağlamda hâlâ <c>Added</c> durumunda duruyor ve aynı bağlamdan yapılan
+    /// bir sorgu onu geri verebilirdi — yani kaybeden istek <i>kendi yazamadığı
+    /// satırı</i> kazanan sanırdı.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Neden bu yol, <c>INSERT … ON CONFLICT DO NOTHING RETURNING</c> değil.</b>
+    /// O yol tek gidiş-dönüşle biterdi ama ham SQL ister ve Postgres'e özgüdür;
+    /// bu sınıfın birim testleri InMemory sağlayıcıda koşuyor ve kabul kararının
+    /// tamamı varlık modelinden geçiyor. Kolonlar elle yazılmış bir
+    /// <c>INSERT</c>'e taşınsaydı <c>rca_runs</c>'a eklenen her yeni alanın
+    /// <b>iki</b> yerde güncellenmesi gerekirdi ve unutulan alan sessizce
+    /// varsayılan değerle yazılırdı. Yakalayıp yeniden okumak, kazanılan tek
+    /// gidiş-dönüşten daha ucuz bir sözleşme: yarış nadir, alan unutmak kalıcı.
+    /// </para>
+    /// </summary>
+    private async Task<RcaRunEntity?> ExistingByKeyAsync(string? key, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            // Anahtarsız talepte benzersiz indeks zaten devrede değil; çarpışma
+            // başka bir yerden geldi ve yutulmamalı.
+            return null;
+        }
+
+        await using var db = await factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+
+        return await db.RcaRuns
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.IdempotencyKey == key, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Kabul edilmiş bir koşumu ürettiği kanıt paketine bağlar.
     ///
     /// <para>
@@ -214,9 +301,32 @@ public sealed class RcaAdmission(
     /// yapılsaydı kapı, kabul etmeyeceği bir talebin kanıtını toplamak zorunda
     /// kalırdı — yani reddin bedeli kabulünkiyle aynı olurdu.
     /// </para>
+    ///
+    /// <para>
+    /// <b>Aynı çağrı koşumu terminale taşıyor</b> (T46). Bağlama ile bitirme ayrı
+    /// iki adım olsaydı arada bir pencere kalırdı: paketi olan ama hâlâ
+    /// <c>Queued</c> görünen bir koşum. O pencerede idempotent tekrar denemeye
+    /// verilecek cevap yok — ne "sürüyor" doğru ne "bitti".
+    /// </para>
     /// </summary>
-    public async Task AttachBundleAsync(Guid runId, Guid bundleId, CancellationToken cancellationToken = default)
+    /// <param name="state">
+    /// Koşumun terminal durumu. Varsayılan <see cref="RcaRunState.Complete"/>;
+    /// paketin boş olduğunu <b>bilen</b> çağıran <see cref="RcaRunState.Empty"/>
+    /// geçebilir. Kapı paketin içeriğine bakmıyor — bakması, kanıt
+    /// semantiğini kabul kararına taşımak olurdu.
+    /// </param>
+    public async Task AttachBundleAsync(
+        Guid runId,
+        Guid bundleId,
+        RcaRunState state = RcaRunState.Complete,
+        CancellationToken cancellationToken = default)
     {
+        if (!RcaRunLifecycle.IsTerminal(state))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(state), state, "Paket bağlanan koşum terminal bir duruma taşınmalı.");
+        }
+
         await using var db = await factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
 
         var run = await db.RcaRuns.FirstOrDefaultAsync(r => r.Id == runId, cancellationToken).ConfigureAwait(false);
@@ -227,6 +337,13 @@ public sealed class RcaAdmission(
         }
 
         run.EvidenceBundleId = bundleId;
+        run.State = state;
+        run.FinishedAt = _time.GetUtcNow();
+
+        // `StartedAt` bilerek boş bırakılıyor: eşzamanlı uçta kuyruk yok, koşum
+        // isteğin kendi içinde bitiyor. `RequestedAt`'i başlangıç diye damgalamak
+        // ölçülmemiş bir sayıyı ölçülmüş gibi göstermek olurdu — kuyruk bekleme
+        // süresi bu yolda ölçülmüyor, sıfır da değil.
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 

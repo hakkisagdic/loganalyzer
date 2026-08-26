@@ -220,6 +220,54 @@
         }
       }
     },
+    "/v1/rca/runs": {
+      "get": {
+        "tags": [
+          "rca"
+        ],
+        "operationId": "ListRcaRuns",
+        "parameters": [
+          {
+            "name": "owner_group",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "trigger",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RcaRunListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/alerts/triggers/{triggerId}/close": {
       "post": {
         "tags": [
@@ -1616,6 +1664,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RcaReportResponse"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RcaRunResponse"
                 }
               }
             }
@@ -5609,6 +5667,78 @@
           }
         }
       },
+      "RcaRunListResponse": {
+        "required": [
+          "count",
+          "runs"
+        ],
+        "type": "object",
+        "properties": {
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "runs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RcaRunResponse"
+            }
+          }
+        }
+      },
+      "RcaRunResponse": {
+        "required": [
+          "id",
+          "source",
+          "trigger_identity",
+          "owner_group",
+          "state",
+          "reason",
+          "counts_against_quota",
+          "requested_at",
+          "finished_at"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string"
+          },
+          "trigger_identity": {
+            "type": "string"
+          },
+          "owner_group": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "counts_against_quota": {
+            "type": "boolean"
+          },
+          "requested_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "RcaSliceResponse": {
         "required": [
           "provider_id",
@@ -6232,10 +6362,10 @@
       "name": "parsers"
     },
     {
-      "name": "alerts"
+      "name": "rca"
     },
     {
-      "name": "rca"
+      "name": "alerts"
     },
     {
       "name": "events"

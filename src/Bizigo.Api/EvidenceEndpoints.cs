@@ -138,6 +138,11 @@ public static class EvidenceEndpoints
             // taşıyor, çünkü "neden RCA üretilmedi" sorusunun tek cevaplanabildiği
             // yer bu.
             .Produces<RcaReportResponse>(StatusCodes.Status200OK)
+
+            // 202: aynı anahtarın kazananı hâlâ koşuyor. 410'dan ayrı, çünkü
+            // "paket henüz yok" ile "paket artık yok" istemciye zıt şeyler
+            // söylüyor — biri yeniden dene, diğeri pes et.
+            .Produces<RcaRunResponse>(StatusCodes.Status202Accepted)
             .Produces<ErrorResponse>(StatusCodes.Status410Gone)
             .Produces<RcaAdmissionResponse>(StatusCodes.Status429TooManyRequests)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
@@ -222,6 +227,22 @@ public static class EvidenceEndpoints
             // Aynı `Idempotency-Key` ikinci kez geldi: YENİ KOŞU YOK. Var olan
             // koşumun raporu dönüyor — 201 değil 200, çünkü bu istek hiçbir şey
             // yaratmadı.
+            // Kazanan koşum HENÜZ BİTMEDİYSE paket yok ama silinmiş de değil.
+            // İkisini 410'da birleştirmek "paket saklama süresi dolmuş olabilir"
+            // diyerek yanlış bir hikâye anlatırdı — ve istemci yeniden denemek
+            // yerine pes ederdi. Ayrımı `rca_runs`'ın durumu taşıyor (T46):
+            // terminal değilse iş sürüyor.
+            //
+            // Bu yol idempotency yarışının kaybedeni için ASIL yol: kazanan tam
+            // o sırada paketi kuruyor, yani `EvidenceBundleId` neredeyse her
+            // zaman henüz boş.
+            if (!RcaRunLifecycle.IsTerminal(admitted.Run.State))
+            {
+                return Results.Json(
+                    RcaRunResponse.Of(admitted.Run),
+                    statusCode: StatusCodes.Status202Accepted);
+            }
+
             var previous = admitted.Run.EvidenceBundleId is { } bundleId
                 ? await store.GetAsync(bundleId, cancellationToken)
                 : null;
@@ -257,8 +278,17 @@ public static class EvidenceEndpoints
         await store.SaveAsync(bundle, cancellationToken);
 
         // Koşumu ürettiği kanıt paketine bağlıyoruz: idempotent bir tekrar
-        // denemenin AYNI raporu döndürebilmesi buna bağlı.
-        await admission.AttachBundleAsync(admitted.Run.Id, bundle.Id, cancellationToken);
+        // denemenin AYNI raporu döndürebilmesi buna bağlı. Aynı çağrı koşumu
+        // terminale taşıyor — paketi olup hâlâ `Queued` görünen bir ara hâl
+        // kalmasın diye.
+        //
+        // `Complete` geçiliyor, `Empty` değil: paketin "ilişkili kanıt bulundu
+        // mu" sorusunun cevabı kanıt semantiğine ait ve bu uç ona bakmıyor.
+        // Buradan tahmin yürütmek, T46'nın ayırmak için var olduğu iki hâli
+        // (bakıldı-bulunamadı / bakıldı-bulundu) kapı katmanında uydurmak
+        // olurdu. Parametre o kararı verebilecek çağıran için duruyor.
+        await admission.AttachBundleAsync(
+            admitted.Run.Id, bundle.Id, RcaRunState.Complete, cancellationToken);
 
         var report = DeterministicReport.From(bundle);
 

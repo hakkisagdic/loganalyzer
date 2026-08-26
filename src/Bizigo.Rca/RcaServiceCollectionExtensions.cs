@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -8,17 +9,28 @@ public static class RcaServiceCollectionExtensions
     /// <summary>
     /// RCA tetikleyicileri (T45). <c>AddControlPlane</c>'den sonra eklenmeli.
     /// </summary>
-    public static IServiceCollection AddBizigoRcaTriggers(this IServiceCollection services)
+    public static IServiceCollection AddBizigoRcaTriggers(
+        this IServiceCollection services,
+        IConfiguration? configuration = null)
     {
         ArgumentNullException.ThrowIfNull(services);
 
         services.TryAddSingleton(TimeProvider.System);
         services.AddSingleton<RcaAdmission>();
 
-        // Kota kapısının VARSAYILANI hiçbir şeyi reddetmiyor. T46 kendi
-        // uygulamasını `Replace` ile geçirecek; `TryAdd` kullanmak, T46'nın
-        // kaydı önce gelirse sessizce iki kapı bırakırdı.
-        services.TryAddSingleton<IRcaQuotaGate, AlwaysAllowQuotaGate>();
+        var quota = new RcaQuotaOptions();
+        configuration?.GetSection(RcaQuotaOptions.SectionName).Bind(quota);
+        services.AddSingleton(quota);
+
+        // T46 kapıyı dolduruyor. `Replace`, `TryAdd` DEĞİL: T45 varsayılanı
+        // `TryAddSingleton` ile kaydediyor ve burada da `TryAdd` kullanmak,
+        // çağrı sırasına göre sessizce hiçbir şeyi reddetmeyen kapıyı bırakırdı
+        // — kota yapılandırılmış görünüp hiç çalışmazdı.
+        services.Replace(ServiceDescriptor.Singleton<IRcaQuotaGate, RcaQuotaGate>());
+
+        // Kullanım sorgusu kapının kendisinden ayrı çözülebilmeli: ekran ve
+        // okuma yolu kotayı "kontrol etmek" için değil "göstermek" için istiyor.
+        services.AddSingleton<RcaQuotaGate>();
 
         return services;
     }
