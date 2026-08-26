@@ -1,6 +1,7 @@
 using Bizigo.Alerting;
 using Bizigo.Api;
 using Bizigo.Api.Connectors;
+using Bizigo.Api.Rca;
 using Bizigo.Api.Webhooks;
 using Bizigo.Authoring;
 using Bizigo.ControlPlane;
@@ -75,6 +76,16 @@ builder.Services.AddBizigoRcaTriggers(builder.Configuration);
 // doğrulama ağ çözümlemesi yapıyor ve kayıt anına konsaydı DNS erişilemediğinde
 // API'nin tamamı ayağa kalkmazdı.
 builder.Services.AddBizigoModelProvider(builder.Configuration);
+
+// Takvim tetikleyicisi ve kuyruk boşaltıcısı (T46). Api katmanında, çünkü
+// koşumu tamamlamak kanıt paketini kurmayı gerektiriyor ve `Bizigo.Rca`
+// Evidence'ı tanımıyor — tanısaydı kabul kararı kanıt toplamaya bağımlı olurdu.
+{
+    var schedules = new RcaScheduleOptions();
+    builder.Configuration.GetSection(RcaScheduleOptions.SectionName).Bind(schedules);
+    builder.Services.AddSingleton(schedules);
+    builder.Services.AddHostedService<RcaScheduleWorker>();
+}
 
 // Kimlik ve yetkilendirme (T09).
 builder.Services.AddBizigoAuthentication(builder.Configuration);
