@@ -1,4 +1,5 @@
 using Bizigo.Api.Rca;
+using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Bizigo.Evidence;
 using Bizigo.Rca;
@@ -374,7 +375,7 @@ public sealed class RcaScheduleWorkerTests : IDisposable
         db.RcaRuns.Add(new RcaRunEntity
         {
             OwnerGroup = "network/core",
-            Source = RcaTriggerSource.User,
+            Source = RcaTriggerSource.Manual,
             TriggerIdentity = "analyst",
             RequestedAt = Noon.AddMinutes(-1),
             State = RcaRunState.Running,
