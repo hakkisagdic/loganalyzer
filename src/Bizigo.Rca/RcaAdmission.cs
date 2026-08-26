@@ -185,6 +185,20 @@ public sealed class RcaAdmission(
         run.RejectionDetail = detail;
         run.Accepted = rejection == RcaRejectionReason.None;
 
+        // Kabul edilen talep kuyruğa giriyor ve **slot bekliyor** — koşmuyor.
+        // Eşzamanlılık bir ret değil bir bekletme (F4 kota kararı §9 bulgu 2):
+        // "sıranı bekliyorsun" ile "kotan doldu" kullanıcı için tamamen farklı
+        // ve tek bir "şu an çalıştırılamıyor" mesajı ikisini birleştirirdi.
+        run.State = run.Accepted ? RcaRunState.Queued : RcaRunState.Rejected;
+
+        // Kota damgası **kabul anında** basılıyor ve geri alınmıyor. §9'un
+        // birinci bulgusu: yalnızca GİRİŞTE reddedilen düşülmez. Süre ya da
+        // token tavanına takılan koşum reddedilmedi, başarısız oldu — kanıt
+        // topladı, belki modeli çağırdı, maliyeti gerçekten ödendi. İade
+        // edilebilir olsaydı "iptal et, yeniden dene" bir kota atlatma yolu
+        // olurdu.
+        run.CountsAgainstQuota = RcaRunLifecycle.CountsAgainstQuota(run.State);
+
         db.RcaRuns.Add(run);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 

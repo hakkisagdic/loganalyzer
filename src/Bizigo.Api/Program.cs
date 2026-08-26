@@ -68,7 +68,7 @@ builder.Services.AddBizigoEvidence();
 builder.Services.AddBizigoAlerting(builder.Configuration);
 
 // RCA tetikleyicileri: dört kaynak tek kapıdan (T45).
-builder.Services.AddBizigoRcaTriggers();
+builder.Services.AddBizigoRcaTriggers(builder.Configuration);
 
 // Kimlik ve yetkilendirme (T09).
 builder.Services.AddBizigoAuthentication(builder.Configuration);

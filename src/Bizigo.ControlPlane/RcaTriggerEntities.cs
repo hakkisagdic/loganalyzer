@@ -95,6 +95,91 @@ public enum RcaRejectionReason
 }
 
 /// <summary>
+/// Bir koşumun <b>başına gelen her şey</b> — kapalı küme (T46, F4 kota kararı §9.3).
+///
+/// <para>
+/// <b>Emsal ve gerekçe <c>AlertRunState</c>.</b> Alarm motoru zaman aşımını
+/// <c>Quiet</c> yapmıyor, <c>TimedOut</c> yapıyor; çünkü "alarm yok" cevabı asla
+/// bir zaman aşımından türememeli. Buradaki karşılığı üç ayrı değer:
+/// <see cref="Empty"/> (bakıldı, bulunamadı) ≠ <see cref="Rejected"/> +
+/// <c>QuotaExceeded</c> (<b>hiç bakılmadı</b>) ≠ <see cref="Cancelled"/>
+/// (başladı, yarıda kesildi). Sonuncusu özellikle önemli: yarıda kesilen koşum
+/// kanıt toplamış olabilir ve o kanıt "bulunamadı" diye sunulursa <b>yanlış bir
+/// olumsuzluk</b> üretir.
+/// </para>
+///
+/// <para>
+/// <b>Durum yalnızca burada.</b> <c>rca_report</c> bir statü taşıyıcısı değil;
+/// var olduğunda taşıyacağı şey üretilen belgenin kendisi olacak. İkiye
+/// bölünürlerse "kota mı, boş mu" sorusu bir <c>join</c>'e döner ve join'in iki
+/// sessiz hâli var: satır ikisinde birden ya da hiçbirinde. İkisi de belirti
+/// üretmez. <c>RcaReportStatusGuardTests</c> bu sınırı bekliyor.
+/// </para>
+/// </summary>
+public enum RcaRunState
+{
+    /// <summary>
+    /// Kuyruğa <b>hiç girmedi</b>. Sebebi <see cref="RcaRunEntity.Rejection"/>'da.
+    /// Kotadan <b>düşülmez</b> — iş hiç başlamadı, maliyet ödenmedi.
+    /// </summary>
+    Rejected = 0,
+
+    /// <summary>
+    /// Kabul edildi, slot bekliyor.
+    ///
+    /// <para>
+    /// <b>Ret değil bekletme</b> (§9 bulgu 2). "Sıranı bekliyorsun" ile "kotan
+    /// doldu" kullanıcı için tamamen farklı; tek bir "şu an çalıştırılamıyor"
+    /// mesajı ikisini birleştirir ve kullanıcıyı bekleyeceği yerde kotasını
+    /// sorgulamaya gönderir.
+    /// </para>
+    /// </summary>
+    Queued = 1,
+
+    /// <summary>Slot alındı, koşuyor.</summary>
+    Running = 2,
+
+    /// <summary>Bitti ve rapor üretti.</summary>
+    Complete = 3,
+
+    /// <summary>
+    /// Koştu, baktı, <b>bulamadı</b>. Kotadan düşülüyor: bakma maliyeti ödendi.
+    /// </summary>
+    Empty = 4,
+
+    /// <summary>
+    /// Kanıt toplandı, akıl yürütme kesildi (§4.3). Aynı paketle <b>yeniden
+    /// koşturulabilir</b> — paket saklı. Kesilmiş bir raporu atmak, elde duran
+    /// kanıtı da atmak olurdu.
+    /// </summary>
+    Truncated = 5,
+
+    /// <summary>
+    /// Sistem <b>bildiği bir sınırda kasten durdu</b> — operatör yapılandırmaya
+    /// bakarak öngörebilirdi.
+    ///
+    /// <para>
+    /// <see cref="Failed"/>'dan ayıran ölçüt tek soru: <b>öngörülebilir miydi?</b>
+    /// Süre tavanı, token bütçesi, iptal isteği → <c>Cancelled</c>. Sağlayıcı
+    /// hatası, tekrardan sonra hâlâ bozuk çıktı → <c>Failed</c>.
+    /// </para>
+    ///
+    /// <para>
+    /// ⚠️ Kota ekseni bundan <b>bağımsız</b>: token bütçesi dolan koşum
+    /// <c>Cancelled</c> <b>ve</b> kotadan düşülüyor. İki eksen olduğu
+    /// yazılmazsa "iptal edildi, o hâlde bedava" çıkarımı doğar.
+    /// </para>
+    /// </summary>
+    Cancelled = 6,
+
+    /// <summary>
+    /// Öngörülemeyen arıza. Kotadan <b>düşülüyor</b> — kanıt topladı, belki
+    /// modeli çağırdı, maliyeti gerçekten ödendi (§9 bulgu 1).
+    /// </summary>
+    Failed = 7,
+}
+
+/// <summary>
 /// Bir RCA koşum talebi — <b>kabul edilmiş ya da reddedilmiş</b> (T45, RCA §5).
 ///
 /// <para>
@@ -223,4 +308,58 @@ public sealed class RcaRunEntity
     /// </para>
     /// </summary>
     public Guid? EvidenceBundleId { get; set; }
+
+    /// <summary>
+    /// Koşumun <b>başına gelen her şey</b> — kapalı küme (T46).
+    ///
+    /// <para>
+    /// <see cref="Accepted"/> ile çelişmiyor, onu <i>tamamlıyor</i>: kabul
+    /// kararı kapının cevabı, bu ise koşumun hikâyesi. Reddedilen bir talep
+    /// <see cref="RcaRunState.Rejected"/> durumunda kalıyor ve <b>neden</b>
+    /// reddedildiği <see cref="Rejection"/>'da.
+    /// </para>
+    /// </summary>
+    public RcaRunState State { get; set; } = RcaRunState.Rejected;
+
+    /// <summary>
+    /// Bu koşum grubun günlük kotasından <b>düşülüyor mu</b>.
+    ///
+    /// <para>
+    /// <b>§9'un birinci bulgusu:</b> "reddedilen koşum düşülmez" yalnızca
+    /// <i>girişte</i> reddedilen için geçerli. Süre ya da token tavanına takılan
+    /// koşum reddedilmedi, <b>başarısız oldu</b> — kanıt topladı, belki modeli
+    /// çağırdı, maliyeti gerçekten ödendi. İkisini aynı kefeye koymak kotayı
+    /// gerçek harcamadan koparır.
+    /// </para>
+    ///
+    /// <para>
+    /// Kabul anında <c>true</c> yazılıyor ve <b>geri alınmıyor</b>. İade
+    /// edilebilir olsaydı "iptal et, yeniden dene" bir kota atlatma yolu olurdu.
+    /// </para>
+    /// </summary>
+    public bool CountsAgainstQuota { get; set; }
+
+    // Kotanın hangi PENCEREYE yazıldığı bilerek saklanmıyor: pencere
+    // `RequestedAt` ile yapılandırılmış politikanın fonksiyonu. Satıra
+    // yazsaydık politika değiştiğinde eski satırlar eski pencereyi taşımaya
+    // devam eder ve sayaç iki farklı tanımı aynı anda kullanırdı — bu depoda
+    // ikinci gerçek kaynağın bedeli birkaç kez ödendi.
+
+    /// <summary>Slot alınıp koşumun başladığı an; kuyrukta bekleyen için boş.</summary>
+    public DateTimeOffset? StartedAt { get; set; }
+
+    /// <summary>Koşumun bittiği an — hangi durumla bittiğinden bağımsız.</summary>
+    public DateTimeOffset? FinishedAt { get; set; }
+
+    /// <summary>
+    /// Durumu açıklayan tek satır: hangi sınır kesti, hangi sağlayıcı düştü.
+    ///
+    /// <para>
+    /// <see cref="RejectionDetail"/>'dan ayrı, çünkü ikisi farklı anlara ait:
+    /// biri kapının, diğeri yürütmenin. Tek alana koymak, "hiç başlamadı" ile
+    /// "yarıda kesildi"nin gerekçesini aynı yere yazmak olurdu.
+    /// </para>
+    /// </summary>
+    [MaxLength(512)]
+    public string StateDetail { get; set; } = string.Empty;
 }
