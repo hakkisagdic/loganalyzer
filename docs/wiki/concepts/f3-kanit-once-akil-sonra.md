@@ -21,7 +21,7 @@ sources:
   - docs/epic/t37-rapor-ekrani/index.md
   - docs/epic/tickets-f3/altin-kume/index.md
   - docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md
-source_digest: "sha256-12/v1 docs/epic/rca-raporu-ozelligi/index.md=5190a1f093f2 docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t35-korelasyonlar/index.md=90159516d982 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/altin-kume/index.md=9bb15adc35bc docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=75e5f331bd85"
+source_digest: "sha256-12/v1 docs/epic/rca-raporu-ozelligi/index.md=5190a1f093f2 docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t35-korelasyonlar/index.md=90159516d982 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/altin-kume/index.md=9bb15adc35bc docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=b455e7171024"
 summary: RCA'nın tek gerçek riski inandırıcı ama yanlış rapor; tasarımın tamamı bu tek riske karşı kurulu. F3 kanıtı LLM'siz üretiyor, saklıyor ve raporun her dürüstlük satırını mekanizmaya bağlıyor.
 provenance:
   extracted: 0.85
@@ -102,6 +102,23 @@ RCA belgesinden alınıp F3'te birer mekanizmaya çevrildi:
    gölgede tutulmasının tek sebebi yukarıdaki satır: maliyeti fazla maskeleme
    olan katman, ürüne girmeden önce kaç şeye dokunacağını ölçüyor. Terfi ayrı
    bir karar.
+
+   **Taban yazıldı ve gölge ölçüldü** — ve sayı gerekçeyi doğruladı. Altın
+   korpusta maskeleyen katmanların yanlış pozitifi **0/87**; gölgedeki
+   entropi ise değerlendirilen 96 uzun belirtecin **59'unu** aday gösterdi
+   (oran 0,61). Aday listesinin başında UUID'ler, oturum kimlikleri ve
+   **FortiGate imza adları** var — `HTTP.BROWSER_Firefox` gibi. Yani entropi
+   bugün terfi ettirilseydi maskelenecek şeylerin başında **saldırı imzasının
+   adı** gelirdi: RCA'nın raporlamak istediği şeyin ta kendisi.
+
+   Ölçümün asıl söylediği şey oran değil, oranın **neyden** oluştuğu. Tek
+   başına 0,61 bir eşik ayarı sorunu gibi okunurdu; içine bakınca sorunun
+   eşikte olmadığı görülüyor — entropi bu alanda **sırla imzayı ayırt
+   edemiyor**. Terfi ticket'ı bu iki sayıyla açılmalı.
+
+   Ve bu, gölge katmanın var olma sebebinin kanıtı: aynı katman doğrudan
+   maskeleyerek sevk edilseydi, kaybı **atılan cümle sayacında** görünürdü —
+   ama *neyin* kaybolduğu görünmezdi.
 
 ## Sınırın nereden geçtiği
 

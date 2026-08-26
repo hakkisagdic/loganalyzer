@@ -21,7 +21,7 @@ sources:
   - docs/epic/rca-raporu-ozelligi/index.md
   - docs/epic/sigma-clickhouse-arastirmasi/index.md
   - docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md
-source_digest: "sha256-12/v1 docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=5190a1f093f2 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=e6589b0ed6b1 docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=75e5f331bd85"
+source_digest: "sha256-12/v1 docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=5190a1f093f2 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=e6589b0ed6b1 docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=b455e7171024"
 summary: F3'ün iki kolu (Sigma detection ve RCA kanıtı), planı yarı yarıya değiştiren template_id bulgusu, on ticket'ın bugünkü durumu ve fazın sayılarının neden bağlayıcı olmadığı.
 provenance:
   extracted: 0.85
@@ -136,7 +136,7 @@ paragrafı okumalı.
 | Ne | Nerede | Gerekçe |
 | --- | --- | --- |
 | LLM yorumu, **beş** tetikleyici, kuyruk/kota | F4 | K22 — kanıt önce |
-| Prompt redaksiyon tabanı (T41) | F4 **önkoşulu** | 2026-08-25: prompt'a giden metinde sır tanıyan bileşen yok; olmadan `masked`/`raw` düzeyleri açılmıyor |
+| Prompt redaksiyon tabanı (T41) | F4 **önkoşulu — kapandı** | 2026-08-25: taban yoktu, yazıldı. Üç katman: üretici söz dizimi ve dar bilinen-biçim kümesi maskeliyor, entropi **yalnızca sayıyor**. Altın korpusta yanlış pozitif **0/87** |
 | Metrik · trace · topoloji sağlayıcıları | F5 | K21'in bedeli; sözleşme beşini de tanıyor, uygulaması yok |
 | Sigma korelasyon kuralları | sonra | backend destekliyor ama önce tekiller otursun |
 | PDF export | kapsam dışı | Markdown var; PDF gelirse **aynı metinden** üretilmeli |
