@@ -1,0 +1,13 @@
+# SIR TASIYAN FIXTURE — log kolu (T41). Şartlar ve kural için
+# `asa-dc-01/sir-tasiyan.log` başlığına bak; oradaki üç şart burada da geçerli.
+#
+# Bu dosyanın kendine özgü tarafı: FortiGate alanlarını TIRNAKLIYOR. Değerin
+# sınırı burada belirsiz değil — kapanış tırnağı. Kapı tırnaklı değerde satır
+# sonuna kadar maskelerse `devname`/`msg` gibi RCA'nın ihtiyacı olan alanlar
+# gereksiz yere gider; testin ayrıca baktığı şey bu. İkinci satır tırnaksız:
+# orada sınır gerçekten belirsiz ve kapı satır sonuna kadar maskeliyor.
+#
+# BEKLENEN: SAHTE-Zq5wE8rT1yU3iO6p
+# BEKLENEN: SAHTE-Ab4cD7eF0gH2jK5l
+<189>date=2026-09-03 time=11:07:48 devname="fw-ankara-01" devid="FG100D000000001" logid="0100032001" type="event" subtype="system" level="information" vd="root" logdesc="Admin login" user="svc-mon" password="SAHTE-Zq5wE8rT1yU3iO6p" ui="ssh(10.1.2.3)" method="ssh" msg="Administrator svc-mon logged in from ssh(10.1.2.3)"
+<188>date=2026-09-03 time=11:11:20 devname="fw-ankara-01" devid="FG100D000000001" logid="0101037127" type="event" subtype="vpn" level="warning" vd="root" logdesc="IPsec phase 1 error" action="negotiate" srcip=203.0.113.9 dstip=198.51.100.4 outintf="wan1" psksecret=SAHTE-Ab4cD7eF0gH2jK5l status="negotiate_error" msg="progress IPsec phase 1"

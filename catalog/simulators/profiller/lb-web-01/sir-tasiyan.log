@@ -1,0 +1,21 @@
+# SIR TASIYAN FIXTURE — log kolu (T41), KATMAN B. Şartlar için
+# `asa-dc-01/sir-tasiyan.log` başlığına bak.
+#
+# Buradaki satırlarda üretici anahtar kelimesi YOK; katman C bunları görmez.
+# Yakalayan şey katman B: kendini tarif eden ve eskimeyen biçimler — JWT'nin üç
+# parçası, `Authorization: Bearer/Basic`, PEM gövdesi. `lb-web-01` bir ağ cihazı
+# değil ama katalogda (`nginx.access`) ve prompt'a giden metin yalnızca ağ
+# cihazından gelmiyor — B'nin eskimeyen yarısının içeride kalma gerekçesi bu.
+#
+# JWT'nin gövdesi base64url; çözülünce `{"sub":"SAHTE-fixture","iss":"bizigo-test"}`
+# yazıyor. Değer sahte, biçim gerçek.
+#
+# BEKLENEN: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJTQUhURS1maXh0dXJlIiwiaXNzIjoiYml6aWdvLXRlc3QifQ.U0FIVEUtaW16YS1kZWdpbGRpci1idXJhc2k
+# BEKLENEN: SAHTEc3ZjLW1vbjpTQUhURS1wYXJvbGE=
+# BEKLENEN: SAHTE-MIIBOgIBAAJBAKj34GkxFhD90vcNLYLInFEX6Ppy1tPf9Cnzj4p4WGeK
+198.51.100.13 - - [03/Sep/2026:11:04:12 +0300] "GET /api/v1/olaylar HTTP/1.1" 200 1841 "-" "bizigo-agent/1.0" "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJTQUhURS1maXh0dXJlIiwiaXNzIjoiYml6aWdvLXRlc3QifQ.U0FIVEUtaW16YS1kZWdpbGRpci1idXJhc2k"
+198.51.100.13 - - [03/Sep/2026:11:06:30 +0300] "GET /api/v1/kaynaklar HTTP/1.1" 401 173 "-" "curl/8.4.0" "Authorization: Basic SAHTEc3ZjLW1vbjpTQUhURS1wYXJvbGE="
+2026-09-03T11:09:44+03:00 lb-web-01 nginx: [error] 1234#0: SSL_CTX_use_PrivateKey_file failed, inline key was:
+-----BEGIN RSA PRIVATE KEY-----
+SAHTE-MIIBOgIBAAJBAKj34GkxFhD90vcNLYLInFEX6Ppy1tPf9Cnzj4p4WGeK
+-----END RSA PRIVATE KEY-----

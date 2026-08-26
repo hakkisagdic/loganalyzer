@@ -1,0 +1,11 @@
+# SIR TASIYAN FIXTURE — log kolu (T41). Şartlar ve kural için
+# `asa-dc-01/sir-tasiyan.log` başlığına bak.
+#
+# RouterOS `=` ile yazıyor ve tırnak kullanmıyor: sınır belirsiz, kapı satır
+# sonuna kadar maskeliyor. Bu bilinçli — tırnaksız bir değerin nerede bittiğini
+# log satırında bilmek mümkün değil ve tahmin etmek sızdırmak demek.
+#
+# BEKLENEN: SAHTE-Nm8pQ4rS7tV1wX3z
+# BEKLENEN: SAHTE-Bd6fG9hJ2kL5nP8q
+Sep  3 11:14:02 rb-sube-07 system,info,account script executed: /interface wireless security-profiles set wpa2-pre-shared-key=SAHTE-Nm8pQ4rS7tV1wX3z sube-07-wifi
+Sep  3 11:15:37 rb-sube-07 system,info,account script executed: /user set svc-mon password=SAHTE-Bd6fG9hJ2kL5nP8q

@@ -24,10 +24,21 @@ public static class SecretRedactor
     public const string Mask = "[gizli]";
 
     /// <summary>
-    /// Maskelenecek en kısa parça. Altı karakterin altı maskelenmiyor: <c>https</c>,
-    /// <c>api</c>, <c>v1</c> gibi parçalar her mesajda geçiyor ve hepsini
-    /// maskelemek hata mesajını okunamaz hâle getirir — okunamayan bir hata
-    /// mesajı da kendi başına bir arıza.
+    /// Maskelenecek en kısa <b>türetilmiş</b> parça. Altı karakterin altı
+    /// maskelenmiyor: <c>https</c>, <c>api</c>, <c>v1</c> gibi parçalar her
+    /// mesajda geçiyor ve hepsini maskelemek hata mesajını okunamaz hâle
+    /// getirir — okunamayan bir hata mesajı da kendi başına bir arıza.
+    ///
+    /// <para>
+    /// <b>T41'de gözden geçirildi ve korundu — ama yalnızca bu yolda.</b>
+    /// Eşiğin gerekçesi <see cref="Fragments(IEnumerable{string?})"/>'ın
+    /// <i>türettiği</i> parçalarla ilgili: bir webhook URL'inden çıkan
+    /// <c>api</c> parçası sır değil, gürültü. <see cref="RedactExact"/> yolunda
+    /// böyle bir türetme yok — oradaki değer, bir sır atamasının sağ tarafı
+    /// olarak <b>bulunmuş</b> bir değer. ASA'nın dört karakterlik bir SNMP
+    /// community'si gerçek bir sır, ve altı karakterlik bir taban onu sessizce
+    /// atlardı: hata yok, sayaç yok, belirti yok.
+    /// </para>
     /// </summary>
     private const int MinFragment = 6;
 
@@ -40,7 +51,51 @@ public static class SecretRedactor
     public static string Redact(string? text, IEnumerable<string?> secrets)
     {
         ArgumentNullException.ThrowIfNull(secrets);
+        return Apply(text, Fragments(secrets));
+    }
 
+    /// <summary>
+    /// <b>Keşifle bulunmuş</b> değerleri maskeler: türev çıkarılmaz, uzunluk
+    /// tabanı uygulanmaz (T41).
+    ///
+    /// <para>
+    /// <see cref="Redact(string?, IEnumerable{string?})"/> "şu sırrı biliyorum,
+    /// metinde parçası geçiyor olabilir" sorusunu cevaplıyor ve bu yüzden
+    /// türetiyor. Burada soru başka: değer <b>bu metnin içinde</b>, aynen,
+    /// bulundu. Türetecek bir şey yok — ve türetilseydi <c>password</c> alanına
+    /// yazılmış bir URL'in host'u bütün prompt boyunca maskelenirdi.
+    /// </para>
+    ///
+    /// <para>
+    /// İkame tarafı ortak: aynı <see cref="Apply"/>, aynı uzundan kısaya sıra.
+    /// İkinci bir ikame uygulaması yok (CLAUDE.md §9).
+    /// </para>
+    /// </summary>
+    public static string RedactExact(string? text, IEnumerable<string?> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+
+        var set = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var value in values)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                set.Add(value.Trim());
+            }
+        }
+
+        return Apply(text, [.. set.OrderByDescending(static x => x.Length)]);
+    }
+
+    /// <summary>
+    /// İkamenin tek uygulaması. Parçalar buraya <b>uzundan kısaya</b> sıralı
+    /// geliyor ve sıralamak çağıranın işi; bozulursa sonuç sessiz: kısa parça
+    /// önce maskelenirse uzun parça artık metinde bulunamaz ve geri kalanı
+    /// açıkta kalır.
+    /// </summary>
+    private static string Apply(string? text, IReadOnlyList<string> ordered)
+    {
         if (string.IsNullOrEmpty(text))
         {
             return string.Empty;
@@ -48,7 +103,7 @@ public static class SecretRedactor
 
         var result = text;
 
-        foreach (var fragment in Fragments(secrets))
+        foreach (var fragment in ordered)
         {
             result = result.Replace(fragment, Mask, StringComparison.OrdinalIgnoreCase);
         }

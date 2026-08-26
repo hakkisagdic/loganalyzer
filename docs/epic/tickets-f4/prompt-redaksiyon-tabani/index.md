@@ -1,7 +1,7 @@
 ---
 title: "T41 — Prompt redaksiyon tabanı: log metninde sır tanıma"
 kind: ticket
-status: 0
+status: 2
 ---
 
 # T41 — Prompt redaksiyon tabanı
@@ -385,20 +385,109 @@ yüzey** olmalı ve bu tüketicilerin çağrı biçimini değiştirmemeli.
 | **§3'ten hangisi?** A / B / C / D | **C → dar B → gölge A.** D değil. Ayrıntısı ve gerekçesi §3'te; C bir taşıma, B ikiye bölündü, A maskelemiyor sayıyor |
 | **Tanınamayan bir şey bulunduğunda ne olur — yalnızca yazılır mı, sayaç mı doğar?** | **Sayaç doğuyor**, ve gölge katmanın kendisi o sayaç: `redaction_shadow_candidates` + `redaction_shadow_ratio`. T38'in oranıyla aynı rolde — yüksekse ya kapı dar ya eşik yanlış, ikisi de karar gerektiren bilgi |
 
-### Açık
+### Kapandı (devamı)
 
-1. **Kapı bir satırı mı yoksa bir parçayı mı atar?** §1 *"sır içeren bir satır
-   prompt'a girmemeli"* diyor — satırın **tamamı** mı düşer, yoksa sır
-   maskelenip satır kalır mı? İkisi farklı şeyler ve §4'ün bağlam maliyeti
-   ikisinde farklı. `SecretRedactor`'ın bugünkü davranışı ikincisi.
+| Soru | Cevap (2026-08-26) |
+| --- | --- |
+| **Kapı bir satırı mı yoksa bir parçayı mı atar?** | **Parça.** Değer maskelenir, satır kalır. Satırı düşürmek RCA'nın ihtiyacı olan bağlamı siler — `reason="passwd_invalid"` satırında zaten değer yok, maskelenseydi korunan bir şey olmaz sebep bilgisi giderdi. **İstisna:** değerin sınırı belirsizse **satır sonuna kadar** maskele, tahmin etme (koordinatör, 2026-08-26). Uygulama §11'de |
+| **`tickets-f4/index.md` yazılsın mı?** | **Sahibi başkası** (koordinatör, 2026-08-25) |
 
-   Katman kararı bu soruyu **kapatmıyor ama daraltıyor**: C ve B maskeleyici
-   olduğu için ikisi de "parça" tarafında duruyor. Satırın tamamını atmak,
-   maskeleyen bir katmanın üstüne ayrı bir karar.
-2. **`tickets-f4/index.md` (F4 story'si) yazılsın mı?** Diğer ticket kökleri
-   (`tickets`, `tickets-f2`, `tickets-f3`, `tickets-fs`) bir story index'i
-   taşıyor. Bu ticket yazmıyor: F4'ün ticket bölünmesini ilan etmek burasının
-   işi değil. **Sahibi başkası** (koordinatör, 2026-08-25).
+## 11 · Uygulama turu — ne yapıldı, ne ölçüldü (2026-08-26)
+
+### Nerede duruyor
+
+| Parça | Yer |
+| --- | --- |
+| Ortak anahtar kelime listesi + iki çapa | `src/Bizigo.Contracts/Security/SecretPatterns.cs` |
+| Kapı (C + B + gölge A) | `src/Bizigo.Contracts/Security/RedactedPrompt.cs` |
+| Keşif yolunun ikamesi | `SecretRedactor.RedactExact` — ikame gövdesi ortak (`Apply`) |
+| Log kolunda sır taşıyan fixture | `catalog/simulators/profiller/<profil>/sir-tasiyan.log` (4 dosya) |
+| Testler | `tests/Bizigo.UnitTests/RedactionGateTests.cs` (17 test) |
+
+### Kararlar ve gerekçeleri
+
+**Kapı ile çıktısı aynı tip (`RedactedPrompt`), yapıcısı `private`.** Kriter
+1'in *"kapıyı atlayan ikinci bir yol yok"* iddiası bir çağrı alışkanlığına
+değil **derleyiciye** bağlandı: `RedactedPrompt` örneği yalnızca
+`RedactedPrompt.Redact`'ten çıkabiliyor. Kapı `string` döndürseydi, unutulduğu
+gün hiçbir şey kırılmazdı — §7'nin sınıfı. **Bu, F4'e bir şart koyuyor:**
+prompt'u kuran taraf girdisini `string` değil bu tipten almalı, yoksa garanti
+yarım kalır.
+
+**Değerin sınırı iki kuralla belirleniyor.** Tırnaklı değerde kapanış tırnağı
+(FortiGate kv logları alanlarını tırnaklıyor), tırnaksız değerde **satır
+sonuna kadar**. İkincisi koordinatörün *"sınırı belirsizse tahmin etme"*
+kararının doğrudan uygulanışı. Bedeli ölçüldü ve aşağıda.
+
+**`MinFragment = 6` korundu — ama yalnızca bilinen-sır yolunda.** Eşiğin
+gerekçesi (`https`, `api`, `v1`) **türetilmiş** parçalarla ilgili: bir webhook
+URL'inden çıkan `api` sır değil gürültü. Keşif yolunda türetme yok — değer bir
+atamanın sağ tarafı olarak bulundu. ASA'nın dört karakterlik bir SNMP
+community'si gerçek bir sır ve altı karakterlik bir taban onu **sessizce**
+atlardı. Tek eşik iki soruya birden cevap veremiyordu; yol ikiye ayrıldı,
+eşik yerinde kaldı (kriter 11).
+
+**Gölge katman maskelenmiş metin üzerinde sayıyor.** *"C+B'nin üstüne"*
+sorusunun tanımı bu; ham metin üzerinde sayılsaydı C+B'nin zaten maskelediği
+her değer aday olarak da görünür ve terfi kararını şişirirdi.
+
+### Ölçüldü
+
+| Ölçüm | Sonuç |
+| --- | --- |
+| `dotnet build` | 17 proje, 0 hata, 0 uyarı |
+| `dotnet test tests/Bizigo.UnitTests` | 1006 geçti / 1 düştü / 4 atlandı. Düşen `WikiSourceDigestTests` ve **T41'e ait değil**: `CLAUDE.md` §2 değişikliğinden dolayı 14 vault sayfası damgasız — bu turda başka bir ajanın işi |
+| `RedactionGateTests` | 17/17 |
+| **Kriter 7 — altın korpusta yanlış pozitif** | **0/87.** Ticket §3 aynı sayıyı *config* çapasıyla ölçmüştü; log çapası yeni bir desen olduğu için ölçüm tekrarlandı. Boşluk ayırıcılı, `=`/`:` ayırıcılı ve karma varyantların **üçü de 0/87** verdi |
+| **Kriter 8 — gölge sayıları (altın korpus, 87 satır)** | `maskelenen=0 gölge_aday=59 gölge_oran=0.6146 payda=96 eşik=3.50bit/krk min_uzunluk=20` |
+| Gölge sayıları (fixture'lar) | asa-dc-01 `4/0`, fw-ankara-01 `2/0`, rb-sube-07 `2/0`, lb-web-01 `3/1` (maskelenen/gölge_aday) |
+
+**Gölge oranı bu ticket'ın en karar-verdirici sayısı ve beklenenden yüksek
+çıktı: 0.61.** Değerlendirilen 96 uzun belirtecin 59'u eşiği geçiyor. Ne
+oldukları da ölçüldü — UUID'ler (`ae28f494-5735-51e9-f247-d1d2ce663f4b`),
+oturum kimlikleri, ve **FortiGate imza adları**
+(`Adobe.Flash.newfunction.Handling.Code.Execution`,
+`HTTP.BROWSER_Firefox`). Yani A bugün terfi ettirilseydi maskelenecek şeylerin
+başında **saldırı imzasının adı** gelirdi — RCA'nın cümle kurmak için ihtiyaç
+duyduğu tam da o. §3'ün *"A neden gölgede"* gerekçesi ölçümle doğrulandı;
+terfi ticket'ı bu iki sayıyla açılmalı.
+
+### Kırmızı yanabildiği ölçüldü — altı kusur, hepsi geri alındı
+
+Her kusur uygulandıktan sonra **dosyada gerçekten olduğu doğrulandı**, sonra
+koşuldu, sonra geri alındı.
+
+| # | Kusur | Düşen test |
+| --- | --- | --- |
+| 1 | Kapı devre dışı (C+B keşfi kapalı) | **6** test |
+| 2 | **§3'ün tuzağı:** log çapası yerine config çapası (`^`'a bağlı) | **5** test |
+| 3 | Gölge katman sessizce maskelemeye başladı | **2** test |
+| 4 | Fixture'da sahte sır biçimi bozuldu (`pre-shared-key[…]`) | 1 test |
+| 5 | `sir-tasiyan.log` bir profilin `syslog.samples`'ına girdi | 1 test |
+| 6 | Altın korpusa gerçek bir atama satırı eklendi | 1 test |
+
+**2 numaralı ölçüm ticket'ın en önemli iddiasını kanıtlıyor:** deseni olduğu
+gibi taşımak gerçekten hiçbir şey bulmuyor, ve fixture'lar olmasaydı bu
+**yeşil** görünecekti — 0/87 kriteri sağlanmış olarak okunacaktı.
+
+### Yapılmayanlar ve bilinen boşluklar
+
+- **A'nın terfisi yapılmadı** — kapsam dışı, ayrı ticket.
+- **Sağlayıcı anahtar katalogları girmedi** — bilinçli, K2 gerekçesiyle. Bir
+  test bunların maskelenmediğini de yazıyor: kapsam dışı olmak bir *karar*,
+  bir eksiklik değil.
+- **`cfgattr="psksecret[…]"` biçimi tanınmıyor.** 4 numaralı ölçümde görüldü:
+  anahtar kelimeden sonra `[` geliyor, ayırıcı gelmiyor. Gerçek FortiGate bu
+  alanda değeri kendi maskeliyor (`psksecret[*]`), o yüzden fixture'a
+  konmadı — ama biçim ailesi kapının kör noktası.
+- **Boşluk ayırıcı düz anlatımı da tutuyor.** `Failed password for admin from
+  10.1.2.3` satırında `for admin from 10.1.2.3` maskelenir. Altın korpusta
+  **0 kez** oluyor (ölçüldü) çünkü bu ürünün kaynaklarında sshd yok; sshd
+  biçimli bir kaynak eklenirse olacaktır. §4'ün asimetrisi gereği görünür yön
+  seçildi, ama bu bir tereddüt ve raporda soruldu.
+- **Kriter 9 kapının XML yorumunda**, ayrı bir belge bölümü olarak değil:
+  tanıyamadıklarının listesi koda yapışık durursa desen değiştiğinde aynı
+  ekranda görünüyor.
 
 ## 10 · Bu belge yazılırken ne ölçüldü, ne arandı
 
