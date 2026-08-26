@@ -46,6 +46,7 @@
     <ProjectReference Include="..\..\src\Bizigo.Alerting\Bizigo.Alerting.csproj" />
     <ProjectReference Include="..\..\src\Bizigo.Evidence\Bizigo.Evidence.csproj" />
     <ProjectReference Include="..\..\src\Bizigo.ScenarioPlugin\Bizigo.ScenarioPlugin.csproj" />
+    <ProjectReference Include="..\..\src\Bizigo.Rca\Bizigo.Rca.csproj" />
     <ProjectReference Include="..\..\sim\Bizigo.Simulators\Bizigo.Simulators.csproj" />
   </ItemGroup>
 

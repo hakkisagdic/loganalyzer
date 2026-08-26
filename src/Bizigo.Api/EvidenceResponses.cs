@@ -309,3 +309,19 @@ public sealed record RcaBundleSummaryResponse(
 
 public sealed record RcaBundleListResponse(
     [property: JsonPropertyName("bundles")] IReadOnlyList<RcaBundleSummaryResponse> Bundles);
+
+/// <param name="Rejection">
+/// Kapalı kümeden gelen ret sebebi: <c>none</c> | <c>debounced</c> |
+/// <c>depthexceeded</c> | <c>ancestorrepeat</c> | <c>quotaexceeded</c>.
+///
+/// <para>
+/// Tek bir "reddedildi" cevabı, sonraki kişinin <b>hangi kapının kapattığını</b>
+/// bilememesi demek olurdu — sınır, döngü ve kota farklı şeyler söylüyor
+/// (RCA §5, T45).
+/// </para>
+/// </param>
+public sealed record RcaAdmissionResponse(
+    [property: JsonPropertyName("run_id")] Guid RunId,
+    [property: JsonPropertyName("accepted")] bool Accepted,
+    [property: JsonPropertyName("rejection")] string Rejection,
+    [property: JsonPropertyName("detail")] string Detail);

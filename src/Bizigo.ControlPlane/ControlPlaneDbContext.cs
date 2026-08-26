@@ -39,6 +39,9 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
 
     public DbSet<GoldenReviewEntity> GoldenReviews => Set<GoldenReviewEntity>();
 
+    // RCA tetikleyicileri ve koşum soyağacı (T45).
+    public DbSet<RcaRunEntity> RcaRuns => Set<RcaRunEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -158,6 +161,27 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
             // Gönderici turunun tek sorgusu: "vadesi gelmiş bekleyen teslimler".
             e.HasIndex(x => new { x.State, x.NextAttemptAt });
             e.HasIndex(x => x.TriggerId);
+        });
+
+        modelBuilder.Entity<RcaRunEntity>(e =>
+        {
+            // Debounce sorgusu: "bu anahtar bu pencerede kabul edildi mi".
+            // Yalnızca KABUL edilenler aranıyor, o yüzden `Accepted` de anahtarda.
+            e.HasIndex(x => new { x.DebounceKey, x.Accepted, x.RequestedAt });
+
+            // Soyağacı yürüyüşü: kökten başlayıp ata zincirini okumak.
+            e.HasIndex(x => new { x.RootRunId, x.Depth });
+            e.HasIndex(x => x.ParentRunId);
+
+            // Idempotency: aynı anahtar ikinci kez gelirse aynı koşum dönmeli.
+            // TEKİL ve filtreli — anahtar yalnızca dış API koşumlarında dolu ve
+            // `null`'lar birbiriyle çakışmamalı.
+            e.HasIndex(x => x.IdempotencyKey)
+                .IsUnique()
+                .HasFilter("idempotency_key IS NOT NULL");
+
+            // "Neden RCA üretilmedi" ekranının sorgusu: sebebe göre sayım.
+            e.HasIndex(x => new { x.Rejection, x.RequestedAt });
         });
 
         modelBuilder.Entity<EvidenceBundleEntity>(e =>

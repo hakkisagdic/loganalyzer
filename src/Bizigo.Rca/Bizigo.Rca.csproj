@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    RCA tetikleyicileri ve koşum soyağacı (T45).
+
+    Ayrı bir proje olmasının sebebi Alerting ve Evidence'ınkiyle aynı: birden
+    çok katmana birden dokunuyor. Kabul kararı kontrol düzlemine yazılıyor,
+    tetikleyiciler ise alarm tablosundan, API ucundan ve takvimden geliyor.
+    Kontrol düzlemine koymak, ControlPlane'in tetikleyicileri tanıması demekti;
+    Alerting'e koymak, alarm dışındaki üç kaynağı alarm projesinin içine
+    saklamak olurdu — ve §5'in "dört yol tek kuyrukta" ilkesi tam da o
+    saklamayı yasaklıyor.
+
+    Kuyruğun KENDİSİ ve kota burada DEĞİL — o T46. Buradaki tek şey kabul
+    kararı: bir talep kuyruğa girer mi, girmezse neden.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bizigo.ControlPlane\Bizigo.ControlPlane.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+</Project>

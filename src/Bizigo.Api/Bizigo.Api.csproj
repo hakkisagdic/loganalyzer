@@ -8,6 +8,7 @@
     <ProjectReference Include="..\Bizigo.Authoring\Bizigo.Authoring.csproj" />
     <ProjectReference Include="..\Bizigo.Alerting\Bizigo.Alerting.csproj" />
     <ProjectReference Include="..\Bizigo.Evidence\Bizigo.Evidence.csproj" />
+    <ProjectReference Include="..\Bizigo.Rca\Bizigo.Rca.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

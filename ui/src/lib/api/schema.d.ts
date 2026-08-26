@@ -1580,6 +1580,13 @@ export interface components {
             errors: string[];
             warnings: string[];
         };
+        RcaAdmissionResponse: {
+            /** Format: uuid */
+            run_id: string;
+            accepted: boolean;
+            rejection: string;
+            detail: string;
+        };
         RcaBundleListResponse: {
             bundles: components["schemas"]["RcaBundleSummaryResponse"][];
         };
@@ -3105,6 +3112,15 @@ export interface operations {
             };
         };
         responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RcaReportResponse"];
+                };
+            };
             /** @description Created */
             201: {
                 headers: {
@@ -3121,6 +3137,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Gone */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RcaAdmissionResponse"];
                 };
             };
         };
