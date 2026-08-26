@@ -1,0 +1,73 @@
+# RCA senaryosu — formatın ilk gerçek tüketicisi.
+#
+# Gövdesi `docs/epic/rca-raporu-ozelligi/index.md` §8'den alındı. Üç fark var ve
+# üçü de F4 plugin formatı kararından (`docs/epic/f4-plugin-format-karari/`):
+#
+#   1. `constraint` (tekil) → `constraints` (liste) — §5.1(a)
+#   2. Kısıtsız iki adım artık gerekçesini TAŞIYOR — §5.1(b) / §3.2
+#   3. `owner` zorunlu: muafiyet gerekçesini kimin yazdığı sorulabilmeli
+#
+# Sayılar §8.1'in kuralına tabi: her biri ya ölçülmüş ya gerekçeli ya AÇIKÇA
+# işaretli. Buradaki dördü de işaretli ve ölçümleri F4'ün işi — işaretleri
+# silmek, ölçülmemiş bir sayıyı ölçülmüş göstermek olur.
+
+apiVersion: bizigo.dev/v1
+kind: Scenario
+metadata:
+  id: builtin.rca.network
+  version: 1.0.0
+  owner: platform-team
+  description: "Alarm/olay penceresi için kanıta bağlı kök neden raporu."
+spec:
+  trigger:
+    on: [alert, manual, anomaly, external]     # K20 — küme KAPALI; beşincisi `schedule`
+  evidence:
+    providers: [logs.first-seen, logs.volume, logs.silence,
+                logs.attribute-lift, logs.propagation, change.feed]
+
+    # Buradan aşağısı ZARF DEĞİL İÇERİK: çekirdek taşıyor, okumuyor (§6.1).
+    window:
+      lead: 30m          # ⚠ seçildi, ölçülmedi — RCA §8.1
+      # `baseline` BİLEREK ÖRNEKLENMİYOR. T35 süpürmesi bir sayı üretmedi:
+      # dik kuyruk → 7g, düz kuyruk → 1g, "seçilebilir taban yok". Buraya bir
+      # sayı yazmak, aksi ÖLÇÜLMÜŞ bir sayıyı ölçülmüş gibi çoğaltmak olurdu.
+      #
+      # ŞART (RCA §8.1): `baseline` zorunlu alan olmalı, varsayılanı OLMAMALI.
+      # BUGÜN BU ŞART ZORLANMIYOR ve sebebi eksiklik değil bölme: `window`
+      # içerik, çekirdek onun şeklini bilmiyor. Zorlaması `logs.*`
+      # sağlayıcılarının `IScenarioEvidenceSchema` uygulamasına ait ve o
+      # uygulama HENÜZ YAZILMADI. Yani bu satır bugün bir kapı değil, adı
+      # konmuş bir borç — T43 raporunda kesişme olarak bildirildi.
+    budget: { max_items: 400, max_duration: 60s }   # ⚠ ölçülmedi VE koddan farklı — RCA §8.1
+  steps:
+    - id: rank-hypotheses
+      task: "Kanıt listesinden en fazla 3 hipotez sırala."
+      input: evidence.summary
+      output:                      # tek iş, tek sözleşme
+        schema: hypothesis_list
+        max_items: 3               # ⚠ seçildi, ölçülmedi — RCA §8.1
+        constraints: []
+        constraints_waived: >-
+          Çıktı hipotez METNİ; hiçbir kanıt kimliğine atıf yapmıyor, dolayısıyla
+          `evidence_ids_must_exist` doğrulayacak bir kimlik bulamaz. Bağlama bir
+          sonraki adımda (`bind-evidence`) ve kapı orada kapanıyor.
+    - id: bind-evidence
+      task: "Her hipotezi destekleyen ve çelişen kanıt kimliklerini eşle."
+      input: [steps.rank-hypotheses, evidence.items]
+      output:
+        schema: evidence_binding
+        constraints: [evidence_ids_must_exist]   # halüsinasyon kapısı burada kapanır
+    - id: write-actions
+      task: "En üst hipotez için en fazla 2 aksiyon öner."
+      input: steps.bind-evidence
+      output:
+        schema: action_list
+        max_items: 2               # ⚠ seçildi, ölçülmedi — RCA §8.1
+        constraints: []
+        constraints_waived: >-
+          Aksiyon önerisi kanıt kimliği taşımıyor; dayandığı kanıt bir önceki
+          adımda zaten doğrulandı. Gerekçe DEVRALINMIŞ — aksiyonun kendi kanıt
+          atfını taşıyıp taşımayacağı T44'ün kararı, ve karar "taşısın" olursa
+          bu muafiyet düşer.
+  publish:
+    requires_review: true          # K16 — aksiyon alan senaryo onaysız yayınlanmaz
