@@ -43,9 +43,17 @@ const OUT = join(REPO, "docs", "ekran-goruntuleri", "uctan-uca");
 const USER = process.env.E2E_USER ?? "analyst.core";
 const PASSWORD = process.env.E2E_PASSWORD ?? "analyst";
 
-/** Analistin IdP grubu ve tohumlanan verinin kapsam grubu. */
+/**
+ * Analistin IdP grubu ve verinin kapsam grubu.
+ *
+ * <p>
+ * İkisi de <c>catalog/simulators/filo.yaml</c> ile aynı olmak zorunda (S05):
+ * eşleme filodan geliyor ve burada farklı bir grup yazılsaydı analist envanteri
+ * görür, olayları görmezdi — ekran boş kalır ve sebebi hiçbir yerde yazmaz.
+ * </p>
+ */
 const IDP_GROUP = "/network/core";
-const OWNER_GROUP = "golden";
+const OWNER_GROUP = "network/core";
 
 const THEMES = ["light", "dark"] as const;
 
