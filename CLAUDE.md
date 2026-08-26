@@ -54,6 +54,26 @@ Gerekçe: makine 16 GB. Beş ajanın paralel Testcontainers koşumu makineyi swa
 sürüklüyor ve hiçbiri diğerinin maliyetini göremiyor. Ayrıca ölçüm testleri
 yüklü makinede **yanlış sayı** üretiyor (bkz. §6).
 
+**Bölünmenin gerçek ekseni "hangi paket" değil "konteyner gerekiyor mu".**
+Tablodaki gerekçe Docker'a bağlı, ama kural paket adına yazılınca ajan
+konteyner istemeyen bir entegrasyon testini de koşturamıyor — oysa maliyeti
+bir birim testininkiyle aynı. Ekseni düzeltmek "ajan karar versin" demek
+değil; yargı çağrıları sessizce genişler. Ölçüt **mekanizmaya** bağlanıyor:
+
+1. **Ajan bir entegrasyon testini yalnızca Docker kapalıyken koşturabilir.**
+Konteyner isteyen test daemon'a bağlanamayıp hemen düşer, hiçbir kaynak
+tüketmez. Docker'ı **açmak** hiçbir koşulda ajanın işi değil.
+2. **Atlanan test kanıt değildir** — yalnızca **geçen** test konteynersiz
+sayılır. `3 geçti / 4 atlandı` sonucunda o dört test hakkında hiçbir şey
+söylenemez.
+3. **Bu çıkarım §7'ye bağlı.** *"Geçti ⇒ konteynersiz"* ancak beyansız atlama
+yasakken doğru: konteyner yokluğunu görüp `Skip` yerine erken `return` ile
+çıkan bir test "geçti" diye raporlanır ve 2. maddeden de temiz geçer.
+
+Üçüncü madde kuralın kendisi kadar önemli. Yazılmasaydı mekanizma kendi
+başına ayakta duruyor gibi görünürdü, ve dayandığı varsayım değiştiğinde
+kimse buraya bakmazdı.
+
 **Koşturamadığın bir testi "yazdım" diye yeşil gösterme.** `Skip` ile iskelet
 bırakmak dürüst; sahte yeşil değil.
 
@@ -280,6 +300,21 @@ bekçiler, **yapılmayanlar**, ve tereddüt edilen yerler.
 doldurma.
 
 **"Aradım, yok" ile "aramadım" farklı şeylerdir**; ikisini de yaz.
+
+**Bir "ilk bakılacak yer" işareti, aramanın kapsamı yazılmadan bir kapsam
+iddiası gibi okunuyor.** Yukarıdaki kural raporun tamamı için geçerli ama
+işaretin yanında ayrıca söylenmesi gerekiyor, çünkü tek satırlık bir işaret
+arkasında iki saatlik bir eleme de olabilir tek bir sezgi de — ve okuyan
+ikisini ayırt edemeyip birincisini varsayıyor. Biçim:
+
+> **İlk bakılacak yer:** X. **Aradım ve elemedim:** Y, Z. **Aramadım:** W.
+
+Gerekçe ölçüldü. S04'te bir ajan `sir-dondu` testinin maskeleme biçimini
+"ilk bakılacak yer" diye işaret etti; işaret **doğruydu** ve koordinatör
+doğrudan oraya baktı. Ama aynı turda üç testi birden düşüren şey başka bir
+yerdeydi (baseline'ın iki gösterimi) ve ajan onu **aramamıştı** — yazmadığı
+için de kimse aramadığını bilmiyordu. Yanlış işaret işaretsizlikten kötüdür;
+**kapsamsız doğru işaret** de aynı yöne çekiyor.
 
 ---
 
