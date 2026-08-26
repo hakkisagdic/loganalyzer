@@ -282,17 +282,35 @@ Kanıt gösterip kaynağa götürmeyen rapor güven kazanmaz.
 kısmen / yanlış + gerçek kök neden" üç tıkla doldurulabilmeli — doldurulmazsa
 kalite hiç ölçülemez.
 
-## 5. Tetikleyiciler (K20 — dördü de)
+## 5. Tetikleyiciler (K20 — beşi de)
 
-**Üç kaynak, bir devam kuralı** — dördü de tek kuyrukta buluşuyor. Ayrı yollar
-olsaydı kota ve döngü koruması dört kez yazılacaktı.
+**Dört kaynak, bir devam kuralı** — beşi de tek kuyrukta buluşuyor. Ayrı yollar
+olsaydı kota ve döngü koruması beş kez yazılacaktı.
 
 | Tetikleyici | Giriş | Özel gereksinim |
 | --- | --- | --- |
 | **Alarm / Sigma** | `alert_triggers` tablosuna düşen **satır** | **Debounce + birleştirme**: alarm fırtınasında 500 alarm → 1 RCA. Anahtar: `(rule_id, scope, 10dk pencere)` |
 | **Kullanıcı (UI)** | zaman aralığı + kapsam + belirti metni | Kullanıcı başına eşzamanlılık limiti |
 | **Dış API** | `POST /api/v1/rca` + `Idempotency-Key` | Aynı anahtar → aynı rapor, yeni koşu değil |
+| **`schedule`** | takvim / cron ifadesi | **Kotanın en öngörülebilir tüketicisi.** Diğer üç kaynak olaya bağlı, bu **takvime**: takvimli senaryolar günlük kotayı baştan tüketip olay tetikli bir RCA'yı **kotasız** bırakabilir |
 | **Anomali zinciri** ⟳ | *bir kaynak değil:* bir **RCA koşumunun** bulgusu | **Soyağacı**: `root_run_id` + `depth`. `depth ≥ 2` **ya da** tetikleyici anahtarı soyağacında zaten varsa reddedilir |
+
+### `schedule` neden çekirdeğe girdi
+
+Plugin formatının **ilk iki gerçek tüketicisi** (kapasite/eğilim raporu, parser
+kalite raporu) ikisi de **takvimle** tetikleniyor ve K20'de `schedule` yoktu —
+yani ikisi de tetiklenemiyordu.
+
+Bir formatın ilk iki tüketicisinin **çekirdeği değiştirmek zorunda kalması**,
+formatın değil **K20'nin** eksikliği. Eklenmesinin gerekçesi bu.
+
+**Değer kümesi kapalı kalıyor** (sabit liste). Açık olsaydı bu bölümün
+tek-kuyruk garantisi yeni değerler için **tanımsız** olurdu: yeni bir
+tetikleyici eklemek bir **çekirdek** kararı, plugin kararı değil.
+
+⚠️ **Kotayla kesişiyor ve kararı orada:** takvimli kaynak kotayı öngörülebilir
+biçimde tükettiği için *"kota tek havuz mu, kaynak başına ayrı mı"* sorusu bu
+satırla doğuyor. Bkz. [kota kararı](../f4-kota-karari/index.md).
 
 Dördüncü satır tabloda **kaynak değil devam** olarak duruyor ve sırası bilerek
 sonda: girdisi bir sinyal değil, **daha önce koşmuş bir RCA**. Zincirin ilk
@@ -350,7 +368,10 @@ Tablo dördüncü satırı bir **kaynak** olarak sayıyordu ve alarm satırını
 ([F4 tetikleyici kararı](../f4-tetikleyici-karari/index.md)):
 
 1. **`AlertRaised` kodda yok.** Bağlanma noktası bir tablo satırı.
-2. **Dördüncü satır bir kaynak değil.** Zinciri başlatan ilk anomalinin nereden
+2. **`schedule` yoktu.** Plugin formatının ilk iki tüketicisi takvimle
+   tetikleniyor ve K20 onları tetikleyemiyordu — çekirdeğin eksikliği,
+   formatın değil.
+3. **Beşinci satır bir kaynak değil.** Zinciri başlatan ilk anomalinin nereden
    doğduğu hiçbir yerde yazılı değildi ve üç aday ölçüldüğünde hiçbiri
    tutmadı: F3'ün korelasyonları bugün **tetiklenemiyor** (hiçbir zamanlanmış
    değerlendirici onları okumuyor), Sigma **zaten** birinci tetikleyici, ve

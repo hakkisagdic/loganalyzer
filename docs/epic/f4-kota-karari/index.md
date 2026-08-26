@@ -337,6 +337,36 @@ adımı sessizce durursa, senaryo *"ikinci adım bir şey bulamadı"* diye okunu
 **Koordinatöre not:** ikinci madde soru 1'in kararını değiştirebilecek nitelikte
 ve ben o alana girmedim. Zincir sahibinin görmesi gerekiyor.
 
+### 6.1 · `schedule` ile kesişme — *(§5'e beşinci tetikleyici eklendi)*
+
+K20'ye **`schedule`** eklendi (takvim/cron ile tetiklenen RCA) ve kotaya yeni
+bir soru getirdi. **Karar burada verilmiyor**, görünür kılınıyor.
+
+Diğer dört kaynak **olaya** bağlı, `schedule` **takvime**. Fark kotanın
+davranışını değiştiriyor:
+
+> Takvimli senaryolar günlük kotayı **öngörülebilir biçimde ve baştan**
+> tüketebilir. O gün gerçek bir alarm geldiğinde grubun kotası çoktan bitmiş
+> olur ve olay tetikli RCA **hiç koşmadan** `QuotaExceeded` alır.
+
+**Tek havuz bunu yapısal olarak mümkün kılıyor:** bir kaynağın öngörülebilirliği,
+başka bir kaynağın öngörülemezliğini eziyor. Ve bu, §2.2'nin *"kota bir döngü
+koruması değil"* maddesiyle aynı aileden — kota yanlış riske karşı kullanılınca
+kapattığı sanılan şeyi kapatmıyor.
+
+| Seçenek | Kazandırdığı | Kaybettirdiği |
+| --- | --- | --- |
+| Tek havuz | Tek sayı, tek *"doldu"* hâli | Takvimli iş, olay tetikli işi **aç bırakabilir** |
+| Kaynak başına ayrı | Takvimli iş olay tetikli işi ezemez | İkinci eşik, ikinci yapılandırma, ikinci *"doldu"* |
+| Tek havuz + kaynak başına tavan | Toplam korunur, kimse tamamını yiyemez | Ara karmaşıklık; tavanlar da **ölçülecek** sayı |
+
+Üçüncüsü §7'nin *"iki aile"* çerçevesiyle tutarlı görünüyor — toplam maliyet
+kapısı tek kalır, **kaynaklar arası adalet** ayrı bir kısıt olur — ama bu bir
+**gözlem**, karar değil: üçü de yeni bir sayı istiyor ve o sayı bugün
+ölçülemez.
+
+**Kararın sahibi:** F4'ün kuyruk tasarımı.
+
 ---
 
 ## 7 · Öneri
