@@ -113,22 +113,79 @@ public sealed class ScenarioEngineFlowTests
     /// Ayrım önemli: silinen bir sır farkı da yok eder ve "sır döndü" olayı
     /// görünmez olur. Maskelenen bir sır farkı korur, değeri sızdırmaz.
     /// </para>
+    ///
+    /// <para>
+    /// <b>İlk hâli yanlış şeyi sınıyordu</b> ve düştü: <c>"ENC "</c> yokluğuna
+    /// bakıyordu, oysa <c>ENC</c> maskelenen <b>değerin</b> parçası değil,
+    /// korunan <b>önekin</b> parçası — FortiGate'in <i>"bu değer şifreli
+    /// saklanıyor"</i> işareti, yani sır hakkında <b>üstveri</b>. Silinseydi
+    /// fark görünümü <i>"psksecret değişti"</i> diyebilirdi ama <i>"şifreli
+    /// saklanan bir psksecret değişti"</i> diyemezdi.
+    /// </para>
+    ///
+    /// <para>
+    /// Şimdi üç iddia birlikte duruyor ve <b>birlikte durmak zorundalar</b>:
+    /// yalnızca (1) yazılsaydı, maskeleyici hiç çalışmadığında ve satır tümden
+    /// kaybolduğunda da test yeşil kalırdı.
+    /// </para>
     /// </summary>
     [Fact]
     [Trait("Category", "Integration")]
     public async Task Sir_dondu_maskeleniyor_silinmiyor()
     {
-        var baseline = ConfigNormalizer.Normalize(
-            ConfigNormalizer.FortiGate, await ConfigAsync(Scenarios.Baseline));
-        var rotated = ConfigNormalizer.Normalize(
-            ConfigNormalizer.FortiGate, await ConfigAsync("sir-dondu"));
+        // Profil dosyalarındaki GERÇEK değerler. Elle yazılı olmaları bilinçli:
+        // testin sınadığı şey "bu dize çıktıda yok" ve dizeyi üretimden almak,
+        // maskeleyici bozulduğunda ikisinin birlikte bozulması demek olurdu.
+        const string baselineSecret = "kR7pQm2XvT9wLs4E";
+        const string rotatedSecret = "zB3nH8kR5tY1uJ6M";
 
-        // Fark VAR: sır döndüğü görülüyor.
-        Assert.NotEmpty(ConfigDiff.Compare(baseline, rotated).Sections);
+        var baselineRaw = await ConfigAsync(Scenarios.Baseline);
+        var rotatedRaw = await ConfigAsync("sir-dondu");
 
-        // Ama değerin kendisi normalize metinde YOK — ne eskisi ne yenisi.
-        Assert.DoesNotContain(
-            "ENC ", ConfigDiff.Serialize(rotated), StringComparison.Ordinal);
+        // Fixture anlamlı mı: ham config'ler sırrı GERÇEKTEN taşıyor. Taşımasa
+        // aşağıdaki "sızmadı" iddiası yanlış sebeple geçerdi.
+        Assert.Contains(baselineSecret, baselineRaw, StringComparison.Ordinal);
+        Assert.Contains(rotatedSecret, rotatedRaw, StringComparison.Ordinal);
+
+        var baseline = ConfigDiff.Serialize(
+            ConfigNormalizer.Normalize(ConfigNormalizer.FortiGate, baselineRaw));
+        var rotated = ConfigDiff.Serialize(
+            ConfigNormalizer.Normalize(ConfigNormalizer.FortiGate, rotatedRaw));
+
+        // 1 · HAM SIR YOK — ne eskisi ne yenisi, iki metnin hiçbirinde.
+        foreach (var text in new[] { baseline, rotated })
+        {
+            Assert.DoesNotContain(baselineSecret, text, StringComparison.Ordinal);
+            Assert.DoesNotContain(rotatedSecret, text, StringComparison.Ordinal);
+        }
+
+        // 2 · MASKELEME KOŞTU — özet üretilmiş. Bu olmadan (1), satırın tümden
+        // kaybolduğu durumda da geçerdi.
+        Assert.Contains("<gizli:", rotated, StringComparison.Ordinal);
+
+        // 3 · DÖNME GÖRÜLDÜ — özet değişmiş, yani fark var. Sırrın kendisi
+        // görünmeden "sır döndü" diyebilmek bu senaryonun bütün amacı.
+        Assert.NotEqual(MaskDigest(baseline), MaskDigest(rotated));
+        Assert.NotEmpty(ConfigDiff.Compare(
+            ConfigNormalizer.Normalize(ConfigNormalizer.FortiGate, baselineRaw),
+            ConfigNormalizer.Normalize(ConfigNormalizer.FortiGate, rotatedRaw)).Sections);
+    }
+
+    /// <summary>
+    /// Normalize metindeki ilk maskeleme özetini çıkarır.
+    ///
+    /// <para>
+    /// Özetin <b>değerine</b> bakılmıyor, yalnızca iki koşum arasında
+    /// <b>değiştiğine</b>. Değere bakmak, maskeleme algoritmasını teste
+    /// çivilemek olurdu ve algoritma bu testin konusu değil.
+    /// </para>
+    /// </summary>
+    private static string MaskDigest(string normalized)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(normalized, @"<gizli:([^>]+)>");
+
+        Assert.True(match.Success, "Maskeleme özeti bulunamadı — maskeleyici hiç koşmamış olabilir.");
+        return match.Groups[1].Value;
     }
 
     /// <summary>

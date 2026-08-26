@@ -112,6 +112,11 @@ public static class SimulatorProfileStore
         var errors = new List<string>();
         var fileName = Path.GetFileNameWithoutExtension(path);
 
+        // Sihirli ad gölgeleme kontrolü motorda, burada değil: kural senaryo
+        // sözcük dağarcığına ait ve iki yerde yaşarsa bu turda düzelttiğimiz
+        // kusurun aynısı doğar.
+        errors.AddRange(Scenarios.ShadowingErrors(profile.Config?.Scenarios.Keys));
+
         if (!string.Equals(profile.Id, fileName, StringComparison.Ordinal))
         {
             errors.Add($"`id` ('{profile.Id}') dosya adıyla ('{fileName}') ayrışıyor. " +
