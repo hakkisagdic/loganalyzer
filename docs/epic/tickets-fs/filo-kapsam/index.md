@@ -1,7 +1,7 @@
 ---
 title: "S05 — Filo ve kapsam yayılımı"
 kind: ticket
-status: 0
+status: 2
 ---
 
 # S05 — Filo ve kapsam yayılımı

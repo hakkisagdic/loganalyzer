@@ -1,7 +1,7 @@
 ---
 title: "S04 — Senaryo motoru"
 kind: ticket
-status: 0
+status: 2
 ---
 
 # S04 — Senaryo motoru

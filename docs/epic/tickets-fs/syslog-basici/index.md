@@ -1,7 +1,7 @@
 ---
 title: "S02 — Syslog basıcı"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # S02 — Syslog basıcı

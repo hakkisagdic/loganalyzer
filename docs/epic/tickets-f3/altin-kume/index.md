@@ -1,7 +1,7 @@
 ---
 title: "T38 — Altın küme ve inceleme akışı"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # T38 — Altın küme ve inceleme akışı
