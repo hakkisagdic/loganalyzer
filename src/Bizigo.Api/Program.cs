@@ -153,6 +153,11 @@ app.MapAlerts();
 // RCA kanıt paketi, deterministik rapor ve export (T37). Elle tetikleme dar
 // tutuldu: kuyruk, kota ve debounce dört tetikleyiciyle birlikte F4'te.
 app.MapRca();
+
+// Koşum listesi (T46): "neden RCA yok" sorusunun okuma yolu. Boş liste bir
+// garanti taşıyor — reddedilen koşum satır olarak burada görünüyor.
+app.MapRcaRuns();
+
 app.MapNotificationChannels();
 app.MapAlertClosure();
 

@@ -116,6 +116,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/rca/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListRcaRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/alerts/triggers/{triggerId}/close": {
         parameters: {
             query?: never;
@@ -1679,6 +1695,25 @@ export interface components {
             actual_root_cause: string;
             note: string;
         };
+        RcaRunListResponse: {
+            /** Format: int32 */
+            count: number | string;
+            runs: components["schemas"]["RcaRunResponse"][];
+        };
+        RcaRunResponse: {
+            /** Format: uuid */
+            id: string;
+            source: string;
+            trigger_identity: string;
+            owner_group: string;
+            state: string;
+            reason: string;
+            counts_against_quota: boolean;
+            /** Format: date-time */
+            requested_at: string;
+            /** Format: date-time */
+            finished_at: null | string;
+        };
         RcaSliceResponse: {
             provider_id: string;
             kind: string;
@@ -2016,6 +2051,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalogCoverageResponse"];
+                };
+            };
+        };
+    };
+    ListRcaRuns: {
+        parameters: {
+            query?: {
+                owner_group?: string;
+                trigger?: string;
+                limit?: number | string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RcaRunListResponse"];
                 };
             };
         };
@@ -3128,6 +3187,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RcaReportResponse"];
+                };
+            };
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RcaRunResponse"];
                 };
             };
             /** @description Bad Request */
