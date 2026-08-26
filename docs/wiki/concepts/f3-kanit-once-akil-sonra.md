@@ -21,7 +21,7 @@ sources:
   - docs/epic/t37-rapor-ekrani/index.md
   - docs/epic/tickets-f3/altin-kume/index.md
   - docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md
-source_digest: "sha256-12/v1 docs/epic/rca-raporu-ozelligi/index.md=5190a1f093f2 docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t35-korelasyonlar/index.md=90159516d982 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/altin-kume/index.md=9bb15adc35bc docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=b455e7171024"
+source_digest: "sha256-12/v1 docs/epic/rca-raporu-ozelligi/index.md=5190a1f093f2 docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t35-korelasyonlar/index.md=90159516d982 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/altin-kume/index.md=9bb15adc35bc docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=37dc201f87d2"
 summary: RCA'nın tek gerçek riski inandırıcı ama yanlış rapor; tasarımın tamamı bu tek riske karşı kurulu. F3 kanıtı LLM'siz üretiyor, saklıyor ve raporun her dürüstlük satırını mekanizmaya bağlıyor.
 provenance:
   extracted: 0.85
@@ -95,6 +95,19 @@ RCA belgesinden alınıp F3'te birer mekanizmaya çevrildi:
    (hata yok, sayaç yok), **fazla maskelemek görünüyor** — 2. kuralın atılan
    cümle sayacı yükseliyor. İki hata yönü eşit değil, ve eşit olmayan taraf
    ölçülebilirlik.
+
+   **Ama bu argümanın bir sınırı var ve o sınır uygulama turunda çizildi**
+   (2026-08-26). *"Fazla maskeleme ölçülebilir"* demek, **bilinmeyen** fazla
+   maskelemeyi sayaçla keşfetmek demek. Kapının ilk hâli boşlukla ayrılmış bir
+   değeri satır sonuna kadar maskeliyordu ve `Failed password for admin from
+   10.1.2.3` satırının tamamını götürüyordu; altın korpusta bunun bedeli
+   **0/87** çıktı, ama sayı 0 olduğu için değil **katalogda sshd olmadığı**
+   için. Yani kayıp bilinmiyor değildi, **öngörülüyordu** — ve öngörülen bir
+   kaybı sayaca havale etmek sayacın işini yapmıyor. Sayaç keşif için var,
+   bilineni ertelemek için değil. Kural düzeltildi: boşluk ayırıcıda değer
+   **yalnızca ilk belirteç**, çünkü orada sınır belirsiz değil (`snmp-server
+   community <anahtar>` — değer zaten tek belirteç); `=`/`:` ayırıcıda sınır
+   gerçekten belirsiz ve orada satır sonuna kadar maskelemek doğru kalıyor.
 
    **Ve bu asimetri kapının şeklini belirledi** (T41, aynı gün): üç katman —
    üretici söz dizimi ve dar bir bilinen-biçim kümesi (PEM, JWT,

@@ -414,10 +414,46 @@ gün hiçbir şey kırılmazdı — §7'nin sınıfı. **Bu, F4'e bir şart koyu
 prompt'u kuran taraf girdisini `string` değil bu tipten almalı, yoksa garanti
 yarım kalır.
 
-**Değerin sınırı iki kuralla belirleniyor.** Tırnaklı değerde kapanış tırnağı
-(FortiGate kv logları alanlarını tırnaklıyor), tırnaksız değerde **satır
-sonuna kadar**. İkincisi koordinatörün *"sınırı belirsizse tahmin etme"*
-kararının doğrudan uygulanışı. Bedeli ölçüldü ve aşağıda.
+**Değerin sınırını ayırıcı belirliyor — üç kural** (koordinatör, 2026-08-26).
+
+| Ayırıcı | Sınır |
+| --- | --- |
+| Tırnak | Kapanış tırnağına kadar |
+| `=` / `:` | Satır sonuna kadar |
+| **Boşluk** | **Yalnızca ilk belirteç** |
+
+İlk uygulama boşluk ayırıcıda da satır sonuna kadar maskeliyordu ve
+*"sınırı belirsizse tahmin etme"* kuralının literal uygulanışıydı. **Düzeltildi,
+çünkü boşluk ayırıcıda sınır belirsiz değil:** boşluk ayırıcılı üretici söz
+diziminde değer zaten tek belirteç — `snmp-server community <anahtar>`,
+`pre-shared-key <anahtar>`, `key-string <anahtar>`. Sınırlamak gerçek bir şey
+kaybettirmiyor ve kapıyı doğuran ASA IKEv2 örneğini de kaçırmıyor. `=`/`:`
+tarafında sınır gerçekten belirsiz (MikroTik `password=…`, tırnaksız etiketli
+biçimler) ve kural orada geçerliliğini koruyor.
+
+Belirleyici gerekçe **asimetri argümanının burada uygulanmaması**: *"fazla
+maskeleme ölçülebilir"* demek **bilinmeyen** fazla maskelemeyi sayaçla
+keşfetmek demek. `Failed password for admin from 10.1.2.3` kaybı bilinmiyor
+değil, **öngörülüyor** — ve öngörülen bir kaybı sayaca havale etmek sayacın
+işini yapmıyor. Altın korpustaki 0/87, sayı 0 olduğu için değil **katalogda
+sshd olmadığı** için; `nginx.access` zaten içeride, yani katalog o yöne açık.
+
+**Sınır ilk belirtece çekilince ikinci bir kusur açığa çıktı ve kapatıldı.**
+Satırın geri kalanı kurtuluyor ama ilk belirteç (`for`) maskelenmeye devam
+ediyordu — ve ikame **bütün metinde** çalıştığı için `information` →
+`in[gizli]mation` olurdu: korunan hiçbir şey yok, prompt bozuk. Ölçüt tek ve
+mekanik: *boşlukla ayrılmış bir değer, içinde küçük harf olmayan en az bir
+karakter taşımalı.* Üretici anahtarları rakam, büyük harf ya da ayraç taşıyor
+(`pub1`, `S3cret`, `qX2cV6bN8mK4jH7g`); düz sözcükler taşımıyor. Bir sözcük
+listesi yazılmadı — bu depo elle tutulan listelerin bekçiyi körleştirdiğini
+ölçtü. **Kaçırdığı:** boşlukla ayrılmış, tamamı küçük harf bir parola
+(`password correcthorse`). `=`/`:` ayırıcıda ve config kolunda bu ölçüt hiç
+çalışmıyor, yani oradaki aynı parola maskeleniyor.
+
+**Şifreleme işareti değer sanılmıyor.** `set psksecret ENC <blob>` satırında
+boşluk ayırıcı ilk belirteci `ENC` olarak alırdı; işaret atlanıyor ve
+maskelenen şey blob oluyor. Config çapasında bu parça zaten vardı, log
+çapasına bu turda girdi.
 
 **`MinFragment = 6` korundu — ama yalnızca bilinen-sır yolunda.** Eşiğin
 gerekçesi (`https`, `api`, `v1`) **türetilmiş** parçalarla ilgili: bir webhook
@@ -465,6 +501,13 @@ koşuldu, sonra geri alındı.
 | 4 | Fixture'da sahte sır biçimi bozuldu (`pre-shared-key[…]`) | 1 test |
 | 5 | `sir-tasiyan.log` bir profilin `syslog.samples`'ına girdi | 1 test |
 | 6 | Altın korpusa gerçek bir atama satırı eklendi | 1 test |
+| 7 | Boşluk ayırıcı yine satır sonuna kadar maskeliyor | 1 test |
+| 8 | Düz sözcük ölçütü kaldırıldı | 1 test |
+| 9 | Şifreleme işareti (`ENC`) atlanmıyor | 1 test |
+
+7 ve 8 **aynı** testi düşürüyor — kuralın iki yönü tek yerde duruyor. Ayrı
+testlere bölünseydi biri değiştirildiğinde diğerinin hâlâ geçerli olup
+olmadığı görünmezdi.
 
 **2 numaralı ölçüm ticket'ın en önemli iddiasını kanıtlıyor:** deseni olduğu
 gibi taşımak gerçekten hiçbir şey bulmuyor, ve fixture'lar olmasaydı bu
@@ -480,11 +523,10 @@ gibi taşımak gerçekten hiçbir şey bulmuyor, ve fixture'lar olmasaydı bu
   anahtar kelimeden sonra `[` geliyor, ayırıcı gelmiyor. Gerçek FortiGate bu
   alanda değeri kendi maskeliyor (`psksecret[*]`), o yüzden fixture'a
   konmadı — ama biçim ailesi kapının kör noktası.
-- **Boşluk ayırıcı düz anlatımı da tutuyor.** `Failed password for admin from
-  10.1.2.3` satırında `for admin from 10.1.2.3` maskelenir. Altın korpusta
-  **0 kez** oluyor (ölçüldü) çünkü bu ürünün kaynaklarında sshd yok; sshd
-  biçimli bir kaynak eklenirse olacaktır. §4'ün asimetrisi gereği görünür yön
-  seçildi, ama bu bir tereddüt ve raporda soruldu.
+- **Boşlukla ayrılmış, tamamı küçük harf bir parola** (`password correcthorse`)
+  tanınmıyor — düz sözcük ölçütünün bilinen ve dar bedeli. `=`/`:` ayırıcıda
+  ve config kolunda ölçüt hiç çalışmadığı için oradaki aynı parola
+  maskeleniyor.
 - **Kriter 9 kapının XML yorumunda**, ayrı bir belge bölümü olarak değil:
   tanıyamadıklarının listesi koda yapışık durursa desen değiştiğinde aynı
   ekranda görünüyor.
