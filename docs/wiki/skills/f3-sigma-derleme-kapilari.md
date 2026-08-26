@@ -52,6 +52,11 @@ geçirir.
 | **2 · `EXPLAIN`** | CI, **kendi işinde**, şema yüklü / veri yok | Tip hatası (`proto: 6` ↔ `LowCardinality(String)`), sözdizimi, ad çözümlemesi | Kuralın gerçekten bir şey eşleştirip eşleştirmediği |
 | **3 · altın örnek** | CI, veri yüklü | Yanlış pozitif, sıfır eşleşme | — |
 
+Kapı 1'in *"Docker yok"* satırı bir **yerleşim** iddiası: kontrolü mümkün olan
+en erken aşamaya koymak. Kapı 2 ve 3 konteyner **istiyor**, yani tablodan
+"Sigma kapıları konteyner istemiyor" diye bir genelleme çıkmıyor — ve o
+genellemenin nereye götürdüğü [[concepts/konteyner-gerekmiyor-uc-iddia]]'da yazılı. ^[inferred]
+
 **Çalışma zamanı bu tablonun dışında ve öyle kalmalı.** Bir kuralın sessizce
 hiçbir şey yakalamaması `CLAUDE.md` §7'nin sınıfı; Kapı 1 ve 2 birlikte o sınıfı
 derleme ve CI'ya taşıyor.

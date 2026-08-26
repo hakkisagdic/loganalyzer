@@ -121,6 +121,11 @@ T29'un notu kısa ve nedeni yazılı:
 > **Docker, canlı sidecar, Python venv gerekmiyor:** ölçülen şey saf CPU işi.
 > Ölçümü venv'e bağlamak, hiç koşulmamasının en kolay yolu olurdu.
 
+Bu cümle bir **bağımlılık** iddiası: az bağımlılık taşıyan ölçüm daha sık
+koşuluyor. Bir **aşama** ya da **izin** iddiası değil — aynı cümlenin bu depoda
+üç ayrı anlamı var ve karıştırılmaları pahalı:
+[[concepts/konteyner-gerekmiyor-uc-iddia]]. ^[inferred]
+
 Aynı belge raporu `$TMPDIR/t29-hotpath.log`'a da yazıyor — *xunit konsolu
 yutarsa sayı yine de duruyor.*
 

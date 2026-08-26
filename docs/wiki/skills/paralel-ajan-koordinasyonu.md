@@ -75,6 +75,10 @@ genişler. Ölçüt **mekanizmaya** bağlı ve üç maddeli:
    görüp `Skip` yerine erken `return` ile çıkan bir test *"geçti"* diye
    raporlanır ve 2. maddeden de temiz geçer.
 
+Kuralın yan etkisi: *"konteyner gerekmiyor"* cümlesi artık bir **izin**
+anlamı da taşıyor. Aynı cümle bu depoda iki anlamda daha kullanılıyor ve
+karıştırılmaları yanlış çıkarım üretiyor — [[concepts/konteyner-gerekmiyor-uc-iddia]].
+
 Üçüncü madde ilk ikisi kadar önemli. Yazılmasaydı mekanizma **kendi başına
 ayakta duruyor** gibi görünürdü, ve dayandığı varsayım değiştiğinde kimse
 buraya bakmazdı — bu, bir bekçinin dayanağını yazmamanın kural katmanındaki

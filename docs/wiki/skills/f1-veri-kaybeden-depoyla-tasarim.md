@@ -149,6 +149,9 @@ konteyner istemeyen bir bekçiyi ajan artık koşturabiliyor (Docker kapalıyken
 ve yalnızca **geçen** test kanıt sayılarak). Yani "konteyner gerekmiyor" bir
 tasarım tercihi olmaktan çıkıp koşum hakkı hâline geldi. ^[inferred]
 
+Bu, aynı cümlenin bu depodaki **üçüncü** anlamı ve en yenisi:
+[[concepts/konteyner-gerekmiyor-uc-iddia]].
+
 İlk bekçi ayrıca **kırmızı yanabildiği ölçülerek** yazıldı: bugünkü kodla iki
 bekçi düştü, sonra düzeltme kondu (`CLAUDE.md` §6).
 
