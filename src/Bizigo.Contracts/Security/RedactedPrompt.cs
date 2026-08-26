@@ -254,16 +254,56 @@ public sealed partial class RedactedPrompt
                 continue;
             }
 
-            var value = match.Groups["value"].Value.Trim();
+            // Hangi grup dolduysa hangi sınır kuralı işledi: `assigned` (=/:)
+            // satır sonuna kadar, `spaced` (boşluk) yalnızca ilk belirteç.
+            var spaced = match.Groups["spaced"];
+            var value = TirnakSoy((spaced.Success ? spaced.Value : match.Groups["assigned"].Value).Trim());
 
-            if (value.Length >= 2 && (value[0] is '"' or '\'') && value[^1] == value[0])
+            if (spaced.Success && !BoslukliDegerSirBenziyor(value))
             {
-                value = value[1..^1];
+                continue;
             }
 
-            Add(discovered, value.Trim());
+            Add(discovered, value);
         }
     }
+
+    private static string TirnakSoy(string value) =>
+        value.Length >= 2 && (value[0] is '"' or '\'') && value[^1] == value[0]
+            ? value[1..^1].Trim()
+            : value;
+
+    /// <summary>
+    /// Boşlukla ayrılmış bir değerin sır olup olmadığına bakan <b>tek</b> ölçüt:
+    /// içinde küçük harf olmayan en az bir karakter var mı.
+    ///
+    /// <para>
+    /// <b>Neden gerekli.</b> Boşluk ayırıcı düz anlatımı da tutuyor —
+    /// <c>Failed password for admin …</c> satırında ilk belirteç <c>for</c>.
+    /// Sınır ilk belirtece çekildikten sonra satırın geri kalanı kurtuluyor
+    /// ama <c>for</c> maskelenmeye devam ederdi, ve ikame <b>bütün metinde</b>
+    /// çalıştığı için <c>information</c> → <c>in[gizli]mation</c> olurdu:
+    /// korunan hiçbir şey yok, prompt bozuk. O satırda maskelenecek bir değer
+    /// zaten yok — anahtar kelime orada bir <i>hata sebebi</i>.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Neden bu ölçüt, bir sözcük listesi değil.</b> Liste bakım kalemi
+    /// olurdu ve bu depo elle tutulan listelerin bekçiyi körleştirdiğini
+    /// ölçtü. Üretici anahtarları rakam, büyük harf ya da ayraç taşıyor —
+    /// <c>pub1</c>, <c>S3cret</c>, <c>qX2cV6bN8mK4jH7g</c>, base64 blob'ları.
+    /// Ölçüt mekanik ve tek satır.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Neyi kaçırır — yazılı olsun:</b> boşlukla ayrılmış, tamamı küçük
+    /// harf bir parola (<c>password correcthorse</c>). <c>=</c>/<c>:</c>
+    /// ayırıcıda ve config kolunda bu ölçüt <b>hiç çalışmıyor</b>, yani
+    /// oradaki aynı parola maskeleniyor. Bilinen ve dar bir boşluk.
+    /// </para>
+    /// </summary>
+    private static bool BoslukliDegerSirBenziyor(string value) =>
+        value.Any(static c => !char.IsLower(c));
 
     // ------------------------------------------------------- katman B
 

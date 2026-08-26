@@ -76,7 +76,7 @@ public static partial class SecretPatterns
     /// </para>
     /// </summary>
     [GeneratedRegex(
-        @"^(?<prefix>\s*(?:[\w./-]+[\s=]+){0,4}(?:" + Keywords + @")[\s=]+(?:ENC[\s=]+|encrypted[\s=]+|[78][\s=]+)?)(?<value>\S.*)$",
+        @"^(?<prefix>\s*(?:[\w./-]+[\s=]+){0,4}(?:" + Keywords + @")[\s=]+" + EncryptionMarker + @")(?<value>\S.*)$",
         RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture)]
     public static partial Regex ConfigAssignment();
 
@@ -92,27 +92,48 @@ public static partial class SecretPatterns
     /// </para>
     ///
     /// <para>
-    /// <b>Değerin sınırı iki kuralla belirleniyor:</b> değer tırnaklıysa
-    /// kapanış tırnağına kadar (FortiGate kv logları alanlarını tırnaklıyor),
-    /// tırnaksızsa <b>satır sonuna kadar</b>. İkincisi bir tahmin değil bir
-    /// karar: tırnaksız bir değerin nerede bittiği log satırında bilinmiyor ve
-    /// tahmin etmek sızdırmak demek. Fazla maskelemek ölçülüyor (§4), kaçırmak
-    /// ölçülmüyor.
+    /// <b>Değerin sınırını AYIRICI belirliyor — üç kural.</b> Tırnaklı değer
+    /// kapanış tırnağına kadar (FortiGate kv logları alanlarını tırnaklıyor);
+    /// <c>=</c>/<c>:</c> ayırıcıda tırnaksız değer <b>satır sonuna kadar</b>;
+    /// boşluk ayırıcıda <b>yalnızca ilk belirteç</b>. Yakalanan grubun adı
+    /// hangi kuralın işlediğini söylüyor: <c>assigned</c> ya da <c>spaced</c>.
     /// </para>
     ///
     /// <para>
-    /// <b>Bilinen fazla maskeleme:</b> boşluk ayırıcı düz İngilizce anlatımı da
-    /// tutuyor — <c>Failed password for admin from 10.1.2.3</c> satırında
-    /// <c>for admin from 10.1.2.3</c> maskelenir. Depodaki 87 satırlık altın
-    /// korpusta bu **0** kez oluyor (ölçüldü), ama sshd biçimli bir kaynak
-    /// eklenirse olacaktır. Görünür yön bilinçli tercih; sayacı
-    /// <c>redaction_masked_values</c>.
+    /// <b>Neden ayırıcıya göre ayrışıyor.</b> Boşluk ayırıcılı üretici söz
+    /// diziminde değer <b>zaten tek belirteç</b> — <c>snmp-server community
+    /// &lt;anahtar&gt;</c>, <c>pre-shared-key &lt;anahtar&gt;</c>,
+    /// <c>key-string &lt;anahtar&gt;</c>; hiçbirinde değer boşluk taşımıyor,
+    /// yani sınırlamak gerçek bir şey kaybettirmiyor. <c>=</c>/<c>:</c>
+    /// tarafında ise sınır <b>gerçekten belirsiz</b> (MikroTik
+    /// <c>password=…</c>, tırnaksız etiketli biçimler) ve orada tahmin etmek
+    /// sızdırmak demek.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>İlk hâli satır sonuna kadar maskeliyordu ve düzeltildi.</b> O hâlde
+    /// <c>Failed password for admin from 10.1.2.3</c> satırında satırın
+    /// tamamı gidiyordu. Altın korpusta 0 kez oluyordu, ama sayı 0 olduğu için
+    /// değil <b>katalogda sshd olmadığı</b> için: <c>nginx.access</c> zaten
+    /// içeride, yani katalog o yöne açık. Bir kaybı sayaca havale etmek
+    /// yalnızca <b>bilinmeyen</b> bir kayıp için doğru; öngörülen bir kayıp
+    /// için sayacın işini yapmıyor.
     /// </para>
     /// </summary>
     [GeneratedRegex(
-        @"(?<prefix>(?:[\w./-]+[\s=]+){0,4})(?:" + Keywords + @")(?:\s*[=:]\s*|\s+)(?<value>""[^""\n]*""|'[^'\n]*'|[^\s""'][^\n]*$)",
+        @"(?<prefix>(?:[\w./-]+[\s=]+){0,4})(?:" + Keywords + @")(?:" +
+        @"\s*[=:]\s*" + EncryptionMarker + @"(?<assigned>""[^""\n]*""|'[^'\n]*'|[^\s""'][^\n]*$)" +
+        @"|\s+" + EncryptionMarker + @"(?<spaced>""[^""\n]*""|'[^'\n]*'|[^\s""'\n]+))",
         RegexOptions.IgnoreCase | RegexOptions.ExplicitCapture | RegexOptions.Multiline)]
     public static partial Regex LogAssignment();
+
+    /// <summary>
+    /// Değerin önünde durabilen şifreleme işareti — <c>set psksecret ENC …</c>,
+    /// Cisco'nun <c>password 7 …</c>'si. İşaret <b>değerin kendisi değil</b>;
+    /// atlanmazsa maskelenen şey <c>ENC</c> olur ve sır olduğu gibi kalır.
+    /// Config çapasında da aynı parça duruyor.
+    /// </summary>
+    private const string EncryptionMarker = @"(?:ENC[\s=]+|encrypted[\s=]+|[78][\s=]+)?";
 
     /// <summary>
     /// Serbest metin alanları — burada geçen anahtar kelime bir <b>ayar adı

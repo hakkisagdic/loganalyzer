@@ -464,6 +464,63 @@ public sealed class RedactionGateTests
             SecretRedactor.Redact("https://a.example/v1 çağrısı düştü", "v1"));
     }
 
+    // ------------------------------------------------------- değer sınırı
+
+    /// <summary>
+    /// Boşluk ayırıcının <b>iki yönü tek testte</b>: vendor söz dizimindeki
+    /// anahtar maskeleniyor, düz anlatımdaki sözcük maskelenmiyor.
+    ///
+    /// <para>
+    /// İkisini ayrı testlere koymak kuralı ikiye bölerdi ve biri
+    /// değiştirildiğinde diğerinin hâlâ geçerli olup olmadığı görünmezdi.
+    /// Kural tek: <b>boşluk ayırıcıda değer ilk belirteçtir</b>, ve o belirteç
+    /// düz bir sözcükse değer değildir.
+    /// </para>
+    ///
+    /// <para>
+    /// İlk hâl satır sonuna kadar maskeliyordu; altın korpusta 0 kez oluyordu
+    /// ama <b>sayı 0 olduğu için değil katalogda sshd olmadığı için</b>.
+    /// Öngörülen bir kaybı sayaca havale etmek sayacın işini yapmıyor.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Bosluk_ayiricida_deger_ilk_belirtec_ve_duz_sozcuk_deger_degil()
+    {
+        const string duz = "Sep  3 11:14:02 srv01 sshd[2211]: Failed password for admin from 10.1.2.3 port 51022 ssh2";
+
+        var anlatim = RedactedPrompt.Redact(duz + "\n");
+
+        Assert.Equal(duz + "\n", anlatim.Text);
+        Assert.Equal(0, anlatim.MaskedValues);
+
+        var vendor = RedactedPrompt.Redact(
+            "Sep  3 11:09:03 asa-dc-01 : %ASA-5-111008: User 'x' executed the 'snmp-server community S3cret' command.\n");
+
+        Assert.DoesNotContain("S3cret", vendor.Text, StringComparison.Ordinal);
+
+        // Ve YALNIZCA ilk belirteç: satırın geri kalanı RCA'nın bağlamı.
+        Assert.Contains("command.", vendor.Text, StringComparison.Ordinal);
+
+        // `=`/`:` tarafında kural değişmiyor — orada sınır gerçekten belirsiz.
+        var atama = RedactedPrompt.Redact("… user = svc-mon : password = S3cret rest of line\n");
+
+        Assert.DoesNotContain("rest of line", atama.Text, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// Şifreleme işareti değerin kendisi değil: <c>ENC</c> maskelenirse sır
+    /// olduğu gibi kalır ve kapı "bir şey maskeledim" der.
+    /// </summary>
+    [Fact]
+    public void Sifreleme_isareti_deger_sanilmiyor()
+    {
+        var sonuc = RedactedPrompt.Redact(
+            "Sep  3 11:20:11 fw-ankara-01 cfg: User 'x' executed the 'set psksecret ENC Kx2mVb9nR4tL' command.\n");
+
+        Assert.DoesNotContain("Kx2mVb9nR4tL", sonuc.Text, StringComparison.Ordinal);
+        Assert.Contains("ENC", sonuc.Text, StringComparison.Ordinal);
+    }
+
     // ------------------------------------------------------- katman B
 
     /// <summary>
