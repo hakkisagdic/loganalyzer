@@ -1,0 +1,22 @@
+# SIR TASIYAN FIXTURE — log kolu (T41). Konvansiyon: `sir-dondu.conf` ile aynı
+# üç şart — gerçek üretici söz dizimi, SAHTE değer, adında yazılı beklenti.
+#
+# Adın anlamı: bu dosyadaki HER satırda bir sır var ve redaksiyon kapısı onu
+# BULMALI. Kapı bir satırı atlarsa test kırmızı yanar.
+#
+# Buradaki hiçbir değer gerçek değil. Hepsi `SAHTE` işaretini taşıyor ve hangi
+# değerin maskelenmesi gerektiği aşağıda `BEKLENEN:` satırlarında YAZILI —
+# teste yazılmıyor, buradan okunuyor. Yazılsaydı fixture değiştiği gün test
+# eski değeri arar ve yeni sızıntıyı göremezdi.
+#
+# BU DOSYA HİÇBİR PROFİLİN `syslog.samples` ALANINDA OLMAMALI. Oraya girerse
+# simülatör onu tel üzerinden basar. `RedactionFixtureTests` bunu tutuyor.
+#
+# BEKLENEN: SAHTE-c7Kx2mVb9nR4tL
+# BEKLENEN: SAHTE-qX2cV6bN8mK4jH7g
+# BEKLENEN: SAHTE-p9Wz
+# BEKLENEN: SAHTE-Hj3nR8vQ2wE5tY7u
+Sep 03 11:04:12 asa-dc-01 : %ASA-5-111008: User 'bizigo-ro' executed the 'snmp-server community SAHTE-c7Kx2mVb9nR4tL'
+Sep 03 11:06:41 asa-dc-01 : %ASA-5-111008: User 'bizigo-ro' executed the 'ikev2 remote-authentication pre-shared-key SAHTE-qX2cV6bN8mK4jH7g'
+Sep 03 11:09:03 asa-dc-01 : %ASA-5-111008: User 'bizigo-ro' executed the 'snmp-server host inside 10.1.2.3 community SAHTE-p9Wz'
+Sep 03 11:12:55 asa-dc-01 : %ASA-6-113012: AAA user authentication Successful : local database : user = svc-mon : password = SAHTE-Hj3nR8vQ2wE5tY7u
