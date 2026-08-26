@@ -14,6 +14,7 @@ using Bizigo.Parsing.Grok;
 using Bizigo.Ingest.Wal;
 using Bizigo.Query;
 using Bizigo.Rca;
+using Bizigo.Rca.Models;
 using Bizigo.Replay;
 using Bizigo.Storage.ClickHouse;
 using Bizigo.Storage.Raw;
@@ -69,6 +70,11 @@ builder.Services.AddBizigoAlerting(builder.Configuration);
 
 // RCA tetikleyicileri: dört kaynak tek kapıdan (T45).
 builder.Services.AddBizigoRcaTriggers(builder.Configuration);
+
+// Model sağlayıcısı ve K6'nın kapısı (T42). Uç burada DOĞRULANMIYOR —
+// doğrulama ağ çözümlemesi yapıyor ve kayıt anına konsaydı DNS erişilemediğinde
+// API'nin tamamı ayağa kalkmazdı.
+builder.Services.AddBizigoModelProvider(builder.Configuration);
 
 // Kimlik ve yetkilendirme (T09).
 builder.Services.AddBizigoAuthentication(builder.Configuration);
