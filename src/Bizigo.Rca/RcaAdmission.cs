@@ -344,6 +344,95 @@ public sealed class RcaAdmission(
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Kuyruktaki bir koşumu <see cref="RcaRunState.Running"/>'e taşır ve
+    /// <c>StartedAt</c> damgasını basar.
+    ///
+    /// <para>
+    /// Damga burada <b>gerçekten ölçülmüş</b> bir şey: bu yolda kuyruk var, yani
+    /// <c>RequestedAt → StartedAt</c> farkı slot beklemesinin süresi. Eşzamanlı
+    /// uçta böyle bir bekleme olmadığı için orada damga basılmıyor — ölçülmemiş
+    /// bir sayıyı ölçülmüş göstermemek adına.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Yalnızca <see cref="RcaRunState.Queued"/> devralınabiliyor.</b> Başka
+    /// bir durumda <see langword="false"/> dönüyor: koşumu ikinci kez başlatmak,
+    /// aynı kotayı iki kez yemek ve aynı raporu iki kez üretmek olurdu.
+    /// </para>
+    /// </summary>
+    public async Task<bool> TryStartAsync(Guid runId, CancellationToken cancellationToken = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+
+        var run = await db.RcaRuns.FirstOrDefaultAsync(r => r.Id == runId, cancellationToken).ConfigureAwait(false);
+
+        if (run is null || run.State != RcaRunState.Queued)
+        {
+            return false;
+        }
+
+        run.State = RcaRunState.Running;
+        run.StartedAt = _time.GetUtcNow();
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return true;
+    }
+
+    /// <summary>
+    /// Koşumu kesinti sebebiyle terminale taşır.
+    ///
+    /// <para>
+    /// Durumu <see cref="RcaRunLifecycle.Classify"/> seçiyor, çağıran değil:
+    /// <c>Cancelled</c> ile <c>Failed</c> ayrımının ölçütü tek yerde durmalı,
+    /// yoksa her çağıran kendi yorumunu yapardı ve "bir şey bozuk, bak" ile
+    /// "sınırı büyüt" karışırdı.
+    /// </para>
+    /// </summary>
+    public async Task StopAsync(
+        Guid runId,
+        RcaStopReason reason,
+        string detail,
+        CancellationToken cancellationToken = default)
+    {
+        var state = RcaRunLifecycle.Classify(reason);
+
+        await using var db = await factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+
+        var run = await db.RcaRuns.FirstOrDefaultAsync(r => r.Id == runId, cancellationToken).ConfigureAwait(false);
+
+        if (run is null)
+        {
+            return;
+        }
+
+        run.State = state;
+        run.FinishedAt = _time.GetUtcNow();
+        run.StateDetail = detail.Length <= 512 ? detail : detail[..512];
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Şu an <b>slot tutan</b> koşum sayısı — yani <see cref="RcaRunState.Running"/>.
+    ///
+    /// <para>
+    /// <c>Queued</c> sayılmıyor: kuyrukta beklemek slot tutmak değil, tam tersi.
+    /// İkisini birleştirmek kuyruğun kendisini bir tıkanma sebebine çevirirdi —
+    /// bir tane bile bekleyen varken hiçbir şey başlayamazdı.
+    /// </para>
+    /// </summary>
+    public async Task<int> RunningCountAsync(CancellationToken cancellationToken = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+
+        return await db.RcaRuns
+            .AsNoTracking()
+            .CountAsync(r => r.State == RcaRunState.Running, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     /// <summary>Kapılar, ucuzdan pahalıya. İlk reddeden kazanıyor.</summary>
     private async Task<(RcaRejectionReason Reason, string Detail)> DecideAsync(
         ControlPlaneDbContext db,
