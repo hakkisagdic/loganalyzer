@@ -22,6 +22,9 @@ public static class RepositoryLayout
 
     public static string CatalogParserDirectory => Path.Combine(Root, "catalog", "parsers");
 
+    /// <summary>Senaryo plugin'leri (T43) — sevk edilen dosyaların tek kaynağı.</summary>
+    public static string ScenarioDirectory => Path.Combine(Root, "catalog", "scenarios");
+
     /// <summary>Maskeleme sözlüğü — sidecar ile paylaşılan tek kaynak (K14).</summary>
     public static string MaskFile => Path.Combine(Root, "catalog", "masks", "bizigo-masks.yaml");
 
