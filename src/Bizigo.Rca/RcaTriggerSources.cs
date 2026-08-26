@@ -1,6 +1,9 @@
+using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 
 namespace Bizigo.Rca;
+
+
 
 /// <summary>
 /// Dört kaynağın <b>tek kapıya</b> giriş noktaları (T45, RCA §5).
@@ -58,7 +61,7 @@ public static class RcaTriggerSources
     }
 
     /// <summary>Kullanıcı, arayüzden: zaman aralığı + kapsam.</summary>
-    public static RcaTriggerRequest FromUser(
+    public static RcaTriggerRequest FromManual(
         string subject,
         IEnumerable<string> ownerGroups,
         DateTimeOffset from,
@@ -66,7 +69,7 @@ public static class RcaTriggerSources
         RcaRunEntity? parent = null) =>
         new()
         {
-            Source = RcaTriggerSource.User,
+            Source = RcaTriggerSource.Manual,
 
             // Kimlik kullanıcının kendisi: debounce "aynı kişi aynı pencereyi
             // tekrar istedi mi" sorusuna bakıyor. Kimliği sabit bir dizge
@@ -90,7 +93,7 @@ public static class RcaTriggerSources
     /// beklerken ikincisi yeni bir koşum bekliyor.
     /// </para>
     /// </summary>
-    public static RcaTriggerRequest FromApi(
+    public static RcaTriggerRequest FromExternal(
         string subject,
         string idempotencyKey,
         IEnumerable<string> ownerGroups,
@@ -99,7 +102,7 @@ public static class RcaTriggerSources
         RcaRunEntity? parent = null) =>
         new()
         {
-            Source = RcaTriggerSource.Api,
+            Source = RcaTriggerSource.External,
             Identity = subject,
             OwnerGroup = RcaTriggerKey.Scope(ownerGroups),
             WindowFrom = from,

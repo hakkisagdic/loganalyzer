@@ -1,7 +1,10 @@
 using System.Globalization;
+using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 
 namespace Bizigo.Rca;
+
+
 
 /// <summary>
 /// Tetikleyici anahtarları — <b>saf fonksiyonlar</b> (T45, RCA §5).

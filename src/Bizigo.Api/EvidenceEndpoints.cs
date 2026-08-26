@@ -212,8 +212,8 @@ public static class EvidenceEndpoints
         var subject = user.Scope.Subject;
 
         var trigger = string.IsNullOrWhiteSpace(idempotencyKey)
-            ? RcaTriggerSources.FromUser(subject, request.OwnerGroups, request.From, request.To)
-            : RcaTriggerSources.FromApi(subject, idempotencyKey, request.OwnerGroups, request.From, request.To);
+            ? RcaTriggerSources.FromManual(subject, request.OwnerGroups, request.From, request.To)
+            : RcaTriggerSources.FromExternal(subject, idempotencyKey, request.OwnerGroups, request.From, request.To);
 
         var admitted = await admission.AdmitAsync(trigger, cancellationToken);
 

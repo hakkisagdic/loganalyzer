@@ -1,53 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+using Bizigo.Contracts;
+
 namespace Bizigo.ControlPlane;
-
-/// <summary>
-/// Bir RCA koşumunu doğuran kaynak (RCA §5, K20).
-///
-/// <para>
-/// <b>Dört değer, ve dördüncü satır burada YOK.</b> §5 tablosu beş satır
-/// sayıyor ama beşincisi — anomali zinciri — bir kaynak değil bir <b>devam</b>
-/// kuralı: girdisi bir sinyal değil, daha önce koşmuş bir RCA. Zincirin ilk
-/// halkası her zaman bu dört değerden biri.
-/// </para>
-///
-/// <para>
-/// Bunu enum'a beşinci değer olarak eklemek, tam da ölçümle çürütülmüş okumayı
-/// koda yazmak olurdu: tabloda diğerleriyle aynı görünen bir satır, arkasında
-/// eşiği ve sıklığı kararlaştırılmamış bir dedektör saklıyordu. Devam kuralının
-/// izi <see cref="RcaRunEntity.Depth"/>'te — sıfırdan büyük her koşum bir
-/// devamdır ve kaynağını <b>kökünden</b> miras alır.
-/// </para>
-///
-/// <para>
-/// <b>Küme kapalı.</b> Açık olsaydı §5'in tek-kuyruk garantisi yeni değerler
-/// için tanımsız kalırdı: yeni bir tetikleyici eklemek bir çekirdek kararı,
-/// plugin kararı değil.
-/// </para>
-/// </summary>
-public enum RcaTriggerSource
-{
-    /// <summary>
-    /// Alarm ya da Sigma — ikisi arasında çalışma zamanında <b>yol farkı yok</b>.
-    /// Giriş noktası <c>alert_triggers</c> tablosuna düşen satır; <c>AlertRaised</c>
-    /// diye bir olay depoda hiç yok ve tasarım onu varsayıyordu.
-    /// </summary>
-    Alert = 0,
-
-    /// <summary>Kullanıcı, arayüzden.</summary>
-    User = 1,
-
-    /// <summary>Dış API — <c>POST /v1/rca</c> + <c>Idempotency-Key</c>.</summary>
-    Api = 2,
-
-    /// <summary>
-    /// Takvim / cron. Kotanın <b>en öngörülebilir</b> tüketicisi: diğer üçü
-    /// olaya bağlı, bu takvime.
-    /// </summary>
-    Schedule = 3,
-}
 
 /// <summary>
 /// Bir koşumun neden kabul edilmediği — <b>kapalı küme</b> (RCA §5).
@@ -185,7 +141,7 @@ public sealed class RcaRunEntity
     public string LineageKey { get; set; } = string.Empty;
 
     /// <summary>
-    /// Dış API'nin idempotency anahtarı; yalnızca <see cref="RcaTriggerSource.Api"/>
+    /// Dış API'nin idempotency anahtarı; yalnızca <see cref="RcaTriggerSource.External"/>
     /// için dolu. Aynı anahtar → aynı koşum, yeni koşu değil.
     /// </summary>
     [MaxLength(200)]
