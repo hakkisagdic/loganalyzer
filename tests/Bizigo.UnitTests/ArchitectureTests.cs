@@ -176,7 +176,14 @@ public sealed class ArchitectureTests
             [
                 "AddBizigoAlerting", "AddBizigoAuthentication", "AddBizigoAuthoring",
                 "AddBizigoDataPlane", "AddBizigoDiscovery", "AddBizigoEvidence",
-                "AddBizigoIngest", "AddBizigoParsing", "AddBizigoRawArchive",
+                "AddBizigoIngest",
+
+                // T42: model sağlayıcısı ve K6'nın kapısı. Uç burada
+                // DOĞRULANMIYOR — doğrulama ağ çözümlemesi yapıyor ve kayıt
+                // anına konsaydı DNS erişilemediğinde API'nin tamamı ayağa
+                // kalkmazdı. Kapı kullanım anında koşuyor.
+                "AddBizigoModelProvider",
+                "AddBizigoParsing", "AddBizigoRawArchive",
                 // T45: RCA tetikleyici kabul kapısı. Kuyruğun kendisi ve kota
                 // T46'da — bu uzantı şimdilik yalnızca kapıyı ve kota
                 // kancasının varsayılanını kaydediyor.
