@@ -76,6 +76,7 @@ Fazların arasından geçen, birden çok belgede tekrarlanan fikirler.
 ### Faz üstü
 
 - [[concepts/elle-tutulan-liste-bekciyi-korlestirir]] — Denetleyeceği kümeyi elle listeden toplayan bekçi listede olmayanı hiç görmez; F2'de aynı kalıp beş kez yeşil yandı.  
+- [[concepts/tek-dosya-tek-kaynak-degildir]] — Bilgiyi tek dosyada toplamak onu tek kaynak yapmıyor; kavramı **tanıyan** predicate de tekilleşmeli. FS-a'dan üç ölçülmüş hâl.  
   <sub>#test #surec #kavram #bizigo</sub>
 - [[concepts/sessiz-yanlis-davranis]] — Hata, sayaç ve belirti üretmeden yanlış sonuç veren davranış — bu deponun en pahalı hata sınıfı ve vault'un en çok bağlanan düğümü.  
   <sub>#surec #test #kavram #bizigo</sub>
