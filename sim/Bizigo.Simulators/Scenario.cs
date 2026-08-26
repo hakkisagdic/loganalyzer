@@ -72,6 +72,74 @@ public static class Scenarios
     /// <summary>Varsayılan: değişim yok. Tekrarlanabilirlik testin şartı.</summary>
     public const string Baseline = "baseline";
 
+    /// <summary>
+    /// <b>"Bu ad baseline mi" sorusunun TEK cevabı.</b>
+    ///
+    /// <para>
+    /// Ayrı bir predicate olmasının sebebi ölçüldü: S04 senaryo <i>sözlüğünü</i>
+    /// tekilleştirdi ama <i>tanımayı</i> tekilleştirmedi. Taşıyıcı "boş dize =
+    /// baseline" diyordu (S01), motor ise hem boşu hem <c>"baseline"</c> sabitini
+    /// tanıyordu — ve taşıyıcının config yolu motora hiç uğramıyordu. Sonuç:
+    /// adlandırılmış baseline sözlükte aranıp bulunamadı ve üç entegrasyon testi
+    /// CI'da düştü, 974 birim testi yeşilken.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Taşınabilir ders:</b> bir kavramı tekilleştirmek, onu <b>tanıyan</b>
+    /// predicate'i tekilleştirmekle aynı şey değil. Depodaki "ikinci kopya
+    /// yazma" kuralı <i>veriyi</i> anlatıyor; bu, <b>tanımanın</b> karşılığı.
+    /// </para>
+    ///
+    /// <para>
+    /// Eşleşme <b>ordinal</b>: <c>"Baseline"</c> kabul edilmiyor. Büyük/küçük
+    /// harf toleransı, belgelenen ile kabul edilenin ayrışmasının en yaygın
+    /// yolu — ve senaryo adları bu depoda ordinal eşleşiyor.
+    /// </para>
+    /// </summary>
+    public static bool IsBaseline(string? name) =>
+        string.IsNullOrWhiteSpace(name)
+        || string.Equals(name.Trim(), Baseline, StringComparison.Ordinal);
+
+    /// <summary>
+    /// Profil, sihirli adları <b>gölgeleyemiyor</b>.
+    ///
+    /// <para>
+    /// <b>Karar:</b> <c>scenarios:</c> altında <c>baseline</c> adlı bir giriş
+    /// <b>reddediliyor</b>. Alternatif "profil kazansın"dı ve şu yüzden
+    /// seçilmedi: o zaman "değişim yok" isteyen bir çağrı sessizce
+    /// <i>değişmiş</i> bir config alır, karşılaştırmanın tabanı kayar, ve fark
+    /// testleri <b>yanlış sebeple geçer</b> — hiçbir hata üretmeden.
+    /// </para>
+    ///
+    /// <para>
+    /// Ret ucuz: bir profil dosyası düzeltilir. Sessiz taban kayması pahalı,
+    /// çünkü belirtisi yok. Bu depoda tekrarlanan ayrım budur.
+    /// </para>
+    ///
+    /// <para>
+    /// Ret <b>yükleme anında</b>: koşum anına bırakılsaydı yalnızca o senaryoyu
+    /// çağıran test görürdü ve profil diğer bütün testlerde geçerli sayılırdı.
+    /// </para>
+    /// </summary>
+    public static IEnumerable<string> ShadowingErrors(IEnumerable<string>? scenarioNames)
+    {
+        if (scenarioNames is null)
+        {
+            yield break;
+        }
+
+        foreach (var name in scenarioNames)
+        {
+            if (IsBaseline(name))
+            {
+                yield return
+                    $"`scenarios` altında '{name}' tanımlanamaz: '{Baseline}' sihirli bir ad ve " +
+                    "\"değişim yok\" anlamına geliyor. Gölgelenirse taban sessizce kayar ve fark " +
+                    "testleri yanlış sebeple geçer.";
+            }
+        }
+    }
+
     private static readonly ScenarioDefinition[] All =
     [
         new("kural-eklendi", ScenarioSurface.Config,
@@ -129,7 +197,9 @@ public static class Scenarios
     /// </summary>
     public static string? Reject(string? name, ScenarioSurface surface)
     {
-        if (string.IsNullOrWhiteSpace(name) || string.Equals(name.Trim(), Baseline, StringComparison.Ordinal))
+        // AYNI predicate: `Reject` ile taşıyıcı aynı soruyu iki farklı yerde
+        // cevaplamıyor.
+        if (IsBaseline(name))
         {
             return null;
         }

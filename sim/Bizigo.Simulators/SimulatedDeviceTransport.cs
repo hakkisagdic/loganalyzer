@@ -86,7 +86,11 @@ public sealed class SimulatedDeviceTransport : IDeviceTransport
             return Task.FromResult(new DeviceCommandResult(false, string.Empty, yuzeyHatasi));
         }
 
-        var relative = _scenario.Length == 0
+        // TEK PREDICATE: "bu ad baseline mi" sorusunu taşıyıcı kendi
+        // cevaplamıyor. Cevabı burada tekrarlamak, S04'ün düştüğü kusurun
+        // aynısını üçüncü kez üretmek olurdu — boş dize burada, `"baseline"`
+        // motorda, ve ikisi bir gün yine ayrışır.
+        var relative = Scenarios.IsBaseline(_scenario)
             ? _profile.Config.Baseline
             : _profile.Config.Scenarios.TryGetValue(_scenario, out var senaryoYolu)
                 ? senaryoYolu
