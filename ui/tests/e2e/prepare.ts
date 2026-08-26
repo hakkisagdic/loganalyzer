@@ -36,9 +36,19 @@ const UI = fileURLToPath(new URL("../..", import.meta.url));
 
 const CLICKHOUSE = "Host=localhost;Port=8123;Database=bizigo;Username=bizigo;Password=bizigo";
 
-/** Analistin IdP grubu ve tohumlanan verinin kapsam grubu. */
+const CONTROL_PLANE = "Host=localhost;Port=5432;Database=bizigo;Username=bizigo;Password=bizigo";
+
+/**
+ * Analistin IdP grubu.
+ *
+ * <p>
+ * Kapsam eşlemesi ve envanter artık <c>catalog/simulators/filo.yaml</c>'dan
+ * geliyor (S05); bu sabit yalnızca <b>giriş akışının</b> hangi kimlikle
+ * koşacağını söylüyor. Eşlemenin kendisi burada DEĞİL — iki yerde durup
+ * ayrışmaları, ayrışan şeyin kapsam olması demekti.
+ * </p>
+ */
 const IDP_GROUP = "/network/core";
-const OWNER_GROUP = "golden";
 
 /** Yığından beklenen servisler ve neden gerektikleri. */
 const REQUIRED_SERVICES: ReadonlyArray<readonly [service: string, why: string]> = [
@@ -171,7 +181,11 @@ function seed(): void {
   process.stdout.write("· altın örnekler yükleniyor\n");
   run(
     bizigo,
-    ["seed", "golden", "--replace", "--events", "40000", "--span-days", "14"],
+    // GRUP FİLODAN (S05). Eskiden varsayılan `golden` grubuna yazıyordu ve
+    // filo `network/core` üretiyor — ikisi ayrışsaydı analistin kapsamı
+    // envanteri görür, OLAYLARI görmezdi: ekran boş, sebep görünmez.
+    ["seed", "golden", "--replace", "--events", "40000", "--span-days", "14",
+     "--owner-group", "network/core"],
     REPO,
     env,
   );
@@ -234,115 +248,23 @@ async function scopeAndInventory(): Promise<void> {
     { ...env, ASPNETCORE_ENVIRONMENT: "Development" },
   );
 
-  process.stdout.write("· kapsam eşlemesi\n");
-  psql(`INSERT INTO bizigo.idp_group_mapping (idp_group, owner_group, note)
-        VALUES ('${IDP_GROUP}', '${OWNER_GROUP}', 'uctan uca ekran goruntusu kosumu')
-        ON CONFLICT (idp_group) DO UPDATE SET owner_group = EXCLUDED.owner_group;`);
+  // KAPSAM VE ENVANTER ARTIK FİLODAN (S05).
+  //
+  // Buradaki iki adım eskiden ELLE SQL'di: bir `INSERT` kapsam eşlemesini
+  // kuruyor, `seedInventory()` envanteri ClickHouse'taki olaylardan türetiyordu.
+  // İkisi de ürünün yolunu atlıyordu ve aradaki fark sessizdi — ekran dolu
+  // görünür, doldurabilme iddiası hiç sınanmamış olurdu.
+  //
+  // İkinci adımın ayrı bir bedeli daha vardı: envanteri GELMİŞ VERİDEN türetmek,
+  // veri göndermemiş bir kaynağı envantere hiç yazmıyor — yani susan cihaz
+  // envanterde yok ve sessizlik alarmı sınanamıyor.
+  process.stdout.write("· filo uygulanıyor (kapsam eşlemesi + kaynak envanteri)\n");
 
-  process.stdout.write("· kaynak envanteri\n");
-  await seedInventory();
-}
-
-/** Kontrol düzlemine tek ifade — compose'un içindeki `psql` üzerinden. */
-function psql(sql: string): void {
-  run(
-    "docker",
-    [
-      "compose", "-f", "deploy/docker-compose.yml", "exec", "-T", "postgres",
-      "psql", "-U", "bizigo", "-d", "bizigo", "-v", "ON_ERROR_STOP=1", "-c", sql,
-    ],
-    REPO,
-  );
-}
-
-/** ClickHouse'a tek sorgu; satırlar TSV. */
-async function clickhouse(sql: string): Promise<string[][]> {
-  const response = await fetch("http://localhost:8123/", {
-    method: "POST",
-    headers: {
-      "X-ClickHouse-User": "bizigo",
-      "X-ClickHouse-Key": "bizigo",
-      "X-ClickHouse-Database": "bizigo",
-    },
-    body: sql,
+  const bizigo = "src/Bizigo.Cli/bin/Debug/net10.0/bizigo";
+  run(bizigo, ["fleet", "apply", "catalog/simulators"], REPO, {
+    DOTNET_ROOT: `${process.env.HOME}/.dotnet`,
+    BIZIGO_CONTROLPLANE: CONTROL_PLANE,
   });
-
-  if (!response.ok) {
-    throw new Error(`ClickHouse sorguyu reddetti: ${await response.text()}`);
-  }
-
-  return (await response.text())
-    .trim()
-    .split("\n")
-    .filter((line) => line.length > 0)
-    .map((line) => line.split("\t"));
-}
-
-/**
- * Kaynak envanteri.
- *
- * <p>
- * <b>Liste ClickHouse'tan okunuyor, buraya yazılmıyor.</b> Parser dizinlerini
- * ikinci kez saymak, tohumlayıcı değiştiği gün sessizce ayrışan bir kopya
- * olurdu (§9).
- * </p>
- *
- * <p>
- * <c>parser_id</c> BASKIN parser'a bağlanıyor ve o da ölçülüyor
- * (<c>argMax</c>). Bağlamanın zararsız olduğu koda bakılarak doğrulandı: bağlı
- * parser tutmazsa <c>Dispatcher</c> kademe 2'ye düşüyor ve
- * <c>RecordBoundMiss</c> sayıyor — hiçbir satır kaybolmuyor.
- * </p>
- */
-async function seedInventory(): Promise<void> {
-  const rows = await clickhouse(
-    `SELECT source_id,
-            any(vendor),
-            any(product),
-            argMax(parser_id, satir) AS baskin_parser
-     FROM (
-       SELECT source_id, vendor, product, parser_id, count() AS satir
-       FROM events
-       WHERE owner_group = '${OWNER_GROUP}' AND parser_id != ''
-       GROUP BY source_id, vendor, product, parser_id
-     )
-     GROUP BY source_id ORDER BY source_id FORMAT TSV`,
-  );
-
-  if (rows.length === 0) {
-    throw new Error(
-      `ClickHouse'ta '${OWNER_GROUP}' grubunda hiç kaynak yok. Tohumlama koştu mu?`,
-    );
-  }
-
-  for (const row of rows) {
-    for (const value of row) {
-      if (value.includes("'")) {
-        throw new Error(`Envanter değeri tırnak taşıyor, ifade kurulamaz: ${value}`);
-      }
-    }
-  }
-
-  const values = rows
-    .map(
-      ([sourceId, vendor, product, parserId]) =>
-        `('${sourceId}', '${sourceId}', '${OWNER_GROUP}', '${vendor}', '${product}', ` +
-        `'${parserId}', 'auto', 'golden', true, now(), now())`,
-    )
-    .join(",\n         ");
-
-  psql(
-    `INSERT INTO bizigo.sources
-       (source_id, hostname, owner_group, vendor, product,
-        parser_id, encoding, source_class, enabled, created_at, updated_at)
-     VALUES ${values}
-     ON CONFLICT (source_id) DO UPDATE SET
-       owner_group = EXCLUDED.owner_group,
-       vendor = EXCLUDED.vendor,
-       product = EXCLUDED.product,
-       parser_id = EXCLUDED.parser_id,
-       updated_at = now();`,
-  );
 }
 
 /** Arayüz derlemesi — `next start` derlenmiş çıktı istiyor. */

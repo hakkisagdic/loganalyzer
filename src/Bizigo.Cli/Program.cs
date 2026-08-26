@@ -120,6 +120,39 @@ migrateCommand.SetAction(async (parse, cancellationToken) =>
 var schemaCommand = new Command("schema", "Depolama şeması işlemleri.");
 schemaCommand.Subcommands.Add(migrateCommand);
 
+// ── fleet apply (S05) ───────────────────────────────────────────────────────
+// Uçtan uca harness kapsam eşlemesini ve kaynak envanterini ELLE SQL ile
+// kuruyordu; yani ekran görüntüsü koşumunun gördüğü envanter ürünün ürettiği
+// envanter değildi. Bu komut o iki adımın yerine geçiyor ve kaynağı tek bir
+// dosya: `catalog/simulators/filo.yaml`.
+var fleetCatalogArgument = new Argument<DirectoryInfo>("dizin")
+{
+    Description = "Simülatör profilleri ve filo dosyasının dizini.",
+    DefaultValueFactory = _ => new DirectoryInfo(Path.Combine("catalog", "simulators")),
+};
+
+var fleetApplyCommand = new Command("apply", "Filo tanımını kontrol düzlemine yazar.");
+fleetApplyCommand.Arguments.Add(fleetCatalogArgument);
+fleetApplyCommand.SetAction(async (parse, cancellationToken) =>
+{
+    var catalog = parse.GetValue(fleetCatalogArgument)!;
+
+    // Depo kökü, katalog dizininin İKİ ÜSTÜ değil — açıkça çözülüyor. Profil
+    // örnekleri `catalog/parsers/...` altında ve yanlış kök beş profili birden
+    // "örnek dosya yok" yapıyor; ölçüldü.
+    var repositoryRoot = catalog.Parent?.Parent?.FullName ?? Directory.GetCurrentDirectory();
+
+    var connectionString = Environment.GetEnvironmentVariable("BIZIGO_CONTROLPLANE")
+        ?? "Host=localhost;Port=5432;Database=bizigo;Username=bizigo;Password=bizigo";
+
+    return await FleetCommandHandlers
+        .ApplyAsync(catalog.FullName, repositoryRoot, connectionString, cancellationToken)
+        .ConfigureAwait(false);
+});
+
+var fleetCommand = new Command("fleet", "Simüle cihaz filosu işlemleri.");
+fleetCommand.Subcommands.Add(fleetApplyCommand);
+
 // ── seed golden (T39) ───────────────────────────────────────────────────────
 // İki F3 ölçümü de gerçek veri istiyor: Sigma kapsamı (T30) vendor başına
 // sayıyor, baseline penceresi (T35) tabanı 1 saatten 30 güne süpürüyor. İkisinin
@@ -393,6 +426,7 @@ sigmaCommand.Subcommands.Add(sigmaSyncCommand);
 var root = new RootCommand("bizigo — log analyzer CLI");
 root.Subcommands.Add(parserCommand);
 root.Subcommands.Add(schemaCommand);
+root.Subcommands.Add(fleetCommand);
 root.Subcommands.Add(seedCommand);
 root.Subcommands.Add(fieldsCommand);
 root.Subcommands.Add(sigmaCommand);
