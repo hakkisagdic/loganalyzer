@@ -12,6 +12,7 @@ using Bizigo.Ingest.Pipeline;
 using Bizigo.Ingest.Wal;
 using Bizigo.Parsing.Dispatch;
 using Bizigo.Query;
+using Bizigo.Rca;
 using Bizigo.Replay;
 using Bizigo.Storage.Raw;
 using Microsoft.AspNetCore.Builder;
@@ -192,6 +193,13 @@ public sealed class ProducesContractTests
             // `store` "gövde mi servis mi" ayrımına takılıyor ve `MapRca`
             // çıkarımda patlıyor — yani uç dosyası kapıya hiç görünmüyor.
             typeof(EvidenceBundleFactory), typeof(EvidenceBundleStore),
+
+            // T45'in kabul kapısı, aynı uç dosyasında. Bu deliğin dördüncü
+            // kez açılması: kapı, ucun taşıdığı yeni bir servisi tanımadığında
+            // sessizce KIRMIZI yanmıyor — o dosyadaki bütün uçlar kapıya
+            // görünmez oluyor. Yani bir kaydı unutmanın bedeli tek uç değil,
+            // `EvidenceEndpoints.cs`'in tamamı.
+            typeof(RcaAdmission),
 
             // T37 incelemeyi T38'in altın küme deposuna yazıyor; ayrı bir
             // inceleme tablosu YOK. İkisi paralel yazılınca iki tablo doğmuştu

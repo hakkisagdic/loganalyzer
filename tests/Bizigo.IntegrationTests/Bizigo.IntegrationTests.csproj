@@ -35,6 +35,15 @@
     <ProjectReference Include="..\..\src\Bizigo.Evidence\Bizigo.Evidence.csproj" />
 
     <!--
+      T45: kabul kapısının idempotency güvencesi bir **filtreli tekil indeks**e
+      dayanıyor ve EF'in bellek içi sağlayıcısı hiçbir indeksi zorlamıyor.
+      Birim testleri uygulama katmanındaki kontrolü kanıtlıyor; kısıtın göçte
+      gerçekten kurulduğunu ve iki eşzamanlı isteğin arasındaki yarış
+      penceresini kapattığını yalnızca buradaki test gösterebiliyor.
+    -->
+    <ProjectReference Include="..\..\src\Bizigo.Rca\Bizigo.Rca.csproj" />
+
+    <!--
       S03: `SshDeviceTransport` gerçek bir SSH sunucusuna karşı koşuyor.
       Cihaz katmanı buraya ilk kez giriyor — F1'de yazıldığından beri hiçbir
       test onu ağa çıkarmamıştı.

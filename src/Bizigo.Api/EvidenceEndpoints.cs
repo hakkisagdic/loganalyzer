@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Bizigo.ControlPlane;
 using Bizigo.Evidence;
+using Bizigo.Rca;
 
 namespace Bizigo.Api;
 
@@ -129,6 +130,16 @@ public static class EvidenceEndpoints
         group.MapPost("/", GatherAsync)
             .WithName("GatherRca")
             .Produces<RcaReportResponse>(StatusCodes.Status201Created)
+
+            // T45: uç artık üç sonuç daha taşıyor ve üçü de tele yazılıyor.
+            // 200, aynı `Idempotency-Key`in tekrarı — yeni koşu YOK, var olan
+            // rapor dönüyor. 410, koşumun paketi saklama politikasıyla silinmiş.
+            // 429, kabul kapısının reddi; gövdesi ret sebebini kapalı kümeden
+            // taşıyor, çünkü "neden RCA üretilmedi" sorusunun tek cevaplanabildiği
+            // yer bu.
+            .Produces<RcaReportResponse>(StatusCodes.Status200OK)
+            .Produces<ErrorResponse>(StatusCodes.Status410Gone)
+            .Produces<RcaAdmissionResponse>(StatusCodes.Status429TooManyRequests)
             .Produces<ErrorResponse>(StatusCodes.Status400BadRequest);
 
         group.MapGet("/", ListAsync)
@@ -165,7 +176,9 @@ public static class EvidenceEndpoints
         RcaRequest request,
         EvidenceBundleFactory factory,
         EvidenceBundleStore store,
+        RcaAdmission admission,
         ICurrentUser user,
+        HttpContext http,
         CancellationToken cancellationToken)
     {
         var window = new RcaWindow
@@ -190,8 +203,62 @@ public static class EvidenceEndpoints
             return Results.BadRequest(new ErrorResponse(ex.Message));
         }
 
+        // Kabul kapısı (T45, RCA §5). Bu uç iki kaynağı birden taşıyor ve
+        // ayıran şey `Idempotency-Key`: anahtarlı talep DIŞ API, anahtarsız
+        // talep KULLANICI. İkisi aynı şey değil — idempotent bir istemcinin
+        // tekrar denemesi aynı raporu beklerken, kullanıcının düğmeye ikinci
+        // kez basması yeni bir koşum bekliyor.
+        var idempotencyKey = http.Request.Headers["Idempotency-Key"].ToString();
+        var subject = user.Scope.Subject;
+
+        var trigger = string.IsNullOrWhiteSpace(idempotencyKey)
+            ? RcaTriggerSources.FromUser(subject, request.OwnerGroups, request.From, request.To)
+            : RcaTriggerSources.FromApi(subject, idempotencyKey, request.OwnerGroups, request.From, request.To);
+
+        var admitted = await admission.AdmitAsync(trigger, cancellationToken);
+
+        if (admitted.Existing)
+        {
+            // Aynı `Idempotency-Key` ikinci kez geldi: YENİ KOŞU YOK. Var olan
+            // koşumun raporu dönüyor — 201 değil 200, çünkü bu istek hiçbir şey
+            // yaratmadı.
+            var previous = admitted.Run.EvidenceBundleId is { } bundleId
+                ? await store.GetAsync(bundleId, cancellationToken)
+                : null;
+
+            // Paket saklama politikasıyla silinmişse (T36) cevap 410 — bu uçtaki
+            // diğer okuma yollarının zaten kullandığı kod. Aynı 200'de iki
+            // farklı tip döndürmek TS tarafında ayırt edilemeyen bir birleşim
+            // üretiyordu; durum kodu ayrımı taşıyor.
+            return previous is null
+                ? Results.Json(
+                    new ErrorResponse(
+                        "Bu koşumun kanıt paketi artık yok.",
+                        "Koşum kaydı duruyor; paket saklama süresi dolmuş olabilir."),
+                    statusCode: StatusCodes.Status410Gone)
+                : Results.Ok(RcaReportResponse.Of(DeterministicReport.From(previous), review: null));
+        }
+
+        if (!admitted.Accepted)
+        {
+            // Ret SESSİZ DEĞİL ve sebebi kapalı kümeden geliyor: sınır ≠ döngü
+            // ≠ kota. Tek bir "reddedildi" cevabı, sonraki kişinin hangi kapının
+            // kapattığını bilememesi demek olurdu.
+            return Results.Json(
+                new RcaAdmissionResponse(
+                    admitted.Run.Id,
+                    false,
+                    admitted.Rejection.ToString().ToLowerInvariant(),
+                    admitted.Run.RejectionDetail),
+                statusCode: StatusCodes.Status429TooManyRequests);
+        }
+
         var bundle = await factory.BuildAsync(window, user.Scope, cancellationToken: cancellationToken);
         await store.SaveAsync(bundle, cancellationToken);
+
+        // Koşumu ürettiği kanıt paketine bağlıyoruz: idempotent bir tekrar
+        // denemenin AYNI raporu döndürebilmesi buna bağlı.
+        await admission.AttachBundleAsync(admitted.Run.Id, bundle.Id, cancellationToken);
 
         var report = DeterministicReport.From(bundle);
 

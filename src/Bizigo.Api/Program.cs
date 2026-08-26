@@ -13,6 +13,7 @@ using Bizigo.Parsing.Dispatch;
 using Bizigo.Parsing.Grok;
 using Bizigo.Ingest.Wal;
 using Bizigo.Query;
+using Bizigo.Rca;
 using Bizigo.Replay;
 using Bizigo.Storage.ClickHouse;
 using Bizigo.Storage.Raw;
@@ -65,6 +66,9 @@ builder.Services.AddBizigoEvidence();
 
 // Alarm motoru ve bildirim kanalları (T21, T22).
 builder.Services.AddBizigoAlerting(builder.Configuration);
+
+// RCA tetikleyicileri: dört kaynak tek kapıdan (T45).
+builder.Services.AddBizigoRcaTriggers();
 
 // Kimlik ve yetkilendirme (T09).
 builder.Services.AddBizigoAuthentication(builder.Configuration);

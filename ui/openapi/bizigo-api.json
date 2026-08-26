@@ -1610,6 +1610,36 @@
               }
             }
           },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RcaReportResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RcaAdmissionResponse"
+                }
+              }
+            }
+          },
           "400": {
             "description": "Bad Request",
             "content": {
@@ -5199,6 +5229,30 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "RcaAdmissionResponse": {
+        "required": [
+          "run_id",
+          "accepted",
+          "rejection",
+          "detail"
+        ],
+        "type": "object",
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accepted": {
+            "type": "boolean"
+          },
+          "rejection": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
           }
         }
       },

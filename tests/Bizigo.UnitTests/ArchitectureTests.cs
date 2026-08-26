@@ -170,7 +170,11 @@ public sealed class ArchitectureTests
                 "AddBizigoAlerting", "AddBizigoAuthentication", "AddBizigoAuthoring",
                 "AddBizigoDataPlane", "AddBizigoDiscovery", "AddBizigoEvidence",
                 "AddBizigoIngest", "AddBizigoParsing", "AddBizigoRawArchive",
-                "AddBizigoReplay", "AddChangeConnectors", "AddChangeWebhooks",
+                // T45: RCA tetikleyici kabul kapısı. Kuyruğun kendisi ve kota
+                // T46'da — bu uzantı şimdilik yalnızca kapıyı ve kota
+                // kancasının varsayılanını kaydediyor.
+                "AddBizigoRcaTriggers", "AddBizigoReplay",
+                "AddChangeConnectors", "AddChangeWebhooks",
                 "AddControlPlane",
 
                 // Bizim yazdığımız bir uzantı DEĞİL: OpenAPI paketinin XML
