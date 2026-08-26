@@ -11,7 +11,7 @@ relationships:
   - target: "[[skills/paralel-ajan-koordinasyonu]]"
     type: related_to
 sources: [CLAUDE.md, docs/epic/f2-kapanis/index.md]
-source_digest: "sha256-12/v1 CLAUDE.md=d76db5d0b76a docs/epic/f2-kapanis/index.md=c701d88f78fd"
+source_digest: "sha256-12/v1 CLAUDE.md=ec55cf4c830b docs/epic/f2-kapanis/index.md=c701d88f78fd"
 summary: Bu depoda en pahalı hata sınıfı; hata, sayaç ve belirti üretmeden yanlış sonuç veren davranış. Ölçülmeyen şey çalışıyor sayılmaz.
 provenance:
   extracted: 0.85
@@ -75,6 +75,22 @@ yanabildiğini* ölçmeyi şart koşuyor, çünkü geçen bir test yalnızca ge�
 kanıtlar, kırılabildiğini değil. Yeşil bir bekçinin sessizce atlaması, bu
 sayfanın anlattığı sınıfın bekçi katmanındaki karşılığı:
 [[concepts/elle-tutulan-liste-bekciyi-korlestirir]].
+
+## Başka bir kural buna yaslanıyor — ve bunu söylüyor
+
+`CLAUDE.md` §2, ajanın hangi testi koşturabileceğini bir mekanizmaya bağlıyor:
+Docker kapalıyken koşan ve **geçen** bir test, konteyner istemediğini
+kanıtlamış sayılıyor.
+
+O çıkarım tek başına ayakta durmuyor. Konteyner yokluğunu görüp `Skip` yerine
+**erken `return`** ile çıkan bir test de *"geçti"* diye raporlanır — yani
+beyansız atlama serbest olsaydı mekanizma sessizce yanlış bir güvence
+üretirdi. §2 bu yüzden dayanağını **açıkça yazıyor**: çıkarım, bu sayfanın
+tarif ettiği sınıfın yasak olmasına bağlı.
+
+Genel hâli: **bir mekanizmanın dayandığı varsayım yazılmazsa, varsayım
+değiştiğinde kimse mekanizmaya bakmıyor.** Sessiz yanlış davranışın kural
+katmanındaki karşılığı bu. ^[inferred]
 
 ## Açık sorular
 

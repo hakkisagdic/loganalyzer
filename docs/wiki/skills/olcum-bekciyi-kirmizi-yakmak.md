@@ -24,7 +24,7 @@ sources:
   - docs/epic/t09-kararlar/index.md
   - docs/epic/t10-kararlar/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=d76db5d0b76a docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t09-kararlar/index.md=b21d65bda95a docs/epic/t10-kararlar/index.md=98995baaaacf docs/epic/t27-ad-govde-kesfi/index.md=e14d05d8d833 docs/epic/t27-kapanis-taramasi/index.md=fc23cd892d11 docs/epic/t28-denetim-bulgulari/index.md=7f6ce6b9f3f7 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t39-alan-kapsami/index.md=7d06bfcf6e0c"
+source_digest: "sha256-12/v1 CLAUDE.md=ec55cf4c830b docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t09-kararlar/index.md=b21d65bda95a docs/epic/t10-kararlar/index.md=98995baaaacf docs/epic/t27-ad-govde-kesfi/index.md=e14d05d8d833 docs/epic/t27-kapanis-taramasi/index.md=fc23cd892d11 docs/epic/t28-denetim-bulgulari/index.md=7f6ce6b9f3f7 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t39-alan-kapsami/index.md=7d06bfcf6e0c"
 summary: Geçen bir test geçtiğini kanıtlar, kırılabildiğini değil. Bu depoda bekçiler koruduğu hata geri konularak sınanıyor; yanlış pozitif vermediği de ayrıca ölçülüyor.
 provenance:
   extracted: 0.85
@@ -156,6 +156,23 @@ T27'nin taraması bunu bir bölüm hâline getirmiş: ayrı bir **"Aramadım"** 
 ve içinde hangi kalemin neden kapanmadığı. `CLAUDE.md` §10'un *"aradım, yok"* ile
 *"aramadım"* ayrımının uygulanmış hâli.
 
+### İşaretin yanında kapsamı da yaz
+
+Ayrım raporun tamamı için geçerli ama bir **"ilk bakılacak yer"** notunun
+yanında ayrıca söylenmesi gerekiyor: tek satırlık bir işaretin arkasında iki
+saatlik bir eleme de olabilir tek bir sezgi de, ve okuyan ikisini ayırt
+edemeyip **birincisini varsayıyor**. Biçim:
+
+> **İlk bakılacak yer:** X. **Aradım ve elemedim:** Y, Z. **Aramadım:** W.
+
+Gerekçe S04'te ölçüldü. Bir ajan `sir-dondu` testinin maskeleme biçimini işaret
+etti; işaret **doğruydu** ve koordinatör doğrudan oraya baktı. Ama aynı turda
+**üç testi birden düşüren** şey başka bir yerdeydi — baseline'ın iki gösterimi —
+ve ajan onu aramamıştı. Yazmadığı için de kimse aramadığını bilmiyordu.
+
+Yanlış işaret işaretsizlikten kötüdür; **kapsamsız doğru işaret** de aynı yöne
+çekiyor. İşaretin değeri, arkasındaki elemenin genişliğiyle birlikte okunuyor.
+
 Ve aynı belgede sonucu: T27'de yazılan dört entegrasyon testi o dalda
 koşturulmadığı için ticket `status` 1'de bırakıldı — *"koşturulmamış bir testi
 yeşil sayıp ticket'ı kapatmak, bu belgenin baştan sona karşı çıktığı şeyin
@@ -170,6 +187,7 @@ kendisi olurdu."*
 - [ ] Kuralın literal hâlini ölç, gerekiyorsa daralt.
 - [ ] Bekçi yazmamaya karar verdiysen gerekçesini yaz.
 - [ ] Ölçmediğini "ölçmedim" diye yaz; "aradım, yok" ile karıştırma.
+- [ ] Bir yeri işaret ediyorsan **aradıklarını ve aramadıklarını** da yaz.
 
 ## Kaynaklar
 
