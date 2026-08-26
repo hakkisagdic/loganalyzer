@@ -53,6 +53,28 @@ Hepsi gerçek olay; `CLAUDE.md` §7'de tek tek sayılı duruyor:
   yazıldı: aynı kırmızı üç ayrı turda main'i kırdı ve her seferinde farklı bir
   ajanın belgesi yüzünden. Sorun dikkatte değil, kuralın yazılı olmamasındaydı.
 
+## Bir tasarım belgesinde "zaten" — iki kez ölçüldü
+
+Sınıfın **planlama katmanındaki** hâli, ve iki bağımsız örneği var:
+
+| İddia | Gerçek |
+| --- | --- |
+| *"detection motoru `AlertRaised` yayınlar"* | `AlertRaised` adında bir olay, tip ya da yayın **kodda hiç yok**; ad yalnızca o belgede geçiyordu. Bağlanma noktası bir **tablo satırı** (`alert_triggers`) |
+| *"`status` alanı **zaten** `queued / gathering / …` taşıyor"* | `rca_report` diye bir tablo, varlık ya da statü kümesi **kodda hiç yok**; tek geçtiği yer o belge |
+
+İkisi de bir **arıza** değil — öngörülen bir şema, bugünkü şemanın diliyle
+yazılmış. Ama sonucu planlama katmanında ölçülüyor: *"zaten var"* diye okunan
+bir bileşen, faza **sıfır maliyetle** girer. `AlertRaised` bir olay veri yolunu
+bedava gösteriyordu; `rca_report` bir tabloyu.
+
+Ayırıcı tek kelime: **"zaten".** Doğrulanmadan okunduğunda bir maliyet iddiası
+taşıyor, ve tasarım belgeleri o kelimeyi öngörü ile envanter arasında ayrım
+yapmadan kullanıyor. ^[inferred]
+
+Karşılığı da mekanik: bir tasarım belgesindeki *"zaten"*, o şeyin kodda
+**arandığı** anlamına gelmeli. Aranmadıysa cümle *"gerekecek"* diye yazılır —
+aynı bilgi, farklı maliyet iddiası.
+
 ## Ortak şekil
 
 F2 kapanışı (`docs/epic/f2-kapanis/index.md` §2) altı kusuru inceleyip hepsinin

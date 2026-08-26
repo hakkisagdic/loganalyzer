@@ -263,10 +263,37 @@ Kanıt gösterip kaynağa götürmeyen rapor güven kazanmaz.
 
 ### 4.2 RCA raporu (`rca_report`)
 
+> **Düzeltme (2026-08-26) — statü buraya ait değil.** Aşağıdaki tablo `status`
+> ve `trigger` alanlarını rapora koyuyordu. **İkisi de `rca_runs`'a taşındı**
+> (T45 getirdi, T46 tamamlıyor) ve `rca_report` **statü taşımayacak**.
+>
+> Sebep F4'ün bitti tanımındaki kriter: *"kota yüzünden RCA üretilmemiş bir
+> alarm, RCA'sı boş çıkmış alarmdan ayırt edilebiliyor."* Bu ayrım
+> `QuotaExceeded` (**hiç bakılmadı**) · `Empty` (bakıldı, bulunamadı) ·
+> `Cancelled` (başladı, kesildi) durumlarının **karşılaştırılabilir** olmasını
+> gerektiriyor. İki tabloya bölünürlerse karşılaştırma bir **join** olur, ve
+> join'in iki sessiz hâli var: satır **ikisinde birden** ya da **hiçbirinde**.
+> İkisi de belirti üretmez — ekran bir şey gösterir, yanlış olduğunu kimse
+> görmez. Yani bölünmüş hâl kriteri sağlıyormuş gibi görünüp tam da kriterin
+> kovaladığı sınıfı üretir.
+>
+> Sınır: **`rca_runs` koşumun başına gelen her şeyin sahibi** (kabul, ret,
+> yürütme, sonuç — tek kapalı küme). **`rca_report` üretilen belgenin sahibi**
+> (metin, cümle atfı, atılan cümle sayısı). Rapor tarafına statü benzeri bir
+> kolon eklenirse bir bekçi kırmızı yanar.
+>
+> **Ve bu bölümün asıl kusuru bir alan seçimi değil bir kelime:** metin
+> *"`status` alanı **zaten** `queued / gathering / …` taşıyor"* diyordu.
+> `rca_report` diye bir tablo, varlık ya da statü kümesi **kodda hiç yoktu** —
+> tek geçtiği yer bu belgeydi. `AlertRaised` ile aynı sınıf ve ikinci örneği:
+> **bir tasarım belgesinde *"zaten"*, doğrulanmadan okunduğunda sıfır maliyet
+> iddiası taşıyor.** Öngörülen şema ile bugünkü şema aynı cümlede yazılırsa
+> planlama ikisini ayırt edemiyor.
+
 | Alan | Not |
 | --- | --- |
-| `id`, `created_at`, `status` | `queued / gathering / evidence_ready / reasoning / complete / failed` |
-| `trigger` | `{kind: alert\|manual\|anomaly\|external, ref, actor}` |
+| `id`, `created_at` | ~~`status`~~ → `rca_runs` |
+| ~~`trigger`~~ | → `rca_runs` (kaynak + soyağacı + ret kaydı orada) |
 | `bundle_id` | kanıt paketine bağ |
 | `title`, `summary` |  |
 | `findings[]` | `{rank, hypothesis, confidence, evidence_ids[], contradicting_evidence_ids[], unsupported: bool}` |
@@ -294,6 +321,31 @@ olsaydı kota ve döngü koruması beş kez yazılacaktı.
 | **Dış API** | `POST /api/v1/rca` + `Idempotency-Key` | Aynı anahtar → aynı rapor, yeni koşu değil |
 | **`schedule`** | takvim / cron ifadesi | **Kotanın en öngörülebilir tüketicisi.** Diğer üç kaynak olaya bağlı, bu **takvime**: takvimli senaryolar günlük kotayı baştan tüketip olay tetikli bir RCA'yı **kotasız** bırakabilir |
 | **Anomali zinciri** ⟳ | *bir kaynak değil:* bir **RCA koşumunun** bulgusu | **Soyağacı**: `root_run_id` + `depth`. `depth ≥ 2` **ya da** tetikleyici anahtarı soyağacında zaten varsa reddedilir |
+
+### İki anahtar, iki soru — ve pencere yalnızca birinde
+
+**Düzeltme (2026-08-26, ölçüldü.)** Bu bölüm ata tekrarı kontrolünü debounce
+anahtarıyla aynı yazıyordu: `(rule_id, scope, 10dk pencere)`. **Pencere ata
+tekrarı anahtarında olmamalı.**
+
+Gerekçe mekanik: pencere kovası anahtarın parçası olursa `A → B → A` zinciri
+kova sınırını aştığı anda kontrolden **kaçıyor** — ve zincirler tam da
+**zaman aldıkları için** kova sınırını aşarlar. Yani kaçış istisna değil,
+**beklenen hâl**.
+
+Ölçüldü: `LineageKey` bu bölümün yazdığı gibi hesaplandığında
+`Dongu_pencere_sinirini_assa_bile_yakalaniyor` **kırmızı yanıyor**. Sapma
+teorik değil.
+
+| Anahtar | Soru | Pencere |
+| --- | --- | --- |
+| `Debounce` | *"Bu tetikleyici bu pencerede zaten koştu mu?"* | **dahil** — sorunun kendisi zamansal |
+| `Lineage` | *"Bu tetikleyici bu zincirde zaten koştu mu?"* | **hariç** — soru zamansal değil, soyağaçsal |
+
+Ders bu turda üç kez tekrarlandı ve tersi de aynı: **bir kavramı
+tekilleştirmek onu tanıyan predicate'i tekilleştirmekle aynı şey değil**
+(baseline'ın iki gösterimi), ve **iki farklı soru tek anahtara sığmıyor**
+(burada).
 
 ### `schedule` neden çekirdeğe girdi
 
