@@ -1,3 +1,4 @@
+using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Bizigo.Rca;
 using Microsoft.EntityFrameworkCore;
@@ -229,7 +230,7 @@ public sealed class RcaAdmissionTests : IDisposable
     {
         var gate = Gate();
 
-        var request = RcaTriggerSources.FromApi(
+        var request = RcaTriggerSources.FromExternal(
             "svc-hesabi", "anahtar-1", ["network/core"], Now.AddHours(-1), Now);
 
         var first = await gate.AdmitAsync(request, Token);
@@ -252,12 +253,12 @@ public sealed class RcaAdmissionTests : IDisposable
         var gate = Gate();
 
         var first = await gate.AdmitAsync(
-            RcaTriggerSources.FromApi("svc", "anahtar-1", ["network/core"], Now.AddHours(-1), Now), Token);
+            RcaTriggerSources.FromExternal("svc", "anahtar-1", ["network/core"], Now.AddHours(-1), Now), Token);
 
         // Aynı pencere ve kapsam ama farklı anahtar: debounce yakalıyor, yani
         // ikinci talep YENİ bir kayıt açıyor ama kabul EDİLMİYOR.
         var second = await gate.AdmitAsync(
-            RcaTriggerSources.FromApi("svc", "anahtar-2", ["network/core"], Now.AddHours(-1), Now), Token);
+            RcaTriggerSources.FromExternal("svc", "anahtar-2", ["network/core"], Now.AddHours(-1), Now), Token);
 
         Assert.NotEqual(first.Run.Id, second.Run.Id);
         Assert.False(second.Existing);

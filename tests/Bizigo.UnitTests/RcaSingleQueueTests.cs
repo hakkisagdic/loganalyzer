@@ -1,3 +1,4 @@
+using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Bizigo.Rca;
 
@@ -86,15 +87,15 @@ public sealed class RcaSingleQueueTests
                 WindowTo = Now,
                 Summary = "sınama",
             }),
-            RcaTriggerSources.FromUser("analyst", ["network/core"], Now.AddHours(-1), Now),
-            RcaTriggerSources.FromApi("svc", "anahtar", ["network/core"], Now.AddHours(-1), Now),
+            RcaTriggerSources.FromManual("analyst", ["network/core"], Now.AddHours(-1), Now),
+            RcaTriggerSources.FromExternal("svc", "anahtar", ["network/core"], Now.AddHours(-1), Now),
             RcaTriggerSources.FromSchedule("gunluk", ["network/core"], Now.AddHours(-1), Now),
         ];
 
         // Dördü de kapalı kümenin ayrı bir değerini taşıyor — hiçbiri
         // "diğerlerinden biri gibi" davranmıyor.
         Assert.Equal(
-            [RcaTriggerSource.Alert, RcaTriggerSource.User, RcaTriggerSource.Api, RcaTriggerSource.Schedule],
+            [RcaTriggerSource.Alert, RcaTriggerSource.Manual, RcaTriggerSource.External, RcaTriggerSource.Schedule],
             requests.Select(r => r.Source));
 
         // Ve hepsinin anahtarı aynı iki fonksiyondan doğuyor.
@@ -130,8 +131,8 @@ public sealed class RcaSingleQueueTests
                 Summary = "sınama",
             }), Token);
 
-        await gate.AdmitAsync(RcaTriggerSources.FromUser("analyst", ["network/core"], Now.AddHours(-1), Now), Token);
-        await gate.AdmitAsync(RcaTriggerSources.FromApi("svc", "k1", ["network/core"], Now.AddHours(-1), Now), Token);
+        await gate.AdmitAsync(RcaTriggerSources.FromManual("analyst", ["network/core"], Now.AddHours(-1), Now), Token);
+        await gate.AdmitAsync(RcaTriggerSources.FromExternal("svc", "k1", ["network/core"], Now.AddHours(-1), Now), Token);
         await gate.AdmitAsync(RcaTriggerSources.FromSchedule("gunluk", ["network/core"], Now.AddHours(-1), Now), Token);
 
         await using var db = factory.CreateDbContext();

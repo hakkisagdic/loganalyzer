@@ -12,6 +12,7 @@ using Bizigo.Normalization;
 using Bizigo.Parsing;
 using Bizigo.Query;
 using Bizigo.Replay;
+using Bizigo.ScenarioPlugin;
 using Bizigo.Storage.ClickHouse;
 using Bizigo.Storage.Raw;
 using Microsoft.AspNetCore.Builder;
@@ -52,6 +53,12 @@ public sealed class ArchitectureTests
         // filtresini taşımazsa bir ekip başka bir ekibin verisini kanıt olarak
         // görür — üstelik rapor bunu doğru veri gibi sunar.
         typeof(EvidenceMarker).Assembly,       // Bizigo.Evidence
+
+        // Senaryo çekirdeği kanıt katmanının ÜSTÜNDE duruyor (T43). Kanıtı
+        // sağlayıcıdan alıyor, kendisi hiçbir şey sorgulamıyor; bir senaryo
+        // adımının "şu tabloyu da okuyayım" demesi tam olarak K17'nin
+        // kapatmak istediği yol.
+        typeof(ScenarioMarker).Assembly,       // Bizigo.ScenarioPlugin
     ];
 
     [Fact]

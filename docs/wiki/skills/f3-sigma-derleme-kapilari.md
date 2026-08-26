@@ -21,7 +21,7 @@ sources:
   - docs/epic/tickets-f3/sigma-pipeline/index.md
   - docs/epic/sigma-clickhouse-arastirmasi/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=d76db5d0b76a docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=457cb125d0d3 docs/epic/tickets-f3/sigma-derleme/index.md=d117ba100cfd docs/epic/tickets-f3/sigma-pipeline/index.md=6d7c85d5a5f1"
+source_digest: "sha256-12/v1 CLAUDE.md=ec55cf4c830b docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=457cb125d0d3 docs/epic/tickets-f3/sigma-derleme/index.md=d117ba100cfd docs/epic/tickets-f3/sigma-pipeline/index.md=6d7c85d5a5f1"
 summary: Derlendi ile koşuyor ve doğru şeyi buluyor üç ayrı iddia; her biri farklı bir yerde sınanıyor çünkü tek yere koymak yakalayamadığı sınıfı sessizce geçiriyor.
 provenance:
   extracted: 0.85
@@ -51,6 +51,11 @@ geçirir.
 | **1 · kolon varlığı** | Derleme anında, hattın içinde. Docker yok, ClickHouse yok | Görünümde olmayan kolona referans (ölçülen örneklemde 8 kural) | Tip uyuşmazlığı, fonksiyon yanlış kullanımı, sürüme özgü sözdizimi |
 | **2 · `EXPLAIN`** | CI, **kendi işinde**, şema yüklü / veri yok | Tip hatası (`proto: 6` ↔ `LowCardinality(String)`), sözdizimi, ad çözümlemesi | Kuralın gerçekten bir şey eşleştirip eşleştirmediği |
 | **3 · altın örnek** | CI, veri yüklü | Yanlış pozitif, sıfır eşleşme | — |
+
+Kapı 1'in *"Docker yok"* satırı bir **yerleşim** iddiası: kontrolü mümkün olan
+en erken aşamaya koymak. Kapı 2 ve 3 konteyner **istiyor**, yani tablodan
+"Sigma kapıları konteyner istemiyor" diye bir genelleme çıkmıyor — ve o
+genellemenin nereye götürdüğü [[concepts/konteyner-gerekmiyor-uc-iddia]]'da yazılı. ^[inferred]
 
 **Çalışma zamanı bu tablonun dışında ve öyle kalmalı.** Bir kuralın sessizce
 hiçbir şey yakalamaması `CLAUDE.md` §7'nin sınıfı; Kapı 1 ve 2 birlikte o sınıfı

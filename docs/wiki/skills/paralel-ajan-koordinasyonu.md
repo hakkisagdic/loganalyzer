@@ -9,7 +9,7 @@ relationships:
   - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
     type: related_to
 sources: [CLAUDE.md, README.md]
-source_digest: "sha256-12/v1 CLAUDE.md=d76db5d0b76a README.md=dc51f8de9a8c"
+source_digest: "sha256-12/v1 CLAUDE.md=ec55cf4c830b README.md=dc51f8de9a8c"
 summary: Bu depoda iş bir koordinatör ve paralel uygulayıcı ajanlarla yürüyor. Test bölünmesi, worktree yaşam döngüsü ve birleştirme sırası ölçülmüş olaylardan doğdu.
 provenance:
   extracted: 0.85
@@ -45,9 +45,8 @@ koordinatörün turunu kapattı ve o sırada **dört ajan boşta bekledi**.
 | Kim | Ne koşturur |
 | --- | --- |
 | Ajan | `dotnet build`, birim testleri, `npm run typecheck`, `npm test`, `api:generate`/`api:check` |
-| Koordinatör | Entegrasyon testleri (Testcontainers), compose, canlı Keycloak/ClickHouse/sidecar, benchmark'lar |
+| Koordinatör | **Konteyner isteyen** entegrasyon testleri, compose, canlı Keycloak/ClickHouse/sidecar, benchmark'lar |
 
-**Ajanlar Docker'a hiç dokunmaz.** Entegrasyon testlerini *yazar, koşturmaz*.
 Gerekçe iki katmanlı: makine 16 GB ve beş paralel Testcontainers koşumu onu
 swap'e sürüklüyor; ayrıca ölçüm testleri yüklü makinede **yanlış sayı**
 üretiyor.
@@ -55,6 +54,35 @@ swap'e sürüklüyor; ayrıca ölçüm testleri yüklü makinede **yanlış say�
 İkinci nokta bu depoda sayıyla kayıtlı: K35 ölçümü ajanda 1,46×, koordinatörde
 1,62× çıktı ve ikinci koşumda *yalnız ayrıştırma* kolu *ayrıştırma+etiketleme*
 kolundan yavaş göründü — fiziksel olarak imkânsız, yani makine sessiz değildi.
+
+### Bölünmenin ekseni "hangi paket" değil "konteyner gerekiyor mu"
+
+Tablo paket adına yazıldığı sürece, konteyner **istemeyen** bir entegrasyon
+testi de ajana yasaktı — oysa maliyeti bir birim testininkiyle aynı ve
+yukarıdaki iki gerekçenin ikisi de ona uymuyor.
+
+Ekseni düzeltmek *"ajan karar versin"* demek değil: yargı çağrıları sessizce
+genişler. Ölçüt **mekanizmaya** bağlı ve üç maddeli:
+
+1. **Ajan bir entegrasyon testini yalnızca Docker kapalıyken koşturabilir.**
+   Konteyner isteyen test daemon'a bağlanamayıp hemen düşer, hiçbir kaynak
+   tüketmez. Docker'ı **açmak** hiçbir koşulda ajanın işi değil.
+2. **Atlanan test kanıt değildir** — yalnızca **geçen** test konteynersiz
+   sayılır. `3 geçti / 4 atlandı` sonucunda o dört test hakkında hiçbir şey
+   söylenemez.
+3. **Bu çıkarım [[concepts/sessiz-yanlis-davranis]]'a bağlı.** *"Geçti ⇒
+   konteynersiz"* ancak beyansız atlama yasakken doğru: konteyner yokluğunu
+   görüp `Skip` yerine erken `return` ile çıkan bir test *"geçti"* diye
+   raporlanır ve 2. maddeden de temiz geçer.
+
+Kuralın yan etkisi: *"konteyner gerekmiyor"* cümlesi artık bir **izin**
+anlamı da taşıyor. Aynı cümle bu depoda iki anlamda daha kullanılıyor ve
+karıştırılmaları yanlış çıkarım üretiyor — [[concepts/konteyner-gerekmiyor-uc-iddia]].
+
+Üçüncü madde ilk ikisi kadar önemli. Yazılmasaydı mekanizma **kendi başına
+ayakta duruyor** gibi görünürdü, ve dayandığı varsayım değiştiğinde kimse
+buraya bakmazdı — bu, bir bekçinin dayanağını yazmamanın kural katmanındaki
+karşılığı. ^[inferred]
 
 **Koşturamadığın bir testi "yazdım" diye yeşil gösterme.** `Skip` ile iskelet
 bırakmak dürüst; sahte yeşil değil. Bu, [[concepts/sessiz-yanlis-davranis]]

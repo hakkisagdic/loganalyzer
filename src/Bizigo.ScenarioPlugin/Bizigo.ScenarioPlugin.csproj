@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!--
+      Yön: senaryo → kanıt. Çekirdek, kayıtlı sağlayıcı kümesini `IEvidenceProvider`
+      kayıtlarından ÖĞRENİYOR; elle yazılmış bir liste tutmuyor. Elle liste tutmak
+      `Produces<T>` kapısının kusurunun aynısı olurdu: listede olmayan uçlar kapıya
+      hiç görünmedi ve testler yeşil kaldı.
+
+      Ters yön yasak: kanıt katmanı senaryoları tanımıyor.
+    -->
+    <ProjectReference Include="..\Bizigo.Evidence\Bizigo.Evidence.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+</Project>

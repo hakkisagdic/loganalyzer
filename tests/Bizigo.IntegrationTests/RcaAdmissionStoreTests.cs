@@ -1,3 +1,4 @@
+using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Bizigo.Rca;
 using Microsoft.EntityFrameworkCore;
@@ -45,7 +46,7 @@ public sealed class RcaAdmissionStoreTests(DevStackFixture stack) : IAsyncLifeti
     private static RcaRunEntity Run(string? idempotencyKey) => new()
     {
         RootRunId = Guid.NewGuid(),
-        Source = RcaTriggerSource.Api,
+        Source = RcaTriggerSource.External,
         TriggerIdentity = "svc",
         OwnerGroup = "network/core",
         WindowFrom = Now.AddHours(-1),
@@ -134,7 +135,7 @@ public sealed class RcaAdmissionStoreTests(DevStackFixture stack) : IAsyncLifeti
             NullLogger<RcaAdmission>.Instance,
             TimeProvider.System);
 
-        RcaTriggerRequest Request() => RcaTriggerSources.FromApi(
+        RcaTriggerRequest Request() => RcaTriggerSources.FromExternal(
             "svc", "yaris-1", ["network/core"], Now.AddHours(-1), Now);
 
         var results = await Task.WhenAll(
