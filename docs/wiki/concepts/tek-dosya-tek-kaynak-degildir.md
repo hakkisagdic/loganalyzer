@@ -9,7 +9,7 @@ relationships:
   - target: "[[concepts/elle-tutulan-liste-bekciyi-korlestirir]]"
     type: related
 sources: [docs/epic/fs-simulatorler/index.md, docs/epic/tickets-fs/filo-kapsam/index.md, CLAUDE.md]
-source_digest: "sha256-12/v1 CLAUDE.md=ec55cf4c830b docs/epic/fs-simulatorler/index.md=22bb02d19d29 docs/epic/tickets-fs/filo-kapsam/index.md=a3717ebd5fe8"
+source_digest: "sha256-12/v1 CLAUDE.md=dd011df5a833 docs/epic/fs-simulatorler/index.md=22bb02d19d29 docs/epic/tickets-fs/filo-kapsam/index.md=a3717ebd5fe8"
 summary: Bir bilgiyi tek dosyada toplamak onu tek kaynak yapmıyor. Kavramın kendisi tek yerde durmalı — ve onu tanıyan predicate de. Üç ölçülmüş örnek.
 provenance:
   extracted: 0.85
@@ -122,3 +122,21 @@ Bir bilgiyi tek dosyaya taşırken üç soru:
 
 Üçünün de cevabı bir **mekanizmaya** bağlanmalı — bir okuma disiplinine değil.
 Bu depoda okuma disiplinine bağlanan kurallar tekrar tekrar kaybetti.
+
+### Ama bu sayfanın ölçtüğü şey ölçüm aracının kendisine de uygulanıyor
+
+`CLAUDE.md` §6 aynı gün bir adım kazandı ve gerekçesi bu sayfanın 3. hâliyle
+aynı aileden: kırmızı ölçümünde **kusurun dosyada gerçekten olduğunu iddia
+etmek**. Üç ajan bağımsız olarak kusuru uyguladığını sandı, dosya değişmemişti
+ya da ölçüm sabit bir girdiyle *"kusur yok"* hâlini iki kez ölçüyordu — ve
+sonuç **yeşil** geldi.
+
+Bağ şu: burada *"bu kavramı kim tanıyor"* sorusunun cevabı ikiye ayrılıyordu;
+orada *"bu ölçüm neyi ölçtü"* sorusunun cevabı ayrılıyordu. İkisinde de
+görünen şey (dosya sayısı · yeşil sonuç) altındaki şeyi (tanıma sayısı ·
+ölçümün gerçekten koşup koşmadığı) **temsil etmiyor**.
+
+Ve ikisinin çözümü de aynı cinsten: görünmeyeni **iddiaya çevirmek**. Bir test
+`assert 'KIRMIZI' in dosya` yazdığında, ölçümün koştuğunu okuma disiplininden
+mekanizmaya taşımış oluyor. Bkz. [[skills/olcum-bekciyi-kirmizi-yakmak]]
+Adım 1.5.
