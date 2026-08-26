@@ -1,0 +1,42 @@
+# Filo — beş cihaz, iki owner_group (S05)
+#
+# TEK DOSYA ve bu bir kabul kriteri: beş cihazın tanımı beş yere dağılırsa
+# "filo neye benziyor" sorusunun cevabı hiçbir yerde durmaz ve kapsam
+# yayılımını okumak için beş dosya açmak gerekir.
+#
+# NEDEN İKİ GRUP: tek gruba toplanmış bir filoda kapsam filtresinin gerçekten
+# filtrelediği KANITLANAMAZ — her şey geçer ve test yeşil kalır. Negatif kanıt
+# ancak ikinci grup varken üretilebiliyor (FS §6).
+#
+# Gruplar Keycloak realm'inde ZATEN VAR OLANLARLA hizalı: uydurma bir grup,
+# ekranı gerçek giriş akışıyla sınamayı imkânsız kılardı.
+
+version: 1
+
+# IdP grubu → owner_group eşlemesi.
+#
+# Bugün uçtan uca harness bunu elle bir `INSERT` ile kuruyor. Buradan gelmesi
+# S05'in kapanış ölçütünün yarısı: eşleme filo tanımının parçası, ayrı bir
+# tohumlama adımı değil.
+idp_mappings:
+  - idp_group: /network/core
+    owner_group: network/core
+    note: "analyst.core bu grubu görüyor"
+
+  - idp_group: /network/edge
+    owner_group: network/edge
+    note: "analyst.edge bu grubu görüyor; analyst.core GÖRMÜYOR — negatif kanıt"
+
+# Beş cihaz. `profile` alanı `catalog/simulators/<id>.yaml` dosyasına işaret
+# ediyor ve orada da bir `owner_group` var.
+#
+# İKİ YERDE DURMASI KASITLI DEĞİL, ÇÖZÜLDÜ: burada `owner_group` YOK. Profil
+# tek kaynak; filo yalnızca "hangi cihazlar" diyor. İki yerde durup ayrışmaları
+# bu deponun CSV bulgusunun aynısı olurdu — kazanan şey owner_group, yani
+# kapsamın kendisi.
+devices:
+  - profile: fw-ankara-01
+  - profile: fw-izmir-01
+  - profile: asa-dc-01
+  - profile: rb-sube-07
+  - profile: lb-web-01

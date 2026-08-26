@@ -50,6 +50,19 @@ public static class SimulatorProfileStore
 
         foreach (var path in Directory.EnumerateFiles(profileDirectory, "*.yaml").Order(StringComparer.Ordinal))
         {
+            // FİLO DOSYASI PROFİL DEĞİL (S05). Aynı dizinde duruyor ama şekli
+            // farklı: cihaz listesi ve IdP eşlemeleri taşıyor, `id`/`vendor`
+            // taşımıyor.
+            //
+            // Dışlanmasaydı profil doğrulayıcısı onu bozuk bir profil sayardı
+            // ve hata "profil bozuk" derdi — yani okuyan kişi var olmayan bir
+            // cihazın peşine düşerdi. Ölçüldü: `filo.yaml` eklendiği anda iki
+            // bekçi birden kırmızı yandı.
+            if (string.Equals(Path.GetFileName(path), FleetStore.FileName, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
             SimulatorProfile profile;
 
             try
