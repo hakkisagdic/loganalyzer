@@ -49,6 +49,23 @@ public sealed record McpToolError(
     public const string Unavailable = "unavailable";
 
     /// <summary>
+    /// Çağrıda <b>kimlik yok</b> — araç hiç koşmadı (M08).
+    ///
+    /// <para>
+    /// <c>not_found</c>'dan ayrı olması bir üslup tercihi değil: kimliği
+    /// kaybolmuş bir <c>logs.search</c> boş sonuç dönseydi ajan bunu
+    /// <i>"eşleşme yok"</i> diye okur ve <b>yanlış bir sonuca güvenle</b>
+    /// varırdı. Ayrı kod, istemcinin dallanabildiği tek dürüst yer.
+    /// </para>
+    ///
+    /// <para>
+    /// <c>unavailable</c> da olmazdı: bu geçici bir arıza değil, oturumun
+    /// yapısal hâli. Yeniden denemek düzeltmiyor.
+    /// </para>
+    /// </summary>
+    public const string Unauthenticated = "unauthenticated";
+
+    /// <summary>
     /// Senaryo/istek yanlış <b>yüzeye</b> uygulandı (planın §4'ü). Ayrı bir kod,
     /// çünkü <c>not_found</c> ile karışması S04'ün tam olarak düzelttiği
     /// yanlış cümleyi geri getirirdi: <i>"profilde yok"</i> demek, <i>"bu

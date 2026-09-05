@@ -66,13 +66,49 @@ public abstract class BizigoMcpTool : McpServerTool
     public virtual bool IsReadOnly => true;
 
     /// <summary>
+    /// Araç çağıranın <b>kimliğini</b> istiyor mu (M08).
+    ///
+    /// <para>
+    /// <b>Varsayılan güvenli tarafta:</b> ürün yüzeyindeki her araç kimlik
+    /// ister. Kalıp <see cref="McpSurface.Unspecified"/>'ınkiyle aynı —
+    /// unutkanlığın bedeli en tehlikeli tarafa düşmemeli. Yüzeyini yazmayı
+    /// unutan araç ürün kümesine düşmüyordu; kimlik satırını yazmayı unutan araç
+    /// da kimliksiz koşmuyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Muafiyet iki bilinçli hareket</b> (§8): burayı ezmek <i>ve</i>
+    /// <c>McpIdentityTests</c>'teki gerekçeli listeye + sabit sayıya girmek.
+    /// Tek hareketle muaf olunabilseydi liste bir gün sessizce büyürdü.
+    /// </para>
+    ///
+    /// <para>
+    /// Simülatör yüzeyi bilerek dışarıda: <c>bizigo-sim</c> ürün verisi
+    /// döndürmüyor, simülatör durumu döndürüyor (<see cref="McpSurface"/>).
+    /// Kapsamı yine de taşıyor — <see cref="Contracts.AccessScope.Denied"/>
+    /// olarak, yani bir gün ürün verisine uzanırsa <b>hiçbir şey</b> görür.
+    /// </para>
+    /// </summary>
+    public virtual bool RequiresCallerIdentity => Surface is McpSurface.Product;
+
+    /// <summary>
     /// SDK'nın araç başına üstveri torbası — ASP.NET'in uç üstverisiyle aynı
     /// fikir (örn. yetkilendirme politikası).
     ///
     /// <para>
-    /// Bugün boş ve <c>sealed</c> <b>değil</b>: M08 kimliği MCP oturumundan uca
-    /// taşırken araç başına yetkilendirme buradan geçebilir. Mühürlemek o kapıyı
-    /// erkenden kapatırdı; buradaki mühürleme kararı yalnızca
+    /// M01 burayı <c>sealed</c> yapmadı çünkü M08'in araç başına yetkilendirmeyi
+    /// buradan geçirmesi ihtimali vardı. <b>M08 geçirmedi</b> ve sebebi
+    /// ölçüldü: SDK üstveriyi <c>tools/list</c> ilanına ve çağrı yönlendirmesine
+    /// bakan bir torba olarak taşıyor, oysa kimlik kararının verilmesi gereken
+    /// yer <see cref="InvokeAsync"/>'in içi — çağrı başına, istek bağlamı
+    /// elimizdeyken. Kapsam <see cref="McpToolInvocation.Scope"/> ile
+    /// <b>zorunlu argüman</b> olarak taşınıyor; üstveriye yazılan bir politika
+    /// adı, unutulabilen bir dize olurdu.
+    /// </para>
+    ///
+    /// <para>
+    /// Yine de boş ve <c>sealed</c> değil: M06'nın redaksiyon kapısı ya da
+    /// M07'nin kaynak ilanı buraya bir şey koyabilir. Mühürleme kararı yalnızca
     /// <see cref="ProtocolTool"/> ve <see cref="InvokeAsync"/> için verildi,
     /// çünkü kaçak yol oradan açılıyor.
     /// </para>
@@ -131,11 +167,27 @@ public abstract class BizigoMcpTool : McpServerTool
             ? new Dictionary<string, JsonElement>(supplied, StringComparer.Ordinal)
             : [];
 
+        // M08 · KİMLİK BURADA GİRİYOR, VE YALNIZCA BURADA.
+        //
+        // Bu metot `sealed`, yani `McpToolInvocation`'ı kuran tek yer burası.
+        // Bir aracın kendi kapsamını uydurabilmesi için önce bu satırı geçmesi
+        // gerekiyor ve geçemiyor — kapsam derleyicide zorunlu (§8'in
+        // `IScopedQuery` kalıbının MCP yüzeyindeki hâli).
+        var scope = Contracts.AccessScope.Denied;
+
+        if (RequiresCallerIdentity && McpCallerScope.Resolve(request, out scope) is { } refusal)
+        {
+            // ARAÇ HİÇ KOŞMUYOR. Kimliksiz bir çağrıya `Denied` verip aracı
+            // koşturmak da "kapalı" olurdu ama SESSİZ: boş sonuç "eşleşme yok"
+            // diye okunur ve kimliğin kaybolduğunu kimse görmez (§7).
+            return ToProtocol(McpToolResult.Failure(refusal));
+        }
+
         McpToolResult result;
 
         try
         {
-            result = await ExecuteAsync(new McpToolInvocation(arguments), cancellationToken)
+            result = await ExecuteAsync(new McpToolInvocation(arguments, scope), cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (McpToolArgumentException error)

@@ -26,6 +26,24 @@
   -->
 
   <ItemGroup>
+    <!--
+      M08 · ÜRÜNE VERİLEN TEK REFERANS, ve dar tutulmasının gerekçesi ölçüldü.
+
+      Yukarıdaki yorum "çekirdek protokolü konuşuyor, ürünü tanımıyor" diyordu.
+      Kimlik taşıma o cümleyi bozmak zorunda: bir araç çağrısının kapsamı
+      (`AccessScope`) çekirdeğin gördüğü bir tip olmalı, yoksa kapsam araçların
+      kendi sorumluluğuna düşer ve §7'nin sessiz sınıfına girer.
+
+      `Bizigo.Contracts` bunun için doğru yer çünkü BAĞIMLILIĞI YOK — csproj'u
+      boş. Yani `Bizigo.Cli` buradan hiçbir çatıya sürüklenmiyor ve bu dosyanın
+      aşağıdaki CS0433 hikâyesi tekrarlanmıyor. Kapsam ÇEVRİMİ (Postgres'teki
+      eşleme tablosu) burada değil: çekirdek yalnızca `IAccessScopeResolver`
+      arayüzünü görüyor, uygulaması `Bizigo.ControlPlane`'de kalıyor.
+    -->
+    <ProjectReference Include="..\Bizigo.Contracts\Bizigo.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="ModelContextProtocol" />
     <PackageReference Include="ModelContextProtocol.Core" />
   </ItemGroup>
