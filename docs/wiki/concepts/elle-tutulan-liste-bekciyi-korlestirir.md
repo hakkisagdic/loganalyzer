@@ -8,8 +8,8 @@ relationships:
     type: implements
   - target: "[[references/f2-kapanis]]"
     type: derived_from
-sources: [docs/epic/f2-kapanis/index.md, docs/epic/tickets-f3/produces-kapisi-bagi/index.md, CLAUDE.md]
-source_digest: "sha256-12/v1 CLAUDE.md=dd011df5a833 docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/tickets-f3/produces-kapisi-bagi/index.md=67247a04a205"
+sources: [docs/epic/f2-kapanis/index.md, docs/epic/tickets-f3/produces-kapisi-bagi/index.md, docs/epic/tickets-f3/kompozisyon-koku-bagi/index.md, CLAUDE.md]
+source_digest: "sha256-12/v1 CLAUDE.md=dd011df5a833 docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/tickets-f3/kompozisyon-koku-bagi/index.md=4f32c80bd6b5 docs/epic/tickets-f3/produces-kapisi-bagi/index.md=67247a04a205"
 summary: Denetlenen kümeyi elle tutulan bir listeden toplayan bekçi, listede olmayanı hiç görmez ve yine de yeşil yanar. Çözüm kümeyi yansımayla bulmak — ama bir kapıdaki elle listeyi kaldırmak, o kapıda başka elle liste kalmadığını göstermiyor.
 provenance:
   extracted: 0.8
@@ -90,6 +90,26 @@ eski kapıya adı `Map` ile başlamayan gerçek bir ürün ucu eklendiğinde on 
 testin **on altısı yeşil** kaldı. Bir bekçinin kapsamını ölçmenin yolu, kapsamı
 dışında bir şey yaratıp bekçinin sustuğunu görmek.
 
+## Üçüncü kılık: konvansiyona bakan keşif
+
+Yansıma bir listeyi kaldırıyor ama yerine bir **konvansiyon** koyuyor, ve
+konvansiyon da elle tutulur — yalnızca başka bir dosyada.
+
+T50 bunun ölçülmüş örneğini buldu: bu depodaki yansıma keşifleri ürün
+derlemelerini `Bizigo.` **önekinden** tanıyor. `src/Bizigo.Cli` ise derlemesini
+`<AssemblyName>bizigo</AssemblyName>` ile yeniden adlandırıyor, yani önekli
+keşiflerin **hepsine görünmez**. Delik `CLAUDE.md` §4'ün *"dizin adına
+güvenme, `git worktree list` çıktısına bak"* dersiyle aynı biçimde: ad bir
+kimlik değil bir alışkanlık.
+
+Kaçınma yolu aynı yöne gidiyor — **türetilmiş kaynağa bak**: T50'nin kapısı
+derleme adı önekine değil, diskteki proje dosyalarına ve onların gerçek
+`<AssemblyName>` değerine bakıyor.
+
+Kapsam notu, çünkü kapsamsız doğru işaret de yanıltıyor: bu kör noktanın
+**bugün kurbanı yok** — CLI derlemesi tek bir kayıt/uç uzantısı bildirmiyor,
+ölçüldü. Gerçek bir delik, henüz düşen bir şey yok. ^[extracted]
+
 ## Kardeş kalıp: doğrulama listesinden düşen kapı
 
 Aynı belge üçüncü bir kalıp daha sayıyor: T26 indikten sonra
@@ -115,4 +135,6 @@ olaylardır" maddesi aynı gözlemin merge tarafındaki karşılığı — bkz.
 - [[references/f2-kapanis]] — §2, "İkinci kalıp" ve "Üçüncü kalıp"
 - `docs/epic/tickets-f3/produces-kapisi-bagi/index.md` — dört tekrarın kaydı,
   seçilen çözüm, kaçırdığı hâller ve ölçülen kırmızılar
+- `docs/epic/tickets-f3/kompozisyon-koku-bagi/index.md` — konvansiyona bakan
+  keşfin ölçülmüş örneği
 - `CLAUDE.md` §7 ve §8
