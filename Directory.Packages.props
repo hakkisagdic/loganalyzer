@@ -50,6 +50,15 @@
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+
+    <!--
+      `bizigo mcp serve` günlükleri STDERR'e yazıyor: stdio taşımasında stdout
+      protokolün kendisi ve oraya düşen tek bir satır JSON-RPC akışını bozuyor.
+      Konsol sağlayıcısı ASP.NET paylaşılan çatısında geliyor ama `Bizigo.Cli`
+      bir konsol uygulaması ve o çatıyı BİLEREK taşımıyor
+      (bkz. `Bizigo.Mcp.csproj`), dolayısıyla paket olarak gerekiyor.
+    -->
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.11" />
   </ItemGroup>
 
   <ItemGroup Label="Alarm ve bildirim">
@@ -71,6 +80,27 @@
     -->
     <PackageVersion Include="SSH.NET" Version="2026.0.0" />
     <PackageVersion Include="System.CommandLine" Version="2.0.11" />
+  </ItemGroup>
+
+  <!--
+    MCP (M01). Resmî C# SDK'sı — Apache-2.0, Linux Foundation projesi, `net10.0`
+    hedefi var. Elle yazmak yerine seçildi ve gerekçe K36'nın emsalinde:
+    bağımlılık protokolü KONUŞMAK için, uyum kapısını KURMAK için değil. Kapı
+    sunucunun ilan ettiği `tools/list` çıktısını okuyor, dolayısıyla SDK yanlış
+    yaparsa da kırmızı yanıyor — güven SDK'ya değil ölçüme bağlı.
+
+    `ModelContextProtocol` = barındırma + DI + stdio taşıması.
+    `.AspNetCore`        = akışlanabilir HTTP taşıması.
+    `.Core`              = protokol tipleri; ikisinin de bağımlılığı, ayrıca
+                           YAZILI çünkü uyum kapısı doğrudan onu kullanıyor.
+
+    Uyduğumuz revizyon `McpRevision.Supported` içinde sabit ve bekçisi var;
+    sürüm burada, revizyon orada — ikisi farklı sorular.
+  -->
+  <ItemGroup Label="MCP">
+    <PackageVersion Include="ModelContextProtocol" Version="2.2.0" />
+    <PackageVersion Include="ModelContextProtocol.Core" Version="2.2.0" />
+    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
   </ItemGroup>
 
   <ItemGroup Label="Test">
@@ -96,6 +126,48 @@
       .NET semantiğiyle koşuyor; SQL doğruluğu zaten entegrasyon testinin işi.
     -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.11" />
+
+    <!--
+      MCP uyum kapısı (M01). İkisi de YALNIZCA test projesinde: ürün yüzeyine
+      girmiyorlar, ve girmemeleri bilinçli.
+
+      `JsonSchema.Net`: kapı, ilan edilen şemayı meta-şemaya karşı doğruluyor ve
+      örnek çağrının çıktısını `outputSchema`'ya karşı sınıyor. MCP SDK'sı bunu
+      kendi içinde de yapıyor olabilir — ama kapının SDK'nın doğruluğuna
+      dayanması, ölçtüğü şeyi ölçen aracın kendisine sormak olurdu. Ağ
+      kullanmıyor: 2020-12 meta-şeması pakete gömülü.
+
+      `Microsoft.ML.Tokenizers` + `.Data.O200kBase`: araç şemalarının BAĞLAM
+      MALİYETİ bir sayı olarak isteniyor (plan §9). Alternatif "≈4 karakter =
+      1 belirteç" tahminiydi ve §6 tam olarak bunu yasaklıyor — ölçülmüş görünen
+      bir tahmin, ölçmemekten kötü. `.Data.O200kBase` sözlüğü GÖMÜLÜ taşıyor,
+      yani koşum ağ istemiyor.
+    -->
+    <PackageVersion Include="JsonSchema.Net" Version="9.4.0" />
+
+    <!--
+      MCP'nin İKİNCİ taşıması (akışlanabilir HTTP) gerçek bir el sıkışmayla
+      sınanıyor. Konteyner GEREKTİRMİYOR: `TestServer` süreç içinde koşuyor,
+      soket açılmıyor. Bitti tanımının 1. maddesi "iki taşımada da çalışıyor"
+      diyor ve onu ölçmeden yazmak, bu deponun yasakladığı türden bir iddia
+      olurdu.
+    -->
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.ML.Tokenizers" Version="2.0.0" />
+    <PackageVersion Include="Microsoft.ML.Tokenizers.Data.O200kBase" Version="2.0.0" />
+
+    <!--
+      GEÇİŞLİ ÇİVİ, gerekçesi bir güvenlik uyarısı. `Microsoft.ML.Tokenizers`
+      2.0.0 `Microsoft.Bcl.Memory` 9.0.4'ü çekiyor ve o sürümde bilinen bir
+      YÜKSEK önem dereceli açık var (GHSA-73j8-2gch-69rq). Depoda
+      `TreatWarningsAsErrors` açık olduğu için NU1903 derlemeyi kırıyor —
+      yani kapı zaten çalıştı ve bu satır onun cevabı, susturucusu değil.
+
+      `CentralPackageTransitivePinningEnabled` sayesinde burada bir sürüm
+      yazmak geçişli bağımlılığı da yükseltiyor. 10.0.11 seçildi: deponun geri
+      kalanı zaten 10.0.11 ailesinde.
+    -->
+    <PackageVersion Include="Microsoft.Bcl.Memory" Version="10.0.11" />
   </ItemGroup>
 
 </Project>

@@ -66,8 +66,23 @@ Hedef **`2026-07-28`** revizyonuna tam uyum. Uyum bir iddia değil bir
 | Kaynaklar | URI şeması, abonelik, değişiklik bildirimi |
 | İstemler | Parametreli, sunucu tarafında sürümlü |
 | Hata | Protokol hatası ile **araç hatası** ayrı — araç hatası `isError` ile döner, protokol istisnası değil |
-| Günlükleme | `notifications/message`, seviye anlaşmasına saygılı |
 | İptal | `notifications/cancelled` **gerçekten** iptal ediyor |
+
+> **Günlükleme bu tablodan çıkarıldı (M01).** İlk hâli `notifications/message`'ı
+> bir şart olarak yazıyordu. Çivilediğimiz revizyonda (`2026-07-28`) o yetenek
+> **kullanımdan kaldırıldı** (SEP-2577); C# SDK'sı onu okuyan kodu `MCP9005` ile
+> işaretliyor ve depodaki `TreatWarningsAsErrors` bunu bir derleme hatasına
+> çeviriyor — yani şart, kendi kapısını kuramıyor.
+>
+> Gerekçe yalnızca teknik değil. §8'in kuralı yetenek düzeyinde de geçerli:
+> *tüketicisi olmayan bir tip tahmindir.* Bugün `notifications/message`'ı
+> okuyacak bir tüketicimiz yok, ve kullanımdan kalkmış bir yeteneği tüketicisiz
+> biçimde **yepyeni** bir yüzeye sokmak yarının borcunu bugün yazmak olurdu.
+> Kapı tarafı daha da kötü: spesifikasyonun kaldırdığı bir şeyi şart koşan bir
+> uyum kapısı, uyumu ölçmüyor — **kendi geçmişini** ölçüyor.
+>
+> Gerçek bir günlükleme ihtiyacı doğarsa ayrı bir ticket açılacak ve
+> **tüketicisiyle** gelecek.
 
 **Uyumun bekçisi bir sözleşme testi olacak**, elle yazılmış bir liste değil:
 sunucunun ilan ettiği her araç için şemanın geçerliliği ve örnek çağrının
@@ -212,5 +227,54 @@ MCP oturumu **SDK'nın taşıma oturumu** olarak duruyor ve BFF'in
 taşınacağı sorusunun cevabını (**M08**) önden vermek olurdu — ve M08 henüz
 yazılmadı. Yani bu bir erteleme değil, **sıra**: taşıma oturumu M01'in,
 kimlik M08'in.
-- **Araç sayısının modele maliyeti ölçülmedi.** On beş aracın şeması her
-bağlamda taşınıyor; bu bir bağlam bütçesi kalemi ve bu belgede sayısı yok.
+- ~~**Araç sayısının modele maliyeti ölçülmedi.**~~ **Ölçüldü** (M01): §10'a
+bakın.
+
+---
+
+## 10 · M01'in ölçtükleri
+
+### Araç şemalarının bağlam maliyeti
+
+`o200k_base` BPE ile, `tools/list` yanıtının **tamamı** üzerinden (sözlük
+pakete gömülü, **ağ yok**):
+
+| Ölçüm | Değer |
+| --- | --- |
+| `tools/list` toplam (1 araç) | **198 belirteç** (700 karakter) |
+| Zarf (araçlar hariç) | ~4 belirteç |
+| **Araç başına** (`server.info`) | **194 belirteç** |
+
+Araç başına rakam asıl olan: **yeni bir aracın fiyatı.** `server.info` iki
+küçük şema ve iki cümlelik bir açıklama taşıyor, yani bu sayı **alt sınıra
+yakın** — `logs.search` gibi zengin bir filtre şeması daha pahalı olacak.
+
+Ölçümün M04/M05 için bugünden bir tasarım sonucu var: **en pahalı kalem şema
+değil, `description` metni.** Uzun bir araç açıklaması her konuşmada taşınıyor.
+
+**On beş araç için bir sayı yazılmadı** çünkü o sayı bir ölçüm değil kurgu
+olurdu. `McpSchemaBudgetTests` her koşumda gerçek rakamı basıyor ve tavan
+sabiti (`ToolListTokenCeiling`) büyümeyi **görünür** kılıyor — araç eklemek o
+sabiti de değiştirmeyi gerektiriyor.
+
+### Revizyon sabiti bir hedef; kısıtlama olarak yazıldığında anlaşmayı öldürüyor
+
+Uygulamanın ilk hâlinde `McpServerOptions.ProtocolVersion` doğrudan
+`McpRevision.Supported`'a sabitlenmişti. **Ölçüldü:** SDK onu *tek desteklenen*
+sürüm yapıyor ve `2025-11-25` konuşan istemci el sıkışmada
+`UnsupportedProtocolVersionException` alıyor.
+
+Yani bir çivi gibi görünen satır, §2'nin **şart** koştuğu sürüm anlaşmasını
+kapatıyordu. Şimdi sunucu anlaşmayı açık bırakıyor ve sabitin doğruluğunu
+**ölçüm** tutuyor: `McpComplianceTests` hem yazılı revizyonun el sıkışmada
+kabul edildiğini, hem eski istemcinin bağlanabildiğini sınıyor. SDK bir gün o
+revizyonu bıraktığında kapı kırmızı yanıyor.
+
+Ayrım M02–M08 boyunca geçerli: **yazılı bir sabit + ölçüm** kaymayı engelliyor;
+**yazılı bir sabit + kısıtlama** protokolün kendi mekanizmasını kırıyor.
+
+### Anonim MCP oturumu açılamıyor
+
+`/mcp` ucu `RequireAuthorization()` taşıyor ve kimliksiz bir isteğin **401**
+aldığı ölçülü (`McpHttpTransportTests`). Bu M08'in ön şartı — servis hesabıyla
+ya da kimliksiz koşan bir MCP sunucusu bütün kapsam kapılarını atlardı (K17).

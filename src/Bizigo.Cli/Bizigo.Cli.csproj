@@ -5,11 +5,13 @@
     <ProjectReference Include="..\Bizigo.Ingest\Bizigo.Ingest.csproj" />
     <ProjectReference Include="..\Bizigo.Parsing\Bizigo.Parsing.csproj" />
     <ProjectReference Include="..\Bizigo.Alerting\Bizigo.Alerting.csproj" />
+    <ProjectReference Include="..\Bizigo.Mcp\Bizigo.Mcp.csproj" />
     <ProjectReference Include="..\..\sim\Bizigo.Simulators\Bizigo.Simulators.csproj" />
 </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="System.CommandLine" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
   </ItemGroup>
 
   <PropertyGroup>

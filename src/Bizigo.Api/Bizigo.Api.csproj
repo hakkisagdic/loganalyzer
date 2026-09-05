@@ -9,6 +9,7 @@
     <ProjectReference Include="..\Bizigo.Alerting\Bizigo.Alerting.csproj" />
     <ProjectReference Include="..\Bizigo.Evidence\Bizigo.Evidence.csproj" />
     <ProjectReference Include="..\Bizigo.Rca\Bizigo.Rca.csproj" />
+    <ProjectReference Include="..\Bizigo.Mcp\Bizigo.Mcp.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -26,6 +27,13 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+
+    <!--
+      MCP'nin akışlanabilir HTTP taşıması. `Bizigo.Mcp`'de DEĞİL: orada
+      olması `Bizigo.Cli`'yi ASP.NET paylaşılan çatısına sürüklüyordu
+      (gerekçe ve ölçüm `Bizigo.Mcp.csproj` yorumunda).
+    -->
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
     <PackageReference Include="Microsoft.Extensions.ApiDescription.Server">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

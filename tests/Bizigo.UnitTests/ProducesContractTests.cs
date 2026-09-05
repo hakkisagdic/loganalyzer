@@ -2,6 +2,9 @@ using System.IO.Pipelines;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Security.Claims;
+
+// M01: `AddBizigoMcp` burada — türetmenin göremediği tek kayıt (aşağıda).
+using Bizigo.Api;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
@@ -92,6 +95,25 @@ public sealed class ProducesContractTests
         ["POST /v1/changes/webhooks/{endpointId}"] =
             "CI sistemlerinin çağırdığı alıcı; UI tüketicisi yok.",
 
+        // M01. Bu satır koordinatörle birlikte gerekçelendirildi: uç
+        // DENETLENEBİLİR bir şekle sahip değil, kaçınılan bir denetim değil.
+        //
+        // MCP JSON-RPC konuşuyor. Aynı yol duruma göre tek bir JSON yanıtı ya da
+        // bir SSE akışı döndürüyor, ve gövdenin şekli çağrılan ARACA bağlı —
+        // `logs.search` ile `server.info` aynı uçtan farklı sözleşmeler
+        // döndürüyor. Tek bir `Produces<T>` yazmak, hiçbirini doğru tarif
+        // etmeyen bir tip uydurmak olurdu (§8: tüketicisi olmayan bir tip
+        // tahmindir) ve T14'ün ürettiği TypeScript'e kimsenin kullanmadığı bir
+        // tip inerdi.
+        //
+        // Sözleşmesiz kalmıyor: ARAÇ başına `inputSchema`/`outputSchema` var ve
+        // onları `McpComplianceTests` doğruluyor — hem şemanın geçerliliğini
+        // hem örnek çağrının şemaya uyduğunu. Yani bu muafiyet denetimi
+        // kaldırmıyor, denetimi doğru kapıya taşıyor.
+        ["POST /mcp"] =
+            "MCP JSON-RPC ucu (M01). Gövde şekli çağrılan araca bağlı; sözleşme araç "
+            + "başına `outputSchema` ile duruyor ve `McpComplianceTests` doğruluyor.",
+
         // 204 dönen uçlar: gövde yok. Uydurulmuş bir yanıt tipi, olmayan bir
         // sözleşme vaat ederdi.
         ["DELETE /v1/alerts/rules/{id}"] = "204, gövdesiz.",
@@ -111,7 +133,7 @@ public sealed class ProducesContractTests
     /// düşmeli.
     /// </para>
     /// </summary>
-    private const int ExpectedExemptCount = 6;
+    private const int ExpectedExemptCount = 7;
 
     /// <summary>
     /// Kapının <b>hiç göremediği</b> uçlar — ve neden.
@@ -322,6 +344,20 @@ public sealed class ProducesContractTests
         builder.Services.AddAuthorization();
         builder.Services.AddRouting();
 
+        // M01 — TÜRETMENİN GÖREMEDİĞİ TEK KAYIT.
+        //
+        // Aşağıdaki türetme, servisleri `Map*` imzalarından çıkarıyor.
+        // `MapBizigoMcp` hiçbir servis parametresi almıyor: SDK'nın `MapMcp`'si
+        // taşıma servislerini `IEndpointRouteBuilder`'ın sağlayıcısından
+        // ÇÖZÜYOR — varlıklarına bakmıyor, gerçekten alıyor. Yani zehirli tekil
+        // kalıbı da türetme de burada yetmiyor; kayıt anında patlıyor.
+        //
+        // Gerçek kayıt kullanmak bir gevşetme değil: hiçbir bağlantı kurulmuyor,
+        // hiçbir araç çağrılmıyor. Alternatif `MapBizigoMcp`'yi atlamaktı ve o,
+        // MCP uçlarını bu kapıya görünmez yapardı — kapının var olma sebebi olan
+        // deliğin ta kendisi.
+        builder.Services.AddBizigoMcp(builder.Configuration);
+
         // Servisler çözülmüyor — kayıtlar yalnızca minimal API'nin parametreyi
         // "servis mi gövde mi" diye ayırt edebilmesi için var. Çözülürse patlayan
         // fabrika, bir gün handler çağrılırsa `null` yerine anlaşılır bir hata
@@ -494,6 +530,12 @@ public sealed class ProducesContractTests
         Assert.Equal(
             [
                 "MapAlertClosure", "MapAlerts", "MapAuth",
+
+                // M01: MCP'nin akışlanabilir HTTP taşıması. `Bizigo.Api` içinde
+                // duruyor ve bu liste bunun sebebi — kayıt `Bizigo.Mcp`'de
+                // olsaydı MCP uçları bu kapıya HİÇ görünmezdi.
+                "MapBizigoMcp",
+
                 "MapChangeConnectors", "MapChangeWebhooks", "MapChanges",
                 "MapEvents",
                 "MapNotificationChannels", "MapOtlpLogs", "MapParserAuthoring", "MapParsers",
