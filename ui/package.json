@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.ts",
     "e2e": "npm run e2e:prepare && playwright test",
+    "e2e:container": "E2E_TARGET=container npm run e2e:prepare && E2E_TARGET=container playwright test",
     "e2e:headed": "npm run e2e:prepare && E2E_SLOWMO=250 playwright test --headed",
     "test:watch": "vitest",
     "api:generate": "./scripts/generate-api-types.sh",

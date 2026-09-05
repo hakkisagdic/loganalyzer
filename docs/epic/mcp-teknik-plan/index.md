@@ -37,8 +37,26 @@ olarak burada: *"araç zaten veriyi getiriyor, modele de versin."*
 
 ## 2 · Protokol uyumu — neyin şart olduğu
 
-Hedef **MCP 2.0** spesifikasyonuna tam uyum. Uyum bir iddia değil bir
+Hedef **`2026-07-28`** revizyonuna tam uyum. Uyum bir iddia değil bir
 **kapı** olmalı:
+
+> **Düzeltme (2026-08-26, ölçüldü).** Bu bölüm önce *"MCP 2.0 spesifikasyonu"*
+> diyordu. **Öyle bir revizyon adı yok.** Spesifikasyon yayınlarının tamamı
+> tarih damgalı — `2024-11-05` · `2025-03-26` · `2025-06-18` · `2025-11-25` ·
+> `2026-07-28` — ve *"2.0"* muhtemelen **C# SDK'sının** sürümüne
+> (`ModelContextProtocol` 2.x) bakıyordu; o ayrı bir şey.
+>
+> Seçilen: **`2026-07-28`**, en yeni stable. Sürüm anlaşması eski istemciyi
+> zaten aşağı indiriyor, yani geniş uyum kaybedilmiyor — yalnızca hedef
+> yukarı konuyor. Çivi bir sabit **artı bir bekçi**: SDK'nın ilan ettiği
+> sürüm yazdığımız sabitten ayrıştığı gün **kırmızı**. *"En güncel"* bir hedef
+> değil bir kaymadır; yazılı revizyon hedeftir ve kayma **ölçülebilir** olur.
+>
+> Hatanın sınıfı kayda değer: bir plan belgesinde **var olmayan bir adı var
+> gibi yazmak**, okuyanı doğrulanmamış bir hedefe bağlıyor. Bu deponun
+> [*"zaten"* deseninin](../../wiki/concepts/sessiz-yanlis-davranis.md) üçüncü
+> örneği — `AlertRaised` ve `rca_report`'tan sonra — ve üçüncüsü bir **plan**
+> belgesinde çıktı.
 
 | Alan | Şart |
 | --- | --- |
@@ -201,57 +219,25 @@ profili değil.
 
 ## 9 · Bu belgenin bilmediği şey
 
-- **MCP 2.0'ın hangi revizyonu.** Spesifikasyon sürümlü ve tarih damgalı;
-M01 hangi revizyona uyduğunu **yazacak** ve sözleşme testi o revizyona karşı
-koşacak. "En güncel" bir hedef değil, bir kayma.
-- ~~**Akışlanabilir HTTP'nin oturum yönetimi**~~ — **karara bağlandı (M01).**
-Aşağıya bakın.
-- ~~**Araç sayısının modele maliyeti ölçülmedi.**~~ — **ölçüldü (M01).**
-Aşağıya bakın.
+- ~~**MCP 2.0'ın hangi revizyonu.**~~ **Cevaplandı** (2026-08-26): `2026-07-28`,
+ve *"MCP 2.0"* diye bir revizyon zaten yoktu — §2'ye bakın.
+- ~~**Akışlanabilir HTTP'nin oturum yönetimi.**~~ **Cevaplandı** (2026-08-26):
+MCP oturumu **SDK'nın taşıma oturumu** olarak duruyor ve BFF'in
+`redis-session`'ından **bağımsız**. İkisini bağlamak, kimliğin uca nasıl
+taşınacağı sorusunun cevabını (**M08**) önden vermek olurdu — ve M08 henüz
+yazılmadı. Yani bu bir erteleme değil, **sıra**: taşıma oturumu M01'in,
+kimlik M08'in.
+- ~~**Araç sayısının modele maliyeti ölçülmedi.**~~ **Ölçüldü** (M01): §10'a
+bakın.
 
 ---
 
-## 10 · M01'de karara bağlananlar
+## 10 · M01'in ölçtükleri
 
-### MCP oturumu ile BFF oturumu ayrı katmanlar
+### Araç şemalarının bağlam maliyeti
 
-MCP'nin akışlanabilir HTTP oturumu **SDK'nın taşıma oturumu** olarak duruyor ve
-BFF'in `redis-session`'ından **bağımsız**. İkisi farklı şeyleri tutuyor: BFF
-oturumu bir *tarayıcı* oturumu (erişim token'ı tarayıcıya inmesin diye var),
-MCP oturumu bir *protokol* oturumu (akışın ve isteğe bağlı yeniden bağlanmanın
-durumu).
-
-İkisini şimdi birbirine bağlamak **M08'in kararını önden vermek** olurdu:
-kimliğin MCP oturumundan uca nasıl taşınacağı o ticket'ın konusu, ve o karar
-verilmeden "MCP oturumu BFF oturumunun üstünde durur" demek, doğrulanmamış bir
-mekanizmayı belgeye yazmak olurdu.
-
-M01'in bıraktığı hâl ölçülü: `/mcp` ucu `RequireAuthorization()` taşıyor ve
-**anonim bir MCP oturumu açılamıyor** (`McpHttpTransportTests`). Bu M08'in ön
-şartı — servis hesabıyla ya da kimliksiz koşan bir MCP sunucusu bütün kapsam
-kapılarını atlardı (K17).
-
-### Uyulan revizyon: `2026-07-28` — ve bir düzeltme
-
-Spesifikasyonun **"2.0" diye bir sürümü yok**; yayınlanmış revizyonların hepsi
-tarih damgalı (`2024-11-05`, `2025-03-26`, `2025-06-18`, `2025-11-25`,
-`2026-07-28`). "MCP 2.0" ifadesi C# SDK'sının sürümüne bakıyordu.
-
-`McpRevision.Supported = "2026-07-28"` — bugünün en yeni *stable* revizyonu.
-
-**Sabit bir tavan değil bir hedef.** İlk uygulamada `McpServerOptions.ProtocolVersion`
-o değere sabitlenmişti ve **ölçüldü**: SDK onu tek desteklenen sürüm yapıyor,
-`2025-11-25` konuşan istemci el sıkışmada reddediliyor. Yani çivi gibi görünen
-satır, §2'de **şart** olan sürüm anlaşmasını kapatıyordu. Şimdi sunucu
-anlaşmayı açık bırakıyor; sabitin doğruluğunu **ölçüm** tutuyor:
-`McpComplianceTests` yazılı revizyonun el sıkışmada kabul edildiğini ve eski
-istemcinin de bağlanabildiğini sınıyor. SDK bir gün o revizyonu bıraktığında
-kapı kırmızı yanıyor.
-
-### Araç şemalarının bağlam maliyeti — ölçüldü
-
-`o200k_base` BPE ile, `tools/list` yanıtının tamamı üzerinden (sözlük pakete
-gömülü, ağ yok):
+`o200k_base` BPE ile, `tools/list` yanıtının **tamamı** üzerinden (sözlük
+pakete gömülü, **ağ yok**):
 
 | Ölçüm | Değer |
 | --- | --- |
@@ -259,19 +245,36 @@ gömülü, ağ yok):
 | Zarf (araçlar hariç) | ~4 belirteç |
 | **Araç başına** (`server.info`) | **194 belirteç** |
 
-Araç başına rakam asıl olan: yeni bir aracın fiyatı. `server.info` iki küçük
-şema ve iki cümlelik bir açıklama taşıyor, yani bu sayı **alt sınıra yakın** —
-`logs.search` gibi zengin bir filtre şeması daha pahalı olacak.
+Araç başına rakam asıl olan: **yeni bir aracın fiyatı.** `server.info` iki
+küçük şema ve iki cümlelik bir açıklama taşıyor, yani bu sayı **alt sınıra
+yakın** — `logs.search` gibi zengin bir filtre şeması daha pahalı olacak.
+
+Ölçümün M04/M05 için bugünden bir tasarım sonucu var: **en pahalı kalem şema
+değil, `description` metni.** Uzun bir araç açıklaması her konuşmada taşınıyor.
 
 **On beş araç için bir sayı yazılmadı** çünkü o sayı bir ölçüm değil kurgu
-olurdu; M04/M05 kendi araçlarını ekledikçe `McpSchemaBudgetTests` gerçek
-rakamı basıyor ve tavan sabiti (`ToolListTokenCeiling`) büyümeyi görünür
-kılıyor.
+olurdu. `McpSchemaBudgetTests` her koşumda gerçek rakamı basıyor ve tavan
+sabiti (`ToolListTokenCeiling`) büyümeyi **görünür** kılıyor — araç eklemek o
+sabiti de değiştirmeyi gerektiriyor.
 
-### Bilinen ayrışma: günlükleme yeteneği
+### Revizyon sabiti bir hedef; kısıtlama olarak yazıldığında anlaşmayı öldürüyor
 
-§2'nin tablosu **günlüklemeyi** (`notifications/message`) bir şart olarak
-yazıyor. Çivilediğimiz revizyonda (`2026-07-28`) o yetenek **kullanımdan
-kaldırıldı** (SEP-2577) ve SDK onu okuyan kodu derleme hatasıyla işaretliyor.
-İkisi aynı anda tutulamıyor; karar koordinatörde ve M01 bu konuda **hiçbir
-iddia yazmadı**.
+Uygulamanın ilk hâlinde `McpServerOptions.ProtocolVersion` doğrudan
+`McpRevision.Supported`'a sabitlenmişti. **Ölçüldü:** SDK onu *tek desteklenen*
+sürüm yapıyor ve `2025-11-25` konuşan istemci el sıkışmada
+`UnsupportedProtocolVersionException` alıyor.
+
+Yani bir çivi gibi görünen satır, §2'nin **şart** koştuğu sürüm anlaşmasını
+kapatıyordu. Şimdi sunucu anlaşmayı açık bırakıyor ve sabitin doğruluğunu
+**ölçüm** tutuyor: `McpComplianceTests` hem yazılı revizyonun el sıkışmada
+kabul edildiğini, hem eski istemcinin bağlanabildiğini sınıyor. SDK bir gün o
+revizyonu bıraktığında kapı kırmızı yanıyor.
+
+Ayrım M02–M08 boyunca geçerli: **yazılı bir sabit + ölçüm** kaymayı engelliyor;
+**yazılı bir sabit + kısıtlama** protokolün kendi mekanizmasını kırıyor.
+
+### Anonim MCP oturumu açılamıyor
+
+`/mcp` ucu `RequireAuthorization()` taşıyor ve kimliksiz bir isteğin **401**
+aldığı ölçülü (`McpHttpTransportTests`). Bu M08'in ön şartı — servis hesabıyla
+ya da kimliksiz koşan bir MCP sunucusu bütün kapsam kapılarını atlardı (K17).

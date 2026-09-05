@@ -354,6 +354,91 @@ services:
       start_period: 30s
 
   # --------------------------------------------------------------------------
+  # Dashboard (Next.js + BFF) — T49
+  #
+  # API ile AYNI PROFİLDE ve bu bir karar: ekranın API'siz kalkması anlamsız, ve
+  # iki ayrı profil "hangisini açacağım" sorusunu doğururdu. Yani yukarıdaki
+  # komut artık yığının tamamını kaldırıyor:
+  #
+  #     docker compose --profile api up -d --wait
+  #
+  # Varsayılan DEĞİŞMİYOR: `docker compose up -d` yine yalnızca altyapıyı
+  # kaldırıyor ve README'nin anlattığı geliştirme akışı (ekranı makinede
+  # `npm run dev` ile koşturmak, sıcak yeniden yükleme) aynen duruyor.
+  # --------------------------------------------------------------------------
+  ui:
+    profiles: ["api"]
+    build:
+      # Context `../ui` — API'nin aksine repo kökü DEĞİL. Gerekçesi
+      # ui/Dockerfile başlığında: arayüzün okuduğu her şey `ui/` altında.
+      context: ../ui
+      dockerfile: Dockerfile
+    depends_on:
+      api: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      redis-session: { condition: service_healthy }
+    environment:
+      # --- Keycloak: İKİ ADRES, ve ayrılmalarının sebebi ölçülmüş ------------
+      #
+      # `api` servisindeki `Auth__Authority` / `Auth__MetadataAddress` ayrımının
+      # birebir aynısı, bir katman yukarıda. Issuer DEĞİŞMİYOR: token'da
+      # `http://localhost:8180/realms/bizigo` yazıyor (Keycloak'ın KC_HOSTNAME'i
+      # öyle sabitliyor) ve tarayıcı da giriş için oraya gidiyor.
+      KEYCLOAK_ISSUER: ${KC_ISSUER:-http://localhost:8180}/realms/bizigo
+      # Değişen tek şey keşif belgesinin NEREDEN indirileceği — container içinde
+      # `localhost:8180` Keycloak değil, container'ın kendisi.
+      KEYCLOAK_METADATA_URL: http://keycloak:8080/realms/bizigo/.well-known/openid-configuration
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-bizigo-ui}
+      # Realm dosyasındaki geliştirme değeri; üretimde gizli yöneticiden gelir.
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-bizigo-ui-dev-secret}
+
+      # Dışarıdan görünen kök — TARAYICININ gördüğü adres. Dönüş adresi buradan
+      # türüyor ve realm'deki `redirectUris` ile birebir eşleşmek zorunda:
+      # `http://localhost:3000/signin-oidc`.
+      BFF_PUBLIC_URL: ${BFF_PUBLIC_URL:-http://localhost:3000}
+
+      # API'ye SUNUCUDAN SUNUCUYA. Tarayıcı buraya hiç konuşmuyor — her istek
+      # BFF vekilinden (`/api/bff/...`) geçiyor — dolayısıyla servis adı
+      # kullanmak tarayıcı tarafında hiçbir şeyi kırmıyor.
+      BIZIGO_API_URL: http://api:8080
+
+      BFF_COOKIE_NAME: ${BFF_COOKIE_NAME:-bizigo.sid}
+      BFF_SESSION_TTL_SECONDS: ${BFF_SESSION_TTL_SECONDS:-28800}
+
+      # Redis, `memory` DEĞİL — ve bu container'lı hâlin makinedeki hâlden
+      # bilinçli ayrıldığı tek yer. Bellek içi depo tek süreçte doğru; container
+      # yeniden yaratıldığında (imaj değişimi, `up` tekrarı) bütün oturumlar
+      # sessizce düşerdi ve kullanıcı sebebini göremezdi. `redis-session` zaten
+      # yığında duruyor.
+      BFF_SESSION_STORE: redis
+      BFF_REDIS_URL: redis://redis-session:6379
+    ports:
+      # 3000 dışarıda SABİT ve pazarlığa açık değil: realm dosyasındaki
+      # `redirectUris` birebir `http://localhost:3000/signin-oidc` yazıyor.
+      # Port değişirse Keycloak dönüşü `invalid_redirect_uri` ile reddediyor.
+      - "${UI_PORT:-3000}:3000"
+    healthcheck:
+      # node imajında curl yok; sunucuyu kendi node'uyla yokluyoruz.
+      #
+      # `/api/health` DEĞİL, kök: BFF'in sağlık ucu yok ve bu ticket'ta bir tane
+      # açmak, container'ın cevaplamadığı bir soruya yüzey eklemek olurdu.
+      #
+      # Ölçüt `< 500`, `ok` DEĞİL. Oturumsuz bir istek kök sayfadan giriş akışına
+      # yönleniyor (3xx) ve bu SAĞLIKLI hâlin ta kendisi; `r.ok` istenseydi
+      # sağlık kontrolü hiç yeşile dönmez, `--wait` zaman aşımına düşer ve
+      # sebebi "ekran açılmıyor" gibi okunurdu. 5xx ise sunucunun kendi
+      # arızası — yapılandırma eksikse Next tam olarak orada patlıyor.
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/', { redirect: 'manual' }).then(r => process.exit(r.status < 500 ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  # --------------------------------------------------------------------------
   # N2 — gerçek SSH sunucusu (S03)
   #
   # PROFİL ARKASINDA ve bu pazarlığa açık değil: `docker compose up -d` bunu
@@ -383,7 +468,24 @@ services:
 
       # Senaryo boşsa baseline. Fark testleri bunu değiştirip container'ı
       # yeniden başlatıyor.
+      #
+      # S06'ya kadar bu satır HİÇBİR ŞEY YAPMIYORDU: OpenSSH oturum çocuğuna
+      # temiz bir ortam kuruyor ve `SIM_*` değişkenleri ForceCommand'a
+      # ulaşmıyor. Açılış artık ayarları `/sim-ayarlar`a yazıyor.
       SIM_SCENARIO: ${SIM_SCENARIO:-}
+
+      # SAYFALAMA (S06 · N3).
+      #
+      #   etkilesimli — kabuk oturumunda sayfalar, exec kanalında sayfalamaz.
+      #                 Varsayılan; exec kanalında PTY olmadığı için cihazların
+      #                 çoğunun yaptığı şeyin MODELİ (ölçülmüş bir vendor olgusu
+      #                 değil — FS §11).
+      #   daima       — exec kanalında da sayfalar. Toplayıcının sayfalama
+      #                 kapatmasının kanal sınırını geçmediğini gösteren koşum.
+      #   kapali      — hiç sayfalamaz (S03 davranışı).
+      SIM_PAGING: ${SIM_PAGING:-etkilesimli}
+      SIM_PAGE_LINES: ${SIM_PAGE_LINES:-24}
+      SIM_MORE_TIMEOUT: ${SIM_MORE_TIMEOUT:-2}
     volumes:
       # SALT OKUNUR: simülatör katalogu değiştiremez. Değiştirebilseydi bir
       # test koşumu, sonraki koşumun girdisini sessizce bozabilirdi.

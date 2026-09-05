@@ -8,6 +8,27 @@ export type RcaBundleSummary = components["schemas"]["RcaBundleSummaryResponse"]
 export type RcaReview = components["schemas"]["RcaReviewResponse"];
 
 /**
+ * F4'ün model yorumu (T51) — <b>rapor `null` taşıyabilir</b>.
+ *
+ * <p>
+ * `null` <b>"bulgu yok" değil</b>: model hiç koşmadı. Koşup her cümlesi atılmış
+ * bir rapor da boş bulgu listesi taşıyor, ve ikisi ekranda tek bir kutuya
+ * düşerse F4'ün ölçmek istediği şey tam olarak kaybolur — F3'ün dört durumuyla
+ * aynı sınıf.
+ * </p>
+ *
+ * <p>
+ * <b>`findings` SIRALIDIR ve sırası ANLAMLIDIR.</b> Liste modelin kendi
+ * sıralaması; depolama ve serileştirme boyunca korunuyor ve ekran onu yeniden
+ * sıralamıyor. T47'nin <i>"doğru olan kaçıncı bulgu"</i> ölçümü (accuracy@1 /
+ * accuracy@3) bu sıraya atıfta bulunuyor — sessizce değişirse ölçü sessizce
+ * yanlış olur.
+ * </p>
+ */
+export type RcaReasoning = components["schemas"]["RcaReasoningResponse"];
+export type RcaReasoningFinding = components["schemas"]["RcaReasoningFindingResponse"];
+
+/**
  * Raporun ekranda okunan hâli — <b>dört durumun ayrı kaldığı yer</b> (T37).
  *
  * <p>
@@ -210,6 +231,27 @@ export interface ReviewRequestBody {
   readonly contradicting_evidence: string;
   readonly actual_root_cause: string;
   readonly note: string;
+  /**
+   * Kaçıncı bulgu doğruydu (1 tabanlı). <c>null</c> = <b>hiçbiri</b> ve bu bir
+   * ölçüm — <c>accuracy@1</c>/<c>accuracy@3</c>'ün paydasına giriyor.
+   *
+   * <p>
+   * Alan gövdede <b>her zaman var</b>, <c>null</c> olsa bile. Atlanması
+   * "hiçbiri doğru değildi" ile "soru sorulmadı"yı sunucuda ayırt edilemez
+   * yapardı — ve payda o ayrımın üstünde duruyor.
+   * </p>
+   */
+  readonly correct_finding_rank: number | null;
+  /**
+   * Sıra sorusu <b>soruldu mu</b>. Paydayı bu belirliyor.
+   *
+   * <p>
+   * Bulguları göstermeyen bir ekran soruyu soramıyor ve <c>false</c>
+   * gönderiyor; sorulmamış bir soruyu sorulmuş saymak, cevaplanamayan her
+   * incelemeyi paydaya sokup oranı sessizce aşağı çekerdi.
+   * </p>
+   */
+  readonly rank_asked: boolean;
 }
 
 /**
@@ -231,11 +273,31 @@ export function reviewRequest(
   contradictingEvidence: string,
   actualRootCause: string,
   note = "",
+  correctFindingRank: number | null = null,
+  rankAsked = false,
 ): ReviewRequestBody {
   return {
     verdict,
     contradicting_evidence: contradictingEvidence,
     actual_root_cause: actualRootCause.trim(),
     note,
+    correct_finding_rank: correctFindingRank,
+    rank_asked: rankAsked,
   };
+}
+
+/**
+ * Ekrandaki seçimden gövdedeki sayıya.
+ *
+ * <p>
+ * <c>""</c> (seçilmedi) ve <c>"none"</c> (hiçbiri doğru değildi) <b>ikisi de</b>
+ * <c>null</c>'a iniyor ve bu bilinçli: sunucu tarafında ayrım <b>kaydın şema
+ * sürümünden</b> okunuyor, alandan değil. Ekranın iki hâli ayrı tutması yine de
+ * gerekli — inceleyene "hiçbiri" demeyi <b>seçtirmek</b>, boş bırakmasına izin
+ * vermekten farklı bir şey.
+ * </p>
+ */
+export function parseFindingRank(choice: string): number | null {
+  const parsed = Number.parseInt(choice, 10);
+  return Number.isInteger(parsed) && parsed >= 1 ? parsed : null;
 }

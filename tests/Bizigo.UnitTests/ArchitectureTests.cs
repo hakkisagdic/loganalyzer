@@ -200,6 +200,21 @@ public sealed class ArchitectureTests
                 // T46'da — bu uzantı şimdilik yalnızca kapıyı ve kota
                 // kancasının varsayılanını kaydediyor.
                 "AddBizigoRcaTriggers", "AddBizigoReplay",
+
+                // T44 ile GÖRÜNÜR OLDU, T44 ile yazılmadı: uzantı T43'ten beri
+                // duruyordu ama `Bizigo.ScenarioPlugin` kompozisyon kökünün
+                // geçişli kapanışında değildi. T44'ün `Bizigo.Rca →
+                // Bizigo.ScenarioPlugin` referansı onu kapanışa soktu ve keşif
+                // bir fazla buldu — yani liste eksik değildi, KAPANIŞ eksikti.
+                //
+                // BİLİNMESİ GEREKEN: `Program.cs` bunu HÂLÂ ÇAĞIRMIYOR. Bu satır
+                // "üretimde kayıtlı" demek değil, "kapsam doğrulamasına girdi"
+                // demek — bekçi ömürleri sınıyor, bağlanmışlığı değil. Senaryo
+                // kataloğunu üretim grafiğine bağlamak koşum kolunun işi ve
+                // koordinatöre bildirildi; ikisi burada yazılmasaydı bir sonraki
+                // okuyan bu satırı bağlanmışlık kanıtı sanardı.
+                "AddBizigoScenarioPlugins",
+
                 "AddChangeConnectors", "AddChangeWebhooks",
                 "AddControlPlane",
 

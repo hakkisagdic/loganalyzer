@@ -20,10 +20,19 @@ sebebi kural setinde sanılır. Daha kötüsü, çıktı boşken `--write` çal�
 
 O yüzden korpus doluyken backend yoksa `_load_backend()` **atıyor**.
 
-`counts.written = 0` bugün doğru sayı: çivilenmiş korpus boş
-(`catalog/sigma/ruleset.json`, `commit: null`). `run.ruleset_commit = null` bunun
-sebebini söylüyor — "hiç kural yok" ile "hangi kuralları alacağımıza karar
-verilmedi" farklı şeyler.
+Bu ayrım hâlâ manifest'te duruyor ve okunması gereken yer `run.ruleset_commit`:
+`null` *"hangi kuralları alacağımıza karar verilmedi"* der, dolu bir değer
+*"karar verildi, korpus bu"* der. İkisi arasındaki fark `counts.written`'a
+bakarak görülemiyor — ikisi de sıfır üretebilir.
+
+Bugünkü sayılar: 24 kural, 21 `written`, 3 `gated`, 0 `failed`; çivi
+`t30-ornekleminden-terfi`. Bu satır bir durum bildirimi ve **bayatlayabilir** —
+bağlayıcı olan `detections/sigma/manifest.json`, ve sürüklenme kapısı onu
+tutuyor.
+
+Maliyetin kural sayısıyla nasıl büyüdüğü ayrı ölçülüyor: `sigma_build.cost`
+(süre, sessiz makine ister) ve `tests/test_cost.py` (kural başına iş, duvar
+saati istemiyor).
 """
 
 from __future__ import annotations

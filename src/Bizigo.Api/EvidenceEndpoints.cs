@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Bizigo.ControlPlane;
 using Bizigo.Evidence;
 using Bizigo.Rca;
+using Bizigo.Rca.Reasoning;
 
 namespace Bizigo.Api;
 
@@ -93,6 +94,28 @@ public sealed record RcaReviewRequest
     /// </summary>
     [JsonPropertyName("actual_root_cause")]
     public string ActualRootCause { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Kaçıncı bulgu doğruydu (1 tabanlı, sıralı <c>findings[]</c> listesindeki
+    /// konum). <c>null</c> = <b>hiçbiri doğru değildi</b> ve bu bir ölçüm.
+    ///
+    /// <para>
+    /// Sıra soruluyor, metin karşılaştırılmıyor: <c>actual_root_cause</c> ile
+    /// bulgu metinlerini eşleştirmek bir dizge işi olurdu ve bu depoda o sınıfın
+    /// dört örneği kolonu ve sorgusu doğru olan yerlerde çıktı. İnsan zaten
+    /// listeye bakıyor.
+    /// </para>
+    /// </summary>
+    [JsonPropertyName("correct_finding_rank")]
+    public int? CorrectFindingRank { get; init; }
+
+    /// <summary>
+    /// Sıra sorusu bu ekranda <b>soruldu mu</b>. <c>accuracy@k</c>'nın paydası
+    /// bu alandan geliyor, <c>correct_finding_rank</c>'in dolu olmasından değil:
+    /// <c>null</c> "hiçbiri doğru değildi" demek ve o bir ölçüm.
+    /// </summary>
+    [JsonPropertyName("rank_asked")]
+    public bool RankAsked { get; init; }
 
     [JsonPropertyName("note")]
     public string Note { get; init; } = string.Empty;
@@ -312,6 +335,7 @@ public static class EvidenceEndpoints
         Guid id,
         EvidenceBundleStore store,
         GoldenReviewStore reviews,
+        RcaReportStore reports,
         ICurrentUser user,
         CancellationToken cancellationToken)
     {
@@ -330,12 +354,22 @@ public static class EvidenceEndpoints
         var review = (await reviews.ForBundleAsync(id, user.Scope, cancellationToken))
             .FirstOrDefault();
 
-        return Results.Ok(RcaReportResponse.Of(DeterministicReport.From(bundle!), review));
+        // LLM raporu — hiç üretilmemişse `null` (T51). `null` "bulgu yok"
+        // DEĞİL: koşup her cümlesi atılmış bir rapor da boş bulgu listesi
+        // taşıyor ve ikisi ayırt edilebilir kalmalı.
+        //
+        // Kapsam kapısı imzada: `LatestForAsync` paket İSTİYOR, `Guid`
+        // değil — ve o paket yukarıda `Scope.IsReadableBy`'dan geçti. Raporun
+        // kendi `owner_group`'u yok, kapsamını paketten devralıyor.
+        var reasoning = await reports.LatestForAsync(bundle!, cancellationToken);
+
+        return Results.Ok(RcaReportResponse.Of(DeterministicReport.From(bundle!), review, reasoning));
     }
 
     private static async Task<IResult> ExportAsync(
         Guid id,
         EvidenceBundleStore store,
+        RcaReportStore reports,
         ICurrentUser user,
         CancellationToken cancellationToken)
     {
@@ -347,6 +381,18 @@ public static class EvidenceEndpoints
         }
 
         var markdown = DeterministicReport.From(bundle!).ToMarkdown();
+
+        // LLM raporu varsa export'a DA giriyor. Ekranda görünüp export'ta
+        // kaybolan bir bölüm, olay sonrası paylaşılan metnin ekrandakinden
+        // sessizce farklı olması demek — ve ikisini yan yana koyan hiçbir şey
+        // yok. Atılan cümle sayacı özellikle burada olmalı: raporu ekran
+        // dışında okuyan kişi de modelin ne kadar uydurduğunu görmeli.
+        var reasoning = await reports.LatestForAsync(bundle!, cancellationToken);
+
+        if (reasoning is not null)
+        {
+            markdown += Environment.NewLine + reasoning.Document.ToMarkdown();
+        }
 
         // İndirilebilir dosya: olay sonrası paylaşılan şey rapor, ekran değil.
         return Results.File(
@@ -409,7 +455,9 @@ public static class EvidenceEndpoints
                     Verdict: verdict,
                     ContradictingEvidence: contradicting,
                     Note: request.Note,
-                    ActualRootCause: request.ActualRootCause),
+                    ActualRootCause: request.ActualRootCause,
+                    CorrectFindingRank: request.CorrectFindingRank,
+                    CorrectFindingRankAsked: request.RankAsked),
                 // İnceleyen token'dan; gövdeden gelseydi herkes başkasının adına
                 // oy yazabilirdi.
                 user.Scope,

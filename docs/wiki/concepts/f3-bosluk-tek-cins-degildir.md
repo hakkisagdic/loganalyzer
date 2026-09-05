@@ -21,7 +21,7 @@ sources:
   - docs/epic/t30-sigma-olcumu/index.md
   - docs/epic/tickets-f3/kural-yonetimi/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=dd011df5a833 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=457cb125d0d3 docs/epic/t32-t33-acik-sorular/index.md=131d289ee01f docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/kural-yonetimi/index.md=1555ee581f73"
+source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=ca8f23c25262 docs/epic/t32-t33-acik-sorular/index.md=131d289ee01f docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/kural-yonetimi/index.md=1555ee581f73"
 summary: F3'ün en çok tekrarlanan kararı — "bir şey yok" diyen farklı olgular aynı boş kutuya düşerse okuyucu iyimser yanılır ve hiçbir hata mesajı bunu bozmaz. Faz boyunca en az yedi kez ayrı ayrı kuruldu.
 provenance:
   extracted: 0.85
@@ -61,6 +61,12 @@ beyanı bölümü). Belgeler yan yana konduğunda sayı daha da yüksek: F3 boyu
 | **Beyan** | `none.kind = invariant` (yanlış pozitif doğdu) ↔ `corpus_gap` (korpus genişledi) | `docs/epic/t32-derleme-tasarimi/index.md` §3 |
 | **Ölçüm paydası** | `no_data` (veri yüklenmemiş) ↔ `blocked` (bu şemada hiç ölçülemez) ↔ `absent` (desen örneklemde yok) | `docs/epic/t30-sigma-olcumu/index.md` |
 | **Depoda yokluk** | "örnek dosyada yok" ↔ **"örnek dosyada var, veritabanında yok"** (TTL sildi) | `docs/epic/t32-derleme-tasarimi/index.md` §3, FS kök neden analizi |
+| **Ölçüm ortamı** | yük ortalaması `None` (bakmadık) ↔ okunmuş düşük değer (sessizdi) | `docs/epic/t32-derleme-tasarimi/index.md` §6 |
+
+Sonuncusu ayrımın **ölçüm aracının kendi üstverisine** uygulanması: bir süre
+ölçümünün yanında yük kaydı yoksa, o koşumun sessiz bir makinede alındığı
+*gösterilemiyor* — ama kayıt atlanırsa okuyan kişi sessiz varsayıyor. Araç bu
+yüzden alanı `None` yazıp raporda adıyla söylüyor.
 
 ## Neden her biri pahalı
 

@@ -8,8 +8,10 @@ import {
   honestyLines,
   presentStatus,
   REVIEW_STATES,
+  parseFindingRank,
   reviewRequest,
   STATUS_PRESENTATION,
+  type RcaReasoning,
   type RcaReport,
   type RcaSlice,
 } from "@/lib/rca/report";
@@ -63,9 +65,285 @@ function report(overrides: Partial<RcaReport> = {}): RcaReport {
     out_of_scope_count: 0,
     is_partial: false,
     review: null,
+    reasoning: null,
     ...overrides,
   } as RcaReport;
 }
+
+/**
+ * Model yorumu fixture'ı. Sayılar üçü de FARKLI: eşit olsalardı bir alanın
+ * diğerinin yerine çizildiği fark edilmezdi.
+ */
+function reasoning(overrides: Record<string, unknown> = {}): RcaReasoning {
+  return {
+    report_id: "01920000-0000-7000-8000-0000000000bb",
+    bundle_id: "01920000-0000-7000-8000-000000000001",
+    created_at: "2026-09-05T12:00:00Z",
+    scenario_id: "builtin.rca.network",
+    scenario_version: "1.0.0",
+    findings: [
+      {
+        hypothesis: "ACL değişikliği BGP oturumlarını düşürdü [EV-01].",
+        evidence_ids: ["EV-01"],
+        contradicting_evidence_ids: ["EV-14"],
+      },
+    ],
+    actions: [{ text: "Değişikliği geri al [EV-01].", evidence_ids: ["EV-01"] }],
+    produced_sentence_count: 12,
+    dropped_sentence_count: 3,
+    dropped_sentence_ratio: 0.25,
+    fabricated_citation_sentence_count: 1,
+    sentence_gate_skipped: [],
+    model: {
+      provider: "vllm-kurum",
+      model: "qwen3-32b",
+      prompt_tokens: 18400,
+      completion_tokens: 1200,
+      unreported_attempts: 0,
+      tokens_complete: true,
+      boundary_overridden: false,
+      boundary_override_reason: null,
+    },
+    ...overrides,
+  } as RcaReasoning;
+}
+
+/**
+ * <b>Model yorumunun üç hâli ekranda ayrı çiziliyor</b> (T51).
+ *
+ * <p>
+ * Sunucu tarafındaki ikizi <c>RcaReportPersistenceTests</c>; bu dosyanın
+ * <c>Dort_durum_ekranda_ayirt_edilebiliyor</c> testiyle <b>aynı sebeple</b>
+ * ayrı: telde üç ayrı şekil gelmesi, ekranın onları üç ayrı şey olarak
+ * ÇİZDİĞİNİ göstermiyor.
+ * </p>
+ *
+ * <p>
+ * En pahalısı C: koşup her cümlesi atılmış bir rapor da boş bulgu listesi
+ * taşıyor. "Bulgu yok" diye çizilirse modelin uydurup elendiği gerçeği
+ * kaybolur — ve F4'ün ölçmek istediği tam olarak o.
+ * </p>
+ */
+describe("model yorumunun üç hâli ekranda ayrı", () => {
+  it("A · model hiç koşmadıysa bölüm sessizce kaybolmuyor", () => {
+    const html = renderToStaticMarkup(<ReportView report={report({ reasoning: null })} />);
+
+    expect(html).toContain('data-reasoning="absent"');
+    expect(html).toContain("model hiç çalışmadı");
+
+    // İddia cümlenin KENDİSİ değil OLUMSUZU: "model bir şey bulamadı" ifadesi
+    // ekranda geçiyor ama `değil` ile birlikte. Yalnızca ifadeyi aramak,
+    // olumsuzlama düştüğü gün de geçen bir test olurdu — yani tam olarak
+    // engellemeye çalıştığı yanlış okumayı ölçmezdi.
+    expect(html).toContain("bulamadı&quot; değil");
+  });
+
+  it("C · her cümlesi atılan rapor 'bulgu yok' diye çizilmiyor", () => {
+    const html = renderToStaticMarkup(
+      <ReportView
+        report={report({
+          reasoning: reasoning({
+            findings: [],
+            actions: [],
+            produced_sentence_count: 5,
+            dropped_sentence_count: 5,
+            dropped_sentence_ratio: 1,
+            fabricated_citation_sentence_count: 2,
+          }),
+        })}
+      />,
+    );
+
+    expect(html).toContain('data-reasoning="all-dropped"');
+    expect(html).toContain("hiçbiri kanıta bağlanamadı");
+    expect(html).not.toContain("Model hiçbir hipotez üretmedi");
+  });
+
+  it("B · hiç cümle üretmeyen rapor C'den ayrı çiziliyor", () => {
+    const html = renderToStaticMarkup(
+      <ReportView
+        report={report({
+          reasoning: reasoning({
+            findings: [],
+            actions: [],
+            produced_sentence_count: 0,
+            dropped_sentence_count: 0,
+            dropped_sentence_ratio: null,
+            fabricated_citation_sentence_count: 0,
+          }),
+        })}
+      />,
+    );
+
+    expect(html).toContain("Model hiçbir hipotez üretmedi");
+    expect(html).not.toContain("hiçbiri kanıta bağlanamadı");
+  });
+
+  /**
+   * <b>Oran ölçülemediğinde "mükemmel kalite" çizilmiyor.</b>
+   *
+   * <p>
+   * `Number(null)` <b>0</b> döndürüyor. Körlemesine dönüştüren bir ekran,
+   * ölçülemeyen bir oranı <i>"hiç cümle atılmadı"</i> diye çizerdi — yani
+   * "ölçemedim" ile "sorun yok" yine aynı çıktıya inerdi. Sunucuda `null`
+   * seçilmesinin bütün sebebi buydu.
+   * </p>
+   */
+  it("oran null iken 'ölçülemedi' yazıyor, %0 değil", () => {
+    const html = renderToStaticMarkup(
+      <ReportView
+        report={report({
+          reasoning: reasoning({
+            produced_sentence_count: 0,
+            dropped_sentence_count: 0,
+            dropped_sentence_ratio: null,
+          }),
+        })}
+      />,
+    );
+
+    expect(html).toContain("ölçülemedi");
+    expect(html).not.toContain("0.0%");
+  });
+
+  /**
+   * Sayaç GÖSTERİLİYOR — Karar 1'in ikinci fiili. Yalnızca atmak kaliteyi
+   * ölçülemez yapardı.
+   */
+  it("atılan cümle sayısı ve paydası ekranda", () => {
+    const html = renderToStaticMarkup(<ReportView report={report({ reasoning: reasoning() })} />);
+
+    expect(html).toContain('data-counter="dropped-sentences"');
+    expect(html).toContain("12");
+    expect(html).toContain("25.0%");
+    expect(html).toContain("var olmayan bir kanıta atıf");
+  });
+
+  /**
+   * <b>Bulgu sırası modelin sırası ve ekran onu yeniden sıralamıyor.</b>
+   * T47'nin "doğru olan kaçıncı bulgu" ölçümü bu sıraya atıfta bulunuyor;
+   * sessizce değişirse ölçü sessizce yanlış olur.
+   */
+  it("bulgular modelin verdiği sırada çiziliyor", () => {
+    const html = renderToStaticMarkup(
+      <ReportView
+        report={report({
+          reasoning: reasoning({
+            findings: [
+              { hypothesis: "BİRİNCİ hipotez [EV-01].", evidence_ids: ["EV-01"], contradicting_evidence_ids: [] },
+              { hypothesis: "İKİNCİ hipotez [EV-02].", evidence_ids: ["EV-02"], contradicting_evidence_ids: [] },
+              { hypothesis: "ÜÇÜNCÜ hipotez [EV-03].", evidence_ids: ["EV-03"], contradicting_evidence_ids: [] },
+            ],
+          }),
+        })}
+      />,
+    );
+
+    expect(html).toContain('data-ordered="model"');
+    expect(html.indexOf("BİRİNCİ")).toBeLessThan(html.indexOf("İKİNCİ"));
+    expect(html.indexOf("İKİNCİ")).toBeLessThan(html.indexOf("ÜÇÜNCÜ"));
+  });
+
+  /**
+   * Kısmi bir belirteç toplamı bir ALT SINIR ve ekran bunu söylüyor. Sıfır
+   * yazmanın daha sinsi hâli: sayı makul görünür ve tam sanılır.
+   */
+  /**
+   * <b>K6 muafiyeti raporda görünüyor — ve YOKLUĞU da</b> (T54).
+   *
+   * <p>
+   * Bugüne kadar rapor model hakkında hiçbir şey söylemiyordu ve okuyan bunu
+   * BİLİYORDU. Artık modeli anlatan bir bölüm var ve okuyan onu TAM sanıyor;
+   * muafiyeti dışarıda bırakmak eksik bir tabloyu tam gibi göstermek olurdu.
+   * </p>
+   *
+   * <p>
+   * İki hâl de çiziliyor: yalnız `true` iken görünen bir rozet, muafiyetsiz
+   * koşumu "bu soru sorulmamış" hâline sokardı.
+   * </p>
+   */
+  it("K6 muafiyeti ve yokluğu ekranda ayrı çiziliyor", () => {
+    const muaf = renderToStaticMarkup(
+      <ReportView
+        report={report({
+          reasoning: reasoning({
+            model: {
+              provider: "yerel",
+              model: "qwen3-8b",
+              prompt_tokens: 100,
+              completion_tokens: 20,
+              unreported_attempts: 0,
+              tokens_complete: true,
+              boundary_overridden: true,
+              boundary_override_reason: "DNS kapalı; adres doğrulaması atlandı.",
+            },
+          }),
+        })}
+      />,
+    );
+
+    const muafDegil = renderToStaticMarkup(<ReportView report={report({ reasoning: reasoning() })} />);
+
+    expect(muaf).toContain('data-boundary="overridden"');
+    expect(muaf).toContain("DNS kapalı");
+
+    // YOKLUK da yazılı — sessizlik "bu soru sorulmadı" diye okunurdu.
+    expect(muafDegil).toContain('data-boundary="verified"');
+    expect(muafDegil).toContain("muafiyet kullanılmadı");
+  });
+
+  /**
+   * Gerekçesiz muafiyet, muafiyetsizlikten ayırt edilebiliyor — iki alanın
+   * birlikte taşınmasının bütün sebebi bu tek hâl.
+   */
+  it("gerekçesiz muafiyet 'yazılmamış' diye çiziliyor", () => {
+    const html = renderToStaticMarkup(
+      <ReportView
+        report={report({
+          reasoning: reasoning({
+            model: {
+              provider: "yerel",
+              model: "qwen3-8b",
+              prompt_tokens: 100,
+              completion_tokens: 20,
+              unreported_attempts: 0,
+              tokens_complete: true,
+              boundary_overridden: true,
+              boundary_override_reason: null,
+            },
+          }),
+        })}
+      />,
+    );
+
+    expect(html).toContain('data-boundary="overridden"');
+    expect(html).toContain("yazılmamış");
+  });
+
+  it("eksik bildirilen belirteç toplamı alt sınır diye çiziliyor", () => {
+    const html = renderToStaticMarkup(
+      <ReportView
+        report={report({
+          reasoning: reasoning({
+            model: {
+              provider: "yerel",
+              model: "qwen3-8b",
+              prompt_tokens: null,
+              completion_tokens: null,
+              unreported_attempts: 2,
+              tokens_complete: false,
+              boundary_overridden: false,
+              boundary_override_reason: null,
+            },
+          }),
+        })}
+      />,
+    );
+
+    expect(html).toContain('data-tokens="incomplete"');
+    expect(html).toContain("alt sınır");
+  });
+});
 
 describe("dört durum ekranda ayrı kalıyor", () => {
   /**
@@ -382,9 +660,50 @@ describe("inceleme kararları", () => {
     expect(Object.keys(reviewRequest("correct", "unknown", "")).sort()).toEqual([
       "actual_root_cause",
       "contradicting_evidence",
+      "correct_finding_rank",
       "note",
+      "rank_asked",
       "verdict",
     ]);
+  });
+
+  /**
+   * <b><c>correct_finding_rank</c> gövdede her zaman var, <c>null</c> olsa
+   * bile.</b>
+   *
+   * <p>
+   * Atlanması sunucuda *"hiçbir bulgu doğru değildi"* ile *"soru sorulmadı"*yı
+   * ayırt edilemez yapardı; <c>accuracy@k</c>'nın paydası tam olarak o ayrımın
+   * üstünde duruyor. Anahtarın varlığı bu yüzden yukarıdaki listede çivili.
+   * </p>
+   */
+  it("Sira_secilmese_de_alan_govdede_duruyor", () => {
+    const body = reviewRequest("correct", "unknown", "", "", null);
+
+    expect("correct_finding_rank" in body).toBe(true);
+    expect(body.correct_finding_rank).toBeNull();
+  });
+
+  /**
+   * Ekrandaki seçim gövdedeki sayıya çevriliyor; seçilmemiş ve "hiçbiri"
+   * <b>ikisi de</b> <c>null</c>.
+   */
+  it("Sira_secimi_sayiya_cevriliyor", () => {
+    expect(parseFindingRank("1")).toBe(1);
+    expect(parseFindingRank("3")).toBe(3);
+    expect(parseFindingRank("none")).toBeNull();
+    expect(parseFindingRank("")).toBeNull();
+    // 0 ve negatif ekrandan gelemez ama gelirse sunucu reddediyor; istemci de
+    // uydurmuyor.
+    expect(parseFindingRank("0")).toBeNull();
+    expect(parseFindingRank("-2")).toBeNull();
+  });
+
+  /** Bulgu yoksa sıra sorusu <b>hiç çizilmiyor</b> — sorulamayacak bir soru. */
+  it("Bulgu_yoksa_sira_sorulmuyor", () => {
+    const html = renderToStaticMarkup(<ReportView report={{ ...report(), findings: [] }} />);
+
+    expect(html).not.toContain('data-testid="correct-finding-rank"');
   });
 });
 

@@ -1,7 +1,7 @@
 ---
 title: "T48 — `Produces<T>` kapısının kör noktası: dördüncü tekrar"
 kind: ticket
-status: 0
+status: 2
 ---
 
 # T48 — Kapının asgari servis listesi ile uç dosyaları arasına bir bağ
@@ -85,3 +85,99 @@ değişikliğinden değil, eksik servisin **şeklinden** kaynaklandı.
 **Aramadım:** aynı yansıma kalıbını kullanan başka bir kapı var mı — `ui/`
 tarafındaki sözleşme kapıları ve `ArchitectureTests` bu açıdan taranmadı. Aynı
 kör noktanın ikinci bir örneği orada duruyor olabilir.
+
+---
+
+## 7 · Ne yapıldı — seçilen aday ve gerekçesi
+
+**A + C seçildi, B reddedildi.**
+
+| Aday | Karar | Gerekçe |
+| --- | --- | --- |
+| **A · Listeyi türet** | **Alındı** | Elle servis listesi tamamen kaldırıldı. Kaydedilecek küme artık **uç dosyasının kendi metotlarının parametre tiplerinden** türetiliyor. |
+| **B · Sayım kapısı** | **Reddedildi** | Tek bir toplam sayı, on beş uçlu bir dosyanın kaybolmasını gizleyebiliyor: kalan dosyalar sayıyı doldurur. Ayrıca altı ajan paralel uç ekliyor; her uçta güncellenen bir sabit, güncellenmesi **rutinleşen** bir sabittir ve rutin güncelleme bekçiyi kayıt olmaktan çıkarır (`CLAUDE.md` §6). C, aynı soruyu dosya başına soruyor ve rutin güncelleme gerektirmiyor. |
+| **C · Dosya kapsaması** | **Alındı** | Her `Map*` uzantısının kapıya **en az bir** uç verdiği ayrı ayrı sayılıyor; ayrıca hangi uzantının kaç uç verdiği tutuluyor. |
+
+### Türetme nasıl çalışıyor
+
+1. Uç dosyasının (ve derleyicinin ürettiği `<>c` / `<>c__DisplayClass` lambda
+   taşıyıcılarının) bütün metot parametreleri geziliyor.
+2. Yapısal eleme: değer tipi, `string`, dizi, delege, açık generic ve minimal
+   API'nin kendi bağladığı tipler (`HttpContext`, `ClaimsPrincipal`, …) düşüyor.
+3. **Neyin servis olduğu tahmin edilmiyor:** boş bir kapta
+   `IServiceProviderIsService`'e soruluyor. Çerçevenin zaten tanıdığı tipler
+   (`ILogger<T>`, `IOptions<T>`, `TimeProvider`) kaydedilmiyor; tanımadığı her
+   şey kaydediliyor. Elle bir "çerçeve tipleri" listesi tutmak, kaldırdığımız
+   listenin ikinci bir kopyası olurdu.
+
+Sonuç: bir uç dosyasına yeni bir servis eklemek **artık kapıda hiçbir satır
+gerektirmiyor**. Dört kez açılan delik bu.
+
+### Kapsam beyanı (kabul kriteri 3)
+
+Kapı artık kendi kapsamını **sayıyor**:
+
+- Her uç dosyası ya **ölçüldü** (kaç uç verdiği yazılı) ya **kör** sayıldı
+  (neden görülemediği dosya adıyla yazılı). İkisinin toplamı uzantı sayısına
+  eşit olmalı — arada kaybolan yok.
+- `RouteEndpoint` olmadığı için denetime girmeyen uç sayısı ayrıca sayılıyor.
+- Kapının **yapısı gereği** hiç göremediği uçlar (`Program.cs` içinde satır içi
+  kayıtlı `/`, `/healthz`, iki `/internal/*`, `/openapi/*`) `OutsideTheGate`
+  listesinde **gerekçesiyle** yazılı ve sayısı `ExpectedOutsideCount` ile sabit
+  — `Exempt` emsali. Biri bir gün bir `Map*` uzantısına taşınırsa liste
+  bayatlamış olur ve bu kırmızı yanıyor.
+
+## 8 · Seçilen çözümün kaçırdığı hâller (kabul kriteri 4)
+
+1. **Handler imzası uç dosyasının dışında tanımlıysa** türetme onu göremez —
+   başka bir sınıfın metot grubu gibi. O hâlde `Map*` yine patlar, **ama
+   sessizce değil**: hata `Blind`'a dosya adıyla düşüyor ve
+   `Kapi_hicbir_uc_dosyasini_kaybetmiyor` kırmızı yanıyor. Türetmenin
+   kırılganlığı bu yüzden güvenli — eksik türetme sessizlik değil gürültü
+   üretiyor.
+2. **Tek eksik tip artık ucu düşürmüyor — ve bu ölçüldü.** Türetme gövde
+   kayıtlarını da servis saydığı için, bir handler'da tek bir tip eksik kalırsa
+   minimal API onu tek gövde parametresi sayıp kaydı **tamamlıyor**: uç
+   görünür kalıyor, sözleşmesi denetleniyor, hiçbir test düşmüyor. Kırmızı
+   ancak **aynı handler'da iki tip birden** eksikse yanıyor. Yani kapı bu
+   sınıfa karşı bağışık, ama bağışıklığın sebebi "hata veriyor" değil "hata
+   veremiyor" — okuyan kişi bunu bilmeli.
+3. **Dosya başına uç sayısı sabitlenmiyor.** İki uçlu bir dosyanın bir ucunu
+   kaybetmesi burada görünmez; dosya hâlâ ≥1 veriyor. Alan sahiplerinin
+   sabitlediği sayılar (`Olay_yuzeyi_uc_uctan_ibaret`) ayrı duruyor.
+4. **`Program.cs` içindeki satır içi uçlar denetlenmiyor.** Sayılıyor ve
+   gerekçesi yazılı, ama sözleşmeleri sınanmıyor.
+5. **Keşfedilen bir uzantının gerçekten `Program.cs`'te çağrıldığı
+   sınanmıyor.** Var olan ama hiç bağlanmayan bir uç dosyası kapıya görünür,
+   ürüne görünmez. Aramadım; ayrı bir kapı işi.
+
+## 9 · Ölçülen kırmızılar (kabul kriteri 2)
+
+`CLAUDE.md` §6'nın iddia adımı her kusurda uygulandı: kusur yazıldı → dosya
+okundu ve kusurun orada olduğu **iddia edildi** → koşuldu → geri alındı.
+
+| # | Kusur | Sonuç |
+| --- | --- | --- |
+| **Kontrol** | **Eski kapı** + adı `Map` ile başlamayan yeni bir uç dosyası (`ProbeRoutes.AddProbeRoutes`, gerçek bir `GET /v1/probe` ucu, `Produces<T>` yok) | **16/16 YEŞİL.** Kapı ucu hiç görmedi ve hiçbir şey söylemedi. |
+| **B** | Yeni kapı + aynı kusur | **KIRMIZI** — `Uç kaydedebilecek ama keşfedilmeyen metot(lar): ProbeRoutes.AddProbeRoutes` |
+| **A** | Türetme `RcaAdmission`'ı görmesin | **YEŞİL — kusur etkisiz.** Sebebi ölçüldü ve §8.2'ye yazıldı. |
+| **A2** | Türetme `RcaAdmission` **ve** `EvidenceBundleFactory`'yi görmesin | **KIRMIZI** — `EvidenceEndpoints kapıya görünmüyor — MapRca kaydedildi ama uçları alınamadı`, ardından minimal API'nin parametre tablosu |
+| **C2** | `MapOtlpLogs` hiç uç kaydetmesin | **KIRMIZI** — `Bu uzantı(lar) çağrıldı ama hiç uç kaydetmedi: LogsEndpoint.MapOtlpLogs` |
+| **D** | Kapsam dışı yazılan bir ucun aslında kapıya görünmesi | **KIRMIZI** — `Kapsam dışı yazılan uç(lar) artık kapıya görünüyor: POST /v1/replay` |
+
+**Kontrol satırı ticket'ın asıl ölçütü.** *"Kaç test düştü"* değil, *"kapı ucu
+görüyor mu"*: eski kapıda gerçek bir ürün ucu tamamen görünmezdi ve on altı
+testin on altısı yeşildi.
+
+Kusur A ayrıca §6'nın kendi uyarısının örneği oldu: yeşil bir sonuç *"kusur
+etkisiz"* de anlatabiliyor. Kusurun dosyada olduğu iddia edilmişti, yani
+"uygulanmadı" ihtimali elenmişti — geriye tek açıklama kaldı ve o açıklama
+mekanizma hakkında **yeni bir bilgi** oldu.
+
+## 10 · Ölçülen sayılar
+
+- Birim paketi: **1184 geçti / 4 atlandı / 0 düştü**, 5 dk 47 sn.
+- `ProducesContractTests`: 16 test → **19 test**, sessiz makinede **826 ms**.
+  (Yüklü makinede aynı paket 35–53 sn okudu; `CLAUDE.md` §6'nın "yüklü makine
+  yanlış sayı üretir" maddesinin bir örneği daha.)
+- Kaldırılan elle servis listesi: **27 `typeof(...)` satırı** → 0.

@@ -1051,6 +1051,9 @@ export interface components {
             contradicting_evidence?: string;
             actual_root_cause?: string;
             note?: string;
+            /** Format: int32 */
+            correct_finding_rank?: null | number | string;
+            rank_asked?: boolean;
         };
         CloseTriggerResponse: {
             /** Format: uuid */
@@ -1251,6 +1254,24 @@ export interface components {
             accuracy: null | number | string;
             /** Format: double */
             unknown_ratio: null | number | string;
+            /** Format: int64 */
+            contradicting_sound: number | string;
+            /** Format: int64 */
+            contradicting_trivial: number | string;
+            /** Format: int64 */
+            contradicting_unknown: number | string;
+            /** Format: int64 */
+            contradicting_evaluated: number | string;
+            /** Format: double */
+            contradicting_trivial_ratio: null | number | string;
+            /** Format: int64 */
+            contradicting_unspecified: number | string;
+            /** Format: int64 */
+            rank_asked: number | string;
+            /** Format: double */
+            accuracy_at_one: null | number | string;
+            /** Format: double */
+            accuracy_at_three: null | number | string;
         };
         JsonElement: unknown;
         MaintenanceWindowListResponse: {
@@ -1647,6 +1668,50 @@ export interface components {
             };
             drilldown: null | components["schemas"]["RcaDrilldownResponse"];
         };
+        RcaReasoningActionResponse: {
+            text: string;
+            evidence_ids: string[];
+        };
+        RcaReasoningFindingResponse: {
+            hypothesis: string;
+            evidence_ids: string[];
+            contradicting_evidence_ids: string[];
+        };
+        RcaReasoningModelResponse: {
+            provider: string;
+            model: string;
+            /** Format: int32 */
+            prompt_tokens: null | number | string;
+            /** Format: int32 */
+            completion_tokens: null | number | string;
+            /** Format: int32 */
+            unreported_attempts: number | string;
+            tokens_complete: boolean;
+            boundary_overridden: boolean;
+            boundary_override_reason: null | string;
+        };
+        RcaReasoningResponse: {
+            /** Format: uuid */
+            report_id: string;
+            /** Format: uuid */
+            bundle_id: string;
+            /** Format: date-time */
+            created_at: string;
+            scenario_id: string;
+            scenario_version: string;
+            findings: components["schemas"]["RcaReasoningFindingResponse"][];
+            actions: components["schemas"]["RcaReasoningActionResponse"][];
+            /** Format: int32 */
+            produced_sentence_count: number | string;
+            /** Format: int32 */
+            dropped_sentence_count: number | string;
+            /** Format: double */
+            dropped_sentence_ratio: null | number | string;
+            /** Format: int32 */
+            fabricated_citation_sentence_count: number | string;
+            sentence_gate_skipped: components["schemas"]["RcaSentenceGateResponse"][];
+            model: components["schemas"]["RcaReasoningModelResponse"];
+        };
         RcaReportResponse: {
             /** Format: uuid */
             bundle_id: string;
@@ -1663,6 +1728,7 @@ export interface components {
             out_of_scope_count: number | string;
             is_partial: boolean;
             review: null | components["schemas"]["RcaReviewResponse"];
+            reasoning: null | components["schemas"]["RcaReasoningResponse"];
         };
         RcaRequest: {
             /** Format: date-time */
@@ -1680,6 +1746,9 @@ export interface components {
             verdict: string;
             contradicting_evidence?: string;
             actual_root_cause?: string;
+            /** Format: int32 */
+            correct_finding_rank?: null | number | string;
+            rank_asked?: boolean;
             note?: string;
         };
         RcaReviewResponse: {
@@ -1713,6 +1782,11 @@ export interface components {
             requested_at: string;
             /** Format: date-time */
             finished_at: null | string;
+        };
+        RcaSentenceGateResponse: {
+            step_id: string;
+            reason: string;
+            detail: string;
         };
         RcaSliceResponse: {
             provider_id: string;

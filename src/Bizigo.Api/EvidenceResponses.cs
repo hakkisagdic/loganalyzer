@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Bizigo.Evidence;
+using Bizigo.Rca.Reasoning;
 
 namespace Bizigo.Api;
 
@@ -263,9 +264,26 @@ public sealed record RcaReportResponse(
     [property: JsonPropertyName("is_partial")] bool IsPartial,
 
     /// <summary>Paketin son incelemesi; hiç incelenmemişse <see langword="null"/>.</summary>
-    [property: JsonPropertyName("review")] RcaReviewResponse? Review)
+    [property: JsonPropertyName("review")] RcaReviewResponse? Review,
+
+    /// <summary>
+    /// LLM'in ürettiği rapor — <b>model hiç koşmadıysa <see langword="null"/></b>
+    /// (T51).
+    ///
+    /// <para>
+    /// <b><see langword="null"/> "bulgu yok" DEĞİL.</b> Ayrım F3'ün dört
+    /// durumuyla aynı sınıf ve aynı sebeple taşınıyor: koşup <b>her cümlesi
+    /// atılmış</b> bir rapor da boş bulgu listesi taşıyor, ve ikisi ekranda tek
+    /// bir "bulgu yok" kutusuna düşerse modelin uydurup elendiği gerçeği
+    /// kaybolur — F4'ün ölçmek istediği tam olarak o.
+    /// </para>
+    /// </summary>
+    [property: JsonPropertyName("reasoning")] RcaReasoningResponse? Reasoning)
 {
-    public static RcaReportResponse Of(DeterministicReport report, GoldenReviewEntity? review)
+    public static RcaReportResponse Of(
+        DeterministicReport report,
+        GoldenReviewEntity? review,
+        StoredRcaReport? reasoning = null)
     {
         ArgumentNullException.ThrowIfNull(report);
 
@@ -281,8 +299,164 @@ public sealed record RcaReportResponse(
             RcaTrustResponse.Of(report.Trust),
             report.OutOfScopeCount,
             report.IsPartial,
-            review is null ? null : RcaReviewResponse.Of(review));
+            review is null ? null : RcaReviewResponse.Of(review),
+            reasoning is null ? null : RcaReasoningResponse.Of(reasoning));
     }
+}
+
+/// <param name="Hypothesis">Rapora giren metin — <b>yalnızca bağlanan cümleler</b>.</param>
+public sealed record RcaReasoningFindingResponse(
+    [property: JsonPropertyName("hypothesis")] string Hypothesis,
+    [property: JsonPropertyName("evidence_ids")] IReadOnlyList<string> EvidenceIds,
+    [property: JsonPropertyName("contradicting_evidence_ids")] IReadOnlyList<string> ContradictingEvidenceIds);
+
+public sealed record RcaReasoningActionResponse(
+    [property: JsonPropertyName("text")] string Text,
+    [property: JsonPropertyName("evidence_ids")] IReadOnlyList<string> EvidenceIds);
+
+/// <param name="StepId">Hangi adım — gruplama <b>bu alandan</b>, dizge ayrıştırarak değil.</param>
+/// <param name="Reason">Kapalı küme: <c>ran</c> · <c>not_applicable</c> · <c>skipped</c>.</param>
+/// <param name="Detail">İnsan okunur gerekçe; ayrıştırılmak için değil.</param>
+public sealed record RcaSentenceGateResponse(
+    [property: JsonPropertyName("step_id")] string StepId,
+    [property: JsonPropertyName("reason")] string Reason,
+    [property: JsonPropertyName("detail")] string Detail);
+
+/// <param name="PromptTokens">
+/// Bildirilmediyse <see langword="null"/> — <b>0 değil</b>. Sıfır "ölçüldü ve
+/// sıfır" demek.
+/// </param>
+/// <param name="UnreportedAttempts">
+/// Sayı bildirmeyen deneme sayısı. Sıfır değilse toplam bir <b>alt sınır</b>.
+/// </param>
+/// <param name="TokensComplete">
+/// Toplam tam mı. Okuyanın <see cref="UnreportedAttempts"/>'i yorumlamak zorunda
+/// kalmaması için ayrı bir alan: türetilebilir olması, her tüketicinin aynı
+/// çıkarımı kendi yapması demekti ve biri onu yanlış yapardı.
+/// </param>
+/// <param name="BoundaryOverridden">
+/// K6 sınır doğrulaması <b>atlandı mı</b> (T54).
+///
+/// <para>
+/// <b>Her iki hâlde de taşınıyor</b> ve ekran ikisini de yazıyor. Yalnız
+/// <c>true</c> iken görünen bir rozet, muafiyetsiz koşumu <i>"bu soru
+/// sorulmamış"</i> hâline sokardı — bu deponun <i>"bakılmadı" ile "bakıldı,
+/// temiz" ayrı cümleler</i> kuralının aynısı.
+/// </para>
+/// </param>
+/// <param name="BoundaryOverrideReason">
+/// Gerekçe; muafiyet yoksa <see langword="null"/>. <b>Boş dize değil</b> — boş
+/// dize <i>"gerekçe yazılmadı"</i> ile <i>"muafiyet yok"</i>u aynı değere
+/// indirirdi, ve iki alanın birlikte taşınmasının bütün sebebi bu.
+/// </param>
+public sealed record RcaReasoningModelResponse(
+    [property: JsonPropertyName("provider")] string Provider,
+    [property: JsonPropertyName("model")] string Model,
+    [property: JsonPropertyName("prompt_tokens")] int? PromptTokens,
+    [property: JsonPropertyName("completion_tokens")] int? CompletionTokens,
+    [property: JsonPropertyName("unreported_attempts")] int UnreportedAttempts,
+    [property: JsonPropertyName("tokens_complete")] bool TokensComplete,
+    [property: JsonPropertyName("boundary_overridden")] bool BoundaryOverridden,
+    [property: JsonPropertyName("boundary_override_reason")] string? BoundaryOverrideReason);
+
+/// <summary>
+/// LLM raporunun tel hâli (T51) — ve <b>Karar 1'in sayacının göründüğü yer</b>.
+///
+/// <para>
+/// <i>"Referanssız cümle rapora hiç girmiyor — ama atıldığı sayılıyor ve
+/// gösteriliyor."</i> İçerik <see cref="Findings"/>'te yok; sayı
+/// <see cref="DroppedSentenceCount"/>'ta var. Yalnızca atmak kaliteyi ölçülemez
+/// yapardı — <i>"ölçemedim"</i> ile <i>"sorun yok"</i>un aynı çıktıya inmesi.
+/// </para>
+/// </summary>
+/// <param name="ProducedSentenceCount">
+/// Karar 1'in <b>paydası</b>. Paysız payda okunamaz, paydasız pay bir oran
+/// değil.
+/// </param>
+/// <param name="DroppedSentenceRatio">
+/// Payda sıfırsa <b><see langword="null"/></b>, <c>0</c> değil.
+///
+/// <para>
+/// <c>0.0</c> bu telde <i>"hiç cümle atılmadı"</i> demek — yani <b>mükemmel
+/// kalite</b>. Ölçülemeyen bir oranın en iyi sonuçla aynı baytları üretmesi,
+/// bu deponun defalarca adını koyduğu sınıfın kendisi olurdu. Tüketici
+/// <see langword="null"/>'ı paydadan düşebiliyor; <c>0.0</c>'ı düşemez, çünkü o
+/// geçerli bir ölçüm.
+/// </para>
+/// </param>
+/// <param name="FabricatedCitationSentenceCount">
+/// Atıf <b>uydurmuş</b> cümleler; <paramref name="DroppedSentenceCount"/>'un alt
+/// kümesi. <i>"Hiç atıf yapmadı"</i> ile <i>"atıf uydurdu"</i> iki farklı kalite
+/// sorunu: biri prompt'un, diğeri modelin.
+/// </param>
+/// <param name="SentenceGateSkipped">
+/// Cümle bağlamanın <b>koşmadığı</b> adımlar. Boş liste "her adımda koştu"
+/// demek; sessizce atlayan bir kapı, kapının kendisinden tehlikeli.
+/// </param>
+public sealed record RcaReasoningResponse(
+    [property: JsonPropertyName("report_id")] Guid ReportId,
+    [property: JsonPropertyName("bundle_id")] Guid BundleId,
+    [property: JsonPropertyName("created_at")] DateTimeOffset CreatedAt,
+    [property: JsonPropertyName("scenario_id")] string ScenarioId,
+    [property: JsonPropertyName("scenario_version")] string ScenarioVersion,
+    [property: JsonPropertyName("findings")] IReadOnlyList<RcaReasoningFindingResponse> Findings,
+    [property: JsonPropertyName("actions")] IReadOnlyList<RcaReasoningActionResponse> Actions,
+    [property: JsonPropertyName("produced_sentence_count")] int ProducedSentenceCount,
+    [property: JsonPropertyName("dropped_sentence_count")] int DroppedSentenceCount,
+    [property: JsonPropertyName("dropped_sentence_ratio")] double? DroppedSentenceRatio,
+    [property: JsonPropertyName("fabricated_citation_sentence_count")] int FabricatedCitationSentenceCount,
+    [property: JsonPropertyName("sentence_gate_skipped")] IReadOnlyList<RcaSentenceGateResponse> SentenceGateSkipped,
+    [property: JsonPropertyName("model")] RcaReasoningModelResponse Model)
+{
+    public static RcaReasoningResponse Of(StoredRcaReport stored)
+    {
+        ArgumentNullException.ThrowIfNull(stored);
+
+        var document = stored.Document;
+
+        return new RcaReasoningResponse(
+            stored.Id,
+            document.BundleId,
+            stored.CreatedAt,
+            document.ScenarioId,
+            document.ScenarioVersion,
+            [.. document.Findings.Select(f => new RcaReasoningFindingResponse(
+                f.Hypothesis, f.EvidenceIds, f.ContradictingEvidenceIds))],
+            [.. document.Actions.Select(a => new RcaReasoningActionResponse(a.Text, a.EvidenceIds))],
+            document.ProducedSentenceCount,
+            document.DroppedSentenceCount,
+            document.DroppedSentenceRatio,
+            document.FabricatedCitationSentenceCount,
+            [.. document.SentenceGateSkipped.Select(g => new RcaSentenceGateResponse(
+                g.StepId, SnakeCase(g.Outcome), g.Detail))],
+            new RcaReasoningModelResponse(
+                document.ModelInfo.Provider,
+                document.ModelInfo.Model,
+                document.ModelInfo.PromptTokens,
+                document.ModelInfo.CompletionTokens,
+                document.ModelInfo.UnreportedAttempts,
+                document.ModelInfo.TokensComplete,
+                document.ModelInfo.BoundaryOverridden,
+                document.ModelInfo.BoundaryOverrideReason));
+    }
+
+    /// <summary>
+    /// <c>NotApplicable</c> → <c>not_applicable</c>. §8'in adlandırma kuralı
+    /// telde de geçerli; <c>camelCase</c> politikası bu depoda
+    /// <c>idp_groups</c>'u bir kez sessizce kırdı.
+    /// </summary>
+    private static string SnakeCase(SentenceGateOutcome outcome) => outcome switch
+    {
+        SentenceGateOutcome.Ran => "ran",
+        SentenceGateOutcome.NotApplicable => "not_applicable",
+        SentenceGateOutcome.Skipped => "skipped",
+
+        // Kapalı kümeye üye eklenirse burası patlıyor — sessizce `ToString()`
+        // düşmüyor. Bir tel değerinin enum adına bakarak sessizce değişmesi,
+        // sözleşmeyi kimse karar vermeden kırardı.
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(outcome), outcome, "Cümle kapısı durumunun tel karşılığı yazılmamış."),
+    };
 }
 
 /// <summary>

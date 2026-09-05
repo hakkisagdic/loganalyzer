@@ -69,15 +69,29 @@ açık bir konu (issue) yazıyor ve hiçbir yerel kuruluma bağlı değil.
 sıcak yeniden yükleme geliştirme döngüsünü hızlandırıyor ve API zaten aynı
 şekilde çalışıyor.
 
-**API'yi container'da koşturmak** ayrı bir soruya cevap veriyor — *yığının
-tamamı tek komutla kalkıyor mu* — ve varsayılanı değiştirmiyor:
+**API ve arayüzü container'da koşturmak** ayrı bir soruya cevap veriyor —
+*yığının tamamı tek komutla kalkıyor mu* — ve varsayılanı değiştirmiyor:
 
 ```bash
 cd deploy && docker compose --profile api up -d --wait
 ```
 
 Profil arkasında olması bilinçli: yukarıdaki sıcak yeniden yükleme döngüsü
-geliştirmenin varsayılanı ve onu yavaşlatmanın bedeli herkese çıkardı.
+geliştirmenin varsayılanı ve onu yavaşlatmanın bedeli herkese çıkardı. Arayüz
+**API ile aynı profilde** (T49): ekranın API'siz kalkması anlamsız, ve iki ayrı
+profil *"hangisini açacağım"* sorusunu doğururdu.
+
+Bu komut uzun süre yalnızca API'yi kaldırıyordu, yani sorunun cevabı **hayır**dı.
+Sessiz olan tarafı daha pahalıydı: uçtan uca harness ekranı yerelden
+koşturuyordu, dolayısıyla **BFF'in container ağında çalışıp çalışmadığı hiç
+sınanmıyordu** — ve sınanmadığı da hiçbir yerde yazılı değildi. Container
+yığınına karşı koşum:
+
+```bash
+cd ui && npm run e2e:container
+```
+
+Yerel koşum (`npm run e2e`) **varsayılan kalıyor**; aynı testler, iki hedef.
 
 İki karar container'lı kurulumun **zorunlu kıldığı** şeyler ve ikisi de
 ölçülerek bulundu:
@@ -99,6 +113,26 @@ aslında ağ topolojisi olan bir arıza. Ölçülen hâli:
 
   Yani makinedeki akış değişmiyor; değişen yalnızca ağ içinden sorulduğunda
   verilen backchannel adresi.
+
+**Arayüz aynı ayrımı bir katman yukarıda istiyor** (T49) — ve orada bir sorun
+daha var. `KEYCLOAK_METADATA_URL`, API'nin `Auth:MetadataAddress`'inin birebir
+karşılığı: keşif belgesi `keycloak:8080`'den iniyor, güvenilen issuer
+`localhost:8180` kalıyor. Ama BFF, API'nin aksine belgeden **iki farklı yöne
+giden** uçlar okuyor:
+
+| Uç | Kim gidiyor | Container'da doğru adres |
+| --- | --- | --- |
+| `authorization_endpoint`, `end_session_endpoint` | **tarayıcı** | `localhost:8180` |
+| `token_endpoint`, `jwks_uri` | Next sunucusu | `keycloak:8080` |
+
+Tek bir adres ikisini birden karşılayamıyor, ve yanlış olan taraf **sessiz**
+oluyor: sunucu tarafı kırılırsa 500, tarayıcı tarafı kırılırsa Keycloak'ın
+çözemediği bir adrese yönlendirme. `discover()` bu yüzden ön kanal uçlarını
+genel kökene sabitliyor, arka kanala dokunmuyor
+(`ui/src/lib/auth/oidc.ts` — `onPublicOrigin`). Keycloak'ın kendi
+`BACKCHANNEL_DYNAMIC` ayrımı doğru çalışıyorsa bu dönüşüm **kimliktir**; yine de
+duruyor, çünkü *"tarayıcının gideceği uç tarayıcının görebildiği kökende"*
+cümlesi bir dış bileşenin yapılandırmasına bırakılamayacak kadar merkezî.
 
 **`.dockerignore` bir hız ayarı değil doğruluk koşulu.** Makinedeki `obj/`
 derleme bağlamına girdiğinde container'ın kendi `restore` çıktısının üstüne

@@ -1,25 +1,14 @@
+using System.IO.Pipelines;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using Bizigo.Alerting;
+using System.Security.Claims;
+
+// M01: `AddBizigoMcp` burada — türetmenin göremediği tek kayıt (aşağıda).
 using Bizigo.Api;
-using Bizigo.Api.Connectors;
-using Bizigo.Api.Webhooks;
-using Bizigo.Authoring;
-using Bizigo.ControlPlane;
-using Bizigo.Evidence;
-using Bizigo.Ingest.Discovery;
-using Bizigo.Ingest.Pipeline;
-using Bizigo.Ingest.Wal;
-using Bizigo.Parsing.Dispatch;
-using Bizigo.Query;
-using Bizigo.Rca;
-using Bizigo.Replay;
-using Bizigo.Storage.Raw;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Bizigo.UnitTests;
@@ -147,6 +136,42 @@ public sealed class ProducesContractTests
     private const int ExpectedExemptCount = 7;
 
     /// <summary>
+    /// Kapının <b>hiç göremediği</b> uçlar — ve neden.
+    ///
+    /// <para>
+    /// Kapsamını beyan etmeyen bir bekçi, kapsamının tam olduğunu <b>iddia
+    /// etmiş</b> sayılıyor (T48). Aşağıdakiler <c>Program.cs</c> içinde satır içi
+    /// kayıtlı: bir <c>Map*</c> uzantısından geçmiyorlar, dolayısıyla yansıma
+    /// keşfi onları hiçbir zaman bulamaz. Bu bir eksiklik değil bir <b>sınır</b>;
+    /// ama yazılmadığı sürece sınır olduğu bilinmiyor ve okuyan kişi kapının
+    /// "bütün uçlar" dediğini sanıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Liste <see cref="ExpectedOutsideCount"/> ile sabit — <see cref="Exempt"/>
+    /// emsali: kapsam dışına bir uç eklemek iki ayrı bilinçli hareket gerektiriyor.
+    /// Ve <see cref="Kapi_kapsamini_beyan_ediyor"/> bunların gerçekten dışarıda
+    /// kaldığını sınıyor: biri bir gün bir <c>Map*</c> uzantısına taşınırsa liste
+    /// bayatlamış olur ve bayatlık sessiz kalmıyor.
+    /// </para>
+    /// </summary>
+    private static readonly Dictionary<string, string> OutsideTheGate = new(StringComparer.Ordinal)
+    {
+        ["GET /"] = "Kök uç; Program.cs içinde satır içi, sürüm/ad döndürüyor.",
+        ["GET /healthz"] = "MapHealthChecks — sağlık ucu, ürün sözleşmesi değil.",
+        ["GET /internal/ingest/stats"] = "İç gözlem; Program.cs içinde satır içi.",
+        ["GET /internal/discovery/stats"] = "İç gözlem; Program.cs içinde satır içi.",
+        ["GET /openapi/{documentName}.json"] = "MapOpenApi; yalnızca Development'ta kayıtlı.",
+    };
+
+    /// <summary>
+    /// <see cref="OutsideTheGate"/> bu sayıda kalmalı. Gerekçesi
+    /// <see cref="ExpectedExemptCount"/> ile aynı: kapsamın daralması sessizce
+    /// olamaz.
+    /// </summary>
+    private const int ExpectedOutsideCount = 5;
+
+    /// <summary>
     /// <c>Bizigo.Api</c> içindeki <b>bütün</b> <c>IEndpointRouteBuilder</c>
     /// uzantıları — yansımayla.
     ///
@@ -169,79 +194,177 @@ public sealed class ProducesContractTests
             .OrderBy(static m => m.Name, StringComparer.Ordinal)];
 
     /// <summary>
-    /// Uçların tamamı. Servisler <b>çözülürse patlayan</b> fabrikalarla
-    /// kaydediliyor: handler'lar hiç çağrılmıyor ve bir gün çağrılırsa
-    /// <c>null</c> yerine anlaşılır bir hata çıkıyor.
+    /// Minimal API'nin <b>kendisinin</b> bağladığı parametre tipleri. Bunlara
+    /// sahte kayıt yazmak anlamsız: <c>RequestDelegateFactory</c> onları servis
+    /// çıkarımına hiç sokmuyor, kendi özel yolundan bağlıyor.
     /// </summary>
-    private static IReadOnlyList<RouteEndpoint> Endpoints()
+    private static readonly Type[] BoundByTheFramework =
+    [
+        typeof(HttpContext), typeof(HttpRequest), typeof(HttpResponse),
+        typeof(ClaimsPrincipal), typeof(Stream), typeof(PipeReader),
+        typeof(IFormFile), typeof(IFormFileCollection), typeof(IFormCollection),
+        typeof(IEndpointRouteBuilder), typeof(TimeProvider),
+    ];
+
+    /// <summary>
+    /// <b>T48 — kapının asgari servis listesi artık elle tutulmuyor.</b>
+    ///
+    /// <para>
+    /// Eski hâlinde burada elle yazılmış bir <c>typeof(...)</c> listesi vardı ve
+    /// aynı delik <b>dört kez</b> açıldı (<c>AlertPreview</c>,
+    /// <c>CatalogCoverageCache</c>, <c>ParserPublishGate</c>, <c>RcaAdmission</c>).
+    /// Bir uç dosyası listede olmayan bir servis enjekte ettiğinde minimal API
+    /// parametreyi "gövde mi servis mi" diye ayırt edemiyor ve o dosyanın
+    /// <b>bütün</b> uçları kapıdan düşüyor. Her seferinde bulan kişi farklıydı;
+    /// yani sorun dikkat değil, bağın yokluğuydu.
+    /// </para>
+    ///
+    /// <para>
+    /// Bağ şu: <b>uç dosyasının kendi metotlarının parametre tipleri</b>
+    /// (<see cref="InjectedBy"/>) kaydedilecek kümeyi <b>türetiyor</b>. Handler
+    /// ister özel statik metot ister lambda olsun, imzası o dosyanın
+    /// metadata'sında duruyor — derleyicinin ürettiği <c>&lt;&gt;c</c> /
+    /// <c>&lt;&gt;c__DisplayClass</c> tipleri de geziliyor. Yeni bir servis
+    /// eklemek artık burada bir satır gerektirmiyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Neyin servis olduğunu tahmin etmiyoruz.</b> Boş bir kapta
+    /// <c>IServiceProviderIsService</c>'e soruluyor: çerçevenin zaten tanıdığı
+    /// tipler (<c>ILogger&lt;T&gt;</c>, <c>IOptions&lt;T&gt;</c>,
+    /// <c>TimeProvider</c>, …) kaydedilmiyor, tanımadığı her şey kaydediliyor.
+    /// Elle bir "çerçeve tipleri" listesi tutmak, kaldırdığımız listenin ikinci
+    /// bir kopyası olurdu.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Kaçırdığı hâl:</b> handler'ın imzası uç dosyasının dışında bir tipte
+    /// tanımlıysa (başka bir sınıfın metot grubu), türetme onu göremez. O hâlde
+    /// <c>Map*</c> yine patlar — ama artık sessizce değil: hata
+    /// <see cref="Registration.Blind"/>'a <b>dosya adıyla</b> düşüyor ve
+    /// <see cref="Kapi_hicbir_uc_dosyasini_kaybetmiyor"/> kırmızı yanıyor.
+    /// Türetmenin kırılganlığı bu yüzden güvenli: eksik türetme sessizlik değil
+    /// gürültü üretiyor.
+    /// </para>
+    /// </summary>
+    private static readonly Lazy<IReadOnlyList<Type>> Derived = new(DeriveServices);
+
+    private static IReadOnlyList<Type> DeriveServices()
+    {
+        var probe = WebApplication.CreateBuilder();
+        probe.Services.AddAuthorization();
+        probe.Services.AddRouting();
+        var known = probe.Build().Services.GetRequiredService<IServiceProviderIsService>();
+
+        return [.. Registrars()
+            .Select(static m => m.DeclaringType!)
+            .Distinct()
+            .SelectMany(InjectedBy)
+            .Distinct()
+            .Where(type => !known.IsService(type))
+            .OrderBy(static t => t.FullName, StringComparer.Ordinal)];
+    }
+
+    /// <summary>
+    /// Bir uç dosyasının metotlarında geçen, servis olabilecek parametre tipleri
+    /// — derleyicinin ürettiği lambda taşıyıcıları dahil.
+    /// </summary>
+    private static IEnumerable<Type> InjectedBy(Type endpointFile)
+    {
+        var found = new HashSet<Type>();
+        Walk(endpointFile);
+        return found;
+
+        void Walk(Type type)
+        {
+            const BindingFlags Everything =
+                BindingFlags.Public | BindingFlags.NonPublic |
+                BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+
+            foreach (var parameter in type.GetMethods(Everything).SelectMany(static m => m.GetParameters()))
+            {
+                if (CouldBeInjected(parameter.ParameterType))
+                {
+                    found.Add(parameter.ParameterType);
+                }
+            }
+
+            foreach (var nested in type.GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                Walk(nested);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Yapısal eleme. <b>Gövde tipleri de geçiyor</b> ve bu bilinçli: bir istek
+    /// kaydını "servis" diye kaydetmek bu testte zararsız (handler hiç
+    /// çağrılmıyor, kapı yalnızca rota ve metadata'ya bakıyor), ama onu elemeye
+    /// çalışmak "gövde mi servis mi" tahminini <b>kapının içine</b> geri koyardı
+    /// — kaldırdığımız şeyin ta kendisi.
+    /// </summary>
+    private static bool CouldBeInjected(Type type) =>
+        !type.IsValueType
+        && !type.IsByRef
+        && !type.IsPointer
+        && !type.IsArray
+        && !type.IsGenericParameter
+        && !type.ContainsGenericParameters
+        && type != typeof(string)
+        && type != typeof(object)
+        && !typeof(Delegate).IsAssignableFrom(type)
+        && !BoundByTheFramework.Contains(type);
+
+    /// <summary>
+    /// Kapının bir koşumdaki <b>tam</b> sonucu: bulunan uçlar, hangi uç
+    /// dosyasının kaç uç verdiği, ve <b>görülemeyen</b> dosyalar.
+    /// </summary>
+    /// <param name="Endpoints">Denetime giren rotalar.</param>
+    /// <param name="PerFile">Uç dosyası → kaç uç. Sıfır olması da bir bulgu.</param>
+    /// <param name="Blind">Uç dosyası → neden görülemedi. Boş olmalı.</param>
+    /// <param name="Dropped">
+    /// <c>RouteEndpoint</c> olmayan ve bu yüzden denetime girmeyen uç sayısı.
+    /// Sessizce düşen her şey sayılıyor; sayılmayan şey yok sayılmış olurdu.
+    /// </param>
+    private sealed record Registration(
+        IReadOnlyList<RouteEndpoint> Endpoints,
+        IReadOnlyDictionary<string, int> PerFile,
+        IReadOnlyDictionary<string, string> Blind,
+        int Dropped);
+
+    /// <summary>
+    /// Keşif bir kez koşuyor ve bütün testler aynı sonuca bakıyor: hem ölçüm
+    /// tutarlı oluyor hem de on altı uygulama kurulumu tek sefere iniyor.
+    /// </summary>
+    private static readonly Lazy<Registration> Discovery = new(Discover);
+
+    private static WebApplication NewApp()
     {
         var builder = WebApplication.CreateBuilder();
         builder.Services.AddAuthorization();
         builder.Services.AddRouting();
 
-        // M01: `MapBizigoMcp` SDK'nın `MapMcp`'sini çağırıyor ve o, taşıma
-        // servisleri kayıtlı değilse kayıt anında patlıyor. Aşağıdaki zehirli
-        // tekil kalıbı burada işe yaramıyor — `MapMcp` servisleri gerçekten
-        // ÇÖZÜYOR, yalnızca varlıklarına bakmıyor.
+        // M01 — TÜRETMENİN GÖREMEDİĞİ TEK KAYIT.
         //
-        // Gerçek kayıt kullanılıyor ve bu bir gevşetme değil: hiçbir bağlantı
-        // kurulmuyor, hiçbir araç çağrılmıyor. Alternatif `MapBizigoMcp`'yi
-        // atlamaktı ve o, MCP uçlarını bu kapıya görünmez yapardı — kapının
-        // var olma sebebi olan deliğin ta kendisi.
+        // Aşağıdaki türetme, servisleri `Map*` imzalarından çıkarıyor.
+        // `MapBizigoMcp` hiçbir servis parametresi almıyor: SDK'nın `MapMcp`'si
+        // taşıma servislerini `IEndpointRouteBuilder`'ın sağlayıcısından
+        // ÇÖZÜYOR — varlıklarına bakmıyor, gerçekten alıyor. Yani zehirli tekil
+        // kalıbı da türetme de burada yetmiyor; kayıt anında patlıyor.
+        //
+        // Gerçek kayıt kullanmak bir gevşetme değil: hiçbir bağlantı kurulmuyor,
+        // hiçbir araç çağrılmıyor. Alternatif `MapBizigoMcp`'yi atlamaktı ve o,
+        // MCP uçlarını bu kapıya görünmez yapardı — kapının var olma sebebi olan
+        // deliğin ta kendisi.
         builder.Services.AddBizigoMcp(builder.Configuration);
 
-        foreach (var type in new[]
+        // Servisler çözülmüyor — kayıtlar yalnızca minimal API'nin parametreyi
+        // "servis mi gövde mi" diye ayırt edebilmesi için var. Çözülürse patlayan
+        // fabrika, bir gün handler çağrılırsa `null` yerine anlaşılır bir hata
+        // veriyor.
+        foreach (var service in Derived.Value)
         {
-            typeof(IScopedQuery), typeof(ICurrentUser), typeof(RawEventLocator),
-            typeof(ControlPlaneDbContext), typeof(IDbContextFactory<ControlPlaneDbContext>),
-            typeof(ReplayEngine), typeof(ParserAuthoringService), typeof(PublishedParserLoader),
-            typeof(ParserCatalog), typeof(DispatchStats), typeof(Dispatcher),
-
-            // T19: `POST /v1/parsers/try` taslağı YAYIN KAPISININ KENDİSİYLE
-            // denetliyor. Kayıtlı olmasa minimal API bunu gövde parametresi
-            // sanıyor ve `MapParsers` çıkarımda patlıyor.
-            typeof(ParserPublishGate),
-            typeof(IngestGateway), typeof(IngestStats), typeof(WriteAheadLog),
-            typeof(DiscoveryStats), typeof(SidecarOptions),
-
-            // Uc dosyalarinin bagimliliklari. Kayit edilmezlerse parametre
-            // cikarimi "govde mi servis mi" diyemiyor ve `Map*` cagrisi
-            // patliyor -- yani o uc dosyasi kapiya hic gorunmuyor.
-            //
-            // `TimeProvider` bilerek listede YOK: ASP.NET onu kendi kurulumunda
-            // cozuyor ve zehirlemek `WebApplicationBuilder.Build()`'i patlatiyor.
-            typeof(AlertRuleService), typeof(NotificationChannelService),
-            typeof(AlertingOptions), typeof(AlertingStats), typeof(AlertPreview),
-            typeof(IChangeWebhookRegistry), typeof(ChangeWebhookOptions),
-            typeof(ChangeWebhookDeliveryLog), typeof(ChangeConnectorService),
-
-            // T20'nin kapsam ucu. Kaydedilmezse `CatalogCoverageCache` gövde
-            // parametresi sanılıyor ve `MapParserAuthoring` çıkarımda patlıyor.
-            typeof(CatalogCoverageCache), typeof(ParserPublishGate),
-
-            // T37'nin RCA uçları. Aynı tuzak: kaydedilmezlerse `factory` ve
-            // `store` "gövde mi servis mi" ayrımına takılıyor ve `MapRca`
-            // çıkarımda patlıyor — yani uç dosyası kapıya hiç görünmüyor.
-            typeof(EvidenceBundleFactory), typeof(EvidenceBundleStore),
-
-            // T45'in kabul kapısı, aynı uç dosyasında. Bu deliğin dördüncü
-            // kez açılması: kapı, ucun taşıdığı yeni bir servisi tanımadığında
-            // sessizce KIRMIZI yanmıyor — o dosyadaki bütün uçlar kapıya
-            // görünmez oluyor. Yani bir kaydı unutmanın bedeli tek uç değil,
-            // `EvidenceEndpoints.cs`'in tamamı.
-            typeof(RcaAdmission),
-
-            // T37 incelemeyi T38'in altın küme deposuna yazıyor; ayrı bir
-            // inceleme tablosu YOK. İkisi paralel yazılınca iki tablo doğmuştu
-            // (§9 — kesişen sözleşme önceden çivilenmeli); tek kalan bu.
-            typeof(GoldenReviewStore),
-
-            // T38'in alarm kapatma ucu. Aynı kalıp; kapatma inceleme ile tek
-            // işlem olduğu için servis de tek.
-            typeof(AlertClosureService),
-        })
-        {
-            var captured = type;
+            var captured = service;
             builder.Services.AddSingleton(captured, _ =>
                 throw new InvalidOperationException(
                     $"{captured.Name} bu testte çözülmemeli — yalnızca kayıt sınanıyor."));
@@ -250,38 +373,100 @@ public sealed class ProducesContractTests
         // Gerçek örnek: uçlar bunu kayıt anında çözüyor, sahte fırlatıcı patlar.
         builder.Services.AddSingleton(TimeProvider.System);
 
-        var app = builder.Build();
+        return builder.Build();
+    }
 
-        foreach (var registrar in Registrars())
+    /// <summary>
+    /// Uçlar <b>uygulama başlatılmadan</b> kaydediliyor. Rotalar tembel
+    /// kuruluyor: <c>Map*</c> çağrısı değil, veri kaynağının okunması patlıyor —
+    /// bu yüzden her uzantıdan <b>sonra</b> okuyoruz, yoksa hata hangi dosyadan
+    /// geldiği belli olmadan yukarı çıkıyor. Eski hâlin yanıltıcı olan yeri tam
+    /// olarak buydu: mesaj parametre çıkarımını gösteriyor, dosyayı
+    /// göstermiyordu.
+    /// </summary>
+    private static IReadOnlyList<Endpoint> Materialize(WebApplication app) =>
+        [.. ((IEndpointRouteBuilder)app).DataSources.SelectMany(static source => source.Endpoints)];
+
+    private static string Key(MethodInfo registrar) =>
+        $"{registrar.DeclaringType?.Name}.{registrar.Name}";
+
+    private static Exception Root(Exception error) =>
+        error is TargetInvocationException { InnerException: { } inner } ? inner : error;
+
+    private static string Explain(MethodInfo registrar, Exception error)
+    {
+        var file = registrar.DeclaringType!;
+        var injected = InjectedBy(file).Select(static t => t.Name).Order(StringComparer.Ordinal);
+
+        return $"{file.Name} kapıya görünmüyor — {registrar.Name} kaydedildi ama uçları alınamadı." +
+            $"\n  Hata: {error.Message}" +
+            $"\n  Bu dosyada bulunup kaydedilen bağımlılıklar: {string.Join(", ", injected)}" +
+            "\n  Hata bir parametreyi \"UNKNOWN\" ya da \"Body (Inferred)\" gösteriyorsa, o " +
+            "parametrenin tipi yukarıdaki listede YOK demektir: handler'ın imzası bu dosyanın " +
+            "dışında bir tipte tanımlı ve türetme onu görememiş.";
+    }
+
+    private static Registration Discover()
+    {
+        var registrars = Registrars();
+        var perFile = new Dictionary<string, int>(StringComparer.Ordinal);
+        var blind = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        var app = NewApp();
+        IReadOnlyList<Endpoint> all = [];
+        var known = 0;
+
+        foreach (var registrar in registrars)
         {
             // Beklenmeyen imza SESSİZCE atlanmıyor. Atlanabilseydi, iki
             // parametreli yeni bir `Map*` kapıya yine görünmez olurdu — kapatmaya
             // çalıştığımız deliğin aynısı, başka kılıkta.
             if (registrar.GetParameters().Length != 1 || registrar.IsGenericMethodDefinition)
             {
-                throw new InvalidOperationException(
-                    $"{registrar.DeclaringType?.Name}.{registrar.Name} beklenmeyen imzada: " +
-                    "kapı yalnızca tek parametreli, generic olmayan `Map*` uzantılarını çağırabiliyor. " +
-                    "İmza bilinçli olarak değiştiyse bu test de güncellenmeli.");
+                blind[Key(registrar)] =
+                    $"{Key(registrar)} beklenmeyen imzada: kapı yalnızca tek parametreli, " +
+                    "generic olmayan `Map*` uzantılarını çağırabiliyor. İmza bilinçli olarak " +
+                    "değiştiyse bu test de güncellenmeli.";
+                continue;
             }
 
             try
             {
                 registrar.Invoke(null, [app]);
+                var now = Materialize(app);
+                perFile[Key(registrar)] = now.Count - known;
+                known = now.Count;
+                all = now;
             }
-            catch (TargetInvocationException error) when (error.InnerException is not null)
+            catch (Exception error)
             {
-                throw new InvalidOperationException(
-                    $"{registrar.Name} kayıt sırasında patladı: {error.InnerException.Message}. " +
-                    "Muhtemelen bir bağımlılığı `Endpoints()` içindeki kayıt listesinde yok.",
-                    error.InnerException);
+                blind[Key(registrar)] = Explain(registrar, Root(error));
+
+                // Bozulan uygulama sonraki her okumada aynı hatayı veriyor. Temiz
+                // bir uygulamaya geçip ölçülebilmiş olanları geri kuruyoruz: bir
+                // kör dosya, arkasındaki dosyaları da ölçülemez yapmasın — yoksa
+                // ilk kırığın gölgesinde ikinci kırık görünmez kalırdı.
+                app = NewApp();
+                foreach (var done in registrars
+                    .TakeWhile(m => m != registrar)
+                    .Where(m => !blind.ContainsKey(Key(m))))
+                {
+                    done.Invoke(null, [app]);
+                }
+
+                all = Materialize(app);
+                known = all.Count;
             }
         }
 
-        return [.. ((IEndpointRouteBuilder)app).DataSources
-            .SelectMany(static source => source.Endpoints)
-            .OfType<RouteEndpoint>()];
+        var routes = all.OfType<RouteEndpoint>().ToArray();
+        return new Registration(routes, perFile, blind, all.Count - routes.Length);
     }
+
+    /// <summary>
+    /// Uçların tamamı — keşif bir kez koştu, hepsi aynı sonuca bakıyor.
+    /// </summary>
+    private static IReadOnlyList<RouteEndpoint> Endpoints() => Discovery.Value.Endpoints;
 
     /// <summary>
     /// <c>METHOD /yol</c> — listelerin anahtarı. Rota deseninden kısıtlar
@@ -499,29 +684,167 @@ public sealed class ProducesContractTests
     }
 
     /// <summary>
-    /// Keşfedilen her uzantı <b>gerçekten çağrılabiliyor</b> olmalı.
+    /// <b>T48'in birinci kapısı: kapının göremediği uç dosyası var mı?</b>
     ///
     /// <para>
-    /// Bulunmak yetmiyor: bağımlılığı kayıtlı olmayan bir <c>Map*</c> çağrısı
-    /// parametre çıkarımında patlıyor ve o uç dosyası yine denetlenmemiş
-    /// kalıyor. T17'nin bulduğu delik tam olarak buydu — üç uç dosyası
-    /// bulunuyordu ama çağrılamıyordu.
+    /// Bulunmak yetmiyor: bağımlılığı kayıtlı olmayan bir <c>Map*</c> uzantısı
+    /// rota kurulurken patlıyor ve o dosyanın <b>bütün</b> uçları denetlenmemiş
+    /// kalıyor. Aynı delik dört kez açıldı ve her seferinde bulan kişi farklıydı.
+    /// </para>
+    ///
+    /// <para>
+    /// Eski hâlinde bu durum <c>Endpoints()</c> içinden yukarı fırlıyordu: on üç
+    /// test birden düşüyor, mesaj bir <b>parametre adı</b> söylüyor
+    /// (<c>admission | UNKNOWN</c>) ama <b>hangi dosya</b> ve <b>hangi servis</b>
+    /// olduğunu söylemiyordu. Şimdi hata dosyaya bağlanıyor ve tek bir yerde,
+    /// dosya adıyla, kırmızı yanıyor.
     /// </para>
     /// </summary>
     [Fact]
-    public void Kesfedilen_her_uzanti_cagrilabiliyor()
+    public void Kapi_hicbir_uc_dosyasini_kaybetmiyor()
     {
-        // `Endpoints()` bütün uzantıları çağırıyor; patlarsa test burada düşer
-        // ve mesajı hangi uzantının çağrılamadığını söyler.
-        var endpoints = Endpoints();
+        var found = Discovery.Value;
 
-        Assert.NotEmpty(endpoints);
-
-        // Her keşfedilen uzantı en az bir rota bırakmış olmalı: sessizce hiçbir
-        // şey kaydetmeyen bir uzantı, kapıdan geçmiş ama denetlenmemiş demek.
         Assert.True(
-            endpoints.Count >= Registrars().Count,
-            $"{Registrars().Count} uzantı bulundu ama yalnızca {endpoints.Count} rota kaydedildi.");
+            found.Blind.Count == 0,
+            $"Kapının göremediği {found.Blind.Count} uç dosyası var:\n\n" +
+            string.Join("\n\n", found.Blind.Values.Order(StringComparer.Ordinal)));
+
+        Assert.NotEmpty(found.Endpoints);
+    }
+
+    /// <summary>
+    /// <b>T48'in ikinci kapısı: her uç dosyası kapıya kaç uç verdi?</b>
+    ///
+    /// <para>
+    /// Eski ölçüt "toplam rota sayısı ≥ uzantı sayısı"ydı ve bu, on beş uçlu bir
+    /// dosyanın tamamen kaybolmasını <b>gizleyebiliyordu</b>: kalan dosyalar
+    /// sayıyı tek başına doldurur. Ölçüt artık dosya başına: sıfır uç veren bir
+    /// uzantı, kapıdan geçmiş ama hiçbir şey denetletmemiş demek.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Kaçırdığı hâl:</b> iki uçlu bir dosyanın bir ucunu kaybetmesi burada
+    /// görünmüyor — dosya hâlâ ≥1 veriyor. Uç <b>sayısını</b> dosya başına
+    /// sabitlemek ise her yeni uçta bu testi güncellemek demekti ve altı ajan
+    /// paralel uç ekliyor; sabitlenen sayı, güncellenmesi rutinleşen bir sayıya
+    /// dönüşür ve rutin güncelleme bekçiyi kayıt olmaktan çıkarır. Alan
+    /// sahiplerinin sabitlediği sayılar ayrı duruyor
+    /// (<see cref="Olay_yuzeyi_uc_uctan_ibaret"/>).
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Her_uc_dosyasi_kapiya_en_az_bir_uc_veriyor()
+    {
+        var found = Discovery.Value;
+
+        var silent = found.PerFile
+            .Where(static entry => entry.Value == 0)
+            .Select(static entry => entry.Key)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.True(
+            silent.Length == 0,
+            "Bu uzantı(lar) çağrıldı ama hiç uç kaydetmedi: " + string.Join(", ", silent) +
+            " — kapıdan geçtiler, denetlenen bir şey bırakmadılar.");
+
+        // Her uzantı ya ölçüldü ya kör sayıldı; ikisi arasında kaybolan yok.
+        Assert.Equal(Registrars().Count, found.PerFile.Count + found.Blind.Count);
+    }
+
+    /// <summary>
+    /// <b>Uç kaydedebilecek her uzantı keşfediliyor mu?</b>
+    ///
+    /// <para>
+    /// <see cref="Registrars"/> adı <c>Map</c> ile başlayan uzantıları arıyor.
+    /// Bu bir <b>konvansiyon</b>, ve konvansiyona uymayan bir uç dosyası bugün
+    /// hiçbir teste görünmüyordu: <see cref="Kapi_butun_uc_dosyalarini_kendisi_buluyor"/>
+    /// bulunanları listeyle karşılaştırıyor, bulunmayan zaten listede olmuyor ve
+    /// karşılaştırma <b>geçiyor</b>. Yani "AddRcaRoutes" adında bir uzantı
+    /// eklemek on altı testin hepsini yeşil bırakırdı.
+    /// </para>
+    ///
+    /// <para>
+    /// Ölçüt burada addan değil <b>imzadan</b> geliyor: ilk parametresi
+    /// <c>IEndpointRouteBuilder</c> olan statik bir metot uç kaydedebilir,
+    /// adı ne olursa olsun.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Uc_kaydedebilecek_her_uzanti_kesfediliyor()
+    {
+        var discovered = Registrars().ToHashSet();
+
+        var candidates = typeof(global::Program).Assembly
+            .GetTypes()
+            .Where(static t => !t.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false))
+            .SelectMany(static t => t.GetMethods(
+                BindingFlags.Public | BindingFlags.NonPublic |
+                BindingFlags.Static | BindingFlags.DeclaredOnly))
+            .Where(static m => !m.IsDefined(typeof(CompilerGeneratedAttribute), inherit: false))
+            .Where(static m => m.GetParameters() is [{ } first, ..]
+                && typeof(IEndpointRouteBuilder).IsAssignableFrom(first.ParameterType))
+            .Where(m => !discovered.Contains(m))
+            .Select(static m => $"{m.DeclaringType?.Name}.{m.Name}")
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.True(
+            candidates.Length == 0,
+            "Uç kaydedebilecek ama keşfedilmeyen metot(lar): " + string.Join(", ", candidates) +
+            "\n\nKapı `Map` önekiyle arıyor. Adı uymayan bir uç dosyası kapıya hiç görünmez " +
+            "ve bütün testler yeşil kalır — kapatılan delik tam olarak bu sınıftan.");
+    }
+
+    /// <summary>
+    /// <b>T48'in üçüncü kapısı: kapı kendi kapsamını beyan ediyor mu?</b>
+    ///
+    /// <para>
+    /// Kabul kriteri şöyleydi: <i>kapının göremediği bir uç kalırsa bu sayılıyor
+    /// — beyan etmeyen bir kapı, kapsamını iddia etmiş sayılıyor.</i> Üç ayrı
+    /// muhasebe var ve üçü de burada:
+    /// </para>
+    ///
+    /// <list type="number">
+    /// <item>Denetime giren her uç <b>bir</b> uç dosyasına yazılmış olmalı —
+    /// toplamlar tutmalı.</item>
+    /// <item><c>RouteEndpoint</c> olmadığı için sessizce düşen uç olmamalı.</item>
+    /// <item>Kapının yapısı gereği hiç göremediği uçlar (<c>Program.cs</c> içinde
+    /// satır içi kayıtlı olanlar) <see cref="OutsideTheGate"/>'te gerekçesiyle
+    /// <b>yazılı</b> olmalı, sayısı sabit olmalı, ve gerçekten dışarıda
+    /// kalmalı.</item>
+    /// </list>
+    /// </summary>
+    [Fact]
+    public void Kapi_kapsamini_beyan_ediyor()
+    {
+        var found = Discovery.Value;
+
+        Assert.Equal(found.Endpoints.Count, found.PerFile.Values.Sum());
+
+        Assert.True(
+            found.Dropped == 0,
+            $"{found.Dropped} uç `RouteEndpoint` olmadığı için denetime hiç girmedi. " +
+            "Sessizce düşen bir uç, kapının göremediği bir uçtur.");
+
+        Assert.Equal(ExpectedOutsideCount, OutsideTheGate.Count);
+
+        foreach (var (key, reason) in OutsideTheGate)
+        {
+            Assert.False(string.IsNullOrWhiteSpace(reason), $"{key} kapsam dışılığı gerekçesiz.");
+        }
+
+        var keys = ProductEndpoints().Select(static pair => pair.Key).ToHashSet(StringComparer.Ordinal);
+        var moved = OutsideTheGate.Keys
+            .Where(keys.Contains)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.True(
+            moved.Length == 0,
+            "Kapsam dışı yazılan uç(lar) artık kapıya görünüyor: " + string.Join(", ", moved) +
+            " — `OutsideTheGate`'ten silin, listeler bayatlamasın.");
     }
 
     /// <summary>

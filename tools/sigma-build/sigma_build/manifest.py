@@ -49,6 +49,7 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from sigma_build.duplicates import duplicate_values
 from sigma_build.gate import CLOSEABLE_REMEDIES, Blocker
 
 __all__ = [
@@ -193,7 +194,7 @@ def build_manifest(outcomes: list[RuleOutcome] | tuple[RuleOutcome, ...], header
     """Manifest metni. Kural sırası kimliğe göre sabit — diff'in okunabilir olması için."""
     ordered = sorted(outcomes, key=lambda outcome: outcome.rule_id)
 
-    duplicates = sorted({o.rule_id for o in ordered if sum(1 for x in ordered if x.rule_id == o.rule_id) > 1})
+    duplicates = duplicate_values(o.rule_id for o in ordered)
     if duplicates:
         raise ValueError(f"Aynı kural kimliği birden fazla kez: {duplicates}")
 

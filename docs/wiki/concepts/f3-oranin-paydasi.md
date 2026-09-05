@@ -17,7 +17,7 @@ sources:
   - docs/epic/t32-derleme-tasarimi/index.md
   - docs/epic/t39-alan-kapsami/index.md
   - docs/epic/f3-yol-haritasi/index.md
-source_digest: "sha256-12/v1 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=457cb125d0d3 docs/epic/t39-alan-kapsami/index.md=7d06bfcf6e0c"
+source_digest: "sha256-12/v1 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=ca8f23c25262 docs/epic/t39-alan-kapsami/index.md=7d06bfcf6e0c"
 summary: Sigma kapsam oranı beş koşumda %0, %8, %25, %29 ve %43 çıktı; hiçbiri yanlış hesaplanmadı, hepsi farklı payda kullandı. İki payda arasındaki fark bir karar dalını değiştiriyor.
 provenance:
   extracted: 0.9
@@ -131,6 +131,36 @@ kategorilerdeki **ayrık alan kümesini** say, çarpımı o küme üzerinden yap
 Kararı geçersiz kılacak bulgu da yazılı: alan başına maliyet kural başına
 maliyetle **birlikte** büyüyorsa varsayım yanlıştır ve tablo düzeltilmez,
 **yeniden yazılır**.
+
+## Üçüncü biçim: paydaya sabit bir maliyet karışıyor
+
+Aynı hata süre ekseninde de çıktı ve orada **yönü ters** — bu yüzden daha sinsi.
+
+Derleme süresini kural sayısına bölmek akla ilk gelen şey. Ama toplamın içinde
+kural sayısından **bağımsız** bir kurulum maliyeti var: backend'in kurulması,
+görünüm kolonlarının göçlerden türetilmesi, pySigma'nın eklenti yükü. Sabit bir
+maliyet büyüyen bir paydaya bölününce **kural başına maliyet düşüyor**.
+
+| Korpus | Kurulum paydada | Doğru payda |
+| --- | --- | --- |
+| küçük | kural başına maliyet **şişik** | — |
+| büyük | kural başına maliyet **düşmüş görünür** | değişmez |
+
+Okuyan kişi düşen bir eğriyi *"ölçekleme süper-doğrusal değil, tam tersi"* diye
+okuyor — ve tam o sırada gerçek bir süper-doğrusal terim tabloda gizlenebiliyor.
+`%25`/`%43` hatasında sayı yanlış tarafa **fazla** gösteriyordu; burada
+**iyimser** tarafa gösteriyor.
+
+Düzeltme aynı: kurulum ayrı ölçülüyor ve kural başına maliyetin paydasına
+girmiyor. Ve karar sayısı mutlak süre değil, **aynı süreçte alınan iki ölçümün
+oranı** — en büyük korpusun kural başına maliyeti ÷ en küçüğünkü. Makinenin
+genel hızı ikisinden de sadeleşiyor.
+
+Bu ayrım turun kendisinde işe yaradı: süre ölçümü yapılamadı (makine
+thrash'teydi, 2583–3580 swap-in/sn) ama **kural başına iş** karşılaştırma
+sayılarak ölçülebildi ve gerçek bir karesel terim buldu — üç dosyada tekrarlanan
+bir `sum(1 for … )`, 269 kuralda 72 bin karşılaştırma. Yani doğru paydayı
+sormak, ölçülemeyen bir soruyu ölçülebilir bir soruya çevirdi.
 
 ## Ölçüm aracının kendi bekçisi
 

@@ -6,8 +6,32 @@
  * kurup içeri aktarma sırasına bağlı kalmasın diye.
  */
 export interface BffConfig {
-  /** Keycloak realm adresi — issuer. API'nin `Auth:Authority` değeriyle aynı olmak zorunda. */
+  /**
+   * Keycloak realm adresi — issuer. API'nin `Auth:Authority` değeriyle aynı
+   * olmak zorunda.
+   *
+   * <p><b>Aynı zamanda tarayıcının gördüğü adres.</b> Token'ın `iss` alanı bu,
+   * ve kullanıcı giriş için buraya yönlendiriliyor. İkisi tek değer çünkü
+   * Keycloak'ın `KC_HOSTNAME`'i ikisini birden sabitliyor.</p>
+   */
   readonly issuer: string;
+  /**
+   * Keşif belgesinin **indirileceği** adres.
+   *
+   * <p>
+   * API'deki <c>Auth:MetadataAddress</c>'in birebir karşılığı ve aynı sebeple
+   * var: container içinde <c>localhost:8180</c> Keycloak değil,
+   * <b>container'ın kendisi</b>. Anahtarın <i>nereden indirileceği</i> ile
+   * <i>kime güvenildiği</i> ayrı sorular; <see cref="issuer"/> ikincisini
+   * cevaplıyor, bu birincisini.
+   * </p>
+   *
+   * <p>
+   * Verilmezse issuer'dan türüyor, yani makinede koşan kurulum bu alanın
+   * varlığını hiç fark etmiyor — container'lı hâl varsayılanı değiştirmiyor.
+   * </p>
+   */
+  readonly metadataUrl: string;
   readonly clientId: string;
   readonly clientSecret: string;
   /** Next uygulamasının dışarıdan görünen kökü. Yönlendirme adresleri buradan türüyor. */
@@ -43,9 +67,12 @@ function required(name: string): string {
 
 export function readBffConfig(): BffConfig {
   const publicUrl = (process.env.BFF_PUBLIC_URL ?? "http://localhost:3000").replace(/\/+$/, "");
+  const issuer = (process.env.KEYCLOAK_ISSUER ?? "http://localhost:8180/realms/bizigo").replace(/\/+$/, "");
 
   return {
-    issuer: (process.env.KEYCLOAK_ISSUER ?? "http://localhost:8180/realms/bizigo").replace(/\/+$/, ""),
+    issuer,
+    metadataUrl:
+      process.env.KEYCLOAK_METADATA_URL ?? `${issuer}/.well-known/openid-configuration`,
     clientId: process.env.KEYCLOAK_CLIENT_ID ?? "bizigo-ui",
     clientSecret: required("KEYCLOAK_CLIENT_SECRET"),
     publicUrl,

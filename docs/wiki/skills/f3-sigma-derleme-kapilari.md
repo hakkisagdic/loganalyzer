@@ -21,7 +21,7 @@ sources:
   - docs/epic/tickets-f3/sigma-pipeline/index.md
   - docs/epic/sigma-clickhouse-arastirmasi/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=dd011df5a833 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=457cb125d0d3 docs/epic/tickets-f3/sigma-derleme/index.md=d117ba100cfd docs/epic/tickets-f3/sigma-pipeline/index.md=6d7c85d5a5f1"
+source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=ca8f23c25262 docs/epic/tickets-f3/sigma-derleme/index.md=d117ba100cfd docs/epic/tickets-f3/sigma-pipeline/index.md=6d7c85d5a5f1"
 summary: Derlendi ile koşuyor ve doğru şeyi buluyor üç ayrı iddia; her biri farklı bir yerde sınanıyor çünkü tek yere koymak yakalayamadığı sınıfı sessizce geçiriyor.
 provenance:
   extracted: 0.85
@@ -286,9 +286,51 @@ duruyor.
 ettirildi, hat dokunulmadan kaldı — 21 kural derleniyor, 3'ü `gated`, Kapı 3
 canlıda sekiz beyanın sekizini geçirdi.
 
+## Dördüncü eksen: kapının kendi maliyeti
+
+Üç kapı *"ne yakalıyor"* sorusunu bölüyor. Sonradan dördüncü bir soru çıktı ve
+üçünden de bağımsız: **kapı ne kadara mal oluyor, ve maliyeti korpusla birlikte
+büyüyor mu?**
+
+Önemi somut: sürüklenme kapısını besleyen `build_manifest`, tekrarlanan kural
+kimliğini ararken listeyi her kural için yeniden tarıyordu.
+
+| Kural | Kimlik karşılaştırması | Kural başına |
+| --- | --- | --- |
+| 24 | 576 | 24 |
+| 269 | 72.361 | 269 |
+| 7.400 | ~55.000.000 | 7.400 |
+
+Bugünkü 24 kuralda görünmüyor. Ve fonksiyon hem `--write` hem **`--check`**
+yolunda, yani **kapı, koruduğu şey büyüdükçe kendini yavaşlatıyordu** — bir
+bekçinin bir gün "yavaş" diye kaldırılmasının en olağan gerekçesi. Aynı karesel
+deyim üç ayrı dosyada tekrarlanmıştı; düzeltme tek bir ortak yardımcıya indi,
+çünkü üç yerde ayrı ayrı düzeltmek bugünkü kusuru kapatır, **deyimi** kapatmaz.
+
+### Ölçekleme kapı olabilir, süre olamaz
+
+| Soru | Nerede | Neden |
+| --- | --- | --- |
+| Kural başına **iş** korpusla büyüyor mu | **Kapı** | Karşılaştırma sayılıyor — makinenin yükünden bağımsız |
+| O işin kaç **milisaniye** ettiği | **Ölçüm** | Yalnızca sessiz makinede cevaplanabilir |
+
+Bu, Kapı 3'ün *"doğruluk kapı, kapsam ölçüm"* bölünmesinin süre eksenindeki
+kardeşi — ve aynı sebeple: makinenin o günkü yüküne bağlanan bir kapı ilk yoğun
+günde gevşetilir. Bu depo o dersi iki kez ödedi (`GrokPropertyTests` 2 sn,
+`DiscoveryWorkerTests` 200 ms).
+
+Ayrım turun kendisinde sınandı: ölçüm sırasında makine thrash'teydi ve
+`machine-resources.sh check` **exit 1** verdi. Süre ölçümü durdu; ölçekleme
+kapısı **aynı makinede** ölçüldü ve karesel terimi buldu. Ölçülemeyen bir soru,
+ölçülebilir bir soruya çevrilmişti.
+
+Süre ölçümü (`sigma_build.cost`) tek sayı üretmiyor, deftere **ekliyor** — K35'te
+aynı ölçüm ajanda 1,46×, koordinatörde 1,62× çıkmıştı ve üstüne yazan bir defter
+ayrışmanın kendisini, yani makinenin sessiz olmadığının kanıtını silerdi.
+
 ## Kaynaklar
 
-- `docs/epic/t32-derleme-tasarimi/index.md` — üç kapı, `--self-test`, manifest, sıra
+- `docs/epic/t32-derleme-tasarimi/index.md` — üç kapı, `--self-test`, manifest, sıra, §6 maliyet
 - `docs/epic/tickets-f3/sigma-derleme/index.md` — kabul kriterleri, `clicksiem` tuzağı
 - `docs/epic/t30-sigma-olcumu/index.md` — `compiled`/`runs` ayrımı, ön kontrol protokolü
 - `docs/epic/tickets-f3/sigma-pipeline/index.md` — Kapı 1'in beslendiği eşleme tablosu

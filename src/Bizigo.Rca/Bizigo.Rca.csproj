@@ -17,6 +17,18 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Bizigo.ControlPlane\Bizigo.ControlPlane.csproj" />
+
+    <!--
+      T44 — LLM adımları. Akıl yürütme motoru senaryonun adım grafiğini
+      (`ScenarioDefinition`) ve kanıt paketini (`EvidenceBundle`) okuyup T42'nin
+      `IModelProvider`'ını çağırıyor; üçü de ayrı projelerde ve buluştukları tek
+      yer burası.
+
+      YÖN TEK: Rca → ScenarioPlugin → Evidence. Ters yön olamaz — ScenarioPlugin
+      `IModelProvider`'ı tanısaydı döngü olurdu, ve zaten tanımaması gerekiyor:
+      bir senaryo formatı hangi modelle koşacağını bilmemeli.
+    -->
+    <ProjectReference Include="..\Bizigo.ScenarioPlugin\Bizigo.ScenarioPlugin.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -56,6 +56,19 @@ flowchart TB
 | T37 | [Rapor ekranı ve export](rapor-ekrani/index.md) | UI, export, inceleme düğmeleri | T36 |
 | T38 | [Altın küme ve inceleme akışı](altin-kume/index.md) | Alarm kapatmanın zorunlu parçası | T33, T37 |
 
+### Kapı ticket'ları
+
+Yukarıdaki on ticket fazın **ürününü** taşıyor. Aşağıdaki üçü fazın
+**bekçilerini** taşıyor ve ayrı durmalarının sebebi bu: hiçbiri bitti tanımına
+madde eklemiyor, üçü de aynı sınıfı kapatıyor — **bir bekçinin sessizce
+kapsamını yitirmesi** (`CLAUDE.md` §7) — ve birbirinin devamı.
+
+| # | Ticket | Özü | Bağımlılık |
+| --- | --- | --- | --- |
+| T48 | [`Produces<T>` kapısının kör noktası](produces-kapisi-bagi/index.md) | Kapı kaydedilecek servisleri elle listeliyordu; delik **dört kez** açıldı. Liste türetiliyor | — |
+| T50 | [Kompozisyon kökü bağı](kompozisyon-koku-bagi/index.md) | Bekçiler bir uzantının **var olduğunu** sınıyordu, **bağlı olduğunu** değil. IL çağrı grafiği | T48 |
+| T53 | [Ticket statüsü bekçisi](ticket-statusu-bekcisi/index.md) | `status` alanları bayatlıyordu; statünün dört gösterimi artık birbirini yalanlayamıyor | — |
+
 ## Bitti tanımı
 
 1. Bir Sigma kuralı derlenmiş SQL olarak repoda duruyor, alarm motorunda koşuyor
