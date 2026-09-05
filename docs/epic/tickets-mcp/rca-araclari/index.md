@@ -47,8 +47,8 @@ Ayrıca bu hafta girdi: `Bizigo.Rca/Reasoning/` altında `RcaReportStore` ·
   [M07](../kaynaklar-ve-abonelik/index.md).
 - Redaksiyon kapısı — [M06](../redaksiyon-kapisi/index.md); ama M05 **onsuz
   sevk edilmiyor**.
-- `rca.quality` aracı: planda yok, bu ticket **eklemiyor**. Uç var, araç kararı
-  verilmemiş — açık soru (§6.3).
+- `rca.quality` aracı: **bilinçli olarak ertelendi**, unutulmuş kalem değil —
+  §6.3.
 
 ## 3 · Kabul kriterleri
 
@@ -101,11 +101,23 @@ kimliği mi? M01'in taşıma oturumuna bağlı.
 **Aramadım, doğrulamadım.** Plana güvenerek yazdım. M05'in ilk adımı bunu
 kodda görmek olmalı; ayrım bugünkü koddan farklıysa bu belge güncellenmeli.
 
-### 6.3 · `GET /v1/rca/quality`
+### 6.3 · `GET /v1/rca/quality` — bilinçli erteleme
 
-Uç var, planın araç tablosunda karşılığı **yok**. Bilinçli bir dışarıda
-bırakma mı yoksa gözden mi kaçtı — **bilmiyorum**, uydurmuyorum. Karar
-koordinatörün.
+Uç var, planın araç tablosunda karşılığı yok. Bu bir gözden kaçma **değil**:
+**`rca.quality` bilinçli olarak ertelendi.**
+
+Sebep, ölçünün **şeklinin hareket hâlinde** olması. Kalite ölçüsü F4'ün kabul
+sınavı ve T47 onu hâlâ yazıyor — bu hafta iki alan ekledi
+(`CorrectFindingRank`, `Unspecified`) ve payda kararı bir kez değişti.
+
+Şekli oynayan bir şeyi protokolde ilan etmek, `CLAUDE.md` §8'in *"tüketicisi
+olmayan bir tip tahmindir"* maddesinin **daha kötü** hâli: burada tüketici
+**var**, ama sözleşme yarın farklı olacak — ve **MCP'de ilan edilen bir şemayı
+geri almak istemcileri kırıyor**. Bir ekran sözleşmesini kırmak bedavayken
+(§8, *"kırmak bedava iken kır"*), ilan edilmiş bir MCP şemasını kırmak değil.
+
+**T47 kapandığında yeniden değerlendirilecek.** Bu bir kapsam kararı ve
+sahibi bu satır.
 
 ### 6.4 · Bağlam maliyeti
 
