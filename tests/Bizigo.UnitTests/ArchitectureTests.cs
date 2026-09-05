@@ -262,16 +262,7 @@ public sealed class ArchitectureTests
     /// </para>
     /// </summary>
     private static IReadOnlyList<MethodInfo> Registrars() =>
-        [.. ProductAssemblies()
-            .SelectMany(static a => a.GetTypes())
-            // Statik sınıf = sealed + abstract.
-            .Where(static t => t is { IsSealed: true, IsAbstract: true })
-            .SelectMany(static t => t.GetMethods(BindingFlags.Public | BindingFlags.Static))
-            .Where(static m => m.IsDefined(typeof(ExtensionAttribute), inherit: false))
-            .Where(static m => m.Name.StartsWith("Add", StringComparison.Ordinal))
-            .Where(static m => m.GetParameters() is [{ } first, ..]
-                && first.ParameterType == typeof(IServiceCollection))
-            .OrderBy(static m => m.Name, StringComparer.Ordinal)];
+        ProductDiscovery.ServiceRegistrars(ProductDiscovery.CompositionClosure);
 
     /// <summary>
     /// Kompozisyon kökünden geçişli olarak yüklenen <c>Bizigo.*</c> derlemeleri.
@@ -280,30 +271,8 @@ public sealed class ArchitectureTests
     /// hiç dokunulmadıysa yüklü olmuyor ve keşif onu sessizce atlıyor —
     /// kapatmaya çalıştığımız delik tam olarak bu.</para>
     /// </summary>
-    private static IReadOnlyList<Assembly> ProductAssemblies()
-    {
-        var found = new Dictionary<string, Assembly>(StringComparer.Ordinal);
-        var pending = new Queue<Assembly>([typeof(global::Program).Assembly]);
-
-        while (pending.TryDequeue(out var assembly))
-        {
-            if (!found.TryAdd(assembly.GetName().Name!, assembly))
-            {
-                continue;
-            }
-
-            foreach (var reference in assembly.GetReferencedAssemblies())
-            {
-                if (reference.Name?.StartsWith("Bizigo.", StringComparison.Ordinal) == true
-                    && !found.ContainsKey(reference.Name))
-                {
-                    pending.Enqueue(Assembly.Load(reference));
-                }
-            }
-        }
-
-        return [.. found.Values];
-    }
+    private static IReadOnlyList<Assembly> ProductAssemblies() =>
+        ProductDiscovery.CompositionClosure;
 
     /// <summary>
     /// Keşfedilen her kayıt uzantısını çağırıp üretim grafiğini kuruyor.

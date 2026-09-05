@@ -163,26 +163,6 @@ public sealed class CliEmulationTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// Bir profilin config dosyasındaki <b>anlamlı satır sayısı</b> — testin
-    /// beklediği sayı buradan geliyor, elle yazılmıyor.
-    ///
-    /// <para>
-    /// İlk yazımda sabit <c>33</c> yazılmıştı ve <b>yanlış olan sayı değil,
-    /// sayının kaynağıydı</b>: baseline düzeltilseydi test <b>ilgisiz bir
-    /// sebeple</b> kırılır ve kıran şey ürünün davranışı olmazdı. Oran da
-    /// çözüm değildi — <i>"çıplak `show`'dan uzun"</i> gibi bir iddia,
-    /// sayfalamanın hiç uygulanmadığı hâli de geçirirdi.
-    /// </para>
-    ///
-    /// <para>
-    /// Sayıyı <b>aynı kaynaktan türetmek</b> ikisini birden çözüyor: iddia
-    /// mutlak kalıyor (<i>config'in tamamı</i>) ve baseline değiştiğinde
-    /// beklenen sayı onunla birlikte değişiyor. Depoda emsali var — T39'un
-    /// görünüm kolonlarını göç dosyasından okuması, T32'nin sentetik alanları
-    /// <c>FIELD_MAP</c>'ten okuması.
-    /// </para>
-    /// </summary>
-    /// <summary>
     /// Profil config'inin <b>son anlamlı satırı</b> — çıktının sonuna kadar
     /// geldiğini anlamanın işareti.
     ///
@@ -207,6 +187,26 @@ public sealed class CliEmulationTests : IAsyncLifetime
         return last!.Trim();
     }
 
+    /// <summary>
+    /// Bir profilin config dosyasındaki <b>anlamlı satır sayısı</b> — testin
+    /// beklediği sayı buradan geliyor, elle yazılmıyor.
+    ///
+    /// <para>
+    /// İlk yazımda sabit <c>33</c> yazılmıştı ve <b>yanlış olan sayı değil,
+    /// sayının kaynağıydı</b>: baseline düzeltilseydi test <b>ilgisiz bir
+    /// sebeple</b> kırılır ve kıran şey ürünün davranışı olmazdı. Oran da
+    /// çözüm değildi — <i>"çıplak `show`'dan uzun"</i> gibi bir iddia,
+    /// sayfalamanın hiç uygulanmadığı hâli de geçirirdi.
+    /// </para>
+    ///
+    /// <para>
+    /// Sayıyı <b>aynı kaynaktan türetmek</b> ikisini birden çözüyor: iddia
+    /// mutlak kalıyor (<i>config'in tamamı</i>) ve baseline değiştiğinde
+    /// beklenen sayı onunla birlikte değişiyor. Depoda emsali var — T39'un
+    /// görünüm kolonlarını göç dosyasından okuması, T32'nin sentetik alanları
+    /// <c>FIELD_MAP</c>'ten okuması.
+    /// </para>
+    /// </summary>
     private static int ProfileConfigLines(string profile, string scenario = "baseline")
     {
         var path = Path.Combine(
@@ -585,22 +585,6 @@ public sealed class CliEmulationTests : IAsyncLifetime
     // -------------------------------------------------------------- yardımcı
 
     /// <summary>
-    /// Etkileşimli bir kabuk oturumu açıp verilen satırları yazıyor, dökümü
-    /// döndürüyor.
-    ///
-    /// <para>
-    /// <see cref="SshDeviceTransport"/> kullanılmıyor ve kullanılamaz: ürünün
-    /// taşıyıcısı exec kanalı açıyor, kabuk değil. Kabuk yolunu sınamak için
-    /// istemci burada elle kuruluyor — ve bu, ürünün bu yüzeyi <b>bugün
-    /// kullanmadığının</b> da kaydı.
-    /// </para>
-    ///
-    /// <para>
-    /// <paramref name="budget"/> bir ÖLÇÜT değil, oturumun tıkanıp koşumu
-    /// süresiz kilitlememesi için bir tavan: hiçbir iddia süreye bakmıyor (§6).
-    /// </para>
-    /// </summary>
-    /// <summary>
     /// Etkileşimli bir kabuk oturumu açıp verilen satırları yazıyor ve
     /// <paramref name="expected"/> görünene kadar <b>bekliyor</b>.
     ///
@@ -619,6 +603,13 @@ public sealed class CliEmulationTests : IAsyncLifetime
     /// <i>bir testin geçme sebebinin duvar saatiyle ilgisi olmamalı</i> — bu
     /// yüzden korunuyor; <paramref name="budget"/> bir ölçüt değil, oturum
     /// tıkandığında koşumu süresiz kilitlememek için bir tavan.
+    /// </para>
+    ///
+    /// <para>
+    /// <see cref="SshDeviceTransport"/> kullanılmıyor ve kullanılamaz: ürünün
+    /// taşıyıcısı exec kanalı açıyor, kabuk değil. Kabuk yolunu sınamak için
+    /// istemci burada elle kuruluyor — ve bu, ürünün bu yüzeyi <b>bugün
+    /// kullanmadığının</b> da kaydı.
     /// </para>
     ///
     /// <para>

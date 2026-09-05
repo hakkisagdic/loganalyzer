@@ -108,80 +108,26 @@ public sealed class CompositionRootTests
     /// olmadığı için o keşfe hiç görünmüyordu.
     /// </para>
     /// </summary>
-    private sealed record ProductSurface(
-        IReadOnlyList<Assembly> Assemblies,
-        IReadOnlyList<string> Unloadable);
-
-    private static readonly Lazy<ProductSurface> Product = new(DiscoverProduct);
-
-    private static ProductSurface DiscoverProduct()
-    {
-        var assemblies = new List<Assembly>();
-        var unloadable = new List<string>();
-
-        foreach (var (project, assemblyName) in ProductProjects())
-        {
-            try
-            {
-                assemblies.Add(Assembly.Load(new AssemblyName(assemblyName)));
-            }
-            catch (Exception error)
-            {
-                unloadable.Add($"{project} (derleme adı `{assemblyName}`): {error.GetType().Name}");
-            }
-        }
-
-        return new ProductSurface(
-            [.. assemblies.DistinctBy(static a => a.GetName().Name, StringComparer.Ordinal)
-                .OrderBy(static a => a.GetName().Name, StringComparer.Ordinal)],
-            unloadable);
-    }
+    private static readonly ProductSurface Product = ProductDiscovery.AllProducts;
 
     /// <summary>
-    /// Ürün projeleri <b>diskten</b>: <c>src/</c> ve <c>sim/</c> altındaki her
-    /// <c>.csproj</c>, ve her birinin <b>gerçek derleme adı</b>.
+    /// <b>Kapsam: bütün ürün projeleri</b> — diskten, gerçek derleme adıyla.
     ///
     /// <para>
-    /// <b>Neden derleme referanslarından değil:</b> referans kapanışı
-    /// <c>Bizigo.</c> önekine bakmak zorunda ve önek bir <b>konvansiyon</b> —
-    /// CLI onu <c>&lt;AssemblyName&gt;bizigo&lt;/AssemblyName&gt;</c> ile
-    /// bozuyor ve önekli keşiflerin hepsine görünmez oluyor. Proje dosyası
-    /// konvansiyona değil, derleyicinin gerçekten ürettiği ada bakıyor.
+    /// <b>Neden kompozisyon kökünün kapanışından değil:</b> kapanış yalnızca
+    /// kökten <b>erişilebilen</b> şeyi görüyor ve kökten erişilemeyen bir
+    /// uzantı bu ticket'ın aradığı şeyin ta kendisi.
+    /// <c>AddBizigoScenarioPlugins</c> tam olarak böyleydi.
     /// </para>
     ///
     /// <para>
-    /// Yüklenemeyen bir proje sessizce atlanmıyor: sayılıyor ve
-    /// <see cref="Kapi_kapsamini_beyan_ediyor"/> kırmızı yanıyor. Görülemeyen
-    /// bir derleme, içindeki her uzantının "yok" sayılması demek.
+    /// <b>Keşfin gövdesi artık <see cref="ProductDiscovery"/>'de</b> (T55).
+    /// Aynı yüklem üç kapıda ayrı ayrı duruyordu; bu sınıfın yorumunda
+    /// <i>"borç ödenmedi, gizlenmedi"</i> diye kayıtlıydı ve ödendi. Kapsam
+    /// <b>değişmedi</b> — ölçüldü, küme birebir aynı.
     /// </para>
     /// </summary>
-    private static IEnumerable<(string Project, string AssemblyName)> ProductProjects()
-    {
-        foreach (var area in new[] { "src", "sim" })
-        {
-            var directory = Path.Combine(RepositoryLayout.Root, area);
-
-            if (!Directory.Exists(directory))
-            {
-                continue;
-            }
-
-            foreach (var file in Directory
-                .EnumerateFiles(directory, "*.csproj", SearchOption.AllDirectories)
-                .Order(StringComparer.Ordinal))
-            {
-                var text = File.ReadAllText(file);
-                var renamed = System.Text.RegularExpressions.Regex.Match(
-                    text, @"<AssemblyName>\s*([^<\s]+)\s*</AssemblyName>");
-
-                yield return (
-                    Path.GetFileNameWithoutExtension(file),
-                    renamed.Success ? renamed.Groups[1].Value : Path.GetFileNameWithoutExtension(file));
-            }
-        }
-    }
-
-    private static IReadOnlyList<Assembly> ProductAssemblies() => Product.Value.Assemblies;
+    private static IReadOnlyList<Assembly> ProductAssemblies() => Product.Assemblies;
 
     /// <summary>
     /// Kayıt ve uç uzantıları — <c>Add*(this IServiceCollection)</c> ve
@@ -198,18 +144,7 @@ public sealed class CompositionRootTests
     /// </para>
     /// </summary>
     private static IReadOnlyList<MethodInfo> Registrars() =>
-        [.. ProductAssemblies()
-            .SelectMany(static a => a.GetTypes())
-            // Statik sınıf = sealed + abstract.
-            .Where(static t => t is { IsSealed: true, IsAbstract: true })
-            .SelectMany(static t => t.GetMethods(BindingFlags.Public | BindingFlags.Static))
-            .Where(static m => m.IsDefined(typeof(ExtensionAttribute), inherit: false))
-            .Where(static m => m.GetParameters() is [{ } first, ..]
-                && (first.ParameterType == typeof(IServiceCollection)
-                    || typeof(IEndpointRouteBuilder).IsAssignableFrom(first.ParameterType)))
-            .Where(static m => m.Name.StartsWith("Add", StringComparison.Ordinal)
-                || m.Name.StartsWith("Map", StringComparison.Ordinal))
-            .OrderBy(static m => m.Name, StringComparer.Ordinal)];
+        ProductDiscovery.AllRegistrars(ProductAssemblies());
 
     // ---------------------------------------------------------------------
     // Bağ: ne çağrılıyor?
@@ -621,9 +556,9 @@ public sealed class CompositionRootTests
         var graph = Wired.Value;
 
         Assert.True(
-            Product.Value.Unloadable.Count == 0,
+            Product.Unloadable.Count == 0,
             "Bu ürün projelerinin derlemesi yüklenemedi:\n  " +
-            string.Join("\n  ", Product.Value.Unloadable) +
+            string.Join("\n  ", Product.Unloadable) +
             "\n\nGörülemeyen bir derleme, içindeki her uzantının 'yok' sayılması demek. " +
             "Birim test projesine referans ekleyin.");
 
