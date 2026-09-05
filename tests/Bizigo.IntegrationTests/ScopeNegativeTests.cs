@@ -1,6 +1,7 @@
 using System.Net;
 using Bizigo.Contracts;
 using Bizigo.ControlPlane;
+using Bizigo.Evidence;
 using Bizigo.Query;
 using Bizigo.Storage.ClickHouse;
 using Microsoft.EntityFrameworkCore;
@@ -37,6 +38,12 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
         await using var db = await _factory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         await db.Database.MigrateAsync(TestContext.Current.CancellationToken);
         await db.Sources.ExecuteDeleteAsync(TestContext.Current.CancellationToken);
+
+        // Altın küme göstergesi kapsam altındaki TÜM incelemeleri sayıyor —
+        // tek bir pakete daraltılamıyor, çünkü ölçtüğü şey zaten toplam.
+        // Başka bir sınıftan kalan satır burada "kapsam sızdırdı"ya benzeyen
+        // bir sayı üretirdi ve sebebi bu dosyada aranmazdı.
+        await db.GoldenReviews.ExecuteDeleteAsync(TestContext.Current.CancellationToken);
 
         db.Sources.AddRange(
             new SourceEntity { SourceId = "fg-core", OwnerGroup = "net-core", PeerAddress = "10.0.0.1" },
@@ -701,6 +708,142 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
         Assert.Equal(0, await _query.CountOutOfScopeChangesAsync(
             narrowedChanges, both, TestContext.Current.CancellationToken));
     }
+
+    // ---- Altın küme (T38) ---------------------------------------------------
+
+    /// <summary>
+    /// Koşturulduğunda kanıtladığı şey: altın küme kapsam kapısı <b>gerçek
+    /// SQL'de</b> tutuyor — bir ekip başka ekibin incelemesini ne göstergede
+    /// sayıyor ne de paket üzerinden okuyabiliyor.
+    ///
+    /// <para>
+    /// Bu testin var olma sebebi, birim testinin <b>kanıtlayamadığı</b> şey.
+    /// <c>GoldenReviewTests</c> bellek içi sağlayıcıyla koşuyor ve orada
+    /// <c>groups.Contains(r.OwnerGroup)</c> LINQ olarak <i>değerlendiriliyor</i>;
+    /// Postgres'te aynı ifade <c>= ANY(@groups)</c>'a <b>çevriliyor</b>.
+    /// Çeviri kaybolsaydı — sağlayıcı ifadeyi istemci tarafına düşürseydi ya da
+    /// filtre sorgudan tamamen düşseydi — birim paketi yeşil kalırdı, çünkü
+    /// orada çeviri diye bir adım hiç yok.
+    /// </para>
+    ///
+    /// <para>
+    /// Filtrenin <b>kolondan</b> geçtiği de burada görünüyor: kapsam pakete
+    /// <c>JOIN</c> atıp JSON gövdesindeki <c>BundleScope</c>'u açarak
+    /// çözülseydi, iki grubun aynı paketi paylaştığı bu kurulumda ayrım
+    /// yapılamazdı. Kurulum bilerek öyle — tek paket, iki grup.
+    /// </para>
+    ///
+    /// <para>
+    /// Sistem kapsamı ayrıca sınanıyor. Onsuz <i>"kapsam çalıştı"</i> ile
+    /// <i>"kayıt hiç yazılmadı"</i> aynı sonucu verirdi: ikisi de sıfır sayar
+    /// ve testi geçerdi.
+    /// </para>
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Integration")]
+    // kapsam: GoldenReviewStore.QualityAsync
+    // kapsam: GoldenReviewStore.ForBundleAsync
+    public async Task Baska_grubun_incelemesi_gorunmuyor()
+    {
+        await using var db = await _factory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+
+        // Tek paket, iki grup: ayrımı yapan şeyin incelemenin KENDİ kolonu
+        // olduğu ancak böyle görünüyor.
+        var bundleId = Guid.CreateVersion7(Now);
+        db.EvidenceBundles.Add(new EvidenceBundleEntity
+        {
+            Id = bundleId,
+            GatheredAt = Now,
+            SchemaVersion = 1,
+            ContentHash = "scope-negative-t38",
+            WindowFrom = Now.AddMinutes(-30),
+            WindowTo = Now,
+            BaselineFrom = Now.AddDays(-7),
+            BaselineTo = Now.AddDays(-1),
+
+            // jsonb boş dizeyi kabul etmiyor; paketin içeriği bu testin konusu
+            // değil, kimliğinin var olması yeterli.
+            Payload = "{}",
+        });
+
+        var coreTrigger = Trigger("net-core");
+        var edgeTrigger = Trigger("net-edge");
+        db.AlertTriggers.AddRange(coreTrigger, edgeTrigger);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var store = new GoldenReviewStore(_factory);
+        var system = AccessScope.System("seed");
+
+        // Kararlar bilerek FARKLI: filtre sızsaydı yalnızca sayı değil oran da
+        // değişirdi (1/1 yerine 1/2), yani iki bağımsız iddia birden düşerdi.
+        await store.AddAsync(
+            new ReviewInput(
+                bundleId, coreTrigger.Id, ReviewVerdict.Correct,
+                ContradictingEvidenceVerdict.Sound, "core incelemesi"),
+            system,
+            TestContext.Current.CancellationToken);
+
+        await store.AddAsync(
+            new ReviewInput(
+                bundleId, edgeTrigger.Id, ReviewVerdict.Wrong,
+                ContradictingEvidenceVerdict.Trivial, "edge incelemesi"),
+            system,
+            TestContext.Current.CancellationToken);
+
+        // Önce ikisinin de yazıldığı görülüyor — yoksa aşağıdaki sıfırlar
+        // kapsamı değil boşluğu ölçerdi.
+        var all = await store.QualityAsync(system, TestContext.Current.CancellationToken);
+        Assert.Equal(2, all.Total);
+
+        var core = await store.QualityAsync(CoreOnly(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, core.Total);
+        Assert.Equal(1, core.Correct);
+        Assert.Equal(1.0, core.Accuracy);
+
+        // Simetrik yön: net-edge de yalnızca kendisini görüyor. Tek yönlü bir
+        // sınama, filtrenin sabit bir gruba çakılmasını yakalamaz.
+        var edge = await store.QualityAsync(
+            AccessScope.ForGroups("u-edge", ["net-edge"]), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, edge.Total);
+        Assert.Equal(0, edge.Correct);
+        Assert.Equal(0.0, edge.Accuracy);
+
+        // Paket üzerinden okuma da aynı kapıdan geçiyor: aynı paketin iki
+        // incelemesi var, kapsam bir tanesini veriyor.
+        var visible = await store.ForBundleAsync(
+            bundleId, CoreOnly(), TestContext.Current.CancellationToken);
+
+        var only = Assert.Single(visible);
+        Assert.Equal("net-core", only.OwnerGroup);
+        Assert.Equal(coreTrigger.Id, only.TriggerId);
+
+        // Boş kapsam "filtre yok"a düşmüyor — kapalı başlıyor.
+        Assert.Empty(await store.ForBundleAsync(
+            bundleId, AccessScope.Denied, TestContext.Current.CancellationToken));
+
+        Assert.Equal(
+            0,
+            (await store.QualityAsync(AccessScope.Denied, TestContext.Current.CancellationToken)).Total);
+    }
+
+    /// <summary>
+    /// İncelemenin bağlanacağı tetiklenme. Grup <b>buradan</b> çözülüyor —
+    /// inceleyenin kapsamından değil.
+    /// </summary>
+    private static AlertTriggerEntity Trigger(string ownerGroup) => new()
+    {
+        Id = Guid.NewGuid(),
+        RuleId = Guid.NewGuid(),
+        FiredAt = Now,
+        WindowFrom = Now.AddMinutes(-30),
+        WindowTo = Now,
+        Value = 100,
+        Threshold = 80,
+        OwnerGroup = ownerGroup,
+        Summary = $"{ownerGroup} eşiği aşıldı",
+    };
 }
 
 /// <summary>Denetim kaydı bu testlerin konusu değil; ayrı testleri var.</summary>
