@@ -281,6 +281,32 @@ internal static class McpTestServices
     /// sunucuyu ayırırdı — kapının anlamını yok eden tek hareket bu olurdu.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// <b>Gerçekten boş graf</b> — ve geri geldi, çünkü iki farklı soru var.
+    ///
+    /// <para>
+    /// M02'de <c>Empty()</c> <c>Production()</c>'a çevrilmişti: komut araçları
+    /// bağımlılık istiyor ve boş bir grafla <c>Instantiate</c> patlıyordu. Ama
+    /// M08 ile birlikte ölçüldü ki <b>her test aynı şeyi sormuyor</b>:
+    /// </para>
+    ///
+    /// <list type="bullet">
+    /// <item><b>Bu fabrika</b> — <i>"hiçbir kayıt yokken ne oluyor"</i>. Keşfin
+    /// belirli tipleri kurabildiğini sınayan test bunu istiyor; dolu bir graf
+    /// iddiayı zayıflatırdı, çünkü gizli bir bağımlılığın olmadığını
+    /// kanıtlayamazdı.</item>
+    /// <item><see cref="Production"/> — <i>"üretimdeki graf ne yapıyor"</i>.
+    /// Bütün araçları keşfeden testler bunu istiyor.</item>
+    /// </list>
+    ///
+    /// <para>
+    /// İkisini tek fabrikaya indirmek, iki farklı soruyu aynı yere sormak
+    /// olurdu — bu depoda <c>Debounce</c>/<c>Lineage</c> anahtarlarıyla bir kez
+    /// ödenmiş şekil.
+    /// </para>
+    /// </summary>
+    public static ServiceProvider Empty() => new ServiceCollection().BuildServiceProvider();
+
     public static ServiceProvider Production() =>
         new ServiceCollection().AddBizigoCommandTools().BuildServiceProvider();
 }

@@ -21,8 +21,8 @@ namespace Bizigo.Commands.Mcp;
 public sealed class SigmaPlanTool : CommandTool
 {
     /// <summary>Yeni bir örnek.</summary>
-    public SigmaPlanTool(McpSurface surface)
-        : base(surface, "sigma.plan")
+    public SigmaPlanTool()
+        : base("sigma.plan")
     {
     }
 

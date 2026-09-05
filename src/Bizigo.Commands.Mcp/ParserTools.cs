@@ -8,8 +8,7 @@ using Bizigo.Parsing.Grok;
 namespace Bizigo.Commands.Mcp;
 
 /// <summary><c>parser.lint</c> — şema doğrulaması + ReDoS taraması.</summary>
-public sealed class ParserLintTool(McpSurface surface, ParserToolbox toolbox)
-    : CommandTool(surface, "parser.lint")
+public sealed class ParserLintTool(ParserToolbox toolbox) : CommandTool("parser.lint")
 {
     /// <inheritdoc/>
     public override JsonElement InputSchema { get; } = McpSchema.Parse(
@@ -139,8 +138,7 @@ public sealed class ParserLintTool(McpSurface surface, ParserToolbox toolbox)
 }
 
 /// <summary><c>parser.test</c> — gömülü <c>tests</c> bloğunu koşturur.</summary>
-public sealed class ParserTestTool(McpSurface surface, ParserToolbox toolbox)
-    : CommandTool(surface, "parser.test")
+public sealed class ParserTestTool(ParserToolbox toolbox) : CommandTool("parser.test")
 {
     /// <inheritdoc/>
     public override JsonElement InputSchema { get; } = McpSchema.Parse(
@@ -259,8 +257,7 @@ public sealed class ParserTestTool(McpSurface surface, ParserToolbox toolbox)
 }
 
 /// <summary><c>parser.coverage</c> — katalogdaki altın örneklerin çözülme oranı.</summary>
-public sealed class ParserCoverageTool(McpSurface surface, ParserToolbox toolbox)
-    : CommandTool(surface, "parser.coverage")
+public sealed class ParserCoverageTool(ParserToolbox toolbox) : CommandTool("parser.coverage")
 {
     /// <inheritdoc/>
     public override JsonElement InputSchema { get; } = McpSchema.Parse(
@@ -398,8 +395,7 @@ public sealed class ParserCoverageTool(McpSurface surface, ParserToolbox toolbox
 /// sorusunu cevaplamıyor. Asimetri M02 raporunda yazılı.
 /// </para>
 /// </summary>
-public sealed class ParserTryTool(McpSurface surface, ParserToolbox toolbox)
-    : CommandTool(surface, "parser.try")
+public sealed class ParserTryTool(ParserToolbox toolbox) : CommandTool("parser.try")
 {
     /// <inheritdoc/>
     public override JsonElement InputSchema { get; } = McpSchema.Parse(

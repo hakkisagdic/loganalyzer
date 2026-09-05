@@ -278,11 +278,19 @@ tek şey **yazan** komut olurdu.
 
 ### 7.3 · Değişen üç şey — ölçüm bunları önceden söylemiyordu
 
-**(a) Her araç yapıcısında `McpSurface` almak zorunda.** M01'in yorumu
-*"yüzeyi sabit olan araçlar argümanı hiç kullanmıyor"* diyor; niyet o ama
-mekanik öyle değil: `ActivatorUtilities.CreateInstance(services, type, surface)`
-fazladan argümanı **reddediyor**. Ölçüldü — yüzeysiz yapıcıyla yedi aracın
-yedisi de kurulamadı ve uyum kapısının **21 testi** düştü.
+**(a) ~~Her araç yapıcısında `McpSurface` almak zorunda.~~ — ölçüm doğruydu,
+ölçtüğü şey bir KUSURDU ve M08 düzeltti.**
+
+M01'in yorumu *"yüzeyi sabit olan araçlar argümanı hiç kullanmıyor"* diyordu;
+niyet oydu ama mekanik öyle değildi:
+`ActivatorUtilities.CreateInstance(services, type, surface)` fazladan argümanı
+**reddediyordu**. Ölçüldü — yüzeysiz yapıcıyla yedi aracın yedisi kurulamadı ve
+uyum kapısının **21 testi** düştü.
+
+M08 `Instantiate`'i düzeltti: `surface` artık **koşullu** veriliyor. Parametre
+kaldırıldı. Kayıt duruyor çünkü ölçümün kendisi yanlış değildi — **geçersiz
+oldu**, ve ikisi farklı şeyler: bırakılsaydı gerekçesiz bir tören kalıbı
+yerleşir, M03/M04/M05 onu kopyalardı.
 
 **(b) Bağlam bütçesi bir sabit olmaktan çıktı — yapı değişti.**
 
@@ -371,3 +379,55 @@ sanıp tamamlamak, kapıyı ilk yeni araç ailesinde kıracak bir şart eklemek 
 üstünde duruyor ve `mcp serve` orada doğdu: ana ağaçta `SetAction` **10**,
 burada **12**. Bugünkü ağaca göre çivilenmiş bir sabit, M01 merge olduğu gün
 kapıyı kırmızı yakar ve sebebi **yanlış dalda** aranırdı.
+
+
+---
+
+## 9 · Merge sonrası — üç şey daha ölçüldü
+
+Dal main'e alınırken **metinsel merge temiz, derleme kırıktı**: §5'in birebir
+tarif ettiği sınıf. Üç ayrı bulgu çıktı.
+
+### 9.1 · `Empty()` → `Production()` körlemesine yapılamazdı
+
+M08 aynı sırada `McpIdentityTests`'i yazıp `McpTestServices.Empty()` çağırdı.
+İkisi de kendi dalında haklıydı; git ikisini temiz birleştirdi, derleyici
+konuştu.
+
+**Üç çağrı yeri ölçüldü ve üçü aynı değildi:**
+
+| Çağrı | Karar | Gerekçe |
+| --- | --- | --- |
+| `Kapsam_cozucusu_kayitli_degilse_kurulum_patliyor` | `Production()` | Boş grafla `CreateOptions` `ParserToolbox`'ta patlıyor ve `IAccessScopeResolver`'a **hiç gelmiyor** — iddia **yanlış sebeple** yeşil kalırdı |
+| `ProductionTools()` | `Production()` | Bütün araçları keşfediyor |
+| `Kesif_yuzeyini_yapicidan_almayan_araci_da_kurabiliyor` | **`Empty()` kaldı** | Belirli iki tipi kuruyor, ikisi de bağımlılık istemiyor. Dolu bir graf *"gizli bağımlılık yok"* iddiasını zayıflatırdı |
+
+Yani **ikinci fabrika gerçekten gerekti**. İkisini tek fabrikaya indirmek, iki
+farklı soruyu aynı yere sormak olurdu.
+
+### 9.2 · Dördüncü derleme hatası bir KASKAD'dı
+
+`Assert.Throws<T>(Func<Task>)` uyarısı M08'in kodunda değil: `Empty()`
+çözülemeyince değişken hata tipine düşüyor ve aşırı yükleme çözümlemesi obsolete
+aşırı yüklemeye kayıyor. İlk hata düzeltilince **kendiliğinden kayboldu**.
+
+Ve *"neden benim dalımda görünmedi"* sorusunun cevabı ortam farkı değil:
+**`McpIdentityTests.cs` o dalda yoktu.** Ayrım önemli — birincisi analizör
+sürümü arattırır.
+
+### 9.3 · `fields.coverage` aracının ClickHouse yarısı ÇIKARILDI
+
+M08'in kimlik kapısı doğru soruyu sordu ve bir K17 ihlali buldu: araç
+`owner_group`'u **argümandan** alıp ClickHouse'u sorguluyordu — yani
+**çağıran kendi kapsamını seçiyordu**. Bir model istediği grubun satır sayısını
+sayabilirdi; hata yok, sayaç yok, belirti yok.
+
+Doğru çözüm bağlantıyı gizlemek değil kapsamı **kimlikten** almak, ve o yol
+M04/M08'in. O gelene kadar **yarım bir kapı yerine kapalı bir kapı**: araç
+yalnızca katalog yarısını ilan ediyor (*"ne üretilebiliyor"*), ClickHouse yarısı
+CLI'da duruyor. `parser.try` daraltmasının aynı gerekçesi.
+
+**Yedi aracın yedisi de kimlik muafiyeti alıyor** (`RequiresCallerIdentity =>
+false`) ve gerekçeleri `McpIdentityTests`'in listesinde **tek tek** yazılı —
+*"hepsi aynı sebeple muaf"* diyen bir satır, biri ürün verisine uzandığında da
+doğru görünürdü. `ExpectedExemptCount` 1 → 8.

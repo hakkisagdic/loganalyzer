@@ -75,6 +75,21 @@ public sealed partial class CommandCatalogTests
     /// komut silinip başkası eklenirse sayı aynı kalır. Ad kontrolü o boşluğu
     /// kapatıyor.
     /// </para>
+    ///
+    /// <para>
+    /// <b>SINIRI: yalnızca YAPRAK adı sınanıyor, tam yol değil.</b>
+    /// <c>parser lint</c> ile (varsayımsal) <c>sigma lint</c> aynı yaprağı
+    /// taşısaydı bu test ikisini ayırt edemezdi — biri katalogdan düşse bile
+    /// diğerinin adı eşleşmeyi sağlardı. Bugün çakışma <b>yok</b> (ölçüldü);
+    /// tam yol eşleştirmesi <c>Program.cs</c>'in ağaç yapısını kaynaktan
+    /// çıkarmayı gerektiriyor ve <b>yapılmadı</b>.
+    /// </para>
+    ///
+    /// <para>
+    /// Sınırın burada yazılı olması bir kapsam iddiası değil kapsamın
+    /// <b>kendisi</b>: yazılmasaydı bir sonraki okuyan bu testi tam yol
+    /// eşleştirmesi sanardı.
+    /// </para>
     /// </summary>
     [Fact]
     public void Katalogdaki_her_komut_CLI_da_var()

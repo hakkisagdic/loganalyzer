@@ -10,6 +10,7 @@ using System.Text.Json.Serialization;
 using Bizigo.Api;
 using Bizigo.ControlPlane;
 using Bizigo.Contracts;
+using Bizigo.Commands.Mcp;
 using Bizigo.Mcp;
 using Bizigo.Mcp.Tools;
 using Microsoft.AspNetCore.Authentication;
@@ -71,13 +72,47 @@ public sealed class McpIdentityTests
                     ServerInfoTool.ToolIdentifier,
                     "Ürün verisine hiç dokunmuyor: yüzey adı, revizyon sabiti ve araç sayısı "
                     + "döndürüyor. Kapsam filtresinin uygulanacağı bir satır yok."),
+
+                // M02 · komut araçları. Yedisi de YEREL DOSYA okuyor; kapsam
+                // filtresinin uygulanacağı bir satır yok. Gerekçeler tek tek
+                // yazılı, çünkü "hepsi aynı sebeple muaf" diyen bir satır
+                // bir gün biri ürün verisine uzandığında da doğru görünürdü.
+                KeyValuePair.Create(
+                    "parser.lint",
+                    "Parser YAML'ını diskten okuyup şemasını doğruluyor. Ürün verisi yok."),
+                KeyValuePair.Create(
+                    "parser.test",
+                    "Parser YAML'ının gömülü test bloğunu koşturuyor; girdi de beklenti de "
+                    + "dosyanın içinde. Ürün verisi yok."),
+                KeyValuePair.Create(
+                    "parser.try",
+                    "Çağıranın VERDİĞİ satırı parser'dan geçiriyor — depodan satır okumuyor. "
+                    + "Ayrıca çözülen değerleri değil yalnızca alan adlarını döndürüyor."),
+                KeyValuePair.Create(
+                    "parser.coverage",
+                    "Katalogdaki altın örnek dosyalarını okuyup çözülme oranını sayıyor. "
+                    + "Örnekler depoya ait, müşteri verisi değil."),
+                KeyValuePair.Create(
+                    "fields.coverage",
+                    "YALNIZCA katalog yarısını ölçüyor: altın örnekler boru hattından geçip "
+                    + "bellekte sayılıyor. Komutun ClickHouse yarısı ürün verisi okuduğu için "
+                    + "ARAÇTAN ÇIKARILDI — kapsam çağıranın seçtiği bir gruptan gelemez (K17). "
+                    + "O yarı kimlikle birlikte M04'te açılacak."),
+                KeyValuePair.Create(
+                    "fields.values",
+                    "Değer uzayları katalogdan ve eşleme tablolarından TÜRETİLİYOR, veriye "
+                    + "bakılmıyor. Kapalı bir kolonun değer kümesi ürünün yapılandırması."),
+                KeyValuePair.Create(
+                    "sigma.plan",
+                    "Derleme hattının ürettiği manifest dosyasını okuyup ne getireceğini "
+                    + "söylüyor; veritabanına hiç dokunmuyor."),
             ]);
 
     /// <summary>
     /// Muafiyet sayısı <b>sabit</b>. Listeyi büyütmek bu satırı da değiştirmeyi
     /// gerektiriyor — muafiyet eklemek <b>iki ayrı bilinçli hareket</b> (§8).
     /// </summary>
-    private const int ExpectedExemptCount = 1;
+    private const int ExpectedExemptCount = 8;   // M08'in 1'i + M02'nin 7 komut aracı
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -386,7 +421,12 @@ public sealed class McpIdentityTests
     [Fact]
     public async Task Kapsam_cozucusu_kayitli_degilse_kurulum_patliyor()
     {
-        await using var without = McpTestServices.Empty();
+        // `Empty()` DEĞİL `Production()` — ve gerekçe ölçüldü, tercih değil.
+        // Boş bir grafla `CreateOptions` komut araçlarının bağımlılığında
+        // (`ParserToolbox`) PATLIYOR ve `IAccessScopeResolver`'a hiç
+        // gelmiyor; yani aşağıdaki iddia doğru sebeple değil, YANLIŞ sebeple
+        // yeşil kalırdı. Testin sorduğu şey "graf boş" değil "KAPI YOK".
+        await using var without = McpTestServices.Production();
 
         var error = Assert.Throws<InvalidOperationException>(
             () => BizigoMcpServer.CreateOptions(
@@ -422,7 +462,8 @@ public sealed class McpIdentityTests
 
     private static IReadOnlyList<BizigoMcpTool> ProductionTools()
     {
-        var services = McpTestServices.Empty();
+        // Bütün araçlar keşfediliyor, dolayısıyla üretim grafı gerekiyor.
+        var services = McpTestServices.Production();
 
         return McpToolDiscovery.Instantiate(
             McpToolDiscovery.ToolTypes(
@@ -431,8 +472,28 @@ public sealed class McpIdentityTests
             services);
     }
 
+    /// <summary>
+    /// Kapı <b>artı</b> araçların bağımlılıkları.
+    ///
+    /// <para>
+    /// <b>M02'de genişledi ve sebebi mekanik:</b> bu grafla
+    /// <c>CreateOptions</c> koşuyor, keşif <b>bütün</b> araçları kuruyor ve
+    /// komut araçları <see cref="ParserToolbox"/> istiyor. Yalnızca kapıyı
+    /// kaydeden bir graf <c>Instantiate</c>'te patlıyordu — yani testin
+    /// ölçtüğü kimlik kapısına <b>hiç gelinmiyordu</b>.
+    /// </para>
+    ///
+    /// <para>
+    /// Kayıt <b>üretimin kendi uzantısından</b> geliyor (<c>AddBizigoCommandTools</c>),
+    /// elle kurulmuyor: sahtenin üretimden ayrılması, ölçülen sunucu ile koşan
+    /// sunucuyu ayırırdı.
+    /// </para>
+    /// </summary>
     private static ServiceProvider ServicesWithGate(IAccessScopeResolver gate) =>
-        new ServiceCollection().AddSingleton(gate).BuildServiceProvider();
+        new ServiceCollection()
+            .AddBizigoCommandTools()
+            .AddSingleton(gate)
+            .BuildServiceProvider();
 
     private static WebApplication BuildHost(ScopeEchoTool tool, IAccessScopeResolver gate)
     {
@@ -448,6 +509,10 @@ public sealed class McpIdentityTests
             .AddScheme<AuthenticationSchemeOptions, ClaimsFromHeader>(TestScheme, configureOptions: null);
 
         builder.Services.AddSingleton(gate);
+
+        // M02 · komut araçlarının bağımlılıkları; üretimde `Program.cs` aynı
+        // uzantıyı çağırıyor.
+        builder.Services.AddBizigoCommandTools();
 
         // ÜRETİMİN kaydı. İkinci bir kurulum yazmak, ölçülen sunucu ile koşan
         // sunucuyu ayırırdı.

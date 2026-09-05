@@ -10,17 +10,47 @@ namespace Bizigo.Commands.Mcp;
 /// <c>fields.coverage</c> — altın örneklerin taşıdığı bilginin ne kadarının
 /// olay tablosuna alan olarak indiği.
 ///
+/// <h3>ARAÇ YALNIZCA KATALOG YARISINI CEVAPLIYOR</h3>
+///
 /// <para>
-/// <b>İki yarısı ayrı kalıyor ve bu şemanın taşıdığı asıl bilgi.</b> Katalog
-/// yarısı <i>"ne üretilebiliyor"</i>, ClickHouse yarısı <i>"ne yazılmış"</i>.
-/// <c>stored</c> <b><see langword="null"/> ise soru hiç sorulmadı</b> (bağlantı
-/// verilmedi); boş dizi ise soruldu ve grupta satır yok. İkisi tek değere
-/// inseydi <i>"bakmadım"</i> ile <i>"baktım, yok"</i> aynı cevabı verirdi.
+/// Komutun iki yarısı var: katalog yarısı <i>"ne üretilebiliyor"</i> (yerel
+/// dosyalar) ve ClickHouse yarısı <i>"ne yazılmış"</i> (ürün verisi). Araç
+/// <b>yalnızca birincisini</b> ilan ediyor ve bu bir eksiklik değil bir kapı.
+/// </para>
+///
+/// <para>
+/// <b>Sebep K17.</b> ClickHouse yarısı <c>owner_group</c> ile sorguluyor ve o
+/// değer araç argümanından gelseydi <b>çağıran kendi kapsamını seçerdi</b> —
+/// oysa kapsam kimlikten türemek zorunda. Bir model istediği grubun satır
+/// sayısını sayabilirdi; hata yok, sayaç yok, belirti yok.
+/// </para>
+///
+/// <para>
+/// Doğru çözüm bağlantıyı gizlemek değil, kapsamı <b>kimlikten</b> almak —
+/// ve o yol M08'in kimlik taşımasıyla M04'te açılıyor. O gelene kadar yarım
+/// bir kapı yerine <b>kapalı bir kapı</b> duruyor; <c>parser.try</c>'daki
+/// daraltmanın aynı gerekçesi.
 /// </para>
 /// </summary>
-public sealed class FieldsCoverageTool(McpSurface surface, ParserToolbox toolbox)
-    : CommandTool(surface, "fields.coverage")
+public sealed class FieldsCoverageTool(ParserToolbox toolbox) : CommandTool("fields.coverage")
 {
+    /// <summary>
+    /// <b>Araç açıklamasına eklenen tek cümle</b> — ve modelin görmesi gereken
+    /// şey bu: araç CLI ile <b>aynı sayıyı üretmiyor</b>.
+    ///
+    /// <para>
+    /// CLI <c>--anchor</c> ile örneklerin taşınacağı anı ayarlatıyor; araç onu
+    /// <c>UnixEpoch</c>'a sabitliyor, çünkü bir araç çağrısının sonucu çağrı
+    /// SAATİNE göre değişmemeli. Ama bu, iki yüzeyin farklı sayı vermesi
+    /// demek — ve bunu yalnızca kodda yazmak, aracı kullanan modelin onu hiç
+    /// görmemesi olurdu.
+    /// </para>
+    /// </summary>
+    protected override string DescriptionSuffix =>
+        " Yalnızca katalog yarısını ölçer (ne üretilebiliyor); yazılmış satırları " +
+        "saymaz. Örnekler sabit bir zaman ankrajıyla ölçülür, CLI'nin ayarlanabilir " +
+        "ankrajıyla farklı sayı verebilir.";
+
     /// <inheritdoc/>
     public override JsonElement InputSchema { get; } = McpSchema.Parse(
         """
@@ -30,8 +60,7 @@ public sealed class FieldsCoverageTool(McpSurface surface, ParserToolbox toolbox
             "catalog":     { "type": "string" },
             "mask_file":   { "type": "string" },
             "migrations":  { "type": "string" },
-            "owner_group": { "type": "string" },
-            "connection_string": { "type": ["string", "null"] }
+            "owner_group": { "type": "string" }
           },
           "required": ["catalog", "mask_file", "migrations", "owner_group"],
           "additionalProperties": false
@@ -59,21 +88,9 @@ public sealed class FieldsCoverageTool(McpSurface surface, ParserToolbox toolbox
                 "required": ["vendor", "lines", "filled_aliases"],
                 "additionalProperties": false
               }
-            },
-            "stored": {
-              "type": ["array", "null"],
-              "items": {
-                "type": "object",
-                "properties": {
-                  "vendor": { "type": "string" },
-                  "rows":   { "type": "integer", "minimum": 0 }
-                },
-                "required": ["vendor", "rows"],
-                "additionalProperties": false
-              }
             }
           },
-          "required": ["column_count", "sample_count", "empty_everywhere", "vendors", "stored"],
+          "required": ["column_count", "sample_count", "empty_everywhere", "vendors"],
           "additionalProperties": false
         }
         """);
@@ -89,7 +106,10 @@ public sealed class FieldsCoverageTool(McpSurface surface, ParserToolbox toolbox
             invocation.Required<string>("catalog"),
             invocation.Required<string>("mask_file"),
             invocation.Required<string>("migrations"),
-            invocation.Optional<string?>("connection_string"),
+            // BAĞLANTI YOK ve bu araç için sabit: ClickHouse yarısı kapsamı
+            // çağıranın seçtiği bir gruptan alırdı (K17 ihlali). `owner_group`
+            // burada yalnızca bellekteki sentetik olayları etiketliyor.
+            ConnectionString: null,
             invocation.Required<string>("owner_group"),
 
             // Ana DEĞİŞKEN DEĞİL: araç çağrısının sonucu çağrı saatine göre
@@ -130,26 +150,18 @@ public sealed class FieldsCoverageTool(McpSurface surface, ParserToolbox toolbox
                         .Where(alias => vendor.Populated.GetValueOrDefault(alias) > 0)
                         .Order(StringComparer.Ordinal),
                 ])),
-        ],
-        outcome.Stored is null
-            ? null
-            : [.. outcome.Stored.Select(s => new StoredPayload(s.Vendor, s.Rows))]);
+        ]);
 
     private sealed record Payload(
         [property: JsonPropertyName("column_count")] int ColumnCount,
         [property: JsonPropertyName("sample_count")] int SampleCount,
         [property: JsonPropertyName("empty_everywhere")] IReadOnlyList<string> EmptyEverywhere,
-        [property: JsonPropertyName("vendors")] IReadOnlyList<VendorPayload> Vendors,
-        [property: JsonPropertyName("stored")] IReadOnlyList<StoredPayload>? Stored);
+        [property: JsonPropertyName("vendors")] IReadOnlyList<VendorPayload> Vendors);
 
     private sealed record VendorPayload(
         [property: JsonPropertyName("vendor")] string Vendor,
         [property: JsonPropertyName("lines")] int Lines,
         [property: JsonPropertyName("filled_aliases")] IReadOnlyList<string> FilledAliases);
-
-    private sealed record StoredPayload(
-        [property: JsonPropertyName("vendor")] string Vendor,
-        [property: JsonPropertyName("rows")] long Rows);
 }
 
 /// <summary>
@@ -174,8 +186,8 @@ public sealed class FieldsCoverageTool(McpSurface surface, ParserToolbox toolbox
 public sealed class FieldsValuesTool : CommandTool
 {
     /// <summary>Yeni bir örnek.</summary>
-    public FieldsValuesTool(McpSurface surface)
-        : base(surface, "fields.values")
+    public FieldsValuesTool()
+        : base("fields.values")
     {
     }
 

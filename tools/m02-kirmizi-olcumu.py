@@ -72,9 +72,9 @@ OLCUMLER = [
     {
         "ad": "D · Bir aracın bağlam maliyeti tavanı aşarsa",
         "dosya": ARAC,
-        "eski": "    public sealed override string ToolDescription => descriptor.Summary;",
+        "eski": "    public sealed override string ToolDescription => descriptor.Summary + DescriptionSuffix;",
         "yeni": (
-            "    public sealed override string ToolDescription => descriptor.Summary\n"
+            "    public sealed override string ToolDescription => descriptor.Summary + DescriptionSuffix\n"
             "        // KIRMIZI-D: açıklama şişiriliyor — bağlam bütçesinin en pahalı kalemi.\n"
             "        + string.Concat(Enumerable.Repeat(\" bağlam bütçesini şişiren gereksiz açıklama metni\", 40));"
         ),
