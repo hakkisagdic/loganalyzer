@@ -1,3 +1,5 @@
+using Bizigo.Rca.Reasoning;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -31,6 +33,12 @@ public static class RcaServiceCollectionExtensions
         // Kullanım sorgusu kapının kendisinden ayrı çözülebilmeli: ekran ve
         // okuma yolu kotayı "kontrol etmek" için değil "göstermek" için istiyor.
         services.AddSingleton<RcaQuotaGate>();
+
+        // T51 — üretilen belgenin deposu. `AddBizigoRcaTriggers` içinde, çünkü
+        // ikisi de aynı önkoşula bağlı (`AddControlPlane`) ve ayrı bir uzantı
+        // yazmak, `Program.cs`'te çağrılmayı unutulabilecek ikinci bir satır
+        // üretirdi — `AddBizigoScenarioPlugins`'in bugün bulunduğu hâl.
+        services.AddSingleton<RcaReportStore>();
 
         return services;
     }

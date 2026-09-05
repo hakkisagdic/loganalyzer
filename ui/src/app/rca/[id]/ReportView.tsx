@@ -14,6 +14,7 @@ import {
   REVIEW_STATES,
   reviewRequest,
   type RcaFinding,
+  type RcaReasoning,
   type RcaReport,
   type RcaReview,
   type RcaSlice,
@@ -120,8 +121,9 @@ export function ReportView({ report }: ReportViewProps) {
         </section>
       ) : null}
 
-      {/* F4'ün yorumu buraya gelecek: özetin altında, bulguların üstünde ve
-          kanıtın YANINDA — yerine değil. */}
+      {/* T37'nin ayırdığı yer, T51'de dolduruldu: özetin altında, bulguların
+          üstünde ve kanıtın YANINDA — yerine değil. */}
+      <ReasoningSection reasoning={report.reasoning} />
 
       <section aria-labelledby="bulgular">
         <h2 id="bulgular">Bulgular</h2>
@@ -341,6 +343,174 @@ function SliceSection({ id, title, hint, slices, emptyText }: SliceSectionProps)
           })}
         </ul>
       )}
+    </section>
+  );
+}
+
+/**
+ * F4'ün model yorumu — ve <b>Karar 1'in sayacının göründüğü yer</b> (T51).
+ *
+ * <p>
+ * <i>"Referanssız cümle rapora hiç girmiyor — ama atıldığı sayılıyor ve
+ * <b>gösteriliyor</b>."</i> İçerik burada yok; sayı burada var. Yalnızca atmak
+ * kaliteyi ölçülemez yapardı — <i>"ölçemedim"</i> ile <i>"sorun yok"</i>un aynı
+ * çıktıya inmesi, bu deponun dört kez adını koyduğu sınıf.
+ * </p>
+ *
+ * <h3>Üç hâl ve neden üçü de ayrı çiziliyor</h3>
+ *
+ * <p>
+ * Bu, F3'ün dört durumunun (<code>empty</code> / <code>never_fed</code> /
+ * <code>unavailable</code> / <code>not_registered</code>) F4 tarafındaki
+ * karşılığı ve <b>aynı sınıf</b>:
+ * </p>
+ *
+ * <ul>
+ *   <li><b>A</b> — <code>reasoning === null</code>: model <b>hiç koşmadı</b>.
+ *       Bölüm sessizce kaybolmuyor; yokluğu bir cümleyle söyleniyor.</li>
+ *   <li><b>B</b> — koştu, <b>hiç cümle üretmedi</b>. Oran ölçülemedi.</li>
+ *   <li><b>C</b> — koştu, <b>her cümlesi atıldı</b>. <b>En pahalısı:</b> boş bir
+ *       bulgu listesi "bulgu yok" diye okunursa, modelin uydurup elendiği
+ *       gerçeği kaybolur — ve F4'ün ölçmek istediği tam olarak o.</li>
+ * </ul>
+ *
+ * <p>
+ * B ile C'nin bulgu listesi <b>aynı</b> (ikisi de boş); ayrımı taşıyan şey liste
+ * değil <b>sayılar</b>. Bu yüzden boş liste metni sayıya bakarak seçiliyor.
+ * </p>
+ */
+function ReasoningSection({ reasoning }: { readonly reasoning: RcaReasoning | null }) {
+  // A · Model hiç koşmadı. Bölümü tümden gizlemek, "yorum yok" ile "yorum
+  // boş çıktı"yı ayırt edilemez yapardı — RCA §6'nın "kapalı sağlayıcılar
+  // görünüyor" kararının aynısı.
+  if (!reasoning) {
+    return (
+      <section aria-labelledby="model-yorumu" data-section="model-yorumu" data-reasoning="absent">
+        <h2 id="model-yorumu">Model yorumu</h2>
+        <p className={styles.quiet}>
+          Bu rapor için model hiç çalışmadı — aşağıdakiler yalnızca deterministik kanıt.
+          Bu <strong>&quot;model bir şey bulamadı&quot; değil</strong>.
+        </p>
+      </section>
+    );
+  }
+
+  const { findings, actions, sentence_gate_skipped: skipped, model } = reasoning;
+
+  // Üretilen tipler sayıları `number | string` veriyor (int64 taşması için);
+  // `honestyLines` da aynı sebeple `Number(...)` kullanıyor.
+  const produced = Number(reasoning.produced_sentence_count);
+  const dropped = Number(reasoning.dropped_sentence_count);
+  const fabricated = Number(reasoning.fabricated_citation_sentence_count);
+
+  // ORAN AYRI ELE ALINIYOR ve sırası önemli: `Number(null)` **0** döndürüyor,
+  // yani körlemesine dönüştürmek "ölçülemedi"yi sessizce "hiç cümle
+  // atılmadı" — yani MÜKEMMEL KALİTE — diye çizerdi. Sunucu tarafında `null`
+  // seçilmesinin bütün sebebi buydu; ekranda geri kazanmak, kararı boşa
+  // çıkarmak olurdu.
+  const rawRatio = reasoning.dropped_sentence_ratio;
+  const ratio = rawRatio === null || rawRatio === undefined ? null : Number(rawRatio);
+
+  return (
+    <section
+      aria-labelledby="model-yorumu"
+      data-section="model-yorumu"
+      data-reasoning={dropped > 0 && findings.length === 0 ? "all-dropped" : "present"}
+    >
+      <h2 id="model-yorumu">Model yorumu</h2>
+
+      {/* Sayaç EN ÜSTTE. Raporun sonunda duran bir kısıt okunmuyor, ve
+          okunmayan bir kısıt hiç yazılmamış gibi (RCA §6). */}
+      <p className={styles.honesty} data-counter="dropped-sentences">
+        {ratio === null ? (
+          <>
+            Model hiç cümle üretmedi — atılan cümle oranı{" "}
+            <strong>ölçülemedi</strong> (sıfır değil).
+          </>
+        ) : (
+          <>
+            Model <strong>{produced}</strong> cümle üretti,{" "}
+            <strong>{dropped}</strong> tanesi kanıta bağlanamadı ve çıkarıldı (
+            {(ratio * 100).toFixed(1)}%).
+          </>
+        )}
+        {fabricated > 0 ? (
+          <>
+            {" "}
+            Bunların <strong>{fabricated}</strong> tanesi var olmayan bir kanıta atıf yapıyordu.
+          </>
+        ) : null}
+      </p>
+
+      {skipped.length > 0 ? (
+        <ul className={styles.quiet} data-gate="skipped">
+          {skipped.map((gate) => (
+            <li key={gate.step_id}>
+              <code>{gate.step_id}</code> adımında cümle bağlama koşmadı ({gate.reason}): {gate.detail}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      <h3>Hipotezler</h3>
+      {findings.length === 0 ? (
+        // B ile C AYNI listeye sahip; ayrım burada, sayıda.
+        <p className={styles.quiet}>
+          {dropped > 0
+            ? `Model ${dropped} cümle üretti ve hiçbiri kanıta bağlanamadı — hepsi çıkarıldı. Bu "bulgu yok" DEĞİL.`
+            : "Model hiçbir hipotez üretmedi."}
+        </p>
+      ) : (
+        // SIRA ANLAMLI: liste modelin kendi sıralaması ve depolama boyunca
+        // korunuyor. T47'nin "doğru olan kaçıncı bulgu" ölçümü buna dayanıyor,
+        // o yüzden burada yeniden sıralama YOK.
+        <ol className={styles.findings} data-ordered="model">
+          {findings.map((finding, index) => (
+            <li key={`${index}-${finding.hypothesis}`} className={styles.finding}>
+              <p className={styles.summary}>{finding.hypothesis}</p>
+              <p className={styles.meta}>
+                Destekleyen: {finding.evidence_ids.join(", ") || "yok"}
+                {finding.contradicting_evidence_ids.length > 0 ? (
+                  <>
+                    {" · "}
+                    <span data-contradicting="true">
+                      Çelişen: {finding.contradicting_evidence_ids.join(", ")}
+                    </span>
+                  </>
+                ) : null}
+              </p>
+            </li>
+          ))}
+        </ol>
+      )}
+
+      <h3>Önerilen aksiyonlar</h3>
+      {actions.length === 0 ? (
+        <p className={styles.quiet}>Kanıta bağlanan aksiyon kalmadı.</p>
+      ) : (
+        <ul className={styles.findings}>
+          {actions.map((action, index) => (
+            <li key={`${index}-${action.text}`} className={styles.finding}>
+              <p className={styles.summary}>{action.text}</p>
+              <p className={styles.meta}>Kanıt: {action.evidence_ids.join(", ") || "yok"}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p className={styles.meta} data-model="info">
+        {model.provider} / {model.model}
+        {" · "}
+        {model.tokens_complete ? (
+          <>belirteç: {model.prompt_tokens ?? 0} giriş / {model.completion_tokens ?? 0} çıkış</>
+        ) : (
+          // Kısmi bir toplam bir ALT SINIR ve bunu söylemeyen bir sayı tam
+          // sanılır — sıfır yazmanın daha sinsi hâli.
+          <span data-tokens="incomplete">
+            belirteç eksik bildirildi ({model.unreported_attempts} deneme sayı vermedi); toplam bir alt sınır
+          </span>
+        )}
+      </p>
     </section>
   );
 }
