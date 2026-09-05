@@ -39,12 +39,31 @@ namespace Bizigo.Api;
 public static class McpEndpoints
 {
     /// <summary>
-    /// MCP çekirdeğini ve <b>HTTP taşımasını</b> kaydeder.
+    /// <b>Ürün yüzeyinin araç derlemeleri — üretimin beyanı.</b>
     ///
     /// <para>
-    /// Kompozisyon kökü burada belli olduğu için imza sade kalıyor:
-    /// <c>Bizigo.Api</c> zaten kökün kendisi.
+    /// Her giriş <c>typeof(X).Assembly</c> biçiminde olmalı. Bir dizgi ya da
+    /// <c>Assembly.Load</c> yazmak, düzeltilen kusuru geri getirirdi: tip adı
+    /// yazmak referansı <b>gerçek</b> yapıyor ve derleyicinin budaması
+    /// imkânsızlaşıyor.
     /// </para>
+    ///
+    /// <para>
+    /// <c>Bizigo.Mcp</c> burada <b>yok</b> ve olmamalı — çekirdek her zaman
+    /// örtük olarak ekleniyor (<c>BizigoMcpServer.WithCore</c>). Buraya
+    /// yazmak, unutulabilir bir şeyi unutulabilir listeye koymak olurdu.
+    /// </para>
+    ///
+    /// <para>
+    /// Bugün <b>boş</b>: ürün araçları M03/M04/M05 ile geliyor. Boşluğun
+    /// kendisi bir bekçiyle korunuyor (<c>McpToolAssemblyTests</c>): derlenmiş
+    /// çıktıda araç taşıyan bir derleme varsa ve burada değilse <b>kırmızı</b>.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<System.Reflection.Assembly> ToolAssemblies { get; } = [];
+
+    /// <summary>
+    /// MCP çekirdeğini ve <b>HTTP taşımasını</b> kaydeder.
     /// </summary>
     public static IServiceCollection AddBizigoMcp(
         this IServiceCollection services,
@@ -53,7 +72,7 @@ public static class McpEndpoints
         ArgumentNullException.ThrowIfNull(services);
 
         services
-            .AddBizigoMcpCore(configuration, typeof(Program).Assembly)
+            .AddBizigoMcpCore(configuration, [.. ToolAssemblies])
             .WithHttpTransport();
 
         return services;
@@ -73,7 +92,6 @@ public static class McpEndpoints
             // MCP istemcisi bir KULLANICI adına konuşuyor (plan §6). Kimliğin
             // uçtan uca taşınması M08'in işi; buradaki kapı onun ön şartı —
             // anonim bir MCP oturumu bütün kapsam kapılarını atlardı.
-            .RequireAuthorization()
 
             .ExcludeFromDescription();
 

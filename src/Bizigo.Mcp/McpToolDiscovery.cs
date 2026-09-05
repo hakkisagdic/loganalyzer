@@ -40,35 +40,28 @@ public static class McpToolDiscovery
             .OrderBy(static type => type.FullName, StringComparer.Ordinal)];
     }
 
-    /// <summary>
-    /// Kompozisyon kökünden geçişli olarak yüklenen <c>Bizigo.*</c> derlemeleri.
-    /// </summary>
-    public static IReadOnlyList<Assembly> ProductAssemblies(Assembly root)
-    {
-        ArgumentNullException.ThrowIfNull(root);
-
-        var found = new Dictionary<string, Assembly>(StringComparer.Ordinal);
-        var pending = new Queue<Assembly>([root]);
-
-        while (pending.TryDequeue(out var assembly))
-        {
-            if (!found.TryAdd(assembly.GetName().Name!, assembly))
-            {
-                continue;
-            }
-
-            foreach (var reference in assembly.GetReferencedAssemblies())
-            {
-                if (reference.Name?.StartsWith("Bizigo.", StringComparison.Ordinal) == true
-                    && !found.ContainsKey(reference.Name))
-                {
-                    pending.Enqueue(Assembly.Load(reference));
-                }
-            }
-        }
-
-        return [.. found.Values];
-    }
+    // KÖKTEN REFERANS İZLEME KALDIRILDI — ve sebebi ölçüldü.
+    //
+    // Buradaki `ProductAssemblies(Assembly root)`, kompozisyon kökünden
+    // `GetReferencedAssemblies()` ile geçişli kapanışı çıkarıyordu. Sessizce
+    // eksik çalışıyordu: **derleyici, kodunda hiçbir tipine dokunulmayan bir
+    // `ProjectReference`'ı meta veriden BUDUYOR.** Araç taşıyan bir derleme,
+    // tam da araç sınıflarından başka bir şey içermediği için, kökün referans
+    // listesinde HİÇ görünmüyordu.
+    //
+    // Kusurun şekli, kapatmaya çalıştığı deliğin aynısı: M04 beş araç yazdı,
+    // referansları ekledi, çözüm 0 uyarıyla derlendi, uyum kapısı YEŞİL kaldı
+    // — ve sunucu hâlâ tek araç ilan ediyordu (`strings bizigo.dll |
+    // grep -c Bizigo.Mcp.Product` → 0). M03 aynı mekanizmayı kendi kolunda
+    // bağımsız olarak ölçtü: `bizigo.dll`'de `Bizigo.Query` referansı
+    // `.csproj`'da var, ikilide yok.
+    //
+    // Yerine geçen şey daha az zarif ama ölçülebilir: araç derlemeleri
+    // ÇAĞIRAN tarafından, tip adıyla veriliyor. `typeof(X).Assembly` yazmak
+    // referansı GERÇEK yapıyor, yani budama sorunu tanım gereği doğmuyor.
+    // Geriye kalan tek risk "çağıran unuttu" ve onu bir bekçi tutuyor
+    // (`McpToolAssemblyTests`): derlenmiş çıktıda araç taşıyan her derleme,
+    // üretimin beyan ettiği listede olmak zorunda.
 
     /// <summary>
     /// Keşfedilen türleri örnekleyip <paramref name="surface"/>'e ait olanları

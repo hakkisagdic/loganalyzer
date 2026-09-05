@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Bizigo.Api;
 using Bizigo.Mcp;
 using Microsoft.ML.Tokenizers;
 using ModelContextProtocol;
@@ -66,7 +67,7 @@ public sealed class McpSchemaBudgetTests
     public async Task Arac_semalarinin_baglam_maliyeti(McpSurface surface)
     {
         await using var services = McpTestServices.Empty();
-        var options = BizigoMcpServer.CreateOptions(surface, typeof(global::Program).Assembly, services);
+        var options = BizigoMcpServer.CreateOptions(surface, McpEndpoints.ToolAssemblies, services);
 
         await using var session = await McpTestSession.StartAsync(options, services, cancellationToken: Ct);
 

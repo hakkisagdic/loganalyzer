@@ -1,4 +1,8 @@
 using System.Text.Json;
+
+// Üretimin araç derlemesi beyanı (`McpEndpoints.ToolAssemblies`) burada:
+// kapı, üretimin ilan ettiği kümeye bakmak zorunda.
+using Bizigo.Api;
 using Bizigo.Mcp;
 using Bizigo.Mcp.Tools;
 using Json.Schema;
@@ -52,7 +56,7 @@ public sealed class McpComplianceTests
     }
 
     private static McpServerOptions ProductionOptions(McpSurface surface, IServiceProvider services) =>
-        BizigoMcpServer.CreateOptions(surface, typeof(global::Program).Assembly, services);
+        BizigoMcpServer.CreateOptions(surface, McpEndpoints.ToolAssemblies, services);
 
     /// <summary>Testin kendi iptali; xUnit koşumu kesildiğinde çağrılar da kesiliyor.</summary>
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
@@ -136,6 +140,31 @@ public sealed class McpComplianceTests
     /// <para>
     /// M03/M04/M05 araç eklerken bu satır büyüyecek — ve büyümesi <b>görünür</b>
     /// bir hareket olacak.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>"T48 elle listeyi kaldırdı, bu neden duruyor?"</b> — soru haklı ve
+    /// cevabı ikisinin <b>hangi tarafta</b> durduğu. T48'in kaldırdığı liste
+    /// <c>Produces&lt;T&gt;</c> kapısının <b>denetlediği</b> kümeydi: listede
+    /// olmayan uç kapıya hiç görünmüyordu, yani elle tutulan taraf kapıyı
+    /// <b>kör</b> ediyordu. Burada denetlenen küme zaten türetiliyor —
+    /// sunucunun <c>tools/list</c> yanıtından, canlı bir oturum üzerinden. Elle
+    /// olan taraf <b>beklenti</b>.
+    /// </para>
+    ///
+    /// <para>
+    /// Ve beklenti tarafı <b>türetilemez</b>: "sunucunun ilan ettiği" kümeyi
+    /// "kodda var olan"dan türetmek, sunucunun kullandığı yansımanın
+    /// <b>aynısını</b> ikinci kez koşturmak olurdu — test kendini kendisiyle
+    /// karşılaştırır ve <b>hiçbir zaman kırmızı yanamaz</b>. Bir tarafın insan
+    /// eliyle yazılması, bu testin bir şey söyleyebilmesinin tek şartı.
+    /// </para>
+    ///
+    /// <para>
+    /// Aynı kalıp <c>ArchitectureTests.Kapsam_bekcisi_butun_kayit_uzantilarini_kendisi_buluyor</c>
+    /// içinde de duruyor ve T48 onu da kaldırmadı — ölçüt <i>"elle liste var
+    /// mı"</i> değil, <b>"elle liste kapının gözü mü, yoksa kapının beyanı
+    /// mı"</b>. Gözse kaldırılır; beyansa kalır.
     /// </para>
     /// </summary>
     [Theory]
@@ -529,7 +558,7 @@ public sealed class McpComplianceTests
     {
         await using var services = McpTestServices.Empty();
 
-        var tools = BizigoMcpServer.Tools(surface, typeof(global::Program).Assembly, services);
+        var tools = BizigoMcpServer.Tools(surface, McpEndpoints.ToolAssemblies, services);
 
         Assert.NotEmpty(tools);
 

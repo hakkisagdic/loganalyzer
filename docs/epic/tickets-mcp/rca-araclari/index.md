@@ -96,10 +96,46 @@ tetiklemeyi **yanlışlıkla bastırır**. İkisi de sessiz.
 **Açık soru:** oturum kimliği mi, araç çağrısının protokol düzeyindeki
 kimliği mi? M01'in taşıma oturumuna bağlı.
 
-### 6.2 · T46'nın üç yönlü ayrımı
+### 6.2 · T46'nın ayrımı — **ölçüldü, ve "üç yönlü" eksik bir tarif**
 
-**Aramadım, doğrulamadım.** Plana güvenerek yazdım. M05'in ilk adımı bunu
-kodda görmek olmalı; ayrım bugünkü koddan farklıysa bu belge güncellenmeli.
+Belgenin ilk hâli *"aramadım, doğrulamadım"* diyordu. M05 koda baktı; ayrım
+plandakinden **hem daha zengin hem başka bir şekilde** duruyor.
+
+**Ölçülen (`src/Bizigo.ControlPlane/RcaTriggerEntities.cs`):**
+
+| Enum | Değerler |
+| --- | --- |
+| `RcaRunState` | `Rejected` · `Queued` · `Running` · `Complete` · `Empty` · `Truncated` · `Cancelled` · `Failed` — **sekiz** |
+| `RcaRejectionReason` | `None` · `Debounced` · `DepthExceeded` · `AncestorRepeat` · `QuotaExceeded` — **beş** |
+
+**Planın cümlesindeki asıl yanlış bir sayı değil, bir yer:** `QuotaExceeded`
+bir **koşum durumu değil**. `Rejected` bir koşumun **ret sebebi**. Yani
+*"`Empty` ≠ `QuotaExceeded` ≠ `Cancelled`"* tek bir kapalı kümenin üç değeri
+gibi okunuyor ama **iki ayrı enumun** üzerine yayılmış. Sonucu doğrudan M05'i
+bağlıyor: `rca.runs` yalnızca durumu döndürürse *"kota doldu"* düz bir
+`rejected` olur ve debounce / derinlik / döngü ile **ayırt edilemez** hâle
+gelir — planın önlemek istediği şeyin ta kendisi.
+
+**Teldeki cevap üç değil dört yönlü.** `RcaRunListResponse`'un kendi belgesi
+şöyle yazıyor:
+
+| Cevap | Anlamı |
+| --- | --- |
+| `rejected` satırı | Kapı reddetti — **bakılmadı** (sebep `reason`'da) |
+| `empty` satırı | Bakıldı, **bulunamadı** |
+| `cancelled` satırı | Başladı, bir sınırda **kesildi** |
+| **boş liste** | **Hiç tetiklenmedi** |
+
+Dördüncüsü ancak reddin bir satır olarak kalmasıyla doğru kalıyor.
+
+**Ve bağımsız bir ikinci eksen var:** `counts_against_quota`. `Cancelled`
+kotadan **düşülüyor**, `Rejected` düşülmüyor. Durumu kota anlamıyla
+karıştırmak *"iptal edildi, o hâlde bedava"* çıkarımını doğurur.
+
+**M05'in bundan çıkardığı karar:** araç ikinci bir gösterim üretmiyor. Var olan
+`RcaRunResponse` ve `RcaRunLifecycle.Describe(state, rejection)` — yani cümlenin
+tek sahibi — MCP yüzeyinde de kullanılıyor. Aynı şeyin iki gösterimi bu depoda
+sessizce ayrışıyor (T53'ün ölçtüğü sınıf).
 
 ### 6.3 · `GET /v1/rca/quality`
 
