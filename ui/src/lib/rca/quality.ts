@@ -36,6 +36,24 @@ export interface QualityDisplay {
   readonly unknown: number;
   readonly accuracy: RatioDisplay;
   readonly unknownRatio: RatioDisplay;
+  /**
+   * Çelişen kanıt boyutunda değerlendirilmiş inceleme sayısı — <c>Sound</c> +
+   * <c>Trivial</c>. Oranın paydası bu, toplam inceleme <b>değil</b>.
+   */
+  readonly contradictingEvaluated: number;
+  /**
+   * "Çelişen kanıt tiyatrosu" oranı (RCA risk #5): değerlendirilmiş
+   * bölümlerin kaçta kaçı önemsizdi.
+   *
+   * <p>
+   * Burada <c>null</c> ile <c>0</c> ayrımı <c>accuracy</c>'dekinden daha
+   * keskin, çünkü <b>iyi olan uç sıfır</b>: "%0 tiyatro" en iyi sonuç,
+   * "değerlendirilmedi" ise hiçbir sonuç. İkisi aynı görünürse ölçülmemiş bir
+   * boyut mükemmel diye okunur — ve göstergenin var olma sebebi tam olarak
+   * bunu engellemek.
+   * </p>
+   */
+  readonly contradictingTrivialRatio: RatioDisplay;
 }
 
 /**
@@ -78,5 +96,10 @@ export function presentQuality(quality: GoldenSetQuality): QualityDisplay {
     unknown: count(quality.unknown),
     accuracy: ratio(quality.accuracy, "henüz karar verilmedi"),
     unknownRatio: ratio(quality.unknown_ratio, "inceleme yok"),
+    contradictingEvaluated: count(quality.contradicting_evaluated),
+    contradictingTrivialRatio: ratio(
+      quality.contradicting_trivial_ratio,
+      "çelişen kanıt değerlendirilmedi",
+    ),
   };
 }

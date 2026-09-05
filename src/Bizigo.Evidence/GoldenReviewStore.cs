@@ -10,7 +10,24 @@ public sealed class ReviewRejectedException(string reason) : InvalidOperationExc
 /// <param name="Total">Kapsam altındaki inceleme sayısı.</param>
 /// <param name="Correct">Doğru bulunan rapor sayısı.</param>
 /// <param name="Unknown">"Bilmiyorum" sayısı — orana <b>girmiyor</b>.</param>
-public sealed record GoldenSetQuality(long Total, long Correct, long Unknown)
+/// <param name="ContradictingSound">
+/// Çelişen kanıt bölümü vardı ve <b>yerindeydi</b>.
+/// </param>
+/// <param name="ContradictingTrivial">
+/// Çelişen kanıt bölümü vardı ama <b>önemsizdi</b> — alanı doldurmak için
+/// üretilmiş. RCA risk #5'in ("çelişen kanıt tiyatrosu") sayacı.
+/// </param>
+/// <param name="ContradictingUnknown">
+/// Değerlendirilemedi. <see cref="Unknown"/> gibi paydaya <b>girmiyor</b> ve
+/// kendisi bir gösterge.
+/// </param>
+public sealed record GoldenSetQuality(
+    long Total,
+    long Correct,
+    long Unknown,
+    long ContradictingSound = 0,
+    long ContradictingTrivial = 0,
+    long ContradictingUnknown = 0)
 {
     /// <summary>
     /// Karar verilmiş incelemeler: <c>Total - Unknown</c>. Doğruluk oranının
@@ -34,6 +51,34 @@ public sealed record GoldenSetQuality(long Total, long Correct, long Unknown)
     /// paketi yetersiz ya soru yanlış soruluyor.
     /// </summary>
     public double? UnknownRatio => Total > 0 ? (double)Unknown / Total : null;
+
+    /// <summary>
+    /// Çelişen kanıt boyutunda <b>gerçekten değerlendirilmiş</b> inceleme sayısı:
+    /// <see cref="ContradictingSound"/> + <see cref="ContradictingTrivial"/>.
+    ///
+    /// <para>
+    /// <c>NotPresent</c> ve <c>Unknown</c> dışarıda ve bu paydanın tamamı bu
+    /// yüzden var. <c>NotPresent</c> "bölüm yoktu" demek — değerlendirilecek bir
+    /// şey olmadığı için tiyatro da olamaz; onu paydaya koymak, çelişen kanıt
+    /// bölümü hiç üretmeyen bir modeli <b>dürüst</b> gösterirdi.
+    /// </para>
+    /// </summary>
+    public long ContradictingEvaluated => ContradictingSound + ContradictingTrivial;
+
+    /// <summary>
+    /// Değerlendirilmiş çelişen kanıt bölümlerinin kaçta kaçı önemsizdi —
+    /// <b>RCA risk #5'in ölçüsü</b>.
+    ///
+    /// <para>
+    /// Payda sıfırsa <see langword="null"/>, sıfır <b>değil</b>. Ayrım burada
+    /// <see cref="Accuracy"/>'dekinden daha keskin: "%0 tiyatro" en iyi sonuç,
+    /// "hiç değerlendirilmemiş" ise <b>hiçbir sonuç</b>. İkisi tek sayıya
+    /// inerse ekran, ölçülmemiş bir boyutu mükemmel diye gösterir — ve bu,
+    /// göstergenin engellemek için var olduğu hatanın kendisi olurdu.
+    /// </para>
+    /// </summary>
+    public double? ContradictingTrivialRatio =>
+        ContradictingEvaluated > 0 ? (double)ContradictingTrivial / ContradictingEvaluated : null;
 }
 
 /// <param name="BundleId">Zorunlu — paketsiz inceleme F4'te ölçülemez.</param>
@@ -157,7 +202,20 @@ public sealed class GoldenReviewStore(
         var correct = await query.LongCountAsync(r => r.Verdict == ReviewVerdict.Correct, cancellationToken);
         var unknown = await query.LongCountAsync(r => r.Verdict == ReviewVerdict.Unknown, cancellationToken);
 
-        return new GoldenSetQuality(total, correct, unknown);
+        // Çelişen kanıt boyutu ayrı sayılıyor: bir rapor bütün olarak doğru
+        // olup çelişen kanıt alanını uydurmuş olabilir (RCA risk #5). Tek bir
+        // "doğru muydu?" sorusu bu boyutu ölçemiyor, o yüzden T38 alanı ayrı
+        // açtı ve burada ayrı toplanıyor.
+        var contradictingSound = await query.LongCountAsync(
+            r => r.ContradictingEvidence == ContradictingEvidenceVerdict.Sound, cancellationToken);
+        var contradictingTrivial = await query.LongCountAsync(
+            r => r.ContradictingEvidence == ContradictingEvidenceVerdict.Trivial, cancellationToken);
+        var contradictingUnknown = await query.LongCountAsync(
+            r => r.ContradictingEvidence == ContradictingEvidenceVerdict.Unknown, cancellationToken);
+
+        return new GoldenSetQuality(
+            total, correct, unknown,
+            contradictingSound, contradictingTrivial, contradictingUnknown);
     }
 
     /// <summary>Bir paketin kapsam altındaki incelemeleri, en yeniden eskiye.</summary>

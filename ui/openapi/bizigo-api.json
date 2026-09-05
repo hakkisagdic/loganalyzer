@@ -3860,7 +3860,12 @@
           "correct",
           "unknown",
           "accuracy",
-          "unknown_ratio"
+          "unknown_ratio",
+          "contradicting_sound",
+          "contradicting_trivial",
+          "contradicting_unknown",
+          "contradicting_evaluated",
+          "contradicting_trivial_ratio"
         ],
         "type": "object",
         "properties": {
@@ -3906,6 +3911,47 @@
             "format": "double"
           },
           "unknown_ratio": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "contradicting_sound": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "contradicting_trivial": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "contradicting_unknown": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "contradicting_evaluated": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "contradicting_trivial_ratio": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "null",

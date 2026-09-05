@@ -48,13 +48,33 @@ public sealed record CloseTriggerResponse(
 /// "Bilmiyorum" oranı — kendisi bir gösterge. Yüksekse ya kanıt paketi yetersiz
 /// ya soru yanlış soruluyor.
 /// </param>
+/// <param name="ContradictingEvaluated">
+/// Çelişen kanıt boyutunda gerçekten değerlendirilmiş inceleme sayısı
+/// (<c>Sound</c> + <c>Trivial</c>). <c>NotPresent</c> ve <c>Unknown</c> dışarıda.
+/// </param>
+/// <param name="ContradictingTrivialRatio">
+/// Değerlendirilmiş çelişen kanıt bölümlerinin kaçta kaçı <b>önemsizdi</b> —
+/// "çelişen kanıt tiyatrosu" (RCA risk #5) ölçüsü.
+///
+/// <para>
+/// <b><see langword="null"/> olabilir ve sıfırdan farklıdır.</b> Ayrım burada
+/// <see cref="Accuracy"/>'dekinden daha keskin: sıfır <i>en iyi</i> sonuç,
+/// <see langword="null"/> ise <i>hiçbir</i> sonuç. Ekran ikisini aynı
+/// gösterirse ölçülmemiş bir boyut mükemmel diye okunur.
+/// </para>
+/// </param>
 public sealed record GoldenSetQualityResponse(
     [property: JsonPropertyName("total")] long Total,
     [property: JsonPropertyName("decided")] long Decided,
     [property: JsonPropertyName("correct")] long Correct,
     [property: JsonPropertyName("unknown")] long Unknown,
     [property: JsonPropertyName("accuracy")] double? Accuracy,
-    [property: JsonPropertyName("unknown_ratio")] double? UnknownRatio);
+    [property: JsonPropertyName("unknown_ratio")] double? UnknownRatio,
+    [property: JsonPropertyName("contradicting_sound")] long ContradictingSound,
+    [property: JsonPropertyName("contradicting_trivial")] long ContradictingTrivial,
+    [property: JsonPropertyName("contradicting_unknown")] long ContradictingUnknown,
+    [property: JsonPropertyName("contradicting_evaluated")] long ContradictingEvaluated,
+    [property: JsonPropertyName("contradicting_trivial_ratio")] double? ContradictingTrivialRatio);
 
 /// <summary>
 /// Alarm kapatma ve altın küme göstergesi (T38).
@@ -165,7 +185,12 @@ public static class AlertClosureEndpoints
             quality.Correct,
             quality.Unknown,
             quality.Accuracy,
-            quality.UnknownRatio));
+            quality.UnknownRatio,
+            quality.ContradictingSound,
+            quality.ContradictingTrivial,
+            quality.ContradictingUnknown,
+            quality.ContradictingEvaluated,
+            quality.ContradictingTrivialRatio));
     }
 }
 

@@ -79,11 +79,37 @@ export function QualityBadge({ quality, error }: QualityBadgeProps) {
             )}
           </dd>
         </div>
+        <div>
+          <dt>Çelişen kanıt değerlendirildi</dt>
+          {/* Tiyatro oranının paydası bu — toplam inceleme DEĞİL. */}
+          <dd data-field="contradicting_evaluated">{display.contradictingEvaluated}</dd>
+        </div>
+
+        <div>
+          <dt>Çelişen kanıt tiyatrosu</dt>
+          <dd
+            data-field="contradicting_trivial_ratio"
+            data-kind={display.contradictingTrivialRatio.kind}
+          >
+            {display.contradictingTrivialRatio.kind === "ratio" ? (
+              display.contradictingTrivialRatio.percent
+            ) : (
+              <span className={styles.quiet}>{display.contradictingTrivialRatio.label}</span>
+            )}
+          </dd>
+        </div>
       </dl>
 
       <p className={styles.quiet}>
         &quot;Bilmiyorum&quot; oranı kendisi bir gösterge: yüksekse ya kanıt paketi
         yetersiz ya soru yanlış soruluyor.
+      </p>
+
+      <p className={styles.quiet}>
+        Tiyatro oranının paydası <b>değerlendirilmiş</b> çelişen kanıt bölümleri;
+        bölümü hiç olmayan rapor paydaya girmiyor. Aksi hâlde çelişen kanıt
+        üretmeyen bir model dürüst görünürdü. Oran yoksa <b>%0 yazmıyor</b>:
+        sıfır en iyi sonuç, değerlendirilmemiş olmak ise hiçbir sonuç.
       </p>
     </aside>
   );

@@ -1251,6 +1251,16 @@ export interface components {
             accuracy: null | number | string;
             /** Format: double */
             unknown_ratio: null | number | string;
+            /** Format: int64 */
+            contradicting_sound: number | string;
+            /** Format: int64 */
+            contradicting_trivial: number | string;
+            /** Format: int64 */
+            contradicting_unknown: number | string;
+            /** Format: int64 */
+            contradicting_evaluated: number | string;
+            /** Format: double */
+            contradicting_trivial_ratio: null | number | string;
         };
         JsonElement: unknown;
         MaintenanceWindowListResponse: {

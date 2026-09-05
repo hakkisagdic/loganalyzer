@@ -296,5 +296,153 @@ public sealed class GoldenReviewTests : IDisposable
         Assert.Equal(ContradictingEvidenceVerdict.Trivial, written.ContradictingEvidence);
     }
 
+    // ---------------------------------------------------------------------
+    // Çelişen kanıt tiyatrosu (T47) — RCA risk #5'in ölçüsü
+    // ---------------------------------------------------------------------
+
+    private async Task WriteContradictingAsync(
+        Guid bundleId,
+        ContradictingEvidenceVerdict contradicting,
+        string group = "network-core")
+    {
+        await Store().AddAsync(
+            new ReviewInput(bundleId, null, ReviewVerdict.Correct, contradicting, string.Empty),
+            Scope(group),
+            TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// <b>Tiyatro oranının paydası "değerlendirilmiş" bölümler, toplam inceleme
+    /// değil.</b>
+    ///
+    /// <para>
+    /// Payda toplam olsaydı, çelişen kanıt bölümü <i>hiç üretmeyen</i> bir model
+    /// en iyi skoru alırdı: bütün kayıtlar <c>NotPresent</c>, tiyatro oranı
+    /// sıfır. Ölçünün amacı tam tersi — alanı doldurmak için önemsiz bir şey
+    /// uyduran modeli yakalamak.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Bolumu_olmayan_rapor_tiyatro_paydasina_girmiyor()
+    {
+        var bundle = await SeedBundleAsync();
+
+        await WriteContradictingAsync(bundle, ContradictingEvidenceVerdict.NotPresent);
+        await WriteContradictingAsync(bundle, ContradictingEvidenceVerdict.NotPresent);
+        await WriteContradictingAsync(bundle, ContradictingEvidenceVerdict.Sound);
+        await WriteContradictingAsync(bundle, ContradictingEvidenceVerdict.Trivial);
+
+        var quality = await Store().QualityAsync(Scope("network-core"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(4, quality.Total);
+        Assert.Equal(2, quality.ContradictingEvaluated);
+        Assert.Equal(0.5, quality.ContradictingTrivialRatio);
+    }
+
+    /// <summary>
+    /// <b>Değerlendirilemeyen de paydaya girmiyor</b> — <c>Unknown</c>'ın
+    /// doğruluk oranındaki davranışıyla aynı, ve aynı sebeple.
+    /// </summary>
+    [Fact]
+    public async Task Degerlendirilemeyen_celisen_kanit_paydaya_girmiyor()
+    {
+        var bundle = await SeedBundleAsync();
+
+        await WriteContradictingAsync(bundle, ContradictingEvidenceVerdict.Unknown);
+        await WriteContradictingAsync(bundle, ContradictingEvidenceVerdict.Trivial);
+
+        var quality = await Store().QualityAsync(Scope("network-core"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, quality.ContradictingUnknown);
+        Assert.Equal(1, quality.ContradictingEvaluated);
+        Assert.Equal(1.0, quality.ContradictingTrivialRatio);
+    }
+
+    /// <summary>
+    /// <b>Hiç değerlendirilmemişse oran <c>null</c>, sıfır değil.</b>
+    ///
+    /// <para>
+    /// Bu ayrım burada <see cref="GoldenSetQuality.Accuracy"/>'dekinden daha
+    /// keskin, çünkü <b>iyi olan uç sıfır</b>: "%0 tiyatro" en iyi sonuç,
+    /// "değerlendirilmedi" ise hiçbir sonuç. İkisi tek sayıya inerse ekran,
+    /// <b>ölçülmemiş bir boyutu mükemmel diye gösterir</b> — koordinatörün
+    /// işaret ettiği tuzağın tam olarak bu ölçüdeki hâli.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Hic_degerlendirilmemisse_tiyatro_orani_yok_sifir_degil()
+    {
+        var bundle = await SeedBundleAsync();
+
+        await WriteContradictingAsync(bundle, ContradictingEvidenceVerdict.NotPresent);
+        await WriteContradictingAsync(bundle, ContradictingEvidenceVerdict.Unknown);
+
+        var quality = await Store().QualityAsync(Scope("network-core"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, quality.Total);
+        Assert.Equal(0, quality.ContradictingEvaluated);
+        Assert.Null(quality.ContradictingTrivialRatio);
+    }
+
+    /// <summary>
+    /// <b>Gerçek bir sıfır gizlenmiyor.</b> Yukarıdakinin ters yönü: hepsi
+    /// <c>Sound</c> ise oran <c>0</c> ve bu <b>ölçülmüş</b> bir sonuç.
+    /// </summary>
+    [Fact]
+    public async Task Hepsi_yerindeyse_oran_sifir_ve_null_degil()
+    {
+        var bundle = await SeedBundleAsync();
+
+        await WriteContradictingAsync(bundle, ContradictingEvidenceVerdict.Sound);
+        await WriteContradictingAsync(bundle, ContradictingEvidenceVerdict.Sound);
+
+        var quality = await Store().QualityAsync(Scope("network-core"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, quality.ContradictingEvaluated);
+        Assert.Equal(0.0, quality.ContradictingTrivialRatio);
+    }
+
+    /// <summary>
+    /// Çelişen kanıt sayıları da <b>kapsam filtresinden</b> geçiyor.
+    ///
+    /// <para>
+    /// Doğruluk oranı için ayrı bir test var; bu boyut sonradan eklendiği için
+    /// aynı kapıdan geçtiği <b>ayrıca</b> ölçülüyor. Yeni bir toplama, var olan
+    /// kapsam filtresinin dışına düşerse sızıntı hiçbir yerde hata vermez —
+    /// yalnızca başka grubun sayısı bizim göstergemize karışır.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Dış grupta her iki cinsten de satır var ve bu şart.</b> İlk yazımda
+    /// dışarıya yalnızca <c>Sound</c> konmuştu; <c>Trivial</c> sayımının kapsam
+    /// filtresi kaldırıldığında test <b>yeşil kaldı</b> — çünkü kapsam dışında
+    /// sayılabilecek tek bir <c>Trivial</c> satır yoktu. Bekçi doğru şeyi
+    /// iddia ediyor ama <b>yanlış sebeple</b> geçiyordu, ve bunu ancak §6'nın
+    /// mutasyon adımı gösterdi. Her sayaç için dışarıda en az bir satır
+    /// olmalı, yoksa o sayacın sızıntısı ölçülemez.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Baska_grubun_celisen_kaniti_gostergeye_girmiyor()
+    {
+        var bundle = await SeedBundleAsync();
+
+        await WriteContradictingAsync(bundle, ContradictingEvidenceVerdict.Trivial, "network-core");
+
+        // Dışarıda ÜÇ sayacın da karşılığı var: biri sızarsa sayı oynar.
+        await WriteContradictingAsync(bundle, ContradictingEvidenceVerdict.Trivial, "app-team");
+        await WriteContradictingAsync(bundle, ContradictingEvidenceVerdict.Sound, "app-team");
+        await WriteContradictingAsync(bundle, ContradictingEvidenceVerdict.Unknown, "app-team");
+
+        var core = await Store().QualityAsync(Scope("network-core"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, core.Total);
+        Assert.Equal(1, core.ContradictingTrivial);
+        Assert.Equal(0, core.ContradictingSound);
+        Assert.Equal(0, core.ContradictingUnknown);
+        Assert.Equal(1, core.ContradictingEvaluated);
+        Assert.Equal(1.0, core.ContradictingTrivialRatio);
+    }
+
     public void Dispose() => _factory.Dispose();
 }
