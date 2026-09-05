@@ -37,8 +37,21 @@ public sealed class SshSimulatorCliTests
     /// depoda kanıt sayılmıyor (§2) ve sessizce atlayan bir bekçi, bekçinin
     /// kendisinden tehlikeli (§7).
     /// </para>
+    ///
+    /// <para>
+    /// <b>stderr AYRI döndürülüyor</b> ve bu bir düzeltme (S09).
+    ///
+    /// <para>
+    /// İlk hâli yalnızca stdout okuyup stderr'i atıyordu. Ölçülen sonucu:
+    /// S08'de durum makinesini çıkarırken vendor hata metninin <c>&gt;&amp;2</c>
+    /// yönlendirmesi düştü, metin stdout'a kaydı, ve <b>hiçbir bekçi görmedi</b>
+    /// — çünkü hepsi iki akışı da aynı yerden okuyormuş gibi davranıyordu.
+    /// Ürün tarafında <c>DeviceCommandResult.Error</c> stderr'den besleniyor,
+    /// yani ayrım <b>ölçülen bir şey</b> ve bekçinin körlüğü onu görünmez
+    /// kılmıştı.
+    /// </para>
     /// </summary>
-    private static (string Output, int ExitCode) Bash(
+    private static (string Output, string Error, int ExitCode) Bash(
         string body,
         string? stdin = null,
         params (string Name, string Value)[] environment)
@@ -70,10 +83,15 @@ public sealed class SshSimulatorCliTests
 
         process.StandardInput.Close();
 
+        // stdout ÖNCE tamamen okunuyor, sonra stderr: ikisini sırayla okumak
+        // boru dolduğunda kilitlenebilir, o yüzden stderr bir göreve alınıyor.
+        var errorTask = process.StandardError.ReadToEndAsync();
         var output = process.StandardOutput.ReadToEnd();
+        var error = errorTask.GetAwaiter().GetResult();
+
         process.WaitForExit(milliseconds: 30_000);
 
-        return (output, process.ExitCode);
+        return (output, error, process.ExitCode);
     }
 
     // ------------------------------------------------- ayarların taşınması
@@ -161,7 +179,7 @@ public sealed class SshSimulatorCliTests
             // kalırdı. Öykünmenin exec yolu da satır satır işliyor.
             foreach (var line in collector.Commands.SelectMany(Lines))
             {
-                var (kind, _) = Bash("cli_komut_turu \"$KOMUT\"", environment: ("KOMUT", line));
+                var (kind, _, _) = Bash("cli_komut_turu \"$KOMUT\"", environment: ("KOMUT", line));
 
                 Assert.False(
                     kind.Trim() is "bilinmeyen" or "",
@@ -169,6 +187,50 @@ public sealed class SshSimulatorCliTests
                     $"(sonuç: '{kind.Trim()}'). deploy/ssh-sim/vendor-cli.sh · cli_komut_turu");
             }
         }
+    }
+
+    /// <summary>
+    /// <b>Vendor hata metni STDERR'e gidiyor, stdout'a değil</b> (S09).
+    ///
+    /// <para>
+    /// <b>Ölçülmüş bir kusurun bekçisi ve kusuru ben yaptım.</b> S08'de durum
+    /// makinesini ortak bir fonksiyona çıkarırken <c>cli_hata … &gt;&amp;2</c>
+    /// yönlendirmesi düştü. <see cref="SshDeviceTransport"/>
+    /// <c>DeviceCommandResult.Error</c>'ı <b>stderr'den</b> besliyor, yani metin
+    /// stdout'a kayınca <c>Error</c> boş kaldı, taşıma kendi sentetik cümlesine
+    /// düştü (<i>"'…' komutu 127 koduyla döndü"</i>) ve S06'nın ikinci kabul
+    /// kriteri — vendor'ın kendi metninin ürüne ulaşması — <b>sessizce
+    /// geçersiz oldu</b>. CI'da yakalandı, burada değil.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Neden hiçbir bekçi görmedi:</b> yardımcı yalnızca stdout okuyup
+    /// stderr'i atıyordu, yani iki akış onun için tek bir akıştı. Metnin
+    /// varlığını sınayan testler geçmeye devam etti — sınadıkları şey ürünün
+    /// okuduğu şey değildi. Kapı vardı, <b>yanlış yere bakıyordu</b>.
+    /// </para>
+    ///
+    /// <para>
+    /// İddia bu yüzden <b>çift taraflı</b>: metin stderr'de VAR ve stdout'ta
+    /// YOK. Yalnızca ilkini iddia etmek aynı körlüğü yeniden üretirdi.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData("fortinet", "command parse error")]
+    [InlineData("cisco", "% Invalid input detected")]
+    [InlineData("mikrotik", "bad command name")]
+    public void Vendor_hata_metni_stderre_gidiyor_stdouta_degil(string vendor, string expected)
+    {
+        var (output, error, exit) = Session(vendor, "/dev/null", ["taninmayan komut"]);
+
+        Assert.Contains(expected, error, StringComparison.Ordinal);
+
+        // STDOUT TEMİZ. Bu satır olmadan bekçi, metnin İKİ akışa birden
+        // yazıldığı hâli de geçirirdi.
+        Assert.DoesNotContain(expected, output, StringComparison.Ordinal);
+
+        // Ret çıkış koduna da yansıyor: taşıma önce koda bakıyor.
+        Assert.NotEqual(0, exit);
     }
 
     /// <summary>
@@ -216,7 +278,7 @@ public sealed class SshSimulatorCliTests
                         continue;
                     }
 
-                    var (output, exit) = Session(vendor, config, lines);
+                    var (output, _, exit) = Session(vendor, config, lines);
 
                     Assert.Equal(0, exit);
 
@@ -281,7 +343,7 @@ public sealed class SshSimulatorCliTests
 
             Assert.NotEmpty(only);
 
-            var (output, exit) = Session("fortinet", config, only);
+            var (output, _, exit) = Session("fortinet", config, only);
 
             // Çıkış kodu SIFIR: sessizliğin kaynağı burası.
             Assert.Equal(0, exit);
@@ -318,7 +380,7 @@ public sealed class SshSimulatorCliTests
     [InlineData("ls -la /", "bilinmeyen")]
     public void Komut_siniflandirmasi(string command, string expected)
     {
-        var (kind, _) = Bash("cli_komut_turu \"$KOMUT\"", environment: ("KOMUT", command));
+        var (kind, _, _) = Bash("cli_komut_turu \"$KOMUT\"", environment: ("KOMUT", command));
 
         Assert.Equal(expected, kind.Trim());
     }
@@ -337,7 +399,7 @@ public sealed class SshSimulatorCliTests
 
         try
         {
-            var (output, exit) = Bash(
+            var (output, _, exit) = Bash(
                 $"cli_bas \"{config}\" kapali",
                 environment: ("SIM_PAGE_LINES", "10"));
 
@@ -374,7 +436,7 @@ public sealed class SshSimulatorCliTests
 
         try
         {
-            var (output, exit) = Bash(
+            var (output, _, exit) = Bash(
                 $"cli_bas \"{config}\" acik",
                 stdin: string.Empty,
                 environment: [("SIM_PAGE_LINES", "10"), ("SIM_MORE_TIMEOUT", "1")]);
@@ -404,7 +466,7 @@ public sealed class SshSimulatorCliTests
     [InlineData("mikrotik", "bad command name")]
     public void Vendor_kendi_hata_metnini_basiyor(string vendor, string expected)
     {
-        var (output, _) = Bash($"cli_hata {vendor} \"sh runn\"");
+        var (output, _, _) = Bash($"cli_hata {vendor} \"sh runn\"");
 
         Assert.Contains(expected, output, StringComparison.Ordinal);
     }
@@ -427,7 +489,7 @@ public sealed class SshSimulatorCliTests
     [Fact]
     public void Ssh_yuzeyi_olan_her_profilin_vendoru_oykunmede_tanimli()
     {
-        var (known, _) = Bash("printf '%s' \"$CLI_VENDORS\"");
+        var (known, _, _) = Bash("printf '%s' \"$CLI_VENDORS\"");
         var vendors = known.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         Assert.NotEmpty(vendors);
@@ -475,7 +537,7 @@ public sealed class SshSimulatorCliTests
 
     private static string Kind(string command)
     {
-        var (kind, _) = Bash("cli_komut_turu \"$KOMUT\"", environment: ("KOMUT", command));
+        var (kind, _, _) = Bash("cli_komut_turu \"$KOMUT\"", environment: ("KOMUT", command));
 
         return kind.Trim();
     }
@@ -484,7 +546,7 @@ public sealed class SshSimulatorCliTests
     /// Verilen satırları <b>tek bir oturumda</b>, sayfalama AÇIK başlayarak
     /// işler — dağıtıcının exec kanalında yaptığının aynısı.
     /// </summary>
-    private static (string Output, int ExitCode) Session(
+    private static (string Output, string Error, int ExitCode) Session(
         string vendor,
         string configPath,
         IReadOnlyList<string> lines)

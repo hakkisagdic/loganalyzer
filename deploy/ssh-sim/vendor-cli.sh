@@ -133,18 +133,6 @@ cli_komut_turu() {
     esac
 }
 
-# Config'i basıyor — sayfalayarak ya da sayfalamadan.
-#
-# SAYFALAMA AÇIKKEN NE OLDUĞU, BU TICKET'IN TAŞIYICI CÜMLESİ:
-#
-#   Cihaz bir sayfa basıyor, `--More--` yazıyor ve tuş bekliyor. Cevap
-#   gelirse devam ediyor. GELMEZSE oturumu bırakıyor ve GERİYE KALANI HİÇ
-#   BASMIYOR — çıkış kodu yine 0. Yani okuyan taraf yarım config'i BAŞARILI
-#   bir çekim olarak alıyor: hata yok, sayaç yok, belirti yok.
-#
-#   Alternatif modelleme (`--More--`de sonsuza kadar bloke olmak) da gerçek,
-#   ama zaman aşımına düşen bir çekim GÖRÜLÜR bir arıza üretiyor. Buradaki
-#   model bilerek sessiz olanı: ölçülmek istenen sınıf o.
 # ---------------------------------------------------------------- OTURUM
 #
 # Durum makinesi TEK YERDE (S08).
@@ -244,7 +232,7 @@ cli_komut_isle() {
 
         sayfalama-kapat)
             if [ "${_vendor}" = "fortinet" ] && [ "${CLI_BAGLAM}" != "konsol" ]; then
-                cli_hata "${_vendor}" "${_komut}"
+                cli_hata "${_vendor}" "${_komut}" >&2
                 CLI_RED=1
             else
                 CLI_SAYFALAMA="kapali"
@@ -267,14 +255,35 @@ cli_komut_isle() {
             ;;
 
         *)
-            # Vendor'ın KENDİ hata metni. Genel bir ret, "komut yanlış" ile
-            # "cihaz cevap vermedi"yi tek değere indirirdi (S06 kabul kriteri).
-            cli_hata "${_vendor}" "${_komut}"
+            # Vendor'ın KENDİ hata metni, STDERR'e.
+            #
+            # Yönlendirme kritik ve S08'de DÜŞMÜŞTÜ: `SshDeviceTransport`
+            # `DeviceCommandResult.Error`'ı stderr'den besliyor. Metin stdout'a
+            # gittiğinde `Error` boş kalıyor, taşıma kendi sentetik cümlesine
+            # düşüyor ("'...' komutu 127 koduyla döndü") ve S06'nın ikinci kabul
+            # kriteri — vendor'ın kendi metninin ürüne ulaşması — sessizce
+            # geçersiz oluyor. CI'da tam olarak bu yaşandı.
+            #
+            # Etkileşimli kabukta da doğru: oturum bir pty altında koşuyor ve
+            # iki akış da aynı terminale düşüyor, yani kullanıcı metni görüyor.
+            cli_hata "${_vendor}" "${_komut}" >&2
             CLI_RED=1
             ;;
     esac
 }
 
+# Config'i basıyor — sayfalayarak ya da sayfalamadan.
+#
+# SAYFALAMA AÇIKKEN NE OLDUĞU, BU TICKET'IN TAŞIYICI CÜMLESİ:
+#
+#   Cihaz bir sayfa basıyor, `--More--` yazıyor ve tuş bekliyor. Cevap
+#   gelirse devam ediyor. GELMEZSE oturumu bırakıyor ve GERİYE KALANI HİÇ
+#   BASMIYOR — çıkış kodu yine 0. Yani okuyan taraf yarım config'i BAŞARILI
+#   bir çekim olarak alıyor: hata yok, sayaç yok, belirti yok.
+#
+#   Alternatif modelleme (`--More--`de sonsuza kadar bloke olmak) da gerçek,
+#   ama zaman aşımına düşen bir çekim GÖRÜLÜR bir arıza üretiyor. Buradaki
+#   model bilerek sessiz olanı: ölçülmek istenen sınıf o.
 cli_bas() {
     _dosya="${1}"
     _sayfalama="${2}"
