@@ -295,7 +295,26 @@ def main() -> int:
         print(f"  {ad}: {durum}")
 
     if kod != 0:
-        print("\nGERİ ALMA DERLEMEYE ULAŞMADI ya da paket kırmızı — yukarıya bak.")
+        # BU BLOK BİR ÖLÇÜM BULGUSUNDAN DOĞDU. İlk hâli yalnızca özet satırını
+        # basıyordu ve son koşum bir kez kırmızı geldi: "1 başarısız" yazıyordu,
+        # HANGİSİ yazmıyordu. Yani araç, kendi yakaladığı kusuru okunamaz hâlde
+        # raporluyordu — okuyanı bütün pakete geri gönderiyor.
+        #
+        # Bu, aracın §6'ya karşı işlediği ikinci suç olurdu: birincisi "yeşil
+        # bir sonuç ölçümün yapılmadığı anlamına gelebiliyor", ikincisi
+        # "kırmızı bir sonuç neyin kırmızı olduğunu söylemiyor".
+        print("\nGERİ ALMA DERLEMEYE ULAŞMADI ya da paket kırmızı. Düşen test(ler):\n")
+
+        for satir in cikti.splitlines():
+            if "[FAIL]" in satir or satir.strip().startswith(("Başarısız ", "Failed ")):
+                print(f"  {satir.strip()}")
+
+        print(
+            "\nUYARI: bu koşum makine YÜKLÜYKEN yapıldıysa sebep kusur olmayabilir "
+            "(CLAUDE.md §6, duvar saatine bağlı testler). Sonucu 'kararsız test' diye "
+            "GEÇİŞTİRME — `machine-resources.sh check` yeşilken tekrar koştur ve gördüğünü yaz."
+        )
+
         return 1
 
     return 0

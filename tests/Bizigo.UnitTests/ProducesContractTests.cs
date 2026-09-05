@@ -182,16 +182,10 @@ public sealed class ProducesContractTests
     /// </para>
     /// </summary>
     private static IReadOnlyList<MethodInfo> Registrars() =>
-        [.. typeof(global::Program).Assembly
-            .GetTypes()
-            // Statik sınıf = sealed + abstract.
-            .Where(static t => t is { IsSealed: true, IsAbstract: true })
-            .SelectMany(static t => t.GetMethods(BindingFlags.Public | BindingFlags.Static))
-            .Where(static m => m.IsDefined(typeof(ExtensionAttribute), inherit: false))
-            .Where(static m => m.Name.StartsWith("Map", StringComparison.Ordinal))
-            .Where(static m => m.GetParameters() is [{ } first, ..]
-                && typeof(IEndpointRouteBuilder).IsAssignableFrom(first.ParameterType))
-            .OrderBy(static m => m.Name, StringComparer.Ordinal)];
+        // KAPSAM DEĞİŞMEDİ: yalnızca kompozisyon kökü. Uçlar yalnızca API'de
+        // yaşıyor ve bu darlık bilerek — ürünün tamamına açmak, hiçbir uç
+        // kaydetmeyen derlemeleri her koşumda taramak olurdu.
+        ProductDiscovery.EndpointRegistrars([ProductDiscovery.CompositionRoot]);
 
     /// <summary>
     /// Minimal API'nin <b>kendisinin</b> bağladığı parametre tipleri. Bunlara

@@ -300,9 +300,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Api/AuthenticationSetup.cs": {
-    "mtime": 1788620152.1543398,
-    "seen": 1788623675.92683,
-    "ast_hash": "7853285465e86909745d7c1b7991951e",
+    "mtime": 1788624029.1892068,
+    "seen": 1788639514.994025,
+    "ast_hash": "b12c7e3ef768fbe5506b387af49aa7bf",
     "semantic_hash": ""
   },
   "src/Bizigo.Api/Bizigo.Api.csproj": {
@@ -528,8 +528,8 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Api/appsettings.json": {
-    "mtime": 1788622926.609084,
-    "seen": 1788623675.9268742,
+    "mtime": 1788637436.581495,
+    "seen": 1788639514.995903,
     "ast_hash": "11389f6efb318c08ca89574741ca405d",
     "semantic_hash": ""
   },
@@ -708,9 +708,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/AccessScopeResolver.cs": {
-    "mtime": 1788620152.1650162,
-    "seen": 1788623675.926914,
-    "ast_hash": "45cba96bd3cf6401813e09f02b02c94b",
+    "mtime": 1788624029.1910553,
+    "seen": 1788639514.9993339,
+    "ast_hash": "02c03c93ae82d29eb8876b47a37c1fbc",
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/AlertingEntities.cs": {
@@ -1926,9 +1926,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/ArchitectureTests.cs": {
-    "mtime": 1788620152.194773,
-    "seen": 1788623675.927215,
-    "ast_hash": "35fb6d5bd7055425fb8b5a0935d797da",
+    "mtime": 1788635017.6616437,
+    "seen": 1788639515.017548,
+    "ast_hash": "de787e809088437f85353e0bc50e24a6",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/Bizigo.UnitTests.csproj": {
@@ -2304,9 +2304,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/ProducesContractTests.cs": {
-    "mtime": 1788620152.2045012,
-    "seen": 1788623675.927296,
-    "ast_hash": "fc7dd873ad06f5d0418cc61ba3aeca0d",
+    "mtime": 1788635017.6644938,
+    "seen": 1788639515.021726,
+    "ast_hash": "77b4eec04d4bfa65c26413329b15b5eb",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/RawArchiveDoubles.cs": {
@@ -5124,9 +5124,9 @@
     "semantic_hash": ""
   },
   "docs/wiki/concepts/f1-gecmis-biriktiren-sey-ertelenmez.md": {
-    "mtime": 1788620152.1092868,
-    "seen": 1788623675.927788,
-    "ast_hash": "62a628e2bfb46b0b5daba374c6cf2fd5",
+    "mtime": 1788624029.1877832,
+    "seen": 1788639515.202241,
+    "ast_hash": "bf28fd3c9263ff54e8d10bbbef73c35f",
     "semantic_hash": ""
   },
   "docs/wiki/concepts/f1-ham-sadakat-zinciri.md": {
@@ -5736,9 +5736,9 @@
     "semantic_hash": ""
   },
   "docs/epic/tickets-fs/index.md": {
-    "mtime": 1788620152.1061141,
-    "seen": 1788623675.927756,
-    "ast_hash": "6506b709b44fd9913953de2edc04b408",
+    "mtime": 1788635017.656503,
+    "seen": 1788639515.065862,
+    "ast_hash": "07e01d9ef50ac850b10f8e1cfb2c3e43",
     "semantic_hash": ""
   },
   "sim/Bizigo.Simulators/Fleet.cs": {
@@ -5748,9 +5748,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Contracts/Security/RedactedPrompt.cs": {
-    "mtime": 1788620152.1642861,
-    "seen": 1788623675.926908,
-    "ast_hash": "8c51085c0b360ad72faf5f1cd8d55421",
+    "mtime": 1788624473.772541,
+    "seen": 1788639514.999122,
+    "ast_hash": "efbc569766b633cf4c6b1c229a82e7a1",
     "semantic_hash": ""
   },
   "src/Bizigo.Contracts/Security/SecretPatterns.cs": {
@@ -5832,9 +5832,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/RedactionGateTests.cs": {
-    "mtime": 1788620152.2065327,
-    "seen": 1788623675.927315,
-    "ast_hash": "e22b6f5e12c03a177e1befab2591385e",
+    "mtime": 1788625623.9079401,
+    "seen": 1788639515.02559,
+    "ast_hash": "8c27d440a4530a37022793f485fdd276",
     "semantic_hash": ""
   },
   "catalog/simulators/filo.yaml": {
@@ -5934,9 +5934,9 @@
     "semantic_hash": ""
   },
   "deploy/ssh-sim/vendor-cli.sh": {
-    "mtime": 1788620152.0631618,
-    "seen": 1788623675.926757,
-    "ast_hash": "51055b4fd31d5af6d0de32b71bfe84d5",
+    "mtime": 1788624029.176063,
+    "seen": 1788639514.98903,
+    "ast_hash": "d265f4de75303f2aa1a3f98249b32ad3",
     "semantic_hash": ""
   },
   "sim/Bizigo.Simulators/WebhookDeliveryFactory.cs": {
@@ -6030,15 +6030,15 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Mcp/Bizigo.Mcp.csproj": {
-    "mtime": 1788620967.717174,
-    "seen": 1788623675.927022,
-    "ast_hash": "e3a88e4ed683f102be6ec20cea7c8732",
+    "mtime": 1788624100.3880527,
+    "seen": 1788639515.005056,
+    "ast_hash": "890ff3d2d46a6d3168b8d58329850e7b",
     "semantic_hash": ""
   },
   "src/Bizigo.Mcp/BizigoMcpServer.cs": {
-    "mtime": 1788622926.606466,
-    "seen": 1788623675.9270232,
-    "ast_hash": "4e9b6f4e0b9fa2e2a3d954fbfae3bc36",
+    "mtime": 1788637436.571671,
+    "seen": 1788639515.005059,
+    "ast_hash": "5efb1f6f2563369986b6b1c63fcb9896",
     "semantic_hash": ""
   },
   "src/Bizigo.Mcp/BizigoMcpSetup.cs": {
@@ -6048,14 +6048,14 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Mcp/BizigoMcpTool.cs": {
-    "mtime": 1788620152.1782,
-    "seen": 1788623675.9270248,
-    "ast_hash": "405788e014fcbc706b5f6fdf6169083e",
+    "mtime": 1788624029.1940885,
+    "seen": 1788639515.0051,
+    "ast_hash": "59f6f7ea02f49bea4b7bf8d7a00263ca",
     "semantic_hash": ""
   },
   "src/Bizigo.Mcp/McpBoundary.cs": {
-    "mtime": 1788622926.609486,
-    "seen": 1788623675.927026,
+    "mtime": 1788637436.559191,
+    "seen": 1788639515.005103,
     "ast_hash": "23dbf5c69be0220471055c75cbb642ba",
     "semantic_hash": ""
   },
@@ -6066,8 +6066,8 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Mcp/McpLogText.cs": {
-    "mtime": 1788622926.607522,
-    "seen": 1788623675.927028,
+    "mtime": 1788637436.567143,
+    "seen": 1788639515.0051441,
     "ast_hash": "9f4d9affb8c4db465ed60cb7e14ffb75",
     "semantic_hash": ""
   },
@@ -6096,33 +6096,33 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Mcp/McpToolDiscovery.cs": {
-    "mtime": 1788620152.1792371,
-    "seen": 1788623675.9270332,
-    "ast_hash": "ac416cdec9408efe539f6dbfaacdb04d",
+    "mtime": 1788624029.1953735,
+    "seen": 1788639515.0052989,
+    "ast_hash": "95b8158ea2df3a44c26f9c53f5dcf903",
     "semantic_hash": ""
   },
   "src/Bizigo.Mcp/McpToolError.cs": {
-    "mtime": 1788620152.1794102,
-    "seen": 1788623675.9270349,
-    "ast_hash": "73f84a2600cbfd3e2187fb937dbfd38d",
+    "mtime": 1788624029.1960099,
+    "seen": 1788639515.005301,
+    "ast_hash": "d3bfc344cc73fe9b6e6cffa9e00ad20e",
     "semantic_hash": ""
   },
   "src/Bizigo.Mcp/McpToolInvocation.cs": {
-    "mtime": 1788620152.179558,
-    "seen": 1788623675.9270358,
-    "ast_hash": "53eecd6d6d4d4044e80f2611e71d2540",
+    "mtime": 1788624029.1965723,
+    "seen": 1788639515.005302,
+    "ast_hash": "0fa509d12fba60648baf1d3e91853e11",
     "semantic_hash": ""
   },
   "src/Bizigo.Mcp/McpToolResult.cs": {
-    "mtime": 1788622926.608172,
-    "seen": 1788623675.927037,
-    "ast_hash": "7ae0d1f135ebf2b8c911583ba923821b",
+    "mtime": 1788637436.583468,
+    "seen": 1788639515.0053031,
+    "ast_hash": "85f00036e1a42c70da703d16ea0ceb7d",
     "semantic_hash": ""
   },
   "src/Bizigo.Mcp/Tools/ServerInfoTool.cs": {
-    "mtime": 1788620152.1799152,
-    "seen": 1788623675.927038,
-    "ast_hash": "8036925525ce8483eb3f4cff3e106bf2",
+    "mtime": 1788624029.1974804,
+    "seen": 1788639515.005305,
+    "ast_hash": "47a615df492a553e541a31ae37350db1",
     "semantic_hash": ""
   },
   "src/Bizigo.Rca/RcaQuota.cs": {
@@ -6192,21 +6192,21 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/CliEmulationTests.cs": {
-    "mtime": 1788620152.1910508,
-    "seen": 1788623675.927171,
-    "ast_hash": "d5e303e605f486df98cffa9582caf3b9",
+    "mtime": 1788635017.6585922,
+    "seen": 1788639515.015135,
+    "ast_hash": "1b43a3212c8e275613e6e881399bfaaf",
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/WebhookGeneratorDeliveryTests.cs": {
-    "mtime": 1788620152.193204,
-    "seen": 1788623675.9272,
-    "ast_hash": "a0aa4358eebef8e3f6fc01c841fea1c3",
+    "mtime": 1788624029.2000637,
+    "seen": 1788639515.016083,
+    "ast_hash": "8a2b7189e0df2a758c240711ce3542ce",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/CompositionRootTests.cs": {
-    "mtime": 1788621598.723767,
-    "seen": 1788623675.9272268,
-    "ast_hash": "a8d63db14cf8481cf1ae48cb3f1ee9dd",
+    "mtime": 1788635017.6628628,
+    "seen": 1788639515.018189,
+    "ast_hash": "25963797662a9f7b9d50ad54fe476883",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/EpicStatusTests.cs": {
@@ -6222,15 +6222,15 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/IlCallReader.cs": {
-    "mtime": 1788621565.2610617,
-    "seen": 1788623675.92727,
-    "ast_hash": "14a07fecd69e0a94125824684c588e2f",
+    "mtime": 1788624578.9471886,
+    "seen": 1788639515.020751,
+    "ast_hash": "523b27576726b71ea6fd5c0bb2f246fb",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/McpComplianceTests.cs": {
-    "mtime": 1788623133.1713493,
-    "seen": 1788623675.927275,
-    "ast_hash": "9fe87330b10fde7e4ffd0e73e764e387",
+    "mtime": 1788624029.2020633,
+    "seen": 1788639515.0209532,
+    "ast_hash": "24ad8099260d7dc68bf62e90771b3806",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/McpHttpTransportTests.cs": {
@@ -6240,9 +6240,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/McpRedactionGateTests.cs": {
-    "mtime": 1788621680.5607898,
-    "seen": 1788623675.927278,
-    "ast_hash": "b9a15136576d1d36f6fb5ca28db94d95",
+    "mtime": 1788624541.5047894,
+    "seen": 1788639515.021007,
+    "ast_hash": "82fedd8420df0df83d8b8f5d8e0a4111",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/McpSchemaBudgetTests.cs": {
@@ -6252,9 +6252,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/McpTestHarness.cs": {
-    "mtime": 1788620152.2023807,
-    "seen": 1788623675.9272802,
-    "ast_hash": "6baf2833e91b5f108703eeac0ad3eb1c",
+    "mtime": 1788624029.2046895,
+    "seen": 1788639515.0210571,
+    "ast_hash": "c69a0b2d6756994263bc181482e793ec",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/RcaAdmissionRaceTests.cs": {
@@ -6300,9 +6300,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/SshSimulatorCliTests.cs": {
-    "mtime": 1788620152.2091448,
-    "seen": 1788623675.927347,
-    "ast_hash": "ab743efdec3618093caffcf294685633",
+    "mtime": 1788624029.2056007,
+    "seen": 1788639515.026627,
+    "ast_hash": "3b8516e5033eaaca1971d352ff0de7f6",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/WebhookGeneratorTests.cs": {
@@ -6312,9 +6312,9 @@
     "semantic_hash": ""
   },
   "tools/m06-kirmizi-olcumu.py": {
-    "mtime": 1788622663.2124317,
-    "seen": 1788623675.927356,
-    "ast_hash": "541fe345ab437cfdb1b43671d9ab696e",
+    "mtime": 1788637774.8904812,
+    "seen": 1788639515.0278091,
+    "ast_hash": "9e8e5023a3498b7ee9d6c45a0ac25a8c",
     "semantic_hash": ""
   },
   "tools/sigma-build/sigma_build/cost.py": {
@@ -6360,9 +6360,9 @@
     "semantic_hash": ""
   },
   "docs/epic/mcp-teknik-plan/index.md": {
-    "mtime": 1788620152.0967264,
-    "seen": 1788623675.92767,
-    "ast_hash": "be1e0ef7e1adc75bd2d61a030743f5e9",
+    "mtime": 1788624029.1780798,
+    "seen": 1788639515.059799,
+    "ast_hash": "b2c96f6daf07cb7ddcc794b242c71aff",
     "semantic_hash": ""
   },
   "docs/epic/tickets-f2/ui-container/index.md": {
@@ -6414,21 +6414,117 @@
     "semantic_hash": ""
   },
   "docs/epic/tickets-fs/cekim-modeli/index.md": {
-    "mtime": 1788620152.1057599,
-    "seen": 1788623675.9277508,
-    "ast_hash": "e1a1f6f70980d2bd344c03f4d9de9ecf",
+    "mtime": 1788624029.1811795,
+    "seen": 1788639515.0654888,
+    "ast_hash": "f67f28257201842749a9143e267a6dd9",
     "semantic_hash": ""
   },
   "docs/epic/tickets-mcp/index.md": {
-    "mtime": 1788623109.7377687,
-    "seen": 1788623675.927762,
-    "ast_hash": "9442716b0878f867cd0b59ff13563e5b",
+    "mtime": 1788624113.194852,
+    "seen": 1788639515.085695,
+    "ast_hash": "786306dc4fa29a9bd39be1736febc308",
     "semantic_hash": ""
   },
   "docs/wiki/concepts/tek-dosya-tek-kaynak-degildir.md": {
     "mtime": 1788620152.1111677,
     "seen": 1788623675.927815,
     "ast_hash": "d9d098b7120de90e3a69a86cf06f5b50",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Contracts/IAccessScopeResolver.cs": {
+    "mtime": 1788624029.1899476,
+    "seen": 1788639514.998807,
+    "ast_hash": "7acd4028fbf3224f72671b0e6209e716",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Contracts/Security/RedactedPromptJsonConverter.cs": {
+    "mtime": 1788624375.411195,
+    "seen": 1788639514.9991271,
+    "ast_hash": "b3756ea6787f4193ae7b56c6432aa271",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Mcp/McpCallerScope.cs": {
+    "mtime": 1788624029.1945443,
+    "seen": 1788639515.005106,
+    "ast_hash": "cd2411299cf7db6fed138736ac8ef041",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/McpKeycloakIdentityTests.cs": {
+    "mtime": 1788624029.1991947,
+    "seen": 1788639515.0155158,
+    "ast_hash": "f608aeb36b226d48e9ed5724b6330a87",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/McpIdentityTests.cs": {
+    "mtime": 1788625177.6759775,
+    "seen": 1788639515.021004,
+    "ast_hash": "d98e336adbeedaf4206f1a61b8ec05c3",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/ProductDiscovery.cs": {
+    "mtime": 1788635017.665401,
+    "seen": 1788639515.02173,
+    "ast_hash": "d973c2979135c07dd7a046da45f06258",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/ProductDiscoveryTests.cs": {
+    "mtime": 1788635017.66604,
+    "seen": 1788639515.021734,
+    "ast_hash": "f4abfa7cb2c00edd9e49000fb633f0d5",
+    "semantic_hash": ""
+  },
+  "docs/epic/f5-kapsam-karari/index.md": {
+    "mtime": 1788624029.1769764,
+    "seen": 1788639515.059653,
+    "ast_hash": "93a607317c6f5c261daf4eaed22c0795",
+    "semantic_hash": ""
+  },
+  "docs/epic/tickets-fs/kesif-konsolidasyonu/index.md": {
+    "mtime": 1788635017.6571171,
+    "seen": 1788639515.065865,
+    "ast_hash": "e79a0f286fe9f6b3568ea0fa6ca7c52c",
+    "semantic_hash": ""
+  },
+  "docs/epic/tickets-mcp/kaynaklar-ve-abonelik/index.md": {
+    "mtime": 1788624029.182374,
+    "seen": 1788639515.085699,
+    "ast_hash": "8f902e06cfcf5e0bb9983541c53cf4ef",
+    "semantic_hash": ""
+  },
+  "docs/epic/tickets-mcp/kimlik-tasima/index.md": {
+    "mtime": 1788624029.182895,
+    "seen": 1788639515.0857012,
+    "ast_hash": "64e4652e842df189909690ddcbff189b",
+    "semantic_hash": ""
+  },
+  "docs/epic/tickets-mcp/komut-cekirdegi/index.md": {
+    "mtime": 1788624029.1837742,
+    "seen": 1788639515.085702,
+    "ast_hash": "7f1a27fea9d791963c86dccc2e538481",
+    "semantic_hash": ""
+  },
+  "docs/epic/tickets-mcp/okuma-araclari/index.md": {
+    "mtime": 1788624029.184387,
+    "seen": 1788639515.085703,
+    "ast_hash": "74443fe3940ea87eccd6dcfde54c3674",
+    "semantic_hash": ""
+  },
+  "docs/epic/tickets-mcp/rca-araclari/index.md": {
+    "mtime": 1788624029.1849542,
+    "seen": 1788639515.0857038,
+    "ast_hash": "5d26b0fddf5f633ab101ff02417f7f89",
+    "semantic_hash": ""
+  },
+  "docs/epic/tickets-mcp/redaksiyon-kapisi/index.md": {
+    "mtime": 1788624647.353409,
+    "seen": 1788639515.085705,
+    "ast_hash": "644e7d3216ab42dec8f260d8cbfe1c41",
+    "semantic_hash": ""
+  },
+  "docs/epic/tickets-mcp/sim-araclari/index.md": {
+    "mtime": 1788624029.1860445,
+    "seen": 1788639515.085706,
+    "ast_hash": "cd4937a866dacb58c2e5bb840d982679",
     "semantic_hash": ""
   }
 }
