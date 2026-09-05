@@ -156,10 +156,7 @@ public abstract class ProductReadTool : BizigoMcpTool
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (!ProductToolScope.TryResolve(invocation, out var scope, out var error))
-        {
-            return ValueTask.FromResult(McpToolResult.Failure(error));
-        }
+        var scope = ProductToolScope.Of(invocation);
 
         if (ScopeRejection(scope, ReadsScopedData) is { } rejection)
         {

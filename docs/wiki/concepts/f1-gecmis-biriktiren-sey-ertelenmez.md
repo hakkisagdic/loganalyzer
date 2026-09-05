@@ -84,7 +84,7 @@ geçmiş biriktirmiyor, hepsi sonradan aynı fiyata geliyor
 
 Planla sevk edilen arasındaki en büyük sapma **RCA kanıt sağlayıcılarının F3'ten
 F5'e** taşınması. Gerekçe kapsam: K21'in *"kanıt kapsamı: hepsi"* cevabı metrik +
-trace + topolojiyi işin içine soktu ve her biri tek başına F1 büyüklüğünde.
+trace + topolojiyi işin içine soktu ve **F5 tek başına F1 büyüklüğünde bir iş**.
 
 Kaydırmayı mümkün kılan şey, sözleşmenin fazdan bağımsız tasarlanmış olması:
 **kanıt sağlayıcı sözleşmesi F3'te beş türü de tanıyor, motor hiçbirine özel kod

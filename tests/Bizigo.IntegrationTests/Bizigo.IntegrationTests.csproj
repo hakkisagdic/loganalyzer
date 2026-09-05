@@ -22,6 +22,14 @@
     <ProjectReference Include="..\..\src\Bizigo.Normalization\Bizigo.Normalization.csproj" />
     <ProjectReference Include="..\..\src\Bizigo.ControlPlane\Bizigo.ControlPlane.csproj" />
     <ProjectReference Include="..\..\src\Bizigo.Query\Bizigo.Query.csproj" />
+
+    <!--
+      M04'ün okuma araçları. AÇIKÇA referanslanıyor: `Bizigo.Api` üzerinden
+      dolaylı olarak da gelirdi, ama dolaylı bir referans kodda kullanılmadığı
+      an meta veriden düşüyor (ölçüldü — `BizigoReadToolsSetup` belgesi) ve iptal
+      ölçümü sessizce araçsız kalırdı.
+    -->
+    <ProjectReference Include="..\..\src\Bizigo.Mcp.Product\Bizigo.Mcp.Product.csproj" />
     <ProjectReference Include="..\..\src\Bizigo.Ingest\Bizigo.Ingest.csproj" />
     <ProjectReference Include="..\..\src\Bizigo.Storage.Raw\Bizigo.Storage.Raw.csproj" />
     <ProjectReference Include="..\..\src\Bizigo.Storage.ClickHouse\Bizigo.Storage.ClickHouse.csproj" />

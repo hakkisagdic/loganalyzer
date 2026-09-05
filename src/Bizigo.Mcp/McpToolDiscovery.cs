@@ -96,28 +96,36 @@ public static class McpToolDiscovery
 
             try
             {
-                // `surface` YALNIZCA onu isteyen yapıcıya veriliyor.
+                // `surface` YALNIZCA onu isteyen yapıcıya veriliyor — ve bu
+                // koşul ÖLÇÜLEREK eklendi.
                 //
-                // İlk hâli koşulsuz `CreateInstance(services, type, surface)`
-                // idi ve yorumu şöyleydi: "yüzeyi sabit olan araçlar argümanı
-                // hiç kullanmıyor". ÖLÇÜLDÜ VE YANLIŞTI:
-                // `ActivatorUtilities.CreateInstance` tüketilmeyen bir argümanı
-                // tolere etmiyor, "Also ensure no extraneous arguments are
-                // provided" diyerek düşüyor.
+                // İlk hâli argümanı koşulsuz veriyordu. Ölçüm:
+                // `ActivatorUtilities` fazladan argümanı olan bir çağrıyı
+                // eşleştirmiyor ve "A suitable constructor ... could not be
+                // located. ... Also ensure no extraneous arguments are
+                // provided." diyerek düşüyor. Yani YÜZEYİNİ YAPICIDAN ALMAYAN
+                // HİÇBİR ARAÇ KURULAMIYORDU — parametresiz bir yapıcı da,
+                // yalnızca `IScopedQuery` isteyen bir M04 aracı da.
                 //
-                // M01'de fark edilmemesinin sebebi kapının kör noktası: o gün
-                // ilan edilen tek araç (`ServerInfoTool`) yüzeyi yapıcıdan
-                // ALIYORDU, ve yüzeyi sabit olan tek örnekler
-                // (`TestOnlyTool`, `NeverEndingTool`) yalnızca `ToolTypes` ile
-                // keşfedilip HİÇ ÖRNEKLENMİYORDU. Yani bu satırın yanlışlığı
-                // M04'ün ilk aracı gelene kadar hiçbir testte görünmedi.
-                var wantsSurface = Array.Exists(
-                    type.GetConstructors(),
-                    static constructor => Array.Exists(
-                        constructor.GetParameters(),
-                        static parameter => parameter.ParameterType == typeof(McpSurface)));
-
-                tool = (BizigoMcpTool)(wantsSurface
+                // Kusurun bedeli yalnızca "çalışmıyor" değildi: aşağıdaki
+                // `catch` bunu "Bağımlılığı DI'ya kaydedilmemiş olabilir" diye
+                // raporluyor, yani mesaj sebebi OLMAYAN bir yere işaret ediyor
+                // ve arayan kişi DI kayıtlarında saatlerce dolaşıyor. Bu
+                // deponun §7'de tarif ettiği sınıf: hata var ama söylediği şey
+                // yanlış.
+                //
+                // Yüzeyini yapıcıdan alan araçlar (bkz. `ServerInfoTool`) iki
+                // yüzeyde de tek sınıfla durmaya devam ediyor; yüzeyi sabit
+                // olanlar argümanı hiç görmüyor ve aşağıdaki filtre onları
+                // eliyor.
+                //
+                // M01'DE NEDEN GÖRÜNMEDİĞİ (M04'te bağımsız olarak da ölçüldü):
+                // o gün ilan edilen tek araç yüzeyi yapıcıdan ALIYORDU, ve
+                // yüzeyi sabit olan iki örnek (`TestOnlyTool`,
+                // `NeverEndingTool`) yalnızca `ToolTypes` ile keşfedilip HİÇ
+                // ÖRNEKLENMİYORDU. Yani kusur bir testin kapsamı dışındaydı,
+                // dikkatinin değil — ve ilk ürün aracı gelene kadar öyle kaldı.
+                tool = (BizigoMcpTool)(WantsSurface(type)
                     ? ActivatorUtilities.CreateInstance(services, type, surface)
                     : ActivatorUtilities.CreateInstance(services, type));
             }
@@ -138,4 +146,19 @@ public static class McpToolDiscovery
 
         return tools;
     }
+
+    /// <summary>
+    /// Aracın <b>herhangi bir</b> genel yapıcısı yüzeyi istiyor mu.
+    ///
+    /// <para>
+    /// Bütün yapıcılara bakılıyor, yalnızca birine değil: hangi yapıcının
+    /// seçileceğine <c>ActivatorUtilities</c> karar veriyor ve karar DI'da
+    /// kayıtlı servislere bağlı. Tek bir yapıcıya bakmak, kararı burada ikinci
+    /// kez ve <b>farklı bilgiyle</b> vermek olurdu.
+    /// </para>
+    /// </summary>
+    private static bool WantsSurface(Type type) =>
+        type.GetConstructors()
+            .Any(static constructor => constructor.GetParameters()
+                .Any(static parameter => parameter.ParameterType == typeof(McpSurface)));
 }

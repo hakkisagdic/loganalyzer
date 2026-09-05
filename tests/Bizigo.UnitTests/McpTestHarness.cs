@@ -1,6 +1,9 @@
 using System.IO.Pipelines;
+using System.Threading.Channels;
 using System.Text.Json;
 using Bizigo.Alerting;
+using System.Security.Claims;
+using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Bizigo.Mcp;
 using Bizigo.Mcp.Product.Tools;
@@ -52,10 +55,32 @@ internal sealed class McpTestSession : IAsyncDisposable
 
     public McpClient Client { get; }
 
+    /// <param name="serverOptions">Sunucu seçenekleri.</param>
+    /// <param name="services">Araçların bağımlılıklarını çözecek sağlayıcı.</param>
+    /// <param name="clientOptions">İstemci seçenekleri.</param>
+    /// <param name="user">
+    /// Oturumun <b>kimliği</b>. <see langword="null"/> ise oturum kimliksiz ve
+    /// M08'in kapısı kimlik isteyen araçları <b>koşmadan</b> reddediyor —
+    /// kimliksiz hâlin kendisi de ölçülmek istendiği için varsayılan bu.
+    ///
+    /// <para>
+    /// <b>Neden kimlik verilebilir olması gerekiyordu.</b> M04 kimlik isteyen
+    /// beş araç getirdi ve uyum kapısı örnek çıktıyı <c>tools/call</c> ile
+    /// alıyor — yani kimliksiz bir oturumda o kapı artık şemayı değil
+    /// <c>unauthenticated</c> retini ölçerdi. İki yol vardı: kapıyı
+    /// <c>SampleAsync</c>'e çevirmek (serileştirme ve
+    /// <c>structuredContent</c> dönüşümünü ölçümden düşürürdü — M01'in kapıyı
+    /// protokolden geçirme kararının tam tersi) ya da <b>oturuma kimlik
+    /// vermek</b>. İkincisi seçildi: kapı hem protokolden geçmeye devam ediyor
+    /// hem üretime yaklaşıyor.
+    /// </para>
+    /// </param>
+    /// <param name="cancellationToken">İptal.</param>
     public static async Task<McpTestSession> StartAsync(
         McpServerOptions serverOptions,
         IServiceProvider services,
         McpClientOptions? clientOptions = null,
+        ClaimsPrincipal? user = null,
         CancellationToken cancellationToken = default)
     {
         // İki boru: biri istemciden sunucuya, biri sunucudan istemciye.
@@ -63,11 +88,16 @@ internal sealed class McpTestSession : IAsyncDisposable
         var toClient = new Pipe();
         var lifetime = new CancellationTokenSource();
 
-        var serverTransport = new StreamServerTransport(
+        ITransport serverTransport = new StreamServerTransport(
             toServer.Reader.AsStream(),
             toClient.Writer.AsStream(),
             serverOptions.ServerInfo?.Name ?? "test",
             NullLoggerFactory.Instance);
+
+        if (user is not null)
+        {
+            serverTransport = new IdentityStampingTransport(serverTransport, user);
+        }
 
         var server = McpServer.Create(
             serverTransport, serverOptions, NullLoggerFactory.Instance, services);
@@ -93,6 +123,7 @@ internal sealed class McpTestSession : IAsyncDisposable
             // prosestir.
             await lifetime.CancelAsync();
             await server.DisposeAsync();
+            await serverTransport.DisposeAsync();
             lifetime.Dispose();
 
             throw;
@@ -119,6 +150,104 @@ internal sealed class McpTestSession : IAsyncDisposable
 }
 
 /// <summary>
+/// M01'in <b>protokol mekaniğini</b> ölçen test araçlarının ortak tabanı:
+/// kimlik istemiyorlar.
+///
+/// <para>
+/// <b>Neden bir taban sınıf, neden her araçta ayrı bir satır değil.</b> Gerekçe
+/// bir kez yazılsın diye. Bu araçların ölçtüğü şeyler — keşif, iptalin uca
+/// ulaşması, araç hatası ile protokol hatasının ayrımı — <b>kimlikten
+/// bağımsız</b>; süreç içi boru üzerinde koşan bir oturumda
+/// <c>RequestContext.User</c> zaten <see langword="null"/> ve M08'in kapısı
+/// onları koşmadan reddederdi. O hâlde <c>Iptal_bildirimi_araci_gercekten_iptal_ediyor</c>
+/// iptali değil <b>kimlik retini</b> ölçerdi ve yeşilliği hiçbir şey ifade
+/// etmezdi.
+/// </para>
+///
+/// <para>
+/// Kimlik yolunun kendisi ayrı bir yerde ölçülüyor: <c>McpIdentityTests</c>.
+/// Bu muafiyet <b>üretim</b> muafiyet listesine girmiyor — o liste keşfi
+/// <c>Bizigo.Api</c> kökünden yapıyor ve bu derlemeyi hiç görmüyor.
+/// </para>
+/// </summary>
+internal abstract class ProtocolMechanicsTool : BizigoMcpTool
+{
+    /// <inheritdoc/>
+    public sealed override bool RequiresCallerIdentity => false;
+}
+
+/// <summary>
+/// <b>Gelen her mesaja bir kimlik damgalayan taşıma sarmalayıcısı.</b>
+///
+/// <para>
+/// Üretimde bunu akışlanabilir HTTP taşıması yapıyor:
+/// <c>HttpContext.User</c> → <c>JsonRpcMessageContext.User</c>. stdio'da kimlik
+/// <b>yok</b> ve olmaması doğru (MCP yetkilendirme spesifikasyonu stdio'yu
+/// kapsam dışında bırakıyor). Süreç içi boru oturumu üçüncü bir hâl: taşıma
+/// katmanı <i>bizim</i>, dolayısıyla kimliği <b>biz</b> koyuyoruz.
+/// </para>
+///
+/// <para>
+/// SDK bu alanı bilerek açık bırakıyor — belgesi <i>"should only be set when
+/// implementing a custom ITransport"</i> diyor, ve burada yapılan tam olarak o.
+/// Alternatif, uyum kapısını kimlik isteyen araçlar için körleştirmekti.
+/// </para>
+/// </summary>
+internal sealed class IdentityStampingTransport(ITransport inner, ClaimsPrincipal user) : ITransport
+{
+    public string? SessionId => inner.SessionId;
+
+    public ChannelReader<JsonRpcMessage> MessageReader => Stamped().Reader;
+
+    public Task SendMessageAsync(JsonRpcMessage message, CancellationToken cancellationToken = default) =>
+        inner.SendMessageAsync(message, cancellationToken);
+
+    public ValueTask DisposeAsync() => inner.DisposeAsync();
+
+    /// <summary>
+    /// Okuyucuyu <b>bir kez</b> sarmalıyor: her erişimde yeni bir kanal kurmak,
+    /// mesajların iki okuyucu arasında bölünmesi demek olurdu ve arıza
+    /// "bazı çağrılar cevapsız" diye görünürdü.
+    /// </summary>
+    private Channel<JsonRpcMessage>? stamped;
+
+    private Channel<JsonRpcMessage> Stamped()
+    {
+        if (stamped is not null)
+        {
+            return stamped;
+        }
+
+        stamped = Channel.CreateUnbounded<JsonRpcMessage>();
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await foreach (var message in inner.MessageReader.ReadAllAsync())
+                {
+                    message.Context ??= new JsonRpcMessageContext();
+                    message.Context.User = user;
+
+                    await stamped.Writer.WriteAsync(message);
+                }
+
+                stamped.Writer.TryComplete();
+            }
+            catch (Exception error)
+            {
+                // Sessizce yutmuyoruz: yutulan bir hata "istemci cevap
+                // beklerken asılı kaldı" diye görünür ve sebebi hiçbir yerde
+                // durmaz.
+                stamped.Writer.TryComplete(error);
+            }
+        });
+
+        return stamped;
+    }
+}
+
+/// <summary>
 /// <b>Kapının kendi sınavı için</b> var olan araç: uyum kapısı, <i>söylenmeden</i>
 /// bulduğu bir aracı denetleyebiliyor mu.
 ///
@@ -129,7 +258,7 @@ internal sealed class McpTestSession : IAsyncDisposable
 /// keşif onu kendiliğinden buluyor mu.</b>
 /// </para>
 /// </summary>
-internal sealed class TestOnlyTool : BizigoMcpTool
+internal sealed class TestOnlyTool : ProtocolMechanicsTool
 {
     public override string ToolName => "test.only";
 
@@ -178,7 +307,7 @@ internal sealed class TestOnlyTool : BizigoMcpTool
 /// ClickHouse'suz hâli: belirteç uca ulaşıyor mu.
 /// </para>
 /// </summary>
-internal sealed class NeverEndingTool : BizigoMcpTool
+internal sealed class NeverEndingTool : ProtocolMechanicsTool
 {
     private readonly TaskCompletionSource started =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -271,8 +400,54 @@ internal static class McpTestServices
     /// soruyor: <i>üretimde bu servis kayıtlı mı?</i>
     /// </para>
     /// </summary>
+    /// <summary>
+    /// <b>Gerçekten boş</b> kap. Kapsamı dar ve bilinçli: yalnızca keşfin
+    /// <b>belirli</b> türlere uygulandığı ya da yokluğun kendisinin ölçüldüğü
+    /// testler için (örn. çözücü kayıtlı değilse kurulum patlıyor mu).
+    ///
+    /// <para>
+    /// Ürün derlemesinin tamamı keşfe verildiğinde bu kap <b>yetmiyor</b> ve
+    /// yetmemesi doğru: M04'ün araçları ürün servislerine bağımlı ve
+    /// <c>Instantiate</c> kurulamayan aracı atlamıyor, patlıyor. O testler
+    /// <see cref="ForDiscoveredTools"/> kullanıyor.
+    /// </para>
+    /// </summary>
+    public static ServiceProvider Empty() => new ServiceCollection().BuildServiceProvider();
+
     public static ServiceProvider ForDiscoveredTools() =>
+        new ServiceCollection()
+            .AddDiscoveredToolDependencies()
+            .AddComplianceScopeResolver()
+            .BuildServiceProvider();
+
+    /// <summary>
+    /// Araç bağımlılıkları <b>ama çözücü YOK</b>.
+    ///
+    /// <para>
+    /// Tek tüketicisi M08'in <i>"çözücü kayıtlı değilse kurulum patlıyor"</i>
+    /// testi. Ayrı bir aşırı yükleme olması şart: çözücüyü de kaydeden bir kap
+    /// o testi <b>hiçbir şey ölçmeyen</b> hâle getirirdi, ve araç bağımlılıkları
+    /// olmayan bir kap ise kurulumu <b>başka bir sebeple</b> düşürüp aynı testi
+    /// yanlış sebeple yeşil... hayır, yanlış sebeple KIRMIZI yapardı — mesaj
+    /// kimlikten değil DI'dan şikâyet ederdi.
+    /// </para>
+    /// </summary>
+    public static ServiceProvider ForDiscoveredToolsWithoutResolver() =>
         new ServiceCollection().AddDiscoveredToolDependencies().BuildServiceProvider();
+
+    /// <summary>
+    /// Uyum kapısının kimliği: <b>oturuma</b> konan principal.
+    ///
+    /// <para>
+    /// Kapsam çözücüsüyle <b>tutarlı</b> olması gerekiyor; ikisi ayrışsaydı kapı
+    /// kimlik hakkında bir şey söylüyor gibi görünüp aslında sabit bir kapsam
+    /// ölçüyor olurdu.
+    /// </para>
+    /// </summary>
+    public static ClaimsPrincipal ComplianceIdentity { get; } = new(
+        new ClaimsIdentity(
+            [new Claim(BizigoClaims.Subject, "uyum-kapisi")],
+            authenticationType: "uyum-kapisi-test"));
 
     /// <summary>
     /// Aynı kayıtların <see cref="IServiceCollection"/> hâli.
@@ -303,6 +478,51 @@ internal static class McpTestServices
 
         return services;
     }
+
+    /// <summary>
+    /// Sabit kapsam veren çözücü. Gerekçesi <see cref="FixedScopeResolver"/>'da.
+    /// </summary>
+    public static IServiceCollection AddComplianceScopeResolver(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.AddSingleton<IAccessScopeResolver>(new FixedScopeResolver(
+            AccessScope.ForGroups("uyum-kapisi", ["network/core"])));
+
+        return services;
+    }
+}
+
+/// <summary>
+/// Sabit kapsam döndüren çözücü — <b>yalnızca protokol kapıları için</b>.
+///
+/// <para>
+/// M08'in kapısı bir çözücü istiyor ve istemesi doğru: kimlik isteyen bir araç
+/// ilan edilip çözücü kaydedilmemişse kurulum patlıyor (<i>"kapsam çözücüsüz bir
+/// ürün yüzeyi ya her şeyi açar ya hiçbir şeyi döndürmez; ikisi de sessizce
+/// yanlıştır"</i>).
+/// </para>
+///
+/// <para>
+/// <b>Bu bir gevşetme değil.</b> Uyum kapısının sorusu PROTOKOL: şema geçerli
+/// mi, örnek çıktı ona uyuyor mu, iptal iletiliyor mu. Kimliğin zorunlu olduğu,
+/// kimliksiz oturumun koşmadan reddedildiği ve kapsamın REST'le aynı kapıdan
+/// geldiği <c>McpIdentityTests</c>'te <b>ayrıca</b> ölçülüyor. Aynı şeyi burada
+/// bir kez daha ölçmeye çalışmak iki kapıyı birbirine bağlar ve ikisini de
+/// bulanıklaştırır.
+/// </para>
+///
+/// <para>
+/// Kimlikten kapsama çevrimin kendisi <c>GroupMapping</c>'de ve orada
+/// sınanıyor; burada çevrilecek bir kimlik yok, çünkü uyum kapısı bir kimlik
+/// kapısı değil. Kapsam <b>boş olmayan</b> seçiliyor: boş kapsam
+/// <c>ProductReadTool</c>'un <c>not_found</c> dalını tetikler ve kapı şemayı
+/// değil o reddi ölçerdi.
+/// </para>
+/// </summary>
+internal sealed class FixedScopeResolver(AccessScope scope) : IAccessScopeResolver
+{
+    public AccessScope Resolve(ClaimsPrincipal? principal) => scope;
 }
 
 /// <summary>

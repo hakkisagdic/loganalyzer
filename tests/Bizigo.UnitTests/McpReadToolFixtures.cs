@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Bizigo.Contracts;
 using Bizigo.Mcp;
 using Bizigo.Query;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,7 +40,7 @@ internal static class McpReadToolFixtures
             map[name] = JsonSerializer.SerializeToElement(value);
         }
 
-        return new McpToolInvocation(map);
+        return new McpToolInvocation(map, InvocationScope);
     }
 
     /// <summary>Sayısal ya da tipli argüman gerektiğinde.</summary>
@@ -54,8 +55,26 @@ internal static class McpReadToolFixtures
             map[name] = JsonSerializer.SerializeToElement(value);
         }
 
-        return new McpToolInvocation(map);
+        return new McpToolInvocation(map, InvocationScope);
     }
+
+    /// <summary>
+    /// <b>Çağrı nesnesinin kapsamı bilerek <c>Denied</c>.</b>
+    ///
+    /// <para>
+    /// Gövde testleri kapsamı <c>ExecuteScopedAsync</c>'e <b>parametre olarak</b>
+    /// veriyor. Çağrı nesnesindeki kapsamı da aynı yapmak, bir kusuru
+    /// gizlerdi: parametreyi yok sayıp <c>invocation.Scope</c>'u okuyan bir araç
+    /// gövdesi testlerden temiz geçerdi. <c>Denied</c> olması onu kırmızı
+    /// yakıyor — hiçbir satır göremeyen bir kapsamla hiçbir iddia sağlanmıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Kapsamın <b>nereden geldiği</b> M08'in sorusu ve orada ölçülüyor
+    /// (<c>McpIdentityTests</c>); buradaki soru gelen kapsamla ne yapıldığı.
+    /// </para>
+    /// </summary>
+    private static AccessScope InvocationScope => AccessScope.Denied;
 
     /// <summary>
     /// <c>IScopedQuery</c>'yi <b>scoped</b> kaydeden bir kapsam fabrikası.

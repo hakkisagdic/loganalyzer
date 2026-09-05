@@ -3,82 +3,51 @@ using Bizigo.Contracts;
 namespace Bizigo.Mcp.Product;
 
 /// <summary>
-/// <b>Kapsamın araç çağrısına girdiği TEK yer — ve M08'in bağlayacağı tek satır.</b>
+/// <b>Kapsamın araç gövdesine girdiği TEK yer.</b>
 ///
 /// <para>
-/// <b>Bugün ne yapıyor.</b> Bu dalın tabanı M01; M01'in
-/// <see cref="McpToolInvocation"/>'ı yalnızca <c>Arguments</c> taşıyor. Kimliği
-/// MCP oturumundan uca taşıyan iş M08'de ve o dal <b>burada yok</b>. Dolayısıyla
-/// bugün kapsam çözülemiyor ve bu metot <c>unavailable</c> döndürüyor.
+/// Gövde bir satır, ve bu dosyanın var olma sebebi o satırın <b>tek</b> olması.
+/// M04 M08'den önce yazıldı: o gün <see cref="McpToolInvocation"/> kapsam
+/// taşımıyordu ve buradan <c>unavailable</c> dönüyordu. Kapsam bağı gelince
+/// değişen şey <b>yalnızca bu metot</b> oldu — beş aracın hiçbirine
+/// dokunulmadı, çünkü kapsam onlara zaten parametre olarak geliyor
+/// (<see cref="ProductReadTool.ExecuteScopedAsync"/>).
 /// </para>
 ///
 /// <para>
-/// <b>Neden boş bir kapsam ya da <c>AccessScope.System</c> değil.</b> İkisi de
-/// derlenirdi ve ikisi de sessiz bir yanlış üretirdi:
-/// </para>
-/// <list type="bullet">
-/// <item>
-/// <c>AccessScope.Denied</c> döndürmek — araçlar <b>boş sonuç</b> verirdi.
-/// <c>logs.search</c>'ün sıfır satırı model tarafından *"eşleşme yok"* diye
-/// okunur; hata yok, sayaç yok, belirti yok. §7'nin tarif ettiği sınıfın tam
-/// örneği.
-/// </item>
-/// <item>
-/// <c>AccessScope.System(...)</c> döndürmek — araçlar <b>her grubun verisini</b>
-/// görürdü, ve M04'ün en kötü hâli tam olarak bu (K6). Ayrıca
-/// <c>AccessScopeResolver</c>'ın <c>admin</c> kararını atlamak olurdu: o karar
-/// bilinçli ve <b>tek yerde</b>; ikinci bir yer açmak onu karar olmaktan
-/// çıkarır.
-/// </item>
-/// </list>
-///
-/// <para>
-/// Geriye tek dürüst hâl kalıyor: <b>koşmadan reddetmek</b>. <c>unavailable</c>
-/// istemciye *"altyapı hazır değil"* diyor — <c>not_found</c> deseydi
-/// *"yanlış sordum"* ile karışırdı (M02'nin <c>CommandFailureKind</c> ayrımıyla
-/// aynı gerekçe).
+/// <b>Neden hâlâ ayrı bir dosya.</b> Satır <see cref="ProductReadTool"/>'un
+/// içine gömülebilirdi. Ayrı durmasının değeri M04'te ölçüldü: bir bağımlılık
+/// henüz yokken <b>tek noktada</b> beklemek, o bağımlılık geldiğinde tek
+/// noktada birleşmek demek. Aynı şey M07/M08'in bir sonraki hamlesi için de
+/// geçerli — kapsamın nereden geldiği bir gün yine değişecek.
 /// </para>
 ///
 /// <para>
-/// <b>M08 geldiğinde değişecek olan şey.</b> Gövdedeki tek dönüş, kapsamı
-/// <see cref="McpToolInvocation"/>'dan okumaya döner (M08 onu <b>zorunlu</b> bir
-/// alan yaptı ve kuran tek yer mühürlü <c>InvokeAsync</c>). Araçların hiçbirine
-/// dokunulmuyor: kapsam onlara zaten parametre olarak geliyor
-/// (<see cref="ProductReadTool.ExecuteScopedAsync"/>). Bu dosya bilerek tek
-/// metot: birleştirme tek noktada çakışıyor.
+/// <b>Kimlik reddi burada DEĞİL.</b> M08 onu mühürlü <c>InvokeAsync</c>'e koydu:
+/// <c>RequiresCallerIdentity</c> ürün yüzeyinde varsayılan <see langword="true"/>
+/// ve kimliksiz oturumda araç <b>koşmadan</b> reddediliyor
+/// (<c>unauthenticated</c>). Yani buraya ulaşan bir çağrının kimliği <b>var</b>;
+/// buradaki soru yalnızca <i>o kimliğin kapsamı nedir</i>.
+/// </para>
+///
+/// <para>
+/// Kapsamın <b>boş</b> olması ayrı bir hâl ve cevabı
+/// <see cref="ProductReadTool.ScopeRejection"/>'da: kimlik doğrulanmış ama
+/// hiçbir <c>owner_group</c>'a çevrilmiyor. <c>not_found</c> dönüyor, boş liste
+/// değil — sıfır satır <i>"eşleşme yok"</i> diye okunurdu.
 /// </para>
 /// </summary>
 internal static class ProductToolScope
 {
     /// <summary>
-    /// Çağrının kapsamını verir. <see langword="false"/> dönerse araç
-    /// <b>koşmuyor</b> ve <paramref name="error"/> istemciye gidiyor.
+    /// Çağrının kapsamı.
+    ///
+    /// <para>
+    /// <b>Araç kapsamı ARAMIYOR, alıyor.</b> Çözücü çağrısı burada da değil:
+    /// M08 onu <c>InvokeAsync</c>'e koydu ve o metot <c>sealed</c>. Bu metot
+    /// yalnızca <i>taşıyor</i> — ve taşımaktan başka bir şey yapmadığı
+    /// görülebilir olsun diye tek satır kaldı.
+    /// </para>
     /// </summary>
-    internal static bool TryResolve(
-        McpToolInvocation invocation,
-        out AccessScope scope,
-        out McpToolError error)
-    {
-        // M08'İN BAĞLAYACAĞI SATIR. Bugün kimlik taşıyıcısı yok.
-        //
-        // `invocation` bilerek kullanılıyor gibi durmuyor: M08 kapsamı ORAYA
-        // koyuyor, dolayısıyla imza şimdiden onu alıyor. Parametreyi sonra
-        // eklemek her çağıranı tekrar açmak olurdu.
-        _ = invocation;
-
-        scope = AccessScope.Denied;
-
-        error = new McpToolError(
-            McpToolError.Unavailable,
-            "MCP oturumundan kimlik taşınmıyor (M08); kapsam çözülemedi ve sorgu koşturulmadı.",
-            new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                // Boş sonuç DÖNMÜYORUZ ve bunu söylüyoruz: sıfır satır
-                // "eşleşme yok" diye okunurdu.
-                ["reason"] = "identity_not_carried",
-                ["blocked_by"] = "M08",
-            });
-
-        return false;
-    }
+    internal static AccessScope Of(McpToolInvocation invocation) => invocation.Scope;
 }

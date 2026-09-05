@@ -176,6 +176,101 @@ Realm'de yalnızca `bizigo-claims` client scope var (`scope=openid` geçiyor,
 `openid profile email` `invalid_scope` alıyor) — ölçüldü, MCP tarafı bunu
 varsaymalı.
 
+### M08 kimliği nasıl taşıyor
+
+Kimlik **çağrı başına** taşınıyor, kurulumda değil. Gerekçe ölçüldü: araçlar
+`AddOptions<McpServerOptions>().Configure<IServiceProvider>` içinde **kök**
+sağlayıcıdan ve **bir kez** kuruluyor, yani kapsamlı bir `ICurrentUser` oraya
+enjekte edilemiyor — edilebilseydi tek bir kullanıcının kimliği bütün
+oturumlara esir bağımlılık olarak dağılırdı, yani *"servis hesabıyla koşan
+sunucu"*nun kılık değiştirmiş hâli.
+
+Yol şu:
+
+```mermaid
+flowchart LR
+  KC["Keycloak<br/>bizigo-claims"] -->|Bearer| HTTP["/mcp<br/>RequireAuthorization()"]
+  HTTP -->|HttpContext.User| CTX["RequestContext.User<br/>(SDK, MessageContext)"]
+  CTX --> GATE["IAccessScopeResolver.Resolve<br/><b>REST ile aynı kapı</b>"]
+  GATE --> INV["McpToolInvocation.Scope<br/><b>zorunlu argüman</b>"]
+  INV --> TOOL["araç"]
+  STDIO["stdio<br/>User = null"] -.->|"reddediliyor:<br/>unauthenticated"| TOOL
+```
+
+Kapının üç mekanik özelliği var ve üçü de ölçüldü
+(`tests/Bizigo.UnitTests/McpIdentityTests.cs`):
+
+| Özellik | Nasıl zorlanıyor |
+| --- | --- |
+| Kapsamsız araç çağrısı **yazılamıyor** | `McpToolInvocation.Scope` zorunlu; onu kuran tek yer `sealed BizigoMcpTool.InvokeAsync` |
+| Kapsam **REST'in kapısından** geliyor | `IAccessScopeResolver` = `AccessScopeResolver`'ın kendisi; MCP ikinci bir çevrim yazmıyor |
+| Muafiyet **iki bilinçli hareket** | `RequiresCallerIdentity` ezilecek **ve** gerekçeli listeye + sabit sayıya girilecek |
+
+### stdio'da kimlik — cihaz akışı **elendi**
+
+Sorulan soru şuydu: stdio'da HTTP başlığı yok, o hâlde `bizigo mcp serve
+--surface bizigo` kimliği nereden alacak? Beklenen cevap **cihaz akışı**
+(device code) idi. **Çürütüldü**, ve çürüten şey uyduğumuz revizyonun kendi
+yetkilendirme spesifikasyonu (`2026-07-28`, birebir):
+
+> Implementations using an HTTP-based transport **SHOULD** conform to this
+> specification. Implementations using an **STDIO** transport **SHOULD NOT**
+> follow this specification, and instead **retrieve credentials from the
+> environment**.
+
+Yani spesifikasyon stdio'yu OAuth akışlarının (cihaz akışı dahil) **dışında**
+tutuyor. Mekanik gerekçe de bağımsız olarak aynı yere çıkıyor: bu taşımada
+**stdout protokolün kendisi, stdin de protokolün kendisi**; cihaz akışının
+göstermesi gereken URL + kod için geriye yalnızca stderr kalıyor ve stderr MCP
+istemcilerinde kullanıcıya gösterilen bir kanal değil, bir günlük dosyası.
+Sunucu o sırada el sıkışmayı tutarak bloke olurdu.
+
+Üçüncü gerekçe §8: CLI bugün API'ye **hiç konuşmuyor** (ölçüldü — `HttpClient`
+yok, `Authorization` yok, `/v1/...` çağrısı yok; `token` eşleşmelerinin hepsi
+`CancellationToken`). `serve` bir belirteç edinseydi onu bugün **kimse
+tüketmiyor** olurdu.
+
+**Bugünkü davranış:** stdio'da `RequestContext.User` `null` ve kimlik isteyen
+bir ürün aracı **koşmadan** reddediliyor — `unauthenticated`, sebebi söyleyen
+bir mesajla. Boş sonuç dönmüyor: `logs.search`'ün sıfır satırı *"eşleşme yok"*
+diye okunur ve kimliğin kaybolduğunu kimse görmez. Bugün ürün yüzeyinde kimlik
+isteyen araç olmadığı için (`server.info` gerekçeli muaf) `bizigo mcp serve`
+bozulmuyor; M04'ün ilk aracıyla birlikte duvar oraya çıkıyor.
+
+**Açık kalan:** belirtecin ortamdan hangi biçimde okunacağı (değişken adı,
+tazeleme, süre dolumu). Bilerek yazılmadı — onu tüketen ilk araçla birlikte
+doğmalı (§8: tüketicisi olmayan bir tip tahmindir).
+
+### Servis hesabı yasağı **yapısal**, bir claim kontrolü değil
+
+Yukarıdaki cümlenin öznesi **sunucu**: *"servis hesabıyla koşan bir MCP
+sunucusu"*. Yasak buna göre mekanizmaya bağlandı — kimlik yalnızca çağrının
+kendisinden geliyor, yapılandırmadan ya da bir singleton'dan gelen bir kimlik
+yolu yok, ve sunucu hiçbir yerde kendi adına belirteç edinmiyor.
+
+**İddia edilen kimliği eleyen bir kontrol bilerek konmadı** (örn. Keycloak'ta
+`preferred_username` = `service-account-<client>`), ve gerekçesi burada duruyor
+ki bir sonraki kişi *"kolay bir kontrol, neden yok"* diye eklemesin:
+
+1. **Ürünün yazılı bir özelliğini bozardı.** `AccessScopeResolver`'ın belgesi
+claim sözleşmesini **bilerek dar** tutuyor (dört claim), sebebi Keycloak →
+Entra ID geçişinin **kodda değişiklik istememesi**. Beşinci bir claim eklemek o
+özelliği kaybetmek.
+2. **Bu deponun adı konmuş hata sınıfına girerdi:** *SQL doğru, kolon doğru,
+**dizge** yanlış.* IdP adlandırmasını değiştirdiği gün kapı **sessizce**
+açılırdı.
+
+### Bilinen sınır — kimliğin **bulunması** (M09'a taşındı)
+
+Aynı spesifikasyon iki **MUST** daha koyuyor ve ikisi de bugün karşılanmıyor.
+İkisi de *"kimliğin taşınması"* değil **"kimliğin bulunması ve bağlanması"**,
+ve ikisi de M08'in patlama yarıçapının dışına çıkıyor:
+
+| Sınır | Spesifikasyon | Bugünkü hâl | Neden M08'de değil |
+| --- | --- | --- | --- |
+| **Protected Resource Metadata** | *"MCP servers **MUST** implement OAuth 2.0 Protected Resource Metadata (RFC 9728)"*; 401'de `WWW-Authenticate: Bearer resource_metadata="…"` | `/mcp` **çıplak 401** dönüyor; istemci Keycloak'ı bulamıyor, belirteç elle yapılandırılmak zorunda | SDK desteği var (`AddMcp()`) ama `DefaultChallengeScheme`'i değiştiriyor, yani **API'nin tamamının** 401 davranışına ve BFF'e (K31) dokunuyor |
+| **Audience bağlama** | *"MCP servers **MUST** validate that access tokens were issued specifically for them as the intended audience"* (RFC 8707) | `AuthOptions.Audience = "account"` — Keycloak varsayılanı, MCP sunucusunu tanımlayan bir değer değil | Realm yapılandırması + BFF + collector'ı birlikte ilgilendiriyor; realm değişikliği **canlı Keycloak** demek (§2) |
+
 ---
 
 ## 7 · Ticket'lar
@@ -227,6 +322,12 @@ MCP oturumu **SDK'nın taşıma oturumu** olarak duruyor ve BFF'in
 taşınacağı sorusunun cevabını (**M08**) önden vermek olurdu — ve M08 henüz
 yazılmadı. Yani bu bir erteleme değil, **sıra**: taşıma oturumu M01'in,
 kimlik M08'in.
+  **M08 yazıldı ve bağımsızlık korundu:** kimlik oturuma değil **çağrıya**
+  bağlandı (`RequestContext.User` → §6). Yani MCP oturumu hâlâ SDK'nın taşıma
+  oturumu; BFF'in `redis-session`'ıyla hiçbir bağı yok.
+- ~~**stdio kimliği nereden alacak.**~~ **Cevaplandı** (M08): cihaz akışı
+**elendi** — uyduğumuz revizyonun yetkilendirme spesifikasyonu stdio'yu OAuth
+akışlarının dışında tutuyor ve kimliği **ortamdan** istiyor. §6'ya bakın.
 - ~~**Araç sayısının modele maliyeti ölçülmedi.**~~ **Ölçüldü** (M01): §10'a
 bakın.
 
@@ -278,3 +379,56 @@ Ayrım M02–M08 boyunca geçerli: **yazılı bir sabit + ölçüm** kaymayı en
 `/mcp` ucu `RequireAuthorization()` taşıyor ve kimliksiz bir isteğin **401**
 aldığı ölçülü (`McpHttpTransportTests`). Bu M08'in ön şartı — servis hesabıyla
 ya da kimliksiz koşan bir MCP sunucusu bütün kapsam kapılarını atlardı (K17).
+
+---
+
+## 11 · M08'in ölçtükleri
+
+### Keşif, yüzeyini yapıcıdan almayan hiçbir aracı kuramıyordu
+
+M01'in `McpToolDiscovery.Instantiate`'i `surface`'i **koşulsuz** fazladan
+argüman veriyordu. Ölçüldü: `ActivatorUtilities` fazladan argümanı olan bir
+çağrıyı eşleştirmiyor —
+
+> A suitable constructor for type 'TestOnlyTool' could not be located. …
+> **Also ensure no extraneous arguments are provided.**
+
+— yani **parametresiz bir yapıcı da, yalnızca `IScopedQuery` isteyen bir M04
+aracı da kurulamıyordu**, ve `Instantiate` atlamayıp patladığı için sunucu hiç
+ayağa kalkmıyordu.
+
+Kapının bugüne kadar sessiz kalma sebebi ayrıca ölçüldü: **üretimdeki tek araç
+yanlış tarafı hiç göstermiyordu.** `server.info` yüzeyini yapıcıdan alıyor,
+test araçları da keşfe hiç verilmemişti. Yani kapı yeşildi ve yeşilliği
+*"yalnızca bu tek örnek çalışıyor"* demekti.
+
+Asıl bedel mesajdı: `Instantiate`'in `catch`'i bunu *"Bağımlılığı DI'ya
+kaydedilmemiş olabilir"* diye raporluyordu — sebebi **olmayan** bir yere
+işaret eden bir hata, yani §7'nin sınıfı. Düzeltildi ve
+`Kesif_yuzeyini_yapicidan_almayan_araci_da_kurabiliyor` bekçisi eklendi.
+
+### Kırmızı yanabildiği ölçülen bekçiler
+
+Beş kusur uygulandı, her birinde **kusurun dosyada gerçekten olduğu iddia
+edildi**, sonra geri alındı ve tam paket bir kez daha koştu (§6):
+
+| Kusur | Kırmızı yanan |
+| --- | --- |
+| Kimlik kapısı devre dışı | `Kimliksiz_oturumda_urun_araci_kosmadan_reddediliyor` |
+| Kapsam ürünün kapısından değil MCP'nin kendi kopyasından | `Kapsam_REST_ile_ayni_kapidan_geliyor` |
+| Taşıyıcı `AccessScope.System` kaçış deliğine düşüyor | `Mcp_cekirdegi_kapsam_kacis_deligine_dokunmuyor` |
+| Muafiyet listesi gerçekle ayrışıyor | `Kimlik_muafiyeti_gerekceli_ve_sayisi_sabit` |
+| Keşif yüzeyi koşulsuz veriyor (yukarıdaki M01 kusuru) | `Kesif_yuzeyini_yapicidan_almayan_araci_da_kurabiliyor` |
+
+### Canlı Keycloak ölçümü **yazıldı, koşturulmadı**
+
+`tests/Bizigo.IntegrationTests/McpKeycloakIdentityTests.cs` — koşturulduğunda
+üç halkayı kapatıyor: Keycloak gerçekten `groups`/`sub` basıyor mu,
+`MapInboundClaims = false` MCP yolunda da geçerli mi, ve baştaki eğik çizgi
+gerçek `idp_group_mapping` satırlarıyla eşleşiyor mu.
+
+Belirteç **ortamdan** alınıyor (`BIZIGO_MCP_ACCESS_TOKEN`) ve sebebi ölçüldü:
+realm'deki hiçbir istemcide `directAccessGrantsEnabled` açık **değil**
+(`bizigo-ui`, `bizigo-collector` — ikisi de `false`), yani parola akışıyla
+test içinden kullanıcı belirteci alınamıyor. Alınabilmesi realm'i gevşetmeyi
+gerektirirdi ve bu bir ürün kararı, bir test kolaylığı değil.

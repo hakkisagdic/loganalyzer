@@ -69,6 +69,11 @@ public sealed class McpHttpTransportTests
         // bir kopya yazılmadı (§9).
         builder.Services.AddDiscoveredToolDependencies();
 
+        // M08'in kapısı kimlik isteyen araç ilan edilmişse çözücü istiyor.
+        // Bu test TAŞIMAYI ölçüyor (el sıkışma HTTP üzerinde çalışıyor mu),
+        // kimliği değil — kimlik `McpIdentityTests`'in konusu.
+        builder.Services.AddComplianceScopeResolver();
+
         builder.Services.AddBizigoMcp(builder.Configuration);
 
         var app = builder.Build();

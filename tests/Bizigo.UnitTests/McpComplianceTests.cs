@@ -88,6 +88,47 @@ public sealed class McpComplianceTests
     }
 
     /// <summary>
+    /// <b>Keşif, yüzeyini yapıcıdan almayan aracı da kurabiliyor.</b>
+    ///
+    /// <para>
+    /// M08 sırasında ölçüldü ve M01'in bir kusuruydu: <c>Instantiate</c>
+    /// <c>surface</c>'i <b>koşulsuz</b> fazladan argüman olarak veriyordu ve
+    /// <c>ActivatorUtilities</c> fazladan argümanı olan çağrıyı eşleştirmiyor
+    /// (<i>"Also ensure no extraneous arguments are provided"</i>). Sonuç:
+    /// yüzeyini yapıcıdan almayan <b>hiçbir</b> araç kurulamıyordu — ne
+    /// parametresiz bir yapıcı, ne yalnızca <c>IScopedQuery</c> isteyen bir M04
+    /// aracı.
+    /// </para>
+    ///
+    /// <para>
+    /// Kapının bugüne kadar sessiz kalma sebebi ölçüldü: üretimde tek araç
+    /// (<c>server.info</c>) yüzeyini yapıcıdan alıyor, yani <b>tek örnek yanlış
+    /// tarafı hiç göstermiyordu</b>. Test araçları da keşfe hiç verilmemişti.
+    /// Bu test o boşluğu kapatıyor ve M04'ün ilk aracından önce kırmızı yanmayı
+    /// üstleniyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Kusurun asıl bedeli mesajdı: <c>Instantiate</c>'in <c>catch</c>'i bunu
+    /// <i>"Bağımlılığı DI'ya kaydedilmemiş olabilir"</i> diye raporluyordu, yani
+    /// sebebi <b>olmayan</b> bir yere işaret ediyordu.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Kesif_yuzeyini_yapicidan_almayan_araci_da_kurabiliyor()
+    {
+        using var services = McpTestServices.Empty();
+
+        var tools = McpToolDiscovery.Instantiate(
+            [typeof(TestOnlyTool), typeof(ServerInfoTool)], McpSurface.Product, services);
+
+        // İkisi de kuruldu: biri yüzeyini yapıcıdan alıyor, diğeri almıyor.
+        Assert.Equal(
+            [ServerInfoTool.ToolIdentifier, "test.only"],
+            tools.Select(static t => t.ToolName).Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>
     /// <b>Bugün ilan edilen küme.</b> Elle yazılmış olan denetlenen küme değil
     /// <b>beklenen</b> küme: keşif bundan azını bulursa bir araç sessizce
     /// düşmüş, fazlasını bulursa yeni bir araç gelmiş ve buraya bilinçli olarak
@@ -201,7 +242,15 @@ public sealed class McpComplianceTests
     {
         await using var services = McpTestServices.ForDiscoveredTools();
         var options = ProductionOptions(surface, services);
-        await using var session = await McpTestSession.StartAsync(options, services, cancellationToken: Ct);
+
+        // OTURUM KİMLİKLİ. M04'ten itibaren ürün araçları kimlik istiyor (M08)
+        // ve kimliksiz bir oturumda bu kapı şemayı değil `unauthenticated`
+        // retini ölçerdi. Gerekçenin tamamı `McpTestSession.StartAsync`
+        // belgesinde; kısası: kapıyı `SampleAsync`'e çevirmek serileştirmeyi ve
+        // `structuredContent` dönüşümünü ölçümden düşürürdü — M01'in kapıyı
+        // protokolden geçirme kararının tam tersi.
+        await using var session = await McpTestSession.StartAsync(
+            options, services, user: McpTestServices.ComplianceIdentity, cancellationToken: Ct);
 
         var declaredTools = await session.Client.ListToolsAsync(cancellationToken: Ct);
 
@@ -263,7 +312,7 @@ public sealed class McpComplianceTests
         var clientOptions = new McpClientOptions { ProtocolVersion = McpRevision.Supported };
 
         await using var session = await McpTestSession.StartAsync(
-            ProductionOptions(McpSurface.Product, services), services, clientOptions, Ct);
+            ProductionOptions(McpSurface.Product, services), services, clientOptions, cancellationToken: Ct);
 
         // El sıkışma gerçekten oldu: istemci sunucunun kimliğini biliyor.
         Assert.Equal(McpSurfaces.ProductName, session.Client.ServerInfo?.Name);
@@ -295,7 +344,7 @@ public sealed class McpComplianceTests
         var clientOptions = new McpClientOptions { ProtocolVersion = McpRevision.PreviousStable };
 
         await using var session = await McpTestSession.StartAsync(
-            ProductionOptions(McpSurface.Product, services), services, clientOptions, Ct);
+            ProductionOptions(McpSurface.Product, services), services, clientOptions, cancellationToken: Ct);
 
         Assert.NotEmpty(await session.Client.ListToolsAsync(cancellationToken: Ct));
     }
@@ -639,7 +688,7 @@ public sealed class McpComplianceTests
     }
 
     /// <summary>Zorunlu argüman isteyen araç — hata yolunun öznesi.</summary>
-    private sealed class ArgumentDemandingTool : BizigoMcpTool
+    private sealed class ArgumentDemandingTool : ProtocolMechanicsTool
     {
         public const string ToolIdentifier = "test.needs_argument";
 
