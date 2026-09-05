@@ -2,7 +2,7 @@ using System.Globalization;
 using Bizigo.Parsing.Engine;
 using Bizigo.Parsing.Schema;
 
-namespace Bizigo.Cli.Fields;
+namespace Bizigo.Commands.Fields;
 
 /// <summary>Bir kolonun taşıyabileceği değerler hakkında ne bilindiği.</summary>
 public enum ValueSpaceKind

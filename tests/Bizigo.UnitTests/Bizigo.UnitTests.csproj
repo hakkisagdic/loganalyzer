@@ -62,6 +62,13 @@
     <ProjectReference Include="..\..\src\Bizigo.Evidence\Bizigo.Evidence.csproj" />
     <ProjectReference Include="..\..\src\Bizigo.Rca\Bizigo.Rca.csproj" />
     <ProjectReference Include="..\..\src\Bizigo.ScenarioPlugin\Bizigo.ScenarioPlugin.csproj" />
+
+    <!--
+      M02 — komut çekirdeği. `Fields/` ve `Seeding/` buraya taşındı;
+      testleri de çekirdeği gösteriyor. CLI referansı duruyor çünkü
+      `CliSmokeTests` derlenmiş ikiliyi koşturuyor.
+    -->
+    <ProjectReference Include="..\..\src\Bizigo.Commands\Bizigo.Commands.csproj" />
     <ProjectReference Include="..\..\sim\Bizigo.Simulators\Bizigo.Simulators.csproj" />
   </ItemGroup>
 

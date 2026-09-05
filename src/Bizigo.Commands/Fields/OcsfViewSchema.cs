@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Bizigo.Cli.Fields;
+namespace Bizigo.Commands.Fields;
 
 /// <param name="Source"><c>events</c> tablosundaki kaynak kolon.</param>
 /// <param name="Alias">Görünümdeki OCSF adı — Sigma kurallarının vurduğu ad.</param>

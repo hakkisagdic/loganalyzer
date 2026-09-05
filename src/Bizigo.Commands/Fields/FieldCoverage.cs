@@ -2,7 +2,7 @@ using System.Globalization;
 using Bizigo.Contracts;
 using Bizigo.Storage.ClickHouse;
 
-namespace Bizigo.Cli.Fields;
+namespace Bizigo.Commands.Fields;
 
 /// <param name="Text">Satırda hiçbir alana girmemiş metin parçası.</param>
 /// <param name="Lines">Kaç örnek satırda görüldüğü.</param>

@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Bizigo.Cli.Fields;
+namespace Bizigo.Commands.Fields;
 
 /// <summary>
 /// Sigma taxonomy adı → <c>events_ocsf</c> kolon adı, <b>pipeline'ın kendi

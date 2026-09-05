@@ -42,15 +42,37 @@ namespace Bizigo.UnitTests;
 public sealed class McpSchemaBudgetTests
 {
     /// <summary>
-    /// <c>tools/list</c> yükünün belirteç tavanı.
+    /// <b>Araç başına</b> belirteç tavanı — toplam ondan türüyor.
     ///
     /// <para>
-    /// Tavanın işlevi bir performans hedefi değil <b>görünürlük</b>: araç
-    /// eklemek bu sabiti de değiştirmeyi gerektiriyor, yani bağlam bütçesinin
-    /// büyümesi sessiz olamıyor. Kalıp <c>ProducesContractTests.ExpectedExemptCount</c>'tan.
+    /// <b>M02'de yapı değişti ve sebebi ölçülmüş bir eğilim.</b> Sabit önce bir
+    /// TOPLAM tavandı (400) ve yedi araç eklenince 2.400'e çekilmesi gerekti.
+    /// Ama eğilim şunu söylüyor: MCP planı ~15 araç öngörüyor, araç başına ~280
+    /// belirteçle toplam <b>~4.500</b>'e çıkıyor. Toplam tavanla her araç
+    /// ailesi sabiti yeniden düzenlerdi — ve o noktada kapı bir <b>kayıt</b>
+    /// olmaktan çıkıp <b>güncellenmesi rutinleşen bir sabite</b> dönerdi. Bu
+    /// deponun defalarca adını koyduğu şey; elle tutulan sayı er ya da geç
+    /// bekçiyi kör ediyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Araç başına tavan bunu yapısal olarak kaldırıyor:</b> yeni bir araç
+    /// eklemek sabiti düzenlemeyi <b>gerektirmiyor</b>, ve kapı hâlâ gerçek bir
+    /// şey ölçüyor — <i>"bir aracın bütçesi şunu aşamaz"</i>. Disiplin de
+    /// maliyetin gerçekten olduğu yere biniyor: <c>description</c> metinleri.
+    /// M02'de şema açıklamaları kırpılınca yük <b>2.484 → 2.248</b>'e indi (%10).
+    /// </para>
+    ///
+    /// <para>
+    /// <b>600 nereden geliyor.</b> Ölçülen dağılım: ortalama ~280, en ucuz
+    /// <c>server.info</c> 194, en pahalı <c>fields.coverage</c> 481. Tavan en
+    /// pahalı araca <b>%25 pay</b> bırakıyor. Daha dar bir tavan (örn. 500)
+    /// gürültüyle kırmızı yanar ve rutin olarak yükseltilirdi — yani kaldırmaya
+    /// çalıştığımız hâle geri dönerdi. 600'ü aşan bir araç fazla iş yapıyor
+    /// demektir ve bir konuşmayı hak eder.
     /// </para>
     /// </summary>
-    private const int ToolListTokenCeiling = 400;
+    private const int ToolTokenCeiling = 600;
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -65,7 +87,7 @@ public sealed class McpSchemaBudgetTests
     [MemberData(nameof(McpComplianceTests.Surfaces), MemberType = typeof(McpComplianceTests))]
     public async Task Arac_semalarinin_baglam_maliyeti(McpSurface surface)
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.Production();
         var options = BizigoMcpServer.CreateOptions(surface, typeof(global::Program).Assembly, services);
 
         await using var session = await McpTestSession.StartAsync(options, services, cancellationToken: Ct);
@@ -105,14 +127,31 @@ public sealed class McpSchemaBudgetTests
 
         TestContext.Current.TestOutputHelper?.WriteLine(report);
 
+        var over = perTool.Where(entry => entry.Tokens > ToolTokenCeiling).ToArray();
+
         Assert.True(
-            total <= ToolListTokenCeiling,
-            $"`tools/list` yükü {total.ToString(CultureInfo.InvariantCulture)} belirtece çıktı; "
-            + $"tavan {ToolListTokenCeiling.ToString(CultureInfo.InvariantCulture)}.\n\n{report}\n\n"
-            + "Bu bir performans hatası DEĞİL, bir karar noktası: bağlam bütçesi büyüdü. "
-            + "Tavanı yükseltmek serbest — ama görünür olsun diye buradan geçiyor. "
-            + "Yükseltirken araç açıklamalarının uzunluğuna da bakın: en pahalı kalem genelde "
-            + "şema değil, `description` metnidir.");
+            over.Length == 0,
+            "Araç bütçesini aşan araç(lar): "
+            + string.Join(", ", over.Select(static e =>
+                $"{e.Name} ({e.Tokens.ToString(CultureInfo.InvariantCulture)})"))
+            + $"; araç başına tavan {ToolTokenCeiling.ToString(CultureInfo.InvariantCulture)}.\n\n{report}\n\n"
+            + "Bu bir performans hatası DEĞİL, bir karar noktası. En pahalı kalem genelde şema "
+            + "değil `description` metnidir; önce onu kırpın. Tavanı yükseltmek son çare — "
+            + "yükseltilen bir tavan bir sonraki araçta yine yükseltilir ve kapı bir kayıt "
+            + "olmaktan çıkar.");
+
+        // Toplam TÜRETİLİYOR, elle yazılmıyor: yeni araç eklemek bu satırı
+        // değiştirmeyi gerektirmiyor ve bütçe yine de gerçek bir şey ölçüyor.
+        var derivedCeiling = perTool.Length * ToolTokenCeiling;
+
+        Assert.True(
+            total <= derivedCeiling,
+            $"`tools/list` yükü {total.ToString(CultureInfo.InvariantCulture)} belirteç; "
+            + $"türetilmiş tavan {derivedCeiling.ToString(CultureInfo.InvariantCulture)} "
+            + $"({perTool.Length.ToString(CultureInfo.InvariantCulture)} araç × "
+            + $"{ToolTokenCeiling.ToString(CultureInfo.InvariantCulture)}).\n\n{report}\n\n"
+            + "Araçların hiçbiri tek başına tavanı aşmıyorsa ama toplam aşıyorsa, fark "
+            + "araçlarda değil ZARFTA: `tools/list` yanıtının kendi yükü büyümüş demektir.");
     }
 
     /// <summary>

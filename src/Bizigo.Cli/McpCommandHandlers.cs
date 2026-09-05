@@ -1,4 +1,5 @@
 using System.Reflection;
+using Bizigo.Commands.Mcp;
 using Bizigo.Mcp;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -60,7 +61,20 @@ public static class McpCommandHandlers
                 .AddConsole(console => console.LogToStandardErrorThreshold = LogLevel.Trace))
             : LoggerFactory.Create(static logging => logging.ClearProviders());
 
-        var services = new ServiceCollection().BuildServiceProvider();
+        // M01'in bıraktığı boşluk BURASIYDI: `server.info` bağımlılık
+        // istemediği için boş bir `ServiceCollection` yetiyordu. Araçlar
+        // gelince yetmiyor — `McpToolDiscovery.Instantiate` kurulamayan bir
+        // aracı ATLAMIYOR, PATLIYOR, ve mesajı "bağımlılığı DI'ya
+        // kaydedilmemiş" diyor. Yani eksik bir kayıt sessiz değil; ama sebebi
+        // burada durur ve arıza aracın kendi dosyasında aranır.
+        //
+        // Grafik komut çekirdeğinin ihtiyaçlarını taşıyor: bugün tek bağımlılık
+        // `ParserToolbox` (dört parser aracı ve `fields.coverage` onu istiyor).
+        // Kurulum PAHALI (grok kütüphanesi + eşleme tabloları diskten okunuyor)
+        // ve süreç boyunca değişmiyor — singleton.
+        var services = new ServiceCollection()
+            .AddBizigoCommandTools()
+            .BuildServiceProvider();
 
         await McpStdioHost.RunAsync(
             surface,

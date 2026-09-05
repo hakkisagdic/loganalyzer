@@ -175,6 +175,13 @@ public sealed class ArchitectureTests
         Assert.Equal(
             [
                 "AddBizigoAlerting", "AddBizigoAuthentication", "AddBizigoAuthoring",
+
+                // M02: komut araçlarının bağımlılıkları. `Program.cs` bunu
+                // GERÇEKTEN çağırıyor (stdio host'u da aynı uzantıyı çağırıyor
+                // — iki ayrı kayıt, bir aracın bir taşımada çalışıp diğerinde
+                // patlaması demekti).
+                "AddBizigoCommandTools",
+
                 "AddBizigoDataPlane", "AddBizigoDiscovery", "AddBizigoEvidence",
                 "AddBizigoIngest",
 

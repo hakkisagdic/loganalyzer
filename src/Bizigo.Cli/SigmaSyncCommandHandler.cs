@@ -1,4 +1,5 @@
 using Bizigo.Alerting;
+using Bizigo.Commands;
 using Bizigo.ControlPlane;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,58 +27,52 @@ namespace Bizigo.Cli;
 /// </summary>
 public static class SigmaSyncCommandHandler
 {
-    /// <summary>Manifestin varsayılan yeri — T32'nin ürettiği dosya.</summary>
-    public const string DefaultManifest = "detections/sigma/manifest.json";
+    /// <summary>
+    /// <c>bizigo sigma plan</c> — <b>hiçbir şey yazmadan</b> manifestin ne
+    /// getireceğini çizer.
+    ///
+    /// <para>
+    /// M02'de <c>--dry-run</c> bayrağından kendi komutuna çıktı. Bayrak olarak
+    /// kalsaydı MCP tarafında ilan edilebilecek tek şey <b>yazan</b> komut
+    /// olurdu; okuma yarısı zaten saftı ve ilan edilmemesi için sebep yoktu.
+    /// </para>
+    /// </summary>
+    public static async Task<int> PlanAsync(
+        string manifestPath,
+        CancellationToken cancellationToken = default)
+    {
+        var outcome = await SigmaCommands.PlanAsync(manifestPath, cancellationToken).ConfigureAwait(false);
+
+        if (!outcome.Ok)
+        {
+            await Console.Error.WriteLineAsync(outcome.Failure.Message).ConfigureAwait(false);
+            return outcome.Failure.Kind == CommandFailureKind.NotFound ? 2 : 3;
+        }
+
+        Report(outcome.Payload.Decisions, outcome.Payload.TotalRules);
+        return 0;
+    }
 
     public static async Task<int> RunAsync(
         string manifestPath,
         string ownerSubject,
         string[] ownerGroups,
         string? connectionString,
-        bool dryRun,
         CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(manifestPath))
+        // Manifest yükleme ÇEKİRDEKTE ve `sigma plan` ile aynı yerden geliyor.
+        // İkinci bir yükleyici, biri düzeltilip diğeri eski kalınca "plan ne
+        // diyorsa sync onu yapar" iddiasını sessizce yanlış yapardı.
+        var loaded = await SigmaCommands.LoadManifestAsync(manifestPath, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!loaded.Ok)
         {
-            // Yol yanlışsa **sessizce sıfır kural** senkronlamak, "senkron
-            // koştu" diye okunur ve kimse manifeste bakmaz.
-            await Console.Error.WriteLineAsync(
-                $"Manifest bulunamadı: {manifestPath}\n" +
-                "Önce `python -m sigma_build.compile --write` koşturun.").ConfigureAwait(false);
-            return 2;
+            await Console.Error.WriteLineAsync(loaded.Failure.Message).ConfigureAwait(false);
+            return loaded.Failure.Kind == CommandFailureKind.NotFound ? 2 : 3;
         }
 
-        SigmaManifest manifest;
-
-        try
-        {
-            manifest = SigmaRuleSync.Parse(
-                await File.ReadAllTextAsync(manifestPath, cancellationToken).ConfigureAwait(false));
-        }
-        catch (Exception exception)
-        {
-            await Console.Error.WriteLineAsync(
-                $"Manifest ayrıştırılamadı: {exception.Message}\n" +
-                "Biçim derleme hattının (T32); değiştiyse senkron güncellenmeli.")
-                .ConfigureAwait(false);
-            return 2;
-        }
-
-        if (manifest.Rules.Length == 0)
-        {
-            // Boş manifest bir CEVAP değil bir arıza: sıfır kural senkronlamak
-            // "kural yok" diye okunur, oysa derleme hattı hiç koşmamış olabilir.
-            await Console.Error.WriteLineAsync(
-                $"Manifest BOŞ: {manifestPath}. Derleme hattı koşmamış olabilir; "
-                + "sıfır kural senkronlamak 'kural yok' diye okunur.").ConfigureAwait(false);
-            return 3;
-        }
-
-        if (dryRun)
-        {
-            Report(Plan(manifest), manifest.Rules.Length, applied: false);
-            return 0;
-        }
+        var manifest = loaded.Payload;
 
         var connection = connectionString
             ?? Environment.GetEnvironmentVariable("BIZIGO_CONTROLPLANE");
@@ -139,26 +134,6 @@ public static class SigmaSyncCommandHandler
     }
 
     /// <summary>
-    /// Kuru koşum planı — <b>veritabanına dokunmadan</b>.
-    ///
-    /// <para>
-    /// Var olan kayıt bilinmediği için her kural "yeni" sayılıyor ve bu
-    /// **bilerek**: kuru koşumun cevapladığı soru *"manifest ne getiriyor"*,
-    /// *"ne değişecek"* değil. İkisini karıştırmak, kuru koşumu gerçek
-    /// koşumun tahmini gibi göstermek olurdu.
-    /// </para>
-    /// </summary>
-    public static IReadOnlyList<SigmaSyncDecision> Plan(SigmaManifest manifest)
-    {
-        ArgumentNullException.ThrowIfNull(manifest);
-
-        return manifest.Rules
-            .Where(r => !string.Equals(r.Status, SigmaRuleSync.StatusFailed, StringComparison.Ordinal))
-            .Select(r => SigmaRuleSync.Decide(r, existing: null))
-            .ToList();
-    }
-
-    /// <summary>
     /// Tek koşumluk komutun fabrikası. Havuz kurmak, ömrü saniyelerle ölçülen
     /// bir süreçte kazanç sağlamıyor.
     /// </summary>
@@ -168,7 +143,7 @@ public static class SigmaSyncCommandHandler
         public ControlPlaneDbContext CreateDbContext() => new(options);
     }
 
-    private static void Report(IReadOnlyList<SigmaSyncDecision> plan, int total, bool applied)
+    private static void Report(IReadOnlyList<SigmaSyncDecision> plan, int total)
     {
         var gated = plan.Count(d => d.Status == AlertRuleStatus.Gated);
 

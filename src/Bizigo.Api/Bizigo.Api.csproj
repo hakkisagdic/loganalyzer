@@ -10,6 +10,14 @@
     <ProjectReference Include="..\Bizigo.Evidence\Bizigo.Evidence.csproj" />
     <ProjectReference Include="..\Bizigo.Rca\Bizigo.Rca.csproj" />
     <ProjectReference Include="..\Bizigo.Mcp\Bizigo.Mcp.csproj" />
+
+    <!--
+      M02 — komut araçları. HTTP taşıması bu derlemeden sürülüyor ve keşif
+      kompozisyon kökü olarak BURAYI geziyor; referans olmazsa araçlar
+      stdio'da görünüp HTTP'de görünmezdi — aynı sunucunun iki farklı
+      araç kümesi.
+    -->
+    <ProjectReference Include="..\Bizigo.Commands.Mcp\Bizigo.Commands.Mcp.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

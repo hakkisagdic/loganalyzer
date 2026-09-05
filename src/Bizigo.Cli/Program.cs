@@ -1,6 +1,7 @@
+using Bizigo.Commands;
 using System.CommandLine;
 using Bizigo.Cli;
-using Bizigo.Cli.Seeding;
+using Bizigo.Commands.Seeding;
 using Bizigo.Mcp;
 using Bizigo.Parsing.Samples;
 using Bizigo.Storage.ClickHouse;
@@ -377,7 +378,7 @@ fieldsCommand.Subcommands.Add(fieldsValuesCommand);
 // sorusu her çağrıda yeniden sorulurdu.
 var manifestOption = new Option<FileInfo?>("--manifest")
 {
-    Description = $"Derleme hattının manifesti (varsayılan {SigmaSyncCommandHandler.DefaultManifest}).",
+    Description = $"Derleme hattının manifesti (varsayılan {SigmaCommands.DefaultManifest}).",
 };
 
 var ownerSubjectOption = new Option<string>("--owner-subject")
@@ -401,28 +402,33 @@ var connectionOption = new Option<string?>("--connection")
     Description = "ControlPlane bağlantı dizgesi (yoksa BIZIGO_CONTROLPLANE).",
 };
 
-var sigmaDryRunOption = new Option<bool>("--dry-run")
-{
-    Description = "Hiçbir şey yazmaz; manifestin ne getireceğini gösterir.",
-};
-
 var sigmaSyncCommand = new Command(
     "sync", "Derleme hattının manifestini alarm kurallarına yazar.");
 sigmaSyncCommand.Options.Add(manifestOption);
 sigmaSyncCommand.Options.Add(ownerSubjectOption);
 sigmaSyncCommand.Options.Add(sigmaOwnerGroupOption);
 sigmaSyncCommand.Options.Add(connectionOption);
-sigmaSyncCommand.Options.Add(sigmaDryRunOption);
 sigmaSyncCommand.SetAction((parse, token) => SigmaSyncCommandHandler.RunAsync(
-    parse.GetValue(manifestOption)?.FullName ?? SigmaSyncCommandHandler.DefaultManifest,
+    parse.GetValue(manifestOption)?.FullName ?? SigmaCommands.DefaultManifest,
     parse.GetValue(ownerSubjectOption)!,
     parse.GetValue(sigmaOwnerGroupOption) ?? Array.Empty<string>(),
     parse.GetValue(connectionOption),
-    parse.GetValue(sigmaDryRunOption),
+    token));
+
+// M02: `--dry-run` bayrağı KENDİ KOMUTU oldu. Bayrak olarak kalsaydı MCP
+// tarafında ilan edilebilecek tek şey YAZAN komut olurdu; okuma yarısı
+// (`SigmaCommands.Plan`) bu depoda zaten saftı ve ilan edilmemesi için sebep
+// yoktu. Yani bu bir komut BÖLMEK değil, zaten ayrı olan yarıyı ilan etmek.
+var sigmaPlanCommand = new Command(
+    "plan", "Hiçbir şey yazmaz; manifestin ne getireceğini gösterir.");
+sigmaPlanCommand.Options.Add(manifestOption);
+sigmaPlanCommand.SetAction((parse, token) => SigmaSyncCommandHandler.PlanAsync(
+    parse.GetValue(manifestOption)?.FullName ?? SigmaCommands.DefaultManifest,
     token));
 
 var sigmaCommand = new Command("sigma", "Sigma kural seti işlemleri.");
 sigmaCommand.Subcommands.Add(sigmaSyncCommand);
+sigmaCommand.Subcommands.Add(sigmaPlanCommand);
 
 // MCP'nin stdio taşıması (M01). İkinci bir host projesi AÇILMADI: aynı
 // komutların iki yerde kurulması M02'nin kaçınmak için var olduğu kopya olurdu.

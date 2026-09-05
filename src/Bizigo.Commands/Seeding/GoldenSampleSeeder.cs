@@ -14,7 +14,7 @@ using Bizigo.Storage.ClickHouse;
 using Microsoft.Extensions.Logging.Abstractions;
 using Bizigo.Parsing.Samples;
 
-namespace Bizigo.Cli.Seeding;
+namespace Bizigo.Commands.Seeding;
 
 /// <param name="Text">Satırın kendisi, dosyadaki hâliyle.</param>
 /// <param name="ParserDirectory">
