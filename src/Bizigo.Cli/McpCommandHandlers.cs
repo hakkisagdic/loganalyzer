@@ -1,4 +1,5 @@
 using System.Reflection;
+using Bizigo.Contracts.Security;
 using Bizigo.Mcp;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -34,10 +35,15 @@ public static class McpCommandHandlers
     /// bir varsayılana düşmek, yüzeyini yanlış yazan çağrıyı sessizce ürün
     /// verisi kümesine bağlardı.
     /// </param>
+    /// <param name="boundaryName">
+    /// <c>internal</c> ya da <c>external</c> — yüzeyin <b>K6 beyanı</b> (M06).
+    /// <b>Varsayılanı yok</b> ve olmamalı; gerekçe aşağıda.
+    /// </param>
     /// <param name="verbose">Günlükleri stderr'e ver.</param>
     /// <param name="cancellationToken">İptal.</param>
     public static async Task<int> ServeAsync(
         string surfaceName,
+        string? boundaryName,
         bool verbose,
         CancellationToken cancellationToken)
     {
@@ -47,6 +53,45 @@ public static class McpCommandHandlers
                 $"Bilinmeyen MCP yüzeyi: '{surfaceName}'. "
                 + $"Beklenen: '{McpSurfaces.ProductName}' ya da '{McpSurfaces.SimulatorName}'.")
                 .ConfigureAwait(false);
+
+            return 2;
+        }
+
+        // K6 beyanı. `--surface`'in aksine VARSAYILANI YOK — ve bu, ikisinin
+        // farklı sorular sorduğunun kaydı: yüzeyin makul bir varsayılanı var
+        // (ürün), sınırın YOK. Sınırı varsayan her değer, beyan etmeyi unutan
+        // operatörün yerine karar vermiş olurdu.
+        //
+        // Buradan "stdio, demek ki iç ağ" diye geçilmedi: gerekçe
+        // `McpStdioHost.RunAsync`'in `boundary` parametresinde yazılı ve özeti
+        // şu — bu taşımanın en olası istemcisi log metnini buluta gönderiyor.
+        if (!Enum.TryParse<DataBoundary>(boundaryName, ignoreCase: true, out var declared)
+            || declared == DataBoundary.Unspecified)
+        {
+            await Console.Error.WriteLineAsync(
+                $"MCP ağ sınırı beyan edilmedi ya da çözümlenemedi: '{boundaryName}'. "
+                + "`--data-boundary internal` ya da `--data-boundary external` yazın. "
+                + "Beyansız bir yüzey 'iç ağ' SAYILMIYOR: K6 (`log verisi kurum dışına "
+                + "çıkmaz`) bir varsayılan kabul etmiyor.")
+                .ConfigureAwait(false);
+
+            return 2;
+        }
+
+        McpBoundaryDeclaration boundary;
+
+        try
+        {
+            boundary = McpBoundaryDeclaration.Declare(declared, "CLI seçeneği: `--data-boundary`");
+            McpBoundaryGate.Require(boundary, surface);
+        }
+        catch (Exception error) when (error is InvalidOperationException or ArgumentException)
+        {
+            // Kapının reddi burada YAKALANIYOR çünkü bu bir operatör hatası,
+            // bir program kusuru değil: yığın izi basmak yerine ne yazması
+            // gerektiğini söyleyip çıkış kodu veriyoruz. stdout'a tek satır
+            // gitmiyor — orası protokolün.
+            await Console.Error.WriteLineAsync(error.Message).ConfigureAwait(false);
 
             return 2;
         }
@@ -64,6 +109,7 @@ public static class McpCommandHandlers
 
         await McpStdioHost.RunAsync(
             surface,
+            boundary,
             Assembly.GetExecutingAssembly(),
             services,
             loggerFactory,

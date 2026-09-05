@@ -64,26 +64,47 @@ public static class BizigoMcpServer
     /// </summary>
     public static McpServerOptions CreateOptions(
         McpSurface surface,
+        McpBoundaryDeclaration boundary,
         Assembly compositionRoot,
         IServiceProvider services)
     {
         var options = new McpServerOptions();
 
-        Apply(options, surface, compositionRoot, services);
+        Apply(options, surface, boundary, compositionRoot, services);
 
         return options;
     }
 
     /// <summary>Seçenekleri yüzeye göre doldurur.</summary>
+    /// <param name="options">Doldurulacak seçenekler.</param>
+    /// <param name="surface">Hangi yüzey.</param>
+    /// <param name="boundary">
+    /// Yüzeyin <b>K6 beyanı</b> (M06). Beyansız bir sunucu kurulamıyor: tip
+    /// <c>Unspecified</c> ile hiç var olamıyor, ve <c>external</c> beyan edilmiş
+    /// bir ürün yüzeyi aşağıdaki kapıdan geçemiyor.
+    /// </param>
+    /// <param name="compositionRoot">Araçların aranacağı kök derleme.</param>
+    /// <param name="services">Araçların bağımlılıklarını çözecek sağlayıcı.</param>
     public static void Apply(
         McpServerOptions options,
         McpSurface surface,
+        McpBoundaryDeclaration boundary,
         Assembly compositionRoot,
         IServiceProvider services)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(compositionRoot);
         ArgumentNullException.ThrowIfNull(services);
+
+        // K6 kapısı EN BAŞTA — ve `ServerInfo` doldurulmadan önce. Araçları
+        // keşfedip sonra reddetmek, reddedilen bir sunucunun yarı kurulmuş
+        // hâlini üretirdi; burada patlaması, o hâlin hiç oluşmaması demek.
+        //
+        // Beyan tel üzerinde İLAN EDİLMİYOR ve bu iki gerekçeyle: §8 —
+        // tüketicisi olmayan bir alan uydurmak olurdu; ve istemciye kurumun ağ
+        // topolojisi hakkında bilgi vermenin bir sebebi yok. Beyan kapıda
+        // duruyor, uyum kapısı onu ölçüyor.
+        McpBoundaryGate.Require(boundary, surface);
 
         // `ProtocolVersion` BİLEREK atanmıyor — ve bu, ilk yazılan hâlin
         // ÖLÇÜLEREK düzeltilmiş hâli.

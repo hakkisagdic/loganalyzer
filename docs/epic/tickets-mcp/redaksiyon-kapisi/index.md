@@ -1,7 +1,7 @@
 ---
 title: "M06 — Redaksiyon ve K6 kapısı"
 kind: ticket
-status: 0
+status: 2
 ---
 
 # M06 — Planın ilk cümlesi bir yasaktı; burada mekanizma oluyor
@@ -93,15 +93,63 @@ Bu ticket'ın sondaki yeri bir erteleme değil bir sıra.
 1. **Kapı tipi bağlıyor, içeriği bağlamıyor.** `RedactedPrompt` bir metnin
    kapıdan **geçtiğini** garanti ediyor; o kapının hangi sırrı yakaladığını
    değil. Redaksiyon tabanının kapsamı T41'in ölçümü ve bu belgenin iddiası
-   değil.
-2. **Açık soru:** ağ sınırı beyanı **nerede** duruyor — MCP sunucusunun
-   yapılandırmasında mı, araç başına mı? Plan *"sunucu beyan eder"* diyor;
-   ama `stdio` ile HTTP taşımaları farklı sınırlarda koşabilir ve o hâlde
-   beyanın **taşıma başına** olması gerekir. Plan bunu söylemiyor,
-   uydurmuyorum.
-3. **Açık soru:** `sim.*` araçları sınır beyanından muaf mı? Yüzey ürün verisi
-   döndürmüyor, ama simülatör çıktısı yine de modele gidiyor. Kriter 3 ayrımı
-   yazmayı istiyor; **kararı vermiyor**.
-4. **Aramadım:** `RedactedPrompt`'ın bugün kaç çağrı yerinden üretildiğine
-   bakmadım — kapının bugünkü tüketicileri M06'nın tasarımını
-   kolaylaştırabilir.
+   değil. **Açık kalıyor** — ve kalması doğru.
+
+2. ~~**Açık soru:** ağ sınırı beyanı nerede duruyor?~~ **Cevaplandı: taşıma
+   başına.** Belgenin sezgisi doğruydu — HTTP ile stdio farklı sınırlarda
+   koşabiliyor, dolayısıyla tek bir sunucu-geneli ayar yanlış olurdu.
+   HTTP `Mcp:DataBoundary` yapılandırmasından, stdio
+   `bizigo mcp serve --data-boundary`'den okuyor. Beyan `BizigoMcpServer.Apply`
+   içinde tek bir kapıda birleşiyor, yani iki yol tek ölçütle sınanıyor.
+
+3. ~~**Açık soru:** `sim.*` araçları sınır beyanından muaf mı?~~
+   **Cevaplandı: muaf değil, ama `External` onlarda geçiyor.** Beyan her yüzeyde
+   zorunlu (`Unspecified` reddediliyor); reddedilen tek bileşim
+   `External` + `bizigo`. `bizigo-sim` ürün verisi değil simülatör durumu
+   döndürüyor ve iki yüzeyin ayrı olmasının **sebebi** o risk ayrımı.
+
+   *Bu yol bugün ürün kurulumunda ulaşılamaz* — `BizigoMcpSetup` yalnızca ürün
+   yüzeyini kuruyor ve `bizigo-sim`'in HTTP'si M03'ün kararı. Bekçi yazıldı,
+   yorumuna *"M03 gerçek bir yol açtığında orada da ölçülmeli"* yazıldı.
+
+4. ~~**Aramadım:** `RedactedPrompt` bugün kaç çağrı yerinden üretiliyor?~~
+   **Ölçüldü: ürün tarafında iki yer, ikisi de `ScenarioPromptBuilder`**
+   (T44'ün prompt yolu, `SystemText`/`UserText` için dört çağrı ifadesi).
+   MCP üçüncü tüketici oldu. `RedactedPrompt` hiçbir yerde JSON'a
+   serileştirilmiyordu — bu ölçüm 6. maddedeki dönüştürücü kararını
+   ucuzlattı.
+
+5. **Kriter 3'ün cevabı bir kural değil, mekanizmanın sonucu.** Kriter kapının
+   `sim.syslog.burst`'ün **bastığı satırlara** değil `sim.state`'in
+   **döndürdüğü örneklere** baktığını yazmayı istiyordu. Ayrım yazılacak bir
+   politika olarak çıkmadı — kapının durduğu yerden **düşüyor**: kapı
+   `McpToolResult`'ta, yani bir araç çağrısının **dönüş değerinde**.
+   `sim.syslog.burst`'ün ürettiği syslog satırları bir toplayıcıya gidiyor ve
+   `McpToolResult`'a hiç uğramıyor, dolayısıyla modele de hiç girmiyorlar;
+   `sim.state`'in döndürdüğü örnekler dönüş değerinin içinde ve kapı orada.
+
+   Ayrımın *yazılması* yine de gerekliydi: mekanizmadan düştüğünü görmeyen
+   biri bunu bir muafiyet sanıp `sim.*` için kapı gevşetebilirdi.
+
+6. **AÇIK VE ÖNEMLİ — yapısal yük kanalı kapıyı atlıyor.** MCP'nin iki kanalı
+   var: `content` (metin) ve `structuredContent` (serbest JSON). Kapı
+   birincinin **imzasında** duruyor (`WithLogText(RedactedPrompt[])`);
+   ikincide `McpToolResult.Structured<TPayload>` serbest bir nesne alıyor ve
+   `BizigoMcpTool.ToProtocol` onu hem `structuredContent` olarak hem de bir
+   metin bloğu olarak gönderiyor. Yani bir aracın yükü içindeki `string` alan
+   modele **kapıdan geçmeden** iniyor.
+
+   **Bir tip bunu tamamen kapatamaz** ve kapatmaya çalışmak yanlış olurdu:
+   yükte meşru `string`'ler var (kaynak adı, zaman damgası, kimlik). M06'nın
+   yaptığı, kapıyı o kanalda **kullanılabilir** kılmak:
+   `RedactedPromptJsonConverter` ile bir yük alanı `RedactedPrompt` olarak
+   yazıldığında tel üzerinde maskelenmiş metin olarak çıkıyor — ve ters yön
+   (JSON'dan `RedactedPrompt` okumak) **fırlatıyor**, çünkü okuma yolu
+   yapıcının `private` olmasını anlamsız kılardı.
+
+   **Alanın öyle yazılması bugün mekanik olarak tutulmuyor.** Bu bir çağrı
+   alışkanlığı ve bu deponun beş kez ödediği ders tam olarak o. Mekanik bir
+   bekçinin şekli **gerçek bir araç görülmeden** çizilemiyor (§8: tüketicisi
+   olmayan bir tip tahmindir); M04/M05 ile birlikte kapanacak bir kalem, ve
+   o güne kadar **yazılı** — çünkü yazılı olmayan hâli, kapı varmış gibi
+   okunan olmayan bir kapıdır.

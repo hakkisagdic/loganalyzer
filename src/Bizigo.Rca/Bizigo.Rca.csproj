@@ -16,6 +16,16 @@
   -->
 
   <ItemGroup>
+    <!--
+      M06 — K6 ekseninin tipi (`DataBoundary`) buraya taşındı: MCP sunucusu da
+      aynı sınırı beyan ediyor ve `Bizigo.Mcp` bu projeye bağlanamıyor
+      (gerekçe `DataBoundary` belgesinde). Referans ControlPlane üzerinden
+      GEÇİŞLİ olarak zaten geliyordu; açıkça yazıldı çünkü geçişli bir bağa
+      dayanmak, aradaki proje referansını düşürdüğü gün burayı sebepsiz yere
+      kıran bir bağ demek.
+    -->
+    <ProjectReference Include="..\Bizigo.Contracts\Bizigo.Contracts.csproj" />
+
     <ProjectReference Include="..\Bizigo.ControlPlane\Bizigo.ControlPlane.csproj" />
 
     <!--

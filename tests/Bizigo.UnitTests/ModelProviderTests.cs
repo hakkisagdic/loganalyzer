@@ -61,7 +61,7 @@ public sealed class ModelProviderTests
             Name = "yerel-ollama",
             BaseUrl = "http://ollama.kurum.local:11434/v1/",
             Model = "qwen3:14b",
-            DataBoundary = ModelDataBoundary.Internal,
+            DataBoundary = DataBoundary.Internal,
             TimeoutSeconds = timeoutSeconds,
         });
 

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
+using Bizigo.Contracts.Security;
 
 namespace Bizigo.Rca.Models;
 
@@ -71,7 +72,7 @@ public sealed record ModelBoundaryVerdict(ModelEndpoint? Endpoint, string? Rejec
 ///
 /// <h3>Üç kural</h3>
 /// <list type="number">
-/// <item><b>Beyan zorunlu.</b> <see cref="ModelDataBoundary.Unspecified"/>
+/// <item><b>Beyan zorunlu.</b> <see cref="DataBoundary.Unspecified"/>
 /// reddediliyor. Beyansız bir ucu "iç ağ" saymak, kimsenin karar vermediği bir
 /// yerde ürünün en büyük sözünü boşa çıkarırdı.</item>
 /// <item><b>Kurum dışı beyan reddediliyor.</b> Uç kurulabiliyor ama RCA
@@ -125,21 +126,21 @@ public sealed class ModelBoundaryGate(IEndpointAddressResolver resolver)
 
         switch (options.DataBoundary)
         {
-            case ModelDataBoundary.Unspecified:
+            case DataBoundary.Unspecified:
                 return Reddet(
                     options,
                     "`DataBoundary` beyan edilmemiş. K6 bir varsayılan kabul etmiyor: " +
                     "beyansız bir uç 'iç ağ' sayılsaydı, kurumun en büyük sözü kimse " +
                     "karar vermeden boşa çıkardı. `internal` ya da `external` yazılmalı.");
 
-            case ModelDataBoundary.External:
+            case DataBoundary.External:
                 return Reddet(
                     options,
                     "Uç `external` beyan edilmiş. K6 gereği kurum dışına log verisi " +
                     "çıkmıyor ve bu HİÇBİR içerik düzeyi için esnemiyor — `summary` " +
                     "dahil, çünkü özet de o verinin türevi.");
 
-            case ModelDataBoundary.Internal:
+            case DataBoundary.Internal:
                 break;
 
             default:

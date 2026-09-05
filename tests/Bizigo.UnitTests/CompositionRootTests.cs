@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -240,7 +239,7 @@ public sealed class CompositionRootTests
                 }
             }
 
-            foreach (var callee in Callees(method, ref unresolved))
+            foreach (var callee in IlCallReader.Callees(method, ref unresolved))
             {
                 if (IsProductMethod(callee))
                 {
@@ -252,9 +251,11 @@ public sealed class CompositionRootTests
         return new CallGraph(reached, unresolved, missingRoots);
     }
 
-    private const BindingFlags Everything =
-        BindingFlags.Public | BindingFlags.NonPublic |
-        BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+    // IL okuma makinesi `IlCallReader`'a taşındı: M06'nın redaksiyon bekçisi
+    // aynı çözücüye ihtiyaç duydu ve ikinci bir kopya, biri düzeltilip diğeri
+    // düzeltilmediğinde İKİ BEKÇİYE FARKLI ŞEY GÖSTERİRDİ — ikisi de yeşil
+    // kalarak (CLAUDE.md §9). Bu satırdaki davranış değişmedi.
+    private const BindingFlags Everything = IlCallReader.Everything;
 
     private static IEnumerable<Type> StateMachines(MethodBase method)
     {
@@ -283,138 +284,6 @@ public sealed class CompositionRootTests
         new(static () => [.. ProductAssemblies()]);
 
     private static HashSet<Assembly> ProductAssemblySet => ProductAssemblyLookup.Value;
-
-    private static IEnumerable<MethodBase> Callees(MethodBase method, ref int unresolved)
-    {
-        byte[]? il;
-
-        try
-        {
-            il = method.GetMethodBody()?.GetILAsByteArray();
-        }
-        catch (Exception)
-        {
-            // Soyut, extern ya da gövdesi okunamayan metot: çağrısı yok.
-            il = null;
-        }
-
-        if (il is null)
-        {
-            return [];
-        }
-
-        var typeArguments = method.DeclaringType?.IsGenericType == true
-            ? method.DeclaringType.GetGenericArguments()
-            : null;
-
-        var methodArguments = method.IsGenericMethod ? method.GetGenericArguments() : null;
-
-        var callees = new List<MethodBase>();
-        var failures = 0;
-
-        foreach (var token in MethodTokens(il))
-        {
-            try
-            {
-                if (method.Module.ResolveMethod(token, typeArguments, methodArguments) is { } callee)
-                {
-                    callees.Add(callee);
-                }
-            }
-            catch (Exception)
-            {
-                // Çözülemeyen token SESSİZCE atlanmıyor: sayılıyor ve kapı
-                // kapsamını beyan ederken bildiriyor.
-                failures++;
-            }
-        }
-
-        unresolved += failures;
-        return callees;
-    }
-
-    private static readonly Dictionary<short, OpCode> OpcodeTable = BuildOpcodeTable();
-
-    private static Dictionary<short, OpCode> BuildOpcodeTable()
-    {
-        var table = new Dictionary<short, OpCode>();
-
-        foreach (var field in typeof(OpCodes).GetFields(BindingFlags.Public | BindingFlags.Static))
-        {
-            if (field.GetValue(null) is OpCode opcode)
-            {
-                table[opcode.Value] = opcode;
-            }
-        }
-
-        return table;
-    }
-
-    /// <summary>
-    /// IL gövdesinden metot tokenlarını çıkarır: <c>call</c>, <c>callvirt</c>,
-    /// <c>newobj</c>, <c>ldftn</c>, <c>ldvirtftn</c> — hepsi
-    /// <c>InlineMethod</c> operandı taşıyor.
-    /// </summary>
-    private static IEnumerable<int> MethodTokens(byte[] il)
-    {
-        var index = 0;
-
-        while (index < il.Length)
-        {
-            short code = il[index++];
-
-            if (code == 0xFE)
-            {
-                if (index >= il.Length)
-                {
-                    yield break;
-                }
-
-                code = (short)(0xFE00 | il[index++]);
-            }
-
-            if (!OpcodeTable.TryGetValue(code, out var opcode))
-            {
-                // Tanınmayan bayt: gövdenin geri kalanı güvenle yürünemez.
-                // Durmak, yanlış token üretmekten iyi.
-                yield break;
-            }
-
-            if (opcode.OperandType == OperandType.InlineMethod)
-            {
-                if (index + 4 > il.Length)
-                {
-                    yield break;
-                }
-
-                yield return BitConverter.ToInt32(il, index);
-            }
-
-            var size = OperandSize(opcode, il, index);
-
-            if (size < 0 || index + size > il.Length)
-            {
-                yield break;
-            }
-
-            index += size;
-        }
-    }
-
-    private static int OperandSize(OpCode opcode, byte[] il, int index) => opcode.OperandType switch
-    {
-        OperandType.InlineNone => 0,
-        OperandType.ShortInlineBrTarget or OperandType.ShortInlineI or OperandType.ShortInlineVar => 1,
-        OperandType.InlineVar => 2,
-        OperandType.InlineBrTarget or OperandType.InlineField or OperandType.InlineI
-            or OperandType.InlineMethod or OperandType.InlineSig or OperandType.InlineString
-            or OperandType.InlineTok or OperandType.InlineType or OperandType.ShortInlineR => 4,
-        OperandType.InlineI8 or OperandType.InlineR => 8,
-        OperandType.InlineSwitch => index + 4 > il.Length
-            ? -1
-            : 4 + (4 * BitConverter.ToInt32(il, index)),
-        _ => -1,
-    };
 
     // ---------------------------------------------------------------------
     // Kapılar

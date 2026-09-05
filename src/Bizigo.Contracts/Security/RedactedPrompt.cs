@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace Bizigo.Contracts.Security;
@@ -84,6 +85,7 @@ namespace Bizigo.Contracts.Security;
 /// tercih.
 /// </para>
 /// </summary>
+[JsonConverter(typeof(RedactedPromptJsonConverter))]
 public sealed partial class RedactedPrompt
 {
     /// <summary>

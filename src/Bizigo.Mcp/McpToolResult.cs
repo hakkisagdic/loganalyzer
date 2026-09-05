@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Bizigo.Contracts.Security;
 
 namespace Bizigo.Mcp;
 
@@ -22,7 +23,10 @@ namespace Bizigo.Mcp;
 /// bunu tarif ediyor ve uyum kapısı örnek çağrının buna uyduğunu sınıyor.
 /// </item>
 /// <item>
-/// <b><see cref="McpLogText"/></b> — log metni. Bugün üreteni yok; M06 takacak.
+/// <b><see cref="McpLogText"/></b> — log metni, ve içine yalnızca T41'in
+/// redaksiyon kapısından geçmiş metin giriyor. Araç tarafının gördüğü imza
+/// <see cref="WithLogText(RedactedPrompt[])"/>: kapı bir çağrı alışkanlığı
+/// değil, <b>parametre tipi</b> (M06).
 /// </item>
 /// </list>
 ///
@@ -30,6 +34,37 @@ namespace Bizigo.Mcp;
 /// Hata hâli üçüncü bir taşıyıcı değil <b>aynı şeklin bir dalı</b>:
 /// <see cref="Failure"/> ile üretiliyor ve tel üzerinde <c>isError: true</c>
 /// oluyor — protokol istisnası değil.
+/// </para>
+///
+/// <h3>Redaksiyon kapısının ULAŞMADIĞI yer — beyan</h3>
+///
+/// <para>
+/// <b>İki taşıyıcının ikisi de modelin bağlamına giriyor, ama kapı yalnızca
+/// birinin imzasında duruyor.</b> <see cref="BizigoMcpTool.ToProtocol"/> yükü
+/// hem <c>structuredContent</c> olarak hem de <c>content</c> içinde bir metin
+/// bloğu olarak gönderiyor (<c>structuredContent</c> desteklemeyen istemci için).
+/// Yani <see cref="Structured{TPayload}"/>'a verilen bir nesnenin içindeki
+/// <c>string</c> alan, <see cref="RedactedPrompt"/>'a <b>hiç uğramadan</b>
+/// modele iniyor.
+/// </para>
+///
+/// <para>
+/// <b>Bunu bir tip tamamen kapatamaz</b> ve kapatmaya çalışmak yanlış olurdu:
+/// bir yükte meşru <c>string</c>'ler var — kaynak adı, zaman damgası, kimlik,
+/// hata kodu. Kapının o kanaldaki hâli bir <i>yasak</i> değil bir
+/// <b>imkân</b>: log içeriği taşıyan bir yük alanı <see cref="RedactedPrompt"/>
+/// olarak yazılırsa tel üzerinde maskelenmiş metin olarak çıkıyor
+/// (<c>RedactedPromptJsonConverter</c>), yani kapı yüke kadar iniyor.
+/// </para>
+///
+/// <para>
+/// <b>Ve o alanın öyle yazılması bugün MEKANİK OLARAK TUTULMUYOR.</b> Bu bir
+/// çağrı alışkanlığı, ve bu depo çağrı alışkanlığına dayanan mekanizmanın kaç
+/// kez kaybettiğini ölçtü. Yazılı olması, kapatılmış olmasıyla aynı şey değil —
+/// ama <b>yazılı olmaması</b> §7'nin sınıfına girerdi: kapı varmış gibi
+/// okunan, olmayan bir kapı. M04/M05 gerçek araçları yazdığında mekanik bir
+/// bekçinin şekli görülebilir olacak; bugün görülmeyen bir şeye bekçi yazmak
+/// tüketicisi olmayan bir tip yazmakla aynı hata (§8).
 /// </para>
 /// </summary>
 public sealed class McpToolResult
@@ -96,13 +131,31 @@ public sealed class McpToolResult
     }
 
     /// <summary>
-    /// Sonuca log metni ekler. Bugün <see cref="McpLogText"/> üretilemediği için
-    /// çağıran yok; M06 geldiğinde açılacak yol bu.
+    /// Sonuca log metni ekler — <b>araçların gördüğü tek yol</b>.
+    ///
+    /// <para>
+    /// <b>Parametre <see cref="RedactedPrompt"/>, <see cref="McpLogText"/>
+    /// değil.</b> İkincisi bu derlemenin iç taşıyıcısı ve fabrikası
+    /// <c>internal</c>; araçlar <c>Bizigo.Mcp</c>'nin dışında yaşadığı için onu
+    /// hiç göremiyorlar. Yani bir aracın log metni döndürmek için elinde
+    /// tutabileceği tek şey redaksiyon kapısının çıktısı, ve o tip yalnızca
+    /// <see cref="RedactedPrompt.Redact"/>'ten çıkıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// İmzayı <c>McpLogText</c> alacak şekilde bırakmak, aracı bu derlemenin
+    /// içine bir yol aramaya iterdi; <see cref="RedactedPrompt"/> almak kapıyı
+    /// <b>aracın kendi imzasına</b> taşıyor. M06'nın "kapı derleyicide" şartı
+    /// pratikte burada görülüyor.
+    /// </para>
     /// </summary>
-    public McpToolResult WithLogText(params McpLogText[] text)
+    public McpToolResult WithLogText(params RedactedPrompt[] redacted)
     {
-        ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(redacted);
 
-        return new McpToolResult(Payload, Error, [.. LogText, .. text]);
+        return new McpToolResult(
+            Payload,
+            Error,
+            [.. LogText, .. redacted.Select(McpLogText.FromRedacted)]);
     }
 }

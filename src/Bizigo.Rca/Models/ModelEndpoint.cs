@@ -1,4 +1,5 @@
 using System.Net;
+using Bizigo.Contracts.Security;
 
 namespace Bizigo.Rca.Models;
 
@@ -94,7 +95,7 @@ public sealed class ModelEndpoint
         {
             ["model_endpoint"] = Name,
             ["model_name"] = Model,
-            ["model_boundary"] = nameof(ModelDataBoundary.Internal),
+            ["model_boundary"] = nameof(DataBoundary.Internal),
             ["model_boundary_overridden"] = BoundaryOverridden,
             ["model_boundary_override_reason"] = BoundaryOverrideReason ?? string.Empty,
             ["model_raw_level_allowed"] = AllowRawContentLevel,

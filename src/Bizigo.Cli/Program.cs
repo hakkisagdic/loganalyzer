@@ -432,6 +432,18 @@ var mcpSurfaceOption = new Option<string>("--surface")
     DefaultValueFactory = _ => McpSurfaces.ProductName,
 };
 
+// K6 beyanı (M06). `--surface`'in DefaultValueFactory'si var, bunun YOK ve
+// olmamalı: yüzeyin makul bir varsayılanı var, ağ sınırının yok. Beyansız
+// koşum reddediliyor — `McpCommandHandlers.ServeAsync` çıkış kodu 2 veriyor.
+var mcpBoundaryOption = new Option<string?>("--data-boundary")
+{
+    Description =
+        "ZORUNLU. Bu sunucuya bağlanacak istemcinin hangi tarafta olduğu: 'internal' ya da "
+        + "'external'. Varsayılanı YOK — beyansız bir yüzey 'iç ağ' sayılmıyor (K6). "
+        + "Dikkat: istemci aynı makinede olmak, iç ağda olmak DEĞİLDİR — masaüstü MCP "
+        + "istemcilerinin çoğu aldığı metni buluta gönderiyor.",
+};
+
 var mcpVerboseOption = new Option<bool>("--verbose")
 {
     Description = "Günlükleri stderr'e yaz. stdout PROTOKOLÜN kendisi; oraya hiçbir şey yazılmıyor.",
@@ -439,9 +451,11 @@ var mcpVerboseOption = new Option<bool>("--verbose")
 
 var mcpServeCommand = new Command("serve", "MCP sunucusunu stdio üzerinden koşturur.");
 mcpServeCommand.Options.Add(mcpSurfaceOption);
+mcpServeCommand.Options.Add(mcpBoundaryOption);
 mcpServeCommand.Options.Add(mcpVerboseOption);
 mcpServeCommand.SetAction((parse, token) => McpCommandHandlers.ServeAsync(
     parse.GetValue(mcpSurfaceOption)!,
+    parse.GetValue(mcpBoundaryOption),
     parse.GetValue(mcpVerboseOption),
     token));
 

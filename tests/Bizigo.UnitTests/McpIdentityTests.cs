@@ -10,6 +10,7 @@ using System.Text.Json.Serialization;
 using Bizigo.Api;
 using Bizigo.ControlPlane;
 using Bizigo.Contracts;
+using Bizigo.Contracts.Security;
 using Bizigo.Mcp;
 using Bizigo.Mcp.Tools;
 using Microsoft.AspNetCore.Authentication;
@@ -52,6 +53,28 @@ namespace Bizigo.UnitTests;
 public sealed class McpIdentityTests
 {
     private const string TestScheme = "M08Test";
+
+    /// <summary>
+    /// M06 sonrası <c>CreateOptions</c> bir <b>K6 beyanı</b> istiyor: MCP
+    /// sunucusu ağ sınırını beyan etmeden kurulamıyor.
+    ///
+    /// <para>
+    /// Bu dosyanın sorusu kimlik, sınır değil — beyan burada bir <b>ön şart</b>
+    /// olarak duruyor ve <c>Internal</c> seçildi çünkü ölçülen kurulum üretimin
+    /// kurulumu (<c>Mcp:DataBoundary=Internal</c>). Sınırın kendi kapısı
+    /// <c>McpComplianceTests</c>'te ölçülüyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Bu satır bir merge bulgusu.</b> M08 ile M06 ayrı dallarda koştu; git
+    /// bu dosyayı çakışmasız birleştirdi çünkü M08 onu yeni ekliyordu ve M06
+    /// hiç dokunmamıştı — ama <c>CreateOptions</c>'ın imzası değişmişti ve
+    /// derleme kırıldı. <c>CLAUDE.md</c> §5'in adını koyduğu sınıf:
+    /// <i>metinsel merge temiz, derleme kırık</i>.
+    /// </para>
+    /// </summary>
+    private static McpBoundaryDeclaration IdentityTestBoundary =>
+        McpBoundaryDeclaration.Declare(DataBoundary.Internal, "kimlik testleri: birim testi");
 
     /// <summary>
     /// <b>Kalıcı</b> kimlik muafiyetleri — ürün yüzeyinde kimlik istemeyen
@@ -221,7 +244,8 @@ public sealed class McpIdentityTests
 
         // Üretimin kendi kurulumu; araç sonradan ekleniyor çünkü keşif
         // `Bizigo.Api` kökünden koşuyor ve bu araç test derlemesinde.
-        var options = BizigoMcpServer.CreateOptions(McpSurface.Product, typeof(global::Program).Assembly, services);
+        var options = BizigoMcpServer.CreateOptions(
+            McpSurface.Product, IdentityTestBoundary, typeof(global::Program).Assembly, services);
         options.ToolCollection!.Add(tool);
 
         // Akış taşıması — `StdioServerTransport`'un taban sınıfı, yani ölçülen
@@ -390,7 +414,7 @@ public sealed class McpIdentityTests
 
         var error = Assert.Throws<InvalidOperationException>(
             () => BizigoMcpServer.CreateOptions(
-                McpSurface.Product, typeof(McpIdentityTests).Assembly, without));
+                McpSurface.Product, IdentityTestBoundary, typeof(McpIdentityTests).Assembly, without));
 
         Assert.Contains(nameof(IAccessScopeResolver), error.Message, StringComparison.Ordinal);
 
@@ -403,7 +427,7 @@ public sealed class McpIdentityTests
         await using var with = ServicesWithGate(new RecordingScopeResolver(DefaultMapping));
 
         var options = BizigoMcpServer.CreateOptions(
-            McpSurface.Product, typeof(McpIdentityTests).Assembly, with);
+            McpSurface.Product, IdentityTestBoundary, typeof(McpIdentityTests).Assembly, with);
 
         Assert.NotEmpty(options.ToolCollection!);
     }

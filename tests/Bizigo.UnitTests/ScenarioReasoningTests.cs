@@ -115,7 +115,7 @@ internal static class ReasoningHarness
                 Name = "test-gpu",
                 BaseUrl = "http://gpu.kurum.local:8000/v1",
                 Model = "qwen3-32b",
-                DataBoundary = ModelDataBoundary.Internal,
+                DataBoundary = DataBoundary.Internal,
             },
             ct);
 
