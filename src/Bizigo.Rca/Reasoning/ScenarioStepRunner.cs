@@ -14,6 +14,40 @@ public sealed record ScenarioStepAttempt(
     TimeSpan Duration,
     string? Failure);
 
+/// <summary>
+/// İkinci kapının bir adımdaki durumu — <b>kapalı küme</b>.
+///
+/// <para>
+/// Bir <c>enum</c>, çünkü bu değeri okuyacak ilk kod onu <b>gruplayacak</b>.
+/// Dizge olsaydı ayrıştırılırdı, ve bu depoda ayrıştırılan dizgenin adı konmuş
+/// bir hata sınıfı var: <i>"SQL doğru, kolon doğru, dizge yanlış"</i>.
+/// </para>
+/// </summary>
+public enum SentenceGateOutcome
+{
+    /// <summary>Kapı koştu; cümleler bağlandı ya da atıldı.</summary>
+    Ran = 0,
+
+    /// <summary>
+    /// Kapı <b>koşmadı ve koşmaması doğru</b>: bu adımın düzyazısı rapora
+    /// girmiyor. Koşsaydı her cümle atılırdı ve rapor boş çıkardı.
+    /// </summary>
+    NotApplicable = 1,
+
+    /// <summary>Adım reddedildi; kapıya hiç sıra gelmedi.</summary>
+    Skipped = 2,
+}
+
+/// <summary>
+/// <b>"Koştu, temiz" ile "koşmadı" ayrı cümleler.</b> Bu depoda aynı ayrım
+/// <c>EvidenceStatus</c> ve <c>ScenarioEvidenceGate.Describe</c> ile iki kez
+/// ödendi; sessizce atlayan bir kapı, kapının kendisinden tehlikeli.
+/// </summary>
+/// <param name="StepId">Hangi adım — T47 bunlara göre gruplayacak.</param>
+/// <param name="Outcome">Kapalı kümeden durum.</param>
+/// <param name="Detail">İnsan okunur gerekçe; <b>ayrıştırılmak için değil</b>.</param>
+public sealed record SentenceGateStatus(string StepId, SentenceGateOutcome Outcome, string Detail);
+
 /// <summary>Bir adımın sonucu — <b>iki kapının izi ayrı ayrı</b> duruyor.</summary>
 /// <param name="StepId">Adım.</param>
 /// <param name="Accepted">Adım kabul edildi mi.</param>
@@ -22,19 +56,14 @@ public sealed record ScenarioStepAttempt(
 /// Cümle bağlamanın sonucu — alan başına. Kapı koşmadıysa <b>boş</b>, ve
 /// koşmadığı <paramref name="SentenceGate"/>'te yazılı.
 /// </param>
-/// <param name="SentenceGate">
-/// İkinci kapının durumu: <c>ran</c> · <c>not-applicable: …</c> · <c>skipped: …</c>.
-/// <b>"Koştu, temiz" ile "koşmadı" ayrı cümleler</b> — bu depoda aynı ayrım
-/// <c>EvidenceStatus</c> ve <c>ScenarioEvidenceGate.Describe</c> ile iki kez
-/// ödendi.
-/// </param>
+/// <param name="SentenceGate">İkinci kapının durumu.</param>
 /// <param name="Rejection">Reddedildiyse sebebi; adı konmuş.</param>
 public sealed record ScenarioStepOutcome(
     string StepId,
     bool Accepted,
     ScenarioOutputDocument? Document,
     IReadOnlyList<SentenceBinding> Binding,
-    string SentenceGate,
+    SentenceGateStatus SentenceGate,
     IReadOnlyList<ScenarioStepAttempt> Attempts,
     string? Rejection)
 {
@@ -281,7 +310,7 @@ public sealed class ScenarioStepRunner
             $"{MaxAttemptsPerStep} denemede de geçemedi: {string.Join(" · ", violations)}");
     }
 
-    private static (IReadOnlyList<SentenceBinding> Binding, string Gate) BindSentences(
+    private static (IReadOnlyList<SentenceBinding> Binding, SentenceGateStatus Gate) BindSentences(
         ScenarioStep step,
         ScenarioOutputDocument document,
         StepEvidenceView view)
@@ -293,21 +322,26 @@ public sealed class ScenarioStepRunner
             // açmıyor, dolayısıyla hiçbir cümle bağlanamazdı ve rapor boş
             // çıkardı. Atlandığı YAZILI; sessiz bir atlama, kapının kendisinden
             // tehlikeli.
-            return ([], $"not-applicable: `{document.SchemaName}` düzyazısı rapora girmiyor (ara adım).");
+            return ([], new SentenceGateStatus(
+                step.Id,
+                SentenceGateOutcome.NotApplicable,
+                $"`{document.SchemaName}` düzyazısı rapora girmiyor (ara adım)."));
         }
 
         var binding = document.Prose
             .Select(prose => SentenceBinder.Bind(prose.Text, view.VisibleIds))
             .ToArray();
 
-        return (binding, $"ran: {step.Id}");
+        return (binding, new SentenceGateStatus(step.Id, SentenceGateOutcome.Ran, "Cümleler bağlandı."));
     }
 
     private static ScenarioStepOutcome Rejected(
         ScenarioStep step,
         IReadOnlyList<ScenarioStepAttempt> attempts,
         string? rejection) =>
-        new(step.Id, Accepted: false, null, [], "skipped: adım reddedildi", attempts, rejection);
+        new(step.Id, Accepted: false, null, [],
+            new SentenceGateStatus(step.Id, SentenceGateOutcome.Skipped, "Adım reddedildi."),
+            attempts, rejection);
 
     private static ScenarioRunOutcome Stop(IReadOnlyList<ScenarioStepOutcome> outcomes, string detail) =>
         new(outcomes, null, Stopped: true, detail);
@@ -380,8 +414,8 @@ public sealed class ScenarioStepRunner
             SentenceGateSkipped =
             [
                 .. outcomes
-                    .Where(o => !o.SentenceGate.StartsWith("ran", StringComparison.Ordinal))
-                    .Select(o => $"{o.StepId}: {o.SentenceGate}"),
+                    .Select(o => o.SentenceGate)
+                    .Where(g => g.Outcome != SentenceGateOutcome.Ran),
             ],
             ModelInfo = new RcaReportModelInfo(
                 Provider: "model",

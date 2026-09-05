@@ -364,7 +364,12 @@ public sealed class SentenceBindingGateTests
         // Kapı koşmadı — ve koşmadığı raporda YAZILI. Sayaç da bu adımdan
         // beslenmeyecek, çünkü bu adımın düzyazısı rapora girmiyor.
         var skipped = Assert.Single(outcome.Report.SentenceGateSkipped);
-        Assert.Contains("not-applicable", skipped, StringComparison.Ordinal);
+
+        // Durum bir ENUM, ayrıştırılan bir dizge değil: bunu okuyacak ilk kod
+        // (T47) adım kimliğine göre gruplayacak ve `detail` içinde iki nokta
+        // geçtiği gün bir dizge ayrıştırması sessizce yanlış cevap verirdi.
+        Assert.Equal(SentenceGateOutcome.NotApplicable, skipped.Outcome);
+        Assert.Equal("rank-hypotheses", skipped.StepId);
         Assert.Equal(0, outcome.Report.ProducedSentenceCount);
         Assert.Contains("Cümle bağlama koşmadı", outcome.Report.ToMarkdown(), StringComparison.Ordinal);
     }

@@ -5485,6 +5485,189 @@
           }
         }
       },
+      "RcaReasoningActionResponse": {
+        "required": [
+          "text",
+          "evidence_ids"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RcaReasoningFindingResponse": {
+        "required": [
+          "hypothesis",
+          "evidence_ids",
+          "contradicting_evidence_ids"
+        ],
+        "type": "object",
+        "properties": {
+          "hypothesis": {
+            "type": "string"
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "contradicting_evidence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RcaReasoningModelResponse": {
+        "required": [
+          "provider",
+          "model",
+          "prompt_tokens",
+          "completion_tokens",
+          "unreported_attempts",
+          "tokens_complete"
+        ],
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "prompt_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "completion_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "unreported_attempts": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "tokens_complete": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RcaReasoningResponse": {
+        "required": [
+          "report_id",
+          "bundle_id",
+          "created_at",
+          "scenario_id",
+          "scenario_version",
+          "findings",
+          "actions",
+          "produced_sentence_count",
+          "dropped_sentence_count",
+          "dropped_sentence_ratio",
+          "fabricated_citation_sentence_count",
+          "sentence_gate_skipped",
+          "model"
+        ],
+        "type": "object",
+        "properties": {
+          "report_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "bundle_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "scenario_id": {
+            "type": "string"
+          },
+          "scenario_version": {
+            "type": "string"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RcaReasoningFindingResponse"
+            }
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RcaReasoningActionResponse"
+            }
+          },
+          "produced_sentence_count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "dropped_sentence_count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "dropped_sentence_ratio": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "fabricated_citation_sentence_count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "sentence_gate_skipped": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RcaSentenceGateResponse"
+            }
+          },
+          "model": {
+            "$ref": "#/components/schemas/RcaReasoningModelResponse"
+          }
+        }
+      },
       "RcaReportResponse": {
         "required": [
           "bundle_id",
@@ -5498,7 +5681,8 @@
           "trust",
           "out_of_scope_count",
           "is_partial",
-          "review"
+          "review",
+          "reasoning"
         ],
         "type": "object",
         "properties": {
@@ -5561,6 +5745,16 @@
               },
               {
                 "$ref": "#/components/schemas/RcaReviewResponse"
+              }
+            ]
+          },
+          "reasoning": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RcaReasoningResponse"
               }
             ]
           }
@@ -5736,6 +5930,25 @@
               "string"
             ],
             "format": "date-time"
+          }
+        }
+      },
+      "RcaSentenceGateResponse": {
+        "required": [
+          "step_id",
+          "reason",
+          "detail"
+        ],
+        "type": "object",
+        "properties": {
+          "step_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "detail": {
+            "type": "string"
           }
         }
       },

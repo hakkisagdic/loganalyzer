@@ -13,6 +13,7 @@ using Bizigo.Ingest.Wal;
 using Bizigo.Parsing.Dispatch;
 using Bizigo.Query;
 using Bizigo.Rca;
+using Bizigo.Rca.Reasoning;
 using Bizigo.Replay;
 using Bizigo.Storage.Raw;
 using Microsoft.AspNetCore.Builder;
@@ -209,6 +210,17 @@ public sealed class ProducesContractTests
             // T38'in alarm kapatma ucu. Aynı kalıp; kapatma inceleme ile tek
             // işlem olduğu için servis de tek.
             typeof(AlertClosureService),
+
+            // T51'in rapor deposu — aynı tuzağın BEŞİNCİ açılışı, ve bu kez
+            // bekçi bağırdı: kayıt eksikken `MapRca` çıkarımda patladı ve 13
+            // test birden kırmızı yandı.
+            //
+            // Kırmızının yeri önemli: hata "yeni uç kapıya görünmüyor" demiyor,
+            // "gövde mi servis mi" diyor — yani `EvidenceEndpoints.cs`'in
+            // TAMAMI kapıdan düşüyor. Bir kaydı unutmanın bedeli tek uç değil,
+            // dosyanın tamamı; listeyi elle tutmanın maliyeti de burada
+            // görünüyor.
+            typeof(RcaReportStore),
         })
         {
             var captured = type;

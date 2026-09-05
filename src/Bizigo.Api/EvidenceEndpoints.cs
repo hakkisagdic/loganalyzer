@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Bizigo.ControlPlane;
 using Bizigo.Evidence;
 using Bizigo.Rca;
+using Bizigo.Rca.Reasoning;
 
 namespace Bizigo.Api;
 
@@ -312,6 +313,7 @@ public static class EvidenceEndpoints
         Guid id,
         EvidenceBundleStore store,
         GoldenReviewStore reviews,
+        RcaReportStore reports,
         ICurrentUser user,
         CancellationToken cancellationToken)
     {
@@ -330,12 +332,22 @@ public static class EvidenceEndpoints
         var review = (await reviews.ForBundleAsync(id, user.Scope, cancellationToken))
             .FirstOrDefault();
 
-        return Results.Ok(RcaReportResponse.Of(DeterministicReport.From(bundle!), review));
+        // LLM raporu — hiç üretilmemişse `null` (T51). `null` "bulgu yok"
+        // DEĞİL: koşup her cümlesi atılmış bir rapor da boş bulgu listesi
+        // taşıyor ve ikisi ayırt edilebilir kalmalı.
+        //
+        // Kapsam kapısı imzada: `LatestForAsync` paket İSTİYOR, `Guid`
+        // değil — ve o paket yukarıda `Scope.IsReadableBy`'dan geçti. Raporun
+        // kendi `owner_group`'u yok, kapsamını paketten devralıyor.
+        var reasoning = await reports.LatestForAsync(bundle!, cancellationToken);
+
+        return Results.Ok(RcaReportResponse.Of(DeterministicReport.From(bundle!), review, reasoning));
     }
 
     private static async Task<IResult> ExportAsync(
         Guid id,
         EvidenceBundleStore store,
+        RcaReportStore reports,
         ICurrentUser user,
         CancellationToken cancellationToken)
     {
@@ -347,6 +359,18 @@ public static class EvidenceEndpoints
         }
 
         var markdown = DeterministicReport.From(bundle!).ToMarkdown();
+
+        // LLM raporu varsa export'a DA giriyor. Ekranda görünüp export'ta
+        // kaybolan bir bölüm, olay sonrası paylaşılan metnin ekrandakinden
+        // sessizce farklı olması demek — ve ikisini yan yana koyan hiçbir şey
+        // yok. Atılan cümle sayacı özellikle burada olmalı: raporu ekran
+        // dışında okuyan kişi de modelin ne kadar uydurduğunu görmeli.
+        var reasoning = await reports.LatestForAsync(bundle!, cancellationToken);
+
+        if (reasoning is not null)
+        {
+            markdown += Environment.NewLine + reasoning.Document.ToMarkdown();
+        }
 
         // İndirilebilir dosya: olay sonrası paylaşılan şey rapor, ekran değil.
         return Results.File(

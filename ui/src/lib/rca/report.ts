@@ -8,6 +8,27 @@ export type RcaBundleSummary = components["schemas"]["RcaBundleSummaryResponse"]
 export type RcaReview = components["schemas"]["RcaReviewResponse"];
 
 /**
+ * F4'ün model yorumu (T51) — <b>rapor `null` taşıyabilir</b>.
+ *
+ * <p>
+ * `null` <b>"bulgu yok" değil</b>: model hiç koşmadı. Koşup her cümlesi atılmış
+ * bir rapor da boş bulgu listesi taşıyor, ve ikisi ekranda tek bir kutuya
+ * düşerse F4'ün ölçmek istediği şey tam olarak kaybolur — F3'ün dört durumuyla
+ * aynı sınıf.
+ * </p>
+ *
+ * <p>
+ * <b>`findings` SIRALIDIR ve sırası ANLAMLIDIR.</b> Liste modelin kendi
+ * sıralaması; depolama ve serileştirme boyunca korunuyor ve ekran onu yeniden
+ * sıralamıyor. T47'nin <i>"doğru olan kaçıncı bulgu"</i> ölçümü (accuracy@1 /
+ * accuracy@3) bu sıraya atıfta bulunuyor — sessizce değişirse ölçü sessizce
+ * yanlış olur.
+ * </p>
+ */
+export type RcaReasoning = components["schemas"]["RcaReasoningResponse"];
+export type RcaReasoningFinding = components["schemas"]["RcaReasoningFindingResponse"];
+
+/**
  * Raporun ekranda okunan hâli — <b>dört durumun ayrı kaldığı yer</b> (T37).
  *
  * <p>

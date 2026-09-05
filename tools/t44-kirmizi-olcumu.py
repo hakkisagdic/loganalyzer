@@ -27,6 +27,9 @@ DOTNET = str(pathlib.Path.home() / ".dotnet" / "dotnet")
 BAGLAYICI = KOK / "src/Bizigo.Rca/Reasoning/SentenceBinder.cs"
 GORUS = KOK / "src/Bizigo.Rca/Reasoning/StepEvidenceView.cs"
 PROMPT = KOK / "src/Bizigo.Rca/Reasoning/ScenarioPromptBuilder.cs"
+BELGE = KOK / "src/Bizigo.Rca/Reasoning/RcaReportDocument.cs"
+DEPO = KOK / "src/Bizigo.Rca/Reasoning/RcaReportStore.cs"
+EKRAN = KOK / "ui/src/app/rca/[id]/ReportView.tsx"
 
 OLCUMLER = [
     {
@@ -72,11 +75,62 @@ OLCUMLER = [
         "kirmizi": "PromptGateTests.Prompt_tipini_yalnizca_kurucu_uretebiliyor",
         "kontrol": "PromptGateTests.Kanit_metnindeki_sir_prompta_girmiyor",
     },
+
+    # --------------------------------------------------------------- T51 ----
+    {
+        "ad": "E · Ölçülemeyen oran SIFIR yazılırsa",
+        "dosya": BELGE,
+        "eski": "ProducedSentenceCount > 0 ? (double)DroppedSentenceCount / ProducedSentenceCount : null;",
+        "yeni": "ProducedSentenceCount > 0 ? (double)DroppedSentenceCount / ProducedSentenceCount : 0d; // KIRMIZI-E",
+        "isaret": "KIRMIZI-E",
+        "kirmizi": "RcaReportPersistenceTests.Payda_sifirken_oran_null_sifir_degil",
+        # Kontrol, kusurun DAR olduğunu gösteriyor: ölçülen oranlar hâlâ doğru,
+        # bozulan tek şey ölçülemeyen hâlin mükemmel görünmesi.
+        "kontrol": "RcaReportPersistenceTests.Bildirilmemis_belirtec_telde_de_null",
+    },
+    {
+        "ad": "F · 'Son rapor' en ESKİyi döndürürse",
+        "dosya": DEPO,
+        "eski": "            .OrderByDescending(r => r.CreatedAt)\n            .ThenByDescending(r => r.Id)\n            .FirstOrDefaultAsync(cancellationToken);",
+        "yeni": "            .OrderBy(r => r.CreatedAt) // KIRMIZI-F: en YENİ yerine en ESKİ\n            .ThenBy(r => r.Id)\n            .FirstOrDefaultAsync(cancellationToken);",
+        "isaret": "KIRMIZI-F",
+        "kirmizi": "RcaReportPersistenceTests.Ayni_paketin_iki_raporu_da_saklaniyor",
+        "kontrol": "RcaReportPersistenceTests.Bulgu_sirasi_depolama_boyunca_korunuyor",
+    },
+    {
+        "ad": "G · Her cümlesi atılan rapor 'bulgu yok' diye çizilirse",
+        "dosya": EKRAN,
+        "eski": "            ? `Model ${dropped} cümle üretti ve hiçbiri kanıta bağlanamadı",
+        "yeni": "            ? `Model hiçbir hipotez üretmedi. KIRMIZI-G ${dropped}",
+        "isaret": "KIRMIZI-G",
+        "kirmizi": "her cümlesi atılan rapor",
+        "kontrol": "model hiç koşmadıysa bölüm sessizce kaybolmuyor",
+        "runner": "vitest",
+    },
 ]
 
 
-def kosum(filtre):
+def vitest_kosum(ad):
+    """Ekran tarafı. `-t` testi ADINA göre filtreliyor."""
+    sonuc = subprocess.run(
+        ["npx", "vitest", "run", "tests/rca-screen.test.tsx", "-t", ad],
+        cwd=KOK / "ui", capture_output=True, text=True,
+    )
+    ciktı = sonuc.stdout + sonuc.stderr
+
+    # "Hiç test koşmadı" yeşille aynı çıkış kodunu veriyor; ayırt ediliyor.
+    if "No test files found" in ciktı or "Tests  0 passed" in ciktı:
+        return None, "HİÇ TEST KOŞMADI (filtre eşleşmedi)"
+
+    ozet = next((s.strip() for s in ciktı.splitlines() if "Tests " in s), "özet okunamadı")
+    return sonuc.returncode == 0, ozet
+
+
+def kosum(filtre, runner="dotnet"):
     """Tek bir testi koşturur; (gecti, ozet) döndürür."""
+    if runner == "vitest":
+        return vitest_kosum(filtre)
+
     sonuc = subprocess.run(
         [DOTNET, "test", "tests/Bizigo.UnitTests", "--nologo", "-v", "q",
          "--filter", f"FullyQualifiedName~{filtre}"],
@@ -125,8 +179,9 @@ def main():
             print(f"[{olcum['ad']}] kusur dosyada doğrulandı ({olcum['isaret']}).")
 
             # 3 · Koştur.
-            kirmizi, k_ozet = kosum(olcum["kirmizi"])
-            kontrol, n_ozet = kosum(olcum["kontrol"])
+            runner = olcum.get("runner", "dotnet")
+            kirmizi, k_ozet = kosum(olcum["kirmizi"], runner)
+            kontrol, n_ozet = kosum(olcum["kontrol"], runner)
 
             print(f"  hedef  {olcum['kirmizi']}: {'KIRMIZI ✓' if kirmizi is False else 'YEŞİL ✗'} — {k_ozet}")
             print(f"  kontrol {olcum['kontrol']}: {'yeşil ✓' if kontrol is True else 'KIRMIZI ✗'} — {n_ozet}")

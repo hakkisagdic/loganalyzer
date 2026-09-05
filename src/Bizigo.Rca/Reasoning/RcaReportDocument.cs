@@ -103,25 +103,39 @@ public sealed record RcaReportDocument
     /// adımda koştu" demek; sessizce atlanan bir kapı, kapının kendisinden
     /// tehlikeli (§7).
     /// </summary>
-    public IReadOnlyList<string> SentenceGateSkipped { get; init; } = [];
+    public IReadOnlyList<SentenceGateStatus> SentenceGateSkipped { get; init; } = [];
 
-    /// <summary>Payda sıfırsa oran da sıfır — <b>"ölçülmedi" değil</b>, "cümle üretilmedi".</summary>
-    public double DroppedSentenceRatio =>
-        ProducedSentenceCount > 0 ? (double)DroppedSentenceCount / ProducedSentenceCount : 0d;
+    /// <summary>
+    /// Payda sıfırsa oran <b><see langword="null"/></b> — <c>0</c> değil.
+    ///
+    /// <para>
+    /// <c>0.0</c> bu alanda <i>"hiçbir cümle atılmadı"</i> demek, yani
+    /// <b>mükemmel kalite</b>. Ölçülemeyen bir oranın en iyi sonuçla aynı
+    /// değeri üretmesi, bu deponun defalarca adını koyduğu sınıfın kendisi
+    /// olurdu: <i>"ölçemedim"</i> ile <i>"sorun yok"</i>un aynı çıktıya inmesi.
+    /// </para>
+    ///
+    /// <para>
+    /// Karşılığı T47'de somut: <see langword="null"/> paydadan düşülebiliyor,
+    /// <c>0.0</c> düşülemez çünkü o geçerli bir ölçüm.
+    /// </para>
+    /// </summary>
+    public double? DroppedSentenceRatio =>
+        ProducedSentenceCount > 0 ? (double)DroppedSentenceCount / ProducedSentenceCount : null;
 
     /// <summary>
     /// Sayının <b>gösterildiği</b> yer. Karar 1'in ikinci yarısı bir depolama
     /// kararı değil bir görünürlük kararı: <i>yalnızca atmak</i> kaliteyi
     /// ölçülemez yapardı.
     /// </summary>
-    public string DescribeDroppedSentences() => ProducedSentenceCount == 0
-        ? "Model hiç cümle üretmedi."
+    public string DescribeDroppedSentences() => DroppedSentenceRatio is not { } ratio
+        ? "Model hiç cümle üretmedi — atılan cümle oranı ÖLÇÜLEMEDİ (sıfır değil)."
         : string.Format(
             CultureInfo.GetCultureInfo("tr-TR"),
             "Model {0} cümle üretti, {1}'i kanıta bağlanamadı ve çıkarıldı ({2:P1}).",
             ProducedSentenceCount,
             DroppedSentenceCount,
-            DroppedSentenceRatio);
+            ratio);
 
     /// <summary>
     /// Belgenin insan okunur hâli. <c>DeterministicReport.ToMarkdown</c> ile
@@ -151,7 +165,8 @@ public sealed record RcaReportDocument
 
         foreach (var skipped in SentenceGateSkipped)
         {
-            text.AppendLine("> Cümle bağlama koşmadı — " + skipped);
+            text.AppendLine(CultureInfo.InvariantCulture,
+                $"> Cümle bağlama koşmadı — `{skipped.StepId}` ({skipped.Outcome}): {skipped.Detail}");
         }
 
         text.AppendLine();
