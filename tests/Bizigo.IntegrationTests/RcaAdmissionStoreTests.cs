@@ -192,6 +192,67 @@ public sealed class RcaAdmissionStoreTests(DevStackFixture stack) : IAsyncLifeti
         Assert.Equal(2, await db.RcaRuns.CountAsync(Token));
     }
 
+    /// <summary>
+    /// Koşturulduğunda kanıtlar: <b>idempotency anahtarının süresi dolmuyor</b>
+    /// — aradan aylar geçse de aynı anahtar aynı koşumu döndürüyor (T57).
+    ///
+    /// <para>
+    /// Bu bir <b>kararın</b> bekçisi, bir eksikliğin değil.
+    /// <c>RcaAdmission</c>'ın idempotency sorgusunda zaman sınırı yok ve
+    /// olmamasının sebebi şemada: <c>idempotency_key</c> üzerinde filtreli
+    /// TEKİL indeks var. Sorguya pencere koymak <b>etkisiz</b> olurdu — pencere
+    /// eski anahtarı atlasa bile <c>INSERT</c> indekse çarpar, yarış yolu
+    /// devreye girer ve <b>yine eski koşum</b> döner.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Zaman denklemden çıkarılmıyor, tam tersine ÖLÇÜLÜYOR</b> — ama duvar
+    /// saatiyle değil: kabul kapısına altı ay ileri kurulmuş bir
+    /// <see cref="TimeProvider"/> veriliyor ve testin geçme sebebi o farkın
+    /// <b>hiçbir şeyi değiştirmemesi</b>. Sabit bir süre beklemek yerine saati
+    /// taşımak, §6'nın "geçme sebebi duvar saatiyle ilgili olmamalı" kuralının
+    /// doğru uygulaması.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Idempotency_anahtarinin_suresi_dolmuyor()
+    {
+        const string key = "istemci-anahtari-2026-08";
+
+        var gate = new RcaAdmission(
+            _factory,
+            new AlwaysAllowQuotaGate(),
+            NullLogger<RcaAdmission>.Instance,
+            new Microsoft.Extensions.Time.Testing.FakeTimeProvider(Now));
+
+        var first = await gate.AdmitAsync(
+            RcaTriggerSources.FromExternal("svc", key, ["network/core"], Now.AddHours(-1), Now), Token);
+
+        Assert.False(first.Existing);
+        Assert.True(first.Run.Accepted);
+
+        // ALTI AY SONRA, aynı anahtar. Kapı yeni bir saatle kuruluyor: geçen
+        // sürenin gerçekten uygulamaya görünmesi için.
+        var later = Now.AddMonths(6);
+
+        var aged = new RcaAdmission(
+            _factory,
+            new AlwaysAllowQuotaGate(),
+            NullLogger<RcaAdmission>.Instance,
+            new Microsoft.Extensions.Time.Testing.FakeTimeProvider(later));
+
+        var second = await aged.AdmitAsync(
+            RcaTriggerSources.FromExternal("svc", key, ["network/core"], later.AddHours(-1), later), Token);
+
+        // AYNI koşum, yeni kayıt YOK — pencere talebi bile farklı olmasına rağmen.
+        Assert.True(second.Existing);
+        Assert.Equal(first.Run.Id, second.Run.Id);
+
+        await using var db = await _factory.CreateDbContextAsync(Token);
+
+        Assert.Equal(1, await db.RcaRuns.CountAsync(r => r.IdempotencyKey == key, Token));
+    }
+
     private sealed class RejectingQuotaGate : IRcaQuotaGate
     {
         public ValueTask<RcaRejectionReason> CheckAsync(
