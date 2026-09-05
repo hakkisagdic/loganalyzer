@@ -107,6 +107,21 @@ OLCUMLER = [
         "kontrol": "model hiç koşmadıysa bölüm sessizce kaybolmuyor",
         "runner": "vitest",
     },
+
+    # --------------------------------------------------------------- T54 ----
+    {
+        "ad": "H · Muafiyetin YOKLUĞU yazılmazsa",
+        "dosya": EKRAN,
+        "eski": "          <>K6 sınır doğrulaması uygulandı; muafiyet kullanılmadı.</>",
+        "yeni": "          <>{/* KIRMIZI-H: yokluk sessiz */}</>",
+        "isaret": "KIRMIZI-H",
+        "kirmizi": "K6 muafiyeti ve yokluğu ekranda ayrı çiziliyor",
+        # Muafiyetin KENDİSİ hâlâ çiziliyor: kusur dar, yalnızca sessizlik
+        # tarafını bozuyor — yani bekçinin tuttuğu şey "rozet var mı" değil,
+        # "iki hâl de yazılı mı".
+        "kontrol": "gerekçesiz muafiyet 'yazılmamış' diye çiziliyor",
+        "runner": "vitest",
+    },
 ]
 
 

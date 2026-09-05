@@ -5535,7 +5535,9 @@
           "prompt_tokens",
           "completion_tokens",
           "unreported_attempts",
-          "tokens_complete"
+          "tokens_complete",
+          "boundary_overridden",
+          "boundary_override_reason"
         ],
         "type": "object",
         "properties": {
@@ -5573,6 +5575,15 @@
           },
           "tokens_complete": {
             "type": "boolean"
+          },
+          "boundary_overridden": {
+            "type": "boolean"
+          },
+          "boundary_override_reason": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

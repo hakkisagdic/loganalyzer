@@ -334,13 +334,30 @@ public sealed record RcaSentenceGateResponse(
 /// kalmaması için ayrı bir alan: türetilebilir olması, her tüketicinin aynı
 /// çıkarımı kendi yapması demekti ve biri onu yanlış yapardı.
 /// </param>
+/// <param name="BoundaryOverridden">
+/// K6 sınır doğrulaması <b>atlandı mı</b> (T54).
+///
+/// <para>
+/// <b>Her iki hâlde de taşınıyor</b> ve ekran ikisini de yazıyor. Yalnız
+/// <c>true</c> iken görünen bir rozet, muafiyetsiz koşumu <i>"bu soru
+/// sorulmamış"</i> hâline sokardı — bu deponun <i>"bakılmadı" ile "bakıldı,
+/// temiz" ayrı cümleler</i> kuralının aynısı.
+/// </para>
+/// </param>
+/// <param name="BoundaryOverrideReason">
+/// Gerekçe; muafiyet yoksa <see langword="null"/>. <b>Boş dize değil</b> — boş
+/// dize <i>"gerekçe yazılmadı"</i> ile <i>"muafiyet yok"</i>u aynı değere
+/// indirirdi, ve iki alanın birlikte taşınmasının bütün sebebi bu.
+/// </param>
 public sealed record RcaReasoningModelResponse(
     [property: JsonPropertyName("provider")] string Provider,
     [property: JsonPropertyName("model")] string Model,
     [property: JsonPropertyName("prompt_tokens")] int? PromptTokens,
     [property: JsonPropertyName("completion_tokens")] int? CompletionTokens,
     [property: JsonPropertyName("unreported_attempts")] int UnreportedAttempts,
-    [property: JsonPropertyName("tokens_complete")] bool TokensComplete);
+    [property: JsonPropertyName("tokens_complete")] bool TokensComplete,
+    [property: JsonPropertyName("boundary_overridden")] bool BoundaryOverridden,
+    [property: JsonPropertyName("boundary_override_reason")] string? BoundaryOverrideReason);
 
 /// <summary>
 /// LLM raporunun tel hâli (T51) — ve <b>Karar 1'in sayacının göründüğü yer</b>.
@@ -418,7 +435,9 @@ public sealed record RcaReasoningResponse(
                 document.ModelInfo.PromptTokens,
                 document.ModelInfo.CompletionTokens,
                 document.ModelInfo.UnreportedAttempts,
-                document.ModelInfo.TokensComplete));
+                document.ModelInfo.TokensComplete,
+                document.ModelInfo.BoundaryOverridden,
+                document.ModelInfo.BoundaryOverrideReason));
     }
 
     /// <summary>
