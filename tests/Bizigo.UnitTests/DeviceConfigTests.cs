@@ -475,13 +475,15 @@ public sealed class DeviceConfigTests
         Credential = "p4rol4-cok-gizli",
     };
 
-    private sealed class FailingTransport(string error) : IDeviceTransport
+    private sealed class FailingTransport(
+        string error,
+        DeviceFailureKind kind = DeviceFailureKind.Unreachable) : IDeviceTransport
     {
         public Task<DeviceCommandResult> RunAsync(
             DeviceTarget target,
             IReadOnlyList<string> commands,
             CancellationToken cancellationToken) =>
-            Task.FromResult(new DeviceCommandResult(false, string.Empty, error));
+            Task.FromResult(DeviceCommandResult.Failed(kind, error));
     }
 
     private sealed class CountingTransport : IDeviceTransport
@@ -511,7 +513,7 @@ public sealed class DeviceConfigTests
 
             Interlocked.Decrement(ref _current);
 
-            return new DeviceCommandResult(true, "config system global\nend", string.Empty);
+            return DeviceCommandResult.Succeeded("config system global\nend");
         }
     }
 }

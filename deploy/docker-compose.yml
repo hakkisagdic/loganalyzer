@@ -383,7 +383,24 @@ services:
 
       # Senaryo boşsa baseline. Fark testleri bunu değiştirip container'ı
       # yeniden başlatıyor.
+      #
+      # S06'ya kadar bu satır HİÇBİR ŞEY YAPMIYORDU: OpenSSH oturum çocuğuna
+      # temiz bir ortam kuruyor ve `SIM_*` değişkenleri ForceCommand'a
+      # ulaşmıyor. Açılış artık ayarları `/sim-ayarlar`a yazıyor.
       SIM_SCENARIO: ${SIM_SCENARIO:-}
+
+      # SAYFALAMA (S06 · N3).
+      #
+      #   etkilesimli — kabuk oturumunda sayfalar, exec kanalında sayfalamaz.
+      #                 Varsayılan; exec kanalında PTY olmadığı için cihazların
+      #                 çoğunun yaptığı şeyin MODELİ (ölçülmüş bir vendor olgusu
+      #                 değil — FS §11).
+      #   daima       — exec kanalında da sayfalar. Toplayıcının sayfalama
+      #                 kapatmasının kanal sınırını geçmediğini gösteren koşum.
+      #   kapali      — hiç sayfalamaz (S03 davranışı).
+      SIM_PAGING: ${SIM_PAGING:-etkilesimli}
+      SIM_PAGE_LINES: ${SIM_PAGE_LINES:-24}
+      SIM_MORE_TIMEOUT: ${SIM_MORE_TIMEOUT:-2}
     volumes:
       # SALT OKUNUR: simülatör katalogu değiştiremez. Değiştirebilseydi bir
       # test koşumu, sonraki koşumun girdisini sessizce bozabilirdi.
