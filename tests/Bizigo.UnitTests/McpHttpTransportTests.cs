@@ -3,6 +3,8 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Bizigo.Api;
+using Bizigo.Commands;
+using Bizigo.Commands.Mcp;
 using Bizigo.Mcp;
 using Bizigo.Mcp.Tools;
 using Microsoft.AspNetCore.Authentication;
@@ -62,6 +64,10 @@ public sealed class McpHttpTransportTests
 
         // ÜRETİMİN kaydı. İkinci bir kurulum yazmak, ölçülen sunucu ile koşan
         // sunucuyu ayırırdı.
+        // Araç bağımlılıkları — üretimde `Program.cs` aynı uzantıyı çağırıyor.
+        // Kaydedilmezse keşif aracı kuramıyor ve PATLIYOR (M01 kararı):
+        // atlanan bir araç kapıya hiç görünmezdi.
+        builder.Services.AddBizigoCommandTools();
         builder.Services.AddBizigoMcp(builder.Configuration);
 
         var app = builder.Build();
@@ -108,7 +114,15 @@ public sealed class McpHttpTransportTests
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal([ServerInfoTool.ToolIdentifier], tools);
+        // M02: HTTP yüzeyi de komut araçlarını ilan ediyor. İki taşımanın AYNI
+        // kümeyi ilan etmesi paritenin kendisi — stdio'da görünüp HTTP'de
+        // görünmeyen bir araç, aynı sunucunun iki farklı gerçeği olurdu.
+        Assert.Equal(
+            [
+                .. CommandCatalog.Tools.Select(static c => c.Name).Append(ServerInfoTool.ToolIdentifier)
+                    .Order(StringComparer.Ordinal),
+            ],
+            tools);
 
         // Araç HTTP üzerinden de gerçekten koşuyor — ilan edilmek ile
         // çağrılabilmek ayrı şeyler.

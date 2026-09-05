@@ -13,6 +13,7 @@ using Bizigo.Parsing;
 using Bizigo.Parsing.Dispatch;
 using Bizigo.Parsing.Grok;
 using Bizigo.Ingest.Wal;
+using Bizigo.Commands.Mcp;
 using Bizigo.Mcp;
 using Bizigo.Query;
 using Bizigo.Rca;
@@ -99,6 +100,11 @@ builder.Services.AddBizigoAuthentication(builder.Configuration);
 builder.Services.AddHealthChecks();
 
 // OpenAPI: F2'nin istemci kodu bu şemadan doğacak (T10).
+// M02 — komut araçlarının bağımlılıkları. stdio host'u aynı uzantıyı
+// çağırıyor; iki ayrı kayıt, bir aracın bir taşımada çalışıp diğerinde
+// patlaması demekti.
+builder.Services.AddBizigoCommandTools();
+
 builder.Services.AddOpenApi();
 
 // Hız sınırı (risk #6, gürültülü komşu). Tek bir kullanıcının ağır sorgusu

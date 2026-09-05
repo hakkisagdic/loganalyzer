@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Bizigo.Commands;
 using Bizigo.Mcp;
 using Bizigo.Mcp.Tools;
 using Json.Schema;
@@ -57,6 +58,19 @@ public sealed class McpComplianceTests
     /// <summary>Testin kendi iptali; xUnit koşumu kesildiğinde çağrılar da kesiliyor.</summary>
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
+    /// <summary>
+    /// Araç hatalarının <b>kapalı kümesi</b> — <c>McpToolError</c>'ın sabitleri.
+    /// Elle yazılmıyor, oradan okunuyor: iki liste olsaydı yeni bir kod eklenip
+    /// burası eski kalırdı ve kapı onu <i>"bilinmeyen"</i> sayardı.
+    /// </summary>
+    private static readonly string[] KnownErrorCodes =
+    [
+        McpToolError.InvalidArgument,
+        McpToolError.NotFound,
+        McpToolError.Unavailable,
+        McpToolError.WrongSurface,
+    ];
+
     // ---------------------------------------------------------------------
     // 1 · Keşif — kapı denetlediği kümeyi kendisi buluyor mu
     // ---------------------------------------------------------------------
@@ -101,13 +115,27 @@ public sealed class McpComplianceTests
     [MemberData(nameof(Surfaces))]
     public async Task Sunucunun_ilan_ettigi_araclar(McpSurface surface)
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.Production();
         await using var session = await McpTestSession.StartAsync(ProductionOptions(surface, services), services, cancellationToken: Ct);
 
         var tools = await session.Client.ListToolsAsync(cancellationToken: Ct);
 
+        // M02: yedi komut aracı eklendi ve bu satır BÜYÜDÜ. Listenin elle
+        // taşınması bilinçli — yeni bir araç eklemek burayı da değiştirmeyi
+        // gerektiriyor, yani ilan edilen küme kimse karar vermeden büyüyemiyor.
+        //
+        // `bizigo-sim` yüzeyinde komut araçları YOK: hepsi `McpSurface.Product`
+        // ve simülatörün kendi araçları M03'ün.
+        string[] expected = surface == McpSurface.Product
+            ?
+            [
+                .. CommandCatalog.Tools.Select(static c => c.Name).Append(ServerInfoTool.ToolIdentifier)
+                    .Order(StringComparer.Ordinal),
+            ]
+            : [ServerInfoTool.ToolIdentifier];
+
         Assert.Equal(
-            [ServerInfoTool.ToolIdentifier],
+            expected,
             tools.Select(static t => t.Name).Order(StringComparer.Ordinal).ToArray());
     }
 
@@ -125,7 +153,7 @@ public sealed class McpComplianceTests
     [MemberData(nameof(Surfaces))]
     public async Task Her_yuzey_en_az_bir_arac_ilan_ediyor(McpSurface surface)
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.Production();
         await using var session = await McpTestSession.StartAsync(ProductionOptions(surface, services), services, cancellationToken: Ct);
 
         Assert.NotEmpty(await session.Client.ListToolsAsync(cancellationToken: Ct));
@@ -149,7 +177,7 @@ public sealed class McpComplianceTests
     [MemberData(nameof(Surfaces))]
     public async Task Her_aracin_semasi_gecerli(McpSurface surface)
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.Production();
         await using var session = await McpTestSession.StartAsync(ProductionOptions(surface, services), services, cancellationToken: Ct);
 
         foreach (var tool in await session.Client.ListToolsAsync(cancellationToken: Ct))
@@ -182,7 +210,7 @@ public sealed class McpComplianceTests
     [MemberData(nameof(Surfaces))]
     public async Task Ornek_cagri_cikti_semasina_uyuyor(McpSurface surface)
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.Production();
         var options = ProductionOptions(surface, services);
         await using var session = await McpTestSession.StartAsync(options, services, cancellationToken: Ct);
 
@@ -190,23 +218,46 @@ public sealed class McpComplianceTests
 
         Assert.NotEmpty(declaredTools);
 
+        // M02'de ayrıldı ve ayrılma sebebi ölçüldü. Bu test ARGÜMANSIZ bir
+        // `tools/call` yapıyordu ve `server.info` için o çağrı ile `SampleAsync`
+        // AYNI şeyi üretiyor — yani tek araçla kapı hangisini denetlediğini
+        // söyleyemiyordu. Zorunlu argümanı olan yedi araç gelince ikisi ayrıştı:
+        // argümansız çağrı `invalid_argument` döndürüyor, örnek ise şemaya
+        // uyuyor. İkisi ayrı sorular ve ikisi de sorulmalı:
+        //
+        //   · TELDE: eksik argüman iyi biçimli bir ARAÇ HATASI mı, yoksa
+        //     protokolü patlatıyor mu.
+        //   · SÜREÇ İÇİNDE: `SampleAsync`'in çıktısı ilan edilen şemaya uyuyor
+        //     mu — `BizigoMcpTool` şartının kendisi.
+        //
+        // Örnek telden çağrılamıyor: `SampleAsync` protokol yüzeyinde yok ve
+        // olmamalı (bir istemcinin "örnek ver" diyebilmesi ürün yüzeyi olurdu).
+        var serverTools = BizigoMcpServer.Tools(surface, typeof(global::Program).Assembly, services);
+
         foreach (var tool in declaredTools)
         {
             var schema = JsonSchema.FromText(tool.ProtocolTool.OutputSchema!.Value.GetRawText());
 
-            var result = await session.Client.CallToolAsync(
+            var wire = await session.Client.CallToolAsync(
                 tool.Name, new Dictionary<string, object?>(), cancellationToken: Ct);
 
+            // Beklenen şey BAŞARI DEĞİL: argümansız çağrı çoğu araçta meşru
+            // olarak düşüyor. Ölçülen şey düşüşün BİÇİMİ — kapalı kümeden bir
+            // araç hatası mı, yoksa protokolü patlatan bir istisna mı. İkincisi
+            // istemciye ürün hakkında hiçbir şey söylemeyen bir arıza verirdi.
             Assert.True(
-                result.IsError is not true,
-                $"`{tool.Name}` örnek çağrısı hata döndürdü: {Describe(result)}");
+                wire.IsError is not true || KnownErrorCodes.Any(
+                    code => Describe(wire).Contains(code, StringComparison.Ordinal)),
+                $"`{tool.Name}` argümansız çağrıda kapalı kümeden bir hata kodu vermedi: {Describe(wire)}");
 
-            Assert.True(
-                result.StructuredContent is not null,
-                $"`{tool.Name}` `outputSchema` ilan ediyor ama `structuredContent` döndürmüyor — "
-                + "yani şema hiçbir şeyi tarif etmiyor.");
+            var source = Assert.Single(serverTools, s => s.ToolName == tool.Name);
+            var sample = await source.SampleAsync(Ct);
 
-            var payload = result.StructuredContent!.Value;
+            Assert.False(
+                sample.IsError,
+                $"`{tool.Name}` örnek çağrısı hata döndürdü: {sample.Error?.Message}");
+
+            var payload = sample.Payload;
             var evaluation = schema.Evaluate(payload, new EvaluationOptions { OutputFormat = OutputFormat.List });
 
             Assert.True(
@@ -241,7 +292,7 @@ public sealed class McpComplianceTests
     [Fact]
     public async Task Yazili_revizyon_el_sikismada_kabul_ediliyor()
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.Production();
 
         var clientOptions = new McpClientOptions { ProtocolVersion = McpRevision.Supported };
 
@@ -273,7 +324,7 @@ public sealed class McpComplianceTests
     [Fact]
     public async Task Anlasma_eski_istemciyi_indiriyor()
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.Production();
 
         var clientOptions = new McpClientOptions { ProtocolVersion = McpRevision.PreviousStable };
 
@@ -296,7 +347,7 @@ public sealed class McpComplianceTests
     [MemberData(nameof(Surfaces))]
     public async Task Server_info_yazili_revizyonu_soyluyor(McpSurface surface)
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.Production();
         await using var session = await McpTestSession.StartAsync(ProductionOptions(surface, services), services, cancellationToken: Ct);
 
         var result = await session.Client.CallToolAsync(
@@ -327,7 +378,7 @@ public sealed class McpComplianceTests
     [MemberData(nameof(Surfaces))]
     public async Task Desteklenmeyen_yetenek_ilan_edilmiyor(McpSurface surface)
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.Production();
         await using var session = await McpTestSession.StartAsync(ProductionOptions(surface, services), services, cancellationToken: Ct);
 
         var capabilities = session.Client.ServerCapabilities;
@@ -364,7 +415,7 @@ public sealed class McpComplianceTests
     [Fact]
     public async Task Arac_hatasi_ile_protokol_hatasi_ayri()
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.Production();
         var options = ProductionOptions(McpSurface.Product, services);
 
         // Argümanı zorunlu bir araç ekleniyor: hata yolunu ölçmek için hata
@@ -413,7 +464,7 @@ public sealed class McpComplianceTests
     [Fact]
     public async Task Iptal_bildirimi_araci_gercekten_iptal_ediyor()
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.Production();
         var options = ProductionOptions(McpSurface.Product, services);
 
         var tool = new NeverEndingTool();
@@ -486,7 +537,7 @@ public sealed class McpComplianceTests
     [MemberData(nameof(Surfaces))]
     public async Task Her_arac_iptal_edilmis_belirteci_gozetiyor(McpSurface surface)
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.Production();
 
         var tools = BizigoMcpServer.Tools(surface, typeof(global::Program).Assembly, services);
 

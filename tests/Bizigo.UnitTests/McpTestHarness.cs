@@ -1,6 +1,7 @@
 using System.IO.Pipelines;
 using System.Text.Json;
 using Bizigo.Mcp;
+using Bizigo.Commands.Mcp;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Client;
@@ -236,5 +237,23 @@ internal sealed class NeverEndingTool : BizigoMcpTool
 /// <summary>Test oturumları için asgari servis sağlayıcısı.</summary>
 internal static class McpTestServices
 {
-    public static ServiceProvider Empty() => new ServiceCollection().BuildServiceProvider();
+    /// <summary>
+    /// <b>Artık boş DEĞİL — ve adı bilerek değişti.</b>
+    ///
+    /// <para>
+    /// M01'de boş bir grafik yetiyordu: <c>server.info</c> bağımlılık
+    /// istemiyor. M02 komut araçlarını getirince yetmez oldu ve
+    /// <c>McpToolDiscovery.Instantiate</c> kurulamayan aracı ATLAMIYOR,
+    /// patlıyor — yani kapı sessizce eksik bir kümeyi denetlemeye başlamıyor,
+    /// koşmayı reddediyor. M01'in o kararı burada karşılığını buldu.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Üretimle AYNI uzantıdan besleniyor</b> (<c>AddBizigoCommandTools</c>).
+    /// Test grafiğini elle kurmak, kapının ölçtüğü sunucu ile üretimde koşan
+    /// sunucuyu ayırırdı — kapının anlamını yok eden tek hareket bu olurdu.
+    /// </para>
+    /// </summary>
+    public static ServiceProvider Production() =>
+        new ServiceCollection().AddBizigoCommandTools().BuildServiceProvider();
 }

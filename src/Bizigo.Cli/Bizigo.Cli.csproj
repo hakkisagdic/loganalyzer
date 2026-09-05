@@ -12,6 +12,15 @@
       burada yalnızca konsola çizim ve çıkış kodu.
     -->
     <ProjectReference Include="..\Bizigo.Commands\Bizigo.Commands.csproj" />
+
+    <!--
+      Komut çekirdeğinin MCP SUNUMU. Referans ZORUNLU ve keşif mekaniği
+      yüzünden: `McpToolDiscovery.ProductAssemblies` kompozisyon kökünden
+      (bu derleme) başlayıp `Bizigo.*` referanslarını geziyor. Buradan
+      referans verilmezse araçlar YÜKLENMİYOR ve uyum kapısı sıfır araç
+      görüp sessizce yeşil yanıyor.
+    -->
+    <ProjectReference Include="..\Bizigo.Commands.Mcp\Bizigo.Commands.Mcp.csproj" />
     <ProjectReference Include="..\..\sim\Bizigo.Simulators\Bizigo.Simulators.csproj" />
 </ItemGroup>
 

@@ -1,6 +1,6 @@
 ---
 kind: spec
-title: "M02 ön ölçüm — CLI komut envanteri ve çekirdek önerisi"
+title: "M02 — CLI komut envanteri, çekirdek kararı ve uygulama"
 ---
 
 # CLI komut envanteri ve *"ortak çekirdek"* neyi ortaklaştırmalı
@@ -13,8 +13,10 @@ M02'nin bitti tanımı bir **paydaya** dayanıyor:
 O payda hiçbir yerde yazılı değildi. Bu belge onu ölçüyor, ve ölçerken çekirdek
 kararının **kendiliğinden** çıktığı bir olgu buluyor.
 
-> **Bu belge kod değiştirmiyor.** Ölçüm ve öneri; uygulama koordinatörün onayı
-> ve M01'in araç kaydı sözleşmesi geldikten sonra.
+> **Bu belgenin ilk hâli kod değiştirmiyordu** — ölçüm ve öneriydi. Öneri
+> onaylandı ve uygulandı; §7 uygulamanın ne yaptığını ve ölçüm sırasında neyin
+> değiştiğini yazıyor. Ölçüm bölümleri **olduğu gibi duruyor**: kararın hangi
+> sayıdan çıktığı, kararın kendisinden daha uzun ömürlü.
 
 ---
 
@@ -244,3 +246,128 @@ değil.
 > **Aramadım:** hesap katmanının MCP için yeterli olup olmadığı · şema bağlam
 > maliyeti · `System.CommandLine` doğrulama kurallarının sayısı · M01'in
 > yüzeyi (bilerek — sözleşme beklenecek).
+
+
+---
+
+## 7 · Uygulandı — ve ölçüm sırasında değişen üç şey
+
+Öneri onaylandı (üç madde de) ve uygulandı. Bu bölüm **önerinin ne olduğunu
+değil, uygulamanın neyi değiştirdiğini** yazıyor.
+
+### 7.1 · Kurulan yapı
+
+| Katman | Nerede | Ne taşıyor |
+| --- | --- | --- |
+| Hesap | `Bizigo.Commands/Fields`, `/Seeding`, `Bizigo.Parsing` | Zaten saftı; **taşındı, yeniden yazılmadı** |
+| **Çekirdek** | `Bizigo.Commands` | `CommandOutcome<T>` · `CommandCatalog` · yedi komut ailesi |
+| Sunum · CLI | `Bizigo.Cli/*CommandHandlers.cs` | Konsol + çıkış kodu |
+| Sunum · MCP | `Bizigo.Commands.Mcp` | Yedi `BizigoMcpTool` |
+
+**`Bizigo.Commands.Mcp` ayrı bir proje ve sebebi bir tercih değil bir mekanik:**
+`McpToolDiscovery.ProductAssemblies` yalnızca adı `Bizigo.` ile başlayan
+referansları geziyor. `Bizigo.Cli`'nin derleme adı **`bizigo`**, dolayısıyla
+oraya yazılan bir araç **keşfe hiç görünmezdi** — ve kapı yanlış sebeple yeşil
+yanardı.
+
+### 7.2 · `sigma sync --dry-run` → `bizigo sigma plan`
+
+Bayrak kendi komutu oldu; `SetAction` sayısı **11 → 12**, katalog 12 satır
+(7 araç + 5 muafiyet). Bayrak olarak kalsaydı MCP tarafında ilan edilebilecek
+tek şey **yazan** komut olurdu.
+
+### 7.3 · Değişen üç şey — ölçüm bunları önceden söylemiyordu
+
+**(a) Her araç yapıcısında `McpSurface` almak zorunda.** M01'in yorumu
+*"yüzeyi sabit olan araçlar argümanı hiç kullanmıyor"* diyor; niyet o ama
+mekanik öyle değil: `ActivatorUtilities.CreateInstance(services, type, surface)`
+fazladan argümanı **reddediyor**. Ölçüldü — yüzeysiz yapıcıyla yedi aracın
+yedisi de kurulamadı ve uyum kapısının **21 testi** düştü.
+
+**(b) Bağlam bütçesi bir sabit olmaktan çıktı — yapı değişti.**
+
+Yedi araç `tools/list` yükünü **2.484** belirtece çıkardı ve M01'in **400**'lük
+toplam tavanını 6 katına aştı. İlk tepkim tavanı 2.400'e çekmekti; koordinatör
+onu reddetti ve gerekçesi eğilimin kendisiydi:
+
+> Bir sonraki ajan aynı sabiti 4.500'e çeker, sonraki 6.000'e — ve o noktada
+> kapı bir **kayıt** olmaktan çıkıp **güncellenmesi rutinleşen bir sabite**
+> döner.
+
+Yerine konan: **araç başına tavan** (600), toplam ondan **türetiliyor**
+(`araç sayısı × tavan`). Yeni araç eklemek sabiti düzenlemeyi **gerektirmiyor**
+ve kapı hâlâ gerçek bir şey ölçüyor — *"bir aracın bütçesi şunu aşamaz"*.
+
+| | Belirteç |
+| --- | --- |
+| İlk hâl (8 araç toplam) | 2.484 |
+| `description` metinleri kırpıldıktan sonra | **2.248** (%10 ↓) |
+| Araç başına ortalama | ~280 |
+| En pahalı — `fields.coverage` | 481 |
+| En ucuz — `server.info` | 194 |
+| **Araç başına tavan** | **600** (en pahalıya %25 pay) |
+
+600'ün gerekçesi dar tavanın kendi kusuru: 500 seçilseydi `fields.coverage`
+%96 dolulukta olur, gürültüyle kırmızı yanar ve **rutin olarak yükseltilirdi**
+— yani kaldırmaya çalıştığımız hâle geri dönerdi.
+
+> **Eğilim, ve bu not bir sonraki kararın girdisi.** Plan ~15 araç öngörüyor;
+> araç başına ~280 sürerse `tools/list` **~4.500** belirtece çıkıyor ve bu
+> **her istekte** taşınıyor. **Araçları yüzeye göre bölmek** bir seçenek ama
+> karar bugün verilmedi ve sebebi ölçüm: gerçek sayı M04'ün dört araç ailesi
+> geldiğinde belli olacak. Bugün bölmek, henüz alınmamış bir ölçüme göre yapı
+> değiştirmek olurdu.
+
+**(c) Uyum kapısında bir ayrışma bulundu.**
+`Ornek_cagri_cikti_semasina_uyuyor` argümansız bir `tools/call` yapıyordu, ama
+`SampleAsync`'in belgesi *"uyum kapısının koşturduğu örnek çağrı"* diyor.
+**`server.info` ile ikisi aynı şeyi üretiyor**, dolayısıyla tek araçla kapı
+hangisini denetlediğini söyleyemiyordu. Zorunlu argümanı olan araçlar gelince
+ayrıştılar ve test ikiye bölündü: telde **iyi biçimli araç hatası**, süreç
+içinde **örnek ↔ şema uyumu**.
+
+### 7.4 · `parser.try` aracı CLI'dan DAR — bilerek
+
+CLI çözülen alan **değerlerini** yazdırıyor; araç yalnızca **alan adlarını**
+döndürüyor. Sebep: bir araç sonucundaki her şey doğrudan modelin bağlamına
+giriyor ve çözülmüş alan değerleri **log içeriğidir**. Log içeriğinin menteşesi
+`McpLogText` ve onu **M06 takacak**.
+
+Seçenek *"kapıyı beklemek"* ile *"kapısız bir yüzey açıp sonra kapatmak"*
+arasındaydı; ikincisi arada bir sürüm boyunca redaksiyonsuz bir log yolu
+bırakırdı. MCP ticket'ının kendi cümlesi bunu yasaklıyor: *araçlar yazılır, kapı
+takılır, ikisi birlikte açılır.*
+
+`fields.values` aynı daraltmaya **tabi değil** ve ayrım anlamlı: oradaki
+değerler eşleme tablolarından türüyor — ürünün kendi yapılandırması, müşteri
+verisi değil.
+
+### 7.5 · İkinci asimetri: `fields values --rules`
+
+CLI'nin `--rules` birleştirmesi araçta **yok**. Girdisi depo dışından gelen bir
+JSON (`explain_misses.py` çıktısı) ve bir modelin onu üretmesinin yolu yok.
+Araç komutun **çekirdek sorusunu** cevaplıyor; `--rules` bir CLI analiz eki.
+
+---
+
+## 8 · Bekçiler
+
+| Bekçi | Ne tutuyor |
+| --- | --- |
+| `Katalog_CLI_yaprak_komutlariyla_ayni_sayida` | `SetAction` sayısı = katalog satırı. **İki taraf da sayılıyor**, sabit yazılmadı |
+| `Katalogdaki_her_komut_CLI_da_var` | Ad kontrolü — sayı eşitliğinin iki hatanın birbirini götürmesine açık olduğu boşluk |
+| `Araclar_katalogla_birebir` | İlan edilen araçlar ↔ katalog. Küme **keşfediliyor** |
+| `Muaf_sayisi_sabitle_tutuluyor` | `ExpectedExemptCount = 5` — muafiyet iki bilinçli hareket |
+| `Her_muafiyetin_gerekcesi_dolu` | Gerekçesiz muafiyet yok |
+| `Ucuncu_bir_hal_yok` | Araç + muaf = tamamı (§8) |
+| `Komut_cekirdeginde_Console_kullanimi_yok` | stdout protokolün kendisi |
+
+**Kapı tek yönlü ve bu bir eksiklik değil.** Tuttuğu şey *"her komut ya araç ya
+muaf"*; tersi — *"her araç bir komuttan doğar"* — bir şart **değil**:
+M03/M04/M05'in araçlarının hiçbirinin CLI komutu yok. Simetriyi bir eksiklik
+sanıp tamamlamak, kapıyı ilk yeni araç ailesinde kıracak bir şart eklemek olur.
+
+**Sabit sayı yalnızca muafiyette.** Komut sayısı sayılıyor, çünkü bu dal M01'in
+üstünde duruyor ve `mcp serve` orada doğdu: ana ağaçta `SetAction` **10**,
+burada **12**. Bugünkü ağaca göre çivilenmiş bir sabit, M01 merge olduğu gün
+kapıyı kırmızı yakar ve sebebi **yanlış dalda** aranırdı.
