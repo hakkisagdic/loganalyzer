@@ -1,0 +1,32 @@
+# Arayüz imajının derleme bağlamından dışlananlar (T49).
+#
+# AYRI BİR DOSYA OLMAK ZORUNDA. Depo kökündeki `.dockerignore` yalnızca kökü
+# bağlam alan imajlar (API, sidecar) için geçerli; `ui` servisinin bağlamı
+# `../ui` ve Docker o durumda `ui/.dockerignore`'a bakıyor. Kökteki dosyada
+# `ui/node_modules/` satırı zaten var ama buradaki bağlamda yolu tutmuyor.
+#
+# Bu bir hız iyileştirmesi değil, bir doğruluk koşulu — kökteki dosyanın
+# başlığındakiyle aynı gerekçe: makinedeki `node_modules` bağlama girerse
+# imajın kendi `npm ci`'sinin ürettiğinin üstüne yazılır. Makinedeki ağaç
+# darwin/arm64 için kurulmuş ikili paketler taşıyor (`@next/swc-*`, `sharp`),
+# imaj ise linux; üstüne yazıldığında derleme çalıştırma anında düşer ve
+# hatanın mimariden geldiği hiçbir yerde yazmaz.
+
+# Bağımlılıklar ve derleme çıktısı — imaj ikisini de kendisi üretiyor.
+node_modules/
+.next/
+
+# Test artıkları. Playwright'ın izleri ve videoları yüzlerce megabayt olabiliyor.
+.playwright/
+.screenshots-tmp/
+test-results/
+
+# Yerel ortam dosyaları. `.env.example` bağlamda KALIYOR (belge niteliğinde),
+# gerçek değerler girmiyor — imaj yapılandırmasını çalışma zamanında compose'dan
+# alıyor.
+.env
+.env.local
+.env*.local
+
+# Araç ve editör artıkları
+.DS_Store

@@ -50,8 +50,21 @@ const CONTROL_PLANE = "Host=localhost;Port=5432;Database=bizigo;Username=bizigo;
  */
 const IDP_GROUP = "/network/core";
 
+/**
+ * Koşumun hedefi — `playwright.config.ts`'teki `E2E_TARGET` ile **aynı**
+ * değişkeni okuyor (T49).
+ *
+ * <p>
+ * İki dosya arasında paylaşılan bir sabit yerine aynı ortam değişkeni: bu
+ * betik Playwright'tan <b>ayrı bir süreçte</b> koşuyor (<c>npm run e2e</c>'nin
+ * ilk adımı) ve import etseydi Playwright'ın yapılandırmasını yan etkileriyle
+ * birlikte yüklerdi.
+ * </p>
+ */
+const TARGET = process.env.E2E_TARGET === "container" ? "container" : "local";
+
 /** Yığından beklenen servisler ve neden gerektikleri. */
-const REQUIRED_SERVICES: ReadonlyArray<readonly [service: string, why: string]> = [
+const BASE_SERVICES: ReadonlyArray<readonly [service: string, why: string]> = [
   ["clickhouse", "olay tablosu — arama ve RCA ekranlarının verisi"],
   ["postgres", "kontrol düzlemi — envanter, katalog, kapsam eşlemesi"],
   ["keycloak", "kimlik — giriş akışı gerçek OIDC üzerinden yürüyor"],
@@ -59,8 +72,29 @@ const REQUIRED_SERVICES: ReadonlyArray<readonly [service: string, why: string]> 
   ["sidecar", "şablon çıkarımı — boru hattı özetindeki keşif göstergesi"],
 ];
 
-const UP_COMMAND =
-  "cd deploy && docker compose up -d --wait clickhouse postgres rustfs keycloak sidecar";
+/**
+ * Container kipinde API ve ekran da yığından geliyor — ve **ön koşul
+ * olmaları** bu kipin bütün anlamı.
+ *
+ * <p>
+ * Eksik olduklarında koşum burada duruyor, testin içinde değil. Aksi hâlde
+ * container'a karşı koşacağını sanan bir koşum yerel bir sunucuyu bulup yeşil
+ * yanardı — yani container hakkında hiçbir şey söylemeyen, ama söylediğini
+ * sanan bir sonuç (§7).
+ * </p>
+ */
+const CONTAINER_SERVICES: ReadonlyArray<readonly [service: string, why: string]> = [
+  ["api", "container'daki API — bu kipte hedefin kendisi"],
+  ["ui", "container'daki ekran — BFF'in container ağında çalıştığı ancak burada sınanıyor"],
+];
+
+const REQUIRED_SERVICES = TARGET === "container"
+  ? [...BASE_SERVICES, ...CONTAINER_SERVICES]
+  : BASE_SERVICES;
+
+const UP_COMMAND = TARGET === "container"
+  ? "cd deploy && docker compose --profile api up -d --wait"
+  : "cd deploy && docker compose up -d --wait clickhouse postgres rustfs keycloak sidecar";
 
 // `NodeJS.ProcessEnv` DEĞİL: Next bu arayüzü `NODE_ENV`'i zorunlu kılacak
 // şekilde genişletiyor ve buradaki ek değişkenler onu taşımıyor. Zaten
@@ -278,10 +312,56 @@ function buildUi(): void {
   run("npm", ["run", "build"], UI);
 }
 
+/**
+ * Container'daki API'yi tohumlamadan **sonra** geri kaldırır (T49).
+ *
+ * <h3>Sıra burada bir doğruluk koşulu, tercih değil</h3>
+ *
+ * <p>
+ * <c>scopeAndInventory</c> API'yi durduruyor ve gerekçesi orada yazılı:
+ * <c>Program.cs</c> kapsam eşlemesini <b>açılışta bir kez</b> belleğe alıyor
+ * (<c>AccessScopeResolver.RefreshAsync</c>) ve bir daha tazelemiyor. Yerelde
+ * bunu Playwright telafi ediyor — durdurulan container'ın yerine yeni bir
+ * süreç açıyor. Container kipinde Playwright <b>hiçbir şey başlatmıyor</b>,
+ * dolayısıyla telafi eden kimse yok.
+ * </p>
+ *
+ * <p>
+ * Bu adım olmasaydı zincir şu olurdu: API açık kalır → kapsam önbelleği
+ * tohumlamadan ÖNCEKİ hâliyle (boş) durur → analistin kapsamı boş → hiçbir
+ * olay dönmez → <b>ekran boş</b>. Hata yok, sayaç yok, belirti yok — testler
+ * "veri görünmüyor" der ve sebep container'ın kendisinde aranır.
+ * </p>
+ *
+ * <p>
+ * <c>ui</c> yeniden başlatılmıyor: BFF açılışta hiçbir şey önbelleklemiyor,
+ * her isteği API'ye vekilliyor. Gereksiz bir yeniden başlatma, kaldırma
+ * süresini uzatmaktan başka bir şey yapmazdı.
+ * </p>
+ */
+function startContainerApi(): void {
+  process.stdout.write("· container'daki API geri kaldırılıyor (kapsam önbelleği tazelensin)\n");
+
+  run(
+    "docker",
+    ["compose", "-f", "deploy/docker-compose.yml", "--profile", "api", "up", "-d", "--wait", "api"],
+    REPO,
+  );
+}
+
 assertStackIsUp();
 build();
 seed();
 await scopeAndInventory();
-buildUi();
 
-process.stdout.write("· hazır\n");
+if (TARGET === "container") {
+  // Arayüz derlemesi YOK: imaj kendi `next build`'ini çalıştırdı ve container
+  // onu koşturuyor. Burada yeniden derlemek, koşumun hedefi OLMAYAN bir çıktı
+  // üretmek olurdu — ve yeşil bir koşum, aslında sınanmayan bir imaj hakkında
+  // konuşurdu.
+  startContainerApi();
+} else {
+  buildUi();
+}
+
+process.stdout.write(`· hazır (hedef: ${TARGET})\n`);
