@@ -50,31 +50,51 @@ açmak değil, MCP oturumunun principal'ını bu resolver'a **ulaştırmak**.
 | # | Aday | Değerlendirme |
 | --- | --- | --- |
 | (a) | `stdio` yüzeyi `bizigo` araçlarını hiç sunmaz, yalnızca HTTP sunar | **Elendi** |
-| (b) | `stdio` başlarken bir cihaz akışıyla oturum açar | **Seçildi (ön koşullu)** |
+| (b) | `stdio` başlarken bir **cihaz akışıyla** oturum açar | **Önce seçildi, sonra çürütüldü** |
 | (c) | `stdio` yalnızca `bizigo-sim` içindir | **Elendi** |
+| (d) | `stdio` kimliği **ortamdan okur** | **Seçildi** |
 
-**Eleme bir tercih değil bir ölçümün sonucu.** Ölçüm §1'de: CLI'nin bugün
-kimlik yolu **yok**. Eğer olsaydı, stdio onu miras alırdı ve M08 *"var olanı
-MCP oturumuna taşı"* olurdu (`CLAUDE.md` §9: ikinci kopya yazma). Olmadığı
-için (a) ve (c) eleniyor — ikisi de `bizigo` yüzeyini stdio'da işe yaramaz
-kılıyor, oysa **stdio'nun var olma sebebi** yerel bir ajanın ürüne
+**(a) ve (c)'nin elenmesi bir tercih değil bir ölçümün sonucu.** Ölçüm §1'de:
+CLI'nin bugün kimlik yolu **yok**. Eğer olsaydı, stdio onu miras alırdı ve M08
+*"var olanı MCP oturumuna taşı"* olurdu (`CLAUDE.md` §9: ikinci kopya yazma).
+Olmadığı için ikisi de eleniyor — `bizigo` yüzeyini stdio'da işe yaramaz
+kılıyorlar, oysa **stdio'nun var olma sebebi** yerel bir ajanın ürüne
 konuşmasıdır.
 
-Geriye cihaz akışı kalıyor: terminal süreci için standart olan ve **servis
-hesabı yasağıyla uyumlu tek yol**, çünkü token kullanıcının olmak zorunda.
+### (b) neden çürütüldü — ve bu satırın burada durma sebebi
 
-> **Ön koşul, ve bu belgede yazılı olması bunun için:** bir sonraki kişi
-> *"neden cihaz akışı"* diye sorduğunda cevabı burada bulmalı. Cevap
-> *"seçtik"* değil, *"CLI'nin bugünkü kimlik yolu ölçüldü ve yoktu."*
-> Ölçüm bugün geçerli; CLI bir kimlik yolu kazanırsa **bu karar yeniden
-> değerlendirilmeli** ve (b) gereksiz hâle gelebilir.
+Bu belge önce **cihaz akışını** seçmişti: terminal süreci için standart olan
+ve servis hesabı yasağıyla uyumlu görünen yol. **Yanlıştı.**
 
-### `stdio`'nun kendine özgü zorluğu
+M08 uyduğumuz revizyonun yetkilendirme spesifikasyonunu okudu ve şunu
+bildirdi: **spesifikasyon `stdio` taşıması için OAuth akışlarını dışlıyor** ve
+kimliğin **ortamdan** okunmasını söylüyor. Yani (b) yalnızca gereksiz değil,
+spesifikasyona **aykırı**.
 
-`stdio`'da **HTTP başlığı yok**. Yani *"kimliği istekten al"* cümlesinin
-karşılığı yok; token bir yerde **tutulmak** zorunda ve tazelenmesi gerekiyor.
-Süresi dolduğunda ne olduğu bir tasarım kararı: araç çağrısı reddediliyor mu,
-akış yeniden mi başlıyor?
+> **Bu satırı silmek yerine tutuyorum.** Silseydim belge doğru görünürdü ama
+> bir sonraki kişi cihaz akışını yeniden önerirdi — ve aynı eleme bir kez daha
+> yapılırdı. Yanlış çıkmış bir karar, gerekçesiyle birlikte, kararın kendisi
+> kadar bilgi taşıyor.
+>
+> **Kaynak ayrımı:** spesifikasyon iddiası **M08'in ölçümü**, bu belgenin
+> değil — spesifikasyon metnini kendim okumadım. Yanlışlanırsa buraya
+> dönülmeli.
+
+Ayrıca §7.2'nin ölçümü aynı sonucu **ikinci bir yönden** destekliyor: realm'de
+cihaz akışı için bir istemci kaydı **yok** — yalnızca `bizigo-ui` ve
+`bizigo-collector` var. (b) seçilseydi bu ticket realm-as-code'a da dokunacak,
+yani canlı Keycloak doğrulaması gerektirecekti.
+
+### `stdio`'nun kendine özgü zorluğu — (d) bunu nasıl çözüyor
+
+`stdio`'da **HTTP başlığı yok**, yani *"kimliği istekten al"* cümlesinin
+karşılığı yok. (d) bunu ortamdan okuyarak çözüyor: token'ı süreç ortamı
+taşıyor, MCP sunucusu onu üretmiyor.
+
+Ama sorunun tamamı çözülmüş olmuyor ve kalan yarısı **açık**: token'ın
+**süresi dolduğunda** ne oluyor? Ortamdan okunan bir değer kendini
+tazeleyemez. Araç çağrısı reddediliyor mu, süreç yeniden mi başlatılıyor,
+yoksa ortam değişkeni canlı mı okunuyor? **Karar M08'in.**
 
 ## 3 · Kapsam
 
@@ -125,9 +145,26 @@ M08'in."*
    `bizigo-claims` client scope var. `scope=openid` geçiyor;
    `openid profile email` **canlıda `invalid_scope` alıyor**. Ölçüldü, plan §6
    de yazıyor.
-2. **Açık soru:** cihaz akışının istemci kaydı realm'de var mı? **Bakmadım.**
-   Yoksa M08 realm-as-code tarafına da dokunuyor demektir ve bu ticket'ın
-   kapsamı büyür.
+2. **Realm'de iki istemci var — ölçüldü.** `deploy/keycloak/realm-bizigo.json`:
+   **`bizigo-ui`** ve **`bizigo-collector`**. MCP için ya da cihaz akışı için
+   bir istemci kaydı **yok**.
+
+   Bu ölçüm önce *"M08 realm-as-code'a da dokunuyor"* diye okunmuştu — o okuma
+   **(b) cihaz akışı** seçiliyken doğruydu. **(d) seçildikten sonra geçerli
+   değil:** ortamdan okunan bir token için yeni bir istemci kaydı gerekmiyor,
+   token'ı zaten var olan bir istemci basıyor. Yani M08 realm'e
+   **dokunmayabilir** — ve dokunmuyorsa canlı Keycloak doğrulaması da
+   gerekmez.
+
+   **Hangi istemcinin bastığı açık soru:** ortamdaki token `bizigo-ui`'nin mi,
+   yoksa ayrı bir istemcinin mi olmalı? Cevap *"ayrı"* ise realm yine
+   değişiyor. **Ölçmedim.**
+
+   Aynı dosyada ölçülen ikinci şey M09'un konusu: `bizigo-claims` client
+   scope'unda bir **audience mapper** var
+   (`included.client.audience: bizigo-api`) ve API `ValidateAudience = true`
+   ile onu doğruluyor. Yani kitlenin bağlanması **bugün çalışıyor** — eksik
+   olan, MCP sunucusunun **kendine ait bir kaynak kimliğinin** olmaması.
 3. **Açık soru:** HTTP taşımasında kimlik `Authorization` başlığıyla mı
    geliyor, yoksa MCP oturum kurulumunda bir kez mi? İki taşıma **aynı araç
    kümesini** sunuyor (plan §2) ama kimlik yolları farklı olabilir; farklıysa
