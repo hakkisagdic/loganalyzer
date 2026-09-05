@@ -50,7 +50,10 @@ spec:
         constraints_waived: >-
           Çıktı hipotez METNİ; hiçbir kanıt kimliğine atıf yapmıyor, dolayısıyla
           `evidence_ids_must_exist` doğrulayacak bir kimlik bulamaz. Bağlama bir
-          sonraki adımda (`bind-evidence`) ve kapı orada kapanıyor.
+          sonraki adımda (`bind-evidence`) ve kapı orada kapanıyor. T44 bu
+          gerekçeyi MEKANİK hâle getirdi: girdisi `evidence.summary` ve özetler
+          kimlik taşımıyor, yani bu adımın görüş alanı BOŞ — kısıt yazılsaydı
+          zorlanacak bir şey bulamayan, yazılı ama iş yapmayan bir kapı olurdu.
     - id: bind-evidence
       task: "Her hipotezi destekleyen ve çelişen kanıt kimliklerini eşle."
       input: [steps.rank-hypotheses, evidence.items]
@@ -63,11 +66,24 @@ spec:
       output:
         schema: action_list
         max_items: 2               # ⚠ seçildi, ölçülmedi — RCA §8.1
-        constraints: []
-        constraints_waived: >-
-          Aksiyon önerisi kanıt kimliği taşımıyor; dayandığı kanıt bir önceki
-          adımda zaten doğrulandı. Gerekçe DEVRALINMIŞ — aksiyonun kendi kanıt
-          atfını taşıyıp taşımayacağı T44'ün kararı, ve karar "taşısın" olursa
-          bu muafiyet düşer.
+        # T44'ün kararı: AKSİYON KENDİ KANIT ATFINI TAŞIYOR, muafiyet DÜŞTÜ.
+        #
+        # Eski muafiyetin gerekçesi kendi metninde "DEVRALINMIŞ" diye yazılıydı:
+        # "dayandığı kanıt bir önceki adımda zaten doğrulandı". Devralınmış bir
+        # gerekçe gerekçe değil — `bind-evidence` KENDİ yazdığı kimlikleri
+        # doğruladı, bu adımın yazacaklarını değil.
+        #
+        # Üç sebep, üçü de yazılı bir yere dayanıyor:
+        #   1. RCA §4.2 zaten `recommended_actions[]` = {text, risk,
+        #      evidence_ids[]} diyor. Alan tasarımda VAR; muafiyet onu
+        #      doğrulanmadan bırakıyordu.
+        #   2. Kapı artık DAR: bu adımın görüş alanı yalnızca
+        #      `bind-evidence`'ın bağladığı kimlikler (T44 · StepEvidenceView).
+        #      Yani doğrulama paketin tamamına değil, aksiyonun gerçekten
+        #      dayanabileceği kümeye karşı yapılıyor.
+        #   3. `constraints: []` ile geçen bir adım, kapının uygulandığı bir
+        #      adımdan ayırt edilemeyecek biçimde "geçti" görünüyordu — §3.2'nin
+        #      kapatmak istediği sessizliğin kendisi.
+        constraints: [evidence_ids_must_exist]
   publish:
     requires_review: true          # K16 — aksiyon alan senaryo onaysız yayınlanmaz
