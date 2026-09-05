@@ -34,6 +34,21 @@
       ikisinin de görebildiği en dar ortak nokta.
     -->
     <ProjectReference Include="..\..\src\Bizigo.Parsing\Bizigo.Parsing.csproj" />
+
+    <!--
+      M03 · `bizigo-sim` MCP araçları burada yaşıyor (`Mcp/`).
+
+      YÖN ÖNEMLİ VE TERS DEĞİL: simülatör MCP çekirdeğini görüyor, çekirdek
+      simülatörü görmüyor. `Bizigo.Mcp` protokolü konuşuyor ve kim araç
+      yazdığını bilmiyor; araçlar kendi katmanlarında oturuyor. Tersi —
+      çekirdeğin simülatöre referans vermesi — `Bizigo.Api`'yi de simülatöre
+      bağlardı, oysa yukarıdaki yorumun "ürün burayı hiç görmüyor" cümlesi
+      tam olarak onu yasaklıyor.
+
+      Araçların İLAN EDİLMESİ bu referansa değil `SimulatorMcpSetup`'a bağlı;
+      gerekçesi (derleyicinin dokunulmayan referansı budaması) orada yazılı.
+    -->
+    <ProjectReference Include="..\..\src\Bizigo.Mcp\Bizigo.Mcp.csproj" />
   </ItemGroup>
 
   <ItemGroup>

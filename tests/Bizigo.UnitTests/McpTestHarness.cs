@@ -1,6 +1,7 @@
 using System.IO.Pipelines;
 using System.Text.Json;
 using Bizigo.Mcp;
+using Bizigo.Simulators.Mcp;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Client;
@@ -260,8 +261,69 @@ internal sealed class NeverEndingTool : ProtocolMechanicsTool
     }
 }
 
-/// <summary>Test oturumları için asgari servis sağlayıcısı.</summary>
+/// <summary>Test oturumları için servis sağlayıcıları.</summary>
 internal static class McpTestServices
 {
+    /// <summary>
+    /// Boş grafik — <b>protokol mekaniğini</b> ölçen testler için. Ölçtükleri
+    /// şey (keşif, iptal, hata ayrımı) hiçbir bağımlılık istemiyor.
+    /// </summary>
     public static ServiceProvider Empty() => new ServiceCollection().BuildServiceProvider();
+
+    /// <summary>
+    /// <b>Yüzeyin üretimde kurduğu servis grafiği</b> (M03).
+    ///
+    /// <para>
+    /// Boş bir grafik yeterli değil ve sebebi mekanik: <c>Instantiate</c>
+    /// kurulamayan aracı <b>atlamıyor, patlatıyor</b> — kasıtlı, çünkü atlanan
+    /// bir araç kapıya hiç görünmez. O hâlde bağımlılığı olan bir araç
+    /// ilan edildiği anda kapının o bağımlılığı da kurması gerekiyor, yoksa
+    /// kapı aracın kusurunu değil <b>kendi eksiğini</b> raporlar.
+    /// </para>
+    ///
+    /// <para>
+    /// Grafik üretimdekiyle <b>aynı uzantıdan</b> kuruluyor
+    /// (<c>AddBizigoSimulatorTools</c>), ikinci bir kayıt listesi yazılarak
+    /// değil (§9). İkinci liste, kapının ölçtüğü sunucu ile üretimde koşan
+    /// sunucuyu ayırırdı — <c>BizigoMcpServer</c>'ın belgesinde adı konmuş
+    /// olan tek yıkıcı hareket.
+    /// </para>
+    ///
+    /// <para>
+    /// Durum dosyası <b>geçici bir dizine</b> gidiyor: kapı gerçek
+    /// <c>artifacts/bizigo-sim/state.json</c>'a yazsaydı testi koşturmak
+    /// geliştiricinin simülatör durumunu değiştirirdi, ve paralel koşumda iki
+    /// test birbirinin durumunu bozardı.
+    /// </para>
+    /// </summary>
+    public static ServiceProvider For(McpSurface surface)
+    {
+        _ = surface;
+
+        // KAYIT YÜZEYE BAĞLI DEĞİL ve bu ölçülerek düzeltildi — üretimdeki
+        // `McpCommandHandlers.BuildServices` ile aynı sebep.
+        //
+        // `Instantiate` bulduğu HER aracı kuruyor, yüzeye göre ancak kurduktan
+        // SONRA eliyor. Kayıt `if (surface is Simulator)` ile sınırlıyken
+        // `McpIdentityTests.Kapsam_cozucusu_kayitli_degilse_kurulum_patliyor`
+        // düştü: o test kökü `Bizigo.UnitTests` veriyor, oradan simülatöre
+        // ulaşılıyor, ve kurulum kapsam çözücüsünü aramadan ÖNCE araç kurmakta
+        // patlıyordu. Yani bekçi kendi ölçtüğü şeyi değil bir kurulum eksiğini
+        // raporluyordu — mesajın kusurun üstüne oturması M08'in kararıydı ve
+        // bu onu bozuyordu.
+        //
+        // `surface` parametresi imzada KALIYOR: çağıranlar yüzey başına bir
+        // grafik istediklerini söylüyor ve bir gün yüzeye özel bir kayıt
+        // gerektiğinde imza değişmesin.
+        var services = new ServiceCollection();
+
+        services.AddBizigoSimulatorTools(
+            repositoryRoot: RepositoryLayout.Root,
+            statePath: Path.Combine(
+                Path.GetTempPath(),
+                $"bizigo-sim-gate-{Guid.NewGuid():N}",
+                "state.json"));
+
+        return services.BuildServiceProvider();
+    }
 }

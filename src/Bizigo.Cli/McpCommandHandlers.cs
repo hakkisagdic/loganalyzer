@@ -1,5 +1,6 @@
 using System.Reflection;
 using Bizigo.Mcp;
+using Bizigo.Simulators.Mcp;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -60,7 +61,7 @@ public static class McpCommandHandlers
                 .AddConsole(console => console.LogToStandardErrorThreshold = LogLevel.Trace))
             : LoggerFactory.Create(static logging => logging.ClearProviders());
 
-        var services = new ServiceCollection().BuildServiceProvider();
+        await using var services = BuildServices();
 
         await McpStdioHost.RunAsync(
             surface,
@@ -70,5 +71,67 @@ public static class McpCommandHandlers
             cancellationToken).ConfigureAwait(false);
 
         return 0;
+    }
+
+    /// <summary>
+    /// Yüzeyin araçlarının ihtiyaç duyduğu servisler.
+    ///
+    /// <para>
+    /// <b>Bu metot aynı zamanda bir DERLEME BAĞI, ve bu ikinci işi kasıtlı</b>
+    /// (M03/M04). Derleyici, kodunda hiçbir tipine dokunulmayan bir
+    /// <c>ProjectReference</c>'ı meta veriden <b>buduyor</b>; budanan derlemeyi
+    /// <c>McpToolDiscovery.ProductAssemblies</c> referans tablosunda
+    /// <b>göremiyor</b> ve araçları <b>sessizce</b> ilan edilmiyor — hata yok,
+    /// sayaç yok, uyum kapısı yeşil.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Ölçüldü, ve tuzağın canlı örneği bu depoda duruyor:</b>
+    /// <c>bizigo.dll</c>'in derleme referansları arasında
+    /// <c>Bizigo.Simulators</c> <b>var</b> ama <c>Bizigo.Query</c> <b>yok</b> —
+    /// ikisinin de <c>ProjectReference</c>'ı olmasına rağmen. Simülatör bugün
+    /// ayakta çünkü <c>FleetCommandHandlers</c> <c>bizigo fleet apply</c> için
+    /// <c>FleetStore</c>'a dokunuyor. <b>Yani bugün çalışması bir güvence değil
+    /// tesadüf:</b> o komut kaldırılırsa ya da başka bir derlemeye taşınırsa
+    /// yedi <c>sim.*</c> aracı ilan edilmez.
+    /// </para>
+    ///
+    /// <para>
+    /// Buradaki çağrı bağı tesadüften çıkarıyor: araçların ilan edilmesi
+    /// artık <b>araçların kaydına</b> bağlı, filo komutunun varlığına değil.
+    /// </para>
+    ///
+    /// <para>
+    /// ⚠ <b>GEÇİCİ.</b> M05 <c>AddBizigoMcpCore</c>'a araç derlemelerini
+    /// <b>açıkça</b> aldıracak; o gün doğru cevap bir çağrı yan etkisi değil
+    /// <c>SimulatorMcpSetup.ToolAssembly</c>'nin o listeye verilmesi olacak ve
+    /// bu paragraf silinecek.
+    /// </para>
+    /// </summary>
+    private static ServiceProvider BuildServices()
+    {
+        var services = new ServiceCollection();
+
+        // KAYIT YÜZEYE BAĞLI DEĞİL — ve ilk hâli öyleydi, ÖLÇÜLEREK düzeltildi.
+        //
+        // `McpToolDiscovery.Instantiate` bulduğu HER aracı KURUYOR, yüzeye göre
+        // ancak kurduktan SONRA eliyor — `Surface` bir örnek özelliği, yani
+        // örneklemeden okunamıyor. Dolayısıyla bir yüzeyi sunmak, keşfin
+        // ulaştığı BÜTÜN araçların bağımlılıklarını istiyor.
+        //
+        // Kayıt `if (surface is Simulator)` ile sınırlıyken ölçülen sonuç:
+        // `bizigo mcp serve --surface bizigo` (ÜRÜN yüzeyi) hiç ayağa
+        // kalkmıyordu — keşif `Bizigo.Simulators`'a ulaşıp yedi aracı kurmaya
+        // çalışıyor ve `SimulatorMcpContext` kayıtlı olmadığı için patlıyordu.
+        // Aynı kusur `McpIdentityTests.Kapsam_cozucusu_kayitli_degilse_kurulum_patliyor`'u
+        // da düşürdü: o test kökü `Bizigo.UnitTests` veriyor ve oradan da
+        // simülatöre ulaşılıyor.
+        //
+        // Kaydın kendisi bir şey İLAN ETMİYOR: araçlar yüzeylerini kendileri
+        // beyan ediyor ve ürün yüzeyinde hiçbiri ilan edilmiyor. Burada olan
+        // tek şey, kurulabilir olmaları.
+        services.AddBizigoSimulatorTools();
+
+        return services.BuildServiceProvider();
     }
 }

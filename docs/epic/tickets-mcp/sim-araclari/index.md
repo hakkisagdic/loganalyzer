@@ -1,7 +1,7 @@
 ---
 title: "M03 — bizigo-sim araçları"
 kind: ticket
-status: 0
+status: 1
 ---
 
 # M03 — Simülatörü çalışırken yönetmek
@@ -26,17 +26,30 @@ Son ikisi **S07 ile bu hafta girdi**, yani `sim.webhook.emit`'in dayanağı haz�
 
 `Scenario.cs` bir `ScenarioSurface` enum'ı ve
 `ScenarioDefinition(string Name, ScenarioSurface Surface, string Claim)`
-kaydı taşıyor. **Altı senaryo ölçüldü:**
+kaydı taşıyor. **Yedi senaryo ölçüldü** (`Scenarios.All`):
 
-`bozuk-kodlama` · `cihaz-yeniden-yazdi` · `kural-eklendi` · `saat-kaymasi` ·
-`sidecar-yok` · `sir-dondu`
+| Senaryo | Yüzey |
+| --- | --- |
+| `kural-eklendi` | `Config` |
+| `sir-dondu` | `Config` |
+| `cihaz-yeniden-yazdi` | `Config` |
+| `gurultu` | `Config` |
+| `saat-kaymasi` | `Syslog` |
+| `bozuk-kodlama` | `Syslog` |
+| `sidecar-yok` | `Infrastructure` |
 
 Yani M03 yüzey ayrımını **sıfırdan kurmuyor**; var olan ayrımı protokolde
 görünür kılıyor.
 
-> **Sayı karışıklığına dikkat:** plan **yedi araçtan** söz ediyor, senaryo
-> sayısı **altı**. İkisi farklı şey; ticket'ın kabul kriteri araç sayısına
-> bakıyor, senaryo sayısına değil.
+> **Düzeltme (M03 uygulaması sırasında ölçüldü).** Bu bölüm önce *"altı senaryo"*
+> diyordu ve `gurultu`'yu (`Scenario.cs:154`, `Config` yüzeyi — *"ConfigNormalizer
+> gürültüyü eliyor; fark BOŞ çıkıyor"*) saymıyordu. Kodda **yedi** var.
+> Sayı burada bilinçli bir kalemdi (aşağıdaki kutu ona dayanıyor), o yüzden
+> düzeltme kaydıyla birlikte duruyor.
+
+> **Sayı karışıklığına dikkat:** plan **yedi araçtan** söz ediyor, senaryo sayısı
+> da **yedi** — ama ikisi **farklı şeyler** ve eşitlik tesadüf. Ticket'ın kabul
+> kriteri araç sayısına bakıyor, senaryo sayısına değil.
 
 ## 2 · Kapsam
 
@@ -104,3 +117,61 @@ dalda duruyor.
 4. **Bu ticket ürün verisi görmüyor** — ama `sim.state`'in döndürdüğü örnek
    satırlar simülatörün ürettiği veri. Sentetik olması onları redaksiyondan
    **muaf yapmıyor**; kriter 3 bunun için var.
+
+## 6.1 · Uygulamada ölçülenler — yukarıdaki üç sorunun cevabı
+
+Bu bölüm uygulama turunda **ölçülerek** yazıldı. Yukarıdaki tahminler
+silinmedi: neyin sorulduğu ile neyin çıktığı arasındaki fark bu belgenin en
+pahalı bilgisi.
+
+### 2. sorunun cevabı — ayrı süreç yok, ve bu ticket'ı yeniden tanımladı
+
+Simülatör **tek atımlık bir CLI**: profili okuyor, basıyor, çıkıyor. Bağlanacak
+uzun ömürlü bir süreç **yok**, dolayısıyla `sim.scenario.set`, `sim.device.silence`
+ve `sim.state`'in altında hiçbir şey yoktu. **M03'ün gerçek işi üç araç değil, o
+katman.**
+
+Katman **stdio-only + dosya**: `artifacts/bizigo-sim/state.json`, kilit altında
+oku-değiştir-yaz + atomik `rename`, `schema_version`. Bellek içi durum elendi
+çünkü stdio'da **her bağlantı kendi süreci** — iki istemci farklı durum görür ve
+`sim.state` ile `sim.device.silence` **yalan söylerdi**. Daemon elendi çünkü §3
+kaçak proses konusunda net.
+
+**`sim.state`'in vaadi bu yüzden daraldı.** Planın §4'ü onu *"simülatörün o anki
+hâli"* diye tarif ediyor; doğru cevap **niyet**, gerçek değil. Niyet ile etki
+**ayrı alanlar** (`scenario_set_at` ↔ `last_applied_at`) ve ayrıştıkları
+`divergences` içinde adıyla raporlanıyor.
+
+### 3. sorunun cevabı — iptal M01'in mekanizmasıyla, ayrı bir şey gerekmedi
+
+`SyslogEmitter.EmitAsync` zaten `CancellationToken` alıyor ve basım döngüsünün
+içine taşıyor. `sim.syslog.burst` belirteci olduğu gibi geçiriyor; M01'in
+*"her araç iptal edilmiş belirteci gözetiyor"* kapısı bunu ölçüyor.
+
+### 4. sorunun cevabı — bu yüzeyde redaksiyonun öznesi YOK
+
+**Hiçbir `sim.*` aracı cihaz metni döndürmüyor.** `sim.syslog.burst` sayaç
+döndürüyor (satır, bayt, süre); `sim.state` niyet/etki damgaları döndürüyor,
+örnek satır **değil**. Yani kriter 3'ün istediği sınır şu: kapının bu yüzeyde
+bakacağı bir şey bugün yok, ve bu bir eksik değil bir **tasarım sınırı**.
+Bekçisi `SimulatorMcpToolTests.Hicbir_sim_araci_cihaz_metni_dondurmuyor` —
+yazının bir gün eskimesine karşı.
+
+Sınırın nerede biteceği de yazılı (`SyslogBurstTool` belgesi): bir araç örnek
+satır döndürmeye başlarsa o metin **sentetik olduğu için muaf değil**, ve o gün
+tek yol `McpLogText` menteşesi olacak.
+
+### Ayrıca ölçülen iki şey — ikisi de kapı kusuru
+
+- **Uyum kapısı her iki yüzeyi de `Bizigo.Api` kökünden denetliyordu**, ama
+  `bizigo-sim` üretimde `Bizigo.Cli` kökünden koşuyor ve `Bizigo.Api`'nin
+  `Bizigo.Simulators`'a **hiç referansı yok**. Yani yedi araç kapıya
+  görünmüyordu ve kapı `bizigo-sim` için yine tek araç sayıp **yeşil kalıyordu**.
+  Kök artık yüzeye göre seçiliyor.
+- **`Bizigo.Cli` → `Bizigo.Simulators` bağı bugün kazaen ayakta.** `bizigo.dll`
+  ölçüldü: `Bizigo.Simulators` **var**, `Bizigo.Query` **yok** (budanmış — tuzağın
+  depoda canlı örneği). Simülatör ayakta çünkü `FleetCommandHandlers`
+  `bizigo fleet apply` için `FleetStore`'a dokunuyor. `McpCommandHandlers` artık
+  `AddBizigoSimulatorTools`'u **MCP yolundan** çağırıyor; bağ tesadüften çıktı.
+  ⚠ **Geçici**: M05'in açık derleme listesi geldiğinde doğru cevap bir çağrı yan
+  etkisi değil, `SimulatorMcpSetup.ToolAssembly`'nin o listeye verilmesi olacak.

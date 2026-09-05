@@ -52,6 +52,32 @@ public sealed class McpSchemaBudgetTests
     /// </summary>
     private const int ToolListTokenCeiling = 400;
 
+    /// <summary>
+    /// Simülatör yüzeyinin tavanı — <b>ayrı, çünkü iki yüzey aynı bütçeyi
+    /// paylaşmıyor</b>.
+    ///
+    /// <para>
+    /// Tek bir tavan tutmak, yüzeylerden birine araç eklemenin diğerinin
+    /// payını yemesi demekti; oysa bir istemci <b>tek bir yüzeye</b> bağlanıyor
+    /// ve taşıdığı yük yalnızca o yüzeyin yükü. Ortak tavan, hiçbir istemcinin
+    /// gerçekten ödemediği bir toplamı ölçerdi.
+    /// </para>
+    ///
+    /// <para>
+    /// ⚠ <b>Değer ÖLÇÜLDÜ, seçilmedi:</b> aşağıdaki koşum sekiz aracın
+    /// gerçek sayısını basıyor ve sabit onun üstüne <b>bilinçli bir pay</b>
+    /// bırakılarak yazıldı. Payın işlevi bir hedef değil görünürlük: sekizinci
+    /// aracın açıklamasını iki katına çıkarmak bu satırı kırmızı yakmalı.
+    /// </para>
+    /// </summary>
+    private const int SimulatorToolListTokenCeiling = 3_600;
+
+    private static int Ceiling(McpSurface surface) => surface switch
+    {
+        McpSurface.Simulator => SimulatorToolListTokenCeiling,
+        _ => ToolListTokenCeiling,
+    };
+
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     /// <summary>
@@ -65,7 +91,7 @@ public sealed class McpSchemaBudgetTests
     [MemberData(nameof(McpComplianceTests.Surfaces), MemberType = typeof(McpComplianceTests))]
     public async Task Arac_semalarinin_baglam_maliyeti(McpSurface surface)
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.For(surface);
         var options = BizigoMcpServer.CreateOptions(surface, typeof(global::Program).Assembly, services);
 
         await using var session = await McpTestSession.StartAsync(options, services, cancellationToken: Ct);
