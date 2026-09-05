@@ -43,10 +43,17 @@ public sealed class CliEmulationTests : IAsyncLifetime
     private const string CiscoAsa = "asa-dc-01";
 
     /// <summary>
-    /// Sayfa boyutu bilerek küçük: <c>fw-ankara-01</c> baseline'ı 33 satır, yani
-    /// 10 satırlık sayfa <b>dört sayfa</b> ediyor. Config'ten büyük bir sayfa
-    /// boyutu sayfalamayı hiç tetiklemez ve test <i>"sayfalama sorunsuz"</i>
-    /// diye yeşil kalırdı — ölçülen hiçbir şey olmadan.
+    /// Sayfa boyutu bilerek küçük: <c>fw-ankara-01</c> baseline'ı bundan
+    /// belirgin biçimde uzun, yani sayfalama gerçekten tetikleniyor. Config'ten
+    /// büyük bir sayfa boyutu sayfalamayı hiç tetiklemez ve testler
+    /// <i>"sayfalama sorunsuz"</i> diye yeşil kalırdı — ölçülen hiçbir şey
+    /// olmadan.
+    ///
+    /// <para>
+    /// Bu sayı ile config uzunluğunun ilişkisi <see cref="SayfalamaOlculebilir"/>
+    /// tarafından sınanıyor; yalnızca yorumda kalsaydı baseline kısaldığında
+    /// sessizce yanlış olurdu.
+    /// </para>
     /// </summary>
     private const string PageLines = "10";
 
@@ -133,6 +140,65 @@ public sealed class CliEmulationTests : IAsyncLifetime
         output.Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Count(line => line.Trim().Length > 0 && !line.Contains("--More--", StringComparison.Ordinal));
 
+    /// <summary>
+    /// Bir profilin config dosyasındaki <b>anlamlı satır sayısı</b> — testin
+    /// beklediği sayı buradan geliyor, elle yazılmıyor.
+    ///
+    /// <para>
+    /// İlk yazımda sabit <c>33</c> yazılmıştı ve <b>yanlış olan sayı değil,
+    /// sayının kaynağıydı</b>: baseline düzeltilseydi test <b>ilgisiz bir
+    /// sebeple</b> kırılır ve kıran şey ürünün davranışı olmazdı. Oran da
+    /// çözüm değildi — <i>"çıplak `show`'dan uzun"</i> gibi bir iddia,
+    /// sayfalamanın hiç uygulanmadığı hâli de geçirirdi.
+    /// </para>
+    ///
+    /// <para>
+    /// Sayıyı <b>aynı kaynaktan türetmek</b> ikisini birden çözüyor: iddia
+    /// mutlak kalıyor (<i>config'in tamamı</i>) ve baseline değiştiğinde
+    /// beklenen sayı onunla birlikte değişiyor. Depoda emsali var — T39'un
+    /// görünüm kolonlarını göç dosyasından okuması, T32'nin sentetik alanları
+    /// <c>FIELD_MAP</c>'ten okuması.
+    /// </para>
+    /// </summary>
+    /// <summary>
+    /// Sayfalamanın <b>gerçekten tetiklendiğini</b> sınar: sayfa boyutu
+    /// config'ten kısa olmak zorunda.
+    ///
+    /// <para>
+    /// Bu kontrol olmadan sayfalama testleri, sayfa boyutu config'ten uzun
+    /// olduğu gün <b>hiçbir şey ölçmeden</b> yeşil kalırdı — "sayfalama
+    /// sorunsuz" görünen bir koşum, aslında sayfalamanın hiç çalışmadığı bir
+    /// koşum olurdu. Depoda adı konmuş sınıf: yeşil bir sonuç, ölçümün
+    /// yapılmadığı anlamına da gelebiliyor (§6).
+    /// </para>
+    /// </summary>
+    private static void SayfalamaOlculebilir(string profile)
+    {
+        var lines = ProfileConfigLines(profile);
+
+        Assert.True(
+            int.Parse(PageLines, System.Globalization.CultureInfo.InvariantCulture) < lines,
+            $"Sayfa boyutu ({PageLines}) profil config'inden ({lines} satır) kısa değil — " +
+            "sayfalama hiç tetiklenmez ve bu sınıftaki sayfalama testleri boş yere yeşil kalır.");
+    }
+
+    private static int ProfileConfigLines(string profile, string scenario = "baseline")
+    {
+        var path = Path.Combine(
+            CommonDirectoryPath.GetSolutionDirectory().DirectoryPath,
+            "catalog", "simulators", "profiller", profile, $"{scenario}.conf");
+
+        // Dosyanın VARLIĞI iddia ediliyor: yolu yanlış yazılmış bir yardımcı
+        // sıfır döndürüp "config hiç gelmedi" hâlini sessizce geçirirdi.
+        Assert.True(File.Exists(path), $"Profil config'i yok: {path}");
+
+        var lines = File.ReadAllLines(path).Count(l => l.Trim().Length > 0);
+
+        Assert.True(lines > 0, $"Profil config'i boş: {path}");
+
+        return lines;
+    }
+
     // ------------------------------------------------------- BULGU: sayfalama
 
     /// <summary>
@@ -164,6 +230,8 @@ public sealed class CliEmulationTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task Sayfalama_acikken_bile_toplayici_tam_config_aliyor()
     {
+        SayfalamaOlculebilir(FortiGate);
+
         var server = await StartAsync(paging: "daima");
 
         var result = await Transport().RunAsync(
@@ -178,7 +246,7 @@ public sealed class CliEmulationTests : IAsyncLifetime
         // İmleç çıktıya HİÇ girmiyor: sayfalama aynı oturumda kapatıldı.
         Assert.DoesNotContain("--More--", result.Output, StringComparison.Ordinal);
 
-        Assert.Equal(33, ConfigLines(result.Output));
+        Assert.Equal(ProfileConfigLines(FortiGate), ConfigLines(result.Output));
     }
 
     /// <summary>
@@ -206,6 +274,8 @@ public sealed class CliEmulationTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task Sayfalama_kapatma_ayni_oturumda_tasiniyor_ayrida_tasinmiyor()
     {
+        SayfalamaOlculebilir(FortiGate);
+
         var server = await StartAsync(paging: "daima");
 
         var kendine_yeten = await Transport().RunAsync(
@@ -221,10 +291,10 @@ public sealed class CliEmulationTests : IAsyncLifetime
         Assert.True(kendine_yeten.Ok, kendine_yeten.Error);
         Assert.True(ciplak.Ok, ciplak.Error);
 
-        Assert.Equal(33, ConfigLines(kendine_yeten.Output));
+        Assert.Equal(ProfileConfigLines(FortiGate), ConfigLines(kendine_yeten.Output));
 
         Assert.True(
-            ConfigLines(ciplak.Output) < 33,
+            ConfigLines(ciplak.Output) < ProfileConfigLines(FortiGate),
             $"Çıplak `show` da tam config verdi ({ConfigLines(ciplak.Output)} satır) — " +
             "öykünme sayfalamıyor olabilir ve diğer kolun yeşilliği hiçbir şey ifade etmez.");
     }
@@ -252,7 +322,7 @@ public sealed class CliEmulationTests : IAsyncLifetime
 
         Assert.True(result.Ok, result.Error);
         Assert.DoesNotContain("--More--", result.Output, StringComparison.Ordinal);
-        Assert.Equal(33, ConfigLines(result.Output));
+        Assert.Equal(ProfileConfigLines(FortiGate), ConfigLines(result.Output));
     }
 
     // -------------------------------------------------- vendor hata mesajları
