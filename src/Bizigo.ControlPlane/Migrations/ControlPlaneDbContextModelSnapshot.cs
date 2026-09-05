@@ -644,6 +644,14 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("contradicting_evidence");
 
+                    b.Property<int?>("CorrectFindingRank")
+                        .HasColumnType("integer")
+                        .HasColumnName("correct_finding_rank");
+
+                    b.Property<bool>("CorrectFindingRankAsked")
+                        .HasColumnType("boolean")
+                        .HasColumnName("correct_finding_rank_asked");
+
                     b.Property<string>("Note")
                         .IsRequired()
                         .HasMaxLength(4096)
@@ -1048,6 +1056,66 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasDatabaseName("ix_raw_manifest_owner_group_ts_from");
 
                     b.ToTable("raw_manifest", "bizigo");
+                });
+
+            modelBuilder.Entity("Bizigo.ControlPlane.RcaReportEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BundleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("bundle_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("DroppedSentenceCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("dropped_sentence_count");
+
+                    b.Property<int>("FabricatedCitationSentenceCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("fabricated_citation_sentence_count");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.Property<int>("ProducedSentenceCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("produced_sentence_count");
+
+                    b.Property<string>("ScenarioId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("scenario_id");
+
+                    b.Property<string>("ScenarioVersion")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("scenario_version");
+
+                    b.Property<int>("SchemaVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("schema_version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_rca_reports");
+
+                    b.HasIndex("BundleId", "CreatedAt")
+                        .HasDatabaseName("ix_rca_reports_bundle_id_created_at");
+
+                    b.HasIndex("ScenarioId", "CreatedAt")
+                        .HasDatabaseName("ix_rca_reports_scenario_id_created_at");
+
+                    b.ToTable("rca_reports", "bizigo");
                 });
 
             modelBuilder.Entity("Bizigo.ControlPlane.RcaRunEntity", b =>

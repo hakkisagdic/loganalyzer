@@ -37,8 +37,26 @@ olarak burada: *"araç zaten veriyi getiriyor, modele de versin."*
 
 ## 2 · Protokol uyumu — neyin şart olduğu
 
-Hedef **MCP 2.0** spesifikasyonuna tam uyum. Uyum bir iddia değil bir
+Hedef **`2026-07-28`** revizyonuna tam uyum. Uyum bir iddia değil bir
 **kapı** olmalı:
+
+> **Düzeltme (2026-08-26, ölçüldü).** Bu bölüm önce *"MCP 2.0 spesifikasyonu"*
+> diyordu. **Öyle bir revizyon adı yok.** Spesifikasyon yayınlarının tamamı
+> tarih damgalı — `2024-11-05` · `2025-03-26` · `2025-06-18` · `2025-11-25` ·
+> `2026-07-28` — ve *"2.0"* muhtemelen **C# SDK'sının** sürümüne
+> (`ModelContextProtocol` 2.x) bakıyordu; o ayrı bir şey.
+>
+> Seçilen: **`2026-07-28`**, en yeni stable. Sürüm anlaşması eski istemciyi
+> zaten aşağı indiriyor, yani geniş uyum kaybedilmiyor — yalnızca hedef
+> yukarı konuyor. Çivi bir sabit **artı bir bekçi**: SDK'nın ilan ettiği
+> sürüm yazdığımız sabitten ayrıştığı gün **kırmızı**. *"En güncel"* bir hedef
+> değil bir kaymadır; yazılı revizyon hedeftir ve kayma **ölçülebilir** olur.
+>
+> Hatanın sınıfı kayda değer: bir plan belgesinde **var olmayan bir adı var
+> gibi yazmak**, okuyanı doğrulanmamış bir hedefe bağlıyor. Bu deponun
+> [*"zaten"* deseninin](../../wiki/concepts/sessiz-yanlis-davranis.md) üçüncü
+> örneği — `AlertRaised` ve `rca_report`'tan sonra — ve üçüncüsü bir **plan**
+> belgesinde çıktı.
 
 | Alan | Şart |
 | --- | --- |
@@ -186,11 +204,13 @@ profili değil.
 
 ## 9 · Bu belgenin bilmediği şey
 
-- **MCP 2.0'ın hangi revizyonu.** Spesifikasyon sürümlü ve tarih damgalı;
-M01 hangi revizyona uyduğunu **yazacak** ve sözleşme testi o revizyona karşı
-koşacak. "En güncel" bir hedef değil, bir kayma.
-- **Akışlanabilir HTTP'nin oturum yönetimi** bu üründe nasıl duracak — BFF
-zaten bir oturum katmanı taşıyor (`redis-session`) ve ikisinin ilişkisi
-yazılmadı.
+- ~~**MCP 2.0'ın hangi revizyonu.**~~ **Cevaplandı** (2026-08-26): `2026-07-28`,
+ve *"MCP 2.0"* diye bir revizyon zaten yoktu — §2'ye bakın.
+- ~~**Akışlanabilir HTTP'nin oturum yönetimi.**~~ **Cevaplandı** (2026-08-26):
+MCP oturumu **SDK'nın taşıma oturumu** olarak duruyor ve BFF'in
+`redis-session`'ından **bağımsız**. İkisini bağlamak, kimliğin uca nasıl
+taşınacağı sorusunun cevabını (**M08**) önden vermek olurdu — ve M08 henüz
+yazılmadı. Yani bu bir erteleme değil, **sıra**: taşıma oturumu M01'in,
+kimlik M08'in.
 - **Araç sayısının modele maliyeti ölçülmedi.** On beş aracın şeması her
 bağlamda taşınıyor; bu bir bağlam bütçesi kalemi ve bu belgede sayısı yok.

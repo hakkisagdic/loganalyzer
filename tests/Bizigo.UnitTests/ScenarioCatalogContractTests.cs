@@ -40,14 +40,20 @@ public sealed class ScenarioCatalogContractTests
     private static readonly IReadOnlySet<string> Waived = new HashSet<string>(StringComparer.Ordinal)
     {
         "builtin.rca.network/rank-hypotheses",
-        "builtin.rca.network/write-actions",
     };
 
     /// <summary>
     /// <see cref="Waived"/>'ın büyümesi <b>ayrıca</b> bir hareket. İkisi tek
     /// olsaydı listeye satır eklemek muafiyet eklemeye yeterdi.
+    ///
+    /// <para>
+    /// <b>2 → 1 (T44).</b> <c>write-actions</c>'ın muafiyeti düştü: aksiyon
+    /// artık kendi kanıt atfını taşıyor ve <c>evidence_ids_must_exist</c> onu
+    /// doğruluyor. Gerekçe senaryo dosyasında; buradaki tek iş, düşüşün de
+    /// <b>iki bilinçli hareket</b> olması — ekleme kadar silme de.
+    /// </para>
     /// </summary>
-    private const int ExpectedWaivedCount = 2;
+    private const int ExpectedWaivedCount = 1;
 
     /// <summary>
     /// Kayıtlı sağlayıcı kümesi <b>DI'den keşfediliyor</b>, elle yazılmıyor.
@@ -169,7 +175,15 @@ public sealed class ScenarioCatalogContractTests
             .Where(step => step.Output.IsWaived)
             .ToList();
 
-        Assert.Equal(ExpectedWaivedCount, waived.Count);
+        // `Assert.Single` yerine sabitle karşılaştırma: sayının BİR olması
+        // bugünkü durum, sabite eşit olması ise kuralın kendisi. Birincisi
+        // yazılsaydı sabit sessizce boşta kalırdı ve "iki ayrı hareket"
+        // güvencesi bu testten düşerdi.
+        Assert.True(
+            waived.Count == ExpectedWaivedCount,
+            $"Katalogda {waived.Count} muaf adım var, beklenen {ExpectedWaivedCount}. " +
+            $"Değişiklik bilinçliyse `{nameof(Waived)}` ve `{nameof(ExpectedWaivedCount)}`'u birlikte güncelleyin.");
+
         Assert.All(waived, step => Assert.False(string.IsNullOrWhiteSpace(step.Output.ConstraintsWaived)));
     }
 

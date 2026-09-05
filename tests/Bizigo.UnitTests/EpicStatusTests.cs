@@ -112,15 +112,25 @@ public sealed class EpicStatusTests
         ["durum:S05"] = "Tablo ⬜ diyor, ticket dosyası `status: 2`.",
 
         // 3 · `kalan-is-raporu`'nun "açık" dediği kalemler.
-        ["rapor:T38"] =
-            "Rapor açık diyor, `tickets-f3/altin-kume` `status: 2`. Bu haftaki yanlış " +
-            "brief'in tam kaynağı: aynı commit hem ticket'ı 2 yaptı hem raporda açık bıraktı.",
-        ["rapor:T44"] = "Raporda açık, ama hiçbir ticket DOSYASI yok (`kalan-is-raporu` §6'nın kendi şikâyeti).",
-        ["rapor:T47"] = "Raporda açık, ama hiçbir ticket DOSYASI yok.",
-        ["rapor:T48"] =
-            "Raporda AÇIK, `tickets-f3/produces-kapisi-bagi` `status: 2`. Yol haritası " +
-            "satırı eklendiğinde bulgu \"eşlenemiyor\"dan gerçek bir çelişkiye dönüştü — " +
-            "yani eşleme boşluğu bir ikinci ayrışmayı gizliyormuş.",
+        //
+        // T38, T44 ve T47/T48 girişleri 2026-09-05'te SİLİNDİ, çünkü rapor o
+        // gün bugünkü hâline getirildi ve üçü artık ayrışmıyor. Silinmeleri bu
+        // kapının ikinci yarısının istediği şey: küçülmeyen bir ayrışma listesi
+        // bir süre sonra hiçbir şey ifade etmiyor, ve birinci yarıyı dürüst
+        // tutan da bu.
+        //
+        // Silinmeden önce T44'ün gerekçesi bir kez GÜNCELLENDİ ve o da kayda
+        // değer: ayrışma sürüyordu ama sebebi değişmişti — eskisi "belge yok",
+        // yenisi "belge var ve çelişiyor". Metin güncellenmeseydi liste doğru
+        // kalemi tutup yanındaki cümle yalan söyleyecekti.
+        //
+        // T48'de aynı şey İKİNCİ kez görüldü ve mekanizması T44'ünkinden
+        // farklıydı: yol haritası satırı eklenince kimlik çözülebilir hâle
+        // geldi ve bulgu "eşlenemiyor"dan "rapor açık diyor, dosya `status: 2`"
+        // hâline döndü. Yani BİRİNCİ ayrışma ikincisini maskeliyormuş —
+        // eşleme boşluğu kapatılana kadar altındaki çelişki hiç görünmüyordu.
+        // İki örnek bir desen: bir ayrışmanın kapanması, aynı satırın
+        // kapandığı anlamına gelmiyor.
         ["rapor:T49"] = "Raporda açık; ticket dosyası var ama yol haritası tablosunda olmadığı için eşlenemiyor.",
     };
 
@@ -132,8 +142,9 @@ public sealed class EpicStatusTests
     /// <c>CLAUDE.md</c> §8: <i>"bir gün kapanacak" ile "hiç kapanmayacak" aynı
     /// listede duramaz</i> — ikisi tek listedeyken
     /// <see cref="KnownDivergence"/>'ın boşalıp boşalmadığı sorulamaz hâle
-    /// gelir. Bugün <b>boş</b>: yukarıdaki on altı satırın hangisinin kalıcı
-    /// olduğu bu ajanın kararı değil.
+    /// gelir. Bugün <b>boş</b>: <see cref="KnownDivergence"/>'daki satırların
+    /// hangisinin kalıcı olduğu bir ölçüm değil bir karar, ve o karar
+    /// koordinatörde.
     /// </para>
     /// </summary>
     private static readonly Dictionary<string, string> StructurallyUnaligned =

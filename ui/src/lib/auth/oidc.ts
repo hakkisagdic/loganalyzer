@@ -42,7 +42,39 @@ export class OidcError extends Error {
   }
 }
 
-let discoveryCache: { issuer: string; document: DiscoveryDocument } | undefined;
+let discoveryCache: { key: string; document: DiscoveryDocument } | undefined;
+
+/**
+ * Bir ucu **tarayıcının görebildiği** kökene taşır.
+ *
+ * <p>
+ * Keşif belgesi container ağından iniyor (<c>metadataUrl</c>) ve içindeki bazı
+ * uçlar o ağın adresini taşıyabiliyor — <c>keycloak:8080</c>, ki tarayıcı onu
+ * <b>çözemez</b>. Ama belgedeki her uç böyle taşınamaz: yalnızca kullanıcının
+ * tarayıcısıyla gittiği <b>ön kanal</b> uçları taşınmalı, sunucudan sunucuya
+ * konuşulan arka kanal uçları (token, JWKS) container adresinde <i>kalmalı</i>.
+ * </p>
+ *
+ * <p>
+ * Keycloak bu ayrımı <c>KC_HOSTNAME_BACKCHANNEL_DYNAMIC</c> ile zaten yapıyor
+ * ve doğru yapıyorsa buradaki dönüşüm <b>kimliktir</b> — hiçbir şeyi
+ * değiştirmez. Yine de duruyor, çünkü iddia bizim tarafımızda yazılı olmalı:
+ * "tarayıcının gideceği uç, tarayıcının görebildiği kökende" cümlesi bir dış
+ * bileşenin yapılandırmasına bırakılırsa, o yapılandırma değiştiği gün kırılan
+ * şey <b>giriş akışı</b> olur ve belirtisi Keycloak'ın çözülemeyen bir adrese
+ * yönlendirmesidir — sebebini söylemeyen bir hata.
+ * </p>
+ */
+function onPublicOrigin(endpoint: string, issuer: string): string {
+  const target = new URL(endpoint);
+  const publicOrigin = new URL(issuer).origin;
+
+  if (target.origin === publicOrigin) {
+    return endpoint;
+  }
+
+  return new URL(`${target.pathname}${target.search}`, publicOrigin).toString();
+}
 
 /**
  * Keşif belgesi süreç ömrü boyunca önbellekleniyor.
@@ -54,11 +86,16 @@ let discoveryCache: { issuer: string; document: DiscoveryDocument } | undefined;
  * kendisi yeniden çekiyor, yani anahtar dönüşü tek başına sorun değil.</p>
  */
 export async function discover(config: BffConfig): Promise<DiscoveryDocument> {
-  if (discoveryCache?.issuer === config.issuer) {
+  // Önbellek anahtarı İKİ değeri birden taşıyor: belge nereden indi ve hangi
+  // issuer'a göre doğrulandı. Yalnız issuer'la anahtarlansaydı, metadata adresi
+  // değişen bir kurulum eski belgeyi kullanmaya devam ederdi.
+  const key = `${config.metadataUrl}\n${config.issuer}`;
+
+  if (discoveryCache?.key === key) {
     return discoveryCache.document;
   }
 
-  const url = `${config.issuer}/.well-known/openid-configuration`;
+  const url = config.metadataUrl;
   const response = await fetch(url, { cache: "no-store" });
 
   if (!response.ok) {
@@ -69,20 +106,39 @@ export async function discover(config: BffConfig): Promise<DiscoveryDocument> {
     );
   }
 
-  const document = (await response.json()) as DiscoveryDocument;
+  const raw = (await response.json()) as DiscoveryDocument;
 
-  if (document.issuer !== config.issuer) {
-    // F1'de ölçülen tuzak: `KC_HOSTNAME` ayarlı değilse Keycloak issuer'ı
-    // isteğin host'undan türetiyor ve API'nin beklediğiyle uyuşmuyor. Sonuç
-    // her istekte 401 ve hiçbir yerde sebebini söyleyen bir mesaj yok.
+  // Bu karşılaştırma metadata adresi ayrıldıktan sonra DAHA değerli: artık
+  // belgeyi başka bir adresten indiriyoruz ve "indirdiğim yer, güvendiğim
+  // issuer'ı veriyor mu" sorusunu soran tek yer burası.
+  //
+  // F1'de ölçülen tuzak: `KC_HOSTNAME` ayarlı değilse Keycloak issuer'ı
+  // isteğin host'undan türetiyor ve API'nin beklediğiyle uyuşmuyor. Sonuç
+  // her istekte 401 ve hiçbir yerde sebebini söyleyen bir mesaj yok.
+  if (raw.issuer !== config.issuer) {
     throw new OidcError(
       "Keycloak issuer beklenenden farklı.",
       502,
-      `Beklenen ${config.issuer}, gelen ${document.issuer}. deploy/keycloak/README.md — KC_HOSTNAME.`,
+      `Beklenen ${config.issuer}, gelen ${raw.issuer}. Belge ${url} adresinden indi. ` +
+        "deploy/keycloak/README.md — KC_HOSTNAME.",
     );
   }
 
-  discoveryCache = { issuer: config.issuer, document };
+  const document: DiscoveryDocument = {
+    ...raw,
+
+    // Ön kanal: tarayıcı gidiyor.
+    authorization_endpoint: onPublicOrigin(raw.authorization_endpoint, config.issuer),
+    end_session_endpoint: raw.end_session_endpoint
+      ? onPublicOrigin(raw.end_session_endpoint, config.issuer)
+      : undefined,
+
+    // Arka kanal (`token_endpoint`, `jwks_uri`) BİLEREK dokunulmadan geçiyor:
+    // onlara Next sunucusu gidiyor ve container ağında doğru adres zaten
+    // belgeden geleni.
+  };
+
+  discoveryCache = { key, document };
   return document;
 }
 

@@ -1,4 +1,4 @@
-# N2 — gerçek SSH sunucusu (S03)
+# N2/N3 — gerçek SSH sunucusu + CLI öykünmesi (S03 · S06)
 #
 # NEDEN CONTAINER, NEDEN SÜREÇ İÇİ KÜTÜPHANE DEĞİL:
 #
@@ -21,10 +21,13 @@ RUN apk add --no-cache openssh-server bash \
 # Yapılandırma imaja giriyor, çalışma anında ÜRETİLMİYOR: sunucunun davranışı
 # `docker compose up` ile `docker run` arasında değişmemeli.
 COPY sshd_config /etc/ssh/sshd_config
+COPY vendor-cli.sh /usr/local/bin/vendor-cli
 COPY komut-dagitici.sh /usr/local/bin/komut-dagitici
+COPY cli-oykunmesi.sh /usr/local/bin/cli-oykunmesi
 COPY entrypoint.sh /usr/local/bin/entrypoint
 
-RUN chmod +x /usr/local/bin/komut-dagitici /usr/local/bin/entrypoint
+RUN chmod +x /usr/local/bin/vendor-cli /usr/local/bin/komut-dagitici \
+    /usr/local/bin/cli-oykunmesi /usr/local/bin/entrypoint
 
 # Profil kataloğu MONTE ediliyor, kopyalanmıyor: bir config düzeltildiğinde
 # imajı yeniden derlemek gerekmesin. Salt okunur bağlanıyor (compose).

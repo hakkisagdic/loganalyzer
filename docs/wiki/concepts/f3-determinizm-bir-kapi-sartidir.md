@@ -17,7 +17,7 @@ sources:
   - docs/epic/t36-kanit-paketi/index.md
   - docs/epic/sigma-clickhouse-arastirmasi/index.md
   - docs/epic/tickets-f3/sigma-derleme/index.md
-source_digest: "sha256-12/v1 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/t32-derleme-tasarimi/index.md=457cb125d0d3 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/tickets-f3/sigma-derleme/index.md=d117ba100cfd"
+source_digest: "sha256-12/v1 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/t32-derleme-tasarimi/index.md=ca8f23c25262 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/tickets-f3/sigma-derleme/index.md=d117ba100cfd"
 summary: F3'te iki ilgisiz alt sistem (Sigma SQL derlemesi ve kanıt paketi) aynı kurala vardı — karşılaştırılan çıktıya duvar saati, ağ ya da sıra belirsizliği karışırsa kapı ya kalkar ya yumuşatılır.
 provenance:
   extracted: 0.8

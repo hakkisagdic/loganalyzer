@@ -101,11 +101,19 @@ Yol haritası ayrıca üçüncü bir bağımsız kol sayıyor: F2'nin kapanış
 doğrulaması (T27).
 
 > [!warning] Yukarıdaki `Durum` sütunu **tarihli bir görüntü** (2026-08-25) ve
-> ticket dosyalarının kendi `status` alanıyla aynı şey değil. T53 bu iki
-> gösterimin bugün ayrıştığını ölçtü — örneğin T38 burada ve
-> `kalan-is-raporu`'nda **açık** görünürken ticket dosyası `status: 2` taşıyor.
-> Hangisinin doğru olduğu bu sayfanın söyleyebileceği bir şey değil; ayrışmanın
-> **var olduğu** ölçüldü ve düzeltme koordinatörde.
+> ticket dosyalarının kendi `status` alanıyla aynı şey değil. Bugünkü canlı
+> örnek T38: bu tablo onu *"tek açık kol"* diye gösteriyor, ticket dosyası
+> `status: 2` taşıyor, ve `kalan-is-raporu` 2026-09-05'te güncellenip T38'i
+> açık listesinden **çıkardı**. Yani bugün ayrışan taraf bu sayfa.
+>
+> **Bu sayfa T53'ün bekçisinin kapsamı dışında.** `EpicStatusTests` yalnızca
+> `docs/epic` altındaki dört gösterimi karşılaştırıyor; `docs/wiki` sayfalarının
+> statü iddialarını hiçbir kapı sınamıyor ve `WikiSourceDigestTests` de
+> yakalayamıyor — bu sayfa `kalan-is-raporu`'nu kaynak göstermediği için o
+> belge değiştiğinde damga bayatlamıyor. Yukarıdaki cümlenin bir önceki hâli
+> tam olarak böyle yanlışlandı: T38'i *"raporda da açık"* diye örnek veriyordu
+> ve rapor düzeltilince iddia sessizce yanlış oldu, hiçbir test kırmızı
+> yanmadan. Tarihli görüntüyü tarihiyle okuyun.
 
 ### Sonradan eklenen üç kapı ticket'ı
 

@@ -46,6 +46,11 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+# Tek bağımlılık ve o da **standart kütüphane**: `duplicates` yalnızca
+# `collections`/`typing` istiyor. Bu modülün "hiçbir bağımlılık istemiyor"
+# özelliği (README) korunuyor — Kapı 1 hâlâ ClickHouse'suz ve pySigma'sız koşar.
+from sigma_build.duplicates import duplicate_values
+
 __all__ = [
     "MigrationParseError",
     "ViewDefinition",
@@ -334,10 +339,10 @@ def _select_columns(body: str, *, view: str, source_file: str) -> tuple[str, ...
 
     columns = [_column_name(item, view=view, source_file=source_file) for item in items]
 
-    duplicates = {name for name in columns if columns.count(name) > 1}
+    duplicates = duplicate_values(columns)
     if duplicates:
         raise MigrationParseError(
-            f"{source_file}: `{view}` içinde tekrarlanan kolon adı: {sorted(duplicates)}"
+            f"{source_file}: `{view}` içinde tekrarlanan kolon adı: {duplicates}"
         )
 
     return tuple(columns)

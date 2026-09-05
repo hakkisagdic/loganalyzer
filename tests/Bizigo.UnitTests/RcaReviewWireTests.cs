@@ -93,7 +93,17 @@ public sealed class RcaReviewWireTests
     public void Enum_degerleri_ekrandaki_listeyle_ayni_sayida()
     {
         Assert.Equal(4, Enum.GetValues<ReviewVerdict>().Length);
-        Assert.Equal(4, Enum.GetValues<ContradictingEvidenceVerdict>().Length);
+
+        // 5, çünkü `Unspecified` bir SEÇENEK DEĞİL: ekrandaki liste dört
+        // seçenek gösteriyor ve beşincisi "kimse söylemedi" — kullanıcının
+        // seçemeyeceği, alanın doldurulmadığını anlatan hâl. Sabitin kendisi
+        // §8'in muafiyet deseni: değer eklemek iki ayrı bilinçli hareket
+        // gerektirsin diye çivili.
+        Assert.Equal(5, Enum.GetValues<ContradictingEvidenceVerdict>().Length);
+        Assert.Equal(
+            4,
+            Enum.GetValues<ContradictingEvidenceVerdict>()
+                .Count(v => v != ContradictingEvidenceVerdict.Unspecified));
     }
 
     /// <summary>

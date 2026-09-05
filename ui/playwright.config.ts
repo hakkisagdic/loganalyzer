@@ -59,6 +59,33 @@ export const UI_PORT = 3000;
 export const API_PORT = 5080;
 export const KEYCLOAK_ORIGIN = "http://localhost:8180";
 
+/**
+ * Koşumun **hedefi**: makinedeki prosesler mi, container yığını mı (T49).
+ *
+ * <h3>Neden aynı testler, iki hedef</h3>
+ *
+ * <p>
+ * Testler ikisinde de <b>birebir aynı</b> ve portlar da aynı — container'lar
+ * 3000 ve 5080'i dışarı veriyor. Değişen tek şey <b>kimin başlattığı</b>:
+ * yerelde Playwright iki sunucu açıyor, container kipinde ikisi zaten ayakta.
+ * İkinci bir test paketi yazmak, aynı iddiaların iki kopyasını doğururdu ve
+ * ayrıştıkları gün hangisinin doğru olduğu bilinemezdi (§9).
+ * </p>
+ *
+ * <p>
+ * <b>Container kipi neden var:</b> bugüne kadar BFF'in container ağında
+ * çalışıp çalışmadığı hiç sınanmadı, ve sınanmadığı da hiçbir yerde yazılı
+ * değildi. Yerel koşum <b>varsayılan kalıyor</b> — README'nin sıcak yeniden
+ * yükleme gerekçesi geçerli ve değişmiyor.
+ * </p>
+ *
+ * <pre>
+ *   npm run e2e             # yerel prosesler (varsayılan)
+ *   npm run e2e:container   # container yığını
+ * </pre>
+ */
+export const E2E_TARGET = process.env.E2E_TARGET === "container" ? "container" : "local";
+
 /*
  * İçerik kökü MUTLAK olmak zorunda: göreli verilince ASP.NET Core onu çalışma
  * dizinine değil ikilinin kendi dizinine (`AppContext.BaseDirectory`) ekliyor ve
@@ -118,7 +145,17 @@ export default defineConfig({
     },
   },
 
-  webServer: [
+  /*
+   * Container kipinde Playwright HİÇBİR sunucu başlatmıyor: ikisi de compose'da
+   * ayakta ve aynı portları veriyor.
+   *
+   * `reuseExistingServer` ile idare edilemezdi. O bayrak "port doluysa var
+   * olanı kullan" diyor, yani container kipinde bile Playwright önce yerel
+   * komutu KURMAYA çalışırdı: `.NET` ikilisi derlenmemişse koşum, hedefi
+   * container olmasına rağmen eksik bir yerel derlemeden düşerdi — sebebini
+   * söylemeyen bir kırmızı. Liste boş olunca böyle bir yol kalmıyor.
+   */
+  webServer: E2E_TARGET === "container" ? [] : [
     {
       /*
        * Derlenmiş ikili, `dotnet run` DEĞİL.

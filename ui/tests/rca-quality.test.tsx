@@ -30,6 +30,15 @@ function quality(overrides: Partial<GoldenSetQuality> = {}): GoldenSetQuality {
     unknown: 0,
     accuracy: null,
     unknown_ratio: null,
+    contradicting_sound: 0,
+    contradicting_trivial: 0,
+    contradicting_unknown: 0,
+    contradicting_evaluated: 0,
+    contradicting_trivial_ratio: null,
+    contradicting_unspecified: 0,
+    rank_asked: 0,
+    accuracy_at_one: null,
+    accuracy_at_three: null,
     ...overrides,
   } as GoldenSetQuality;
 }
@@ -130,6 +139,107 @@ describe("altın küme göstergesi", () => {
  * boşluğa düşer.
  * </p>
  */
+describe("çelişen kanıt tiyatrosu (T47)", () => {
+  /**
+   * <b>Asıl bekçi ve bu ölçüde <i>accuracy</i>'dekinden daha keskin.</b>
+   *
+   * <p>
+   * Burada <b>iyi olan uç sıfır</b>: "%0 tiyatro" en iyi sonuç. Ölçülmemiş bir
+   * boyut <c>%0</c> yazarsa ekran onu <b>mükemmel</b> diye gösterir — yani
+   * göstergenin var olma sebebinin tam tersi.
+   * </p>
+   */
+  it("Degerlendirilmemisse_yuzde_sifir_yazmiyor", () => {
+    const html = renderToStaticMarkup(
+      <QualityBadge
+        quality={quality({ total: 6, contradicting_evaluated: 0, contradicting_trivial_ratio: null })}
+        error={null}
+      />,
+    );
+
+    expect(html).toContain('data-field="contradicting_trivial_ratio" data-kind="undecided"');
+    expect(html).toContain("çelişen kanıt değerlendirilmedi");
+    expect(html).not.toContain("%0.0");
+  });
+
+  /** Ters yön: gerçek bir sıfır <b>ölçülmüş</b> sonuç ve gizlenmiyor. */
+  it("Olculmus_sifir_tiyatro_gizlenmiyor", () => {
+    const html = renderToStaticMarkup(
+      <QualityBadge
+        quality={quality({ total: 4, contradicting_evaluated: 4, contradicting_trivial_ratio: 0 })}
+        error={null}
+      />,
+    );
+
+    expect(html).toContain('data-field="contradicting_trivial_ratio" data-kind="ratio"');
+    expect(html).toContain("%0.0");
+  });
+
+  /**
+   * Ekranda görünen payda <b>değerlendirilmiş</b> sayısı, toplam inceleme
+   * değil. Okuyan kişi oranın neye bölündüğünü görmeden yorumlayamaz.
+   */
+  it("Paydasi_ekranda_gorunuyor", () => {
+    const display = presentQuality(
+      quality({
+        total: 10,
+        contradicting_sound: 1,
+        contradicting_trivial: 3,
+        contradicting_evaluated: 4,
+        contradicting_trivial_ratio: 0.75,
+      }),
+    );
+
+    expect(display.contradictingEvaluated).toBe(4);
+    expect(display.contradictingTrivialRatio).toEqual({ kind: "ratio", percent: "%75.0" });
+  });
+});
+
+describe("accuracy@k (T47)", () => {
+  /**
+   * <b>Soru sorulmamışsa <c>%0</c> yazmıyor.</b>
+   *
+   * <p>
+   * Bu, göstergedeki en inandırıcı yanlış olurdu: kimse sıra sorusuna cevap
+   * vermemişken ekranda <i>"%0 ilk bulguda doğru"</i> yazması, ürünün hiç
+   * ölçülmemiş doğruluğunu <b>ölçülmüş ve berbat</b> gibi gösterir.
+   * </p>
+   */
+  it("Sorulmamissa_yuzde_sifir_yazmiyor", () => {
+    const html = renderToStaticMarkup(
+      <QualityBadge quality={quality({ total: 5, rank_asked: 0 })} error={null} />,
+    );
+
+    expect(html).toContain('data-field="accuracy_at_one" data-kind="undecided"');
+    expect(html).toContain('data-field="accuracy_at_three" data-kind="undecided"');
+    expect(html).toContain("bulgu sırası sorulmadı");
+  });
+
+  /** Ölçülmüş sıfır gizlenmiyor — hiçbir bulgu doğru çıkmamış olabilir. */
+  it("Olculmus_sifir_accuracy_gizlenmiyor", () => {
+    const html = renderToStaticMarkup(
+      <QualityBadge
+        quality={quality({ total: 4, rank_asked: 4, accuracy_at_one: 0, accuracy_at_three: 0 })}
+        error={null}
+      />,
+    );
+
+    expect(html).toContain('data-field="accuracy_at_one" data-kind="ratio"');
+    expect(html).toContain("%0.0");
+  });
+
+  /** İki oran aynı alandan çıkıyor ve paydaları ortak. */
+  it("Iki_oran_ayni_paydayi_paylasiyor", () => {
+    const display = presentQuality(
+      quality({ total: 8, rank_asked: 4, accuracy_at_one: 0.25, accuracy_at_three: 0.5 }),
+    );
+
+    expect(display.rankAsked).toBe(4);
+    expect(display.accuracyAtOne).toEqual({ kind: "ratio", percent: "%25.0" });
+    expect(display.accuracyAtThree).toEqual({ kind: "ratio", percent: "%50.0" });
+  });
+});
+
 describe("gösterge hata yolu", () => {
   it("Sunucu_hatasinda_gosterge_duruyor_ve_sebebi_yaziyor", () => {
     // Sayfa `describeError` ile mesajı çıkarıp bileşene veriyor; burada aynı

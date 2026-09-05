@@ -34,6 +34,19 @@ public static class RepositoryLayout
     public static string ComposeFile => Path.Combine(Root, "deploy", "docker-compose.yml");
 
     /// <summary>
+    /// N2/N3 simülatörünün kabuk betikleri (S03, S06).
+    ///
+    /// <para>
+    /// Betikler bir <b>container</b> içinde koşuyor ama kendileri konteyner
+    /// gerektirmiyor: <c>vendor-cli</c> saf bash ve tek başına kaynak
+    /// alınabiliyor. Öykünmenin komut sınıflandırmasını ve sayfalamasını
+    /// Docker olmadan sınayan testler bu ayrımdan doğuyor (§2: ölçüt paket adı
+    /// değil, <i>konteyner gerekiyor mu</i>).
+    /// </para>
+    /// </summary>
+    public static string SshSimDirectory => Path.Combine(Root, "deploy", "ssh-sim");
+
+    /// <summary>
     /// Sağlayıcıların gerçek webhook gövdeleri (T24).
     ///
     /// <para>

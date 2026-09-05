@@ -51,29 +51,32 @@ public sealed class SshDeviceTransport(ILogger<SshDeviceTransport> log) : IDevic
         {
             // Mesaj kütüphaneden DEĞİL bizden: kimlik doğrulama hatası, kimlik
             // bilgisinin kendisini taşımaya en yatkın istisna sınıfı.
-            return Failed(target, "Kimlik doğrulama reddedildi.");
+            return Failed(target, DeviceFailureKind.Authentication, "Kimlik doğrulama reddedildi.");
         }
         catch (SshOperationTimeoutException)
         {
-            return Failed(target, $"Cihaz {target.Timeout.TotalSeconds:0} saniyede cevap vermedi.");
+            return Failed(
+                target,
+                DeviceFailureKind.Timeout,
+                $"Cihaz {target.Timeout.TotalSeconds:0} saniyede cevap vermedi.");
         }
         catch (SshConnectionException)
         {
-            return Failed(target, "SSH bağlantısı kurulamadı.");
+            return Failed(target, DeviceFailureKind.Unreachable, "SSH bağlantısı kurulamadı.");
         }
         catch (Exception ex) when (ex is IOException or System.Net.Sockets.SocketException)
         {
-            return Failed(target, "Cihaza ağ üzerinden ulaşılamadı.");
+            return Failed(target, DeviceFailureKind.Unreachable, "Cihaza ağ üzerinden ulaşılamadı.");
         }
     }
 
-    private DeviceCommandResult Failed(DeviceTarget target, string reason)
+    private DeviceCommandResult Failed(DeviceTarget target, DeviceFailureKind kind, string reason)
     {
         // Log satırı hedefi taşıyor, kimlik bilgisini DEĞİL — `ToString()`
         // yalnızca vendor/host/port basıyor.
-        log.LogWarning("Cihaz çekimi başarısız: {Target} — {Reason}", target, reason);
+        log.LogWarning("Cihaz çekimi başarısız: {Target} — {Kind}: {Reason}", target, kind, reason);
 
-        return new DeviceCommandResult(false, string.Empty, reason);
+        return DeviceCommandResult.Failed(kind, reason);
     }
 
     private static DeviceCommandResult Execute(
@@ -102,12 +105,53 @@ public sealed class SshDeviceTransport(ILogger<SshDeviceTransport> log) : IDevic
             // çıkış kodu bakılıyor.
             if (run.ExitStatus is not (0 or null))
             {
-                return new DeviceCommandResult(
-                    false, string.Empty, $"'{command}' komutu {run.ExitStatus} koduyla döndü.");
+                return DeviceCommandResult.Failed(
+                    DeviceFailureKind.CommandRejected,
+                    Rejection(command, run.ExitStatus.Value, run.Error));
             }
         }
 
-        return new DeviceCommandResult(true, output.ToString(), string.Empty);
+        return DeviceCommandResult.Succeeded(output.ToString());
+    }
+
+    /// <summary>
+    /// Reddedilen komutun cümlesi — <b>cihazın kendi metniyle birlikte</b>
+    /// (S06).
+    ///
+    /// <para>
+    /// Önceden yalnızca çıkış kodu taşınıyordu (<c>"… 127 koduyla döndü"</c>) ve
+    /// vendor'ın kendi cümlesi — <c>% Invalid input detected at '^' marker.</c>,
+    /// <c>command parse error before …</c> — okunmadan atılıyordu. Teşhis için
+    /// gereken tek şey oydu: çıkış kodu komutun <i>hangi</i> sebeple
+    /// reddedildiğini söylemiyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Sınıf yorumundaki "kütüphanenin ne bastığına güvenilmiyor" kararıyla
+    /// çelişmiyor.</b> Oradaki kaygı kimlik bilgisiydi ve parola bu yola hiç
+    /// girmiyor: <see cref="Connection"/> dışında hiçbir yerde dolaşmıyor, ve
+    /// buraya gelen metin cihazın <i>bizim gönderdiğimiz komuta</i> verdiği
+    /// cevap. Yine de metin <b>kırpılıyor</b>: stderr'e sayfalarca basan bir
+    /// cihaz, hata mesajını log satırına sığmaz hâle getirebilir.
+    /// </para>
+    /// </summary>
+    private static string Rejection(string command, int exitStatus, string? deviceText)
+    {
+        var text = (deviceText ?? string.Empty).Trim();
+
+        if (text.Length == 0)
+        {
+            return $"'{command}' komutu {exitStatus} koduyla döndü.";
+        }
+
+        const int Limit = 500;
+
+        if (text.Length > Limit)
+        {
+            text = text[..Limit] + "…";
+        }
+
+        return $"'{command}' komutu {exitStatus} koduyla döndü: {text}";
     }
 
     /// <summary>

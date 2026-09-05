@@ -1,6 +1,7 @@
 using System.Reflection;
 using Bizigo.ControlPlane;
 using Bizigo.Rca;
+using Bizigo.Rca.Reasoning;
 
 namespace Bizigo.UnitTests;
 
@@ -167,6 +168,27 @@ public sealed class RcaReportStatusGuardTests
 {
     private static readonly Assembly ControlPlane = typeof(RcaRunEntity).Assembly;
 
+    /// <summary>
+    /// <b>T44 eklendi ve sebebi ölçüldü.</b>
+    ///
+    /// <para>
+    /// Bekçi yalnızca <see cref="ControlPlane"/>'e bakıyordu ve o derlemede
+    /// <c>RcaReport</c> ile başlayan <b>tek bir tip yoktu</b>: aşağıdaki döngü
+    /// boş küme üzerinde dönüyor, hiçbir iddia koşmuyor ve test
+    /// <b>yeşil</b> yanıyordu. Yani bekçi doğru soruyu soruyordu ama sorduğu
+    /// yerde soracak kimse yoktu — bu deponun <c>Produces&lt;T&gt;</c> ile
+    /// ödediği hâlin kendisi.
+    /// </para>
+    ///
+    /// <para>
+    /// Belgenin ilk gerçek tipi (<c>RcaReportDocument</c>) T44 ile
+    /// <c>Bizigo.Rca</c>'da doğdu. Derleme listesi genişletildi ve
+    /// <see cref="Bekci_bos_kume_uzerinde_yesil_yanmiyor"/> boşluğun geri
+    /// dönmesini engelliyor.
+    /// </para>
+    /// </summary>
+    private static readonly Assembly[] ReportAssemblies = [ControlPlane, typeof(RcaReportDocument).Assembly];
+
     [Fact]
     public void RcaRunState_yalnizca_rca_runs_uzerinde()
     {
@@ -182,17 +204,49 @@ public sealed class RcaReportStatusGuardTests
             ". Durum tek kapalı kümede ve tek tabloda kalmalı.");
     }
 
+    /// <summary>
+    /// Ad üzerinden arama, çünkü T44 kendi enum'ını yazabilirdi — tip kontrolü
+    /// onu yakalamazdı.
+    /// </summary>
+    private static Type[] ReportTypes() =>
+    [
+        .. ReportAssemblies
+            .SelectMany(a => a.GetTypes())
+            .Where(t => t is { IsClass: true, IsAbstract: false })
+            .Where(t => t.Name.StartsWith("RcaReport", StringComparison.Ordinal)),
+    ];
+
+    /// <summary>
+    /// <b>Bekçinin kendi bekçisi.</b>
+    ///
+    /// <para>
+    /// <c>Assert.All</c> ve <c>foreach</c> boş küme üzerinde <b>geçer</b>, ve
+    /// geçtiğinde yeşilliği hiçbir şey ifade etmez. Aranan tip kümesi boşalırsa
+    /// — bir yeniden adlandırma, bir derleme referansının düşmesi, tipin başka
+    /// bir derlemeye taşınması — aşağıdaki bekçi sessizce hiçbir şey ölçmemeye
+    /// başlar ve kimse fark etmez.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Ölçüldü:</b> T44 öncesinde bu bekçi tam olarak o hâldeydi — hiçbir
+    /// derlemede <c>RcaReport</c> ile başlayan tip yoktu.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Bekci_bos_kume_uzerinde_yesil_yanmiyor()
+    {
+        var types = ReportTypes();
+
+        Assert.True(
+            types.Length > 0,
+            "Bekçinin denetleyecek tipi yok: `RcaReport` ile başlayan bir belge tipi bulunamadı. " +
+            "Boş küme üzerinde bu sınıfın diğer testi de geçer ve yeşilliği hiçbir şey ifade etmez.");
+    }
+
     [Fact]
     public void Rca_belge_varliklari_statu_benzeri_kolon_tasimiyor()
     {
-        // Ad üzerinden arama, çünkü T44 kendi enum'ını yazabilir — tip
-        // kontrolü onu yakalamaz.
-        var reportTypes = ControlPlane.GetTypes()
-            .Where(t => t is { IsClass: true, IsAbstract: false })
-            .Where(t => t.Name.StartsWith("RcaReport", StringComparison.Ordinal))
-            .ToArray();
-
-        foreach (var type in reportTypes)
+        foreach (var type in ReportTypes())
         {
             var statusLike = type.GetProperties()
                 .Where(p => p.Name.Contains("State", StringComparison.Ordinal)

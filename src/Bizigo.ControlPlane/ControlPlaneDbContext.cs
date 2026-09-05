@@ -42,6 +42,12 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
     // RCA tetikleyicileri ve koşum soyağacı (T45).
     public DbSet<RcaRunEntity> RcaRuns => Set<RcaRunEntity>();
 
+    /// <summary>
+    /// Üretilen RCA belgeleri (T51). <b>Statü taşımıyor</b> — o
+    /// <see cref="RcaRuns"/>'ın.
+    /// </summary>
+    public DbSet<RcaReportEntity> RcaReports => Set<RcaReportEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -212,6 +218,20 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
 
             // Tetiklenmeden incelemeye gidiş; kapalı alarmın kaydını açar.
             e.HasIndex(x => x.TriggerId);
+        });
+
+        modelBuilder.Entity<RcaReportEntity>(e =>
+        {
+            // Ekranın tek sorgusu: "bu paketin son raporu". Tekil DEĞİL —
+            // aynı paket üzerinde farklı model/prompt koşturmak F4'ün
+            // karşılaştırma akışının kendisi ve hepsi saklanmalı.
+            e.HasIndex(x => new { x.BundleId, x.CreatedAt });
+
+            // T47'nin sorgusu: "şu senaryonun raporlarında atılan cümle oranı
+            // ne". Senaryo önde, çünkü karşılaştırma daima tek senaryo içinde
+            // anlamlı — iki farklı senaryonun oranını toplamak, iki farklı
+            // soruyu tek sayıya indirmek olurdu.
+            e.HasIndex(x => new { x.ScenarioId, x.CreatedAt });
         });
     }
 }

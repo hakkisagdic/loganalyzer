@@ -1,7 +1,7 @@
 using Bizigo.Simulators;
 
 // ---------------------------------------------------------------------------
-// Cihaz simülatörü — komut satırı girişi (FS · S02).
+// Cihaz simülatörü — komut satırı girişi (FS · S02 · S07).
 //
 // Proje hem kütüphane hem çalıştırılabilir: N1 sahte taşıyıcısı birim
 // testlerinden referansla kullanılıyor, syslog basıcısı ise buradan
@@ -10,6 +10,10 @@ using Bizigo.Simulators;
 //
 //   dotnet run --project sim/Bizigo.Simulators -- \
 //       --profile fw-ankara-01 --count 200
+//
+//   dotnet run --project sim/Bizigo.Simulators -- \
+//       --profile fw-ankara-01 --webhook github \
+//       --url http://127.0.0.1:8080/v1/changes/webhooks/ci --secret anahtar --times 2
 //
 // Varsayılan hedef `localhost` çünkü collector portu makineye açık. Container
 // içinden koşarken `--host otel-collector`.
@@ -66,6 +70,76 @@ if (match.Errors.Count > 0)
 }
 
 var profile = match.Profile;
+
+// ------------------------------------------------------- webhook modu (S07)
+
+if (Arg("--webhook") is { } provider)
+{
+    var url = Arg("--url");
+    var secret = Arg("--secret");
+
+    // Teslimat kimliği ÇAĞIRANDAN geliyor ve verilmezse profilden türetiliyor —
+    // rastgele üretilmiyor. Rastgele olsaydı `--times 2` iki FARKLI teslimat
+    // gönderirdi ve idempotans sınaması hiçbir zaman kurulamazdı; üstelik
+    // "iki kayıt oluştu" sonucu doğru görünürdü.
+    var deliveryId = Arg("--delivery") ?? $"{profile.Id}-1";
+
+    if (url is null || secret is null || !WebhookProviders.All.Contains(provider, StringComparer.Ordinal))
+    {
+        Console.Error.WriteLine($"""
+            Webhook modu:
+              --webhook <sağlayıcı>  {string.Join(" | ", WebhookProviders.All)}
+              --url <adres>          POST /v1/changes/webhooks/<uç>     (zorunlu)
+              --secret <anahtar>     ucun paylaşılan gizli anahtarı     (zorunlu)
+              --delivery <kimlik>    teslimat kimliği (varsayılan: <profil>-1)
+              --times <n>            aynı teslimatı kaç kez göndersin   (varsayılan 1)
+
+            Aynı teslimat iki kez gönderilince alıcı TEK kayıt oluşturmalı:
+            ikincisi 200 ve `duplicate: true` dönüyor, 201 değil.
+            """);
+
+        return 5;
+    }
+
+    var times = int.TryParse(Arg("--times"), out var t) && t > 0 ? t : 1;
+
+    // Zaman damgası sabit bir andan geliyor, `UtcNow`'dan değil: aynı istek
+    // aynı baytları üretmezse gövde hash'ine düşen idempotans yolu her turda
+    // farklı bir anahtar üretir.
+    var delivery = WebhookDeliveryFactory.Create(
+        WebhookDeliveryRequest.FromProfile(
+            profile,
+            provider,
+            secret,
+            deliveryId,
+            new DateTimeOffset(2026, 8, 18, 9, 19, 47, TimeSpan.Zero)));
+
+    Console.WriteLine(
+        $"· {provider} teslimatı: hedef {profile.Hostname}, kimlik {deliveryId}, " +
+        $"{delivery.Body.Length} bayt, {times} kez");
+
+    using var http = new HttpClient();
+
+    var sent = await WebhookSender.SendAsync(
+        http, new Uri(url), delivery, times, CancellationToken.None);
+
+    foreach (var (result, index) in sent.Select((r, i) => (r, i + 1)))
+    {
+        Console.WriteLine($"· {index}. gönderim → HTTP {result.Status} {result.Body}");
+    }
+
+    // Tek satırlık ölçüt: ikinci gönderim 201 dönerse idempotans kırık.
+    var created = sent.Count(r => r.Status == 201);
+
+    Console.WriteLine(
+        created == 1 || times == 1
+            ? $"· idempotans: {sent.Count} gönderim, {created} kayıt oluştu."
+            : $"· UYARI: {sent.Count} gönderim {created} kayıt oluşturdu — beklenen 1.");
+
+    return created <= 1 ? 0 : 6;
+}
+
+// -------------------------------------------------------- syslog modu (S02)
 
 Console.WriteLine(
     $"· {profile.Id} ({profile.Vendor}/{profile.Product}) → {host}, " +

@@ -1,9 +1,44 @@
 namespace Bizigo.Devices;
 
 /// <param name="Lines">Normalize edilmiş, gizli değerleri maskelenmiş config.</param>
-public sealed record ConfigCapture(bool Ok, IReadOnlyList<ConfigLine> Lines, string Error)
+/// <param name="Failure">
+/// Başarısızlığın türü — <see cref="DeviceFailureKind.None"/> ancak ve ancak
+/// <paramref name="Ok"/> doğruyken.
+///
+/// <para>
+/// <b>S08'de eklendi ve gerekçesi ölçülmüş bir kayıp:</b> S06 taşıma katmanında
+/// "komut reddedildi" ile "cihaza ulaşılamadı"yı iki ayrı değere ayırmıştı, ama
+/// <see cref="DeviceConfigService"/> çıkışında ikisi yeniden <b>tek bir
+/// metne</b> düşüyordu. Yani ayrımı yapmak için harcanan iş servis kapısında
+/// geri alınıyordu ve ekrana giden şey yine bir cümleydi.
+/// </para>
+///
+/// <para>
+/// Teşhisin metinden okunması iki yönden kırılgan: cümle Türkçe ve bir gün
+/// düzeltilecek, ve okuyan tarafın hangi kelimeyi arayacağı hiçbir yerde
+/// yazılı değil.
+/// </para>
+/// </param>
+public sealed record ConfigCapture(
+    bool Ok,
+    IReadOnlyList<ConfigLine> Lines,
+    string Error,
+    DeviceFailureKind Failure)
 {
-    public static ConfigCapture Failed(string error) => new(false, [], error);
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <see cref="DeviceFailureKind.None"/> verilirse — başarısızlığın türsüz
+    /// olması mümkün olmamalı.
+    /// </exception>
+    public static ConfigCapture Failed(DeviceFailureKind kind, string error)
+    {
+        if (kind == DeviceFailureKind.None)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(kind), "Başarısız çekim için bir başarısızlık türü zorunlu.");
+        }
+
+        return new ConfigCapture(false, [], error, kind);
+    }
 }
 
 /// <summary>
@@ -27,6 +62,28 @@ public interface IConfigCollector
     /// <summary>
     /// Cihazda koşturulacak komutlar. Hepsi <b>okuma</b> — bu ürün config
     /// değiştirmiyor ve arayüzde yazma diye bir şey yok.
+    ///
+    /// <para>
+    /// <b>Her eleman KENDİ OTURUMUNDA koşuyor ve bu yüzden kendi kendine
+    /// yetmek zorunda</b> (S08). <see cref="SshDeviceTransport"/> her eleman
+    /// için ayrı bir exec kanalı açıyor; gerçek bir cihazda da her exec kanalı
+    /// ayrı bir oturum. Yani bir elemanda yazılan <b>oturum ayarı</b> —
+    /// sayfalamayı kapatmak gibi — bir sonrakine <b>taşınmıyor</b>.
+    /// </para>
+    ///
+    /// <para>
+    /// Bu sözleşme S08'e kadar yazılı değildi ve ihlali sessizdi: sayfalamayı
+    /// ayrı bir elemanda kapatan bir toplayıcı, config'i <b>yarım</b> alıyor ve
+    /// hiçbir şey şikâyet etmiyordu (<c>Ok=true</c>, <c>Error</c> boş). Çok
+    /// satırlı bir eleman <b>tek oturumda</b> koşuyor — FortiGate toplayıcısı
+    /// zaten öyle yazılmıştı, yalnızca <c>show</c> dışarıda kalmıştı.
+    /// </para>
+    ///
+    /// <para>
+    /// Birden çok eleman hâlâ meşru: birbirinden <b>bağımsız</b> okumalar için.
+    /// Ölçüt basit — ikinci eleman, birincinin yazdığı bir ayara dayanıyorsa
+    /// ikisi tek eleman olmalı.
+    /// </para>
     /// </summary>
     IReadOnlyList<string> Commands { get; }
 }
@@ -46,12 +103,21 @@ public sealed class FortiGateCollector : IConfigCollector
 {
     public string Vendor => ConfigNormalizer.FortiGate;
 
+    /// <summary>
+    /// <b>Tek eleman</b> — sayfalama kapatma ile <c>show</c> aynı oturumda
+    /// (S08).
+    ///
+    /// <para>
+    /// İkisi ayrı elemandayken sayfalama kapatma <b>hiçbir işe yaramıyordu</b>:
+    /// her eleman ayrı bir exec kanalı, yani ayrı bir oturum, ve oturum ayarı
+    /// kanalla birlikte ölüyor. Sonuç <c>--More--</c> ile kesilmiş yarım bir
+    /// config'ti — <c>Ok=true</c>, <c>Error</c> boş — ve fark motoru onu
+    /// <b>silinmiş yüzlerce satır</b> diye okuyordu.
+    /// </para>
+    /// </summary>
     public IReadOnlyList<string> Commands { get; } =
     [
-        // Sayfalama kapatılmadan çıktı "--More--" ile kesiliyor ve config
-        // yarım geliyor; yarım config, silinmiş yüzlerce satır gibi görünür.
-        "config system console\nset output standard\nend",
-        "show",
+        "config system console\nset output standard\nend\nshow",
     ];
 }
 
@@ -68,10 +134,13 @@ public sealed class CiscoAsaCollector : IConfigCollector
 {
     public string Vendor => ConfigNormalizer.CiscoAsa;
 
+    /// <summary>
+    /// <b>Tek eleman</b> — <c>terminal pager 0</c> ile okuma aynı oturumda
+    /// (S08); gerekçesi <see cref="FortiGateCollector.Commands"/> ile aynı.
+    /// </summary>
     public IReadOnlyList<string> Commands { get; } =
     [
-        "terminal pager 0",
-        "more system:running-config",
+        "terminal pager 0\nmore system:running-config",
     ];
 }
 
@@ -121,7 +190,9 @@ public sealed class DeviceConfigService(
 
         if (!_collectors.TryGetValue(target.Vendor, out var collector))
         {
+            // Cihaza HİÇ bağlanılmadı: arıza cihazda değil yapılandırmada.
             return ConfigCapture.Failed(
+                DeviceFailureKind.Unsupported,
                 $"'{target.Vendor}' için toplayıcı yok. Desteklenenler: {string.Join(", ", _collectors.Keys)}.");
         }
 
@@ -133,9 +204,17 @@ public sealed class DeviceConfigService(
 
             // Cihaza ulaşılamaması bir istisna DEĞİL, bir sonuç: çekim döngüsü
             // tek bir erişilemez cihaz yüzünden ölmemeli (ticket kabul kriteri).
+            // Başarısızlığın TÜRÜ taşımadan geçiyor: servis kapısı onu yeniden
+            // yorumlamıyor, yalnızca aktarıyor. Yorumlasaydı iki yerde iki
+            // farklı sınıflandırma doğar ve ayrıştıkları gün hangisinin doğru
+            // olduğunu söyleyen hiçbir şey olmazdı (§9).
             return result.Ok
-                ? new ConfigCapture(true, ConfigNormalizer.Normalize(target.Vendor, result.Output), string.Empty)
-                : ConfigCapture.Failed(result.Error);
+                ? new ConfigCapture(
+                    true,
+                    ConfigNormalizer.Normalize(target.Vendor, result.Output),
+                    string.Empty,
+                    DeviceFailureKind.None)
+                : ConfigCapture.Failed(result.Failure, result.Error);
         }
         finally
         {
