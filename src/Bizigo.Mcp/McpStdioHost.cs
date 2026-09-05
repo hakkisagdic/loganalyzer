@@ -23,12 +23,27 @@ public static class McpStdioHost
     /// <paramref name="cancellationToken"/> iptal edilene kadar döner.
     /// </summary>
     /// <param name="surface">Hangi yüzey sunulacak.</param>
+    /// <param name="boundary">
+    /// Yüzeyin <b>K6 beyanı</b> (M06) — çağıranın vermesi şart ve burada
+    /// çıkarılmıyor.
+    ///
+    /// <para>
+    /// <b>"stdio ⇒ iç ağ" çıkarımı BİLEREK yapılmadı.</b> İstemci aynı makinede
+    /// bir süreç, dolayısıyla çıkarım mekanik olarak doğru görünüyor — ve K6
+    /// açısından tam ters olabiliyor: bu taşımanın en olası gerçek istemcisi
+    /// bir masaüstü MCP istemcisi (Claude Desktop gibi) ve o, aldığı her şeyi
+    /// <b>buluta</b> gönderiyor. Sınırı buraya çivilemek, kurumun en büyük
+    /// sözünü <b>bayrak yeşilken</b> boşa çıkaran bir hâl yazmak olurdu.
+    /// Beyanı operatör veriyor: <c>bizigo mcp serve --data-boundary</c>.
+    /// </para>
+    /// </param>
     /// <param name="compositionRoot">Araçların aranacağı kök derleme.</param>
     /// <param name="services">Araçların bağımlılıklarını çözecek sağlayıcı.</param>
     /// <param name="loggerFactory">Günlükler; <c>null</c> ise hiç günlük yok.</param>
     /// <param name="cancellationToken">İptal.</param>
     public static async Task RunAsync(
         McpSurface surface,
+        McpBoundaryDeclaration boundary,
         Assembly compositionRoot,
         IServiceProvider services,
         ILoggerFactory? loggerFactory = null,
@@ -37,7 +52,7 @@ public static class McpStdioHost
         ArgumentNullException.ThrowIfNull(compositionRoot);
         ArgumentNullException.ThrowIfNull(services);
 
-        var options = BizigoMcpServer.CreateOptions(surface, compositionRoot, services);
+        var options = BizigoMcpServer.CreateOptions(surface, boundary, compositionRoot, services);
         var factory = loggerFactory ?? NullLoggerFactory.Instance;
 
         await using var transport = new StdioServerTransport(options, factory);

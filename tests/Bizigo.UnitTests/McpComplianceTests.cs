@@ -1,7 +1,11 @@
 using System.Text.Json;
+using Bizigo.Cli;
+using Bizigo.Contracts.Security;
 using Bizigo.Mcp;
 using Bizigo.Mcp.Tools;
 using Json.Schema;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
@@ -51,8 +55,22 @@ public sealed class McpComplianceTests
         return data;
     }
 
+    /// <summary>
+    /// Uyum kapısının kurduğu sunucunun K6 beyanı (M06).
+    ///
+    /// <para>
+    /// <c>Internal</c> çünkü kapının ölçtüğü şey <b>üretimde koşan</b> kurulum
+    /// ve üretimde ürün yüzeyi <c>Mcp:DataBoundary=Internal</c> ile kuruluyor.
+    /// Beyanın kendisinin kapısı ayrı ölçülüyor — bkz.
+    /// <see cref="Beyansiz_sunucu_kurulamiyor"/> ve
+    /// <see cref="Kurum_disi_beyan_urun_yuzeyinde_reddediliyor"/>.
+    /// </para>
+    /// </summary>
+    private static McpBoundaryDeclaration TestBoundary =>
+        McpBoundaryDeclaration.Declare(DataBoundary.Internal, "uyum kapısı: birim testi");
+
     private static McpServerOptions ProductionOptions(McpSurface surface, IServiceProvider services) =>
-        BizigoMcpServer.CreateOptions(surface, typeof(global::Program).Assembly, services);
+        BizigoMcpServer.CreateOptions(surface, TestBoundary, typeof(global::Program).Assembly, services);
 
     /// <summary>Testin kendi iptali; xUnit koşumu kesildiğinde çağrılar da kesiliyor.</summary>
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
@@ -523,47 +541,49 @@ public sealed class McpComplianceTests
         Assert.Equal(typeof(StreamServerTransport), typeof(StdioServerTransport).BaseType);
 
     // ---------------------------------------------------------------------
-    // 8 · Menteşe (M06'nın takılacağı yer)
+    // 8 · Redaksiyon kapısı (M06 — menteşe kapıya çevrildi)
     // ---------------------------------------------------------------------
 
     /// <summary>
-    /// <b>Serbest <c>string</c> dönüşü yok</b> — ve log metni taşıyıcısının
-    /// üretim yolu <b>boş</b>.
+    /// <b>Log metni sonuca yalnızca redaksiyon kapısından giriyor</b> ve tele
+    /// <b>maskelenmiş</b> hâliyle iniyor.
     ///
     /// <para>
-    /// İki şeyi birden ölçüyor, çünkü ikisi ayrı ayrı yanıltıcı:
+    /// M01 bu testi bir <i>menteşenin çalıştığını</i> ölçmek için yazmıştı:
+    /// taşıyıcı serbest bir <c>string</c> alıyordu ve ürün tarafında çağıranı
+    /// yoktu. M06 fabrikanın parametre tipini <see cref="RedactedPrompt"/>
+    /// yaptı; bu test artık menteşeyi değil <b>kapıyı</b> ölçüyor.
     /// </para>
-    /// <list type="number">
-    /// <item>
-    /// <see cref="McpToolResult"/> yalnızca yapısal yük ve
-    /// <see cref="McpLogText"/> kabul ediyor. Bu <b>derleme zamanında</b>
-    /// zorunlu; test yalnızca kaydı tutuyor.
-    /// </item>
-    /// <item>
-    /// <see cref="McpLogText"/> üretmenin tek yolu <c>internal</c> bir fabrika
-    /// ve bugün ürün tarafında <b>çağıranı yok</b>. Menteşe boş duruyor;
-    /// M06 fabrikanın parametre tipini <c>RedactedPrompt</c> yapacak ve o gün
-    /// log içeriği döndüren her yol derleyicide redaksiyon kapısına bağlanacak.
-    /// </item>
-    /// </list>
     ///
     /// <para>
-    /// Menteşenin <b>çalıştığı</b> ölçülüyor: taşıyıcı sonuca gerçekten
-    /// ekleniyor ve tele iniyor. Ölçülmeseydi M06 boş bir yere takılırdı.
+    /// <b>Ölçülen şey bir tip kaydı değil, davranış:</b> girdi gerçek bir sır
+    /// taşıyor ve tele inen metinde <b>o sır yok</b>. Kapının varlığını
+    /// derleyici tutuyor; burada tutulan şey kapının <i>çalıştığı</i> — imza
+    /// doğru ama gövde <c>redacted.Text</c> yerine ham metni taşısaydı
+    /// derleme yeşil kalırdı.
     /// </para>
     /// </summary>
     [Fact]
-    public void Log_metni_yalnizca_mentese_uzerinden_giriyor()
+    public void Log_metni_yalnizca_redaksiyon_kapisindan_giriyor()
     {
-        var log = McpLogText.FromRedacted("[maskelenmiş]");
-        var result = McpToolResult.Structured(new { ok = true }).WithLogText(log);
+        const string Sir = "AbcDef0123456789XyzQwertyUiop";
+        var redacted = RedactedPrompt.Redact($"set password {Sir}");
+
+        var result = McpToolResult.Structured(new { ok = true }).WithLogText(redacted);
 
         var wire = BizigoMcpTool.ToProtocol(result);
 
-        Assert.Contains(wire.Content, block => block is TextContentBlock { Text: "[maskelenmiş]" });
+        var metinler = wire.Content.OfType<TextContentBlock>().Select(static b => b.Text).ToArray();
 
-        // Ürün tarafında bugün ÇAĞIRANI YOK. Menteşe bilerek boş; gerekçesi
-        // `McpLogText` belgesinde.
+        Assert.Contains(metinler, text => string.Equals(text, redacted.Text, StringComparison.Ordinal));
+
+        Assert.DoesNotContain(
+            metinler,
+            text => text.Contains(Sir, StringComparison.Ordinal));
+
+        // Log metni EKLENMEDEN sonuç üretmek hâlâ mümkün — kapı "her sonuç log
+        // taşımalı" demiyor, "log taşıyan her sonuç kapıdan geçmiş olmalı"
+        // diyor.
         Assert.Empty(McpToolResult.Structured(new { ok = true }).LogText);
     }
 
@@ -581,6 +601,223 @@ public sealed class McpComplianceTests
 
         Assert.Contains("Unspecified", error.Message, StringComparison.Ordinal);
     }
+
+    // ---------------------------------------------------------------------
+    // 9 · K6 — sunucunun ağ sınırı beyanı (M06, bitti tanımı 6)
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// <b>Beyansız bir sunucu kurulamıyor.</b>
+    ///
+    /// <para>
+    /// Ret <see cref="BizigoMcpServer.Apply"/>'nin bir dalı DEĞİL, beyan
+    /// tipinin varoluş şartı: <see cref="McpBoundaryDeclaration"/> yalnızca
+    /// <see cref="McpBoundaryDeclaration.Declare"/>'den çıkıyor ve o
+    /// <see cref="DataBoundary.Unspecified"/>'ı kabul etmiyor. Yani beyansız
+    /// bir sunucu <b>ifade edilemiyor</b>.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Beyansiz_sunucu_kurulamiyor()
+    {
+        var error = Assert.Throws<ArgumentOutOfRangeException>(
+            () => McpBoundaryDeclaration.Declare(DataBoundary.Unspecified, "test"));
+
+        // Ölçüt "fırlattı mı" DEĞİL, "ne yazması gerektiğini söyledi mi".
+        //
+        // Bu satır bir kırmızı ölçümünden doğdu. İlk hâli `Assert.Contains
+        // ("Unspecified", ...)` idi ve kusur ölçümünde YEŞİL KALDI: adanmış
+        // dalı kapattığımda alttaki "bilinmeyen değer" dalı devraldı ve onun
+        // mesajı da `Unspecified` sözcüğünü taşıyordu. Yani test iki farklı
+        // reddi ayırt edemiyordu — ve ayırt edemediği şey operatörün
+        // gördüğü metin, yani kapının TEK ÇIKTISI. Beyansız bir sunucunun
+        // reddedilmesi ile o reddin ne yapılacağını söylemesi ayrı şeyler.
+        Assert.Contains("K6", error.Message, StringComparison.Ordinal);
+        Assert.Contains("`internal`", error.Message, StringComparison.Ordinal);
+        Assert.Contains("`external`", error.Message, StringComparison.Ordinal);
+
+        // Sıfır değeri bilerek geçersiz — T42'den devralınan kalıp ve
+        // `DataBoundary` belgesinde yazılı.
+        Assert.Equal(0, (int)DataBoundary.Unspecified);
+    }
+
+    /// <summary>
+    /// <b>Gerekçesiz beyan da kurulamıyor.</b>
+    ///
+    /// <para>
+    /// <see cref="McpBoundaryDeclaration.Basis"/> boş olamıyor çünkü
+    /// <see cref="DataBoundary.Internal"/> iki farklı garanti gücüyle
+    /// dolaşabiliyor: T42'nin kapısında <b>adrese karşı doğrulanmış</b>,
+    /// burada <b>yalnızca beyan edilmiş</b>. Gerekçesiz bir <c>Internal</c>,
+    /// okuyanı birinciyi varsaymaya iter.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Gerekcesiz_beyan_kurulamiyor()
+    {
+        Assert.Throws<ArgumentException>(
+            () => McpBoundaryDeclaration.Declare(DataBoundary.Internal, "   "));
+
+        Assert.Throws<ArgumentException>(
+            () => McpBoundaryDeclaration.Declare(DataBoundary.Internal, null!));
+    }
+
+    /// <summary>
+    /// <b>Kurum dışı beyan ürün yüzeyinde reddediliyor</b> — K6.
+    ///
+    /// <para>
+    /// <c>bizigo</c> log içeriği döndürüyor; onu kurum dışı bir istemciye açmak
+    /// K6'nın birebir ihlali ve hiçbir içerik düzeyi için esnemiyor.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Kurum_disi_beyan_urun_yuzeyinde_reddediliyor()
+    {
+        var declaration = McpBoundaryDeclaration.Declare(DataBoundary.External, "test");
+
+        var error = Assert.Throws<InvalidOperationException>(
+            () => McpBoundaryGate.Require(declaration, McpSurface.Product));
+
+        Assert.Contains(McpSurfaces.ProductName, error.Message, StringComparison.Ordinal);
+        Assert.Contains("K6", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <b>Simülatör yüzeyi kurum dışı beyanla geçiyor</b> — ve bu bir boşluk
+    /// değil, iki yüzeyin ayrı olmasının sebebi.
+    ///
+    /// <para>
+    /// <c>bizigo-sim</c> ürün verisi değil simülatör durumu döndürüyor;
+    /// kurum dışı bir istemciye açılması K6'yı ihlal etmiyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Kapsam beyanı:</b> bu yol bugün ürün kurulumunda <b>ulaşılamaz</b> —
+    /// <c>BizigoMcpSetup</c> yalnızca <see cref="McpSurface.Product"/> kuruyor
+    /// ve <c>bizigo-sim</c>'in HTTP yüzeyi M03'ün kararı (bugünkü yönü
+    /// stdio-only). Yani bu testin ölçtüğü şey bugün <b>yalnızca burada</b>
+    /// görülüyor; M03 gerçek bir yol açtığında orada da ölçülmeli.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Simulator_yuzeyi_kurum_disi_beyanla_gecebiliyor()
+    {
+        var declaration = McpBoundaryDeclaration.Declare(DataBoundary.External, "test");
+
+        McpBoundaryGate.Require(declaration, McpSurface.Simulator);
+    }
+
+    /// <summary>
+    /// <b>Kapı sunucu kurulumunun İÇİNDE duruyor</b>, yanında değil.
+    ///
+    /// <para>
+    /// Yukarıdaki üç test <see cref="McpBoundaryGate"/>'i doğrudan çağırıyor ve
+    /// bu tek başına yanıltıcı olurdu: kapı doğru cevap veriyor olabilir ve
+    /// <see cref="BizigoMcpServer.Apply"/> onu hiç çağırmıyor olabilir. Bu
+    /// deponun T50'de ölçtüğü ayrım — <i>var olmak ile bağlı olmak</i>.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Kurum_disi_beyan_sunucu_kurulumunda_reddediliyor()
+    {
+        var services = new ServiceCollection().BuildServiceProvider();
+        var declaration = McpBoundaryDeclaration.Declare(DataBoundary.External, "test");
+
+        Assert.Throws<InvalidOperationException>(() => BizigoMcpServer.CreateOptions(
+            McpSurface.Product, declaration, typeof(global::Program).Assembly, services));
+    }
+
+    /// <summary>
+    /// <b>HTTP tarafının beyanı yapılandırmadan geliyor ve eksikliği ret.</b>
+    ///
+    /// <para>
+    /// Üç hâl ayrı ayrı ölçülüyor çünkü üçü ayrı arama yaptırıyor: anahtar yok,
+    /// anahtar var ama çözümlenemiyor, anahtar doğru.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Yapilandirmadaki_beyan_okunuyor()
+    {
+        Assert.Throws<InvalidOperationException>(
+            () => BizigoMcpSetup.ReadBoundary(new ConfigurationBuilder().Build()));
+
+        Assert.Throws<InvalidOperationException>(
+            () => BizigoMcpSetup.ReadBoundary(Yapilandirma("iç-ağ")));
+
+        var okunan = BizigoMcpSetup.ReadBoundary(Yapilandirma("Internal"));
+
+        Assert.Equal(DataBoundary.Internal, okunan.Boundary);
+        Assert.Contains(BizigoMcpSetup.DataBoundaryKey, okunan.Basis, StringComparison.Ordinal);
+
+        // `Unspecified` yazılı bir değer de reddediliyor: yazmak ile beyan
+        // etmek aynı şey değil.
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => BizigoMcpSetup.ReadBoundary(Yapilandirma("Unspecified")));
+    }
+
+    /// <summary>
+    /// <b>Üretimin kendi yapılandırması kapıdan geçiyor.</b>
+    ///
+    /// <para>
+    /// Yukarıdaki test kapının çalıştığını ölçüyor; bu, <c>appsettings.json</c>
+    /// içindeki <b>gerçek</b> değerin o kapıdan geçtiğini ölçüyor. İkisi ayrı:
+    /// kapı kusursuz olup üretim yapılandırması eksik olabilirdi ve o hâlde
+    /// MCP hiç ayağa kalkmazdı — <b>koşum anında</b> keşfedilecek bir kusur.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Uretim_yapilandirmasi_siniri_beyan_ediyor()
+    {
+        var path = Path.Combine(RepositoryLayout.Root, "src", "Bizigo.Api", "appsettings.json");
+
+        var configuration = new ConfigurationBuilder().AddJsonFile(path).Build();
+
+        var declaration = BizigoMcpSetup.ReadBoundary(configuration);
+
+        Assert.Equal(DataBoundary.Internal, declaration.Boundary);
+
+        // Ve o beyan ürün yüzeyinde gerçekten geçiyor.
+        McpBoundaryGate.Require(declaration, McpSurface.Product);
+    }
+
+    /// <summary>
+    /// <b>stdio tarafı da beyansız koşmuyor</b> — ve bu ayrı bir kapı.
+    ///
+    /// <para>
+    /// HTTP'nin beyanı yapılandırmadan, stdio'nunki CLI seçeneğinden geliyor;
+    /// ikisi <b>ayrı yollar</b> ve birinin kapısı diğerini kapatmıyor.
+    /// <c>bizigo mcp serve</c> beyansız çağrıldığında sunucu <b>hiç
+    /// başlamıyor</b>, çıkış kodu 2.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Test sunucuyu ayağa kaldırmıyor</b> ve kaldıramaz: reddedilen her yol
+    /// <c>McpStdioHost.RunAsync</c>'e ulaşmadan dönüyor. Kabul edilen bir yolu
+    /// buradan çağırmak süreç kapanana kadar bloke olurdu — o yüzden bu test
+    /// yalnızca <b>ret</b> hâllerini ölçüyor ve bunu kapsam olarak beyan
+    /// ediyor.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData(McpSurfaces.ProductName, null)]
+    [InlineData(McpSurfaces.ProductName, "")]
+    [InlineData(McpSurfaces.ProductName, "Unspecified")]
+    [InlineData(McpSurfaces.ProductName, "iç-ağ")]
+    [InlineData(McpSurfaces.ProductName, "External")]
+    public async Task Stdio_beyansiz_ya_da_kurum_disi_kosmuyor(string surface, string? boundary)
+    {
+        var kod = await McpCommandHandlers.ServeAsync(surface, boundary, verbose: false, Ct);
+
+        Assert.Equal(2, kod);
+    }
+
+    private static IConfiguration Yapilandirma(string boundary) =>
+        new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [BizigoMcpSetup.DataBoundaryKey] = boundary,
+            })
+            .Build();
 
     // ---------------------------------------------------------------------
     // Yardımcılar

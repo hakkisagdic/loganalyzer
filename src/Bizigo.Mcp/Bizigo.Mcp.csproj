@@ -1,10 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    MCP protokol çekirdeği (M01). Ürün projelerine BUGÜN hiç referans vermiyor
-    ve bu bilinçli: çekirdek protokolü konuşuyor, ürünü tanımıyor. Araçlar
-    (M03/M04/M05) kendi katmanlarında doğacak ve buradaki `BizigoMcpTool`'dan
-    türeyecek.
+    MCP protokol çekirdeği (M01). Çekirdek protokolü konuşuyor, ürünü tanımıyor;
+    araçlar (M03/M04/M05) kendi katmanlarında doğuyor ve buradaki
+    `BizigoMcpTool`'dan türüyor.
+
+    M01'de ürün projelerine HİÇ referans yoktu. M06 bir tane ekledi
+    (`Bizigo.Contracts`) ve gerekçesi aşağıda: iki KAPI bu projeye girmek
+    zorundaydı. Sayının bir kalmasının sebebi var — bkz. `Bizigo.Rca`nın
+    elenmesi.
 
     ASP.NET Core BİLEREK YOK — ve gerekçesi ölçüldü.
 
@@ -24,6 +28,27 @@
     Ayrım şimdi şurada: HTTP taşıması `Bizigo.Api`'nin işi — ASP.NET zaten
     orada. Bu proje protokolü ve stdio'yu konuşuyor.
   -->
+
+  <ItemGroup>
+    <!--
+      M06 — TEK ürün referansı, ve tek olması ölçülerek seçildi.
+
+      İki kapı bu projeye girmek zorundaydı: T41'in `RedactedPrompt`'u (log
+      metninin taşıyıcısına parametre tipi olarak) ve K6'nın ağ sınırı ekseni
+      (`DataBoundary`). İkisi de `Bizigo.Contracts`'ta ve BU PROJENİN HİÇ
+      ProjectReference'ı YOK — yaprak. Yani buraya bağlanmanın geçişli maliyeti
+      sıfır.
+
+      `DataBoundary`'nin ilk yeri `Bizigo.Rca.Models` idi ve oradan kullanmak
+      ELENDİ: `Bizigo.Rca` ControlPlane, ScenarioPlugin ve
+      `Microsoft.Extensions.Http` taşıyor, ve stdio için buraya referans veren
+      `Bizigo.Cli` hepsini yutardı. Bu, aşağıdaki ASP.NET yorumunun ölçtüğü
+      kusurun aynısı — bir konsol aracının taşımak zorunda olmadığı bir yığını
+      taşıması. Tip bu yüzden `Bizigo.Contracts`'a TAŞINDI, kopyalanmadı
+      (CLAUDE.md §9).
+    -->
+    <ProjectReference Include="..\Bizigo.Contracts\Bizigo.Contracts.csproj" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="ModelContextProtocol" />

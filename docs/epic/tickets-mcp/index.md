@@ -84,6 +84,56 @@ bu **derleyiciye** bağlı.
 7. Kapsam filtresi MCP yüzeyinde de **tek kapıdan** geçiyor.
 8. Simülatör senaryosu yanlış yüzeye uygulandığında hata **yüzeyi** söylüyor.
 
+## M06'nın verdiği kararlar
+
+Bitti tanımının 5. ve 6. maddeleri M06'da kapandı. Üç karar, üçü de bir
+gözlemden doğdu ve gözlemler hiçbir belgede yazılı değildi.
+
+### stdio'nun ağ sınırı ÇIKARILMIYOR, beyan ediliyor
+
+İlk mekanik cevap şuydu: *stdio istemcisi aynı makinede bir süreç, demek ki iç
+ağ.* Çıkarım doğru görünüyor ve **K6 açısından tam ters olabiliyor**: bu
+taşımanın en olası gerçek istemcisi bir masaüstü MCP istemcisi (Claude Desktop
+gibi) ve o, aldığı her şeyi **buluta** gönderiyor. Sınırı koda çivilemek,
+ürünün en büyük sözünü **bayrak yeşilken** boşa çıkaran bir hâl yazmak
+olurdu — §7'nin tarif ettiği sınıf.
+
+Sonuç: `bizigo mcp serve --data-boundary internal|external`, **varsayılanı
+yok**. `--surface`'in varsayılanı var çünkü yüzeyin makul bir varsayılanı var;
+sınırın yok. `--data-boundary external --surface bizigo` reddediliyor.
+
+Bu gözlemin yazılı olması gerekiyordu çünkü **bir sonraki kişi aynı mekanik
+çıkarımı yapacak** ve o çıkarımın nerede kırıldığı koddan görünmüyor.
+
+### K6 ekseni tek tip, ama MCP'de çıplak dolaşmıyor
+
+`ModelDataBoundary` `Bizigo.Contracts.Security.DataBoundary`'ye **taşındı**:
+K6 tek bir eksen çiziyor ve o eksenin iki tipi olamaz (§9). Ama tipi paylaşmak
+tek başına yeni bir tehlike doğuruyordu — T42'nin kapısında `Internal`
+**adrese karşı doğrulanmış**, MCP'de **yalnızca beyan edilmiş** demek, ve aynı
+enum değeri iki farklı garanti gücü taşıyordu.
+
+Ayrım silinmedi, **tipten okunur hâle getirildi**: MCP tarafında beyan
+`McpBoundaryDeclaration` içinde dolaşıyor ve `Basis` boş olamıyor. Yani bu
+üründe `Internal` hiçbir yerde gerekçesiz görünmüyor. Aynı ayrımın üçüncü
+örneği (T36 `Measured=false` ↔ `Unreliable=0`, T47 `Unspecified` ↔
+`NotPresent`).
+
+Farkın kaynağı yön: model ucu **egress** — biz ona bağlanıyoruz, adresi
+biliniyor. MCP yüzeyi **ingress** — istemci bize bağlanıyor ve kim olduğu
+bağlanana kadar bilinmiyor; stdio'da hiç adres yok.
+
+### `External` + `bizigo-sim` geçiyor
+
+İki yüzeyin ayrı olmasının **sebebi** o risk ayrımı: `bizigo-sim` ürün verisi
+değil simülatör durumu döndürüyor. Kurum dışı bir istemciye açılması K6'yı
+ihlal etmiyor.
+
+Bu yol bugün ürün kurulumunda **ulaşılamaz** — `BizigoMcpSetup` yalnızca ürün
+yüzeyini kuruyor ve `bizigo-sim`'in HTTP yüzeyi M03'ün kararı. Kararı
+daraltmak (her yüzeyde `External` reddi) bugün ölçülemeyen bir kararı
+ölçülemeyen bir başkasıyla değiştirirdi ve M03 gerekçesiz bir kapı bulurdu.
+
 ## Bu belgenin bilmediği şey
 
 **MCP 2.0'ın hangi revizyonu** — spesifikasyon sürümlü ve tarih damgalı.

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Bizigo.Contracts.Security;
 
 namespace Bizigo.Mcp;
 
@@ -22,7 +23,10 @@ namespace Bizigo.Mcp;
 /// bunu tarif ediyor ve uyum kapısı örnek çağrının buna uyduğunu sınıyor.
 /// </item>
 /// <item>
-/// <b><see cref="McpLogText"/></b> — log metni. Bugün üreteni yok; M06 takacak.
+/// <b><see cref="McpLogText"/></b> — log metni, ve içine yalnızca T41'in
+/// redaksiyon kapısından geçmiş metin giriyor. Araç tarafının gördüğü imza
+/// <see cref="WithLogText(RedactedPrompt[])"/>: kapı bir çağrı alışkanlığı
+/// değil, <b>parametre tipi</b> (M06).
 /// </item>
 /// </list>
 ///
@@ -96,13 +100,31 @@ public sealed class McpToolResult
     }
 
     /// <summary>
-    /// Sonuca log metni ekler. Bugün <see cref="McpLogText"/> üretilemediği için
-    /// çağıran yok; M06 geldiğinde açılacak yol bu.
+    /// Sonuca log metni ekler — <b>araçların gördüğü tek yol</b>.
+    ///
+    /// <para>
+    /// <b>Parametre <see cref="RedactedPrompt"/>, <see cref="McpLogText"/>
+    /// değil.</b> İkincisi bu derlemenin iç taşıyıcısı ve fabrikası
+    /// <c>internal</c>; araçlar <c>Bizigo.Mcp</c>'nin dışında yaşadığı için onu
+    /// hiç göremiyorlar. Yani bir aracın log metni döndürmek için elinde
+    /// tutabileceği tek şey redaksiyon kapısının çıktısı, ve o tip yalnızca
+    /// <see cref="RedactedPrompt.Redact"/>'ten çıkıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// İmzayı <c>McpLogText</c> alacak şekilde bırakmak, aracı bu derlemenin
+    /// içine bir yol aramaya iterdi; <see cref="RedactedPrompt"/> almak kapıyı
+    /// <b>aracın kendi imzasına</b> taşıyor. M06'nın "kapı derleyicide" şartı
+    /// pratikte burada görülüyor.
+    /// </para>
     /// </summary>
-    public McpToolResult WithLogText(params McpLogText[] text)
+    public McpToolResult WithLogText(params RedactedPrompt[] redacted)
     {
-        ArgumentNullException.ThrowIfNull(text);
+        ArgumentNullException.ThrowIfNull(redacted);
 
-        return new McpToolResult(Payload, Error, [.. LogText, .. text]);
+        return new McpToolResult(
+            Payload,
+            Error,
+            [.. LogText, .. redacted.Select(McpLogText.FromRedacted)]);
     }
 }

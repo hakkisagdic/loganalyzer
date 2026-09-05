@@ -1,3 +1,5 @@
+using Bizigo.Contracts.Security;
+
 namespace Bizigo.Rca.Models;
 
 /// <summary>
@@ -26,10 +28,10 @@ public sealed class ModelEndpointOptions
     public string Model { get; set; } = string.Empty;
 
     /// <summary>
-    /// <b>K6 beyanı.</b> Varsayılan <see cref="ModelDataBoundary.Unspecified"/>
+    /// <b>K6 beyanı.</b> Varsayılan <see cref="DataBoundary.Unspecified"/>
     /// ve o değerde uç kurulamıyor — beyan etmemek bir seçenek değil.
     /// </summary>
-    public ModelDataBoundary DataBoundary { get; set; } = ModelDataBoundary.Unspecified;
+    public DataBoundary DataBoundary { get; set; } = DataBoundary.Unspecified;
 
     /// <summary>
     /// <c>raw</c> düzeyinin açık olup olmadığı. Varsayılan <b>kapalı</b>.

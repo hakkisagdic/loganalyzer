@@ -1,4 +1,5 @@
 using System.Reflection;
+using Bizigo.Contracts.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Server;
@@ -19,6 +20,52 @@ namespace Bizigo.Mcp;
 /// </summary>
 public static class BizigoMcpSetup
 {
+    /// <summary>
+    /// HTTP yüzeyinin K6 beyanının okunduğu yapılandırma anahtarı.
+    ///
+    /// <para>
+    /// Kalıp T42'nin <c>Rca:Model:DataBoundary</c>'sinin aynısı ve
+    /// <c>appsettings.json</c>'da <b>açıkça yazılı</b> duruyor: eksik bir
+    /// anahtar <c>Unspecified</c> demek ve MCP hiç ayağa kalkmıyor.
+    /// </para>
+    /// </summary>
+    public const string DataBoundaryKey = "Mcp:DataBoundary";
+
+    /// <summary>
+    /// HTTP taşımasının beyanını yapılandırmadan okur.
+    ///
+    /// <para>
+    /// <b>Tanınmayan bir değer sessizce <c>Unspecified</c>'a düşmüyor</b>:
+    /// <c>"Internal "</c> yazan bir yapılandırma ile hiç yazmayan bir
+    /// yapılandırma aynı hatayı verirse, birincinin sahibi anahtarı aramaya
+    /// gider ve orada bulur. Ayrı mesaj, ayrı arama.
+    /// </para>
+    /// </summary>
+    public static McpBoundaryDeclaration ReadBoundary(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var raw = configuration[DataBoundaryKey];
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            throw new InvalidOperationException(
+                $"`{DataBoundaryKey}` yapılandırılmamış. MCP sunucusu ağ sınırını BEYAN "
+                + "etmeden kurulamıyor (K6): beyansız bir yüzey 'iç ağ' sayılsaydı, "
+                + "kurumun en büyük sözü hiç kimse karar vermeden boşa çıkardı. "
+                + "`Internal` ya da `External` yazın.");
+        }
+
+        if (!Enum.TryParse<DataBoundary>(raw, ignoreCase: true, out var boundary))
+        {
+            throw new InvalidOperationException(
+                $"`{DataBoundaryKey}` çözümlenemedi: '{raw}'. Beklenen: "
+                + $"`{nameof(DataBoundary.Internal)}` ya da `{nameof(DataBoundary.External)}`.");
+        }
+
+        return McpBoundaryDeclaration.Declare(boundary, $"yapılandırma: `{DataBoundaryKey}`");
+    }
+
     /// <summary>
     /// MCP sunucusunu kaydeder ve seçeneklerini
     /// <see cref="BizigoMcpServer.Apply"/> ile doldurur.
@@ -50,13 +97,21 @@ public static class BizigoMcpSetup
 
         var builder = services.AddMcpServer();
 
+        // Beyan BURADA okunuyor, `Configure` geri çağrısının içinde DEĞİL — ve
+        // fark ölçülebilir: geri çağrı `McpServerOptions` ilk çözüldüğünde
+        // koşuyor, yani eksik bir `Mcp:DataBoundary` ilk MCP isteğinde
+        // patlardı. Burada okumak hatayı KAYIT ANINA, yani uygulama
+        // kurulumuna çekiyor: yanlış yapılandırılmış bir sunucu hiç
+        // başlamıyor, yarım başlamıyor.
+        var boundary = ReadBoundary(configuration);
+
         // Seçenekler HTTP tarafında da `Apply`'den geçiyor. İkinci bir kurulum
         // yazmak, uyum kapısının ölçtüğü sunucu ile üretimde koşan sunucuyu
         // ayırırdı — kapının anlamını yok eden tek hareket bu olurdu.
         services
             .AddOptions<McpServerOptions>()
             .Configure<IServiceProvider>((options, provider) =>
-                BizigoMcpServer.Apply(options, McpSurface.Product, compositionRoot, provider));
+                BizigoMcpServer.Apply(options, McpSurface.Product, boundary, compositionRoot, provider));
 
         return builder;
     }

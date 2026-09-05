@@ -34,7 +34,7 @@ public sealed class ModelBoundaryTests
     }
 
     private static ModelEndpointOptions Secenek(
-        ModelDataBoundary boundary = ModelDataBoundary.Internal,
+        DataBoundary boundary = DataBoundary.Internal,
         string baseUrl = "http://gpu-kume.kurum.local:8000/v1",
         bool allowRaw = false,
         string? overrideReason = null) => new()
@@ -66,7 +66,7 @@ public sealed class ModelBoundaryTests
     public async Task Beyansiz_uc_reddediliyor()
     {
         var karar = await Kapi().VerifyAsync(
-            Secenek(ModelDataBoundary.Unspecified),
+            Secenek(DataBoundary.Unspecified),
             TestContext.Current.CancellationToken);
 
         Assert.False(karar.Allowed);
@@ -82,9 +82,9 @@ public sealed class ModelBoundaryTests
     [Fact]
     public void Beyanin_varsayilani_reddedilen_deger()
     {
-        Assert.Equal(ModelDataBoundary.Unspecified, new ModelEndpointOptions().DataBoundary);
-        Assert.Equal(0, (int)ModelDataBoundary.Unspecified);
-        Assert.NotEqual(0, (int)ModelDataBoundary.Internal);
+        Assert.Equal(DataBoundary.Unspecified, new ModelEndpointOptions().DataBoundary);
+        Assert.Equal(0, (int)DataBoundary.Unspecified);
+        Assert.NotEqual(0, (int)DataBoundary.Internal);
     }
 
     // ------------------------------------------------------- kural 2
@@ -104,7 +104,7 @@ public sealed class ModelBoundaryTests
     public async Task Kurum_disi_ucta_hicbir_duzey_gecmiyor()
     {
         var karar = await Kapi("203.0.113.10").VerifyAsync(
-            Secenek(ModelDataBoundary.External, "https://model.ornek.com/v1"),
+            Secenek(DataBoundary.External, "https://model.ornek.com/v1"),
             TestContext.Current.CancellationToken);
 
         Assert.False(karar.Allowed);

@@ -1,3 +1,5 @@
+using Bizigo.Contracts.Security;
+
 namespace Bizigo.Rca.Models;
 
 /// <summary>
@@ -15,7 +17,7 @@ namespace Bizigo.Rca.Models;
 /// <b>Düzey sağlayıcı türüne bağlı DEĞİL</b> (T42 kararı). Bağlansaydı yerel
 /// bir Ollama ile kurum içi bir GPU kümesi farklı düzeylere sahip olurdu —
 /// oysa K6'nın baktığı eksende ikisi aynı yerde. Sağlayıcının sorduğu soru
-/// <see cref="ModelDataBoundary"/>; düzeyin sorduğu soru "ne kadar bağlam".
+/// <see cref="DataBoundary"/>; düzeyin sorduğu soru "ne kadar bağlam".
 /// İki soru, iki eksen.
 /// </para>
 ///
