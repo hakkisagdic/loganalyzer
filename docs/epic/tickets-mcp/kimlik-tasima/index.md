@@ -125,9 +125,18 @@ M08'in."*
    `bizigo-claims` client scope var. `scope=openid` geçiyor;
    `openid profile email` **canlıda `invalid_scope` alıyor**. Ölçüldü, plan §6
    de yazıyor.
-2. **Açık soru:** cihaz akışının istemci kaydı realm'de var mı? **Bakmadım.**
-   Yoksa M08 realm-as-code tarafına da dokunuyor demektir ve bu ticket'ın
-   kapsamı büyür.
+2. **Cihaz akışının istemci kaydı realm'de YOK — ölçüldü.**
+   `deploy/keycloak/realm-bizigo.json` iki istemci taşıyor: **`bizigo-ui`** ve
+   **`bizigo-collector`**. MCP için ya da cihaz akışı için bir istemci kaydı
+   yok. Yani M08 **realm-as-code tarafına da dokunuyor** ve kapsamı bu kadar
+   büyük: realm değişikliği canlı Keycloak doğrulaması demek (`CLAUDE.md` §2),
+   yani ajan yazar, koordinatör koşturur.
+
+   Aynı dosyada ölçülen ikinci şey M09'un konusu: `bizigo-claims` client
+   scope'unda bir **audience mapper** var
+   (`included.client.audience: bizigo-api`) ve API `ValidateAudience = true`
+   ile onu doğruluyor. Yani kitlenin bağlanması **bugün çalışıyor** — eksik
+   olan, MCP sunucusunun **kendine ait bir kaynak kimliğinin** olmaması.
 3. **Açık soru:** HTTP taşımasında kimlik `Authorization` başlığıyla mı
    geliyor, yoksa MCP oturum kurulumunda bir kez mi? İki taşıma **aynı araç
    kümesini** sunuyor (plan §2) ama kimlik yolları farklı olabilir; farklıysa
