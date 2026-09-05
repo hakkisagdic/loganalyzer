@@ -312,4 +312,60 @@ public sealed class KeycloakRealmTests
 
         Assert.Contains("KC_HOSTNAME", compose, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// Ekranın container'daki dönüş adresi, realm'in kabul ettiği adresle
+    /// <b>birebir</b> aynı olmalı (T49).
+    ///
+    /// <para>
+    /// Bağ realm dosyasında <c>redirectUris</c> olarak yazılı ve Keycloak onu
+    /// <b>tam eşleşmeyle</b> sınıyor. Compose'daki <c>BFF_PUBLIC_URL</c>
+    /// varsayılanı ondan ayrıldığı an giriş akışı <c>invalid_redirect_uri</c>
+    /// ile duruyor — kullanıcının gördüğü şey Keycloak'ın hata sayfası ve orada
+    /// hangi iki değerin ayrıştığı <b>yazmıyor</b>.
+    /// </para>
+    ///
+    /// <para>
+    /// Ayrışma tek bir dosyada da olmuyor: port compose'da üç yerde geçiyor
+    /// (yayımlanan port, <c>BFF_PUBLIC_URL</c>, sağlık kontrolü) ve dördüncüsü
+    /// realm dosyasında. Biri değiştirilip diğeri unutulduğunda derleme temiz,
+    /// testler yeşil, yığın kalkıyor — ve yalnızca <b>giriş</b> kırık.
+    /// </para>
+    ///
+    /// <para>
+    /// Bekçi <c>ui</c> servisinin varsayılanını okuyor, ortam değişkeniyle
+    /// geçersiz kılınabilen hâlini değil: kurulumuna göre başka bir adres
+    /// veren kişi realm'i de kendisi ayarlıyor, ama <b>depodaki varsayılan</b>
+    /// kutudan çıktığı gibi çalışmak zorunda.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Compose_ekraninin_donus_adresi_realm_ile_ayni()
+    {
+        var compose = File.ReadAllText(RepositoryLayout.ComposeFile);
+
+        // `BFF_PUBLIC_URL: ${BFF_PUBLIC_URL:-http://localhost:3000}` içinden
+        // VARSAYILANI alıyoruz — compose'un `:-` sözdiziminin sağ tarafı.
+        var match = System.Text.RegularExpressions.Regex.Match(
+            compose,
+            @"BFF_PUBLIC_URL:\s*\$\{BFF_PUBLIC_URL:-(?<value>[^}]+)\}");
+
+        Assert.True(
+            match.Success,
+            "compose'da `ui` servisinin `BFF_PUBLIC_URL` varsayılanı bulunamadı — " +
+            "ekran container'a girdiyse bu değer orada olmalı (T49).");
+
+        var publicUrl = match.Groups["value"].Value.TrimEnd('/');
+
+        var client = Clients.Single(c => c.GetProperty("clientId").GetString() == "bizigo-ui");
+        var redirectUris = client.GetProperty("redirectUris")
+            .EnumerateArray()
+            .Select(u => u.GetString()!)
+            .ToArray();
+
+        Assert.Contains(
+            $"{publicUrl}/signin-oidc",
+            redirectUris,
+            StringComparer.Ordinal);
+    }
 }
