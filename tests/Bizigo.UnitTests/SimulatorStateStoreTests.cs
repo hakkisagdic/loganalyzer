@@ -93,57 +93,81 @@ public sealed class SimulatorStateStoreTests : IDisposable
     /// </para>
     ///
     /// <para>
-    /// <b>Duvar saati denklemde değil</b> (§6): iddia <i>"iki kayıt da var"</i>,
-    /// ve bu makinenin hızından bağımsız olarak doğru ya da yanlış. Tekrar sayısı
-    /// yarışı <b>olası</b> kılmak için; sonucu belirlemiyor.
+    /// <b>Duvar saati denklemde değil</b> (§6): iddia <i>"kaç kayıt hayatta
+    /// kaldı"</i>, ve bu makinenin hızından bağımsız olarak doğru ya da yanlış.
+    /// Tekrar sayısı yarışı <b>olası</b> kılmak için; sonucu belirlemiyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>⚠ İLK HÂLİ KİLİTSİZ DE GEÇİYORDU — ölçüm yakaladı.</b> İlk yazılışta
+    /// iki yazar <b>aynı iki</b> cihaza tekrar tekrar yazıyordu ve sonda
+    /// <i>"ikisi de var mı"</i> soruluyordu. Kilit kaldırıldığında test
+    /// <b>yeşil kaldı</b>: kaybolan güncellemeler tekrarlar tarafından
+    /// örtülüyor — biri silinse bile bir sonraki tur onu geri yazıyor, ve son
+    /// okuyan ikisini de görüyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Yani bekçi, koruduğunu iddia ettiği şeyi <b>korumuyordu</b>; yeşilliği
+    /// hiçbir şey ifade etmiyordu. Bu deponun adını koyduğu sınıf, ve onu
+    /// bulan şey testin kendisi değil <c>tools/m03-kirmizi-olcumu.py</c> oldu.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Şimdiki hâl kayıp güncellemeyi doğrudan sayıyor:</b> her yazar
+    /// <b>kendine ait ayrı anahtarlar</b> ekliyor, yani her tur dosyaya yeni
+    /// bir şey koyuyor ve hiçbir tur bir öncekini geri yazmıyor. Kilitsiz bir
+    /// oku-değiştir-yaz'da eşzamanlı eklenen anahtarlar düşüyor ve sondaki
+    /// sayı <b>eksik</b> çıkıyor. Örtecek tekrar yok.
     /// </para>
     /// </summary>
     [Fact]
     public async Task Iki_esZamanli_yazar_birbirinin_isini_silmiyor()
     {
-        const int Rounds = 20;
+        const int Rounds = 25;
 
         // Belirteç DIŞARIDA yakalanıyor: `TestContext.Current` bir
         // `AsyncLocal` ve `Task.Run` gövdesinde güvenilir şekilde akmıyor.
         var ct = TestContext.Current.CancellationToken;
 
-        var first = Task.Run(
+        Task Writer(string prefix) => Task.Run(
             () =>
             {
                 var store = Store();
 
                 for (var i = 0; i < Rounds; i++)
                 {
+                    var device = $"{prefix}-{i:D2}";
+
                     store.Mutate(state => state.With(
-                        "fw-ankara-01",
-                        state.For("fw-ankara-01") with { Scenario = "saat-kaymasi", ScenarioSetAt = Moment }));
+                        device,
+                        new SimulatorDeviceState("saat-kaymasi", Moment)));
                 }
             },
             ct);
 
-        var second = Task.Run(
-            () =>
-            {
-                var store = Store();
-
-                for (var i = 0; i < Rounds; i++)
-                {
-                    store.Mutate(state => state.With(
-                        "lb-web-01",
-                        state.For("lb-web-01") with { Silenced = true, SilencedAt = Moment }));
-                }
-            },
-            ct);
-
-        await Task.WhenAll(first, second);
+        await Task.WhenAll(Writer("alfa"), Writer("beta"));
 
         var final = Store().Read();
 
-        Assert.Equal("saat-kaymasi", final.For("fw-ankara-01").Scenario);
-        Assert.True(
-            final.For("lb-web-01").Silenced,
-            "İkinci yazarın işi kayboldu: kilitsiz bir oku-değiştir-yaz turunda son yazan, "
-            + "başkasının cihazını da sessizce siliyor.");
+        // İKİ YAZARIN TOPLAMI. Eksik bir sayı, kaybolan güncellemenin ta
+        // kendisi — ve hangi tarafın kaybettiği önemli değil, kaybın olması
+        // yeterli.
+        Assert.Equal(Rounds * 2, final.DeviceStates.Count);
+
+        Assert.All(
+            Enumerable.Range(0, Rounds),
+            i =>
+            {
+                Assert.True(
+                    final.DeviceStates.ContainsKey($"alfa-{i:D2}"),
+                    $"`alfa-{i:D2}` kayboldu: kilitsiz bir oku-değiştir-yaz turunda son yazan, "
+                    + "başkasının eklediği kaydı da sessizce siliyor.");
+
+                Assert.True(
+                    final.DeviceStates.ContainsKey($"beta-{i:D2}"),
+                    $"`beta-{i:D2}` kayboldu: aynı sebep, diğer yazar.");
+            });
     }
 
     /// <summary>

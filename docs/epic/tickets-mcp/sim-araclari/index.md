@@ -161,6 +161,26 @@ Sınırın nerede biteceği de yazılı (`SyslogBurstTool` belgesi): bir araç �
 satır döndürmeye başlarsa o metin **sentetik olduğu için muaf değil**, ve o gün
 tek yol `McpLogText` menteşesi olacak.
 
+### 1. maddenin cevabı — bağlam maliyeti tahminin İKİ KATI
+
+§6.1'in üstündeki 1. madde araç başına **194 belirteçten** yola çıkıp yedi araç
+için *≈1360* diyordu. Ölçüldü (`McpSchemaBudgetTests`, `o200k_base`):
+
+| Yüzey | `tools/list` toplam | Araç |
+| --- | --- | --- |
+| `bizigo` | **198** belirteç | 1 |
+| `bizigo-sim` | **2977** belirteç (10 259 karakter) | 8 |
+
+Araç başına: `sim.webhook.emit` 537 · `sim.state` 424 · `sim.syslog.burst` 424 ·
+`sim.fleet.list` 382 · `sim.scenario.set` 355 · `sim.scenario.list` 330 ·
+`sim.device.silence` 327 · `server.info` 194.
+
+**Tahminin neden yanlış olduğu ölçülebilir bir şey:** taban olarak alınan
+`server.info` argümansız ve tek alanlı. Gerçek bir aracın `inputSchema`'sı,
+`outputSchema`'sı ve alan açıklamaları var; maliyeti belirleyen şey şemanın
+varlığı değil **alan sayısı**. On beş araçlık iki yüzey için plandaki *≈2900*
+sayısı da bu yüzden düşük — yalnız simülatör kolu neredeyse o kadar.
+
 ### Ayrıca ölçülen iki şey — ikisi de kapı kusuru
 
 - **Uyum kapısı her iki yüzeyi de `Bizigo.Api` kökünden denetliyordu**, ama

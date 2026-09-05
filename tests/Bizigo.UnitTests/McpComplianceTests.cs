@@ -81,7 +81,7 @@ public sealed class McpComplianceTests
     /// ölçtüğü şeyin üretimde koşan şey olması, kapının anlamının tamamı.</i>
     /// </para>
     /// </summary>
-    private static Assembly CompositionRoot(McpSurface surface) => surface switch
+    internal static Assembly CompositionRoot(McpSurface surface) => surface switch
     {
         McpSurface.Product => typeof(global::Program).Assembly,
         McpSurface.Simulator => typeof(Bizigo.Cli.McpCommandHandlers).Assembly,

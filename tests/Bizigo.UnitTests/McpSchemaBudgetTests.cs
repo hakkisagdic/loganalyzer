@@ -64,10 +64,30 @@ public sealed class McpSchemaBudgetTests
     /// </para>
     ///
     /// <para>
-    /// ⚠ <b>Değer ÖLÇÜLDÜ, seçilmedi:</b> aşağıdaki koşum sekiz aracın
-    /// gerçek sayısını basıyor ve sabit onun üstüne <b>bilinçli bir pay</b>
-    /// bırakılarak yazıldı. Payın işlevi bir hedef değil görünürlük: sekizinci
-    /// aracın açıklamasını iki katına çıkarmak bu satırı kırmızı yakmalı.
+    /// <b>Değer ölçüldü:</b> sekiz araçla <c>tools/list</c> yükü
+    /// <b>2977 belirteç</b> (10 259 karakter). Tavan onun üstüne ~%20 pay
+    /// bırakıyor. Payın işlevi bir hedef değil görünürlük: bir aracın
+    /// açıklamasını iki katına çıkarmak bu satırı kırmızı yakmalı.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Araç başına ölçülen dağılım</b> — en pahalı kalem şema değil,
+    /// şemanın <i>alan sayısı</i>:
+    /// </para>
+    /// <list type="bullet">
+    ///   <item><c>sim.webhook.emit</c> 537 · <c>sim.state</c> 424 ·
+    ///   <c>sim.syslog.burst</c> 424</item>
+    ///   <item><c>sim.fleet.list</c> 382 · <c>sim.scenario.set</c> 355 ·
+    ///   <c>sim.scenario.list</c> 330 · <c>sim.device.silence</c> 327</item>
+    ///   <item><c>server.info</c> 194 — M01'in ölçtüğü taban</item>
+    /// </list>
+    ///
+    /// <para>
+    /// <b>Ve bu sayı planın tahminini çürütüyor.</b> Ticket §6 araç başına 194
+    /// belirteçten yola çıkıp yedi araç için <i>≈1360</i> diyordu; gerçek
+    /// rakam <b>iki katından fazla</b> (~2780). Sebep <c>server.info</c>'nun
+    /// argümansız ve tek alanlı olması: taban olarak alındığında araç başına
+    /// maliyeti sistematik olarak düşük gösteriyor.
     /// </para>
     /// </summary>
     private const int SimulatorToolListTokenCeiling = 3_600;
@@ -92,7 +112,20 @@ public sealed class McpSchemaBudgetTests
     public async Task Arac_semalarinin_baglam_maliyeti(McpSurface surface)
     {
         await using var services = McpTestServices.For(surface);
-        var options = BizigoMcpServer.CreateOptions(surface, typeof(global::Program).Assembly, services);
+        // KÖK YÜZEYE GÖRE — ve bu atlanmıştı, ÖLÇÜM YAKALADI.
+        //
+        // Uyum kapısı M03'te yüzey başına köke geçirildi ama bu dosya
+        // `Bizigo.Api`'de kaldı. Sonucu tam olarak bu deponun adını koyduğu
+        // sınıf: bütçe testi `bizigo-sim` için **1 araç** sayıyordu (yedi araç
+        // o kökten görünmüyor), tavanın çok altında kalıyordu ve **yeşil
+        // yanıyordu**. Yeşilliği hiçbir şey ifade etmiyordu.
+        //
+        // Fark edilme sebebi bir bekçi değildi: tavan sabitine *"ölçüldü"*
+        // yazılmıştı ve o sayıyı almak için koşum yapıldığında araç sayısının
+        // 1 olduğu görüldü. Yani yakalayan şey, yazılmış bir iddianın
+        // doğrulanmak istenmesiydi.
+        var options = BizigoMcpServer.CreateOptions(
+            surface, McpComplianceTests.CompositionRoot(surface), services);
 
         await using var session = await McpTestSession.StartAsync(options, services, cancellationToken: Ct);
 
@@ -132,9 +165,9 @@ public sealed class McpSchemaBudgetTests
         TestContext.Current.TestOutputHelper?.WriteLine(report);
 
         Assert.True(
-            total <= ToolListTokenCeiling,
+            total <= Ceiling(surface),
             $"`tools/list` yükü {total.ToString(CultureInfo.InvariantCulture)} belirtece çıktı; "
-            + $"tavan {ToolListTokenCeiling.ToString(CultureInfo.InvariantCulture)}.\n\n{report}\n\n"
+            + $"tavan {Ceiling(surface).ToString(CultureInfo.InvariantCulture)}.\n\n{report}\n\n"
             + "Bu bir performans hatası DEĞİL, bir karar noktası: bağlam bütçesi büyüdü. "
             + "Tavanı yükseltmek serbest — ama görünür olsun diye buradan geçiyor. "
             + "Yükseltirken araç açıklamalarının uzunluğuna da bakın: en pahalı kalem genelde "

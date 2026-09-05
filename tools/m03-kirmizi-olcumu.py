@@ -25,6 +25,20 @@ bir kez ölçümü sessizce yalancı yaptı. `copy` + `touch` kullanılıyor.
 
 **A ve B çifti bu ölçümün kalbi.** Tek yön ölçmek yetmez: *"her şeye
 `wrong_surface` de"* diyen bir uygulama A'yı geçerdi. B onu düşürüyor.
+
+⚠ **ÖLDÜRÜLEN BİR KOŞUM KUSURU AĞAÇTA BIRAKIR.** `finally` bloğu yalnızca süreç
+normal ya da istisnayla biterse koşuyor; `SIGKILL` onu atlıyor. Bu bir kez
+yaşandı: koşum öldürüldü ve `SimulatorStateStore.cs` **kilitsiz hâlde** çalışma
+ağacında kaldı — derlenen, testleri geçen, ve sessizce yanlış bir dosya.
+
+Bu yüzden koşum kesilirse **önce ağacı ölç, sonra devam et**:
+
+    grep -rn "KIRMIZI-" sim/ src/ tests/     # boş olmalı
+    find . -name "*.m03yedek"                # boş olmalı
+
+Yedek varsa geri alma tamamlanmamış demektir; `copy` + `touch` ile yedekten
+dönüp yedeği silin (`copy2` DEĞİL — zaman damgası ikiliyi eskitip derlemeyi
+atlatıyor).
 """
 
 import os
