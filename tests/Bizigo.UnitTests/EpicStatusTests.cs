@@ -119,8 +119,13 @@ public sealed class EpicStatusTests
         ["rapor:T38"] =
             "Rapor açık diyor, `tickets-f3/altin-kume` `status: 2`. Bu haftaki yanlış " +
             "brief'in tam kaynağı: aynı commit hem ticket'ı 2 yaptı hem raporda açık bıraktı.",
-        ["rapor:T44"] = "Raporda açık, ama hiçbir ticket DOSYASI yok (`kalan-is-raporu` §6'nın kendi şikâyeti).",
-        ["rapor:T47"] = "Raporda açık, ama hiçbir ticket DOSYASI yok.",
+        // Gerekçe 2026-09-05'te değişti ve değiştiği yazılıyor: T44'ün dosyası
+        // ARTIK VAR (merge `491d28d`) ve `status: 2` diyor, rapor hâlâ açık
+        // diyor. Yani ayrışma sürüyor ama sebebi başka — eskisi "belge yok",
+        // yenisi "belge var ve çelişiyor". Metni güncellemeseydik bu kapı adı
+        // ile gövdesi ayrışan bir bekçiye dönerdi: liste doğru kalemi tutuyor,
+        // yanındaki cümle yalan söylüyor.
+        ["rapor:T44"] = "Raporda açık, `tickets-f4/llm-adimlari-ve-iki-kapi` `status: 2`.",
         ["rapor:T48"] = "Raporda açık; ticket dosyası var ama yol haritası tablosunda olmadığı için eşlenemiyor.",
         ["rapor:T49"] = "Raporda açık; ticket dosyası var ama yol haritası tablosunda olmadığı için eşlenemiyor.",
     };
