@@ -150,25 +150,148 @@ public sealed class SshSimulatorCliTests
     [Fact]
     public void Toplayicilarin_gonderdigi_her_komut_oykunme_tarafindan_taniniyor()
     {
-        var collectors = typeof(IConfigCollector).Assembly
-            .GetTypes()
-            .Where(t => t is { IsAbstract: false, IsClass: true } && t.IsAssignableTo(typeof(IConfigCollector)))
-            .Select(t => (IConfigCollector)Activator.CreateInstance(t)!)
-            .ToArray();
+        Assert.NotEmpty(Collectors);
 
-        Assert.NotEmpty(collectors);
-
-        foreach (var collector in collectors)
+        foreach (var collector in Collectors)
         {
-            foreach (var command in collector.Commands)
+            // SATIR SATIR sınıflandırılıyor, komut dizesi bütün olarak değil
+            // (S08). Toplayıcı komutları artık çok satırlı ve kendi kendine
+            // yetiyor; bütün dizeyi tek bir `case`'e vermek ilk eşleşen desende
+            // durup GERİ KALAN SATIRLARI HİÇ SINAMAMAK olurdu — ve test yeşil
+            // kalırdı. Öykünmenin exec yolu da satır satır işliyor.
+            foreach (var line in collector.Commands.SelectMany(Lines))
             {
-                var (kind, _) = Bash($"cli_komut_turu \"$KOMUT\"", environment: ("KOMUT", command));
+                var (kind, _) = Bash("cli_komut_turu \"$KOMUT\"", environment: ("KOMUT", line));
 
                 Assert.False(
                     kind.Trim() is "bilinmeyen" or "",
-                    $"{collector.Vendor}: '{command}' komutunu N3 öykünmesi tanımıyor " +
+                    $"{collector.Vendor}: '{line}' satırını N3 öykünmesi tanımıyor " +
                     $"(sonuç: '{kind.Trim()}'). deploy/ssh-sim/vendor-cli.sh · cli_komut_turu");
             }
+        }
+    }
+
+    /// <summary>
+    /// <b>Toplayıcının her komutu KENDİ KENDİNE YETİYOR</b> — S08'in düzeltmesi,
+    /// Docker'sız (S08).
+    ///
+    /// <para>
+    /// Sözleşme <see cref="IConfigCollector.Commands"/>'da yazılı: her eleman
+    /// ayrı bir oturumda koşuyor, yani bir elemanda yazılan sayfalama ayarı bir
+    /// sonrakine <b>taşınmıyor</b>. İhlali sessiz: config yarım geliyor,
+    /// <c>Ok=true</c>, <c>Error</c> boş.
+    /// </para>
+    ///
+    /// <para>
+    /// Bekçi sözleşmeyi <b>metinden okumuyor</b>, öykünmeyi koşturuyor: her
+    /// komut, sayfalama AÇIK bir oturumda tek başına işleniyor ve config
+    /// okuyan bir komutun çıktısı <b>kesilmemiş</b> olmak zorunda. Yani
+    /// toplayıcı yazarı sayfalamayı kapatmayı unutursa ya da ayrı bir elemana
+    /// koyarsa, bu test <b>konteyner açmadan</b> kırmızı yanıyor.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Toplayicinin_her_komutu_kendi_kendine_yetiyor()
+    {
+        Assert.NotEmpty(Collectors);
+
+        var config = TempConfig(40);
+
+        try
+        {
+            foreach (var collector in Collectors)
+            {
+                // Öykünmenin vendor adı profilden geliyor (`fortinet`), ürünün
+                // toplayıcı kimliği ise parser kimliği (`fortinet.fortigate`).
+                var vendor = collector.Vendor.Split('.')[0];
+
+                foreach (var command in collector.Commands)
+                {
+                    var lines = Lines(command);
+
+                    // Config okumayan bir komut (varsa) bu kuralın dışında:
+                    // sayfalama yalnızca çıktı basan komutu ilgilendiriyor.
+                    if (!lines.Any(l => Kind(l) == "config"))
+                    {
+                        continue;
+                    }
+
+                    var (output, exit) = Session(vendor, config, lines);
+
+                    Assert.Equal(0, exit);
+
+                    Assert.Equal(40, Lines(output).Count(l => l.StartsWith("satir ", StringComparison.Ordinal)));
+
+                    Assert.DoesNotContain(
+                        "--More--",
+                        output,
+                        StringComparison.Ordinal);
+
+                    // ÜSTTEKİ İDDİA SAYFALAMAYAN BİR VENDOR'DA BOŞ GEÇER.
+                    //
+                    // Öykünme yalnızca sayfalamayı kapatan komutunu
+                    // modellediğimiz vendor'larda sayfalıyor (RouterOS'ta
+                    // ölçmedik, o yüzden susuyor). Susan bir vendor'da
+                    // "kesilmemiş çıktı" her zaman doğru — yani yukarıdaki
+                    // satırlar orada hiçbir şey ifade etmiyor.
+                    //
+                    // Bu yüzden asıl sözleşme ayrıca ve DOĞRUDAN iddia
+                    // ediliyor: sayfalayan bir vendor'ın config okuyan komutu,
+                    // sayfalamayı AYNI komutta kapatmak zorunda.
+                    if (PagingVendors.Contains(vendor, StringComparer.Ordinal))
+                    {
+                        Assert.True(
+                            lines.Any(l => Kind(l) == "sayfalama-kapat"),
+                            $"{collector.Vendor}: config okuyan komut sayfalamayı AYNI komutta kapatmıyor. " +
+                            "Her komut kendi oturumunda koşuyor; ayrı bir elemanda kapatmak hiçbir işe " +
+                            "yaramaz ve config YARIM gelir (IConfigCollector.Commands · S08).");
+                    }
+                }
+            }
+        }
+        finally
+        {
+            File.Delete(config);
+        }
+    }
+
+    /// <summary>
+    /// <b>Ve öykünme hâlâ sayfalıyor.</b>
+    ///
+    /// <para>
+    /// Yukarıdaki bekçinin tabanı ve onsuz anlamsız: sayfalamayı hiç
+    /// uygulamayan bir öykünmede <i>"kesilmemiş çıktı"</i> iddiası her zaman
+    /// geçerdi ve S08'in düzeltmesi geri alınsa bile kimse görmezdi. Burada
+    /// <b>sayfalama kapatılmadan</b> aynı config okunuyor ve çıktının
+    /// kesildiği ölçülüyor.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Sayfalama_kapatilmazsa_ayni_komut_yarim_cikti_veriyor()
+    {
+        var config = TempConfig(40);
+
+        try
+        {
+            // Toplayıcının komutundan sayfalama kapatma satırları ÇIKARILIYOR;
+            // geriye yalnızca config okuyan satır kalıyor.
+            var only = Lines(new FortiGateCollector().Commands[0])
+                .Where(l => Kind(l) == "config")
+                .ToArray();
+
+            Assert.NotEmpty(only);
+
+            var (output, exit) = Session("fortinet", config, only);
+
+            // Çıkış kodu SIFIR: sessizliğin kaynağı burası.
+            Assert.Equal(0, exit);
+            Assert.Contains("--More--", output, StringComparison.Ordinal);
+
+            Assert.Equal(10, Lines(output).Count(l => l.StartsWith("satir ", StringComparison.Ordinal)));
+        }
+        finally
+        {
+            File.Delete(config);
         }
     }
 
@@ -330,6 +453,56 @@ public sealed class SshSimulatorCliTests
     }
 
     // -------------------------------------------------------------- yardımcı
+
+    /// <summary>
+    /// Toplayıcılar <b>yansımayla</b> bulunuyor: yeni bir vendor eklendiğinde
+    /// bu testlerin listesi elle güncellenmek zorunda olsaydı, elle tutulan
+    /// liste bekçiyi körleştirirdi — bu depoda adı konmuş bir hata sınıfı.
+    /// </summary>
+    private static readonly IConfigCollector[] Collectors = typeof(IConfigCollector).Assembly
+        .GetTypes()
+        .Where(t => t is { IsAbstract: false, IsClass: true } && t.IsAssignableTo(typeof(IConfigCollector)))
+        .Select(t => (IConfigCollector)Activator.CreateInstance(t)!)
+        .ToArray();
+
+    /// <summary>
+    /// Öykünmenin <b>sayfaladığı</b> vendor'lar — betikten okunuyor, burada
+    /// ikinci kez yazılmıyor.
+    /// </summary>
+    private static readonly string[] PagingVendors =
+        Bash("printf '%s' \"$CLI_SAYFALAYAN_VENDORLAR\"").Output
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private static string Kind(string command)
+    {
+        var (kind, _) = Bash("cli_komut_turu \"$KOMUT\"", environment: ("KOMUT", command));
+
+        return kind.Trim();
+    }
+
+    /// <summary>
+    /// Verilen satırları <b>tek bir oturumda</b>, sayfalama AÇIK başlayarak
+    /// işler — dağıtıcının exec kanalında yaptığının aynısı.
+    /// </summary>
+    private static (string Output, int ExitCode) Session(
+        string vendor,
+        string configPath,
+        IReadOnlyList<string> lines)
+    {
+        var body = string.Join(
+            "\n",
+            lines.Select(l => $"cli_komut_isle \"$VENDOR\" \"$CONFIG\" \"{l.Replace("\"", "\\\"", StringComparison.Ordinal)}\""));
+
+        return Bash(
+            $"cli_oturum_baslat \"$VENDOR\" acik\n{body}\nexit $CLI_RED",
+            stdin: string.Empty,
+            environment: [
+                ("VENDOR", vendor),
+                ("CONFIG", configPath),
+                ("SIM_PAGE_LINES", "10"),
+                ("SIM_MORE_TIMEOUT", "1"),
+            ]);
+    }
 
     private static string TempConfig(int lines)
     {

@@ -145,6 +145,136 @@ cli_komut_turu() {
 #   Alternatif modelleme (`--More--`de sonsuza kadar bloke olmak) da gerçek,
 #   ama zaman aşımına düşen bir çekim GÖRÜLÜR bir arıza üretiyor. Buradaki
 #   model bilerek sessiz olanı: ölçülmek istenen sınıf o.
+# ---------------------------------------------------------------- OTURUM
+#
+# Durum makinesi TEK YERDE (S08).
+#
+# S06'da iki döngü vardı: exec kanalı komutu tek bir `case` ile sınıflandırıyor,
+# etkileşimli kabuk kendi döngüsünde durum tutuyordu. İkisi aynı soruları
+# cevaplıyordu ve ayrıştıkları gün ayrışma sessiz olurdu — exec kanalı
+# sayfalamayı kapatmayı tanır, kabuk tanımaz, ve hangisinin doğru olduğunu
+# söyleyen hiçbir test yok.
+#
+# S08'in düzeltmesi zaten oturum durumunu exec kanalına da sokmayı gerektiriyor
+# (çok satırlı tek komut), yani iki döngüyü ayrı tutmanın son gerekçesi de
+# kalktı.
+
+CLI_MOD="enable"
+CLI_BAGLAM=""
+CLI_SAYFALAMA="acik"
+
+# Bu oturumda reddedilen komut oldu mu — exec kanalının çıkış kodu buradan.
+CLI_RED=0
+
+# Kullanıcı oturumu bitirdi mi (etkileşimli).
+CLI_CIKIS=0
+
+# Sayfalaması MODELLENMİŞ vendor'lar.
+#
+# Ölçüt "bu vendor sayfalar mı" DEĞİL — onu bilmiyoruz ve bilmediğimiz şeyi
+# taklit etmek FS §11'in yasakladığı şey. Ölçüt: **sayfalamayı kapatan komutu
+# modelledik mi**. Modellemediğimiz bir vendor'da sayfalamayı açmak, öykünmeyi
+# tanım gereği geçilemez yapardı — toplayıcının kapatmak için kullanabileceği
+# hiçbir komut olmazdı ve testin kırmızısı ürün hakkında hiçbir şey söylemezdi.
+#
+# RouterOS BURADA DEĞİL ve bu bir bilgi eksikliğinin kaydı: `/export terse`
+# çıktısının sayfalanıp sayfalanmadığını ölçmedik. Gerçek bir cihazdan alınacak
+# tek bir çıktı bunu kapatır; o güne kadar öykünme bu konuda SUSUYOR — yanlış
+# bir taklit, sessizliğin yerine geçmiyor.
+CLI_SAYFALAYAN_VENDORLAR="fortinet cisco"
+
+cli_vendor_sayfaliyor() {
+    case " ${CLI_SAYFALAYAN_VENDORLAR} " in
+        *" ${1} "*) return 0 ;;
+    esac
+
+    return 1
+}
+
+cli_oturum_baslat() {
+    # Cisco ailesinde `>` ile `#` arasında gerçek bir fark var (enable);
+    # FortiGate ve RouterOS'ta yok ve uydurmak yanlış olurdu.
+    if [ "${1}" = "cisco" ]; then
+        CLI_MOD="kullanici"
+    else
+        CLI_MOD="enable"
+    fi
+
+    CLI_BAGLAM=""
+    CLI_RED=0
+    CLI_CIKIS=0
+
+    if cli_vendor_sayfaliyor "${1}"; then
+        CLI_SAYFALAMA="${2}"
+    else
+        CLI_SAYFALAMA="kapali"
+    fi
+}
+
+# Tek bir komutu oturum durumuyla birlikte işler.
+#
+# ÇAĞIRAN İKİ TANE: exec kanalı (çok satırlı komut dizesini satır satır) ve
+# etkileşimli kabuk (kullanıcının yazdığı satırları). İkisi de AYNI durumu
+# görüyor, yani `terminal pager 0` her iki yolda da aynı şeyi yapıyor.
+cli_komut_isle() {
+    _vendor="${1}"
+    _config="${2}"
+    _komut="$(printf '%s' "${3}" | tr -d '\r')"
+
+    case "$(cli_komut_turu "${_komut}")" in
+        bos)
+            ;;
+
+        cikis)
+            CLI_CIKIS=1
+            ;;
+
+        enable)
+            CLI_MOD="enable"
+            ;;
+
+        # `config system console` bir BAĞLAMA giriyor. Bağlam olmadan
+        # `set output standard` tek başına anlamsız bir satır olurdu ve öykünme
+        # onu tanıyıp sayfalamayı kapatırdı — yani toplayıcının gönderdiğinden
+        # DAHA GEVŞEK davranırdı. Gevşek bir öykünme, sıkı bir cihazda
+        # kırılacak bir toplayıcıyı yeşil gösterir.
+        sayfalama-baglam)
+            CLI_BAGLAM="konsol"
+            ;;
+
+        sayfalama-kapat)
+            if [ "${_vendor}" = "fortinet" ] && [ "${CLI_BAGLAM}" != "konsol" ]; then
+                cli_hata "${_vendor}" "${_komut}"
+                CLI_RED=1
+            else
+                CLI_SAYFALAMA="kapali"
+            fi
+            ;;
+
+        baglam-bitir)
+            CLI_BAGLAM=""
+            ;;
+
+        config)
+            if [ ! -f "${_config}" ]; then
+                # Var olmayan senaryo SESSİZCE baseline'a düşmüyor — N1'in
+                # aynı kararı.
+                echo "config bulunamadı: ${_config}" >&2
+                CLI_RED=1
+            else
+                cli_bas "${_config}" "${CLI_SAYFALAMA}"
+            fi
+            ;;
+
+        *)
+            # Vendor'ın KENDİ hata metni. Genel bir ret, "komut yanlış" ile
+            # "cihaz cevap vermedi"yi tek değere indirirdi (S06 kabul kriteri).
+            cli_hata "${_vendor}" "${_komut}"
+            CLI_RED=1
+            ;;
+    esac
+}
+
 cli_bas() {
     _dosya="${1}"
     _sayfalama="${2}"

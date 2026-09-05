@@ -58,6 +58,30 @@
     <ProjectReference Include="..\..\sim\Bizigo.Simulators\Bizigo.Simulators.csproj" />
 
     <!--
+      S08: webhook alıcısının imza ve eşleme yolu burada yaşıyor ve
+      `WebhookGeneratorDeliveryTests` üretecin gövdesini o yoldan geçirip
+      GERÇEK Postgres'e yazıyor. İdempotansın sınandığı yer bir veritabanı
+      benzersizlik kısıtı; ürünün eşleme kuralını teste kopyalamak, anahtar
+      kuralının ikinci bir kopyası demekti (§9).
+
+      BU REFERANS S07'DE EKLENMEDİ ve sebebi ölçülmemiş bir varsayımdı:
+      `src/` altındaki tek dışlanan proje buydu, dışlama bilinçli GÖRÜNÜYORDU,
+      ama gerekçesi hiçbir yerde yazılı değildi. Sanılan bedel `Program`
+      tipinin `Bizigo.Api` ile `Bizigo.Cli` arasında çakışıp `CS0433` üretmesi.
+
+      S08'de ölçüldü ve ÇAKIŞMA YOK: referans eklendi, bir sonda dosyası
+      `typeof(Program)` yazdı, derleme 0 hata verdi. Ölçüm iki adımlıydı çünkü
+      ilk hâli sessizce atlanmıştı — sondaya önce KASITLI bir derleme hatası
+      konup dosyanın gerçekten derlendiği kanıtlandı (8 hata), sonra çakışma
+      sınandı (0 hata). Yeşil bir sonuç, ölçümün yapılmadığı anlamına da
+      gelebiliyordu (§6).
+
+      Yani bu satırın bedeli yok. Bir gün `WebApplicationFactory<Program>`
+      yazılırsa çakışma gerçek olur; o gün `Program`'a takma ad vermek gerekir.
+    -->
+    <ProjectReference Include="..\..\src\Bizigo.Api\Bizigo.Api.csproj" />
+
+    <!--
       T39: altın örnek yükleyicisi CLI'da duruyor ve `GoldenSeedClickHouseTests`
       onu canlı ClickHouse'a karşı koşturuyor. Yükleyiciyi test için ikinci kez
       yazmak, ölçüm verisini üreten yolun kendisini sınamamak olurdu.

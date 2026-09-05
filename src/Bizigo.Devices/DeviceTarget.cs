@@ -89,6 +89,18 @@ public enum DeviceFailureKind
     /// metni <see cref="DeviceCommandResult.Error"/> içinde taşınıyor.
     /// </summary>
     CommandRejected = 4,
+
+    /// <summary>
+    /// Cihaza <b>hiç bağlanılmadı</b>: bu vendor için toplayıcı yok.
+    ///
+    /// <para>
+    /// Diğer dördünden farklı bir aile — arıza cihazda değil <b>bizim
+    /// yapılandırmamızda</b>. Ayrı bir değer olmasının sebebi operatörün
+    /// yapacağı işin farklı olması: ağ ekibini aramak yerine desteklenen vendor
+    /// listesine bakmak gerekiyor.
+    /// </para>
+    /// </summary>
+    Unsupported = 5,
 }
 
 /// <param name="Output">Komutların birleştirilmiş çıktısı.</param>

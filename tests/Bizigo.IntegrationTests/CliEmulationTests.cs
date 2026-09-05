@@ -9,7 +9,7 @@ using Renci.SshNet;
 namespace Bizigo.IntegrationTests;
 
 /// <summary>
-/// <b>N3 — CLI öykünmesi</b> (S06). Toplayıcının <b>doğru</b> koştuğunu sınayan
+/// <b>N3 — CLI öykünmesi</b> (S06 · S08). Toplayıcının <b>doğru</b> koştuğunu sınayan
 /// paket.
 ///
 /// <para>
@@ -136,27 +136,33 @@ public sealed class CliEmulationTests : IAsyncLifetime
     // ------------------------------------------------------- BULGU: sayfalama
 
     /// <summary>
-    /// <b>Koşturulduğunda kanıtladığı şey — S06'nın taşıyıcı bulgusu:</b>
-    /// sayfalayan bir cihazda toplayıcı <b>yarım config'i başarılı bir çekim
-    /// olarak alıyor</b>.
+    /// <b>Koşturulduğunda kanıtladığı şey — S06'nın bulgusunun S08'de
+    /// kapandığı yer:</b> sayfalayan bir cihazda toplayıcı artık <b>tam</b>
+    /// config alıyor.
     ///
     /// <para>
-    /// <c>Ok</c> doğru, <c>Error</c> boş, <c>Failure</c> <c>None</c> — yani
-    /// üründe hiçbir şey yanlış gitmiş görünmüyor. Oysa çıktı baseline'ın
-    /// tamamı değil ve içinde <c>--More--</c> imleci duruyor: normalize edici
-    /// onu bir config satırı sanacak, fark motoru da <b>silinmiş yüzlerce
-    /// satır</b> raporlayacak.
+    /// S06'da bu test bulgunun kaydıydı ve ters yönde iddia ediyordu: çıktı
+    /// yarım geliyordu, <c>Ok=true</c>, <c>Error</c> boş, <c>Failure=None</c> —
+    /// yani üründe hiçbir şey yanlış gitmiş görünmüyordu, oysa fark motoru
+    /// kaybı <b>silinmiş yüzlerce satır</b> diye okuyacaktı.
+    /// </para>
+    ///
+    /// <para>
+    /// S08'in düzeltmesi toplayıcının komutunu <b>kendi kendine yeten tek bir
+    /// oturuma</b> topladı. Bu test artık o düzeltmenin geri alınmasını
+    /// yakalayan bekçi: komutlar yine ayrı elemanlara bölünürse çıktı yeniden
+    /// yarım gelir ve burası kırmızı yanar.
     /// </para>
     ///
     /// <para>
     /// <b>Ölçüt HTTP durum kodu değil</b> ve olamaz — SSH'ın öyle bir şeyi yok
-    /// (S03'ün dersi). Ölçüt satır sayısı: alınan config, cihazdaki config'ten
-    /// <b>kısa</b>.
+    /// (S03'ün dersi). Ölçüt satır sayısı: alınan config, cihazdakinin
+    /// <b>tamamı</b>.
     /// </para>
     /// </summary>
     [Fact]
     [Trait("Category", "Integration")]
-    public async Task Sayfalama_acikken_toplayici_yarim_config_i_hatasiz_aliyor()
+    public async Task Sayfalama_acikken_bile_toplayici_tam_config_aliyor()
     {
         var server = await StartAsync(paging: "daima");
 
@@ -165,58 +171,62 @@ public sealed class CliEmulationTests : IAsyncLifetime
             new FortiGateCollector().Commands,
             TestContext.Current.CancellationToken);
 
-        // ÜRÜN TARAFINDA HİÇBİR ARIZA GÖRÜNMÜYOR. Bulgunun tamamı bu satırda.
         Assert.True(result.Ok, result.Error);
         Assert.Equal(DeviceFailureKind.None, result.Failure);
         Assert.Empty(result.Error);
 
-        // Ama çıktı yarım: sayfa boyutu 10, baseline 33 satır.
-        Assert.Contains("--More--", result.Output, StringComparison.Ordinal);
+        // İmleç çıktıya HİÇ girmiyor: sayfalama aynı oturumda kapatıldı.
+        Assert.DoesNotContain("--More--", result.Output, StringComparison.Ordinal);
 
-        Assert.True(
-            ConfigLines(result.Output) < 33,
-            $"Sayfalama açıkken tam config geldi ({ConfigLines(result.Output)} satır) — " +
-            "öykünme sayfalamıyor olabilir, bulgu geçersizdir.");
+        Assert.Equal(33, ConfigLines(result.Output));
     }
 
     /// <summary>
-    /// <b>Koşturulduğunda kanıtladığı şey — bulgunun MEKANİZMASI:</b> toplayıcının
-    /// sayfalama kapatma komutu <b>ikinci exec kanalına taşınmıyor</b>.
+    /// <b>Koşturulduğunda kanıtladığı şey — düzeltmenin DOĞRU KATMANDA
+    /// olduğu:</b> sayfalama kapatma aynı oturumda taşınıyor, ayrı bir
+    /// oturumda taşınmıyor.
     ///
     /// <para>
     /// <see cref="SshDeviceTransport"/> her komut için <c>CreateCommand</c>
-    /// çağırıyor, yani <b>her komut ayrı bir exec kanalı</b> — gerçek bir cihazda
-    /// da ayrı bir oturum. <c>terminal pager 0</c> / <c>config system
-    /// console…</c> oturuma ait bir ayar; kanal kapanınca ölüyor.
+    /// çağırıyor, yani <b>her eleman ayrı bir exec kanalı</b> — gerçek bir
+    /// cihazda da ayrı bir oturum. <c>terminal pager 0</c> oturuma ait bir
+    /// ayar; kanal kapanınca ölüyor. S08 bunu taşımaya çalışmadı, <b>gereksiz
+    /// kıldı</b>: toplayıcının komutu artık kendi kendine yetiyor.
     /// </para>
     ///
     /// <para>
-    /// Bu test onu <b>karşılaştırarak</b> gösteriyor: hazırlık komutunu
-    /// gönderen çekim ile hiç göndermeyen çekim <b>aynı</b> uzunlukta çıktı
-    /// veriyor. Hazırlık komutu hiçbir şey değiştirmiyor. Ayrım önemli — bu
-    /// olmadan bulgu <i>"öykünme bozuk"</i> diye de okunabilirdi.
+    /// Test iki kolu karşılaştırıyor ve <b>ikisi de gerekli</b>: toplayıcının
+    /// kendi komutu tam çıktı veriyor, aynı config'i sayfalama kapatmadan
+    /// isteyen çıplak bir komut ise <b>yarım</b>. İkinci kol olmadan birincisi,
+    /// öykünmenin sayfalamayı hiç uygulamadığı hâlden ayırt edilemezdi — S06'da
+    /// bu ayrımı tutan test buydu ve S08'de yönü değişti, kendisi değil.
     /// </para>
     /// </summary>
     [Fact]
     [Trait("Category", "Integration")]
-    public async Task Sayfalama_kapatma_komutu_ikinci_exec_kanalina_tasinmiyor()
+    public async Task Sayfalama_kapatma_ayni_oturumda_tasiniyor_ayrida_tasinmiyor()
     {
         var server = await StartAsync(paging: "daima");
-        var commands = new FortiGateCollector().Commands;
 
-        Assert.True(commands.Count >= 2, "Toplayıcının hazırlık komutu kayboldu.");
+        var kendine_yeten = await Transport().RunAsync(
+            Target(server),
+            new FortiGateCollector().Commands,
+            TestContext.Current.CancellationToken);
 
-        var hazirlikli = await Transport().RunAsync(
-            Target(server), commands, TestContext.Current.CancellationToken);
+        // Sayfalamayı kapatmayan çıplak config komutu — toplayıcının S08
+        // öncesindeki ikinci elemanının eşdeğeri.
+        var ciplak = await Transport().RunAsync(
+            Target(server), ["show"], TestContext.Current.CancellationToken);
 
-        // Hazırlık komutu HİÇ gönderilmeden, yalnızca config komutu.
-        var hazirliksiz = await Transport().RunAsync(
-            Target(server), [commands[^1]], TestContext.Current.CancellationToken);
+        Assert.True(kendine_yeten.Ok, kendine_yeten.Error);
+        Assert.True(ciplak.Ok, ciplak.Error);
 
-        Assert.True(hazirlikli.Ok, hazirlikli.Error);
-        Assert.True(hazirliksiz.Ok, hazirliksiz.Error);
+        Assert.Equal(33, ConfigLines(kendine_yeten.Output));
 
-        Assert.Equal(ConfigLines(hazirliksiz.Output), ConfigLines(hazirlikli.Output));
+        Assert.True(
+            ConfigLines(ciplak.Output) < 33,
+            $"Çıplak `show` da tam config verdi ({ConfigLines(ciplak.Output)} satır) — " +
+            "öykünme sayfalamıyor olabilir ve diğer kolun yeşilliği hiçbir şey ifade etmez.");
     }
 
     /// <summary>

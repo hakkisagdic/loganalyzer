@@ -384,6 +384,62 @@ public sealed class DeviceConfigTests
 
         Assert.False(capture.Ok);
         Assert.Contains("toplayıcı yok", capture.Error, StringComparison.Ordinal);
+
+        // Cihaza HİÇ bağlanılmadı: arıza cihazda değil yapılandırmada, ve
+        // operatörün yapacağı iş de farklı (§ ayrı bir aile).
+        Assert.Equal(DeviceFailureKind.Unsupported, capture.Failure);
+    }
+
+    /// <summary>
+    /// <b>Başarısızlığın türü servis kapısında kaybolmuyor</b> (S08).
+    ///
+    /// <para>
+    /// S06 taşıma katmanında "komut reddedildi" ile "cihaza ulaşılamadı"yı iki
+    /// ayrı değere ayırmıştı, ama <see cref="DeviceConfigService"/> çıkışında
+    /// ikisi yeniden <b>tek bir metne</b> düşüyordu — yani ayrımı yapmak için
+    /// harcanan iş, ekrana giden yolda geri alınıyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// Ayrımın metinden okunması iki yönden kırılgan: cümle Türkçe ve bir gün
+    /// düzeltilecek, ve okuyan tarafın hangi kelimeyi arayacağı hiçbir yerde
+    /// yazılı değil.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData(DeviceFailureKind.Unreachable)]
+    [InlineData(DeviceFailureKind.Authentication)]
+    [InlineData(DeviceFailureKind.Timeout)]
+    [InlineData(DeviceFailureKind.CommandRejected)]
+    public async Task Basarisizlik_turu_servis_kapisinda_kaybolmuyor(DeviceFailureKind kind)
+    {
+        var service = new DeviceConfigService(
+            new FailingTransport("cihaz cevabı", kind),
+            [new FortiGateCollector()]);
+
+        var capture = await service.CaptureAsync(Target(), TestContext.Current.CancellationToken);
+
+        Assert.False(capture.Ok);
+        Assert.Equal(kind, capture.Failure);
+    }
+
+    /// <summary>
+    /// Başarılı bir çekimde tür <see cref="DeviceFailureKind.None"/>.
+    ///
+    /// <para>
+    /// Bu iddia olmadan "tür taşınıyor" testi, her sonuca bir tür yapıştıran
+    /// bozuk bir uygulamadan da temiz geçerdi.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Basarili_cekimde_basarisizlik_turu_yok()
+    {
+        var service = new DeviceConfigService(new CountingTransport(), [new FortiGateCollector()]);
+
+        var capture = await service.CaptureAsync(Target(), TestContext.Current.CancellationToken);
+
+        Assert.True(capture.Ok);
+        Assert.Equal(DeviceFailureKind.None, capture.Failure);
     }
 
     [Fact]

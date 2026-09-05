@@ -206,14 +206,23 @@ public sealed class SshTransportTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// Koşturulduğunda kanıtladığı şey: <b>hazırlık komutu ile config komutu
-    /// ayrı ayrı çalışıyor</b> ve toplayıcı ilkinde durmuyor.
+    /// Koşturulduğunda kanıtladığı şey: <b>hazırlık satırı akışı
+    /// durdurmuyor</b> — toplayıcı sayfalama kapatma satırında takılıp config'e
+    /// gelmemezlik etmiyor.
     ///
     /// <para>
-    /// FortiGate toplayıcısı önce sayfalamayı kapatıyor
-    /// (<c>config system console…</c>), sonra <c>show</c> diyor. Simülatör
-    /// hazırlık komutuna hata dönseydi toplayıcı config'e hiç gelmezdi — ve bu,
-    /// gerçek cihazda da aynı şekilde kırılacak bir yol.
+    /// <b>S08'de yeniden yazıldı ve sebebi kayda değer.</b> İlk hâli
+    /// <c>Commands.Count &gt;= 2</c> iddia ediyordu, yani <i>hazırlığın ayrı bir
+    /// eleman olduğunu</i> — S08 tam olarak o ayrılığı kaldırdı, çünkü her
+    /// eleman ayrı bir oturumda koşuyor ve ayrı elemandaki bir sayfalama ayarı
+    /// hiçbir işe yaramıyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// Testin <b>sorusu</b> değişmedi, iddiası değişti: hazırlık satırı hâlâ
+    /// var ve hâlâ sessizce başarılı olmak zorunda; yalnızca artık config
+    /// satırıyla <b>aynı elemanda</b>. Simülatör ona hata dönseydi çekim yine
+    /// config'e hiç gelmezdi — gerçek cihazda da aynı şekilde kırılacak bir yol.
     /// </para>
     /// </summary>
     [Fact]
@@ -222,14 +231,19 @@ public sealed class SshTransportTests : IAsyncLifetime
     {
         var commands = new FortiGateCollector().Commands;
 
-        // Toplayıcının ilk komutu hazırlık; tek başına çalıştırıldığında da
-        // başarılı olmalı.
-        Assert.True(commands.Count >= 2);
+        // Hazırlık satırı komutun İÇİNDE: kendi kendine yeten tek oturum (S08).
+        Assert.Contains(
+            commands,
+            c => c.Contains("system console", StringComparison.Ordinal)
+                && c.Contains("show", StringComparison.Ordinal));
 
         var prepared = await Transport().RunAsync(
-            Target(), [commands[0]], TestContext.Current.CancellationToken);
+            Target(), commands, TestContext.Current.CancellationToken);
 
         Assert.True(prepared.Ok, prepared.Error);
+
+        // Hazırlık satırı çıktıya sızmıyor: cihaz ona sessizce cevap veriyor.
+        Assert.DoesNotContain("system console", prepared.Output, StringComparison.Ordinal);
     }
 
     /// <summary>

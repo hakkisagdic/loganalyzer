@@ -92,7 +92,13 @@ gönderildiğinde sayfalama gerçekten kapanıyor.
 okunabilirdi ve okuyan kişi simülatörün peşine düşerdi — S04'ün *yanlış yüzey*
 dersinin aynısı.
 
-### Ne yapılmadı, bilerek
+### Ne yapılmadı, bilerek — **ve S08'de yapıldı**
+
+> Bu bölüm S06'nın kapandığı andaki durumu anlatıyor. Kusur
+> [S08](../cekim-modeli/index.md)'de düzeltildi: toplayıcının komutu artık
+> **kendi kendine yeten tek bir oturum** ve yukarıdaki iki teşhis testi yön
+> değiştirip düzeltmenin bekçisi oldu. Aşağısı kararın o günkü gerekçesi olarak
+> duruyor.
 
 **Ürün düzeltilmedi.** Düzeltmesi iki yoldan biri: (a) bütün komutları tek bir
 exec kanalında birleştirmek, (b) kabuk kanalına geçmek. İkisi de

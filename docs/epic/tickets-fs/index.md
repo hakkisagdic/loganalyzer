@@ -64,7 +64,8 @@ flowchart TB
 | S04 | [Senaryo motoru](senaryo-motoru/index.md) | Adlandırılmış geçişler, SSH + syslog tarafında | S02, S03 | ⬜ |
 | S05 | [Filo ve kapsam yayılımı](filo-kapsam/index.md) | Beş cihaz, iki `owner_group`, otomatik envanter | S04 | ⬜ FS-a'nın kapanış ticket'ı |
 | S06 | [N3: CLI öykünmesi](cli-oykunmesi/index.md) | Etkileşimli kabuk, prompt, sayfalama | S03 | ✅ **bulgu: toplayıcı sayfalama açıkken yarım config'i hatasız alıyor** |
-| S07 | [İmzalı webhook üreteci](webhook-ureteci/index.md) | GitHub/GitLab/Jenkins/generic | S01 | ✅ dört biçim; idempotans üç parçada — biri koordinatörün kararını bekliyor |
+| S07 | [İmzalı webhook üreteci](webhook-ureteci/index.md) | GitHub/GitLab/Jenkins/generic | S01 | ✅ dört biçim; idempotans S08'de tek testte buluştu |
+| S08 | [Çekim modeli ve teşhis](cekim-modeli/index.md) | S06'nın bulgusunun düzeltmesi | S06 | ✅ komut kendi kendine yetiyor; `ConfigCapture` türü taşıyor |
 
 Sahipler ticket verilirken atanıyor — planda değil.
 

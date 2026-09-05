@@ -78,41 +78,38 @@ else
     sayfalama="kapali"
 fi
 
-tur="$(cli_komut_turu "${komut}")"
-
-case "${tur}" in
-    # HAZIRLIK KOMUTLARI: gerçek cihaz bunlara sessizce ve BAŞARIYLA cevap
-    # veriyor; simülatör de öyle yapmalı. Hata dönseydi toplayıcı ilk komutta
-    # durur ve config'e hiç gelmezdi.
-    #
-    # Toplayıcı FortiGate'te üç satırı TEK komut dizesi olarak gönderiyor;
-    # `sayfalama-baglam` o dizeyi karşılıyor. Aynı çağrıda `config` de
-    # istenmediği için burada kapatılan sayfalamanın taşıyacağı bir yer yok —
-    # bulgunun mekanizması tam olarak bu.
-    sayfalama-baglam|sayfalama-kapat|baglam-bitir|enable)
-        exit 0
-        ;;
-
-    config)
-        if [ ! -f "${config}" ]; then
-            # Var olmayan senaryo SESSİZCE baseline'a düşmüyor — N1'in aynı
-            # kararı (`SimulatedDeviceTransport`). Düşseydi adı yanlış yazılmış
-            # bir senaryo testi yeşil bırakır ve "fark yok" sonucu doğru
-            # sanılırdı.
-            echo "config bulunamadı: ${config}" >&2
-            exit 66
-        fi
-
-        cli_bas "${config}" "${sayfalama}"
-        exit 0
-        ;;
-esac
-
-# TANINMAYAN KOMUT: vendor'ın KENDİ hata metni.
+# EXEC KANALI DA BİR OTURUM (S08).
 #
-# S03 burada açık bir ret basıyordu ve gerekçesi "vendor metinlerini taklit
-# etmek S06'nın işi"ydi. S06 geldi. Metin stderr'e gidiyor ve çıkış kodu
-# sıfırdan farklı: `SshDeviceTransport` ikisini de okuyor, yani "komut yanlış"
-# ile "cihaz cevap vermedi" ürün tarafında AYRI değerler (S06 kabul kriteri).
-cli_hata "${vendor}" "${komut}" >&2
-exit 127
+# S06'da buradaki komut TEK bir `case` ile sınıflandırılıyordu, yani çok
+# satırlı bir komut dizesi ilk eşleşen desene indirgeniyordu: toplayıcının
+# `config system console / set output standard / end` bloğu "sayfalama bağlamı"
+# sayılıp orada bitiyordu.
+#
+# Gerçek bir cihaz o bloğu üç satır olarak okuyor ve AYNI oturumda işliyor.
+# Öykünme artık aynısını yapıyor: satırlar tek tek işleniyor ve sayfalama
+# durumu aralarında TAŞINIYOR. S08'in ürün tarafındaki düzeltmesi
+# (kendi kendine yeten tek komut) ancak bu sayede ölçülebilir.
+cli_oturum_baslat "${vendor}" "${sayfalama}"
+
+# `printf` ile besleniyor, `<<<` ile değil: sondaki satır sonu olmayan bir
+# dizede `read` son satırı yutuyor ve o satır çoğu zaman `show` oluyor —
+# yani config sessizce hiç basılmazdı.
+while IFS= read -r satir; do
+    cli_komut_isle "${vendor}" "${config}" "${satir}"
+done <<EOF
+${komut}
+EOF
+
+# ÇIKIŞ KODU OTURUMUN TAMAMI İÇİN.
+#
+# Kanal başına tek komut varken kod o komuta aitti; artık bir oturumda birden
+# çok komut koşabiliyor ve kod "bu oturumda reddedilen bir komut oldu mu"
+# diyor. Hangi komutun reddedildiğini söyleyen şey vendor'ın KENDİ metni ve o
+# metin stderr'den `DeviceCommandResult.Error`'a taşınıyor (S06) — yani
+# atfetme kaybolmuyor, sentetik olmaktan çıkıp cihazın kendi cümlesine
+# dayanıyor.
+if [ "${CLI_RED}" -ne 0 ]; then
+    exit 127
+fi
+
+exit 0

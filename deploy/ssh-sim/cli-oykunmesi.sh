@@ -29,75 +29,27 @@ else
     sayfalama="acik"
 fi
 
-mod="kullanici"
-baglam=""
-
-# FortiGate ve RouterOS'ta `enable` yok; ilk prompt zaten ayrıcalıklı.
-if [ "${vendor}" != "cisco" ]; then
-    mod="enable"
-fi
+# DURUM MAKİNESİ ORTAK (S08) — exec kanalı da aynısını kullanıyor.
+#
+# S06'da bu döngü kendi durumunu tutuyordu ve exec kanalı ayrı bir `case` ile
+# sınıflandırıyordu. İkisi aynı soruları cevaplıyordu; ayrıştıkları gün
+# ayrışma sessiz olurdu ve hangisinin doğru olduğunu söyleyen test yoktu.
+cli_oturum_baslat "${vendor}" "${sayfalama}"
 
 printf 'N3 öykünmesi: %s (%s), profil %s\n' "${hostname}" "${vendor}" "${profil}"
 
 while :; do
-    cli_prompt "${vendor}" "${hostname}" "${mod}"
+    cli_prompt "${vendor}" "${hostname}" "${CLI_MOD}"
 
     if ! IFS= read -r satir; then
         break
     fi
 
-    komut="$(printf '%s' "${satir}" | tr -d '\r')"
-    tur="$(cli_komut_turu "${komut}")"
+    cli_komut_isle "${vendor}" "${config}" "${satir}"
 
-    case "${tur}" in
-        bos)
-            ;;
-
-        cikis)
-            break
-            ;;
-
-        enable)
-            mod="enable"
-            ;;
-
-        # `config system console` bir BAĞLAMA giriyor. Bağlam olmadan
-        # `set output standard` tek başına anlamsız bir satır olurdu ve
-        # öykünme onu tanıyıp sayfalamayı kapatırdı — yani toplayıcının
-        # gönderdiğinden DAHA GEVŞEK davranırdı. Gevşek bir öykünme, sıkı bir
-        # cihazda kırılacak bir toplayıcıyı yeşil gösterir.
-        sayfalama-baglam)
-            baglam="konsol"
-            ;;
-
-        sayfalama-kapat)
-            if [ "${vendor}" = "fortinet" ] && [ "${baglam}" != "konsol" ]; then
-                cli_hata "${vendor}" "${komut}"
-            else
-                sayfalama="kapali"
-            fi
-            ;;
-
-        baglam-bitir)
-            baglam=""
-            ;;
-
-        config)
-            if [ ! -f "${config}" ]; then
-                # Var olmayan senaryo sessizce baseline'a DÜŞMÜYOR — N1 ve
-                # dağıtıcı ile aynı karar.
-                printf 'config bulunamadı: %s\n' "${config}"
-            else
-                cli_bas "${config}" "${sayfalama}"
-            fi
-            ;;
-
-        *)
-            # Vendor'ın KENDİ hata metni. Genel bir ret, "komut yanlış" ile
-            # "cihaz cevap vermedi"yi tek değere indirirdi (S06 kabul kriteri).
-            cli_hata "${vendor}" "${komut}"
-            ;;
-    esac
+    if [ "${CLI_CIKIS}" -ne 0 ]; then
+        break
+    fi
 done
 
 exit 0

@@ -128,7 +128,12 @@ Plugin aynı yapıyı üç fazda üç kez gönderiyor ve alıcı mükerrerliği 
 `Jenkins_ayni_yapiyi_ikinci_bildirimde_tekillestiriyor` — çünkü yazılı
 olmasaydı bir sonraki kişi de aynı yanılgıya düşerdi.
 
-### Yapılmadı — ve kararı koordinatörün
+### Yapılmadı — ve kararı koordinatörün · **S08'de kapandı**
+
+> [S08](../cekim-modeli/index.md) referansın bedelini ölçtü: **`CS0433` yok**,
+> yani dışlamanın bir bedeli yokmuş. Buluşma noktası testi yazıldı
+> (`WebhookGeneratorDeliveryTests`) ve gerekçe `.csproj` yorumunda duruyor.
+> Aşağısı kararın o günkü hâli.
 
 **"İki POST → tek kayıt" gerçek Postgres'e karşı bir testte durmuyor.** Sebep
 yapısal: `Bizigo.IntegrationTests` **on altı** proje referansı taşıyor ve
