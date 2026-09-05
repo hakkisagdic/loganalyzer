@@ -53,6 +53,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from sigma_build.clickhouse import post_sql
+from sigma_build.duplicates import duplicate_values
 
 __all__ = [
     "EXPECTATIONS_PATH",
@@ -322,9 +323,7 @@ def check_corpus_shape(
             "bu listeyi geçerdi."
         )
 
-    duplicates = sorted(
-        {e.rule_id for e in expectations if sum(1 for x in expectations if x.rule_id == e.rule_id) > 1}
-    )
+    duplicates = duplicate_values(e.rule_id for e in expectations)
     if duplicates:
         problems.append(f"aynı kural için birden fazla beklenti: {duplicates}")
 

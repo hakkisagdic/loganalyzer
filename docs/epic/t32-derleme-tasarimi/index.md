@@ -924,3 +924,120 @@ seçildi; `.gitignore`'un hiçbir deseniyle kesişmiyor.
 
 1–4 ölçümü beklemiyor: sabit bir korpusla kurulur, T31 gelince **korpus değişir,
 hat değişmez.**
+
+---
+
+## 6 · Maliyet — ve bir sorunun ikiye bölünmesi
+
+Ticket'ın kapsam maddesi *"kural başına maliyet: derleme süresi kural sayısıyla
+nasıl büyüyor"* diyor. Soru tek görünüyor ama **iki** soru, ve ikisinin
+cevaplanabileceği yer farklı. Tek yere koymak, cevaplanabilir olanı
+cevaplanamayanın rehinesi yapardı.
+
+| Soru | Nerede | Neden orada |
+| --- | --- | --- |
+| Kural başına **iş** korpusla büyüyor mu | Kapı — `tests/test_cost.py` | Karşılaştırma sayılarak ölçülüyor; makinenin yükünden bağımsız |
+| O işin kaç **milisaniye** ettiği | Ölçüm — `sigma_build.cost` | Yalnızca sessiz makinede cevaplanabilir |
+
+### KARAR · Ölçekleme bir kapı, süre değil
+
+Mutlak bir süre bütçesi konulmuyor. Gerekçe bu depoda iki kez ödendi:
+`GrokPropertyTests` 2 saniyelik bütçeyle **makineyi** ölçüyordu,
+`DiscoveryWorkerTests` 200 ms'lik zaman aşımıyla ThreadPool doygunluğunu. Bir
+süre bütçesi, hattın maliyetini değil koşturan makinenin o günkü yükünü kapıya
+bağlar — ve o kapı ilk yoğun günde gevşetilir.
+
+Ama **ölçekleme** kapı olabiliyor, çünkü duvar saati gerektirmiyor: "kural
+başına kaç karşılaştırma" sorusunun cevabı yüklü makinede de sessiz makinede de
+aynı. §6'nın *"duvar saati değilse süreyi denklemden çıkar"* maddesinin buradaki
+karşılığı bu — ölçülemeyen bir şey, ölçülebilir bir şeye çevrildi.
+
+Bu ayrım turun kendisinde sınandı: ölçüm yapılacağı sırada makine thrash'teydi
+(2583–3580 swap-in/sn, tavan 1500) ve `machine-resources.sh check` **exit 1**
+verdi. Süre ölçümü durdu; ölçekleme kapısı **aynı makinede ölçülebildi**.
+
+### Bulgu · aynı karesel deyim üç dosyada
+
+```python
+{x for x in items if sum(1 for y in items if y == x) > 1}
+```
+
+İç `sum(...)` her öğe için listeyi yeniden tarıyor. Ölçüldü — saatsiz, sayarak:
+
+| Kural | Kimlik karşılaştırması | Kural başına |
+| --- | --- | --- |
+| 24 | 576 | 24 |
+| 269 | 72.361 | 269 |
+| 7.400 | ~55.000.000 | 7.400 |
+
+**24 kuralda görünmüyor.** Bugünkü korpus 24, yani hiçbir ölçüm bunu şikâyet
+etmeyecekti; çivinin belgelerde adı geçen 269'unda görünmeye başlıyor.
+
+İkisi `build_manifest` ve `check_corpus_shape` içindeydi — hem `--write` hem
+**`--check`** yolunda. Yani kural sayısı büyüdükçe **sürüklenme kapısı kendi
+kendini yavaşlatıyordu**: bir bekçinin, koruduğu şeyle birlikte pahalılaşması.
+Bu, bir kapının bir gün "yavaş" diye kaldırılmasının en olağan gerekçesi ve
+tasarımın başka hiçbir yerinde bu risk adlandırılmamıştı.
+
+Üçüncüsü (`view_columns`, kolon adları) görünüm başına birkaç düzine öğeyle
+sınırlı; bugün bedeli yok. Düzeltilmesinin sebebi maliyet değil: bırakılsaydı
+deyimin **dördüncü** kez yazılmasının gerekçesi olurdu.
+
+### KARAR · Deyim tek yere iniyor, üç yerde düzeltilmiyor
+
+`sigma_build/duplicates.py`. Üç kopyanın üçü de aynı elden çıktı ve ikinci
+kopya üçüncüsünü ucuzlattı — §9'un *"İkinci kopya yazma"* maddesinin ölçülmüş
+hâli. Üç yerde ayrı ayrı düzeltmek bugünkü kusuru kapatır, deyimi kapatmaz.
+
+Kırmızı ölçüldü (§6 yordamı: uygula → dosyada olduğunu **iddia et** → koştur →
+geri al):
+
+| Hâl | 25 kuralda | 200 kuralda | Büyüme |
+| --- | --- | --- | --- |
+| Karesel | 25,0 dokunuş | 200,0 dokunuş | **8,0×** — iki bekçi düştü |
+| Doğrusal | 1,0 | 1,0 | **1,00×** |
+
+### KARAR · Süre ölçümü **iki koşum** kaydediyor, tek sayı seçmiyor
+
+K35: aynı ölçüm ajanda 1,46×, koordinatörde 1,62× çıktı ve ikinci koşumda
+*yalnız ayrıştırma* kolu *ayrıştırma+etiketleme*'den yavaş göründü — fiziksel
+olarak imkânsız, yani makine sessiz değildi.
+
+Bundan çıkan kural "doğru sayıyı seç" değil **"iki koşumu da kaydet"**: iki
+kayıt yan yana durduğunda okuyan kişi sessizliğin ölçülüp ölçülmediğini
+görüyor. `--record` bu yüzden deftere **ekliyor**, üstüne yazmıyor — üstüne
+yazsaydı defter "son koşum" olurdu ve ayrışmanın kendisi, yani kanıt,
+kaybolurdu.
+
+Kayda yük ortalaması da giriyor; okunamazsa `None` ve rapor bunu adıyla
+söylüyor. *"Bakmadık"* ile *"sessizdi"* aynı değil — T36'nın `Empty` /
+`NeverFed` ayrımının süre eksenindeki hâli.
+
+### Payda hatasının süre eksenindeki kardeşi
+
+Kurulum maliyeti (backend + kolon türetimi + pySigma eklenti yükü) kural
+sayısından **bağımsız**, o yüzden kural başına maliyetin paydasında değil.
+
+Toplamı kural sayısına bölmek, küçük korpusta kurulumu kural başına maliyet
+sanır ve sayı korpus büyüdükçe **düşer** — okuyan bunu *"ölçekleme
+süper-doğrusal değil, tam tersi"* diye okur. Yanlış olan sayı değil **bölen**;
+kapsamda `%25` yerine `%43` bulunduğu yerdeki hatanın aynısı, başka eksende.
+
+### Sentetik kuralların alanları pipeline'dan okunuyor
+
+Elle yazılsaydı ölçüm T31'in bugünkü eşleme tablosuna çivilenirdi: eşleme
+değiştiği gün sentetik kurallar reddedilmeye başlar ve araç sessizce **istisna
+yolunu** ölçerdi. İki yol farklı maliyet, ve fark hiçbir yerde görünmezdi —
+§7'nin sınıfının ölçüm aracındaki hâli.
+
+### Aracın kendisi koşuyor — süre iddiası olmadan
+
+`cost.py` bu turda **bağlayıcı olarak koşturulmadı** (makine). Ama hiç
+koşturulmamış bir araç, bu deponun *"hazırlanmış ama bağlanmamış"* sınıfına
+girerdi — `unmapped_expression()` yazılmış, hiç çağrılmamış, ve 24 kuralın 8'i
+sessizce koşmuyordu.
+
+Ayrım şöyle çözüldü: aracın **kod yolları** sahte bir derleyiciyle sınanıyor
+(`tests/test_cost_tool.py`) — ısınma turu atılıyor mu, payda doğru mu, defter
+ekliyor mu, tek ölçümde oran uyduruluyor mu. Koşmayan tek şey duvar saati
+ölçümü, ve o bilinçli.

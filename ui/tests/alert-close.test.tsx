@@ -81,6 +81,8 @@ describe("kapatma gövdesi", () => {
       "contradicting_evidence",
       "actual_root_cause",
       "note",
+      "correct_finding_rank",
+      "rank_asked",
     ]);
   });
 });

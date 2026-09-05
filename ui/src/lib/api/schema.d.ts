@@ -1051,6 +1051,9 @@ export interface components {
             contradicting_evidence?: string;
             actual_root_cause?: string;
             note?: string;
+            /** Format: int32 */
+            correct_finding_rank?: null | number | string;
+            rank_asked?: boolean;
         };
         CloseTriggerResponse: {
             /** Format: uuid */
@@ -1251,6 +1254,24 @@ export interface components {
             accuracy: null | number | string;
             /** Format: double */
             unknown_ratio: null | number | string;
+            /** Format: int64 */
+            contradicting_sound: number | string;
+            /** Format: int64 */
+            contradicting_trivial: number | string;
+            /** Format: int64 */
+            contradicting_unknown: number | string;
+            /** Format: int64 */
+            contradicting_evaluated: number | string;
+            /** Format: double */
+            contradicting_trivial_ratio: null | number | string;
+            /** Format: int64 */
+            contradicting_unspecified: number | string;
+            /** Format: int64 */
+            rank_asked: number | string;
+            /** Format: double */
+            accuracy_at_one: null | number | string;
+            /** Format: double */
+            accuracy_at_three: null | number | string;
         };
         JsonElement: unknown;
         MaintenanceWindowListResponse: {
@@ -1723,6 +1744,9 @@ export interface components {
             verdict: string;
             contradicting_evidence?: string;
             actual_root_cause?: string;
+            /** Format: int32 */
+            correct_finding_rank?: null | number | string;
+            rank_asked?: boolean;
             note?: string;
         };
         RcaReviewResponse: {

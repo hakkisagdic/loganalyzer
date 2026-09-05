@@ -8,6 +8,7 @@ import {
   honestyLines,
   presentStatus,
   REVIEW_STATES,
+  parseFindingRank,
   reviewRequest,
   STATUS_PRESENTATION,
   type RcaReasoning,
@@ -583,9 +584,50 @@ describe("inceleme kararları", () => {
     expect(Object.keys(reviewRequest("correct", "unknown", "")).sort()).toEqual([
       "actual_root_cause",
       "contradicting_evidence",
+      "correct_finding_rank",
       "note",
+      "rank_asked",
       "verdict",
     ]);
+  });
+
+  /**
+   * <b><c>correct_finding_rank</c> gövdede her zaman var, <c>null</c> olsa
+   * bile.</b>
+   *
+   * <p>
+   * Atlanması sunucuda *"hiçbir bulgu doğru değildi"* ile *"soru sorulmadı"*yı
+   * ayırt edilemez yapardı; <c>accuracy@k</c>'nın paydası tam olarak o ayrımın
+   * üstünde duruyor. Anahtarın varlığı bu yüzden yukarıdaki listede çivili.
+   * </p>
+   */
+  it("Sira_secilmese_de_alan_govdede_duruyor", () => {
+    const body = reviewRequest("correct", "unknown", "", "", null);
+
+    expect("correct_finding_rank" in body).toBe(true);
+    expect(body.correct_finding_rank).toBeNull();
+  });
+
+  /**
+   * Ekrandaki seçim gövdedeki sayıya çevriliyor; seçilmemiş ve "hiçbiri"
+   * <b>ikisi de</b> <c>null</c>.
+   */
+  it("Sira_secimi_sayiya_cevriliyor", () => {
+    expect(parseFindingRank("1")).toBe(1);
+    expect(parseFindingRank("3")).toBe(3);
+    expect(parseFindingRank("none")).toBeNull();
+    expect(parseFindingRank("")).toBeNull();
+    // 0 ve negatif ekrandan gelemez ama gelirse sunucu reddediyor; istemci de
+    // uydurmuyor.
+    expect(parseFindingRank("0")).toBeNull();
+    expect(parseFindingRank("-2")).toBeNull();
+  });
+
+  /** Bulgu yoksa sıra sorusu <b>hiç çizilmiyor</b> — sorulamayacak bir soru. */
+  it("Bulgu_yoksa_sira_sorulmuyor", () => {
+    const html = renderToStaticMarkup(<ReportView report={{ ...report(), findings: [] }} />);
+
+    expect(html).not.toContain('data-testid="correct-finding-rank"');
   });
 });
 

@@ -51,17 +51,40 @@ public enum ReviewVerdict
 /// </summary>
 public enum ContradictingEvidenceVerdict
 {
-    /// <summary>Bu pakette çelişen kanıt bölümü yoktu.</summary>
-    NotPresent = 0,
+    /// <summary>
+    /// <b>Kimse söylemedi</b> — alan doldurulmadı.
+    ///
+    /// <para>
+    /// Sıfır olması bilinçli ve tek amacı bu: <c>default</c> bir değerin
+    /// <b>anlam taşımaması</b>. Önceki hâlde varsayılan <see cref="NotPresent"/>
+    /// idi, yani alanı doldurmayan bir çağıran sessizce <i>"bölüm yoktu"</i>
+    /// diyordu — ve o cümle tiyatro oranının paydasını etkiliyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Bu deponun en pahalı <b>önlenmiş</b> hatası aynı sınıftandı: EF'in
+    /// ürettiği <c>enabled → status</c> göçü her pasif kuralı sessizce
+    /// açıyordu, çünkü varsayılan bir değer bir anlam taşıyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// Paydaya <b>girmiyor</b> ve <see cref="NotPresent"/>'tan ayrı sayılıyor:
+    /// <i>"bölüm yoktu"</i> ile <i>"kimse söylemedi"</i> farklı şeyler.
+    /// </para>
+    /// </summary>
+    Unspecified = 0,
+
+    /// <summary>Bu pakette çelişen kanıt bölümü yoktu — <b>açık</b> bir karar.</summary>
+    NotPresent = 1,
 
     /// <summary>Vardı ve yerindeydi.</summary>
-    Sound = 1,
+    Sound = 2,
 
     /// <summary>Vardı ama önemsizdi — alanı doldurmak için üretilmiş.</summary>
-    Trivial = 2,
+    Trivial = 3,
 
     /// <summary>Değerlendirilemedi.</summary>
-    Unknown = 3,
+    Unknown = 4,
 }
 
 /// <summary>
@@ -160,6 +183,71 @@ public sealed class GoldenReviewEntity
     /// </summary>
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
-    /// <summary>Bugün yazılan inceleme sürümü.</summary>
-    public const int CurrentSchemaVersion = 1;
+    /// <summary>
+    /// Bugün yazılan inceleme sürümü.
+    ///
+    /// <para>
+    /// <b>2 (T47):</b> <see cref="CorrectFindingRank"/> eklendi ve
+    /// <see cref="ContradictingEvidenceVerdict.Unspecified"/> açıldı. Sürüm
+    /// artışı süs değil <b>paydanın ayırıcısı</b>: <c>CorrectFindingRank</c>
+    /// <see langword="null"/> iken *"hiçbir bulgu doğru değildi"* demek, ama
+    /// sürüm 1 satırlarında aynı <see langword="null"/> *"soru hiç
+    /// sorulmadı"* demek. Kolonun varlığı ile doldurulmuş olması ayrı şeyler
+    /// ve bu alan tam olarak bu gün için taşınıyordu.
+    /// </para>
+    /// </summary>
+    public const int CurrentSchemaVersion = 2;
+
+    /// <summary>
+    /// Rank sorusunun sorulmaya <b>başladığı</b> sürüm. <c>accuracy@k</c>'nın
+    /// paydası bu eşiği kullanıyor; sabitin adı olması, eşiğin ölçüm kodunda
+    /// çıplak bir <c>2</c> olarak durmasını engelliyor.
+    /// </summary>
+    public const int RankSchemaVersion = 2;
+
+    /// <summary>
+    /// İnceleyene göre <b>kaçıncı</b> bulgu doğruydu — 1 tabanlı, sıralı
+    /// <c>findings[]</c> listesindeki konum.
+    ///
+    /// <para>
+    /// <c>accuracy@1</c> ve <c>accuracy@3</c> <b>bu tek alandan</b> çıkıyor
+    /// (<c>== 1</c> ve <c>&lt;= 3</c>); ikinci bir eksen açılmıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <see langword="null"/> = <b>hiçbir bulgu doğru değildi</b> — bu bir
+    /// ölçüm, eksik veri değil. *"Soru sorulmadı"* hâli buradan değil
+    /// <see cref="SchemaVersion"/>'dan okunuyor; ikisini tek
+    /// <see langword="null"/>'a indirmek, bu ölçümün engellemek için var
+    /// olduğu hatanın kendisi olurdu.
+    /// </para>
+    ///
+    /// <para>
+    /// Metin eşleştirmesi yerine <b>sıra</b> seçildi: bu depoda *"dizge
+    /// yanlış"* sınıfının dört örneği var ve hepsi kolonu ve sorgusu doğru
+    /// olan yerlerde çıktı. İnsan zaten listeye bakıyor; ondan bir sayı
+    /// istemek, iki metni karşılaştırmaktan hem ucuz hem kesin.
+    /// </para>
+    /// </summary>
+    public int? CorrectFindingRank { get; set; }
+
+    /// <summary>
+    /// Sıra sorusu bu incelemede <b>gerçekten soruldu mu</b> —
+    /// <c>accuracy@k</c>'nın paydası bu alandan geliyor.
+    ///
+    /// <para>
+    /// <b>Şema sürümü bu ayrımı taşımaya yetmiyor ve sebebi ölçüldü:</b> iki
+    /// yakalama yolu var. Rapor ekranı bulguları <i>gösteriyor</i>, dolayısıyla
+    /// soruyu sorabiliyor; alarm kapatma ekranı bulguları göstermiyor,
+    /// dolayısıyla <b>soramıyor</b>. İkisi de aynı sürümle yazıyor. Payda
+    /// sürüme bağlansaydı, kapatma yoluyla yazılan her inceleme sorulmamış bir
+    /// soruyla paydaya girer ve <c>accuracy@1</c>'i sessizce aşağı çekerdi.
+    /// </para>
+    ///
+    /// <para>
+    /// T36'nın <c>Measured=false</c> ↔ <c>Unreliable=0</c> ayrımının aynısı:
+    /// ölçümün <b>yapıldığı</b> ayrı bir alan, ölçümün <b>sonucu</b> ayrı.
+    /// </para>
+    /// </summary>
+    public bool CorrectFindingRankAsked { get; set; }
 }
