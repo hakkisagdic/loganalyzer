@@ -40,6 +40,26 @@ public sealed class ServerInfoTool(McpSurface surface) : BizigoMcpTool
     /// <inheritdoc/>
     public override McpSurface Surface => surface;
 
+    /// <summary>
+    /// <b>Kimlik muafiyeti — kalıcı, geçici değil</b> (M08).
+    ///
+    /// <para>
+    /// Gerekçe sınıfın ilk cümlesi: bu araç <b>ürün verisine hiç dokunmuyor</b>.
+    /// Döndürdüğü üç alan da sunucunun kendi hâli — yüzey adı, revizyon sabiti,
+    /// ilan edilen araç sayısı. Kapsam filtresinin uygulanacağı bir satır yok,
+    /// dolayısıyla kimlik istemek <i>"her isteği reddet"</i> demek olurdu:
+    /// istemci hangi revizyona bağlandığını soramazdı ve uyum kapısının öznesi
+    /// ortadan kalkardı.
+    /// </para>
+    ///
+    /// <para>
+    /// §8'in ayrımı önemli: bu bir <b>muafiyet</b>, bir bekleyen değil. "Bir gün
+    /// kapanacak" ile "hiç kapanmayacak" aynı listede duramaz — bu satır ikinci
+    /// listede ve <c>McpIdentityTests</c> sayısını sabit tutuyor.
+    /// </para>
+    /// </summary>
+    public override bool RequiresCallerIdentity => false;
+
     /// <inheritdoc/>
     public override string ToolTitle => "Sunucu bilgisi";
 

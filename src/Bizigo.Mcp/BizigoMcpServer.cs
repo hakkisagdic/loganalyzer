@@ -147,10 +147,48 @@ public static class BizigoMcpServer
         options.ToolCollection ??= [];
         options.ToolCollection.Clear();
 
-        foreach (var tool in Tools(surface, compositionRoot, services))
+        var tools = Tools(surface, compositionRoot, services);
+
+        RequireScopeResolverIfNeeded(tools, services);
+
+        foreach (var tool in tools)
         {
             options.ToolCollection.Add(tool);
         }
+    }
+
+    /// <summary>
+    /// Kimlik isteyen bir araç varsa kapsam çözücüsü <b>kurulumda</b> aranıyor.
+    ///
+    /// <para>
+    /// <b>Neden burada, ilk çağrıda değil.</b> Eksik bir çözücü çağrı anında
+    /// fark edilseydi arıza <i>"bu araç bende çalışmıyor"</i> diye görünürdü —
+    /// yani kusurun kendisi değil belirtisi. Kurulumda patlamak sunucuyu hiç
+    /// ayağa kaldırmıyor ve mesaj kusuru söylüyor. Kalıp
+    /// <c>McpToolDiscovery.Instantiate</c>'ten: <i>"atlanmıyor, patlıyor"</i>.
+    /// </para>
+    ///
+    /// <para>
+    /// Bugün ürün yüzeyinde kimlik isteyen araç <b>yok</b> (<c>server.info</c>
+    /// gerekçeli muaf), dolayısıyla bu kapı bugün hiçbir kurulumu düşürmüyor.
+    /// M04'ün ilk aracıyla birlikte dişleniyor — ve o gün stdio tarafında
+    /// (<c>bizigo mcp serve</c>, boş servis grafiği) <b>burada</b> duruyor.
+    /// </para>
+    /// </summary>
+    private static void RequireScopeResolverIfNeeded(
+        IReadOnlyList<BizigoMcpTool> tools,
+        IServiceProvider services)
+    {
+        var demanding = tools.Where(static tool => tool.RequiresCallerIdentity).ToArray();
+
+        if (demanding.Length == 0 || services.GetService(typeof(Contracts.IAccessScopeResolver)) is not null)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            McpCallerScope.MissingResolverMessage
+            + $" Kimlik isteyen araçlar: {string.Join(", ", demanding.Select(static t => t.ToolName))}.");
     }
 
     /// <summary>

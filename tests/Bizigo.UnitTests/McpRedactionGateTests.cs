@@ -198,6 +198,47 @@ public sealed class McpRedactionGateTests
     }
 
     /// <summary>
+    /// <b>Kapı 4 — yapısal yük kanalında kapı KULLANILABİLİR, ve okuma yolu
+    /// yok.</b>
+    ///
+    /// <para>
+    /// MCP'nin iki kanalı var ve <see cref="McpToolResult"/> belgesinde
+    /// beyan edildiği gibi kapı yalnızca birinin imzasında duruyor. İkinci
+    /// kanalda (<c>structuredContent</c>) yapılabilen şey kapıyı
+    /// <b>kullanılabilir</b> kılmak: log içeriği taşıyan bir yük alanı
+    /// <see cref="RedactedPrompt"/> olarak yazılırsa tel üzerinde
+    /// <b>maskelenmiş metin</b> olarak çıkıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// İkinci iddia birincisinden önemli: <b>okuma yolu yok</b>. JSON'dan bir
+    /// <see cref="RedactedPrompt"/> kurulabilseydi yapıcının <c>private</c>
+    /// olması anlamsızlaşırdı — kapıyı atlayan herhangi bir metin bir dizge
+    /// olarak sarılıp tipe dönüştürülebilirdi.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Yapisal_yukte_kapi_kullanilabilir_ve_okuma_yolu_yok()
+    {
+        const string Sir = "AbcDef0123456789XyzQwertyUiop";
+        var redacted = RedactedPrompt.Redact($"set password {Sir}");
+
+        var result = McpToolResult.Structured(new { line = redacted, source = "edge-rtr-07" });
+
+        var json = result.Payload.GetRawText();
+
+        // Maskelenmiş metin olarak indi — yedi özellikli ölçüm nesnesi olarak
+        // değil, ve sır JSON'da YOK.
+        Assert.DoesNotContain(Sir, json, StringComparison.Ordinal);
+        Assert.DoesNotContain(nameof(RedactedPrompt.ShadowCandidates), json, StringComparison.Ordinal);
+        Assert.Contains("edge-rtr-07", json, StringComparison.Ordinal);
+
+        // Ters yön KAPALI.
+        Assert.Throws<System.Text.Json.JsonException>(
+            static () => System.Text.Json.JsonSerializer.Deserialize<RedactedPrompt>("\"ham metin\""));
+    }
+
+    /// <summary>
     /// <b>Bekçi kendi kapsamını beyan ediyor</b> — T48/T50'nin kurduğu desen.
     ///
     /// <para>

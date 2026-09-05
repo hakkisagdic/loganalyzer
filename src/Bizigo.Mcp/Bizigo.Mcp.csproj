@@ -5,10 +5,11 @@
     araçlar (M03/M04/M05) kendi katmanlarında doğuyor ve buradaki
     `BizigoMcpTool`'dan türüyor.
 
-    M01'de ürün projelerine HİÇ referans yoktu. M06 bir tane ekledi
-    (`Bizigo.Contracts`) ve gerekçesi aşağıda: iki KAPI bu projeye girmek
-    zorundaydı. Sayının bir kalmasının sebebi var — bkz. `Bizigo.Rca`nın
-    elenmesi.
+    M01'de ürün projelerine HİÇ referans yoktu. Bugün BİR tane var
+    (`Bizigo.Contracts`) ve ona İKİ ticket bağımsız olarak ihtiyaç duydu —
+    M08 (kimlik) ve M06 (redaksiyon + K6). Gerekçeleri aşağıda, tek referansın
+    altında birleştirildi. Sayının bir kalmasının sebebi var; bkz.
+    `Bizigo.Rca`nın elenmesi.
 
     ASP.NET Core BİLEREK YOK — ve gerekçesi ölçüldü.
 
@@ -31,21 +32,35 @@
 
   <ItemGroup>
     <!--
-      M06 — TEK ürün referansı, ve tek olması ölçülerek seçildi.
+      ÜRÜNE VERİLEN TEK REFERANS — ve tek olması ölçülerek seçildi.
 
-      İki kapı bu projeye girmek zorundaydı: T41'in `RedactedPrompt`'u (log
-      metninin taşıyıcısına parametre tipi olarak) ve K6'nın ağ sınırı ekseni
-      (`DataBoundary`). İkisi de `Bizigo.Contracts`'ta ve BU PROJENİN HİÇ
-      ProjectReference'ı YOK — yaprak. Yani buraya bağlanmanın geçişli maliyeti
-      sıfır.
+      Yukarıdaki yorum "çekirdek protokolü konuşuyor, ürünü tanımıyor" diyordu.
+      ÜÇ kapı o cümleyi bozmak zorunda kaldı ve üçü de aynı projeye düştü:
 
-      `DataBoundary`'nin ilk yeri `Bizigo.Rca.Models` idi ve oradan kullanmak
-      ELENDİ: `Bizigo.Rca` ControlPlane, ScenarioPlugin ve
-      `Microsoft.Extensions.Http` taşıyor, ve stdio için buraya referans veren
-      `Bizigo.Cli` hepsini yutardı. Bu, aşağıdaki ASP.NET yorumunun ölçtüğü
-      kusurun aynısı — bir konsol aracının taşımak zorunda olmadığı bir yığını
-      taşıması. Tip bu yüzden `Bizigo.Contracts`'a TAŞINDI, kopyalanmadı
-      (CLAUDE.md §9).
+        · M08 — bir araç çağrısının kapsamı (`AccessScope`) çekirdeğin gördüğü
+          bir tip olmalı, yoksa kapsam araçların kendi sorumluluğuna düşer ve
+          §7'nin sessiz sınıfına girer.
+        · M06 — log metninin taşıyıcısı parametre olarak T41'in
+          `RedactedPrompt`'unu istiyor: kapı bir çağrı alışkanlığı değil, imza.
+        · M06 — K6'nın ağ sınırı ekseni (`DataBoundary`); sunucu yüzeyinin
+          hangi tarafta durduğunu beyan ediyor.
+
+      M08 ve M06 bu referansı BAĞIMSIZ olarak ekledi, ve iki ayrı `ItemGroup`
+      olarak birleşselerdi metinsel merge temiz kalıp `ProjectReference` çift
+      görünürdü — CLAUDE.md §5'in compose/`redis` örneğinin aynı sınıfı.
+      Birleştirildi; gerekçeler kayboldu değil, yukarıda duruyor.
+
+      `Bizigo.Contracts` doğru yer çünkü BAĞIMLILIĞI YOK — csproj'u boş, yaprak.
+      Yani `Bizigo.Cli` buradan hiçbir çatıya sürüklenmiyor ve aşağıdaki CS0433
+      hikâyesi tekrarlanmıyor. İki şey bilerek DIŞARIDA:
+
+        · Kapsam ÇEVRİMİ (Postgres'teki eşleme tablosu) — çekirdek yalnızca
+          `IAccessScopeResolver` arayüzünü görüyor, uygulaması
+          `Bizigo.ControlPlane`'de.
+        · `Bizigo.Rca` — `DataBoundary`'nin ilk yeri orasıydı ve oradan
+          kullanmak ELENDİ: ControlPlane, ScenarioPlugin ve
+          `Microsoft.Extensions.Http` taşıyor, hepsi `Bizigo.Cli`'ye inerdi.
+          Tip bu yüzden `Bizigo.Contracts`'a TAŞINDI, kopyalanmadı (§9).
     -->
     <ProjectReference Include="..\Bizigo.Contracts\Bizigo.Contracts.csproj" />
   </ItemGroup>

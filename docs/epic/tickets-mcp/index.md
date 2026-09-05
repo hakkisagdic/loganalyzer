@@ -60,13 +60,19 @@ flowchart TB
 | # | Ticket | Özü | Bağımlılık |
 | --- | --- | --- | --- |
 | M01 | Protokol çekirdeği ve uyum kapısı | `initialize`, yetenek anlaşması, `stdio` + akışlanabilir HTTP, **araçları kendisi bulan** sözleşme testi, iptal | — |
-| M02 | Komut çekirdeği ve CLI paritesi | Ortak çekirdek, iki sunum katmanı, gerekçeli muafiyet + sabit sayı | M01 |
-| M03 | `bizigo-sim` araçları | Yedi araç; **yüzey hatası** yüzeyi söylüyor, profili değil | M01, FS-a |
-| M04 | `bizigo` okuma araçları | `logs.*`, `alerts.*`, `inventory.*`, `catalog.*`; kapsam **tek kapıdan** | M01, M02 |
-| M05 | `bizigo` RCA araçları | `rca.trigger` (`Idempotency-Key`), `rca.runs` (üç yönlü ayrım), `evidence.bundle` | M04, T46 |
-| M06 | Redaksiyon ve K6 kapısı | `RedactedPrompt` zorunluluğu **derleyicide**; sunucu ağ sınırını beyan ediyor | M04, T41, T42 |
-| M07 | Kaynaklar ve abonelik | Belge kaynakları, `rca.runs` durum bildirimi | M05 |
-| M08 | Kimlik taşıma | Keycloak kimliği MCP oturumundan uca; servis hesabı **yasak** | M04 |
+| M02 | [Komut çekirdeği ve CLI paritesi](komut-cekirdegi/index.md) | Ortak çekirdek, iki sunum katmanı, gerekçeli muafiyet + sabit sayı | M01 |
+| M03 | [`bizigo-sim` araçları](sim-araclari/index.md) | Yedi araç; **yüzey hatası** yüzeyi söylüyor, profili değil | M01, FS-a |
+| M04 | [`bizigo` okuma araçları](okuma-araclari/index.md) | `logs.*`, `alerts.*`, `inventory.*`, `catalog.*`; kapsam **tek kapıdan** | M01, M02 |
+| M05 | [`bizigo` RCA araçları](rca-araclari/index.md) | `rca.trigger` (`Idempotency-Key`), `rca.runs` (üç yönlü ayrım), `evidence.bundle` | M04, T46 |
+| M06 | [Redaksiyon ve K6 kapısı](redaksiyon-kapisi/index.md) | `RedactedPrompt` zorunluluğu **derleyicide**; sunucu ağ sınırını beyan ediyor | M04, T41, T42 |
+| M07 | [Kaynaklar ve abonelik](kaynaklar-ve-abonelik/index.md) | Belge kaynakları, `rca.runs` durum bildirimi | M05 |
+| M08 | [Kimlik taşıma](kimlik-tasima/index.md) | Keycloak kimliği MCP oturumundan uca; servis hesabı **yasak** | M04 |
+
+**M01'in ticket dosyası yok** ve bu bilinçli: koşuyor, kararları raporlarında,
+ve verdiği kararlar (revizyon `2026-07-28`, araç sözleşmesi, yüzey beyanı,
+bağlam maliyeti ölçümü) yukarıdaki yedi belgeye **kaynağı gösterilerek**
+taşındı. M01 kapandığında kendi belgesi yazılacaksa
+[T53](../tickets-f3/ticket-statusu-bekcisi/index.md)'ün bekçisi onu isteyecek.
 
 ## Bitti tanımı
 
@@ -134,11 +140,25 @@ yüzeyini kuruyor ve `bizigo-sim`'in HTTP yüzeyi M03'ün kararı. Kararı
 daraltmak (her yüzeyde `External` reddi) bugün ölçülemeyen bir kararı
 ölçülemeyen bir başkasıyla değiştirirdi ve M03 gerekçesiz bir kapı bulurdu.
 
-## Bu belgenin bilmediği şey
+## Bu belgenin bilmediği şey — **ikisi de cevaplandı**
 
-**MCP 2.0'ın hangi revizyonu** — spesifikasyon sürümlü ve tarih damgalı.
-M01 uyduğu revizyonu **yazacak** ve sözleşme testi ona karşı koşacak.
-*"En güncel"* bir hedef değil, bir kaymadır.
+~~**MCP 2.0'ın hangi revizyonu.**~~ **Cevaplandı:** `2026-07-28`, ve *"MCP
+2.0"* diye bir revizyon **zaten yoktu** — spesifikasyon yayınlarının tamamı
+tarih damgalı. [Teknik plan §2](../mcp-teknik-plan/index.md) düzeltmeyi
+gerekçesiyle taşıyor. M01 sabiti yazdı (`McpRevision.Supported`), ve yanına
+bir **bekçi** koydu: SDK'nın ilan ettiği sürüm sabitten ayrıştığı gün kırmızı.
 
-**Araç sayısının bağlam maliyeti ölçülmedi.** On beş aracın şeması her
-bağlamda taşınıyor; bu bir bütçe kalemi ve bugün sayısı yok. M01 ölçsün.
+~~**Araç sayısının bağlam maliyeti ölçülmedi.**~~ **Ölçüldü (M01):** araç
+başına **194 belirteç**, ve en pahalı kalem şema değil **`description`
+metni**. On beş araç bugünkü ortalamayla **≈2900 belirteç** eder ve bu **her
+bağlamda** taşınıyor — yani açıklama uzunluğu bir üslup tercihi değil bir
+bütçe kalemi. Sayı M03/M04/M05/M07 belgelerine tasarım kısıtı olarak girdi.
+
+> Bu iki satır M01'in **birleşmemiş** dalından geliyor; sabitler değişirse
+> buradaki sayılar da değişir.
+
+## Bu belgenin hâlâ bilmediği şey
+
+**`notifications/cancelled` bugün var mı.** Bitti tanımı §3 ona bağlı. M01'in
+`BizigoMcpServer.cs`'inde arandı ve **bulunamadı** — ama *"yok"* ile *"başka
+dosyada"* ayırt **edilmedi**. M01'e soruldu, cevap bekleniyor.

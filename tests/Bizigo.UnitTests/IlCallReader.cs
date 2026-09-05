@@ -39,6 +39,32 @@ namespace Bizigo.UnitTests;
 /// onu kapsam beyanında bildiriyor. Çözülemeyen her token, görülemeyen bir
 /// çağrı demek.
 /// </para>
+///
+/// <h3>Kardeş teknik — ve neden ORTAKLAŞTIRILMADI</h3>
+///
+/// <para>
+/// M08 bir bekçi kurarken benzer bir soruyu farklı bir makineyle cevapladı:
+/// <c>McpIdentityTests</c>, <c>Bizigo.Mcp</c> derlemesinin
+/// <c>MemberRef</c> <b>metadata tablosunu</b> okuyup <c>AccessScope.System</c>
+/// adının hiç geçmediğini sınıyor
+/// (<c>MetadataReader.MemberReferences</c>, IL çözümlemesi <b>değil</b>).
+/// </para>
+///
+/// <para>
+/// İkisi <b>kopya değil</b> ve birleştirilmeleri ikisini de bozardı, çünkü
+/// farklı soru soruyorlar:
+/// </para>
+///
+/// <list type="bullet">
+/// <item><b>MemberRef tablosu</b> — <i>"bu ada derlemede hiç dokunuluyor mu"</i>.
+/// Ucuz, gövde okumadan çalışıyor, ve <b>çağıranın kim olduğunu söylemiyor</b>.
+/// M08'in sorusu için doğru: cevabı beklenen "hiç" olan bir soru.</item>
+/// <item><b>IL gövdesi</b> (burası) — <i>"bu tipi HANGİ metot kuruyor"</i>.
+/// Pahalı ama çağıranı adlandırıyor, ve
+/// <c>McpRedactionGateTests</c>'in ölçütü tam olarak o ad: kuran kümenin tek
+/// elemanı <c>FromRedacted</c> olmalı. MemberRef tablosu bu soruyu
+/// cevaplayamıyor.</item>
+/// </list>
 /// </summary>
 public static class IlCallReader
 {

@@ -35,6 +35,37 @@ namespace Bizigo.Mcp;
 /// <see cref="Failure"/> ile üretiliyor ve tel üzerinde <c>isError: true</c>
 /// oluyor — protokol istisnası değil.
 /// </para>
+///
+/// <h3>Redaksiyon kapısının ULAŞMADIĞI yer — beyan</h3>
+///
+/// <para>
+/// <b>İki taşıyıcının ikisi de modelin bağlamına giriyor, ama kapı yalnızca
+/// birinin imzasında duruyor.</b> <see cref="BizigoMcpTool.ToProtocol"/> yükü
+/// hem <c>structuredContent</c> olarak hem de <c>content</c> içinde bir metin
+/// bloğu olarak gönderiyor (<c>structuredContent</c> desteklemeyen istemci için).
+/// Yani <see cref="Structured{TPayload}"/>'a verilen bir nesnenin içindeki
+/// <c>string</c> alan, <see cref="RedactedPrompt"/>'a <b>hiç uğramadan</b>
+/// modele iniyor.
+/// </para>
+///
+/// <para>
+/// <b>Bunu bir tip tamamen kapatamaz</b> ve kapatmaya çalışmak yanlış olurdu:
+/// bir yükte meşru <c>string</c>'ler var — kaynak adı, zaman damgası, kimlik,
+/// hata kodu. Kapının o kanaldaki hâli bir <i>yasak</i> değil bir
+/// <b>imkân</b>: log içeriği taşıyan bir yük alanı <see cref="RedactedPrompt"/>
+/// olarak yazılırsa tel üzerinde maskelenmiş metin olarak çıkıyor
+/// (<c>RedactedPromptJsonConverter</c>), yani kapı yüke kadar iniyor.
+/// </para>
+///
+/// <para>
+/// <b>Ve o alanın öyle yazılması bugün MEKANİK OLARAK TUTULMUYOR.</b> Bu bir
+/// çağrı alışkanlığı, ve bu depo çağrı alışkanlığına dayanan mekanizmanın kaç
+/// kez kaybettiğini ölçtü. Yazılı olması, kapatılmış olmasıyla aynı şey değil —
+/// ama <b>yazılı olmaması</b> §7'nin sınıfına girerdi: kapı varmış gibi
+/// okunan, olmayan bir kapı. M04/M05 gerçek araçları yazdığında mekanik bir
+/// bekçinin şekli görülebilir olacak; bugün görülmeyen bir şeye bekçi yazmak
+/// tüketicisi olmayan bir tip yazmakla aynı hata (§8).
+/// </para>
 /// </summary>
 public sealed class McpToolResult
 {

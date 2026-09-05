@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using Bizigo.Contracts.Security;
 using Bizigo.Devices;
 using Bizigo.Simulators;
@@ -350,7 +351,29 @@ public sealed class RedactionGateTests
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(["RedactedPrompt.Redact"], ureticiler);
+        Assert.Equal(["RedactedPrompt.Redact", "RedactedPromptJsonConverter.Read"], ureticiler);
+
+        // İKİNCİ AD BİR MUAFİYET DEĞİL — muafiyet olsaydı bu kapı anlamını
+        // kaybederdi. Bu test M06'da KIRMIZI YANDI ve doğru yandı: bir
+        // `JsonConverter<T>.Read` imzası, tam olarak ikinci bir çıkış yolunun
+        // şekli. Kırmızıyı bir listeye ad yazarak susturmak, bu deponun beş kez
+        // ödediği hareket olurdu.
+        //
+        // O yüzden ad burada duruyor ve KANITI hemen altında: yol
+        // `RedactedPrompt` DÖNDÜREMİYOR, çünkü fırlatıyor. İmza bir çıkış
+        // vaat ediyor, gövde vermiyor — ve fark ölçülüyor, iddia edilmiyor.
+        //
+        // Dönüştürücünün var olma sebebi MCP'nin `structuredContent` kanalı:
+        // bir araç yükünün içindeki alan `RedactedPrompt` olarak yazılabilsin
+        // diye. Gerekçenin tamamı `RedactedPromptJsonConverter` belgesinde.
+        Assert.Throws<JsonException>(
+            static () => JsonSerializer.Deserialize<RedactedPrompt>("\"ham metin\""));
+
+        // Ve yazma yönü çalışıyor — yoksa yukarıdaki iddia "dönüştürücü hiç
+        // çalışmıyor" hâliyle de yeşil kalırdı.
+        Assert.Equal(
+            "\"a\"",
+            JsonSerializer.Serialize(RedactedPrompt.Redact("a")));
     }
 
     /// <summary>
