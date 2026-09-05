@@ -69,9 +69,12 @@ public sealed class SimulatedDeviceTransport : IDeviceTransport
             // bu yüzeyde BAŞARISIZ dönüyor, boş metin değil. Boş metin
             // "cihaz bağlandı ama config'i yok" derdi; gerçek şu ki bu cihazın
             // config yüzeyi hiç yok.
-            return Task.FromResult(new DeviceCommandResult(
-                false,
-                string.Empty,
+            return Task.FromResult(DeviceCommandResult.Failed(
+                // Bu cihazın config YÜZEYİ yok — komut reddi değil, ulaşılamama
+                // da değil. N1 bir soket açmadığı için "ulaşılamadı" demek
+                // yanlış olurdu; en yakın doğru şey cihazın bu komutu
+                // karşılamaması.
+                DeviceFailureKind.CommandRejected,
                 $"'{_profile.Id}' profilinin config yüzeyi yok."));
         }
 
@@ -83,7 +86,8 @@ public sealed class SimulatedDeviceTransport : IDeviceTransport
         // Motor bunu önce söylüyor.
         if (Scenarios.Reject(_scenario, ScenarioSurface.Config) is { } yuzeyHatasi)
         {
-            return Task.FromResult(new DeviceCommandResult(false, string.Empty, yuzeyHatasi));
+            return Task.FromResult(
+                DeviceCommandResult.Failed(DeviceFailureKind.CommandRejected, yuzeyHatasi));
         }
 
         // TEK PREDICATE: "bu ad baseline mi" sorusunu taşıyıcı kendi
@@ -104,16 +108,16 @@ public sealed class SimulatedDeviceTransport : IDeviceTransport
             // karşılayan dosyası.
             var bilinen = string.Join(", ", _profile.Config.Scenarios.Keys.Order(StringComparer.Ordinal));
 
-            return Task.FromResult(new DeviceCommandResult(
-                false,
-                string.Empty,
+            return Task.FromResult(DeviceCommandResult.Failed(
+                DeviceFailureKind.CommandRejected,
                 $"'{_profile.Id}' profilinde '{_scenario}' senaryosu tanımlı değil. Bu profilde olanlar: {bilinen}"));
         }
 
         var path = Path.Combine(_profileDirectory, relative);
 
         return Task.FromResult(File.Exists(path)
-            ? new DeviceCommandResult(true, File.ReadAllText(path), string.Empty)
-            : new DeviceCommandResult(false, string.Empty, $"Config dosyası yok: {path}"));
+            ? DeviceCommandResult.Succeeded(File.ReadAllText(path))
+            : DeviceCommandResult.Failed(
+                DeviceFailureKind.CommandRejected, $"Config dosyası yok: {path}"));
     }
 }
