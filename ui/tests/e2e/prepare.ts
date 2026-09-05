@@ -38,6 +38,23 @@ import { fileURLToPath } from "node:url";
  * kapsamında. <b>Ölçüldü</b> — dosya listesiyle değil, kusurla: buraya bir tip
  * hatası konulduğunda <c>tsc</c> dört hatayla kırmızı yanıyor.
  * </p>
+ *
+ * <p>
+ * <b>Yanlış okumayı üreten yöntem de kayda değer</b>, çünkü ikna edici
+ * görünüyordu: <c>tsc --listFiles</c> çıktısında dosyayı <i>saymak</i>. O sayı
+ * sıfır çıktı ve sıfır, "kapsam dışında" diye okundu.
+ *
+ * Sebebin <b>kanıtlanmış</b> kısmı: komut <b>depo kökünden</b> koşturulmuştu ve
+ * orada <c>tsconfig.json</c> <b>yok</b> — <c>tsc</c> bu deponun arayüz
+ * yapılandırmasını hiç görmüyor, 1070 satır yerine iki satır basıyor ve her
+ * sayım sıfır veriyor. Yeniden üretiliyor.
+ *
+ * <b>Aramadım/bulamadım:</b> aynı sayımın bir kez <c>ui/</c> içinden de sıfır
+ * vermesi. Bugün üretilemiyor; sebebi bilinmiyor ve tahmin yazılmıyor.
+ *
+ * Kalıcı ders sebepten bağımsız: <b>bir şeyin kapsandığını saymak zayıf, kırmak
+ * güçlü</b>. Sayım sessizce sıfır verebiliyor; kırılan bir kapı susamıyor.
+ * </p>
  */
 
 const REPO = fileURLToPath(new URL("../../..", import.meta.url));
