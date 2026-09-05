@@ -1,6 +1,7 @@
 using System.CommandLine;
 using Bizigo.Cli;
 using Bizigo.Cli.Seeding;
+using Bizigo.Mcp;
 using Bizigo.Parsing.Samples;
 using Bizigo.Storage.ClickHouse;
 
@@ -423,6 +424,30 @@ sigmaSyncCommand.SetAction((parse, token) => SigmaSyncCommandHandler.RunAsync(
 var sigmaCommand = new Command("sigma", "Sigma kural seti işlemleri.");
 sigmaCommand.Subcommands.Add(sigmaSyncCommand);
 
+// MCP'nin stdio taşıması (M01). İkinci bir host projesi AÇILMADI: aynı
+// komutların iki yerde kurulması M02'nin kaçınmak için var olduğu kopya olurdu.
+var mcpSurfaceOption = new Option<string>("--surface")
+{
+    Description = $"Sunulacak MCP yüzeyi: '{McpSurfaces.ProductName}' ya da '{McpSurfaces.SimulatorName}'.",
+    DefaultValueFactory = _ => McpSurfaces.ProductName,
+};
+
+var mcpVerboseOption = new Option<bool>("--verbose")
+{
+    Description = "Günlükleri stderr'e yaz. stdout PROTOKOLÜN kendisi; oraya hiçbir şey yazılmıyor.",
+};
+
+var mcpServeCommand = new Command("serve", "MCP sunucusunu stdio üzerinden koşturur.");
+mcpServeCommand.Options.Add(mcpSurfaceOption);
+mcpServeCommand.Options.Add(mcpVerboseOption);
+mcpServeCommand.SetAction((parse, token) => McpCommandHandlers.ServeAsync(
+    parse.GetValue(mcpSurfaceOption)!,
+    parse.GetValue(mcpVerboseOption),
+    token));
+
+var mcpCommand = new Command("mcp", "Model Context Protocol sunucusu.");
+mcpCommand.Subcommands.Add(mcpServeCommand);
+
 var root = new RootCommand("bizigo — log analyzer CLI");
 root.Subcommands.Add(parserCommand);
 root.Subcommands.Add(schemaCommand);
@@ -430,6 +455,7 @@ root.Subcommands.Add(fleetCommand);
 root.Subcommands.Add(seedCommand);
 root.Subcommands.Add(fieldsCommand);
 root.Subcommands.Add(sigmaCommand);
+root.Subcommands.Add(mcpCommand);
 
 return await root.Parse(args).InvokeAsync().ConfigureAwait(false);
 

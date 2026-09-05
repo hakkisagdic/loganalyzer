@@ -13,6 +13,7 @@ using Bizigo.Parsing;
 using Bizigo.Parsing.Dispatch;
 using Bizigo.Parsing.Grok;
 using Bizigo.Ingest.Wal;
+using Bizigo.Mcp;
 using Bizigo.Query;
 using Bizigo.Rca;
 using Bizigo.Rca.Models;
@@ -86,6 +87,11 @@ builder.Services.AddBizigoModelProvider(builder.Configuration);
     builder.Services.AddSingleton(schedules);
     builder.Services.AddHostedService<RcaScheduleWorker>();
 }
+
+// MCP protokol çekirdeği ve akışlanabilir HTTP taşıması (M01). Ürün yüzeyi
+// (`bizigo`); simülatör yüzeyi bilerek burada değil — gerekçesi
+// `BizigoMcpSetup` içinde.
+builder.Services.AddBizigoMcp(builder.Configuration);
 
 // Kimlik ve yetkilendirme (T09).
 builder.Services.AddBizigoAuthentication(builder.Configuration);
@@ -177,6 +183,11 @@ app.MapRcaRuns();
 
 app.MapNotificationChannels();
 app.MapAlertClosure();
+
+// MCP'nin ikinci taşıması (M01). Birincisi stdio ve `bizigo mcp serve` ile
+// koşuyor; ikisi AYNI araç kümesini sunuyor, çünkü ikisi de
+// `BizigoMcpServer.Apply`'den geçiyor.
+app.MapBizigoMcp();
 
 // Ingest sayaçları: "boru hattı akıyor mu" sorusunun tek bakışta cevabı.
 // `declared_encoding_mismatches` sıfırdan büyükse envanterdeki `encoding` yanlış.

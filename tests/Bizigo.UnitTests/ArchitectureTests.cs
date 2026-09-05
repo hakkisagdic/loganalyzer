@@ -178,6 +178,18 @@ public sealed class ArchitectureTests
                 "AddBizigoDataPlane", "AddBizigoDiscovery", "AddBizigoEvidence",
                 "AddBizigoIngest",
 
+                // M01: MCP. İKİ kayıt uzantısı var ve ayrılmaları bilinçli —
+                // `AddBizigoMcp` (Bizigo.Api) HTTP taşımasını ekliyor,
+                // `AddBizigoMcpCore` (Bizigo.Mcp) protokolü ve araç keşfini
+                // kuruyor, taşımasız. Taşımayı çekirdeğe koymak `Bizigo.Cli`'yi
+                // ASP.NET paylaşılan çatısına sürüklüyordu (ölçüldü: birim test
+                // paketinde beş ayrı CS0433).
+                //
+                // İkisinin de burada olması gerekiyor: `AddBizigoMcp`'nin
+                // `AddBizigoMcpCore`'u çağırıyor olması, ikincisinin BAĞIMSIZ
+                // olarak da (stdio yolu) doğru bir grafik kurduğunu göstermiyor.
+                "AddBizigoMcp", "AddBizigoMcpCore",
+
                 // T42: model sağlayıcısı ve K6'nın kapısı. Uç burada
                 // DOĞRULANMIYOR — doğrulama ağ çözümlemesi yapıyor ve kayıt
                 // anına konsaydı DNS erişilemediğinde API'nin tamamı ayağa
@@ -354,6 +366,19 @@ public sealed class ArchitectureTests
         if (parameter.ParameterType == typeof(string) && parameter.Name == "connectionString")
         {
             return builder.Configuration.GetConnectionString("ControlPlane")!;
+        }
+
+        // M01: `AddBizigoMcpCore` kompozisyon kökünü ELLE alıyor. Araçlar
+        // `Bizigo.Mcp`'nin AŞAĞISINDA yaşıyor, yani referans oku ters yöne
+        // bakıyor ve o derlemeden onlara ulaşmak mümkün değil; `AppDomain`
+        // taraması ise bu deponun elediği yol (dokunulmamış derleme yüklü
+        // olmuyor, keşif onu sessizce atlıyor).
+        //
+        // Doğru argüman kompozisyon kökünün kendisi — üretimde `Program.cs`
+        // ne veriyorsa o.
+        if (parameter.ParameterType == typeof(Assembly))
+        {
+            return typeof(global::Program).Assembly;
         }
 
         throw new NotSupportedException(

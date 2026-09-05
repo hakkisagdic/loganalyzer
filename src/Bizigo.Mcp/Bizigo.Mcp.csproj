@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    MCP protokol çekirdeği (M01). Ürün projelerine BUGÜN hiç referans vermiyor
+    ve bu bilinçli: çekirdek protokolü konuşuyor, ürünü tanımıyor. Araçlar
+    (M03/M04/M05) kendi katmanlarında doğacak ve buradaki `BizigoMcpTool`'dan
+    türeyecek.
+
+    ASP.NET Core BİLEREK YOK — ve gerekçesi ölçüldü.
+
+    İlk hâli `FrameworkReference Microsoft.AspNetCore.App` taşıyordu, çünkü
+    akışlanabilir HTTP taşıması onu istiyor. Sonuç: `Bizigo.Cli` (stdio için bu
+    projeye referans veriyor) ASP.NET paylaşılan çatısına sürükleniyor ve
+    üst-düzey ifadelerinin ürettiği `Program` sınıfı GÖRÜNÜR hâle geliyor —
+    `Bizigo.Api`'nin `public partial class Program`'ı ile çakışıyor ve birim
+    test paketi BEŞ ayrı yerde CS0433 ile düşüyor.
+
+    Hata mesajı ("`Program` hem `Bizigo.Api` hem `bizigo` içinde") kusurun
+    kendisini gizliyordu; bulunuşu iki adımlık bir ölçümle oldu (önce
+    `InternalsVisibleTo` elendi, sonra `Bizigo.Cli` -> `Bizigo.Mcp` referansı
+    kaldırılınca hata sıfıra düştü). Ama derleme hatası yalnızca BELİRTİ:
+    asıl kusur bir konsol aracının bir web çatısını taşıması.
+
+    Ayrım şimdi şurada: HTTP taşıması `Bizigo.Api`'nin işi — ASP.NET zaten
+    orada. Bu proje protokolü ve stdio'yu konuşuyor.
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="ModelContextProtocol.Core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Uyum kapısı `McpLogText`'in menteşesini sınıyor: bugün ürün tarafında
+      çağıranı olmayan `internal` fabrika. Kapı onu göremezse menteşenin
+      çalıştığını kimse ölçemez ve M06 boş bir yere takılır.
+    -->
+    <InternalsVisibleTo Include="Bizigo.UnitTests" />
+  </ItemGroup>
+
+</Project>

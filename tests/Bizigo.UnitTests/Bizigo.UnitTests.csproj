@@ -8,6 +8,21 @@
     <PackageReference Include="NetArchTest.Rules" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+
+    <!--
+      MCP uyum kapısı (M01). Üçü de YALNIZCA burada: ürün yüzeyine girmiyorlar.
+
+      · `JsonSchema.Net` — ilan edilen şemayı meta-şemaya, örnek çağrının
+        çıktısını `outputSchema`'ya karşı doğruluyor. Kapının MCP SDK'sının
+        kendi doğrulamasına dayanması, ölçtüğü şeyi ölçen araca sormak olurdu.
+      · `Microsoft.AspNetCore.TestHost` — ikinci taşımanın el sıkışması.
+      · `Microsoft.ML.Tokenizers` + `.Data.O200kBase` — araç şemalarının bağlam
+        maliyeti, GERÇEK belirteç sayısı olarak. Sözlük pakete gömülü: ağ yok.
+    -->
+    <PackageReference Include="JsonSchema.Net" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+    <PackageReference Include="Microsoft.ML.Tokenizers" />
+    <PackageReference Include="Microsoft.ML.Tokenizers.Data.O200kBase" />
   </ItemGroup>
 
   <ItemGroup>

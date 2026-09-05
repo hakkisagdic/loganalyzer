@@ -48,8 +48,23 @@ Hedef **MCP 2.0** spesifikasyonuna tam uyum. Uyum bir iddia değil bir
 | Kaynaklar | URI şeması, abonelik, değişiklik bildirimi |
 | İstemler | Parametreli, sunucu tarafında sürümlü |
 | Hata | Protokol hatası ile **araç hatası** ayrı — araç hatası `isError` ile döner, protokol istisnası değil |
-| Günlükleme | `notifications/message`, seviye anlaşmasına saygılı |
 | İptal | `notifications/cancelled` **gerçekten** iptal ediyor |
+
+> **Günlükleme bu tablodan çıkarıldı (M01).** İlk hâli `notifications/message`'ı
+> bir şart olarak yazıyordu. Çivilediğimiz revizyonda (`2026-07-28`) o yetenek
+> **kullanımdan kaldırıldı** (SEP-2577); C# SDK'sı onu okuyan kodu `MCP9005` ile
+> işaretliyor ve depodaki `TreatWarningsAsErrors` bunu bir derleme hatasına
+> çeviriyor — yani şart, kendi kapısını kuramıyor.
+>
+> Gerekçe yalnızca teknik değil. §8'in kuralı yetenek düzeyinde de geçerli:
+> *tüketicisi olmayan bir tip tahmindir.* Bugün `notifications/message`'ı
+> okuyacak bir tüketicimiz yok, ve kullanımdan kalkmış bir yeteneği tüketicisiz
+> biçimde **yepyeni** bir yüzeye sokmak yarının borcunu bugün yazmak olurdu.
+> Kapı tarafı daha da kötü: spesifikasyonun kaldırdığı bir şeyi şart koşan bir
+> uyum kapısı, uyumu ölçmüyor — **kendi geçmişini** ölçüyor.
+>
+> Gerçek bir günlükleme ihtiyacı doğarsa ayrı bir ticket açılacak ve
+> **tüketicisiyle** gelecek.
 
 **Uyumun bekçisi bir sözleşme testi olacak**, elle yazılmış bir liste değil:
 sunucunun ilan ettiği her araç için şemanın geçerliliği ve örnek çağrının
@@ -189,8 +204,74 @@ profili değil.
 - **MCP 2.0'ın hangi revizyonu.** Spesifikasyon sürümlü ve tarih damgalı;
 M01 hangi revizyona uyduğunu **yazacak** ve sözleşme testi o revizyona karşı
 koşacak. "En güncel" bir hedef değil, bir kayma.
-- **Akışlanabilir HTTP'nin oturum yönetimi** bu üründe nasıl duracak — BFF
-zaten bir oturum katmanı taşıyor (`redis-session`) ve ikisinin ilişkisi
-yazılmadı.
-- **Araç sayısının modele maliyeti ölçülmedi.** On beş aracın şeması her
-bağlamda taşınıyor; bu bir bağlam bütçesi kalemi ve bu belgede sayısı yok.
+- ~~**Akışlanabilir HTTP'nin oturum yönetimi**~~ — **karara bağlandı (M01).**
+Aşağıya bakın.
+- ~~**Araç sayısının modele maliyeti ölçülmedi.**~~ — **ölçüldü (M01).**
+Aşağıya bakın.
+
+---
+
+## 10 · M01'de karara bağlananlar
+
+### MCP oturumu ile BFF oturumu ayrı katmanlar
+
+MCP'nin akışlanabilir HTTP oturumu **SDK'nın taşıma oturumu** olarak duruyor ve
+BFF'in `redis-session`'ından **bağımsız**. İkisi farklı şeyleri tutuyor: BFF
+oturumu bir *tarayıcı* oturumu (erişim token'ı tarayıcıya inmesin diye var),
+MCP oturumu bir *protokol* oturumu (akışın ve isteğe bağlı yeniden bağlanmanın
+durumu).
+
+İkisini şimdi birbirine bağlamak **M08'in kararını önden vermek** olurdu:
+kimliğin MCP oturumundan uca nasıl taşınacağı o ticket'ın konusu, ve o karar
+verilmeden "MCP oturumu BFF oturumunun üstünde durur" demek, doğrulanmamış bir
+mekanizmayı belgeye yazmak olurdu.
+
+M01'in bıraktığı hâl ölçülü: `/mcp` ucu `RequireAuthorization()` taşıyor ve
+**anonim bir MCP oturumu açılamıyor** (`McpHttpTransportTests`). Bu M08'in ön
+şartı — servis hesabıyla ya da kimliksiz koşan bir MCP sunucusu bütün kapsam
+kapılarını atlardı (K17).
+
+### Uyulan revizyon: `2026-07-28` — ve bir düzeltme
+
+Spesifikasyonun **"2.0" diye bir sürümü yok**; yayınlanmış revizyonların hepsi
+tarih damgalı (`2024-11-05`, `2025-03-26`, `2025-06-18`, `2025-11-25`,
+`2026-07-28`). "MCP 2.0" ifadesi C# SDK'sının sürümüne bakıyordu.
+
+`McpRevision.Supported = "2026-07-28"` — bugünün en yeni *stable* revizyonu.
+
+**Sabit bir tavan değil bir hedef.** İlk uygulamada `McpServerOptions.ProtocolVersion`
+o değere sabitlenmişti ve **ölçüldü**: SDK onu tek desteklenen sürüm yapıyor,
+`2025-11-25` konuşan istemci el sıkışmada reddediliyor. Yani çivi gibi görünen
+satır, §2'de **şart** olan sürüm anlaşmasını kapatıyordu. Şimdi sunucu
+anlaşmayı açık bırakıyor; sabitin doğruluğunu **ölçüm** tutuyor:
+`McpComplianceTests` yazılı revizyonun el sıkışmada kabul edildiğini ve eski
+istemcinin de bağlanabildiğini sınıyor. SDK bir gün o revizyonu bıraktığında
+kapı kırmızı yanıyor.
+
+### Araç şemalarının bağlam maliyeti — ölçüldü
+
+`o200k_base` BPE ile, `tools/list` yanıtının tamamı üzerinden (sözlük pakete
+gömülü, ağ yok):
+
+| Ölçüm | Değer |
+| --- | --- |
+| `tools/list` toplam (1 araç) | **198 belirteç** (700 karakter) |
+| Zarf (araçlar hariç) | ~4 belirteç |
+| **Araç başına** (`server.info`) | **194 belirteç** |
+
+Araç başına rakam asıl olan: yeni bir aracın fiyatı. `server.info` iki küçük
+şema ve iki cümlelik bir açıklama taşıyor, yani bu sayı **alt sınıra yakın** —
+`logs.search` gibi zengin bir filtre şeması daha pahalı olacak.
+
+**On beş araç için bir sayı yazılmadı** çünkü o sayı bir ölçüm değil kurgu
+olurdu; M04/M05 kendi araçlarını ekledikçe `McpSchemaBudgetTests` gerçek
+rakamı basıyor ve tavan sabiti (`ToolListTokenCeiling`) büyümeyi görünür
+kılıyor.
+
+### Bilinen ayrışma: günlükleme yeteneği
+
+§2'nin tablosu **günlüklemeyi** (`notifications/message`) bir şart olarak
+yazıyor. Çivilediğimiz revizyonda (`2026-07-28`) o yetenek **kullanımdan
+kaldırıldı** (SEP-2577) ve SDK onu okuyan kodu derleme hatasıyla işaretliyor.
+İkisi aynı anda tutulamıyor; karar koordinatörde ve M01 bu konuda **hiçbir
+iddia yazmadı**.
