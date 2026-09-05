@@ -34,6 +34,10 @@ public sealed class ReviewWireTests
     private static readonly Dictionary<string, ContradictingEvidenceVerdict> Contradicting =
         new(StringComparer.Ordinal)
         {
+            // `Unspecified` de bir tel adı taşıyor: alan doldurulmadığında
+            // sunucunun yazdığı değer bu, ve yanıtta okunabilir olması gerekiyor.
+            // Kullanıcıya SEÇENEK olarak sunulmuyor — bu iki ayrı soru.
+            ["unspecified"] = ContradictingEvidenceVerdict.Unspecified,
             ["not_present"] = ContradictingEvidenceVerdict.NotPresent,
             ["sound"] = ContradictingEvidenceVerdict.Sound,
             ["trivial"] = ContradictingEvidenceVerdict.Trivial,

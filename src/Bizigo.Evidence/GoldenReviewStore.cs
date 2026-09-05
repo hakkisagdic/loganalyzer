@@ -21,13 +21,27 @@ public sealed class ReviewRejectedException(string reason) : InvalidOperationExc
 /// Değerlendirilemedi. <see cref="Unknown"/> gibi paydaya <b>girmiyor</b> ve
 /// kendisi bir gösterge.
 /// </param>
+/// <param name="ContradictingUnspecified">
+/// Alan hiç doldurulmadı — <i>"kimse söylemedi"</i>. <c>NotPresent</c>
+/// (<i>"bölüm yoktu"</i>) ile <b>ayrı</b> sayılıyor ve paydaya girmiyor.
+/// </param>
+/// <param name="RankAsked">
+/// Rank sorusunun <b>sorulduğu</b> inceleme sayısı — <c>accuracy@k</c>'nın
+/// paydası. Soruyu soramayan yakalama yollarından gelen incelemeler burada yok.
+/// </param>
+/// <param name="RankFirst">Doğru bulgu <b>ilk sıradaydı</b>.</param>
+/// <param name="RankTopThree">Doğru bulgu <b>ilk üçteydi</b>.</param>
 public sealed record GoldenSetQuality(
     long Total,
     long Correct,
     long Unknown,
     long ContradictingSound = 0,
     long ContradictingTrivial = 0,
-    long ContradictingUnknown = 0)
+    long ContradictingUnknown = 0,
+    long ContradictingUnspecified = 0,
+    long RankAsked = 0,
+    long RankFirst = 0,
+    long RankTopThree = 0)
 {
     /// <summary>
     /// Karar verilmiş incelemeler: <c>Total - Unknown</c>. Doğruluk oranının
@@ -79,6 +93,26 @@ public sealed record GoldenSetQuality(
     /// </summary>
     public double? ContradictingTrivialRatio =>
         ContradictingEvaluated > 0 ? (double)ContradictingTrivial / ContradictingEvaluated : null;
+
+    /// <summary>
+    /// <c>accuracy@1</c> — doğru bulgunun <b>ilk sırada</b> olduğu oran.
+    ///
+    /// <para>
+    /// Payda <see cref="RankAsked"/>: sorunun <b>gerçekten sorulduğu</b>
+    /// incelemeler. Ayrım alanın <see langword="null"/> olmasından okunmuyor —
+    /// <c>null</c> burada *"hiçbir bulgu doğru değildi"* demek, yani bir
+    /// <b>ölçüm</b>. İkisini tek <c>null</c>'a indirmek, ölçülmemiş bir
+    /// incelemeyi başarısız bir ölçüm gibi göstermek olurdu.
+    /// </para>
+    /// </summary>
+    public double? AccuracyAtOne => RankAsked > 0 ? (double)RankFirst / RankAsked : null;
+
+    /// <summary>
+    /// <c>accuracy@3</c> — doğru bulgunun <b>ilk üçte</b> olduğu oran.
+    /// <see cref="AccuracyAtOne"/> ile <b>aynı alandan</b> çıkıyor
+    /// (<c>rank &lt;= 3</c>); ikinci bir eksen yok.
+    /// </summary>
+    public double? AccuracyAtThree => RankAsked > 0 ? (double)RankTopThree / RankAsked : null;
 }
 
 /// <param name="BundleId">Zorunlu — paketsiz inceleme F4'te ölçülemez.</param>
@@ -93,6 +127,14 @@ public sealed record GoldenSetQuality(
 /// bırakılabilir ve boşluğu bilgi taşıyor — bkz.
 /// <see cref="GoldenReviewEntity.ActualRootCause"/>.
 /// </param>
+/// <param name="CorrectFindingRank">
+/// Kaçıncı bulgu doğruydu (1 tabanlı). <see langword="null"/> = <b>hiçbiri</b>,
+/// ve bu bir ölçüm.
+/// </param>
+/// <param name="CorrectFindingRankAsked">
+/// Soru bu incelemede <b>soruldu mu</b>. <c>accuracy@k</c>'nın paydası bu.
+/// Bulguları göstermeyen bir ekran soruyu soramıyor ve <c>false</c> gönderiyor.
+/// </param>
 public sealed record ReviewInput(
     Guid BundleId,
     Guid? TriggerId,
@@ -100,7 +142,9 @@ public sealed record ReviewInput(
     ContradictingEvidenceVerdict ContradictingEvidence,
     string Note,
     string? OwnerGroup = null,
-    string? ActualRootCause = null);
+    string? ActualRootCause = null,
+    int? CorrectFindingRank = null,
+    bool CorrectFindingRankAsked = false);
 
 /// <summary>
 /// Altın kümenin deposu ve <b>kapsam kapısı</b> (T38).
@@ -155,10 +199,31 @@ public sealed class GoldenReviewStore(
                 "İnceleme bir kanıt paketine bağlanmak zorunda; verilen paket bulunamadı.");
         }
 
+        // Rank 1 tabanlı. 0 ve negatif REDDEDILIYOR: sessizce kabul edilseydi
+        // kayıt paydaya girer ama hiçbir `accuracy@k` kovasına düşmezdi — yani
+        // oranı aşağı çeken, sebebi görünmeyen bir satır. "Hiçbiri doğru
+        // değildi"nin ifadesi `null`, sıfır değil.
+        // Sıra verilmiş ama soru sorulmamış: tutarsız. Sessizce kabul etmek,
+        // paydaya girmeyen bir kaydın paya girmesi demek olurdu — yani %100'ü
+        // aşabilen bir oran.
+        if (input.CorrectFindingRank is not null && !input.CorrectFindingRankAsked)
+        {
+            throw new ReviewRejectedException(
+                "Bulgu sırası verilmiş ama soru sorulmamış olarak işaretlenmiş; ikisi birlikte gelir.");
+        }
+
+        if (input.CorrectFindingRank is { } rank && rank < 1)
+        {
+            throw new ReviewRejectedException(
+                $"Bulgu sırası 1 tabanlı; {rank} geçersiz. Hiçbir bulgu doğru değilse sıra boş bırakılır.");
+        }
+
         var entity = new GoldenReviewEntity
         {
             BundleId = input.BundleId,
             TriggerId = input.TriggerId,
+            CorrectFindingRank = input.CorrectFindingRank,
+            CorrectFindingRankAsked = input.CorrectFindingRankAsked,
             OwnerGroup = await ResolveGroupAsync(db, input, scope, cancellationToken),
             Verdict = input.Verdict,
             ContradictingEvidence = input.ContradictingEvidence,
@@ -212,10 +277,30 @@ public sealed class GoldenReviewStore(
             r => r.ContradictingEvidence == ContradictingEvidenceVerdict.Trivial, cancellationToken);
         var contradictingUnknown = await query.LongCountAsync(
             r => r.ContradictingEvidence == ContradictingEvidenceVerdict.Unknown, cancellationToken);
+        var contradictingUnspecified = await query.LongCountAsync(
+            r => r.ContradictingEvidence == ContradictingEvidenceVerdict.Unspecified, cancellationToken);
+
+        // accuracy@k'nın paydası SORUNUN SORULDUĞU kayıtlar.
+        //
+        // `CorrectFindingRank == null` iki farklı şey olabilir: "hiçbir bulgu
+        // doğru değildi" (bir ölçüm) ya da "soru sorulmadı" (ölçümün yokluğu).
+        //
+        // Ayrım şema sürümüne bağlanamıyor ve sebebi ölçüldü: iki yakalama
+        // yolu aynı sürümle yazıyor ama yalnızca biri soruyu sorabiliyor —
+        // rapor ekranı bulguları gösteriyor, alarm kapatma ekranı göstermiyor.
+        // Sürüme bağlansaydı kapatma yoluyla yazılan her inceleme sorulmamış
+        // bir soruyla paydaya girer ve oranı sessizce aşağı çekerdi.
+        var rankQuery = query.Where(r => r.CorrectFindingRankAsked);
+
+        var rankAsked = await rankQuery.LongCountAsync(cancellationToken);
+        var rankFirst = await rankQuery.LongCountAsync(r => r.CorrectFindingRank == 1, cancellationToken);
+        var rankTopThree = await rankQuery.LongCountAsync(
+            r => r.CorrectFindingRank != null && r.CorrectFindingRank <= 3, cancellationToken);
 
         return new GoldenSetQuality(
             total, correct, unknown,
-            contradictingSound, contradictingTrivial, contradictingUnknown);
+            contradictingSound, contradictingTrivial, contradictingUnknown, contradictingUnspecified,
+            rankAsked, rankFirst, rankTopThree);
     }
 
     /// <summary>Bir paketin kapsam altındaki incelemeleri, en yeniden eskiye.</summary>

@@ -71,7 +71,9 @@ public sealed class AlertClosureService(
         string note,
         AccessScope scope,
         CancellationToken cancellationToken = default,
-        string? actualRootCause = null)
+        string? actualRootCause = null,
+        int? correctFindingRank = null,
+        bool correctFindingRankAsked = false)
     {
         ArgumentNullException.ThrowIfNull(scope);
 
@@ -106,7 +108,9 @@ public sealed class AlertClosureService(
 
                 // Grup tetiklenmeden çözülüyor; buradan geçmesine gerek yok.
                 OwnerGroup: null,
-                ActualRootCause: actualRootCause),
+                ActualRootCause: actualRootCause,
+                CorrectFindingRank: correctFindingRank,
+                CorrectFindingRankAsked: correctFindingRankAsked),
             scope,
             cancellationToken);
 

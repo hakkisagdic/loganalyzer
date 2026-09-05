@@ -12,6 +12,7 @@ import {
   honestyLines,
   presentStatus,
   REVIEW_STATES,
+  parseFindingRank,
   reviewRequest,
   type RcaFinding,
   type RcaReport,
@@ -57,6 +58,9 @@ export function ReportView({ report }: ReportViewProps) {
   // Varsayılan `unknown`: ekran bu boyutu bilemiyor ve kullanıcı adına
   // çıkarım yapmıyor (bkz. CONTRADICTING_CHOICES).
   const [contradicting, setContradicting] = useState<string>("unknown");
+  // Varsayılan boş: ekran "hiçbiri doğru değildi"yi inceleyen adına söylemiyor.
+  // Boş ile "none" gövdede ikisi de `null`, ama seçimin kendisi bir hareket.
+  const [findingRank, setFindingRank] = useState<string>("");
 
   const warnings = honestyLines(report);
 
@@ -70,11 +74,20 @@ export function ReportView({ report }: ReportViewProps) {
       // ikinci boyut yine de her incelemede soruluyor.
       const saved = (await api.post("/v1/rca/{id}/review", {
         path: { id: report.bundle_id },
-        body: reviewRequest(verdict, contradicting, rootCause),
+        body: reviewRequest(
+          verdict,
+          contradicting,
+          rootCause,
+          "",
+          parseFindingRank(findingRank),
+          // Soru yalnızca bulgu varken çiziliyor; yoksa sorulmuş sayılmıyor.
+          report.findings.length > 0,
+        ),
       })) as RcaReview;
 
       setReview(saved);
       setRootCause("");
+      setFindingRank("");
     } catch (cause) {
       setReviewError(describeError(cause));
     } finally {
@@ -229,6 +242,37 @@ export function ReportView({ report }: ReportViewProps) {
         <p className={styles.quiet} id="celisen-notu">
           Model bu bölümü doldurmak için önemsiz bir şey uydurmuş olabilir ve
           rapor bütün olarak yine de doğru görünebilir. Bu yüzden ayrı soruluyor.
+        </p>
+
+        {/*
+          Sıra soruluyor, metin değil: inceleyen zaten listeye bakıyor ve ondan
+          bir sayı istemek, `actual_root_cause` ile bulgu metinlerini
+          eşleştirmekten hem ucuz hem kesin. accuracy@1 ve accuracy@3 bu tek
+          alandan çıkıyor.
+        */}
+        {report.findings.length > 0 ? (
+          <label className={styles.contradicting}>
+            Doğru olan bulgu
+            <select
+              value={findingRank}
+              onChange={(event) => setFindingRank(event.target.value)}
+              aria-describedby="sira-notu"
+              data-testid="correct-finding-rank"
+            >
+              <option value="">Seçilmedi</option>
+              <option value="none">Hiçbiri doğru değildi</option>
+              {report.findings.map((_, index) => (
+                <option key={index} value={String(index + 1)}>
+                  {index + 1}. bulgu
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
+        <p className={styles.quiet} id="sira-notu">
+          Doğruluk oranı, doğru bulgunun kaçıncı sırada olduğuna bakıyor —
+          birinci sırada olması ile üçüncüde olması aynı şey değil.
         </p>
 
         <div className={styles.reviewButtons}>

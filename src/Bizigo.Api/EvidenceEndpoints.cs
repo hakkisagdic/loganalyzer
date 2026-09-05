@@ -94,6 +94,28 @@ public sealed record RcaReviewRequest
     [JsonPropertyName("actual_root_cause")]
     public string ActualRootCause { get; init; } = string.Empty;
 
+    /// <summary>
+    /// Kaçıncı bulgu doğruydu (1 tabanlı, sıralı <c>findings[]</c> listesindeki
+    /// konum). <c>null</c> = <b>hiçbiri doğru değildi</b> ve bu bir ölçüm.
+    ///
+    /// <para>
+    /// Sıra soruluyor, metin karşılaştırılmıyor: <c>actual_root_cause</c> ile
+    /// bulgu metinlerini eşleştirmek bir dizge işi olurdu ve bu depoda o sınıfın
+    /// dört örneği kolonu ve sorgusu doğru olan yerlerde çıktı. İnsan zaten
+    /// listeye bakıyor.
+    /// </para>
+    /// </summary>
+    [JsonPropertyName("correct_finding_rank")]
+    public int? CorrectFindingRank { get; init; }
+
+    /// <summary>
+    /// Sıra sorusu bu ekranda <b>soruldu mu</b>. <c>accuracy@k</c>'nın paydası
+    /// bu alandan geliyor, <c>correct_finding_rank</c>'in dolu olmasından değil:
+    /// <c>null</c> "hiçbiri doğru değildi" demek ve o bir ölçüm.
+    /// </summary>
+    [JsonPropertyName("rank_asked")]
+    public bool RankAsked { get; init; }
+
     [JsonPropertyName("note")]
     public string Note { get; init; } = string.Empty;
 }
@@ -409,7 +431,9 @@ public static class EvidenceEndpoints
                     Verdict: verdict,
                     ContradictingEvidence: contradicting,
                     Note: request.Note,
-                    ActualRootCause: request.ActualRootCause),
+                    ActualRootCause: request.ActualRootCause,
+                    CorrectFindingRank: request.CorrectFindingRank,
+                    CorrectFindingRankAsked: request.RankAsked),
                 // İnceleyen token'dan; gövdeden gelseydi herkes başkasının adına
                 // oy yazabilirdi.
                 user.Scope,

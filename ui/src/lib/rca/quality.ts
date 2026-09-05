@@ -54,6 +54,16 @@ export interface QualityDisplay {
    * </p>
    */
   readonly contradictingTrivialRatio: RatioDisplay;
+  /**
+   * Rank sorusunun <b>sorulduğu</b> inceleme sayısı — <c>accuracy@k</c>'nın
+   * paydası. Sorunun eklenmesinden önceki incelemeler burada yok, ve bu ayrım
+   * sunucuda kaydın şema sürümünden geliyor.
+   */
+  readonly rankAsked: number;
+  /** Doğru bulgu ilk sıradaydı. */
+  readonly accuracyAtOne: RatioDisplay;
+  /** Doğru bulgu ilk üçteydi. Aynı alandan çıkıyor, ikinci bir eksen yok. */
+  readonly accuracyAtThree: RatioDisplay;
 }
 
 /**
@@ -101,5 +111,8 @@ export function presentQuality(quality: GoldenSetQuality): QualityDisplay {
       quality.contradicting_trivial_ratio,
       "çelişen kanıt değerlendirilmedi",
     ),
+    rankAsked: count(quality.rank_asked),
+    accuracyAtOne: ratio(quality.accuracy_at_one, "bulgu sırası sorulmadı"),
+    accuracyAtThree: ratio(quality.accuracy_at_three, "bulgu sırası sorulmadı"),
   };
 }

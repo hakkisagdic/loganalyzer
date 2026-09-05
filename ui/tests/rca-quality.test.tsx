@@ -35,6 +35,10 @@ function quality(overrides: Partial<GoldenSetQuality> = {}): GoldenSetQuality {
     contradicting_unknown: 0,
     contradicting_evaluated: 0,
     contradicting_trivial_ratio: null,
+    contradicting_unspecified: 0,
+    rank_asked: 0,
+    accuracy_at_one: null,
+    accuracy_at_three: null,
     ...overrides,
   } as GoldenSetQuality;
 }
@@ -188,6 +192,51 @@ describe("çelişen kanıt tiyatrosu (T47)", () => {
 
     expect(display.contradictingEvaluated).toBe(4);
     expect(display.contradictingTrivialRatio).toEqual({ kind: "ratio", percent: "%75.0" });
+  });
+});
+
+describe("accuracy@k (T47)", () => {
+  /**
+   * <b>Soru sorulmamışsa <c>%0</c> yazmıyor.</b>
+   *
+   * <p>
+   * Bu, göstergedeki en inandırıcı yanlış olurdu: kimse sıra sorusuna cevap
+   * vermemişken ekranda <i>"%0 ilk bulguda doğru"</i> yazması, ürünün hiç
+   * ölçülmemiş doğruluğunu <b>ölçülmüş ve berbat</b> gibi gösterir.
+   * </p>
+   */
+  it("Sorulmamissa_yuzde_sifir_yazmiyor", () => {
+    const html = renderToStaticMarkup(
+      <QualityBadge quality={quality({ total: 5, rank_asked: 0 })} error={null} />,
+    );
+
+    expect(html).toContain('data-field="accuracy_at_one" data-kind="undecided"');
+    expect(html).toContain('data-field="accuracy_at_three" data-kind="undecided"');
+    expect(html).toContain("bulgu sırası sorulmadı");
+  });
+
+  /** Ölçülmüş sıfır gizlenmiyor — hiçbir bulgu doğru çıkmamış olabilir. */
+  it("Olculmus_sifir_accuracy_gizlenmiyor", () => {
+    const html = renderToStaticMarkup(
+      <QualityBadge
+        quality={quality({ total: 4, rank_asked: 4, accuracy_at_one: 0, accuracy_at_three: 0 })}
+        error={null}
+      />,
+    );
+
+    expect(html).toContain('data-field="accuracy_at_one" data-kind="ratio"');
+    expect(html).toContain("%0.0");
+  });
+
+  /** İki oran aynı alandan çıkıyor ve paydaları ortak. */
+  it("Iki_oran_ayni_paydayi_paylasiyor", () => {
+    const display = presentQuality(
+      quality({ total: 8, rank_asked: 4, accuracy_at_one: 0.25, accuracy_at_three: 0.5 }),
+    );
+
+    expect(display.rankAsked).toBe(4);
+    expect(display.accuracyAtOne).toEqual({ kind: "ratio", percent: "%25.0" });
+    expect(display.accuracyAtThree).toEqual({ kind: "ratio", percent: "%50.0" });
   });
 });
 

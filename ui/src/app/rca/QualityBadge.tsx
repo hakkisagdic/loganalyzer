@@ -80,6 +80,35 @@ export function QualityBadge({ quality, error }: QualityBadgeProps) {
           </dd>
         </div>
         <div>
+          <dt>Bulgu sırası soruldu</dt>
+          {/* accuracy@k'nın paydası. Sorunun eklenmesinden önceki incelemeler
+              burada yok — yoksa "kimse sorulmadı" %0 doğruluk gibi okunurdu. */}
+          <dd data-field="rank_asked">{display.rankAsked}</dd>
+        </div>
+
+        <div>
+          <dt>İlk bulguda doğru</dt>
+          <dd data-field="accuracy_at_one" data-kind={display.accuracyAtOne.kind}>
+            {display.accuracyAtOne.kind === "ratio" ? (
+              display.accuracyAtOne.percent
+            ) : (
+              <span className={styles.quiet}>{display.accuracyAtOne.label}</span>
+            )}
+          </dd>
+        </div>
+
+        <div>
+          <dt>İlk üçte doğru</dt>
+          <dd data-field="accuracy_at_three" data-kind={display.accuracyAtThree.kind}>
+            {display.accuracyAtThree.kind === "ratio" ? (
+              display.accuracyAtThree.percent
+            ) : (
+              <span className={styles.quiet}>{display.accuracyAtThree.label}</span>
+            )}
+          </dd>
+        </div>
+
+        <div>
           <dt>Çelişen kanıt değerlendirildi</dt>
           {/* Tiyatro oranının paydası bu — toplam inceleme DEĞİL. */}
           <dd data-field="contradicting_evaluated">{display.contradictingEvaluated}</dd>

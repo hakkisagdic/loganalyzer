@@ -18,14 +18,43 @@ public sealed record CloseTriggerRequest
     [JsonPropertyName("verdict")]
     public string Verdict { get; init; } = string.Empty;
 
+    /// <summary>
+    /// Varsayılan <c>unspecified</c> — <b>eskiden <c>not_present</c>'tı ve o bir
+    /// karar uyduruyordu.</b>
+    ///
+    /// <para>
+    /// Alanı hiç göndermeyen bir çağıran sessizce <i>"bölüm yoktu"</i> demiş
+    /// oluyordu, ve o cümle tiyatro oranının paydasını etkiliyor.
+    /// <c>EvidenceEndpoints</c>'in aynı alanı zaten <c>unknown</c> ile
+    /// varsayıyordu ve gerekçesini yazmıştı; iki uç aynı soruyu iki farklı
+    /// varsayılanla soruyordu. Artık ikisi de bir karar uydurmuyor.
+    /// </para>
+    /// </summary>
     [JsonPropertyName("contradicting_evidence")]
-    public string ContradictingEvidence { get; init; } = "not_present";
+    public string ContradictingEvidence { get; init; } = "unspecified";
 
     [JsonPropertyName("actual_root_cause")]
     public string ActualRootCause { get; init; } = string.Empty;
 
     [JsonPropertyName("note")]
     public string Note { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Kaçıncı bulgu doğruydu (1 tabanlı). <c>null</c> = <b>hiçbiri</b>, ve bu
+    /// bir ölçüm: <c>accuracy@1</c>/<c>accuracy@3</c>'ün paydasına giriyor,
+    /// payına girmiyor.
+    /// </summary>
+    [JsonPropertyName("correct_finding_rank")]
+    public int? CorrectFindingRank { get; init; }
+
+    /// <summary>
+    /// Sıra sorusu soruldu mu. Kapatma ekranı bulguları <b>göstermiyor</b>,
+    /// dolayısıyla bugün <c>false</c> gönderiyor ve bu incelemeler
+    /// <c>accuracy@k</c>'nın paydasına <b>girmiyor</b> — soramadığı bir soruyu
+    /// sormuş saymak, oranı sessizce aşağı çekerdi.
+    /// </summary>
+    [JsonPropertyName("rank_asked")]
+    public bool RankAsked { get; init; }
 }
 
 /// <param name="BundleGenerated">
@@ -74,7 +103,11 @@ public sealed record GoldenSetQualityResponse(
     [property: JsonPropertyName("contradicting_trivial")] long ContradictingTrivial,
     [property: JsonPropertyName("contradicting_unknown")] long ContradictingUnknown,
     [property: JsonPropertyName("contradicting_evaluated")] long ContradictingEvaluated,
-    [property: JsonPropertyName("contradicting_trivial_ratio")] double? ContradictingTrivialRatio);
+    [property: JsonPropertyName("contradicting_trivial_ratio")] double? ContradictingTrivialRatio,
+    [property: JsonPropertyName("contradicting_unspecified")] long ContradictingUnspecified,
+    [property: JsonPropertyName("rank_asked")] long RankAsked,
+    [property: JsonPropertyName("accuracy_at_one")] double? AccuracyAtOne,
+    [property: JsonPropertyName("accuracy_at_three")] double? AccuracyAtThree);
 
 /// <summary>
 /// Alarm kapatma ve altın küme göstergesi (T38).
@@ -157,7 +190,9 @@ public static class AlertClosureEndpoints
                 request.Note,
                 user.Scope,
                 cancellationToken,
-                request.ActualRootCause);
+                request.ActualRootCause,
+                request.CorrectFindingRank,
+                request.RankAsked);
 
             return Results.Ok(new CloseTriggerResponse(
                 closure.Trigger.Id,
@@ -190,7 +225,11 @@ public static class AlertClosureEndpoints
             quality.ContradictingTrivial,
             quality.ContradictingUnknown,
             quality.ContradictingEvaluated,
-            quality.ContradictingTrivialRatio));
+            quality.ContradictingTrivialRatio,
+            quality.ContradictingUnspecified,
+            quality.RankAsked,
+            quality.AccuracyAtOne,
+            quality.AccuracyAtThree));
     }
 }
 
@@ -228,10 +267,15 @@ public static class ReviewWire
 
     public static bool TryParseContradicting(string? text, out ContradictingEvidenceVerdict verdict)
     {
-        verdict = ContradictingEvidenceVerdict.NotPresent;
+        // Tanınmayan girdide çıkış `Unspecified`, `NotPresent` DEĞİL. Fonksiyon
+        // zaten `false` dönüyor ve çağıran 400 veriyor, ama `out` değerinin
+        // varsayılanı bir gün gözden kaçarsa "kimse söylemedi" hâline düşmek,
+        // "bölüm yoktu" diye bir karar uydurmaktan iyi.
+        verdict = ContradictingEvidenceVerdict.Unspecified;
 
         switch (text?.Trim())
         {
+            case "unspecified": verdict = ContradictingEvidenceVerdict.Unspecified; return true;
             case "not_present": verdict = ContradictingEvidenceVerdict.NotPresent; return true;
             case "sound": verdict = ContradictingEvidenceVerdict.Sound; return true;
             case "trivial": verdict = ContradictingEvidenceVerdict.Trivial; return true;
