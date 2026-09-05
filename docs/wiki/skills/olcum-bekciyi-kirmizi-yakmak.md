@@ -24,7 +24,7 @@ sources:
   - docs/epic/t09-kararlar/index.md
   - docs/epic/t10-kararlar/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=dd011df5a833 docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t09-kararlar/index.md=b21d65bda95a docs/epic/t10-kararlar/index.md=98995baaaacf docs/epic/t27-ad-govde-kesfi/index.md=e14d05d8d833 docs/epic/t27-kapanis-taramasi/index.md=fc23cd892d11 docs/epic/t28-denetim-bulgulari/index.md=7f6ce6b9f3f7 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t39-alan-kapsami/index.md=7d06bfcf6e0c"
+source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t09-kararlar/index.md=b21d65bda95a docs/epic/t10-kararlar/index.md=98995baaaacf docs/epic/t27-ad-govde-kesfi/index.md=e14d05d8d833 docs/epic/t27-kapanis-taramasi/index.md=fc23cd892d11 docs/epic/t28-denetim-bulgulari/index.md=7f6ce6b9f3f7 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t39-alan-kapsami/index.md=7d06bfcf6e0c"
 summary: Geçen bir test geçtiğini kanıtlar, kırılabildiğini değil. Bu depoda bekçiler koruduğu hata geri konularak sınanıyor; yanlış pozitif vermediği de ayrıca ölçülüyor.
 provenance:
   extracted: 0.85
@@ -90,6 +90,39 @@ disiplinin kendi üstüne kapanan hâli.
 
 Üçünün de kendi ajanı tarafından yakalanması ayrıca bir veri: tuzak bir dikkat
 eksikliği değil, **ölçüm yordamının eksik bir adımı**ydı. ^[extracted]
+
+### Adım 1.6 — geri almanın derlemeye ulaştığını da gör
+
+`CLAUDE.md` §6'ya 2026-09-05'te eklendi. Adım 1.5 kusurun **girdiğini**
+kanıtlıyor; **çıktığını** kanıtlayan bir adım yoktu.
+
+T44'ün ölçüm aracı geri almayı `shutil.copy2` ile yapıyordu ve o zaman
+damgasını da geri yüklüyor: düzeltilmiş kaynak derlenmiş ikiliden **eski**
+göründü, MSBuild projeyi atladı, `dotnet build` *0 hata 0 uyarı* dedi ve koşan
+ikili hâlâ kusurluydu.
+
+| | Kaynak | İkili | Görünen |
+| --- | --- | --- | --- |
+| `grep` | temiz | — | "geri alındı" |
+| `build` | — | kusurlu, atlandı | "0 hata, 0 uyarı" |
+| `test` | — | kusurlu | **kırmızı** |
+
+Üç araç üç farklı şey söyledi ve üçü de kendi içinde doğruydu. Bu, Adım 1.5'in
+sınıfının **tersten** hâli: orada yeşil bir sonuç *"ölçüm yapılmadı"*
+olabiliyordu, burada kırmızı bir sonuç *"geri alma görülmedi"* oluyor — ve
+ikincisi daha sinsi, çünkü kırmızı bir test insanı **kodun kendisini aramaya**
+gönderiyor. Yakalayan şey bir bekçi değildi: geri aldıktan sonra tam paketi bir
+kez daha koşturmaktı.
+
+Kardeş vaka aynı turda FS-b'de çıktı ve geri almanın **aracını** hedefliyor:
+`git checkout <dosya>` commit edilmemiş işin üstüne yazıyor — ajanın kendi
+yazdığı `entrypoint.sh` bir önceki ticket'ın hâline döndü. Fark etti ve yeniden
+yazdı, ama fark etmeyebilirdi. Ölçüm yordamı **yedek dosyaya** dayanmalı;
+`git checkout` çalışma ağacının tamamına bakan bir araç ve tek bir kusurun geri
+alınması için fazla geniş.
+
+İkisi birlikte aynı şeyi söylüyor: *"geri aldım"* bir iddia, ve bu depoda
+iddialar ölçülür. ^[extracted]
 
 ## Adım 2 — yanmaması gereken yerde yanmadığını da ölç
 

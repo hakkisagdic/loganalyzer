@@ -211,6 +211,35 @@ kendisi bu deponun §7'de tarif ettiği sınıfa giriyor.
 
 > **Yeşil bir sonuç, ölçümün yapılmadığı anlamına da gelebiliyor.**
 
+**Geri almanın derlemeye ulaştığı ayrıca görülmeli.** İddia adımı kusurun
+*girdiğini* kanıtlıyor; *çıktığını* kanıtlayan bir adım yoktu. T44'ün ölçüm
+aracı geri almayı `shutil.copy2` ile yapıyordu ve o **zaman damgasını da geri
+yüklüyor**: düzeltilmiş kaynak derlenmiş ikiliden eski göründü, MSBuild projeyi
+atladı, `dotnet build` **0 hata 0 uyarı** dedi ve koşan ikili hâlâ kusurluydu.
+
+| | Kaynak | İkili | Görünen |
+| --- | --- | --- | --- |
+| `grep` | temiz | — | "geri alındı" |
+| `build` | — | kusurlu, atlandı | "0 hata, 0 uyarı" |
+| `test` | — | kusurlu | **kırmızı** |
+
+Üç araç üç farklı şey söyledi ve üçü de kendi içinde doğruydu. Bu, yukarıdaki
+sınıfın **tersten** hâli: orada yeşil bir sonuç *"ölçüm yapılmadı"* olabiliyor,
+burada kırmızı bir sonuç *"geri alma görülmedi"* oluyor — ve ikincisi daha
+sinsi, çünkü kırmızı bir test insanı kodun kendisini aramaya gönderiyor.
+
+Yordamın son adımı bu yüzden `git checkout` ya da dosya kopyalamakla bitmiyor:
+**geri aldıktan sonra tam paketi bir kez daha koştur.** Kusuru yakalayan şey bir
+bekçi değildi, o son koşumdu. Kopyalarken zaman damgasını taşıma (`copy` +
+`touch`); `copy2` bu depoda bir kez ölçümü sessizce yalancı yaptı.
+
+**`git checkout <dosya>` ile geri alma, commit edilmemiş işin üstüne yazar.**
+Aynı turda FS-b'nin ölçüm betiği kusuru böyle geri aldı ve `entrypoint.sh`'i
+S03 hâline döndürdü — kendi commit edilmemiş S06 çalışmasını sildi. Fark etti ve
+yeniden yazdı, ama fark etmeyebilirdi. Ölçüm yordamı **yedek dosyaya** dayanmalı;
+`git checkout` çalışma ağacının tamamına bakan bir araç, tek bir kusurun geri
+alınması için fazla geniş.
+
 **Bir testin geçme sebebinin duvar saatiyle ilgisi olmamalı.** Bu depoda iki kez
 yaşandı:
 - `DiscoveryWorkerTests` sidecar zaman aşımını 200 ms'ye çekiyordu; aynı sınıfta
