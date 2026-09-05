@@ -116,17 +116,17 @@ public sealed class EpicStatusTests
         ["durum:S05"] = "Tablo ⬜ diyor, ticket dosyası `status: 2`.",
 
         // 3 · `kalan-is-raporu`'nun "açık" dediği kalemler.
-        ["rapor:T38"] =
-            "Rapor açık diyor, `tickets-f3/altin-kume` `status: 2`. Bu haftaki yanlış " +
-            "brief'in tam kaynağı: aynı commit hem ticket'ı 2 yaptı hem raporda açık bıraktı.",
-        // Gerekçe 2026-09-05'te değişti ve değiştiği yazılıyor: T44'ün dosyası
-        // ARTIK VAR (merge `491d28d`) ve `status: 2` diyor, rapor hâlâ açık
-        // diyor. Yani ayrışma sürüyor ama sebebi başka — eskisi "belge yok",
-        // yenisi "belge var ve çelişiyor". Metni güncellemeseydik bu kapı adı
-        // ile gövdesi ayrışan bir bekçiye dönerdi: liste doğru kalemi tutuyor,
-        // yanındaki cümle yalan söylüyor.
-        ["rapor:T44"] = "Raporda açık, `tickets-f4/llm-adimlari-ve-iki-kapi` `status: 2`.",
-        ["rapor:T48"] = "Raporda açık; ticket dosyası var ama yol haritası tablosunda olmadığı için eşlenemiyor.",
+        //
+        // T38, T44 ve T47/T48 girişleri 2026-09-05'te SİLİNDİ, çünkü rapor o
+        // gün bugünkü hâline getirildi ve üçü artık ayrışmıyor. Silinmeleri bu
+        // kapının ikinci yarısının istediği şey: küçülmeyen bir ayrışma listesi
+        // bir süre sonra hiçbir şey ifade etmiyor, ve birinci yarıyı dürüst
+        // tutan da bu.
+        //
+        // Silinmeden önce T44'ün gerekçesi bir kez GÜNCELLENDİ ve o da kayda
+        // değer: ayrışma sürüyordu ama sebebi değişmişti — eskisi "belge yok",
+        // yenisi "belge var ve çelişiyor". Metin güncellenmeseydi liste doğru
+        // kalemi tutup yanındaki cümle yalan söyleyecekti.
         ["rapor:T49"] = "Raporda açık; ticket dosyası var ama yol haritası tablosunda olmadığı için eşlenemiyor.",
     };
 

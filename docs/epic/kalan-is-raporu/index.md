@@ -1,15 +1,22 @@
 ---
 kind: spec
-title: "Kalan iş — uygulamanın tamamı için ne var (2026-08-26)"
+title: "Kalan iş — uygulamanın tamamı için ne var (2026-09-05)"
 ---
 
 # Kalan iş raporu
 
-Bugünkü ölçülmüş hâl: derleme **21 proje 0 uyarı** · birim **1181 geçti /
-4 atlandı / 0 düştü** · entegrasyon **167 geçti / 5 atlandı / 0 düştü** ·
-uçtan uca hazırlık **gerçek yığına karşı geçti**.
+Bugünkü ölçülmüş hâl: derleme **0 uyarı 0 hata** · birim **1247 geçti /
+4 atlandı / 0 düştü** · UI **499 geçti / 33 dosya** · `api:check` **birebir**.
 
-`main` = `3a1a148`, uzakla eşit.
+`main` = `65ad1df`, **uzağa push edilmedi**. Entegrasyon testleri ve compose
+kapısı bu turda **koşmadı** — Docker daemon bu makinede ölü (bkz. §3).
+
+> **Bu belgenin bir bekçisi var artık.** `EpicStatusTests` aşağıdaki "açık"
+> listesini ticket dosyalarının `status` alanıyla karşılaştırıyor ve
+> çeliştiğinde birim paketi kırmızı yanıyor. Kendi merge turunda **dört kez**
+> konuştu. Sebebi §6'da yazılıydı ve buraya bir bekçi bağlanana kadar aynı
+> ayrışma üç turda üç kez döndü — sonuncusunda T38'in brief'i yanlış öncülle
+> başladı.
 
 ---
 
@@ -17,45 +24,63 @@ uçtan uca hazırlık **gerçek yığına karşı geçti**.
 
 | Faz | Ne | Durum |
 | --- | --- | --- |
-| **F1** — boru hattı | Ingest, depolama, parser motoru, kimlik, API | **13/13 kapandı** |
-| **F2** — arayüz | Ekranlar, BFF, alarm, change | 16/16 kapandı · **T49 yeni açıldı** |
-| **F3** — detection ve kanıt | Sigma, korelasyonlar, kanıt paketi | 9/12 · **T32, T38, T48 açık** |
-| **F4** — agentic RCA | Prompt tabanı, plugin, tetikleyici, kota, LLM | 5/7 · **T44, T47 açık** |
+| **F1** — boru hattı | Ingest, depolama, parser motoru, kimlik, API | **14/14 kapandı** |
+| **F2** — arayüz | Ekranlar, BFF, alarm, change | 16/17 · **T49 sürüyor** (canlı doğrulaması koordinatörde) |
+| **F3** — detection ve kanıt | Sigma, korelasyonlar, kanıt paketi, **üç kapı ticket'ı** | 13/14 · **T32 sürüyor** |
+| **F4** — agentic RCA | Prompt tabanı, plugin, tetikleyici, kota, LLM, rapor | 7/9 · **T47 sürüyor, T54 açık** |
 | **F5** — gözlemlenebilirlik | Metrik · trace · topoloji sağlayıcıları | **başlamadı** |
-| **FS** — simülatörler | Cihazsız uçtan uca koşum | 5/7 · **S06, S07 açık** |
+| **FS** — simülatörler | Cihazsız uçtan uca koşum | **8/8 kapandı** |
 | **MCP** — protokol | İki yüzey, sekiz ticket | **M01 koşuyor**, M02–M08 açık |
+
+Bu turda kapananlar: **T38 · T44 · T48 · T50 · T51 · T53 · S06 · S07 · S08**.
+`status: 1` bırakılanlar bilerek öyle — T32 ve T47 kendi ticket'larının canlı
+yarısını koşturamadı, T49'un kabul kriterlerinden üçü Docker istiyor. Hiçbiri
+"ölçülmedi ama kapandı" sayılmadı.
 
 ---
 
 ## 2 · Açık ticket'lar — on beş kalem
 
-### F3 — üç kalem
+### F3 — bir kalem
 
 | # | Ticket | Neden açık |
 | --- | --- | --- |
-| **T32** | Derleme hattı ve SQL versiyonlama | Sigma kolunun son halkası. Kapsam kararı T30'un ölçümüne bağlıydı ve ölçüm bitti |
-| **T38** | Altın küme ve inceleme akışı | F3'ün **tek buluşma noktası** — detection ve kanıt kolları burada birleşiyor. Alarm kapatmanın zorunlu parçası; doldurulmazsa kalite hiç ölçülemez |
-| **T48** | `Produces<T>` kapısının kör noktası | Delik **dört kez** açıldı, her seferinde bulan kişi farklı. Sorun dikkat değil, mekanizmanın yokluğu |
+| **T32** | Derleme hattı ve SQL versiyonlama | Kod ve kapılar bitti; açık olan **duvar saati ölçümü** — kural başına derleme maliyeti sessiz makine istiyor ve o koşum koordinatörde. Ölçekleme sorusu saatsiz cevaplandı ve karesel bir kusur buldu |
+
+**T38 ve T48 bu turda kapandı.** T38'in kodu zaten yazılmıştı; eksik olan
+altıncı bekçiydi (altın kümede kapsam, gerçek SQL'e karşı). T48 kapının
+**ikinci** elle listesini kaldırdı ve yanında iki kalem daha doğdu: T50
+(keşfedilen uzantı ↔ kompozisyon kökü) ve T53 (bu belgenin bekçisi), ikisi de
+kapandı.
 
 ### F4 — iki kalem
 
 | # | Ticket | Neden açık |
 | --- | --- | --- |
-| **T44** | LLM adımları ve ikinci kapı | **Koşuyor.** Cümle bağlama kapısı + atılan cümle sayacı — F4'ün Karar 1'i buna bağlı |
-| **T47** | Kalite ölçümü | F4'ün **kabul sınavı**, cilalama değil. T44'ü ve T38'in altın kümesini bekliyor |
+| **T47** | Kalite ölçümü | F4'ün **kabul sınavı**, cilalama değil. Tiyatro yarısı bitti (`ContradictingEvidenceVerdict` artık okunuyor, payda görünür); **atılan cümle oranı başlamadı** |
+| **T54** | Model muafiyetinin kaydı | Rapor tarafı yazıldı; **koşum kaydına** (`rca_runs`) yazılıp yazılmayacağına bakılmadı. Ayrı bir kalem olabilir |
 
-### FS — iki kalem
+**T44 ve T51 kapandı.** T44 iki kapıyı da kurdu; T51 raporu kalıcı yaptı ve
+sayacı ekrana çıkardı. T51'in bıraktığı sınır kayıtta: **`SaveAsync`'i hiçbir
+üretim kodu çağırmıyor** — tablo var, yol var, yazan yok.
 
-| # | Ticket | Neden açık |
-| --- | --- | --- |
-| **S06** | N3: CLI öykünmesi | Bugün cevabı **olmayan** bir soruyu tutuyor: toplayıcı sayfalamayı biliyor mu? `--More--` görülmezse çıktının yarısı **hatasız** kaybolur |
-| **S07** | İmzalı webhook üreteci | Idempotency: aynı teslimat iki kez → tek kayıt. Yoksa RCA'nın *"öncesinde şu config değişti"* kanıtı iki kez görünür |
+### FS — kapandı
+
+S06, S07 ve **S08** bu turda kapandı. S06'nın cevabı ikinci şıkla geldi ve
+ürünün gerçek bir kusuruydu: toplayıcı sayfalama açıkken **hatasız** yarım
+config alıyordu, ve fark motoru kaybı *"silinmiş yüzlerce satır"* diye
+okuyordu — yani kusur sessiz kalmıyor, **başka bir şey hakkında yalan
+söylüyordu**. S08 çekim modelini düzeltti.
+
+Kalan açık kalem ticket değil **veri**: gerçek bir RouterOS cihazından tek bir
+`/export terse` çıktısı. MikroTik'in sayfalayıp sayfalamadığı bilinmiyor ve
+öykünme bilmediği bir olguyu taklit etmiyor.
 
 ### F2 — bir kalem
 
 | # | Ticket | Neden açık |
 | --- | --- | --- |
-| **T49** | Dashboard container'ı | *"Yığının tamamı tek komutla kalkıyor mu"* sorusunun cevabı bugün **hayır** — API kalkıyor, ekran kalkmıyor. Ve BFF'in container ağında çalışıp çalışmadığı **hiç sınanmıyor** |
+| **T49** | Dashboard container'ı | Compose'a `ui` girdi, Keycloak'ın ön/arka kanal ayrımı çözüldü. Kabul kriterlerinden **üçü** Docker istiyor ve koşulmadı: yığın kalkıyor mu · container'daki ekrandan giriş yapılabiliyor mu · e2e container'a karşı koşuyor mu. Ticket'ın öngördüğü dört sorundan **üçü çıkmadı** |
 
 ### MCP — sekiz kalem
 
