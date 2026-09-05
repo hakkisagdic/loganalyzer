@@ -88,12 +88,17 @@ flowchart TB
 | T41 | [Prompt redaksiyon tabanı](prompt-redaksiyon-tabani/index.md) | Log metninde sır tanıma; `SecretRedactor` genişletilir, kopyalanmaz. Ölçüm korpusu FS·S01'den | — |
 | T42 | Model sağlayıcısı soyutlaması | Yerel/uzak seçimi; K6'nın kapısı — log verisi kurumdan çıkmaz. `masked`/`raw` düzeylerini T41 açıyor | T41 |
 | T43 | Senaryo plugin çekirdeği | Format, **yükleme anında zarf doğrulaması**, `constraints` listesi + `constraints_waived` gerekçesi + sabit muaf sayısı | — |
-| T44 | LLM adımları ve iki kapı | Kısıt doğrulama (adım reddi, 1 tekrar) ve cümle bağlama (atma, sayaç) ayrı; doğrulama **adımın gördüğü** kanıta karşı | T42, T43, T46 |
+| T44 | [LLM adımları ve iki kapı](llm-adimlari-ve-iki-kapi/index.md) | Kısıt doğrulama (adım reddi, 1 tekrar) ve cümle bağlama (atma, sayaç) ayrı; doğrulama **adımın gördüğü** kanıta karşı | T42, T43, T46 |
 | T45 | Tetikleyiciler | Dört kaynak (alarm · UI · dış API · `schedule`) + devam kuralı; soyağacı (`root_run_id`, `depth`, ata tekrarı); debounce | — |
 | T46 | Kuyruk ve kota | Dört kısıt dört ayrı riske; koşum durumu **kapalı küme** (`Empty` ≠ `QuotaExceeded` ≠ `Cancelled`); ret sayacı grup bazında görünür | T45 |
 | T47 | Kalite ölçümü | Altın küme üzerinden atılan cümle oranı ve çelişen kanıt tiyatrosu | T44 |
+| T51 | [RCA raporu kalıcılığı ve rapor yüzeyi](rca-report-kaliciligi/index.md) | Üretilen raporun `rca_reports`'ta kalıcılığı ve atılan cümle sayacının ekranda görünmesi. Üç hâl ayrı çiziliyor: model hiç koşmadı · koştu ama üretmedi · üretti ve **hepsi atıldı** | T44 |
 
 Sahipler ticket verilirken atanıyor.
+
+T44'ün ve T51'in satırları bu tabloya, `EpicStatusTests` onları hiçbir yol
+haritasında bulamadığı için eklendi — yani bekçi ilk merge'inde iş yaptı. T47'nin
+ticket dosyası hâlâ yok; satırı burada, belgesi yazılmadı.
 
 ## Bitti tanımı
 
