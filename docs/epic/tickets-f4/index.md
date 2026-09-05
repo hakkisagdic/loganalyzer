@@ -93,6 +93,7 @@ flowchart TB
 | T46 | Kuyruk ve kota | Dört kısıt dört ayrı riske; koşum durumu **kapalı küme** (`Empty` ≠ `QuotaExceeded` ≠ `Cancelled`); ret sayacı grup bazında görünür | T45 |
 | T47 | [Kalite ölçümü](kalite-olcumu/index.md) | Altın küme üzerinden atılan cümle oranı ve çelişen kanıt tiyatrosu | T44 |
 | T51 | [RCA raporu kalıcılığı ve rapor yüzeyi](rca-report-kaliciligi/index.md) | Üretilen raporun `rca_reports`'ta kalıcılığı ve atılan cümle sayacının ekranda görünmesi. Üç hâl ayrı çiziliyor: model hiç koşmadı · koştu ama üretmedi · üretti ve **hepsi atıldı** | T44 |
+| T54 | [Model muafiyetinin kaydı](model-muafiyeti-kaydi/index.md) | `model_boundary_override_reason` rapora bağlanıyor. Muafiyetin **yokluğu** da yazılıyor: yalnız `true` iken görünen bir rozet, muafiyetsiz koşumu *"bu soru sorulmamış"* hâline sokardı | T51 |
 
 Sahipler ticket verilirken atanıyor.
 
