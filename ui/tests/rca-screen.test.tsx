@@ -101,6 +101,8 @@ function reasoning(overrides: Record<string, unknown> = {}): RcaReasoning {
       completion_tokens: 1200,
       unreported_attempts: 0,
       tokens_complete: true,
+      boundary_overridden: false,
+      boundary_override_reason: null,
     },
     ...overrides,
   } as RcaReasoning;
@@ -246,6 +248,78 @@ describe("model yorumunun üç hâli ekranda ayrı", () => {
    * Kısmi bir belirteç toplamı bir ALT SINIR ve ekran bunu söylüyor. Sıfır
    * yazmanın daha sinsi hâli: sayı makul görünür ve tam sanılır.
    */
+  /**
+   * <b>K6 muafiyeti raporda görünüyor — ve YOKLUĞU da</b> (T54).
+   *
+   * <p>
+   * Bugüne kadar rapor model hakkında hiçbir şey söylemiyordu ve okuyan bunu
+   * BİLİYORDU. Artık modeli anlatan bir bölüm var ve okuyan onu TAM sanıyor;
+   * muafiyeti dışarıda bırakmak eksik bir tabloyu tam gibi göstermek olurdu.
+   * </p>
+   *
+   * <p>
+   * İki hâl de çiziliyor: yalnız `true` iken görünen bir rozet, muafiyetsiz
+   * koşumu "bu soru sorulmamış" hâline sokardı.
+   * </p>
+   */
+  it("K6 muafiyeti ve yokluğu ekranda ayrı çiziliyor", () => {
+    const muaf = renderToStaticMarkup(
+      <ReportView
+        report={report({
+          reasoning: reasoning({
+            model: {
+              provider: "yerel",
+              model: "qwen3-8b",
+              prompt_tokens: 100,
+              completion_tokens: 20,
+              unreported_attempts: 0,
+              tokens_complete: true,
+              boundary_overridden: true,
+              boundary_override_reason: "DNS kapalı; adres doğrulaması atlandı.",
+            },
+          }),
+        })}
+      />,
+    );
+
+    const muafDegil = renderToStaticMarkup(<ReportView report={report({ reasoning: reasoning() })} />);
+
+    expect(muaf).toContain('data-boundary="overridden"');
+    expect(muaf).toContain("DNS kapalı");
+
+    // YOKLUK da yazılı — sessizlik "bu soru sorulmadı" diye okunurdu.
+    expect(muafDegil).toContain('data-boundary="verified"');
+    expect(muafDegil).toContain("muafiyet kullanılmadı");
+  });
+
+  /**
+   * Gerekçesiz muafiyet, muafiyetsizlikten ayırt edilebiliyor — iki alanın
+   * birlikte taşınmasının bütün sebebi bu tek hâl.
+   */
+  it("gerekçesiz muafiyet 'yazılmamış' diye çiziliyor", () => {
+    const html = renderToStaticMarkup(
+      <ReportView
+        report={report({
+          reasoning: reasoning({
+            model: {
+              provider: "yerel",
+              model: "qwen3-8b",
+              prompt_tokens: 100,
+              completion_tokens: 20,
+              unreported_attempts: 0,
+              tokens_complete: true,
+              boundary_overridden: true,
+              boundary_override_reason: null,
+            },
+          }),
+        })}
+      />,
+    );
+
+    expect(html).toContain('data-boundary="overridden"');
+    expect(html).toContain("yazılmamış");
+  });
+
   it("eksik bildirilen belirteç toplamı alt sınır diye çiziliyor", () => {
     const html = renderToStaticMarkup(
       <ReportView
@@ -258,6 +332,8 @@ describe("model yorumunun üç hâli ekranda ayrı", () => {
               completion_tokens: null,
               unreported_attempts: 2,
               tokens_complete: false,
+              boundary_overridden: false,
+              boundary_override_reason: null,
             },
           }),
         })}

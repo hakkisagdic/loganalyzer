@@ -35,12 +35,43 @@ public sealed record RcaReportAction(string Text, IReadOnlyList<string> Evidence
 /// bu alan sıfır değilse toplamı <i>"bilinmiyor"</i> saymalı, <i>"küçük"</i>
 /// değil.
 /// </param>
+/// <param name="BoundaryOverridden">
+/// K6 sınır doğrulaması <b>atlandı mı</b> (T54'ün bulgusu).
+///
+/// <para>
+/// <b>Neden raporda:</b> bugün rapor model hakkında hiçbir şey söylemiyor ve
+/// okuyan bunu <i>biliyor</i>. T44+T51'den sonra modeli anlatan bir bölüm var —
+/// sağlayıcı, model adı, belirteç sayıları — ve okuyan onu <b>tam sanıyor</b>.
+/// Muafiyeti o bölümden dışarıda bırakmak, eksik bir tabloyu tam gibi
+/// göstermek olurdu.
+/// </para>
+///
+/// <para>
+/// <b>Neden <see cref="BoundaryOverrideReason"/> ile birlikte ve tek başına
+/// değil:</b> yalnız gerekçe taşınsaydı boş bir dizge <i>"muafiyet yok"</i> ile
+/// <i>"var ama gerekçe yazılmamış"</i>ı ayıramazdı — bu deponun defalarca adını
+/// koyduğu sınıf. İki alan iki ayrı soruyu cevaplıyor: <i>atlandı mı</i> ve
+/// <i>neden</i>.
+/// </para>
+///
+/// <para>
+/// Adlar <c>ModelEndpoint.AuditFields()</c>'takiyle <b>aynı</b>: iki gösterim
+/// sessizce ayrışmasın diye. Ayrışmanın nasıl göründüğünü bu depo S04'te ölçtü.
+/// </para>
+/// </param>
+/// <param name="BoundaryOverrideReason">
+/// Muafiyetin gerekçesi; muafiyet yoksa <see langword="null"/>. <b>Boş dize
+/// değil</b> — boş dize "gerekçe yazılmadı" ile "muafiyet yok"u aynı değere
+/// indirirdi.
+/// </param>
 public sealed record RcaReportModelInfo(
     string Provider,
     string Model,
     int? PromptTokens,
     int? CompletionTokens,
-    int UnreportedAttempts)
+    int UnreportedAttempts,
+    bool BoundaryOverridden = false,
+    string? BoundaryOverrideReason = null)
 {
     /// <summary>Toplam bir alt sınır mı, yoksa tam mı.</summary>
     public bool TokensComplete => UnreportedAttempts == 0;
@@ -162,6 +193,15 @@ public sealed record RcaReportDocument
             text.AppendLine("> Belirteç sayısı **eksik bildirildi**: " +
                 $"{ModelInfo.UnreportedAttempts} deneme sayı vermedi, toplam bir alt sınır.");
         }
+
+        // HER İKİ HÂLDE DE yazılıyor. Yalnız `true` iken görünen bir satır,
+        // muafiyetsiz koşumu "bu soru sorulmamış" hâline sokardı — ve bu
+        // deponun "bakılmadı ile bakıldı-temiz ayrı cümleler" kuralının
+        // aynısı.
+        text.AppendLine(ModelInfo.BoundaryOverridden
+            ? "> **K6 sınır doğrulaması ATLANDI.** Gerekçe: " +
+              (ModelInfo.BoundaryOverrideReason ?? "**yazılmamış**")
+            : "> K6 sınır doğrulaması uygulandı; muafiyet kullanılmadı.");
 
         foreach (var skipped in SentenceGateSkipped)
         {

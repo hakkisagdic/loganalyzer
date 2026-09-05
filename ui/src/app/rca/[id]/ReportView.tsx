@@ -555,6 +555,21 @@ function ReasoningSection({ reasoning }: { readonly reasoning: RcaReasoning | nu
           </span>
         )}
       </p>
+
+      {/* HER İKİ HÂL DE yazılıyor. Yalnız muafiyet varken görünen bir rozet,
+          muafiyetsiz koşumu "bu soru sorulmamış" hâline sokardı — ve raporu
+          okuyan model bölümünü TAM sanıyor. Bugün rapor model hakkında hiçbir
+          şey söylemiyordu ve okuyan bunu biliyordu; artık söylüyor. */}
+      <p className={styles.meta} data-boundary={model.boundary_overridden ? "overridden" : "verified"}>
+        {model.boundary_overridden ? (
+          <>
+            <strong>K6 sınır doğrulaması atlandı.</strong> Gerekçe:{" "}
+            {model.boundary_override_reason ?? <strong>yazılmamış</strong>}
+          </>
+        ) : (
+          <>K6 sınır doğrulaması uygulandı; muafiyet kullanılmadı.</>
+        )}
+      </p>
     </section>
   );
 }

@@ -350,6 +350,72 @@ public sealed class RcaReportPersistenceTests
     }
 
     /// <summary>
+    /// <b>K6 muafiyeti raporda görünüyor — ve YOKLUĞU da</b> (T54).
+    ///
+    /// <para>
+    /// Bugüne kadar rapor model hakkında hiçbir şey söylemiyordu ve okuyan bunu
+    /// <b>biliyordu</b>. T44+T51'den sonra modeli anlatan bir bölüm var ve okuyan
+    /// onu <b>tam sanıyor</b>; muafiyeti dışarıda bırakmak, eksik bir tabloyu
+    /// tam gibi göstermek olurdu.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>İki alan birden</b>, çünkü yalnız gerekçe taşınsaydı boş bir dizge
+    /// <i>"muafiyet yok"</i> ile <i>"var ama gerekçe yazılmamış"</i>ı
+    /// ayıramazdı.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Sinir_muafiyeti_ve_yoklugu_ayri_ayri_gorunuyor()
+    {
+        var muaf = Response(Document() with
+        {
+            ModelInfo = new RcaReportModelInfo(
+                "yerel", "qwen3-8b", 100, 20, 0,
+                BoundaryOverridden: true,
+                BoundaryOverrideReason: "DNS kapalı; adres doğrulaması atlandı."),
+        });
+
+        var muafDegil = Response(Document());
+
+        Assert.True(muaf.Model.BoundaryOverridden);
+        Assert.Equal("DNS kapalı; adres doğrulaması atlandı.", muaf.Model.BoundaryOverrideReason);
+
+        // YOKLUK da taşınıyor: `false` + `null`. Alan hiç gelmeseydi ekran
+        // "muafiyet yok" ile "bu soru sorulmadı"yı ayırt edemezdi.
+        Assert.False(muafDegil.Model.BoundaryOverridden);
+        Assert.Null(muafDegil.Model.BoundaryOverrideReason);
+    }
+
+    /// <summary>
+    /// <b>Gerekçesiz muafiyet, muafiyetsizlikten ayırt edilebiliyor.</b> İki
+    /// alanın birlikte taşınmasının bütün sebebi bu tek hâl.
+    /// </summary>
+    [Fact]
+    public void Gerekcesiz_muafiyet_muafiyetsizlikten_ayri()
+    {
+        var belge = Document() with
+        {
+            ModelInfo = new RcaReportModelInfo("yerel", "qwen3-8b", 100, 20, 0, BoundaryOverridden: true),
+        };
+
+        var gerekcesiz = Response(belge);
+
+        Assert.True(gerekcesiz.Model.BoundaryOverridden);
+        Assert.Null(gerekcesiz.Model.BoundaryOverrideReason);
+
+        // Markdown da ikisini ayırıyor: sessiz bir boşluk, gerekçenin
+        // yazılmadığını gizlerdi. Ve export ile ekran aynı kaynaktan
+        // beslendiği için ayrışamıyorlar.
+        Assert.Contains("ATLANDI", belge.ToMarkdown(), StringComparison.Ordinal);
+        Assert.Contains("**yazılmamış**", belge.ToMarkdown(), StringComparison.Ordinal);
+
+        // Muafiyetsiz hâl de YAZILIYOR — sessizlik "bu soru sorulmadı" diye
+        // okunurdu.
+        Assert.Contains("muafiyet kullanılmadı", Document().ToMarkdown(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Tel adları <c>snake_case</c> (§8). <c>camelCase</c> politikası bu depoda
     /// <c>idp_groups</c>'u bir kez sessizce kırdı.
     /// </summary>
@@ -365,6 +431,7 @@ public sealed class RcaReportPersistenceTests
             "fabricated_citation_sentence_count", "sentence_gate_skipped",
             "evidence_ids", "contradicting_evidence_ids",
             "prompt_tokens", "unreported_attempts", "tokens_complete",
+            "boundary_overridden", "boundary_override_reason",
         })
         {
             Assert.Contains($"\"{field}\"", json, StringComparison.Ordinal);

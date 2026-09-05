@@ -166,6 +166,7 @@ artık iki koşucu tanıyor (`dotnet` ve `vitest`).
 | E | Ölçülemeyen oran `0` yazılıyor | `Payda_sifirken_oran_null_sifir_degil` | `Bildirilmemis_belirtec_telde_de_null` |
 | F | "Son rapor" en eskiyi döndürüyor | `Ayni_paketin_iki_raporu_da_saklaniyor` | `Bulgu_sirasi_depolama_boyunca_korunuyor` |
 | G | Her cümlesi atılan rapor "bulgu yok" diye çiziliyor | `her cümlesi atılan rapor…` (vitest) | `model hiç koşmadıysa…` (vitest) |
+| H | Muafiyetin **yokluğu** yazılmıyor | `K6 muafiyeti ve yokluğu…` (vitest) | `gerekçesiz muafiyet…` (vitest) |
 
 Her ölçümde kusur, koşumdan **önce dosyadan okunarak** doğrulandı, ve her
 ölçümün bir **kontrol testi** var — kusurun dar olduğunu, yani kapının *neyi*
@@ -192,6 +193,49 @@ mükemmel kalite — diye çizilirdi. Oran `Number()`'dan **önce** `null` diye
 sınanıyor.
 
 İkisi de aynı şekilde: **bir dönüşümün sessizce anlam değiştirmesi.**
+
+---
+
+## 7.1 · Model bölümü muafiyeti de söylüyor (T54'ün bulgusu)
+
+`ModelEndpoint.BoundaryOverrideReason` T42'den beri **vardı ve doğru
+duruyordu** — `AuditFields()` onu veriyordu — ama **üretimde tüketicisi yoktu**.
+Bağlanacağı nokta T44+T51 ile doğdu.
+
+Aciliyeti kuran cümle:
+
+> Bugün raporda model hakkında hiçbir şey yok ve okuyan bunu **biliyor**.
+> Bundan sonra model hakkında bir bölüm olacak ve okuyan onu **tam sanacak**.
+
+İki alan, `AuditFields()`'takiyle **aynı adlar**: `BoundaryOverridden` (bool) ve
+`BoundaryOverrideReason` (nullable).
+
+**İkisi birden gerekiyor.** Yalnız gerekçe taşınsaydı boş bir dizge
+*"muafiyet yok"* ile *"var ama gerekçe yazılmamış"*ı ayıramazdı. Üç hâl ayrımı
+zaten `reasoning == null` ile çözülü; dördüncü bir alan gerekmiyor.
+
+**`false` hâli de yazılıyor** — ekranda ve Markdown'da. Yalnız `true` iken
+görünen bir rozet, muafiyetsiz koşumu *"bu soru sorulmamış"* hâline sokardı; bu,
+deponun *"bakılmadı" ile "bakıldı, temiz" ayrı cümleler* kuralının aynısı.
+
+### Aynı satırda düzeltilen bir yer tutucu
+
+Çağrı noktası şunu yazıyordu:
+
+```csharp
+Provider: "model",
+Model: scenario.Metadata.Id,
+```
+
+Yani rapor *"hangi modelle üretildi"* sorusuna **senaryo adıyla** cevap
+veriyordu. F4'ün *"aynı kanıt, farklı model"* karşılaştırması iki koşumu ayırt
+edemezdi — ve ayırt edememesi hiçbir yerde görünmezdi, çünkü alan doluydu.
+Artık uçtan okunuyor.
+
+**T54'ün aciliyet gerekçesini zayıflatan olgu bu ticket'tan geliyor:**
+`SaveAsync`'i bugün hiçbir üretim kodu çağırmıyor, yani *"arada üretilen
+raporlar kör kalır"* riski **sıfır**. Kalem yine de yapıldı çünkü satırlar
+burada.
 
 ---
 

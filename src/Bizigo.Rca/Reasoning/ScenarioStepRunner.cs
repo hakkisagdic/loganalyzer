@@ -200,7 +200,7 @@ public sealed class ScenarioStepRunner
 
         return new ScenarioRunOutcome(
             outcomes,
-            Assemble(scenario, bundle, outcomes),
+            Assemble(scenario, bundle, _endpoint, outcomes),
             Stopped: false,
             null);
     }
@@ -359,6 +359,7 @@ public sealed class ScenarioStepRunner
     private static RcaReportDocument Assemble(
         ScenarioDefinition scenario,
         EvidenceBundle bundle,
+        ModelEndpoint endpoint,
         IReadOnlyList<ScenarioStepOutcome> outcomes)
     {
         var findings = new List<RcaReportFinding>();
@@ -417,15 +418,26 @@ public sealed class ScenarioStepRunner
                     .Select(o => o.SentenceGate)
                     .Where(g => g.Outcome != SentenceGateOutcome.Ran),
             ],
+            // Uçtan OKUNUYOR, uydurulmuyor. Önceki hâli yer tutucuydu ve
+            // `Model` alanına SENARYO KİMLİĞİ yazıyordu — rapor "hangi modelle
+            // üretildi" sorusuna senaryo adıyla cevap veriyordu, yani F4'ün
+            // "aynı kanıt, farklı model" karşılaştırması iki koşumu ayırt
+            // edemezdi.
             ModelInfo = new RcaReportModelInfo(
-                Provider: "model",
-                Model: scenario.Metadata.Id,
+                Provider: endpoint.Name,
+                Model: endpoint.Model,
 
                 // Hiçbir deneme bildirmediyse `null` — 0 DEĞİL. Sıfır yazılsaydı
                 // bütçe hiç tükenmez, kapı hiç kapanmaz, sebep hiç görünmezdi.
                 PromptTokens: Total(reported.Select(a => a.PromptTokens)),
                 CompletionTokens: Total(reported.Select(a => a.CompletionTokens)),
-                UnreportedAttempts: reported.Count(a => a.PromptTokens is null)),
+                UnreportedAttempts: reported.Count(a => a.PromptTokens is null),
+
+                // T54: muafiyetin bağlanacağı nokta burası. `ModelEndpoint`
+                // bunu T42'den beri taşıyordu ve üretimde tüketicisi yoktu —
+                // yani doğru duran ama hiçbir yere ulaşmayan bir kayıt.
+                BoundaryOverridden: endpoint.BoundaryOverridden,
+                BoundaryOverrideReason: endpoint.BoundaryOverrideReason),
         };
     }
 

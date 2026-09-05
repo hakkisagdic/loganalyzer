@@ -1687,6 +1687,8 @@ export interface components {
             /** Format: int32 */
             unreported_attempts: number | string;
             tokens_complete: boolean;
+            boundary_overridden: boolean;
+            boundary_override_reason: null | string;
         };
         RcaReasoningResponse: {
             /** Format: uuid */
