@@ -320,27 +320,55 @@ public sealed class ScenarioPluginLoaderTests
         Assert.Contains("çekirdek kararı", result.Describe(), StringComparison.Ordinal);
     }
 
-    /// <summary><c>schedule</c> beşinci tetikleyici — F4'ün yan çıktısı, K20'ye girdi.</summary>
+    /// <summary>
+    /// <c>schedule</c> beşinci tetikleyici — F4'ün yan çıktısı, K20'ye girdi.
+    /// <c>agent</c> altıncı — M05, MCP'nin <c>rca.trigger</c> aracı.
+    /// </summary>
     [Theory]
     [InlineData("alert")]
     [InlineData("manual")]
     [InlineData("anomaly")]
     [InlineData("external")]
     [InlineData("schedule")]
-    public void K20nin_besi_de_geciyor(string trigger)
+    [InlineData("agent")]
+    public void Bilinen_tetikleyicilerin_hepsi_geciyor(string trigger)
     {
         var result = LoadReplacing("on: [manual]", $"on: [{trigger}]");
         Assert.True(result.Ok, result.Describe());
     }
 
     /// <summary>
-    /// Küme <b>beş</b>. Büyürse burası kırmızı yanıyor — tetikleyici eklemek
+    /// Küme <b>altı</b>. Büyürse burası kırmızı yanıyor — tetikleyici eklemek
     /// T45'in alanı ve çekirdeğe sessizce sızmamalı.
+    ///
+    /// <para>
+    /// <b>Beşten altıya M05'te çıktı ve bu bir yan etkiydi.</b> Ticket
+    /// <c>RcaTriggerSource</c>'a <c>Agent</c> ekledi; sözlük o enumdan
+    /// <b>türediği</b> için (T45) <c>agent</c> kelimesi senaryo plugin'lerinin
+    /// yazabileceği tetikleyicilere de kendiliğinden girdi. Niyet edilmemişti.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Bırakıldı, ve iki gerekçesi var.</b> Birincisi: dışlamak bir muafiyet
+    /// listesi gerektirirdi ve T45 tam olarak o listeyi kaldırmıştı — sözlüğün
+    /// kendi belgesi <i>"alıntının ikinci bir liste olarak yaşaması, iki
+    /// listenin sessizce ayrışması demekti"</i> diyor. İkincisi ve daha güçlüsü:
+    /// <b>ajanın tetiklediği RCA gerçekten farklı bir bağlamda koşuyor</b> —
+    /// çıktısını bir model okuyacak, insan değil. Bir senaryonun buna göre
+    /// davranması meşru olmaktan öte muhtemelen isteyeceğimiz şey.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Ama bu testin kırmızı yanması mekanizmanın çalışması.</b> Türetme
+    /// kararı benim yerime verdi; kapı beni bilinçli bir harekete zorladı ve
+    /// gerekçe bu yüzden burada duruyor. Doğru çıkması onu tesadüf olmaktan
+    /// çıkarmıyor.
+    /// </para>
     /// </summary>
     [Fact]
-    public void Tetikleyici_kumesi_bes_degerde_sabit()
+    public void Tetikleyici_kumesi_alti_degerde_sabit()
     {
-        Assert.Equal(5, ScenarioTriggers.Known.Count);
+        Assert.Equal(6, ScenarioTriggers.Known.Count);
     }
 
     [Fact]

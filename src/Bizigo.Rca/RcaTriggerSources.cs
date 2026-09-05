@@ -113,6 +113,56 @@ public static class RcaTriggerSources
         };
 
     /// <summary>
+    /// <b>Ajan</b> — MCP'nin <c>rca.trigger</c> aracı (M05).
+    ///
+    /// <para>
+    /// İmzası <see cref="FromExternal"/> ile aynı ve <b>kaynağı farklı</b>; fark
+    /// tam olarak bu ticket'ın kararı. Gerekçenin tamamı
+    /// <see cref="RcaTriggerSource.Agent"/> belgesinde: <c>External</c> yalan
+    /// söylerdi, <c>Manual</c> kotayı yerdi.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Anahtarı çağıran uydurmuyor, sunucu türetiyor</b>
+    /// (<see cref="McpIdempotency"/>). REST tarafı anahtarı istemciden alıyor
+    /// — <c>POST /v1/rca</c>, <c>Idempotency-Key</c> başlığı — çünkü orada
+    /// çağıran bir dış sistem ve kendi tekrar denemesini kendi tanıyor. MCP'de
+    /// çağıran bir <b>model</b>, ve anahtarı ona sordurmak idempotency'yi tam
+    /// da korunmak istenen tarafa vermek olurdu: her denemede yeni bir anahtar
+    /// üreten model kotayı defalarca yer, aynı anahtarı ısrarla üreten model
+    /// farklı bir tetiklemeyi yanlışlıkla bastırır. İkisi de sessiz.
+    /// </para>
+    ///
+    /// <para>
+    /// İki yüzeyin aynı alana farklı anlam yüklemesi <b>bilinçli bir ayrım</b>
+    /// ve burada yazılı olması onun tek kaydı.
+    /// </para>
+    /// </summary>
+    public static RcaTriggerRequest FromAgent(
+        string subject,
+        string idempotencyKey,
+        IEnumerable<string> ownerGroups,
+        DateTimeOffset from,
+        DateTimeOffset to,
+        RcaRunEntity? parent = null) =>
+        new()
+        {
+            Source = RcaTriggerSource.Agent,
+
+            // Kimlik kullanıcının kendisi — `FromManual`/`FromExternal` ile aynı
+            // gerekçe: debounce "aynı kişi aynı pencereyi tekrar istedi mi"
+            // sorusuna bakıyor ve sabit bir dizge iki kullanıcıyı birbirine
+            // bastırırdı.
+            Identity = subject,
+            OwnerGroup = RcaTriggerKey.Scope(ownerGroups),
+            WindowFrom = from,
+            WindowTo = to,
+            IdempotencyKey = idempotencyKey,
+            Parent = parent,
+            RequestedBy = subject,
+        };
+
+    /// <summary>
     /// Takvim / cron.
     ///
     /// <para>

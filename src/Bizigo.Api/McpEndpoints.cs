@@ -92,6 +92,7 @@ public static class McpEndpoints
             // MCP istemcisi bir KULLANICI adına konuşuyor (plan §6). Kimliğin
             // uçtan uca taşınması M08'in işi; buradaki kapı onun ön şartı —
             // anonim bir MCP oturumu bütün kapsam kapılarını atlardı.
+            .RequireAuthorization()
 
             .ExcludeFromDescription();
 

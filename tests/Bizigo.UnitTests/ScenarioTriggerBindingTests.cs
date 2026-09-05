@@ -51,7 +51,7 @@ public sealed class ScenarioTriggerBindingTests
     }
 
     /// <summary>
-    /// Dört kaynağın dördü de bir plugin tarafından yazılabiliyor.
+    /// Kaynakların hepsi bir plugin tarafından yazılabiliyor.
     ///
     /// <para>
     /// Üstteki testin somut hâli, ve ayrı duruyor çünkü farklı bir şey
