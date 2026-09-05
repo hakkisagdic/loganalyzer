@@ -21,8 +21,8 @@ sources:
   - docs/epic/rca-raporu-ozelligi/index.md
   - docs/epic/sigma-clickhouse-arastirmasi/index.md
   - docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md
-source_digest: "sha256-12/v1 docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=1da27ea79668 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=e6589b0ed6b1 docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=37dc201f87d2"
-summary: F3'ün iki kolu (Sigma detection ve RCA kanıtı), planı yarı yarıya değiştiren template_id bulgusu, on ticket'ın bugünkü durumu ve fazın sayılarının neden bağlayıcı olmadığı.
+source_digest: "sha256-12/v1 docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=1da27ea79668 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=c62deced6485 docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=37dc201f87d2"
+summary: F3'ün iki kolu (Sigma detection ve RCA kanıtı), planı yarı yarıya değiştiren template_id bulgusu, on ürün ticket'ının durumu, sonradan eklenen üç kapı ticket'ı, ve fazın sayılarının neden bağlayıcı olmadığı.
 provenance:
   extracted: 0.85
   inferred: 0.15
@@ -100,6 +100,37 @@ doğrulanmamış her katmanın kırık çıktığıydı.
 Yol haritası ayrıca üçüncü bir bağımsız kol sayıyor: F2'nin kapanış
 doğrulaması (T27).
 
+> [!warning] Yukarıdaki `Durum` sütunu **tarihli bir görüntü** (2026-08-25) ve
+> ticket dosyalarının kendi `status` alanıyla aynı şey değil. Bugünkü canlı
+> örnek T38: bu tablo onu *"tek açık kol"* diye gösteriyor, ticket dosyası
+> `status: 2` taşıyor, ve `kalan-is-raporu` 2026-09-05'te güncellenip T38'i
+> açık listesinden **çıkardı**. Yani bugün ayrışan taraf bu sayfa.
+>
+> **Bu sayfa T53'ün bekçisinin kapsamı dışında.** `EpicStatusTests` yalnızca
+> `docs/epic` altındaki dört gösterimi karşılaştırıyor; `docs/wiki` sayfalarının
+> statü iddialarını hiçbir kapı sınamıyor ve `WikiSourceDigestTests` de
+> yakalayamıyor — bu sayfa `kalan-is-raporu`'nu kaynak göstermediği için o
+> belge değiştiğinde damga bayatlamıyor. Yukarıdaki cümlenin bir önceki hâli
+> tam olarak böyle yanlışlandı: T38'i *"raporda da açık"* diye örnek veriyordu
+> ve rapor düzeltilince iddia sessizce yanlış oldu, hiçbir test kırmızı
+> yanmadan. Tarihli görüntüyü tarihiyle okuyun.
+
+### Sonradan eklenen üç kapı ticket'ı
+
+Faz on ticket'a bölünmüştü; `docs/epic/tickets-f3/index.md` bugün ayrı bir
+başlık altında **üç tane daha** taşıyor. Ayrımın anlamı var: bu üçü fazın
+ürününü değil **bekçilerini** taşıyor ve bitti tanımına madde eklemiyor.
+
+| # | Ne kapatıyor |
+| --- | --- |
+| T48 | `Produces<T>` kapısı kaydedilecek servisleri elle listeliyordu; delik dört kez açıldı |
+| T50 | Bekçiler bir uzantının *var olduğunu* sınıyordu, *bağlı olduğunu* değil |
+| T53 | Ticket `status` alanları bayatlıyordu; statünün dört gösterimi artık birbirini yalanlayamıyor |
+
+Üçü de aynı sınıfın örneği — [[concepts/elle-tutulan-liste-bekciyi-korlestirir]]
+ve `CLAUDE.md` §7'nin *"bir bekçinin sessizce atlaması, bekçinin kendisinden
+tehlikelidir"* maddesi. ^[extracted]
+
 ## Fazın açık kalan tek kararı
 
 **T30'un kapsam kararı**, ve onu bloke eden şey bir kod değil bir ölçüm: 24
@@ -150,7 +181,8 @@ tanıması bu sıralamanın taşıyıcısı.
 
 - `docs/epic/f3-teknik-plan/index.md` — K35, K36, mimari, beş korelasyon
 - `docs/epic/f3-yol-haritasi/index.md` — ticket durumları, üç kol, §8 uyarısı
-- `docs/epic/tickets-f3/index.md` — on ticket, bağımlılık grafiği, bitti tanımı
+- `docs/epic/tickets-f3/index.md` — on ürün ticket'ı + üç kapı ticket'ı,
+  bağımlılık grafiği, bitti tanımı
 - `docs/epic/rca-raporu-ozelligi/index.md` — K19–K22, piyasa konumu, riskler
 - `docs/epic/sigma-clickhouse-arastirmasi/index.md` — backend seçiminin doğrulaması
 - `docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md` — T41, F4'ün önkoşulu

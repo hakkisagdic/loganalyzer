@@ -88,23 +88,19 @@ public sealed class EpicStatusTests
     /// </summary>
     private static readonly Dictionary<string, string> KnownDivergence = new(StringComparer.Ordinal)
     {
-        // 1 · Yol haritası tablosunda hiç görünmeyen ticket dosyaları. Yedisi de
-        //     yazıldı, tablolarına eklenmedi — ticket dosyası ile yol haritası
+        // 1 · Yol haritası tablosunda hiç görünmeyen ticket dosyaları. Yazıldılar,
+        //     tablolarına eklenmediler — ticket dosyası ile yol haritası
         //     birbirinden ayrıştı ve ayrışmayı kimse görmüyordu.
+        //
+        //     T48/T50/T53 buradan ÇIKTI: koordinatörün kararıyla
+        //     `tickets-f3/index.md`'ye "Kapı ticket'ları" alt başlığı altında
+        //     eklendiler ve `references/f3-detection-ve-rca-kaniti` vault
+        //     sayfası okunup güncellendi, damgalandı (§11).
         ["yol-haritasi:tickets-f2/ui-container"] = "T49 — yeni, F2 tablosuna eklenmedi.",
-        ["yol-haritasi:tickets-f3/produces-kapisi-bagi"] = "T48 — yeni, F3 tablosuna eklenmedi.",
-        ["yol-haritasi:tickets-f3/kompozisyon-koku-bagi"] = "T50 — yeni, F3 tablosuna eklenmedi.",
         ["yol-haritasi:tickets-f3/specificity-olcutu"] = "F3 tablosunda yok; kimliği de belirsiz.",
         ["yol-haritasi:tickets-f4/model-saglayicisi"] = "T42 — F4 tablosunda ticket satırı yok.",
         ["yol-haritasi:tickets-f4/senaryo-plugin-cekirdegi"] = "T43 — F4 tablosunda ticket satırı yok.",
         ["yol-haritasi:tickets/ham-arsiv-kurtarma"] = "F1 tablosunda yok.",
-
-        // Bu ticket'ın KENDİ eklediği borç, sessizce üstlenilmedi. F3'ün
-        // "Ticket listesi" tablosu T29–T38 arasında kürate edilmiş bir anlatı;
-        // T48/T50/T53'ün oraya nasıl yerleşeceği koordinatörün kararı, ve o
-        // dosyayı düzenlemek `references/f3-detection-ve-rca-kaniti` vault
-        // sayfasının damgasını da bayatlatıyor (§11).
-        ["yol-haritasi:tickets-f3/ticket-statusu-bekcisi"] = "T53 — bu bekçinin kendi ticket'ı.",
 
         // 2 · `tickets-fs` tablosunun Durum sütunu ile ticket dosyaları
         //     çelişiyor. `kalan-is-raporu` §6 bu dördü bir kez düzeltmişti;
@@ -127,6 +123,14 @@ public sealed class EpicStatusTests
         // değer: ayrışma sürüyordu ama sebebi değişmişti — eskisi "belge yok",
         // yenisi "belge var ve çelişiyor". Metin güncellenmeseydi liste doğru
         // kalemi tutup yanındaki cümle yalan söyleyecekti.
+        //
+        // T48'de aynı şey İKİNCİ kez görüldü ve mekanizması T44'ünkinden
+        // farklıydı: yol haritası satırı eklenince kimlik çözülebilir hâle
+        // geldi ve bulgu "eşlenemiyor"dan "rapor açık diyor, dosya `status: 2`"
+        // hâline döndü. Yani BİRİNCİ ayrışma ikincisini maskeliyormuş —
+        // eşleme boşluğu kapatılana kadar altındaki çelişki hiç görünmüyordu.
+        // İki örnek bir desen: bir ayrışmanın kapanması, aynı satırın
+        // kapandığı anlamına gelmiyor.
         ["rapor:T49"] = "Raporda açık; ticket dosyası var ama yol haritası tablosunda olmadığı için eşlenemiyor.",
     };
 
@@ -138,8 +142,9 @@ public sealed class EpicStatusTests
     /// <c>CLAUDE.md</c> §8: <i>"bir gün kapanacak" ile "hiç kapanmayacak" aynı
     /// listede duramaz</i> — ikisi tek listedeyken
     /// <see cref="KnownDivergence"/>'ın boşalıp boşalmadığı sorulamaz hâle
-    /// gelir. Bugün <b>boş</b>: yukarıdaki on altı satırın hangisinin kalıcı
-    /// olduğu bu ajanın kararı değil.
+    /// gelir. Bugün <b>boş</b>: <see cref="KnownDivergence"/>'daki satırların
+    /// hangisinin kalıcı olduğu bir ölçüm değil bir karar, ve o karar
+    /// koordinatörde.
     /// </para>
     /// </summary>
     private static readonly Dictionary<string, string> StructurallyUnaligned =
