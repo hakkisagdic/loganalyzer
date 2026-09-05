@@ -48,7 +48,7 @@ public static class BizigoRoles
 /// iç içe gruplarda ad çakışması üretirdi — ve giriş burada normalize ediliyor.
 /// </para>
 /// </summary>
-public sealed class AccessScopeResolver(IDbContextFactory<ControlPlaneDbContext> factory)
+public sealed class AccessScopeResolver(IDbContextFactory<ControlPlaneDbContext> factory) : IAccessScopeResolver
 {
     private GroupMapping _mapping = GroupMapping.Empty;
 
@@ -87,7 +87,7 @@ public sealed class AccessScopeResolver(IDbContextFactory<ControlPlaneDbContext>
 /// tazeliyor.
 /// </para>
 /// </summary>
-public sealed class GroupMapping
+public sealed class GroupMapping : IAccessScopeResolver
 {
     private readonly Dictionary<string, string> _map;
 

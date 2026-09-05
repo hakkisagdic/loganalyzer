@@ -112,6 +112,33 @@ internal sealed class McpTestSession : IAsyncDisposable
 }
 
 /// <summary>
+/// M01'in <b>protokol mekaniğini</b> ölçen test araçlarının ortak tabanı:
+/// kimlik istemiyorlar.
+///
+/// <para>
+/// <b>Neden bir taban sınıf, neden her araçta ayrı bir satır değil.</b> Gerekçe
+/// bir kez yazılsın diye. Bu araçların ölçtüğü şeyler — keşif, iptalin uca
+/// ulaşması, araç hatası ile protokol hatasının ayrımı — <b>kimlikten
+/// bağımsız</b>; süreç içi boru üzerinde koşan bir oturumda
+/// <c>RequestContext.User</c> zaten <see langword="null"/> ve M08'in kapısı
+/// onları koşmadan reddederdi. O hâlde <c>Iptal_bildirimi_araci_gercekten_iptal_ediyor</c>
+/// iptali değil <b>kimlik retini</b> ölçerdi ve yeşilliği hiçbir şey ifade
+/// etmezdi.
+/// </para>
+///
+/// <para>
+/// Kimlik yolunun kendisi ayrı bir yerde ölçülüyor: <c>McpIdentityTests</c>.
+/// Bu muafiyet <b>üretim</b> muafiyet listesine girmiyor — o liste keşfi
+/// <c>Bizigo.Api</c> kökünden yapıyor ve bu derlemeyi hiç görmüyor.
+/// </para>
+/// </summary>
+internal abstract class ProtocolMechanicsTool : BizigoMcpTool
+{
+    /// <inheritdoc/>
+    public sealed override bool RequiresCallerIdentity => false;
+}
+
+/// <summary>
 /// <b>Kapının kendi sınavı için</b> var olan araç: uyum kapısı, <i>söylenmeden</i>
 /// bulduğu bir aracı denetleyebiliyor mu.
 ///
@@ -122,7 +149,7 @@ internal sealed class McpTestSession : IAsyncDisposable
 /// keşif onu kendiliğinden buluyor mu.</b>
 /// </para>
 /// </summary>
-internal sealed class TestOnlyTool : BizigoMcpTool
+internal sealed class TestOnlyTool : ProtocolMechanicsTool
 {
     public override string ToolName => "test.only";
 
@@ -171,7 +198,7 @@ internal sealed class TestOnlyTool : BizigoMcpTool
 /// ClickHouse'suz hâli: belirteç uca ulaşıyor mu.
 /// </para>
 /// </summary>
-internal sealed class NeverEndingTool : BizigoMcpTool
+internal sealed class NeverEndingTool : ProtocolMechanicsTool
 {
     private readonly TaskCompletionSource started =
         new(TaskCreationOptions.RunContinuationsAsynchronously);

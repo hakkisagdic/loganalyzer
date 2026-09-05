@@ -96,11 +96,31 @@ public static class McpToolDiscovery
 
             try
             {
-                // `surface` fazladan argüman olarak veriliyor: yüzeyini
-                // yapıcıdan alan araçlar (bkz. `ServerInfoTool`) böylece iki
-                // yüzeyde de tek sınıfla duruyor. Yüzeyi sabit olan araçlar
-                // argümanı hiç kullanmıyor ve aşağıdaki filtre onları eliyor.
-                tool = (BizigoMcpTool)ActivatorUtilities.CreateInstance(services, type, surface);
+                // `surface` YALNIZCA onu isteyen yapıcıya veriliyor — ve bu
+                // koşul ÖLÇÜLEREK eklendi.
+                //
+                // İlk hâli argümanı koşulsuz veriyordu. Ölçüm:
+                // `ActivatorUtilities` fazladan argümanı olan bir çağrıyı
+                // eşleştirmiyor ve "A suitable constructor ... could not be
+                // located. ... Also ensure no extraneous arguments are
+                // provided." diyerek düşüyor. Yani YÜZEYİNİ YAPICIDAN ALMAYAN
+                // HİÇBİR ARAÇ KURULAMIYORDU — parametresiz bir yapıcı da,
+                // yalnızca `IScopedQuery` isteyen bir M04 aracı da.
+                //
+                // Kusurun bedeli yalnızca "çalışmıyor" değildi: aşağıdaki
+                // `catch` bunu "Bağımlılığı DI'ya kaydedilmemiş olabilir" diye
+                // raporluyor, yani mesaj sebebi OLMAYAN bir yere işaret ediyor
+                // ve arayan kişi DI kayıtlarında saatlerce dolaşıyor. Bu
+                // deponun §7'de tarif ettiği sınıf: hata var ama söylediği şey
+                // yanlış.
+                //
+                // Yüzeyini yapıcıdan alan araçlar (bkz. `ServerInfoTool`) iki
+                // yüzeyde de tek sınıfla durmaya devam ediyor; yüzeyi sabit
+                // olanlar argümanı hiç görmüyor ve aşağıdaki filtre onları
+                // eliyor.
+                tool = (BizigoMcpTool)(WantsSurface(type)
+                    ? ActivatorUtilities.CreateInstance(services, type, surface)
+                    : ActivatorUtilities.CreateInstance(services, type));
             }
             catch (Exception error)
             {
@@ -119,4 +139,19 @@ public static class McpToolDiscovery
 
         return tools;
     }
+
+    /// <summary>
+    /// Aracın <b>herhangi bir</b> genel yapıcısı yüzeyi istiyor mu.
+    ///
+    /// <para>
+    /// Bütün yapıcılara bakılıyor, yalnızca birine değil: hangi yapıcının
+    /// seçileceğine <c>ActivatorUtilities</c> karar veriyor ve karar DI'da
+    /// kayıtlı servislere bağlı. Tek bir yapıcıya bakmak, kararı burada ikinci
+    /// kez ve <b>farklı bilgiyle</b> vermek olurdu.
+    /// </para>
+    /// </summary>
+    private static bool WantsSurface(Type type) =>
+        type.GetConstructors()
+            .Any(static constructor => constructor.GetParameters()
+                .Any(static parameter => parameter.ParameterType == typeof(McpSurface)));
 }

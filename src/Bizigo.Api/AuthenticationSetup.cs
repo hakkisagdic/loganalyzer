@@ -90,6 +90,19 @@ public static class AuthenticationSetup
         services.AddSingleton(options);
 
         services.AddSingleton<AccessScopeResolver>();
+
+        // M08 · MCP araç çağrıları kapsamı BURADAN alıyor.
+        //
+        // Aynı örnek, ikinci bir yüzey için ikinci bir isim değil: kayıt
+        // `sp.GetRequiredService<AccessScopeResolver>()`'a bağlanıyor, yani
+        // `ICurrentUser`'ın gördüğü çevrim ile MCP'nin gördüğü çevrim AYNI
+        // nesne. `AddSingleton<IAccessScopeResolver, AccessScopeResolver>()`
+        // yazsaydık ikinci bir örnek doğardı ve `RefreshAsync` yalnızca birini
+        // tazelerdi — eşleme tablosu güncellendiğinde REST ile MCP'nin farklı
+        // kapsam vermesi demek, üstelik sessizce (§9: "ikinci kopya yazma").
+        services.AddSingleton<Contracts.IAccessScopeResolver>(
+            static sp => sp.GetRequiredService<AccessScopeResolver>());
+
         services.AddScoped<ICurrentUser, HttpContextCurrentUser>();
         services.AddHttpContextAccessor();
 

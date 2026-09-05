@@ -1,15 +1,46 @@
 using System.Text.Json;
+using Bizigo.Contracts;
 
 namespace Bizigo.Mcp;
 
 /// <summary>
 /// Bir araç çağrısının girdisi. SDK'nın <c>RequestContext</c>'ini sarıyor ki
 /// araçlar protokol tiplerine değil <b>kendi sözleşmelerine</b> baksın.
+///
+/// <para>
+/// <b>Kapsam argümanların yanında duruyor, ve bu M08'in kapısının kendisi.</b>
+/// <see cref="Scope"/> zorunlu; onu dolduran <b>tek</b> yer
+/// <c>BizigoMcpTool.InvokeAsync</c> ve o metot <c>sealed</c>. Yani kapsamsız bir
+/// araç çağrısı <b>yazılamıyor</b> — <c>IScopedQuery</c>'nin kütüphane
+/// tarafındaki kapısıyla aynı fikir, MCP yüzeyine taşınmış hâli.
+/// </para>
+///
+/// <para>
+/// <b>Neden <c>record struct</c> değil.</b> İlk hâli öyleydi ve bir deliği
+/// vardı: her <c>struct</c>'ın parametresiz bir <c>default</c>'u var, yani
+/// <c>new McpToolInvocation()</c> <b>derleniyor</b> ve <see cref="Scope"/>'u
+/// <see langword="null"/> bırakıyordu. Kapsamı zorunlu kılmanın anlamı, onu
+/// atlamanın <b>derlenmemesi</b>; sınıfa çevirmek o cümleyi doğru yapıyor.
+/// </para>
 /// </summary>
 /// <param name="Arguments">
 /// Çağrının argümanları. Aracın <c>inputSchema</c>'sı bunları tarif ediyor.
 /// </param>
-public readonly record struct McpToolInvocation(IReadOnlyDictionary<string, JsonElement> Arguments)
+/// <param name="Scope">
+/// Çağıranın veri kapsamı (K17). <c>RequestContext.User</c>'dan,
+/// <see cref="IAccessScopeResolver"/> üzerinden — yani REST uçlarının geçtiği
+/// <b>aynı</b> kapıdan geliyor.
+///
+/// <para>
+/// Kimlik istemeyen araçlarda (<c>server.info</c>, simülatör yüzeyi)
+/// <see cref="AccessScope.Denied"/>: <b>hiçbir satır göremeyen</b> kapsam.
+/// Varsayılanın "kapalı" olması, kapsamı hiç kullanmayan bir aracın bir gün
+/// kullanmaya başladığında sessizce her şeyi görmemesi demek.
+/// </para>
+/// </param>
+public sealed record McpToolInvocation(
+    IReadOnlyDictionary<string, JsonElement> Arguments,
+    AccessScope Scope)
 {
     /// <summary>Argüman var mı ve <c>null</c> değil mi.</summary>
     public bool Has(string name) =>
