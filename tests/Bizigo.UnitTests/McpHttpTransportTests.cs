@@ -43,7 +43,20 @@ namespace Bizigo.UnitTests;
 /// </summary>
 public sealed class McpHttpTransportTests
 {
-    private const string TestScheme = "M01Test";
+    /// <summary>
+    /// Sahte işleyicinin şeması, ve adı <b>üretimin şemasıyla aynı olmak
+    /// zorunda</b>.
+    ///
+    /// <para>
+    /// M09'dan önce <c>MapBizigoMcp</c> <c>RequireAuthorization()</c> ile
+    /// host'un <i>varsayılan</i> şemasını kullanıyordu, dolayısıyla harness
+    /// istediği adı verebiliyordu (<c>M01Test</c>). Artık uç şemasını
+    /// <b>açıkça</b> belirtiyor — 45 ucun 401 davranışını değiştirmemek için —
+    /// ve harness'ın onu taklit etmesi gerekiyor. Bu bir uyarlama değil bir
+    /// düzeltme: harness artık üretimin gerçekten kullandığı şemayı ölçüyor.
+    /// </para>
+    /// </summary>
+    private const string TestScheme = Api.BizigoAuthSchemes.Mcp;
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 

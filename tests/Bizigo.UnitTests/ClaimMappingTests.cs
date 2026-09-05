@@ -37,6 +37,7 @@ public sealed class ClaimMappingTests
                 ["Auth:Enabled"] = authEnabled ? "true" : "false",
                 ["Auth:Authority"] = "http://localhost:8180/realms/bizigo",
                 ["Auth:Audience"] = "bizigo-api",
+                ["Auth:McpResource"] = "http://localhost:5080/mcp",
                 ["Auth:RequireHttpsMetadata"] = "false",
             })
             .Build();

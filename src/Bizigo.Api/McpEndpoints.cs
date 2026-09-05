@@ -73,7 +73,16 @@ public static class McpEndpoints
             // MCP istemcisi bir KULLANICI adına konuşuyor (plan §6). Kimliğin
             // uçtan uca taşınması M08'in işi; buradaki kapı onun ön şartı —
             // anonim bir MCP oturumu bütün kapsam kapılarını atlardı.
-            .RequireAuthorization()
+            //
+            // M09: şema AÇIKÇA veriliyor. Varsayılana bırakmak iki şeyi birden
+            // bozardı — meydan okuma `WWW-Authenticate: Bearer
+            // resource_metadata="…"` taşımaz (RFC 9728) ve token API'nin
+            // kitlesiyle doğrulanır, yani API için basılmış bir token burada da
+            // geçerdi (RFC 8707). Bu uç, şemasını belirten TEK uç ve öyle
+            // kalmalı: diğer 45 çağrı varsayılanda duruyor.
+            .RequireAuthorization(policy => policy
+                .AddAuthenticationSchemes(BizigoAuthSchemes.Mcp)
+                .RequireAuthenticatedUser())
 
             .ExcludeFromDescription();
 

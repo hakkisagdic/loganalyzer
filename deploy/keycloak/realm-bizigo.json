@@ -123,6 +123,29 @@
           }
         }
       ]
+    },
+    {
+      "name": "bizigo-mcp",
+      "description": "M09 · MCP sunucusunun kaynak kimliği (RFC 8707). İSTEĞE BAĞLI olması şart: varsayılan olsaydı her token `aud`'una MCP kaynağını da alırdı ve API için basılmış bir token `/mcp`'de geçerdi — kaynak bağlamanın engellemek istediği şey tam olarak bu.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience-bizigo-mcp",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "http://localhost:5080/mcp",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "defaultDefaultClientScopes": [
@@ -154,6 +177,9 @@
       ],
       "defaultClientScopes": [
         "bizigo-claims"
+      ],
+      "optionalClientScopes": [
+        "bizigo-mcp"
       ]
     },
     {
