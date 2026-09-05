@@ -1272,6 +1272,28 @@ export interface components {
             accuracy_at_one: null | number | string;
             /** Format: double */
             accuracy_at_three: null | number | string;
+            /** Format: int64 */
+            reviewed_bundles: number | string;
+            /** Format: int64 */
+            reasoning_absent: number | string;
+            /** Format: int64 */
+            reports_measured: number | string;
+            /** Format: int64 */
+            produced_nothing: number | string;
+            /** Format: int64 */
+            all_dropped: number | string;
+            /** Format: int64 */
+            produced_sentences: number | string;
+            /** Format: int64 */
+            dropped_sentences: number | string;
+            /** Format: int64 */
+            fabricated_sentences: number | string;
+            /** Format: double */
+            dropped_sentence_ratio: null | number | string;
+            /** Format: double */
+            fabricated_citation_ratio: null | number | string;
+            /** Format: double */
+            measured_coverage: null | number | string;
         };
         JsonElement: unknown;
         MaintenanceWindowListResponse: {

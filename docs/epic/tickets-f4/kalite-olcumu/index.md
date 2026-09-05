@@ -25,8 +25,10 @@ sayı** üretiyor.
 | Doğruluk (T38) | `Total − Unknown` | `Unknown` | Zorunlu soruya "bilmiyorum" diyen, rapora kötü not vermiş olmaz |
 | **Tiyatro** | `Sound + Trivial` | `NotPresent`, `Unspecified` | Bölüm yoksa uydurulacak bir şey de yok |
 | **`accuracy@k`** | Rank'in **sorulduğu** incelemeler | Soru sorulmadan yazılmış kayıtlar | Sorulmamış bir soru sıfır cevap değil |
+| **Atılan cümle** | Üretilen **cümle** | Raporu olmayan paket (A) | Koşmamış bir model ölçülemez |
+| **Uydurma atıf** | **Atılan** cümle | Atılmamış cümleler | Uydurma atıf, atılanların bir alt kümesi |
 
-Üçünde de payda sıfırken oran **`null`, asla `0.0`**.
+Beşinde de payda sıfırken oran **`null`, asla `0.0`**.
 
 ### Tiyatro oranında ayrım daha keskin
 
@@ -73,18 +75,36 @@ depoda o sınıfın dört örneği **kolonu ve sorgusu doğru olan** yerlerde ç
 
 `null` = **hiçbir bulgu doğru değildi** ve bu bir **ölçüm**, eksik veri değil.
 
-### KARAR · "Soru sorulmadı" hâli **şema sürümünden** okunuyor
+### KARAR · "Soru sorulmadı" hâli **açık bir alandan** okunuyor
 
-`CorrectFindingRank` `null` iki farklı şey olabilirdi. Ayrımı taşıyan şey
-`SchemaVersion` (bugün **2**, `RankSchemaVersion` sabitiyle çivili).
+`CorrectFindingRank` `null` iki farklı şey olabilirdi: *"hiçbir bulgu doğru
+değildi"* (bir ölçüm) ya da *"soru sorulmadı"* (ölçümün yokluğu).
 
-T38 bu alanı tam olarak bu gün için taşımıştı ve gerekçesini yazmıştı:
+**İlk tasarım ayrımı `SchemaVersion`'a bağlıyordu ve yanlıştı.** T38 o alanı
+tam bu gün için taşımıştı — *"kolonun varlığı ile doldurulmuş olması ayrı
+şeyler"* — ama sürüm burada yetmiyor, ve sebebi ancak **iki yakalama yolu da
+bağlandığında** göründü:
 
-> Kolonun varlığı ile doldurulmuş olması ayrı şeyler; sürüm olmadan ikisi ayırt
-> edilemez.
+| Yol | Bulguları gösteriyor mu | Soruyu sorabiliyor mu | Yazdığı sürüm |
+| --- | --- | --- | --- |
+| Rapor ekranı | ✅ | ✅ | 2 |
+| **Alarm kapatma ekranı** | ❌ | ❌ | **2** |
+
+`closeRequest`, `reviewRequest`'i paylaşıyor (doğru — §9, tek kurucu), yani
+kapatma yoluyla yazılan her inceleme bugünkü sürümle yazılıyor ama soru hiç
+sorulmuyor. Sürüme bağlansaydı o kayıtların hepsi paydaya girer ve
+`accuracy@1`'i sessizce aşağı çekerdi.
+
+Ayrım bu yüzden `CorrectFindingRankAsked` adlı **açık bir kolonda**. T36'nın
+`Measured=false` ↔ `Unreliable=0` ayrımının aynısı: ölçümün **yapıldığı** ayrı
+alan, **sonucu** ayrı. Sürüm yine 2'ye çıktı (kayıt biçimi gerçekten değişti)
+ama payda ona bakmıyor.
+
+**Tutarsız kombinasyon reddediliyor:** sıra verilmiş + sorulmamış → 400. Kabul
+edilseydi kayıt **paya girer, paydaya girmezdi** — %100'ü aşabilen bir oran.
 
 **Bu, yakalama yolunun aynı commit'te bağlanmasını zorunlu kıldı.** Ölçü
-yazılıp form sorulmasaydı bütün v2 kayıtlarının rank'i `null` olurdu ve
+yazılıp form sorulmasaydı bütün kayıtların rank'i `null` olurdu ve
 `accuracy@1` **%0** çıkardı — ölçülmemiş bir şey "ölçüldü, berbat" diye
 okunurdu.
 
@@ -141,7 +161,7 @@ Düzeltme: dış grupta **her cinsten** satır. Kural testin kendi yorumunda:
 | `CorrectFindingRank` + `accuracy@1` / `accuracy@3` | ✅ |
 | Yakalama yolu (iki yazma ucu + rapor ekranındaki soru) | ✅ |
 | Gösterge ekranı — paydalar oranların yanında | ✅ |
-| **Atılan cümle oranı** (`reasoning` sözleşmesi) | ⏳ **başlamadı** |
+| **Atılan cümle oranı** (`reasoning` sözleşmesi) | ✅ |
 
 ### Altın küme ilk gün boş ve bu **beklenen**
 
@@ -154,25 +174,63 @@ Bu satır yazılı olmasaydı boş payda bir kurulum hatası gibi okunabilirdi.
 
 ---
 
-## 5 · Sıradaki iş — atılan cümle oranı
+## 4b · Atılan cümle oranı — eksen ve üç hâl
 
-T44'ün sayacı `RcaReportResponse.reasoning` altında ve **çivili**. Okunacak dört
-sayı: `produced_sentence_count` (payda), `dropped_sentence_count` (pay),
-`dropped_sentence_ratio` (payda 0 ise `null`),
-`fabricated_citation_sentence_count` (`dropped`'ın alt kümesi).
+### KARAR · Eksen **incelenmiş paket**, paket başına **son** rapor
 
-**Karıştırılmaması gereken üç hâl** — ve bu, yukarıdaki payda disiplininin aynısı:
+Altın küme bir *(paket, gerçek kök neden)* çiftleri kümesi, dolayısıyla ölçümün
+birimi paket. Paket başına son rapor sayılıyor ve sıralama
+`RcaReportStore.LatestForAsync`'inkiyle **birebir aynı** — ayrışsalardı ekran
+bir raporu gösterir, gösterge başkasını sayardı.
 
-| Hâl | Tel | Anlamı |
+`rca_reports`'un kendi `owner_group` kolonu **yok**; kapsam pakete bağlı. O
+yüzden hangi raporların ölçüleceği, kullanıcının görebildiği **incelemelerden**
+türüyor. İkinci bir kapsam yolu açmak K17'nin dağıtılmasını yasakladığı şey.
+
+⚠️ **Bilinen sınır:** bir paket incelendikten *sonra* yeniden koşturulursa
+ölçülen rapor, insanın yargıladığı rapor olmayabilir. Bugün bunu ayırt edecek
+bir bağ yok — inceleme pakete bağlı, rapora değil.
+
+### KARAR · Oran **cümle başına**, rapor başına değil
+
+Rapor başına oranların ortalaması alınsaydı iki cümle yazan bir rapor, iki yüz
+cümle yazanla aynı ağırlığı taşırdı. Sorulan soru *"bu korpusta modelin yazdığı
+cümlelerin kaçta kaçı desteksizdi"*, yani payda **cümle**.
+
+### Üç hâl — ikisi toplamların içinde görünmüyor
+
+| Hâl | Sayaç | Toplamlara katkısı |
 | --- | --- | --- |
-| A | `reasoning: null` | Model **hiç koşmadı** → paydaya katma |
-| B | `produced: 0` | Koştu, hiç cümle üretmedi → ayrı say |
-| C | `produced: 5, dropped: 5` | Koştu, **hepsi atıldı** → ayrı say, **en pahalısı** |
+| **A** raporu yok | `reasoning_absent` | **paydada değil** |
+| **B** koştu, üretmedi | `produced_nothing` | ikisine de 0 |
+| **C** koştu, hepsi atıldı | `all_dropped` | ikisine de eşit |
 
-B ile C saf sayımda aynı görünüyor (ikisi de boş bulgu listesi), ama C modelin
-beş cümle uydurup hepsinin elendiği hâl — F4'ün ölçmek istediği şeyin kendisi.
+B ve C ayrı sayılmasaydı toplamlar onları gizlerdi: ikisi de oranı **hareket
+ettirmiyor** ama zıt şeyler söylüyor. C, modelin cümle uydurup hepsinin elendiği
+hâl — F4'ün ölçmek istediği şeyin kendisi.
 
-### T44'ün bıraktığı üç tereddüt — ölçümü burada
+`measured_coverage` (`reports_measured / reviewed_bundles`) oranın yanında
+duruyor: düşükse üstteki sayı altın kümenin küçük bir diliminden geliyor.
+
+### Ölçülen kırmızı — ve fixture yine bir bekçiyi yanlış sebeple geçirdi
+
+Altı mutasyonun beşi bir testi düşürdü. **Altıncısı — uydurma atıf paydasını
+`dropped` yerine `produced` yapmak — yeşil geçti.**
+
+Sebep kodda değil fixture'daydı: o örnekte `produced == dropped` idi, yani iki
+payda **aynı sayıyı** veriyor. `10 üretildi / 4 atıldı / 2 uydurma` örneği
+eklendi (doğru oran `0,5`, yanlış payda `0,2` verirdi) ve mutasyon artık
+düşüyor.
+
+Bu, aynı şeklin bu ticket'ta **üçüncü** tekrarı (kapsam bekçisi, sürüm tabanlı
+payda, ve şimdi bu). Ortak ders: *bir bekçinin yeşil olması, kusuru gördüğü
+anlamına gelmiyor — fixture'ın kusuru **ifade edebilmesi** gerekiyor.*
+
+---
+
+## 5 · Kalan iş
+
+### T44'ün bıraktığı üç tereddüt — hâlâ ölçülmedi
 
 1. Atıfsız cümle bir öncekinden **bağlam devralmıyor** (bilerek). İnsan gibi
    yazan bir modelde atılan cümle oranını yukarı çekebilir; çözüm eşik değil

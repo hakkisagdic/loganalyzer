@@ -39,6 +39,17 @@ function quality(overrides: Partial<GoldenSetQuality> = {}): GoldenSetQuality {
     rank_asked: 0,
     accuracy_at_one: null,
     accuracy_at_three: null,
+    reviewed_bundles: 0,
+    reasoning_absent: 0,
+    reports_measured: 0,
+    produced_nothing: 0,
+    all_dropped: 0,
+    produced_sentences: 0,
+    dropped_sentences: 0,
+    fabricated_sentences: 0,
+    dropped_sentence_ratio: null,
+    fabricated_citation_ratio: null,
+    measured_coverage: null,
     ...overrides,
   } as GoldenSetQuality;
 }
@@ -128,17 +139,6 @@ describe("altın küme göstergesi", () => {
   });
 });
 
-/**
- * <b>Uç patladığında gösterge ne yapıyor.</b>
- *
- * <p>
- * `GET /v1/rca/quality` canlı Postgres'e karşı hiç koşmadı; ekran tarafının
- * sınayabileceği şey de zaten uç değil, <b>ucun düşmesine verilen tepki</b>.
- * Sessizce kaybolan bir gösterge, sıfır gösterenden kötü: yokluğu bir bilgi
- * gibi okunur ve "henüz kimse inceleme yapmadı" ile "gösterge bozuk" aynı
- * boşluğa düşer.
- * </p>
- */
 describe("çelişen kanıt tiyatrosu (T47)", () => {
   /**
    * <b>Asıl bekçi ve bu ölçüde <i>accuracy</i>'dekinden daha keskin.</b>
@@ -240,6 +240,98 @@ describe("accuracy@k (T47)", () => {
   });
 });
 
+describe("atılan cümle oranı — üç hâl (T47)", () => {
+  /**
+   * <b>Model hiç koşmamışsa <c>%0</c> yazmıyor.</b>
+   *
+   * <p>
+   * <c>%0 atılan cümle</c> <b>mükemmel kalite</b> demek. Ölçülemeyen bir oranın
+   * en iyi sonuçla aynı baytları üretmesi, bu göstergenin engellemek için var
+   * olduğu şey.
+   * </p>
+   */
+  it("Model_kosmamissa_yuzde_sifir_yazmiyor", () => {
+    const html = renderToStaticMarkup(
+      <QualityBadge
+        quality={quality({ reviewed_bundles: 3, reasoning_absent: 3, dropped_sentence_ratio: null })}
+        error={null}
+      />,
+    );
+
+    expect(html).toContain('data-field="dropped_sentence_ratio" data-kind="undecided"');
+    expect(html).toContain("model hiç koşmadı");
+    expect(html).not.toContain("%0.0");
+  });
+
+  /** Ölçülmüş sıfır gizlenmiyor — hiçbir cümle atılmamış olabilir. */
+  it("Olculmus_sifir_atilan_cumle_gizlenmiyor", () => {
+    const html = renderToStaticMarkup(
+      <QualityBadge
+        quality={quality({
+          reviewed_bundles: 2,
+          reports_measured: 2,
+          produced_sentences: 20,
+          dropped_sentence_ratio: 0,
+        })}
+        error={null}
+      />,
+    );
+
+    expect(html).toContain('data-field="dropped_sentence_ratio" data-kind="ratio"');
+    expect(html).toContain("%0.0");
+  });
+
+  /**
+   * <b>B ile C ekranda ayrı sayılar.</b> İkisi de boş bulgu listesi veriyor ve
+   * ikisi de oranı hareket ettirmiyor; ayrı gösterilmezlerse en pahalı hâl
+   * (hepsi atıldı) görünmez olur.
+   */
+  it("Uretmeyen_ile_hepsi_atilan_ekranda_ayri", () => {
+    const html = renderToStaticMarkup(
+      <QualityBadge
+        quality={quality({ reports_measured: 2, produced_nothing: 1, all_dropped: 1 })}
+        error={null}
+      />,
+    );
+
+    expect(html).toContain('data-field="produced_nothing"');
+    expect(html).toContain('data-field="all_dropped"');
+  });
+
+  /** Kapsam oranın yanında: ölçülen rapor / incelenmiş paket. */
+  it("Olcum_kapsami_oranin_yaninda", () => {
+    const display = presentQuality(
+      quality({
+        reviewed_bundles: 4,
+        reports_measured: 1,
+        reasoning_absent: 3,
+        produced_sentences: 10,
+        dropped_sentences: 3,
+        fabricated_sentences: 1,
+        dropped_sentence_ratio: 0.3,
+        fabricated_citation_ratio: 1 / 3,
+        measured_coverage: 0.25,
+      }),
+    );
+
+    expect(display.reportsMeasured).toBe(1);
+    expect(display.reviewedBundles).toBe(4);
+    expect(display.droppedSentenceRatio).toEqual({ kind: "ratio", percent: "%30.0" });
+    expect(display.measuredCoverage).toEqual({ kind: "ratio", percent: "%25.0" });
+  });
+});
+
+/**
+ * <b>Uç patladığında gösterge ne yapıyor.</b>
+ *
+ * <p>
+ * `GET /v1/rca/quality` canlı Postgres'e karşı hiç koşmadı; ekran tarafının
+ * sınayabileceği şey de zaten uç değil, <b>ucun düşmesine verilen tepki</b>.
+ * Sessizce kaybolan bir gösterge, sıfır gösterenden kötü: yokluğu bir bilgi
+ * gibi okunur ve "henüz kimse inceleme yapmadı" ile "gösterge bozuk" aynı
+ * boşluğa düşer.
+ * </p>
+ */
 describe("gösterge hata yolu", () => {
   it("Sunucu_hatasinda_gosterge_duruyor_ve_sebebi_yaziyor", () => {
     // Sayfa `describeError` ile mesajı çıkarıp bileşene veriyor; burada aynı

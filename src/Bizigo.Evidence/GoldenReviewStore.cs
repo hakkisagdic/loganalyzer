@@ -115,6 +115,112 @@ public sealed record GoldenSetQuality(
     public double? AccuracyAtThree => RankAsked > 0 ? (double)RankTopThree / RankAsked : null;
 }
 
+/// <summary>
+/// Altın küme üzerinde <b>atılan cümle</b> ölçümü (T47, Karar 1).
+///
+/// <para>
+/// <b>Eksen incelenmiş paket.</b> Altın küme bir <i>(paket, gerçek kök neden)</i>
+/// çiftleri kümesi, dolayısıyla ölçümün birimi paket. Paket başına <b>son</b>
+/// rapor sayılıyor — ekranın gösterdiği rapor o (<c>LatestForAsync</c>), ve
+/// aynı sıralama kullanılıyor.
+/// </para>
+///
+/// <para>
+/// <b>Üç hâl ayrı sayılıyor ve ikisi toplamların içinde görünmüyor:</b>
+/// </para>
+///
+/// <list type="table">
+///   <item>
+///     <term>A · <see cref="ReasoningAbsent"/></term>
+///     <description>
+///       İncelenmiş paket, raporu <b>yok</b> — model hiç koşmadı. Paydaya
+///       <b>girmiyor</b>: koşmamış bir model ölçülemez.
+///     </description>
+///   </item>
+///   <item>
+///     <term>B · <see cref="ProducedNothing"/></term>
+///     <description>Koştu, hiç cümle üretmedi. Toplamlara <b>0</b> katıyor.</description>
+///   </item>
+///   <item>
+///     <term>C · <see cref="AllDropped"/></term>
+///     <description>
+///       Koştu, ürettiklerinin <b>hepsi atıldı</b>. En pahalısı, ve saf sayımda
+///       B ile aynı görünüyor: ikisi de boş bulgu listesi.
+///     </description>
+///   </item>
+/// </list>
+///
+/// <para>
+/// B ve C ayrı sayılmasaydı toplamlar onları gizlerdi — B iki toplama da sıfır
+/// katıyor, C ikisine de eşit katıyor. İkisi de oranı hareket ettirmiyor ama
+/// <b>zıt</b> şeyler söylüyor.
+/// </para>
+/// </summary>
+/// <param name="ReviewedBundles">İncelenmiş <b>ayrık</b> paket sayısı.</param>
+/// <param name="ReasoningAbsent">A · raporu olmayan incelenmiş paket.</param>
+/// <param name="ReportsMeasured">Ölçüme giren rapor sayısı — paket başına bir tane.</param>
+/// <param name="ProducedNothing">B · koştu, sıfır cümle.</param>
+/// <param name="AllDropped">C · koştu, hepsi atıldı.</param>
+/// <param name="ProducedSentences">Toplam üretilen cümle — <b>oranın paydası</b>.</param>
+/// <param name="DroppedSentences">Toplam atılan cümle — payı.</param>
+/// <param name="FabricatedSentences">
+/// Atıf uydurmuş cümleler; <paramref name="DroppedSentences"/>'in alt kümesi.
+/// </param>
+public sealed record GoldenSetReasoningQuality(
+    long ReviewedBundles,
+    long ReasoningAbsent,
+    long ReportsMeasured,
+    long ProducedNothing,
+    long AllDropped,
+    long ProducedSentences,
+    long DroppedSentences,
+    long FabricatedSentences)
+{
+    /// <summary>
+    /// Atılan cümle oranı — <b>cümle başına</b>, rapor başına değil.
+    ///
+    /// <para>
+    /// Rapor başına oranların ortalaması alınsaydı iki cümle yazan bir rapor,
+    /// iki yüz cümle yazanla aynı ağırlığı taşırdı. Sorulan soru <i>"bu korpusta
+    /// modelin yazdığı cümlelerin kaçta kaçı desteksizdi"</i>, yani payda
+    /// <b>cümle</b>.
+    /// </para>
+    ///
+    /// <para>
+    /// Payda sıfırsa <see langword="null"/>, sıfır <b>değil</b> — telin kendi
+    /// kuralının toplam hâli. <c>0.0</c> burada <i>"hiç cümle atılmadı"</i>
+    /// yani mükemmel kalite demek.
+    /// </para>
+    /// </summary>
+    public double? DroppedSentenceRatio =>
+        ProducedSentences > 0 ? (double)DroppedSentences / ProducedSentences : null;
+
+    /// <summary>
+    /// Atılan cümlelerin kaçta kaçı <b>atıf uydurmuştu</b>.
+    ///
+    /// <para>
+    /// Paydası <see cref="DroppedSentences"/>, üretilen değil: <i>"hiç atıf
+    /// yapmadı"</i> ile <i>"atıf uydurdu"</i> iki farklı kalite sorunu — biri
+    /// prompt'un, diğeri modelin — ve ikincinin payı yalnızca birincinin
+    /// içinde anlamlı.
+    /// </para>
+    /// </summary>
+    public double? FabricatedCitationRatio =>
+        DroppedSentences > 0 ? (double)FabricatedSentences / DroppedSentences : null;
+
+    /// <summary>
+    /// Ölçülebilen incelenmiş paketlerin oranı — <b>kapsamın kendisi</b>.
+    ///
+    /// <para>
+    /// Düşükse yukarıdaki oranlar altın kümenin küçük bir diliminden geliyor
+    /// demektir. Bu sayı olmadan <c>DroppedSentenceRatio</c> temsil ettiğinden
+    /// daha geniş okunur.
+    /// </para>
+    /// </summary>
+    public double? MeasuredCoverage =>
+        ReviewedBundles > 0 ? (double)ReportsMeasured / ReviewedBundles : null;
+}
+
 /// <param name="BundleId">Zorunlu — paketsiz inceleme F4'te ölçülemez.</param>
 /// <param name="TriggerId">Alarm tetikliyse dolu, kullanıcı tetikliyse boş.</param>
 /// <param name="OwnerGroup">
@@ -301,6 +407,89 @@ public sealed class GoldenReviewStore(
             total, correct, unknown,
             contradictingSound, contradictingTrivial, contradictingUnknown, contradictingUnspecified,
             rankAsked, rankFirst, rankTopThree);
+    }
+
+    /// <summary>
+    /// Altın küme üzerinde atılan cümle ölçümü (T47, Karar 1).
+    ///
+    /// <para>
+    /// <b>Kapsam kapısı yine <see cref="Visible"/>'dan geçiyor:</b> hangi
+    /// paketlerin ölçüleceği, kullanıcının görebildiği <i>incelemelerden</i>
+    /// türüyor. <c>rca_reports</c>'un kendi <c>owner_group</c> kolonu yok —
+    /// kapsam pakete bağlı — dolayısıyla filtreyi rapor tarafına koymak
+    /// mümkün değil ve olmamalı: ikinci bir kapsam yolu, K17'nin dağıtılmasını
+    /// yasakladığı şey.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Paket başına <i>son</i> rapor.</b> "Daha yenisi yok" olarak
+    /// yazılıyor, ve sıralama <c>RcaReportStore.LatestForAsync</c>'inkiyle
+    /// birebir aynı (<c>CreatedAt</c>, eşitlikte <c>Id</c>). Ayrışsalardı ekran
+    /// bir raporu gösterir, gösterge başkasını sayardı — ve hiçbir şey bunu
+    /// söylemezdi.
+    /// </para>
+    ///
+    /// <para>
+    /// ⚠️ <b>Bilinen sınır:</b> bir paket incelendikten <i>sonra</i> yeniden
+    /// koşturulursa ölçülen rapor, insanın yargıladığı rapor olmayabilir.
+    /// Bugün bunu ayırt edecek bir bağ yok (inceleme pakete bağlı, rapora
+    /// değil). Sayım yine de "son söz"ü ölçüyor, ki ekranın gösterdiği o.
+    /// </para>
+    /// </summary>
+    public async Task<GoldenSetReasoningQuality> ReasoningQualityAsync(
+        AccessScope scope,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+
+        var reviewedBundles = Visible(db, scope).Select(r => r.BundleId).Distinct();
+
+        // "Daha yenisi yok" — GroupBy + First'ten farklı olarak her sağlayıcıda
+        // aynı SQL'e çeviriliyor, ve sıralaması LatestForAsync ile aynı.
+        var latest = db.RcaReports
+            .AsNoTracking()
+            .Where(rep => reviewedBundles.Contains(rep.BundleId))
+            .Where(rep => !db.RcaReports.Any(other =>
+                other.BundleId == rep.BundleId
+                && (other.CreatedAt > rep.CreatedAt
+                    || (other.CreatedAt == rep.CreatedAt && other.Id > rep.Id))));
+
+        var reviewed = await reviewedBundles.LongCountAsync(cancellationToken);
+        var measured = await latest.LongCountAsync(cancellationToken);
+
+        // B ve C: toplamların gizlediği iki hâl. B iki toplama da sıfır katıyor,
+        // C ikisine de eşit katıyor — ikisi de oranı hareket ettirmiyor ama zıt
+        // şeyler söylüyor.
+        var producedNothing = await latest.LongCountAsync(
+            rep => rep.ProducedSentenceCount == 0, cancellationToken);
+        var allDropped = await latest.LongCountAsync(
+            rep => rep.ProducedSentenceCount > 0
+                && rep.DroppedSentenceCount == rep.ProducedSentenceCount,
+            cancellationToken);
+
+        // Boş kümede `SumAsync` sağlayıcıya göre NULL dönebiliyor; `(long?)`
+        // ile alınıp sıfıra düşürülüyor. Sessizce patlayan bir gösterge,
+        // gösterilmeyen bir göstergeden kötü.
+        var produced = await latest.SumAsync(rep => (long?)rep.ProducedSentenceCount, cancellationToken) ?? 0;
+        var dropped = await latest.SumAsync(rep => (long?)rep.DroppedSentenceCount, cancellationToken) ?? 0;
+        var fabricated = await latest.SumAsync(
+            rep => (long?)rep.FabricatedCitationSentenceCount, cancellationToken) ?? 0;
+
+        return new GoldenSetReasoningQuality(
+            ReviewedBundles: reviewed,
+
+            // A: incelenmiş ama raporu olmayan paket. Çıkarma ile bulunuyor,
+            // ayrı bir sorguyla değil: iki sorgu arasında yeni bir rapor
+            // yazılırsa sayılar tutmaz ve fark NEGATİF görünebilirdi.
+            ReasoningAbsent: reviewed - measured,
+            ReportsMeasured: measured,
+            ProducedNothing: producedNothing,
+            AllDropped: allDropped,
+            ProducedSentences: produced,
+            DroppedSentences: dropped,
+            FabricatedSentences: fabricated);
     }
 
     /// <summary>Bir paketin kapsam altındaki incelemeleri, en yeniden eskiye.</summary>
