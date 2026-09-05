@@ -1,4 +1,4 @@
-using Bizigo.Cli.Fields;
+using Bizigo.Commands.Fields;
 
 namespace Bizigo.UnitTests;
 

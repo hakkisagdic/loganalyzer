@@ -6,6 +6,12 @@
     <ProjectReference Include="..\Bizigo.Parsing\Bizigo.Parsing.csproj" />
     <ProjectReference Include="..\Bizigo.Alerting\Bizigo.Alerting.csproj" />
     <ProjectReference Include="..\Bizigo.Mcp\Bizigo.Mcp.csproj" />
+
+    <!--
+      M02 — komut çekirdeği. CLI artık bir SUNUM katmanı: iş çekirdekte,
+      burada yalnızca konsola çizim ve çıkış kodu.
+    -->
+    <ProjectReference Include="..\Bizigo.Commands\Bizigo.Commands.csproj" />
     <ProjectReference Include="..\..\sim\Bizigo.Simulators\Bizigo.Simulators.csproj" />
 </ItemGroup>
 

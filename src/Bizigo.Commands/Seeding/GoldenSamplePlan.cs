@@ -1,7 +1,7 @@
 using System.Globalization;
 using Bizigo.Parsing.Samples;
 
-namespace Bizigo.Cli.Seeding;
+namespace Bizigo.Commands.Seeding;
 
 /// <param name="Anchor">Yayılımın sağ ucu — pratikte "şimdi".</param>
 /// <param name="Span">Geriye doğru yayılım süresi.</param>

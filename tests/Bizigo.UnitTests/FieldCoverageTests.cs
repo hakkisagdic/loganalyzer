@@ -1,4 +1,4 @@
-using Bizigo.Cli.Fields;
+using Bizigo.Commands.Fields;
 using Bizigo.Contracts;
 using Bizigo.Storage.ClickHouse;
 

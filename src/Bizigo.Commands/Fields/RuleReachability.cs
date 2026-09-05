@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Bizigo.Cli.Fields;
+namespace Bizigo.Commands.Fields;
 
 /// <param name="Field">Kuralın vurduğu ad — OCSF takma adı olması beklenen.</param>
 /// <param name="Operator">Sigma operatörü; boş dize eşitlik.</param>

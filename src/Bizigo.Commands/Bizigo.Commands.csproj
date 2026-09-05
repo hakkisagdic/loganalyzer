@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    M02 — komut çekirdeği.
+
+    YÖN TEK VE ÇEKİRDEK HİÇBİR SUNUMA BAKMIYOR:
+
+        Bizigo.Cli ──┐
+                     ├──> Bizigo.Commands ──> Bizigo.Parsing, Bizigo.Storage.*
+        Bizigo.Mcp ──┘
+
+    Ayrı bir proje olmasının iki gerekçesi ölçüldü:
+
+    · `Bizigo.Cli`'nin derleme adı `bizigo` ve `Bizigo.` önek kuralına uymuyor
+      (T50). Çekirdeği CLI'nin içine koymak `Bizigo.Mcp -> bizigo` referansını
+      doğururdu: protokol katmanı bir SUNUM katmanına, üstelik MCP keşif
+      konvansiyonunun (`Bizigo.*`) dışındaki bir derlemeye bağlanırdı.
+
+    · Planın kendi cümlesi "ortak çekirdek, İKİ sunum katmanı". Çekirdek
+      sunumlardan birinin içindeyse o katman ayrıcalıklı olur ve parite tek
+      yönlü hâle gelir — yani ölçülemez.
+
+    BU PROJEDE `Console` YASAK ve bir mimari test onu tutuyor. Gerekçe bir üslup
+    tercihi değil: MCP tarafında stdout PROTOKOLÜN KENDİSİ ve oraya düşen tek
+    bir satır JSON-RPC akışını bozuyor. İstemci bunu ayrıştırma hatası olarak
+    görür — yani arıza ürünü değil AYRIŞTIRICIYI işaret eder ve hatanın kaynağı
+    ile belirtisi farklı katmanlarda olur.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bizigo.Contracts\Bizigo.Contracts.csproj" />
+    <ProjectReference Include="..\Bizigo.Parsing\Bizigo.Parsing.csproj" />
+    <ProjectReference Include="..\Bizigo.Storage.ClickHouse\Bizigo.Storage.ClickHouse.csproj" />
+    <ProjectReference Include="..\Bizigo.Alerting\Bizigo.Alerting.csproj" />
+
+    <!-- `seed golden` boru hattının kendisinden geçiyor: kompozisyon ve
+         kodlama tespiti Ingest'in, ikinci kopyası yazılmadı. -->
+    <ProjectReference Include="..\Bizigo.Ingest\Bizigo.Ingest.csproj" />
+  </ItemGroup>
+
+</Project>
