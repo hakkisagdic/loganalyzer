@@ -1,7 +1,7 @@
 ---
 title: "T49 — Dashboard container'ı: yığının tamamı tek komutla kalkıyor mu?"
 kind: ticket
-status: 0
+status: 1
 ---
 
 # T49 — Dashboard compose'a giriyor
@@ -111,3 +111,60 @@ profilleri.
 `ui/src/lib/api/` altındaki taban URL çözümüne **bakmadım**. Ve Next.js'in
 `output: standalone` yapılandırmasının bugün açık olup olmadığını; imaj
 boyutu ve çalıştırma şekli ona bağlı.
+
+## 6.1 · Uygulanırken ölçülenler
+
+Yukarıdaki bölüm **ticket yazılırken** doğruydu. Uygulama turu onu iki yerden
+düzeltti; bölüm silinmiyor, çünkü neyin tahmin edildiği ile neyin çıktığı
+arasındaki fark bu ticket'ın en pahalı bilgisi.
+
+### §3'ün dört tahmini — üçü çıkmadı
+
+§3 dört sorun öngörüyor ve *"tahmin olarak yazıyorum, ölçülmediler"* diyor.
+Ölçüldü:
+
+| Tahmin | Çıktı mı | Ne gerekti |
+| --- | --- | --- |
+| API'yi servis adıyla bulmak | **Hayır** | `BIZIGO_API_URL` zaten var — compose girdisi |
+| Tarayıcı/sunucu taban URL ayrımı | **Hayır** (API için) | Ayrım zaten yapısal |
+| `redis-session` | **Hayır** | `BFF_SESSION_STORE` + `BFF_REDIS_URL` zaten var |
+| Keycloak yönlendirmesi | **Evet** | Turun tek kod değişikliği |
+
+İkinci satırın cevabı, §6'nın *"aramadım"* dediği yerde **yazılıymış**:
+`ui/src/lib/api/client.ts:33` — *"Vekilin kökü. Mutlak API adresi burada
+bilinçli olarak YOK."* Tarayıcı her isteği göreli `/api/bff/…`'ye yolluyor;
+`apiBaseUrl`'i yalnızca `server.ts` okuyor. Kırılacak tek bir taban URL
+varsayımı yok.
+
+### Çıkan tahmin, emsalinden zor
+
+BFF keşif belgesinden **iki ayrı yöne giden** uçlar okuyor ve tek adres ikisini
+karşılayamıyor:
+
+| Uç | Kim gidiyor | Container'da doğru adres |
+| --- | --- | --- |
+| `authorization_endpoint`, `end_session_endpoint` | **tarayıcı** | `localhost:8180` |
+| `token_endpoint`, `jwks_uri` | Next sunucusu | `keycloak:8080` |
+
+Çözüm `KEYCLOAK_METADATA_URL` + `discover()`'ın ön kanalı genel kökene
+sabitlemesi. Gerekçesi `ui/src/lib/auth/oidc.ts` içinde (`onPublicOrigin`) ve
+README'de.
+
+### İki "aramadım" kalemi
+
+- **`output: standalone` kapalıydı.** Açıldı; `.next/standalone/server.js`
+gerçekten üretiliyor ve `ui/Dockerfile`'ın `CMD`'si ona dayanıyor.
+- **`ui/public` yok.** Çoğu Next Dockerfile'ında duran
+`COPY … /app/public ./public` satırı imaj derlemesini düşürürdü — ve bu ancak
+imaj gerçekten derlendiğinde görünürdü.
+
+### Bu turda ölçülmeyenler
+
+Kabul kriterleri **1, 2 ve 3** koşturulmadı: yığını kaldırmak, container'daki
+ekrandan giriş yapmak ve uçtan uca harness'ı container'a karşı koşturmak
+Docker istiyor ve §2 onu koordinatöre veriyor. Yeşil gösterilmiyor; `status`
+bu yüzden **1**.
+
+`ui` servisinin sağlık kontrolü ölçütü `< 500` ve dayandığı varsayım —
+oturumsuz isteğin kök sayfadan giriş akışına yönlenmesi (3xx) — **doğrulanmadı**.
+Sağlıklıya dönmezse ilk bakılacak yer o satır, ikincisi `HOSTNAME=0.0.0.0`.

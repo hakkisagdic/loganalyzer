@@ -98,12 +98,39 @@ beforeAll(async () => {
   browser = await chromium.launch();
 }, 120_000);
 
+/*
+ * Zaman aşımı **sıfır: saat devre dışı** — büyütülmüş bir bütçe değil.
+ *
+ * Bu kanca hiçbir şey ölçmüyor, temizlik yapıyor: tarayıcı sürecini kapatıyor
+ * ve geçici dizini siliyor. §6'nın ölçütü "test neyi ölçmek istiyor?" ve cevap
+ * *hiçbir şey* olduğunda duvar saati denklemde olmamalı.
+ *
+ * Yazılı bir süre olmadığı için vitest'in varsayılanına (10 sn) düşüyordu ve
+ * ÖLÇÜLDÜ: paket tek başına koşarken geçiyor, tam koşumda `browser.close()`
+ * 10 sn'yi aşıp `Hook timed out` veriyor. Yani paketin sonucu, aynı makinede
+ * o sırada başka ne koştuğuna bağlıydı — bu depoda iki kez "kararsız test"
+ * diye raporlanan ve ikisi de kararsız OLMAYAN sınıfın üçüncü örneği
+ * (`DiscoveryWorkerTests`, `GrokPropertyTests`).
+ *
+ * Sayıyı 30 sn'ye çıkarmak aynı kusuru daha seyrek gösterirdi: yeşilliği hâlâ
+ * makinenin o anki yüküne bağlı kalırdı, yalnızca eşik yükselirdi. Sıfır ise
+ * bağı koparıyor.
+ *
+ * KAÇAK PROSES RİSKİ AÇILMIYOR: sıfır, kancanın sonsuza kadar asılmasına izin
+ * vermek değil — kancanın kendi işi zaten sonlu (bir süreç kapanışı ve bir
+ * dizin silme). Kaldırılan şey, o sonlu işin üstündeki İKİNCİ bir sınır. Vitest
+ * hâlâ dosya düzeyinde bekliyor ve `browser.close()` asılırsa koşum orada
+ * görünür biçimde duruyor — sessizce atlanmıyor.
+ *
+ * Ölçüldü, iki yönde: 1500 ms süren bir kanca `--hookTimeout=500` ile sıfır
+ * verildiğinde GEÇİYOR, verilmediğinde `Hook timed out in 500ms` ile düşüyor.
+ */
 afterAll(async () => {
   // Protokol §3: başlattığın prosesi temizle — hata alsan bile. Tarayıcı
   // `afterAll`da kapanıyor, `finally` semantiğiyle: test düşse de çalışıyor.
   await browser?.close();
   rmSync(WORK, { recursive: true, force: true });
-});
+}, 0);
 
 describe("ekran görüntüleri", () => {
   it.each(

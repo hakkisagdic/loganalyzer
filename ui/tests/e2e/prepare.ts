@@ -29,6 +29,15 @@ import { fileURLToPath } from "node:url";
  * (Tip sökme Node 22.18 ve 23.6'dan itibaren varsayılan; bayrak orada da
  * zararsız, yalnızca daha eski 22.x sürümlerinde zorunlu.)
  * </p>
+ *
+ * <p>
+ * <b>Sökmek denetlemek değil — ama bu dosya yine de denetleniyor.</b> Yukarıdaki
+ * cümle bir tur "demek ki tip kapısı bu dosyayı görmüyor" diye okundu ve
+ * yanlıştı: <c>ui/tsconfig.json</c>'ın <c>include</c>'u <c>**&#47;*.ts</c>, yani
+ * hem burası hem <c>playwright.config.ts</c> <c>npm run typecheck</c>'in
+ * kapsamında. <b>Ölçüldü</b> — dosya listesiyle değil, kusurla: buraya bir tip
+ * hatası konulduğunda <c>tsc</c> dört hatayla kırmızı yanıyor.
+ * </p>
  */
 
 const REPO = fileURLToPath(new URL("../../..", import.meta.url));
