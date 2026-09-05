@@ -49,10 +49,25 @@ BUYUME_KATI = 8
 KUCUK_KORPUS = 25
 BUYUK_KORPUS = KUCUK_KORPUS * BUYUME_KATI
 
-#: Kural başına işin izinli büyümesi. Doğrusal bir uygulamada oran 1 civarı;
-#: karesel olanda `BUYUME_KATI` (8). İkisinin arasında geniş bir boşluk var ve
-#: eşik oraya konuyor — dar bir eşik, `Counter`'ın iç ayrıntısı değişince
-#: sebepsiz kırmızı yanardı.
+#: Kural başına işin izinli büyümesi.
+#:
+#: **Ölçülmüş iki uç** — eşik bir tahmin değil, aralığın ortası:
+#:
+#: | Hâl | 25 kuralda | 200 kuralda | Oran |
+#: | --- | --- | --- | --- |
+#: | doğrusal (bugünkü) | 1,0 dokunuş | 1,0 dokunuş | **1,00×** |
+#: | karesel (geri konup ölçüldü) | 25,0 | 200,0 | **8,00×** |
+#:
+#: Eşiği okuyan kişinin görmesi gereken şey sayı değil **aralık**: 1,00 ile 8,00
+#: arasında dört kat pay var. Dar bir eşik (ör. 1,2×) `Counter`'ın iç ayrıntısı
+#: dokunuşu 1'den 2'ye çıkardığı gün sebepsiz kırmızı yanardı; gevşek bir eşik
+#: (ör. 6×) karesele yaklaşan bir gerilemeyi geçirirdi.
+#:
+#: ⚠️ `CLAUDE.md` §8'in uyarısı burada da geçerli: bir eşik zamanla kimsenin
+#: bakmadığı bir rakama dönüşebilir. Sabit bir sayıya çevrilmedi çünkü
+#: dokunuş sayısı uygulama ayrıntısına bağlı ve sabit bir değer **her** iç
+#: değişiklikte kırmızı yanardı — o kapı da gevşetilirdi. Eşiğin alternatifi
+#: daha iyi bir yargı değil, bekçinin yokluğu.
 IZINLI_BUYUME = 2.0
 
 

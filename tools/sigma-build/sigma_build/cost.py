@@ -51,10 +51,27 @@ from pathlib import Path
 
 __all__ = ["Measurement", "measure", "synthetic_rule", "main"]
 
-#: Ölçülen korpus boyları. 24 bugünkü korpus; 269 çivinin belgelerde adı geçen
-#: hedef ölçeği; aradaki 100 doğrusaldan sapmayı görünür kılıyor — iki nokta
-#: her eğriye doğru bir çizgi uydurur, üçüncüsü uymadığını söyler.
+#: Ölçülen korpus boyları — **geçici, çivilenmiş değil.**
+#:
+#: 24 bugünkü korpus. 269 belgelerde geçen bir sayı, **hedef değil**: gerçek
+#: SigmaHQ alt kümesi T30'un kapsam kararıyla belirlenecek ve o gün bu demet
+#: değişmeli. Buraya "hedef ölçek" diye okunabilecek bir sayı koymak, kararı
+#: verilmemiş bir şeyi verilmiş gibi gösterirdi.
+#:
+#: Aradaki 100 doğrusaldan sapmayı görünür kılmak için: iki nokta her eğriye
+#: doğru bir çizgi uydurur, üçüncüsü uymadığını söyler.
 VARSAYILAN_BOYLAR = (24, 100, 269)
+
+#: Defterin varsayılan yeri. `artifacts/` `.gitignore`'da (satır 7, .NET çıktısı
+#: için) — yani defter **versiyonlanmıyor**, ve bu bilinçli:
+#:
+#: * Her koşumda değişen bir dosya depoya girince gürültü bastırıcıya dönüyor.
+#: * `detections/` altına düşseydi `compile --check`'in birebir karşılaştırması
+#:   onu da kapsardı ve kapı her ölçümde kırmızı yanardı.
+#:
+#: Defterin değeri **aynı makinedeki koşumları karşılaştırmak**; bağlayıcı sayı
+#: rapora yazılıyor, dosyaya değil.
+VARSAYILAN_DEFTER = Path("artifacts") / "sigma-cost" / "derleme-maliyeti.json"
 
 #: Sayılmayan ısınma turu **şart**. `explain_gate.probe_forms` bu dersi ödedi:
 #: ısınmasız ölçüm `EXPLAIN`'i kendisinin 2,3 katı gösterdi ve ölçülen şey biçim
@@ -318,11 +335,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--fields-per-rule", type=int, default=3)
     parser.add_argument("--rounds", type=int, default=VARSAYILAN_TUR)
     parser.add_argument("--json", action="store_true", help="Markdown yerine ham JSON")
+    # Kayıt **varsayılan**, bayrak değil. Gerekçe K35: iki koşumun yan yana
+    # durması ancak ikisi de kaydedilirse mümkün, ve "kaydetmeyi unutma" diye
+    # bir yol bırakmak tam olarak unutulacak yoldur. Kapatmak açık bir hareket.
     parser.add_argument(
         "--record",
         type=Path,
         default=None,
-        help="Koşumu bu deftere EKLE (üstüne yazmaz)",
+        help=f"Defter yolu (varsayılan: {VARSAYILAN_DEFTER}, depo köküne göre)",
+    )
+    parser.add_argument(
+        "--no-record",
+        action="store_true",
+        help="Deftere hiç yazma — ikinci koşumun karşılaştırılamayacağını kabul ederek",
     )
     args = parser.parse_args(argv)
 
@@ -342,9 +367,12 @@ def main(argv: list[str] | None = None) -> int:
 
     print(json.dumps(asdict(record), indent=2, ensure_ascii=False) if args.json else _format(record))
 
-    if args.record:
-        toplam = _append_record(args.record, record)
-        print(f"\n✓ Deftere eklendi: {args.record} — toplam {toplam} koşum.")
+    if not args.no_record:
+        from sigma_build.view_columns import repo_root  # noqa: PLC0415
+
+        defter = args.record or (repo_root() / VARSAYILAN_DEFTER)
+        toplam = _append_record(defter, record)
+        print(f"\n✓ Deftere eklendi: {defter} — toplam {toplam} koşum.")
         if toplam < 2:
             print(
                 "  ⚠️ Defterde tek koşum var. Bağlayıcı sayı **iki** koşum ister; "

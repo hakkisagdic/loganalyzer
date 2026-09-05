@@ -153,8 +153,18 @@ eşik `Counter`'ın iç ayrıntısı değişince sebepsiz kırmızı yanardı.
 ### Süre ölçümü — koordinatörde, ve **iki koşum** kaydediliyor
 
 ```bash
-python -m sigma_build.cost --label ajan --record docs/olcumler/derleme-maliyeti.json
+python -m sigma_build.cost --label koordinator
 ```
+
+Defter varsayılan olarak `artifacts/sigma-cost/derleme-maliyeti.json`'a **ekleniyor**
+— kayıt bayrak değil varsayılan, çünkü "kaydetmeyi unutma" diye bırakılan yol
+unutulacak yoldur. `artifacts/` `.gitignore`'da: defter versiyonlanmıyor,
+`compile --check`'in birebir karşılaştırmasına da girmiyor. Değeri **aynı
+makinedeki koşumları karşılaştırmak**; bağlayıcı sayı rapora yazılıyor.
+
+Ölçülen boylar (24/100/269) **geçici**: 269 belgelerden gelen bir sayı, çivilenmiş
+hedef değil. Gerçek SigmaHQ alt kümesi T30'un kapsam kararıyla belirlenince
+değişecek.
 
 Docker istemiyor, ClickHouse istemiyor — saf Python. Yine de bu ajan
 **koşturmadı**: ölçüm sırasında makine thrash'teydi (2583–3580 swap-in/sn,
