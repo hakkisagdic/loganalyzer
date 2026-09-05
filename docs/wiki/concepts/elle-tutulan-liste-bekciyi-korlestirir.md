@@ -8,9 +8,9 @@ relationships:
     type: implements
   - target: "[[references/f2-kapanis]]"
     type: derived_from
-sources: [docs/epic/f2-kapanis/index.md, CLAUDE.md]
-source_digest: "sha256-12/v1 CLAUDE.md=dd011df5a833 docs/epic/f2-kapanis/index.md=c701d88f78fd"
-summary: Denetlenen kümeyi elle tutulan bir listeden toplayan bekçi, listede olmayanı hiç görmez ve yine de yeşil yanar. Çözüm kümeyi yansımayla bulmak.
+sources: [docs/epic/f2-kapanis/index.md, docs/epic/tickets-f3/produces-kapisi-bagi/index.md, CLAUDE.md]
+source_digest: "sha256-12/v1 CLAUDE.md=dd011df5a833 docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/tickets-f3/produces-kapisi-bagi/index.md=67247a04a205"
+summary: Denetlenen kümeyi elle tutulan bir listeden toplayan bekçi, listede olmayanı hiç görmez ve yine de yeşil yanar. Çözüm kümeyi yansımayla bulmak — ama bir kapıdaki elle listeyi kaldırmak, o kapıda başka elle liste kalmadığını göstermiyor.
 provenance:
   extracted: 0.8
   inferred: 0.2
@@ -20,7 +20,7 @@ lifecycle: draft
 lifecycle_changed: 2026-08-24
 tier: core
 created: 2026-08-24T16:15:22Z
-updated: 2026-08-24T16:15:22Z
+updated: 2026-09-05T00:00:00Z
 ---
 
 # Elle tutulan liste bekçiyi körleştirir
@@ -49,11 +49,46 @@ dikkatsiz değildi; liste yanlış mekanizmaydı. ^[inferred]
 
 ## Çözüm hep aynı yöne gitti
 
-**Denetlenen kümeyi yansımayla bul.** Elle kalan tek şey artık *denetlenen*
+**Denetlenen kümeyi yansımayla bul.** Elle kalması gereken tek şey *denetlenen*
 küme değil, *beklenen* küme — `ExpectedExemptCount` gibi tek bir sayı.
 
 Bu, `CLAUDE.md` §8'in muafiyet kuralıyla aynı fikir: muafiyet eklemek **iki
 ayrı bilinçli hareket** gerektirsin diye sayı ayrı tutuluyor.
+
+## Ama bir liste kaldırmak, listenin tek olduğunu göstermiyor
+
+Yukarıdaki cümle F2 kapanışında yazıldığında **eksikti**, ve eksikliği dört
+tekrar daha üretti. `Produces<T>` kapısı denetlenen kümeyi yansımayla buluyordu
+— ama uçları kaydedebilmek için **ikinci** bir elle liste tutuyordu: minimal
+API'nin "bu parametre servis mi gövde mi" ayrımını yapabilmesi için gereken
+asgari servis kayıtları. Bir uç dosyası listede olmayan bir servis enjekte
+ettiğinde o dosyanın uçları kapıdan düşüyordu.
+
+Bu ikinci liste `AlertPreview`, `CatalogCoverageCache`, `ParserPublishGate` ve
+`RcaAdmission` ile **dört kez** eksik kaldı ve her seferinde bulan kişi
+farklıydı (`docs/epic/tickets-f3/produces-kapisi-bagi/index.md`).
+
+Kalıbın buradaki dersi birincisinden ayrı: **bir kapıdaki elle listeyi
+kaldırmak, o kapıda başka elle liste kalmadığını göstermiyor.** İlk liste
+"neyi denetliyorum" sorusunun cevabıydı ve görünürdü; ikincisi "denetleyebilmek
+için neye ihtiyacım var" sorusununkiydi ve bir kurulum ayrıntısı gibi
+duruyordu. Görünmeyen liste, görünen listeden daha uzun yaşadı. ^[inferred]
+
+T48 ikinciyi de türetilmiş hâle getirdi: kaydedilecek servis kümesi uç
+dosyasının kendi metot imzalarından çıkarılıyor, ve neyin zaten servis olduğu
+`IServiceProviderIsService`'e **soruluyor** — üçüncü bir elle liste doğmasın
+diye.
+
+### Ölçülen ölçüt: "kaç test düştü" değil
+
+Dördüncü tekrarda 15 test birden düştü ve bu bir iyileşme sanıldı. Değildi:
+eksik servis gövde parametresi gibi görünecek bir **şekle** sahipti ve yansıma
+patladı. Şekli biraz farklı olsaydı uçlar sessizce kaybolurdu.
+
+Doğru soru **kapı ucu görüyor mu**, ve o soru ancak ölçülerek cevaplanıyor:
+eski kapıya adı `Map` ile başlamayan gerçek bir ürün ucu eklendiğinde on altı
+testin **on altısı yeşil** kaldı. Bir bekçinin kapsamını ölçmenin yolu, kapsamı
+dışında bir şey yaratıp bekçinin sustuğunu görmek.
 
 ## Kardeş kalıp: doğrulama listesinden düşen kapı
 
@@ -78,4 +113,6 @@ olaylardır" maddesi aynı gözlemin merge tarafındaki karşılığı — bkz.
 ## Kaynaklar
 
 - [[references/f2-kapanis]] — §2, "İkinci kalıp" ve "Üçüncü kalıp"
+- `docs/epic/tickets-f3/produces-kapisi-bagi/index.md` — dört tekrarın kaydı,
+  seçilen çözüm, kaçırdığı hâller ve ölçülen kırmızılar
 - `CLAUDE.md` §7 ve §8
