@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    M04 — `bizigo` yüzeyinin OKUMA araçları.
+
+    NEDEN AYRI BİR PROJE. `Bizigo.Mcp` protokolü konuşuyor ve ürünü BİLMİYOR
+    (gerekçe onun csproj yorumunda). Araçlar ürünü bilmek zorunda, dolayısıyla
+    çekirdeğin ALTINDA değil YANINDA duruyorlar: bu proje çekirdeğe ve ürün
+    katmanlarına bakıyor, çekirdek buraya hiç bakmıyor.
+
+    NEDEN `Bizigo.Api` DEĞİL. Api kompozisyon kökü; araçları oraya koymak stdio
+    taşımasını (`bizigo mcp serve`) ASP.NET'e bağlamak olurdu — `Bizigo.Mcp`
+    csproj'unda ölçülmüş olan hata. Buradaki referans kümesi bilerek
+    `Bizigo.Cli`'nin bugün taşıdığı kümenin ALT kümesi, yani CLI'yi hiçbir yeni
+    çatıya sürüklemiyor:
+
+      Cli bugün : Query · Ingest · Parsing · Alerting · Mcp · Simulators
+      burada    : Query ·          Parsing · Alerting · Mcp
+
+    `Bizigo.Authoring` BİLEREK YOK. `catalog.parsers`'ın ikinci ucu
+    (`/v1/parsers/coverage`) `CatalogCoverageCache`'i istiyor, o da Authoring'de
+    — ve `Measure(...)` katalog değiştiyse BÜTÜN KATALOĞU yeniden ölçüyor.
+    Modelin göremediği bir maliyeti modelin tetikleyebilmesi istenmedi; kapsam
+    oranı bu araçta yok, gerekçesi `CatalogParsersTool` belgesinde.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bizigo.Mcp\Bizigo.Mcp.csproj" />
+    <ProjectReference Include="..\Bizigo.Query\Bizigo.Query.csproj" />
+    <ProjectReference Include="..\Bizigo.Parsing\Bizigo.Parsing.csproj" />
+    <ProjectReference Include="..\Bizigo.Alerting\Bizigo.Alerting.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Araç gövdeleri `internal protected` bir aşırı yüklemeden koşuyor
+      (`ProductReadTool.ExecuteScopedAsync`) ve birim testleri onu DOĞRUDAN
+      çağırıyor: kapsam bağlanması M08'i beklerken bile gerçek gövde ölçülüyor.
+      Bu satır olmadan testler yalnızca `SampleAsync`'i görürdü — yani şemayı
+      ölçen ama mantığı ölçmeyen bir paket.
+    -->
+    <InternalsVisibleTo Include="Bizigo.UnitTests" />
+    <InternalsVisibleTo Include="Bizigo.IntegrationTests" />
+  </ItemGroup>
+
+</Project>

@@ -42,15 +42,59 @@ namespace Bizigo.UnitTests;
 public sealed class McpSchemaBudgetTests
 {
     /// <summary>
-    /// <c>tools/list</c> yükünün belirteç tavanı.
+    /// <b>ARAÇ BAŞINA</b> belirteç tavanı. Toplam tavan bundan <b>türetiliyor</b>
+    /// (<c>araç sayısı × bu sayı</c>), elle yazılmıyor.
     ///
     /// <para>
-    /// Tavanın işlevi bir performans hedefi değil <b>görünürlük</b>: araç
-    /// eklemek bu sabiti de değiştirmeyi gerektiriyor, yani bağlam bütçesinin
-    /// büyümesi sessiz olamıyor. Kalıp <c>ProducesContractTests.ExpectedExemptCount</c>'tan.
+    /// <b>İlk hâli tek bir toplam tavandı (<c>400</c>) ve M04'te değiştirildi.</b>
+    /// Sebep bir sayı sorunu değil bir <b>koordinasyon</b> sorunuydu: toplam
+    /// tavan, araç ekleyen <b>her</b> ticket'ı aynı satıra dokunmaya zorluyor.
+    /// M04 ve M02 aynı turda beş ve yedi araç ekliyordu; ikisi de bu satırı
+    /// düzenleyecekti ve §9 tam olarak bunu yasaklıyor — <i>aynı satırı iki
+    /// ajana sildirme</i>. Kalıp T48'in hamlesinin aynısı: elle tutulan sayıyı
+    /// <b>türetilen</b> bir şeye çevirmek.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Ve soruyu da düzeltiyor.</b> Toplam tavan <i>"kaç araç var"</i> ile
+    /// <i>"araçlar ne kadar pahalı"</i> sorularını tek sayıda karıştırıyordu:
+    /// on ucuz araç ile üç şişkin araç aynı sayıyı üretebilir. Araç başına tavan
+    /// yalnızca ikinci soruyu soruyor, ve cevaplanabilir olan o.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Sayının türetildiği ölçüm</b> (o200k_base, <c>tools/list</c> teldeki hâli):
+    /// </para>
+    /// <list type="bullet">
+    /// <item><c>server.info</c> — <b>194</b>. Alt sınıra yakın: iki boş şema, iki cümle.</item>
+    /// <item><c>catalog.parsers</c> — 284 · <c>inventory.list</c> — 325.</item>
+    /// <item><c>alerts.triggers</c> — 415 · <c>alerts.rules</c> — 418.</item>
+    /// <item>
+    /// <c>logs.search</c> — <b>578</b>, bugünün en pahalısı: on bir alanlı satır
+    /// şeması, sekiz girdi alanı, üç cümlelik açıklama.
+    /// </item>
+    /// </list>
+    ///
+    /// <para>
+    /// Tavan <b>700</b>: bugünün en pahalısının üstünde ~120 belirteç pay. O pay
+    /// bir aracın <i>bir alan grubu daha</i> kazanmasına yetiyor, <i>iki katına
+    /// çıkmasına</i> yetmiyor. Yükseltmek serbest — <b>sessizce</b> yükselmek değil.
     /// </para>
     /// </summary>
-    private const int ToolListTokenCeiling = 400;
+    private const int PerToolTokenCeiling = 700;
+
+    /// <summary>
+    /// Ölçülmüş <b>taban</b>: bir aracın olabileceği en ucuz hâl
+    /// (<c>server.info</c>, 194).
+    ///
+    /// <para>
+    /// Burada durmasının tek sebebi <b>ölçüm aracının kendisini ölçmek</b> (§6):
+    /// sayıcı bir gün sessizce küçük sayılar dönerse araç başına tavan her zaman
+    /// sağlanır ve kapı <b>hiçbir şey ifade etmez</b>. En ucuz aracın bu tabanın
+    /// altına düşmesi, bütçenin iyileşmesi değil <b>ölçümün bozulması</b> demek.
+    /// </para>
+    /// </summary>
+    private const int CheapestToolFloor = 150;
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -65,7 +109,7 @@ public sealed class McpSchemaBudgetTests
     [MemberData(nameof(McpComplianceTests.Surfaces), MemberType = typeof(McpComplianceTests))]
     public async Task Arac_semalarinin_baglam_maliyeti(McpSurface surface)
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.ForDiscoveredTools();
         var options = BizigoMcpServer.CreateOptions(surface, typeof(global::Program).Assembly, services);
 
         await using var session = await McpTestSession.StartAsync(options, services, cancellationToken: Ct);
@@ -87,9 +131,20 @@ public sealed class McpSchemaBudgetTests
             .Select(tool => (
                 tool.Name,
                 Tokens: Tokenizer.CountTokens(
-                    JsonSerializer.Serialize(tool.ProtocolTool, McpJsonUtilities.DefaultOptions))))
+                    JsonSerializer.Serialize(tool.ProtocolTool, McpJsonUtilities.DefaultOptions)),
+
+                // `description` AYRICA sayılıyor. "En pahalı kalem şema değil
+                // açıklama" bu depoda bir kez ölçülmüş bir cümle; ayrı bir kolon
+                // olmadan bir sonraki kişi onu folklor olarak okuyup tahmin
+                // etmek zorunda kalıyor (§6: ölçülmüş görünen bir tahmin, en
+                // kötü hâl).
+                Description: Tokenizer.CountTokens(tool.ProtocolTool.Description ?? string.Empty)))
             .OrderByDescending(static entry => entry.Tokens)
             .ToArray();
+
+        // TOPLAM TAVAN TÜRETİLİYOR, elle yazılmıyor: araç eklemek bu dosyayı
+        // düzenlemeyi gerektirmiyor ve iki ticket aynı satırda buluşmuyor (§9).
+        var totalCeiling = perTool.Length * PerToolTokenCeiling;
 
         var report = string.Join(
             "\n",
@@ -98,21 +153,47 @@ public sealed class McpSchemaBudgetTests
                 $"  tools/list toplam : {total.ToString(CultureInfo.InvariantCulture)} belirteç "
                     + $"({payload.Length.ToString(CultureInfo.InvariantCulture)} karakter)",
                 $"  araç sayısı       : {perTool.Length.ToString(CultureInfo.InvariantCulture)}",
-                "  araç başına:",
+                $"  türetilen tavan   : {totalCeiling.ToString(CultureInfo.InvariantCulture)} "
+                    + $"({perTool.Length.ToString(CultureInfo.InvariantCulture)} × "
+                    + $"{PerToolTokenCeiling.ToString(CultureInfo.InvariantCulture)})",
+                "  araç başına (parantez içi: `description` payı):",
                 .. perTool.Select(static entry =>
-                    $"    {entry.Name,-24} {entry.Tokens.ToString(CultureInfo.InvariantCulture),5} belirteç"),
+                    $"    {entry.Name,-24} {entry.Tokens.ToString(CultureInfo.InvariantCulture),5} belirteç"
+                    + $"  ({entry.Description.ToString(CultureInfo.InvariantCulture)})"),
             ]);
 
         TestContext.Current.TestOutputHelper?.WriteLine(report);
 
+        var overBudget = perTool.Where(static entry => entry.Tokens > PerToolTokenCeiling).ToArray();
+
         Assert.True(
-            total <= ToolListTokenCeiling,
-            $"`tools/list` yükü {total.ToString(CultureInfo.InvariantCulture)} belirtece çıktı; "
-            + $"tavan {ToolListTokenCeiling.ToString(CultureInfo.InvariantCulture)}.\n\n{report}\n\n"
-            + "Bu bir performans hatası DEĞİL, bir karar noktası: bağlam bütçesi büyüdü. "
-            + "Tavanı yükseltmek serbest — ama görünür olsun diye buradan geçiyor. "
-            + "Yükseltirken araç açıklamalarının uzunluğuna da bakın: en pahalı kalem genelde "
-            + "şema değil, `description` metnidir.");
+            overBudget.Length == 0,
+            "Şu araç(lar) araç başına bütçeyi aştı:\n  "
+            + string.Join(
+                "\n  ",
+                overBudget.Select(static entry =>
+                    $"{entry.Name}: {entry.Tokens.ToString(CultureInfo.InvariantCulture)} belirteç"))
+            + $"\n\nTavan araç başına {PerToolTokenCeiling.ToString(CultureInfo.InvariantCulture)}.\n\n{report}\n\n"
+            + "Bu bir performans hatası DEĞİL, bir karar noktası: bir aracın bağlam maliyeti "
+            + "büyüdü ve her konuşmada taşınıyor. İlk bakılacak yer `description` — ölçüm "
+            + "yukarıda, parantez içinde. Sonra çıktı şemasındaki alanlar: modelin karar "
+            + "veremediği bir alan her çağrıda bedava değil.");
+
+        Assert.True(
+            total <= totalCeiling,
+            $"`tools/list` yükü {total.ToString(CultureInfo.InvariantCulture)} belirteç; "
+            + $"türetilen tavan {totalCeiling.ToString(CultureInfo.InvariantCulture)}.\n\n{report}\n\n"
+            + "Araç başına tavanlar sağlanıyorsa buranın düşmesi ZARFIN büyüdüğü anlamına gelir "
+            + "(protokol zarfı, `annotations`, SDK'nın eklediği alanlar) — araçların değil.");
+
+        // ÖLÇÜM ARACININ KENDİSİ: en ucuz araç bilinen tabanın altına düşerse
+        // sayıcı bozulmuş, bütçe iyileşmiş değil (§6).
+        Assert.True(
+            perTool[^1].Tokens >= CheapestToolFloor,
+            $"En ucuz araç (`{perTool[^1].Name}`) {perTool[^1].Tokens.ToString(CultureInfo.InvariantCulture)} "
+            + $"belirteç ölçüldü; ölçülmüş taban {CheapestToolFloor.ToString(CultureInfo.InvariantCulture)}.\n\n"
+            + "Bütçenin iyileşmesi DEĞİL, sayıcının bozulması daha olası: sessizce küçük sayılar "
+            + "dönen bir sayıcı yukarıdaki tavanları her zaman sağlar ve kapı hiçbir şey ifade etmez.");
     }
 
     /// <summary>

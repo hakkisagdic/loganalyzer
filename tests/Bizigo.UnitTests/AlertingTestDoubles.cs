@@ -209,8 +209,43 @@ internal sealed class FakeScopedQuery : IScopedQuery, IAlertQuerySource
         Task.FromResult<IReadOnlyList<SourceOnset>>([]);
 
 
-    public Task<EventPage> SearchEventsAsync(EventQuery query, AccessScope scope, CancellationToken cancellationToken = default) =>
-        Task.FromResult(new EventPage([], null, false));
+    /// <summary>
+    /// <c>logs.search</c>'ün gördüğü sayfa. <see langword="null"/> ise boş sayfa
+    /// dönüyor — alarm motoru bu yüzeye hiç dokunmadığı için M04'ten önceki
+    /// davranış <b>aynen</b> korunuyor.
+    ///
+    /// <para>
+    /// Sahte, ikinci bir kopya yazmak yerine <b>genişletildi</b> (§9): ortak
+    /// yüzey varsa genişlet, kopyalama.
+    /// </para>
+    /// </summary>
+    public Func<EventQuery, AccessScope, EventPage>? EventPageFactory { get; set; }
+
+    /// <summary>
+    /// Son <c>SearchEventsAsync</c> çağrısının sorgusu.
+    ///
+    /// <para>
+    /// Kaydedilmesinin sebebi tek bir bekçi: <b>imleç gerçekten ilerliyor mu.</b>
+    /// Aracın döndürdüğü yüke bakmak bunu ölçemez — imleci yok sayan bir araç da
+    /// aynı yükü döndürür (F1: <i>yarım imleç sessizce ilk sayfayı
+    /// tekrarlıyordu</i>). Ölçülmesi gereken şey <b>sorguya ne kondu</b>.
+    /// </para>
+    /// </summary>
+    public EventQuery? LastEventQuery { get; private set; }
+
+    /// <summary>
+    /// Son <c>SearchEventsAsync</c> çağrısının kapsamı — aracın kendi kapsamını
+    /// kurmadığının, <b>verileni geçirdiğinin</b> kanıtı.
+    /// </summary>
+    public AccessScope? LastEventScope { get; private set; }
+
+    public Task<EventPage> SearchEventsAsync(EventQuery query, AccessScope scope, CancellationToken cancellationToken = default)
+    {
+        LastEventQuery = query;
+        LastEventScope = scope;
+
+        return Task.FromResult(EventPageFactory?.Invoke(query, scope) ?? new EventPage([], null, false));
+    }
 
     public Task<bool> CanReadRawObjectAsync(string objectKey, AccessScope scope, CancellationToken cancellationToken = default) =>
         Task.FromResult(false);

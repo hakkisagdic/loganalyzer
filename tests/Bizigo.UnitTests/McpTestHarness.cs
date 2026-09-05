@@ -1,6 +1,13 @@
 using System.IO.Pipelines;
 using System.Text.Json;
+using Bizigo.Alerting;
+using Bizigo.ControlPlane;
 using Bizigo.Mcp;
+using Bizigo.Mcp.Product.Tools;
+using Bizigo.Mcp.Tools;
+using Bizigo.Parsing.Dispatch;
+using Bizigo.Query;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Client;
@@ -233,8 +240,114 @@ internal sealed class NeverEndingTool : BizigoMcpTool
     }
 }
 
-/// <summary>Test oturumları için asgari servis sağlayıcısı.</summary>
+/// <summary>
+/// Test oturumları için servis sağlayıcısı.
+///
+/// <para>
+/// <b>Boş bir kap yetmiyor ve bu bir kusur değil, kapının çalıştığının
+/// kanıtı.</b> M01'de bu metot gerçekten boş bir <c>ServiceCollection</c>
+/// döndürüyordu — o gün ilan edilen tek araç (<c>server.info</c>) hiçbir şeye
+/// bağımlı değildi. M04'ün araçları ürün servislerine bağımlı ve
+/// <c>McpToolDiscovery.Instantiate</c> kurulamayan aracı <b>atlamıyor,
+/// patlıyor</b>. Yani boş kap bugün kapıyı düşürüyor; düşürmesi gerekiyor.
+/// </para>
+///
+/// <para>
+/// <b>Kaydedilenler sahte, ama kapının ölçtüğü şey veri değil.</b> Uyum kapısı
+/// şemaları, anlaşmayı, hata dönüşümünü ve iptali ölçüyor; ClickHouse'un ne
+/// cevap verdiği entegrasyon testinin işi (§2). Sahteler bu depoda <b>zaten
+/// var</b> ve ikinci kopyaları yazılmadı (§9): <c>FakeScopedQuery</c>,
+/// <c>InMemoryControlPlaneFactory</c>.
+/// </para>
+/// </summary>
 internal static class McpTestServices
 {
-    public static ServiceProvider Empty() => new ServiceCollection().BuildServiceProvider();
+    /// <summary>
+    /// Keşfedilen araçların <b>kurulabilmesi</b> için gereken asgari kap.
+    ///
+    /// <para>
+    /// Yeni bir araç yeni bir bağımlılık getirdiğinde bu metot <b>kırmızı
+    /// yanıyor</b> ("MCP aracı ... kurulamadı") — ve o kırmızı doğru soruyu
+    /// soruyor: <i>üretimde bu servis kayıtlı mı?</i>
+    /// </para>
+    /// </summary>
+    public static ServiceProvider ForDiscoveredTools() =>
+        new ServiceCollection().AddDiscoveredToolDependencies().BuildServiceProvider();
+
+    /// <summary>
+    /// Aynı kayıtların <see cref="IServiceCollection"/> hâli.
+    ///
+    /// <para>
+    /// Ayrı bir aşırı yükleme, çünkü iki tüketicisi var ve ikisi kabı kendi
+    /// kuruyor: uyum kapısı (yalın bir kap) ve <c>McpHttpTransportTests</c>
+    /// (gerçek bir <c>WebApplication</c>). İkinci bir kopya, bir gün birinde
+    /// olup diğerinde olmayan bir kayıt demek olurdu (§9).
+    /// </para>
+    /// </summary>
+    public static IServiceCollection AddDiscoveredToolDependencies(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        // M04 — okuma araçlarının bağımlılıkları.
+        //
+        // SCOPED, singleton DEĞİL: üretimdeki kayıt da scoped
+        // (`QueryServiceCollectionExtensions`). Burada singleton yazmak,
+        // araçların çağrı başına kapsam açmasını ölçülmez kılardı — esir
+        // bağımlılık testte görünmezdi ve üretimde patlardı.
+        services.AddScoped<IScopedQuery>(static _ => new FakeScopedQuery());
+
+        services.AddSingleton<IDbContextFactory<ControlPlaneDbContext>>(new InMemoryControlPlaneFactory());
+        services.AddSingleton(new AlertingOptions());
+        services.AddSingleton<AlertRuleService>();
+        services.AddSingleton(new ParserCatalog());
+
+        return services;
+    }
+}
+
+/// <summary>
+/// <b>Yüzey başına ilan edilmesi BEKLENEN araç kümesi — elle yazılı, TEK yerde.</b>
+///
+/// <para>
+/// Elle olması bilinçli: keşif kümeyi kendisi buluyor, bu liste onun
+/// <b>beklentisi</b>. Keşif azını bulursa bir araç sessizce düşmüş, fazlasını
+/// bulursa yeni bir araç gelmiş ve buraya yazılması <b>bilinçli bir hareket</b>.
+/// </para>
+///
+/// <para>
+/// <b>Tek yerde olması da bilinçli ve M04'te ölçüldü.</b> Küme iki testte ayrı
+/// ayrı yazılıydı (uyum kapısı ve HTTP taşıması) ve M04'ün beş aracı geldiğinde
+/// ikisi <b>ayrıştı</b>: biri güncellendi, diğeri eski hâliyle kırmızı yandı.
+/// İki liste bu depoda hep ayrışıyor (§9).
+/// </para>
+///
+/// <para>
+/// <b>Ürün araçları yalnızca <c>bizigo</c>'da.</b> Tek bir küme yazmak,
+/// bir ürün aracının simülatör yüzeyine sızmasını <b>ölçülmez</b> kılardı (K6).
+/// </para>
+/// </summary>
+internal static class McpExpectedTools
+{
+    /// <summary>Yüzeyin ilan etmesi beklenen araç adları, ada göre sıralı.</summary>
+    public static string[] For(McpSurface surface)
+    {
+        string[] names = surface switch
+        {
+            McpSurface.Product =>
+            [
+                AlertRulesTool.ToolIdentifier,
+                AlertTriggersTool.ToolIdentifier,
+                CatalogParsersTool.ToolIdentifier,
+                InventoryListTool.ToolIdentifier,
+                LogsSearchTool.ToolIdentifier,
+                ServerInfoTool.ToolIdentifier,
+            ],
+
+            // `bizigo-sim` ürün verisine dokunmuyor; M03'ün araçları geldiğinde
+            // bu dal büyüyecek.
+            _ => [ServerInfoTool.ToolIdentifier],
+        };
+
+        return [.. names.Order(StringComparer.Ordinal)];
+    }
 }

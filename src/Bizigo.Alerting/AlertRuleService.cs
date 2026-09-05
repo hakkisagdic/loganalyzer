@@ -309,6 +309,109 @@ public sealed class AlertRuleService(
         return [.. all.Where(r => CanSee(r, scope))];
     }
 
+    /// <summary>
+    /// Tetiklenme okumasının <b>kapsam kararı</b>: bu kimlik hangi kuralların
+    /// tetiklenmelerini görebilir.
+    ///
+    /// <para>
+    /// <b>Neden burada, neden uç gövdesinde değil.</b> <see cref="ListAsync"/>'in
+    /// yorumu kuralı zaten yazıyor: <i>"önemli olan filtrenin BU sınıfta olması,
+    /// uç katmanında değil."</i> Tetiklenme tarafında o kural tutulmuyordu —
+    /// görünür kural kimliklerinin türetilmesi <c>AlertEndpoints</c> gövdesinde
+    /// duruyordu. Tek tüketici REST iken bu görünmezdi; MCP ikinci tüketici
+    /// olarak geldiğinde tek seçenek onu <b>kopyalamak</b> olurdu — ve iki
+    /// kopyanın ayrışması ancak biri yanlış veri gösterdiğinde fark edilirdi
+    /// (§9). M04'te buraya taşındı; REST ucu da bunu çağırıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <see langword="null"/> dönüşü <b>tek bir şey</b> demek: belirli bir kural
+    /// istendi ve o kural bu kapsamda görünmüyor. Çağıran bunu <c>404</c> /
+    /// <c>not_found</c> yapıyor — <c>403</c> değil, çünkü <i>"böyle bir kural var
+    /// ama göremezsin"</i> bilgisi de sızıntıdır.
+    /// </para>
+    ///
+    /// <para>
+    /// Boş bir <see cref="TriggerScope.RuleIds"/> ise ayrı bir hâl: kapsam
+    /// geçerli, görünür kural yok. Çağıran boş liste döndürüyor.
+    /// </para>
+    /// </summary>
+    public async Task<TriggerScope?> ResolveTriggerScopeAsync(
+        AccessScope scope,
+        Guid? ruleId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+
+        var visible = await ListAsync(scope, cancellationToken).ConfigureAwait(false);
+        var names = visible.ToDictionary(static r => r.Id, static r => r.Name);
+
+        if (ruleId is { } requested)
+        {
+            return names.ContainsKey(requested)
+                ? new TriggerScope([requested], names)
+                : null;
+        }
+
+        return new TriggerScope([.. names.Keys], names);
+    }
+
+    /// <summary>
+    /// Tek çağrıda dönebilecek en fazla tetiklenme. <c>internal</c> değil
+    /// <c>public</c>, çünkü iki sunum katmanı da (REST, MCP) aynı tavana
+    /// uymalı; ikinci bir tavan yazmak iki farklı davranış demek olurdu.
+    /// </summary>
+    public const int MaxTriggerLimit = 500;
+
+    /// <summary>Tetiklenme listesinin varsayılan uzunluğu.</summary>
+    public const int DefaultTriggerLimit = 100;
+
+    /// <summary>
+    /// <paramref name="visible"/> kümesindeki kuralların tetiklenmeleri, en
+    /// yenisi önce.
+    ///
+    /// <para>
+    /// Kapsam kararı <b>bu metodun işi değil</b>: karar
+    /// <see cref="ResolveTriggerScopeAsync"/>'te verildi ve buraya sonucu
+    /// geliyor. Ayrım bilinçli — <see cref="TriggerScope"/> almak, kapsamsız bir
+    /// tetiklenme sorgusunun <b>yazılamamasını</b> sağlıyor: elde
+    /// <c>AccessScope</c> olsaydı bu metot kendi filtresini kurmak zorunda
+    /// kalırdı ve o filtre ikinci bir kopya olurdu.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Teslim kayıtları burada YOK.</b> Onları isteyen sunum katmanı
+    /// (REST ekranı) ayrıca çekiyor; MCP yükünde bilerek yok. Buraya gömmek,
+    /// modele hiç göstermeyeceğimiz bir birleştirmeyi her çağrıda ödemek olurdu.
+    /// </para>
+    /// </summary>
+    public async Task<IReadOnlyList<AlertTriggerEntity>> ListTriggersAsync(
+        TriggerScope visible,
+        int? limit = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(visible);
+
+        if (visible.RuleIds.Count == 0)
+        {
+            // Boş küme "hepsi" DEĞİL. Filtresiz sorguya düşmek, görünür kuralı
+            // olmayan bir kimliğe bütün tetiklenmeleri göstermek olurdu.
+            return [];
+        }
+
+        var wanted = visible.RuleIds.ToArray();
+
+        await using var db = await factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+
+        return await db.AlertTriggers
+            .AsNoTracking()
+            .Where(t => wanted.Contains(t.RuleId))
+            .OrderByDescending(t => t.FiredAt)
+            .Take(Math.Clamp(limit ?? DefaultTriggerLimit, 1, MaxTriggerLimit))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     public async Task<AlertRuleEntity?> GetAsync(
         Guid id,
         AccessScope scope,
@@ -403,3 +506,21 @@ public sealed class AlertRuleService(
         return groups.Length > 0 && Array.TrueForAll(groups, scope.OwnerGroups.Contains);
     }
 }
+
+/// <summary>
+/// <see cref="AlertRuleService.ResolveTriggerScopeAsync"/>'in sonucu: hangi
+/// kuralların tetiklenmeleri okunabilir, ve o kuralların adları.
+/// </summary>
+/// <param name="RuleIds">
+/// Tetiklenme sorgusunun daraltılacağı kural kimlikleri. <b>Boş küme "hepsi"
+/// DEĞİL</b> — "görünür kural yok" demek. Boş kümeyi filtresiz sorguya çevirmek,
+/// bu üründe yapılabilecek en pahalı hata sınıfının aynısı olurdu (K17: boş
+/// kapsam "her şey" anlamına gelmez).
+/// </param>
+/// <param name="Names">
+/// Kural kimliği → ad. Tetiklenme satırının yanında adı göstermek için; ayrı bir
+/// sorgudan çekilseydi liste satır başına bir sorgu atardı.
+/// </param>
+public sealed record TriggerScope(
+    IReadOnlyList<Guid> RuleIds,
+    IReadOnlyDictionary<Guid, string> Names);

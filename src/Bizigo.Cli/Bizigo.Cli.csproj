@@ -6,6 +6,14 @@
     <ProjectReference Include="..\Bizigo.Parsing\Bizigo.Parsing.csproj" />
     <ProjectReference Include="..\Bizigo.Alerting\Bizigo.Alerting.csproj" />
     <ProjectReference Include="..\Bizigo.Mcp\Bizigo.Mcp.csproj" />
+
+    <!--
+      stdio yüzeyi de aynı araçları ilan etmeli. Bu satır olmadan
+      `bizigo mcp serve` ürün yüzeyinde SIFIR araç ilan ederdi ve arıza
+      hiçbir yerde hata vermezdi: keşif referans kapanışını yürüyor, ulaşamadığı
+      derlemeyi atlıyor, ve boş bir küme de geçerli bir küme.
+    -->
+    <ProjectReference Include="..\Bizigo.Mcp.Product\Bizigo.Mcp.Product.csproj" />
     <ProjectReference Include="..\..\sim\Bizigo.Simulators\Bizigo.Simulators.csproj" />
 </ItemGroup>
 

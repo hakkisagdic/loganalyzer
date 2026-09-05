@@ -10,6 +10,14 @@
     <ProjectReference Include="..\Bizigo.Evidence\Bizigo.Evidence.csproj" />
     <ProjectReference Include="..\Bizigo.Rca\Bizigo.Rca.csproj" />
     <ProjectReference Include="..\Bizigo.Mcp\Bizigo.Mcp.csproj" />
+
+    <!--
+      M04'ün okuma araçları. Bu referans OLMAK ZORUNDA: `McpToolDiscovery`
+      kompozisyon kökünden başlayıp `Bizigo.*` referanslarını geçişli olarak
+      yürüyor, yani referanslanmayan bir araç derlemesi keşfe HİÇ GÖRÜNMÜYOR —
+      ve sessizce görünmüyor, çünkü boş bir araç kümesi de geçerli bir kümedir.
+    -->
+    <ProjectReference Include="..\Bizigo.Mcp.Product\Bizigo.Mcp.Product.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

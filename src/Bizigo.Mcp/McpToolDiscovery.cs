@@ -96,11 +96,30 @@ public static class McpToolDiscovery
 
             try
             {
-                // `surface` fazladan argüman olarak veriliyor: yüzeyini
-                // yapıcıdan alan araçlar (bkz. `ServerInfoTool`) böylece iki
-                // yüzeyde de tek sınıfla duruyor. Yüzeyi sabit olan araçlar
-                // argümanı hiç kullanmıyor ve aşağıdaki filtre onları eliyor.
-                tool = (BizigoMcpTool)ActivatorUtilities.CreateInstance(services, type, surface);
+                // `surface` YALNIZCA onu isteyen yapıcıya veriliyor.
+                //
+                // İlk hâli koşulsuz `CreateInstance(services, type, surface)`
+                // idi ve yorumu şöyleydi: "yüzeyi sabit olan araçlar argümanı
+                // hiç kullanmıyor". ÖLÇÜLDÜ VE YANLIŞTI:
+                // `ActivatorUtilities.CreateInstance` tüketilmeyen bir argümanı
+                // tolere etmiyor, "Also ensure no extraneous arguments are
+                // provided" diyerek düşüyor.
+                //
+                // M01'de fark edilmemesinin sebebi kapının kör noktası: o gün
+                // ilan edilen tek araç (`ServerInfoTool`) yüzeyi yapıcıdan
+                // ALIYORDU, ve yüzeyi sabit olan tek örnekler
+                // (`TestOnlyTool`, `NeverEndingTool`) yalnızca `ToolTypes` ile
+                // keşfedilip HİÇ ÖRNEKLENMİYORDU. Yani bu satırın yanlışlığı
+                // M04'ün ilk aracı gelene kadar hiçbir testte görünmedi.
+                var wantsSurface = Array.Exists(
+                    type.GetConstructors(),
+                    static constructor => Array.Exists(
+                        constructor.GetParameters(),
+                        static parameter => parameter.ParameterType == typeof(McpSurface)));
+
+                tool = (BizigoMcpTool)(wantsSurface
+                    ? ActivatorUtilities.CreateInstance(services, type, surface)
+                    : ActivatorUtilities.CreateInstance(services, type));
             }
             catch (Exception error)
             {

@@ -1,4 +1,5 @@
 using Bizigo.Mcp;
+using Bizigo.Mcp.Product;
 
 namespace Bizigo.Api;
 
@@ -51,6 +52,13 @@ public static class McpEndpoints
         IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
+
+        // SIRA ÖNEMLİ VE GEREKÇESİ ÖLÇÜLDÜ. Bu çağrı, M04'ün araç derlemesini
+        // keşfin referans kapanışına sokan şey: `csproj`'daki `ProjectReference`
+        // TEK BAŞINA YETMİYOR, çünkü derleyici kodda hiç kullanılmayan referansı
+        // meta veriden düşürüyor. Ölçüm ve iki bekçi
+        // `BizigoReadToolsSetup` belgesinde.
+        services.AddBizigoReadTools();
 
         services
             .AddBizigoMcpCore(configuration, typeof(Program).Assembly)
