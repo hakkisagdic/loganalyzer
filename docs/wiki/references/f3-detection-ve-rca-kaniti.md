@@ -21,7 +21,8 @@ sources:
   - docs/epic/rca-raporu-ozelligi/index.md
   - docs/epic/sigma-clickhouse-arastirmasi/index.md
   - docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md
-source_digest: "sha256-12/v1 docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=1da27ea79668 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=c62deced6485 docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=37dc201f87d2"
+  - CLAUDE.md
+source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=1da27ea79668 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=c62deced6485 docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=37dc201f87d2"
 summary: F3'ün iki kolu (Sigma detection ve RCA kanıtı), planı yarı yarıya değiştiren template_id bulgusu, on ürün ticket'ının durumu, sonradan eklenen üç kapı ticket'ı, ve fazın sayılarının neden bağlayıcı olmadığı.
 provenance:
   extracted: 0.85

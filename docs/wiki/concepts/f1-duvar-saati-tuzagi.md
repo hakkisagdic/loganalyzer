@@ -136,10 +136,11 @@ sayfasında.
 
 ## Kaynaklar
 
-- `docs/epic/f1-kapanis/index.md` — "Bu fazın en pahalı dersi", beş olay
+- `docs/epic/f1-kapanis/index.md` — "Bu fazın en pahalı dersi", **üç** üretim olayı
 - `docs/epic/t08-motor-geri-beslemesi/index.md` — §10, iki koşumluk ölçüm
 - `docs/epic/mimari-kararlar/index.md` — §3.4, `NonBacktracking` gerekçesi
 - `docs/epic/f1-teknik-plan/index.md` — §4.1, üç kademeli ReDoS stratejisi
 - `docs/epic/tickets/parser-motoru/index.md` — linter şiddet ayrımı, karantina
 - `docs/epic/tickets/sidecar/index.md` — devre kesici, 2 sn zaman aşımı
-- `CLAUDE.md` §6 — ölçüm kültürü
+- `CLAUDE.md` §6 — ölçüm kültürü; testlerdeki **iki** olay (`DiscoveryWorkerTests`,
+  `GrokPropertyTests`) buradan geliyor — kapanış belgesinde yoklar
