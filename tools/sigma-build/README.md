@@ -21,6 +21,9 @@ Tasarımın tamamı ve kararların gerekçeleri:
 | `clickhouse.py` — Kapı 2 ve 3'ün ortak HTTP yüzeyi | ✅ |
 | `ruleset --refresh` — çiviyi ağaçtan yeniden üretir | ✅ |
 | Gerçek derleme — T31'in pipeline'ına bağlı | ✅ 21 written · 3 gated · 0 failed |
+| `duplicates.py` — tekrar aramanın tek yeri, doğrusal | ✅ üç karesel kopyanın yerine |
+| `tests/test_cost.py` — kural başına iş korpusla büyümüyor | ✅ **kapı**, duvar saati istemiyor |
+| `cost.py` — derleme süresi ölçümü, deftere ekler | ✅ yazıldı · ⏳ bağlayıcı koşum koordinatörde (sessiz makine) |
 | Kural setinin **yükseltme** yolu (ağ, SigmaHQ) | ⏳ T30 kapsam kararını bekliyor |
 
 ## Kural seti depoda duruyor, indirilmiyor
@@ -88,6 +91,105 @@ kaynağın doğru söylenmesi kapsamın yanlış okunmasını engelliyor.
 **Ağ gerektiren yükseltme yolu** (gerçek SigmaHQ alt kümesini çekme) hâlâ
 yazılmadı ve T30'un kapsam kararını bekliyor. `--refresh` onun yerine geçmiyor:
 yerel ağacı çiviyle hizalıyor, `commit`'e dokunmuyor.
+
+## Maliyet — kural sayısıyla nasıl büyüyor
+
+Soru iki ayrı eksende soruluyor, çünkü ikisinin **cevap verilebileceği yer**
+farklı:
+
+| Soru | Nerede | Neden orada |
+| --- | --- | --- |
+| Kural başına **iş** korpusla büyüyor mu | `tests/test_cost.py` — **kapı** | Karşılaştırma sayarak ölçülüyor; duvar saati istemiyor, yüklü makinede de aynı |
+| O işin kaç **milisaniye** ettiği | `sigma_build.cost` — **ölçüm** | Yalnızca sessiz makinede cevaplanabilir |
+
+Ayrım §6'nın kuralı: *"test neyi ölçmek istiyor? Duvar saati değilse süreyi
+denklemden çıkar."* Bu depo o dersi iki kez ödedi (`GrokPropertyTests` 2 sn,
+`DiscoveryWorkerTests` 200 ms); üçüncüsü yazılmadı.
+
+### Bulundu · üç yerde karesel, ikisi korpus ekseninde
+
+Aynı deyim üç dosyada üç kez yazılmıştı:
+
+```python
+{x for x in items if sum(1 for y in items if y == x) > 1}
+```
+
+İç `sum(...)` her öğe için listeyi yeniden tarıyor — **öğe başına** maliyet
+listenin boyuyla büyüyor, toplam maliyet karesel. Ölçüldü, karşılaştırma sayarak:
+
+| Kural | Kimlik karşılaştırması | Kural başına |
+| --- | --- | --- |
+| 24 | 576 | 24 |
+| 269 | 72.361 | 269 |
+| 7.400 (SigmaHQ'nun tamamı) | ~55.000.000 | 7.400 |
+
+24 kuralda görünmüyor. Çivinin belgelerde adı geçen 269'unda görünmeye başlıyor.
+
+**Ağırlığı nereden geliyor:** ikisi `build_manifest` ve `check_corpus_shape`
+içindeydi, yani hem `--write` hem **`--check`** yolunda. Kural sayısı büyüdükçe
+sürüklenme kapısı kendi kendini yavaşlatıyordu — bir kapının bir gün
+kaldırılmasının en olağan sebebi, koruduğu şeyle birlikte pahalılaşması.
+
+Üçüncüsü (`view_columns`, kolon adları) görünüm başına birkaç düzine öğeyle
+sınırlı ve bugün ölçülebilir bir bedeli yok. Yine de düzeltildi: bırakılsaydı
+deyimin dördüncü kez yazılmasının gerekçesi olurdu.
+
+**Düzeltme:** `sigma_build/duplicates.py` — tek yer, `Counter`, doğrusal. Üç
+kopyanın üçü de aynı deyimden çıktı ve ikinci kopya üçüncüsünü ucuzlattı (§9,
+*"İkinci kopya yazma"*); tek kaynakta durması dördüncüsünün mekanik engeli.
+
+**Ölçülen kırmızı** (§6 yordamı: kusuru uygula → dosyada olduğunu **iddia et** →
+koştur → geri al):
+
+| Hâl | 25 kuralda | 200 kuralda | Kural başına büyüme |
+| --- | --- | --- | --- |
+| Karesel (geri konan) | 25,0 dokunuş | 200,0 dokunuş | **8,0×** — iki bekçi düştü |
+| Doğrusal (bugünkü) | 1,0 dokunuş | 1,0 dokunuş | **1,00×** |
+
+Korpus 8 katına çıktı; karesel hâlde kural başına maliyet de 8 katına çıktı.
+Bekçinin eşiği 2,0× — doğrusal ile karesel arasındaki boşluğa konuldu, dar bir
+eşik `Counter`'ın iç ayrıntısı değişince sebepsiz kırmızı yanardı.
+
+### Süre ölçümü — koordinatörde, ve **iki koşum** kaydediliyor
+
+```bash
+python -m sigma_build.cost --label ajan --record docs/olcumler/derleme-maliyeti.json
+```
+
+Docker istemiyor, ClickHouse istemiyor — saf Python. Yine de bu ajan
+**koşturmadı**: ölçüm sırasında makine thrash'teydi (2583–3580 swap-in/sn,
+tavan 1500) ve §6 yüklü makinenin yanlış sayı ürettiğini K35'te ölçtü.
+
+Araç tek sayı üretmiyor, **deftere ekliyor**. Gerekçe K35: aynı ölçüm ajanda
+1,46×, koordinatörde 1,62× çıkmıştı ve ikinci koşumda *yalnız ayrıştırma* kolu
+*ayrıştırma+etiketleme*'den yavaş göründü — fiziksel olarak imkânsız, yani
+makine sessiz değildi. Defter üstüne yazsaydı geriye tek sayı kalır ve
+**ayrışmanın kendisi** — sessizliğin ölçülmediğinin kanıtı — kaybolurdu.
+
+Üç şey ayrı raporlanıyor ve karıştırılmıyor:
+
+- **Kurulum maliyeti** (backend + kolon türetimi + eklenti yükü) kural
+  sayısından bağımsız, o yüzden kural başına maliyetin **paydasında değil**.
+  Toplamı kural sayısına bölmek, küçük korpusta kurulumu kural başına maliyet
+  sanır ve sayı korpus büyüdükçe *düşer* — okuyan bunu "süper-doğrusal değil,
+  tam tersi" diye okur. Yanlış olan sayı değil **bölen**; bu, kapsamda `%25`
+  yerine `%43` bulunan payda hatasının süre eksenindeki kardeşi.
+- **Ölçekleme oranı** mutlak süre değil: en büyük korpusun kural başına
+  maliyeti ÷ en küçüğünkü, **aynı süreçte**. Makinenin genel hızı ikisinden de
+  sadeleşiyor (§6, *"mutlak bütçe yerine aynı süreçte alınan bir tabana oran"*).
+- **Yük ortalaması** kayda giriyor; okunamazsa `None` yazılıyor ve rapor bunu
+  adıyla söylüyor. "Bakmadık" ile "sessizdi" ayrı şeyler.
+
+Sentetik kuralların alan adları **pipeline'dan** okunuyor (`FIELD_MAP`), elle
+yazılmıyor: elle yazılsaydı eşleme değiştiği gün kurallar reddedilmeye başlar ve
+araç sessizce **istisna yolunu** ölçerdi — derleme yolunu değil, ve fark hiçbir
+yerde görünmezdi.
+
+Aracın kendisi sahte bir derleyiciyle sınanıyor (`tests/test_cost_tool.py`):
+ısınma turu atılıyor mu, payda doğru mu, defter ekliyor mu. Süre iddiası yok.
+Gerekçe: hiç koşturulmamış bir araç bu deponun **hazırlanmış ama bağlanmamış**
+sınıfına girer — `unmapped_expression()` yazılıp hiç çağrılmamıştı ve 24 kuralın
+8'i sessizce koşmuyordu.
 
 ## Üç olay birbirinden ayrılıyor
 
@@ -248,14 +350,17 @@ kapanabilirler tarafında duruyor — "kapanamaz" ile "kapanır mı bilmiyoruz" 
 
 Bir kural ancak engellerinin **hepsi** kapanabiliyorsa kapanabilir sayılıyor.
 
-## Kapı bugünden koşuyor, hat bitmeden
+## Kapı hat bitmeden koşmaya başladı — ve sebebi hâlâ geçerli
 
-`detections/sigma/manifest.json` şu an sıfır kural taşıyor ve
-`run.pipeline_version` `null`. Bu **bugünkü doğru durum**: sıfır Sigma kuralı
-derleniyor, ve sebebi "hiç kural yok" değil "henüz derlemiyoruz" — manifest
-ikisini karıştırmıyor.
+⚠️ Bu bölüm bir kez bayatladı: kapı yazıldığında `manifest.json` sıfır kural
+taşıyordu ve README onu **iki tur boyunca** "bugünkü durum" diye anlattı. Bugün
+manifest 24 kural taşıyor (21 `written`, 3 `gated`, 0 `failed`) ve
+`run.pipeline_version` dolu. Sayılar burada değil
+`detections/sigma/manifest.json`'da bağlayıcı; buradaki her rakam bayatlayabilir
+ve bir kez bayatladı.
 
-Kapı yine de CI'da. Sebep bu turda ölçüldü: `bizigo_pipeline.py`
+Kapı, kural üretilmeden **önce** CI'a girdi. Sebep bu turda ölçüldü:
+`bizigo_pipeline.py`
 `UNMAPPED_FIELDS`'ı tanımlamış ama hiçbir dönüşüme vermemişti,
 `unmapped_expression()` yazılmış ama hiç çağrılmamıştı. **Hazırlanmış ama
 bağlanmamış**, ve bağlanmamış olması hiçbir yerde belirti üretmiyordu — 24
