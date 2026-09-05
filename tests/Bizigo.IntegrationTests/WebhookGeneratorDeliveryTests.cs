@@ -171,7 +171,20 @@ public sealed class WebhookGeneratorDeliveryTests(DevStackFixture stack) : IAsyn
         Assert.Equal(WebhookMapOutcome.Mapped, mapped.Outcome);
         Assert.True(claim.Claimed);
 
-        Assert.Equal("fw-ankara-01", mapped.Change!.TargetId);
+        // HEDEF KİMLİĞİ AD ALANIYLA BİRLİKTE, ve bu bir düzeltme (S09).
+        //
+        // İlk hâli çıplak `fw-ankara-01` bekliyordu ve CI'da iki sağlayıcıda
+        // düştü: `bizigo/fw-ankara-01`, `net/fw-ankara-01`. Ürün doğruydu,
+        // TEST YANLIŞ VARSAYMIŞTI — eşleme GitHub'ın `$.repository.full_name`
+        // ve GitLab'ın `$.project.path_with_namespace` alanlarını KIRPMADAN
+        // alıyor, ve gerçek yüklerde o alanlar zaten ad alanlı
+        // (`bizigo/network-config`, `net/fw-config`). Yani üreteç sağlayıcıya
+        // sadık; çıplak ad bekleyen iddia, gerçek bir GitHub teslimatının da
+        // düşeceği bir iddiaydı.
+        //
+        // S07'nin yönü burada da geçerli: gerçek yük ne diyorsa o.
+        Assert.EndsWith("fw-ankara-01", mapped.Change!.TargetId, StringComparison.Ordinal);
+
         Assert.Equal("network/core", mapped.Change.OwnerGroup);
     }
 

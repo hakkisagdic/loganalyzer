@@ -141,6 +141,28 @@ public sealed class CliEmulationTests : IAsyncLifetime
             .Count(line => line.Trim().Length > 0 && !line.Contains("--More--", StringComparison.Ordinal));
 
     /// <summary>
+    /// Sayfalamanın <b>gerçekten tetiklendiğini</b> sınar: sayfa boyutu
+    /// config'ten kısa olmak zorunda.
+    ///
+    /// <para>
+    /// Bu kontrol olmadan sayfalama testleri, sayfa boyutu config'ten uzun
+    /// olduğu gün <b>hiçbir şey ölçmeden</b> yeşil kalırdı — "sayfalama
+    /// sorunsuz" görünen bir koşum, aslında sayfalamanın hiç çalışmadığı bir
+    /// koşum olurdu. Depoda adı konmuş sınıf: yeşil bir sonuç, ölçümün
+    /// yapılmadığı anlamına da gelebiliyor (§6).
+    /// </para>
+    /// </summary>
+    private static void SayfalamaOlculebilir(string profile)
+    {
+        var lines = ProfileConfigLines(profile);
+
+        Assert.True(
+            int.Parse(PageLines, System.Globalization.CultureInfo.InvariantCulture) < lines,
+            $"Sayfa boyutu ({PageLines}) profil config'inden ({lines} satır) kısa değil — " +
+            "sayfalama hiç tetiklenmez ve bu sınıftaki sayfalama testleri boş yere yeşil kalır.");
+    }
+
+    /// <summary>
     /// Bir profilin config dosyasındaki <b>anlamlı satır sayısı</b> — testin
     /// beklediği sayı buradan geliyor, elle yazılmıyor.
     ///
@@ -161,25 +183,28 @@ public sealed class CliEmulationTests : IAsyncLifetime
     /// </para>
     /// </summary>
     /// <summary>
-    /// Sayfalamanın <b>gerçekten tetiklendiğini</b> sınar: sayfa boyutu
-    /// config'ten kısa olmak zorunda.
+    /// Profil config'inin <b>son anlamlı satırı</b> — çıktının sonuna kadar
+    /// geldiğini anlamanın işareti.
     ///
     /// <para>
-    /// Bu kontrol olmadan sayfalama testleri, sayfa boyutu config'ten uzun
-    /// olduğu gün <b>hiçbir şey ölçmeden</b> yeşil kalırdı — "sayfalama
-    /// sorunsuz" görünen bir koşum, aslında sayfalamanın hiç çalışmadığı bir
-    /// koşum olurdu. Depoda adı konmuş sınıf: yeşil bir sonuç, ölçümün
-    /// yapılmadığı anlamına da gelebiliyor (§6).
+    /// Sabit bir metin yazmak yerine kaynaktan okunuyor, <see cref="ProfileConfigLines"/>
+    /// ile aynı gerekçeyle: baseline düzeltildiğinde işaret onunla birlikte
+    /// değişiyor ve test ilgisiz bir sebeple kırılmıyor.
     /// </para>
     /// </summary>
-    private static void SayfalamaOlculebilir(string profile)
+    private static string LastConfigLine(string profile, string scenario = "baseline")
     {
-        var lines = ProfileConfigLines(profile);
+        var path = Path.Combine(
+            CommonDirectoryPath.GetSolutionDirectory().DirectoryPath,
+            "catalog", "simulators", "profiller", profile, $"{scenario}.conf");
 
-        Assert.True(
-            int.Parse(PageLines, System.Globalization.CultureInfo.InvariantCulture) < lines,
-            $"Sayfa boyutu ({PageLines}) profil config'inden ({lines} satır) kısa değil — " +
-            "sayfalama hiç tetiklenmez ve bu sınıftaki sayfalama testleri boş yere yeşil kalır.");
+        Assert.True(File.Exists(path), $"Profil config'i yok: {path}");
+
+        var last = File.ReadAllLines(path).LastOrDefault(l => l.Trim().Length > 0);
+
+        Assert.False(string.IsNullOrWhiteSpace(last), $"Profil config'i boş: {path}");
+
+        return last!.Trim();
     }
 
     private static int ProfileConfigLines(string profile, string scenario = "baseline")
@@ -430,7 +455,7 @@ public sealed class CliEmulationTests : IAsyncLifetime
     {
         var server = await StartAsync();
 
-        var transcript = await ShellAsync(server, ["show"], TimeSpan.FromSeconds(10));
+        var transcript = await ShellAsync(server, ["show"], "fw-ankara-01 #", TimeSpan.FromSeconds(20));
 
         Assert.Contains("N3 öykünmesi", transcript, StringComparison.Ordinal);
 
@@ -458,15 +483,19 @@ public sealed class CliEmulationTests : IAsyncLifetime
     {
         var server = await StartAsync();
 
-        var sayfali = await ShellAsync(server, ["show"], TimeSpan.FromSeconds(10));
+        var sayfali = await ShellAsync(server, ["show"], "--More--", TimeSpan.FromSeconds(20));
 
         Assert.Contains("--More--", sayfali, StringComparison.Ordinal);
 
         // Toplayıcının FortiGate hazırlık dizesi — üç satır, AYNI oturumda.
+        // Sayfalama kapalıyken çıktı SONUNA KADAR geliyor, yani oturum
+        // prompta dönüyor. Beklenen işaret o: `--More--`'ın YOKLUĞUNU beklemek
+        // mümkün değil, ama tam çıktının varlığını beklemek mümkün.
         var kapatilmis = await ShellAsync(
             server,
             ["config system console", "set output standard", "end", "show"],
-            TimeSpan.FromSeconds(10));
+            LastConfigLine(FortiGate),
+            TimeSpan.FromSeconds(20));
 
         Assert.DoesNotContain("--More--", kapatilmis, StringComparison.Ordinal);
     }
@@ -487,7 +516,7 @@ public sealed class CliEmulationTests : IAsyncLifetime
     {
         var server = await StartAsync(profile: CiscoAsa);
 
-        var transcript = await ShellAsync(server, ["enable"], TimeSpan.FromSeconds(10));
+        var transcript = await ShellAsync(server, ["enable"], "asa-dc-01#", TimeSpan.FromSeconds(20));
 
         Assert.Contains("asa-dc-01>", transcript, StringComparison.Ordinal);
         Assert.Contains("asa-dc-01#", transcript, StringComparison.Ordinal);
@@ -503,7 +532,7 @@ public sealed class CliEmulationTests : IAsyncLifetime
     {
         var server = await StartAsync(profile: CiscoAsa);
 
-        var transcript = await ShellAsync(server, ["shwo run"], TimeSpan.FromSeconds(10));
+        var transcript = await ShellAsync(server, ["shwo run"], "% Invalid input detected", TimeSpan.FromSeconds(20));
 
         Assert.Contains("% Invalid input detected", transcript, StringComparison.Ordinal);
     }
@@ -571,9 +600,38 @@ public sealed class CliEmulationTests : IAsyncLifetime
     /// süresiz kilitlememesi için bir tavan: hiçbir iddia süreye bakmıyor (§6).
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Etkileşimli bir kabuk oturumu açıp verilen satırları yazıyor ve
+    /// <paramref name="expected"/> görünene kadar <b>bekliyor</b>.
+    ///
+    /// <para>
+    /// <b>İlk hâli hiçbir şey okumuyordu ve CI'da dört test boş dize gördü.</b>
+    /// Sebep: <c>ShellStream.Read()</c> <b>bloke olmayan</b> bir çağrı —
+    /// tamponda o an ne varsa onu döndürüyor. Komut yazıldıktan hemen sonra
+    /// sunucu daha cevap vermemiş oluyor, <c>Read()</c> boş dönüyor ve döngü
+    /// ilk turda kırılıyordu. Testler container'ı, betikleri ve imajı değil,
+    /// <b>kendi okuma hatalarını</b> ölçüyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// <c>Expect</c> ile bekleniyor ve bu bir <b>anlamsal</b> bekleme, sabit
+    /// bir uyku değil: <i>"şu metin gelene kadar"</i>. §6'nın kuralı —
+    /// <i>bir testin geçme sebebinin duvar saatiyle ilgisi olmamalı</i> — bu
+    /// yüzden korunuyor; <paramref name="budget"/> bir ölçüt değil, oturum
+    /// tıkandığında koşumu süresiz kilitlememek için bir tavan.
+    /// </para>
+    ///
+    /// <para>
+    /// Zaman aşımında <b>okunan her şey döndürülüyor</b>, istisna atılmıyor:
+    /// iddia o zaman gerçek içerikle düşüyor ve arıza <i>"beklenen gelmedi,
+    /// gelen şu"</i> diye okunuyor. İstisna atılsaydı hata mesajı oturumun ne
+    /// bastığını hiç göstermezdi — CI'da kaybettiğim tur tam olarak buydu.
+    /// </para>
+    /// </summary>
     private static async Task<string> ShellAsync(
         IContainer server,
         IReadOnlyList<string> lines,
+        string expected,
         TimeSpan budget)
     {
         using var client = new SshClient(
@@ -584,35 +642,29 @@ public sealed class CliEmulationTests : IAsyncLifetime
         using var shell = client.CreateShellStream("vt100", 80, 24, 800, 600, 4096);
 
         var transcript = new StringBuilder();
-        var deadline = DateTimeOffset.UtcNow + budget;
+
+        // Açılış banner'ı ve ilk prompt, ilk komut yazılmadan ÖNCE bekleniyor:
+        // öykünme hazır olmadan yazılan satır kaybolabilir.
+        transcript.Append(shell.Expect(BannerMarker, budget) ?? string.Empty);
 
         foreach (var line in lines)
         {
             shell.WriteLine(line);
             await shell.FlushAsync(TestContext.Current.CancellationToken);
-
-            // `--More--` bekleyen bir oturumda satır sonu gelmiyor; okuma
-            // bloke olmamalı diye kısa aralıklarla tampon boşaltılıyor.
-            while (DateTimeOffset.UtcNow < deadline)
-            {
-                var chunk = shell.Read();
-
-                if (chunk.Length == 0)
-                {
-                    break;
-                }
-
-                transcript.Append(chunk);
-            }
         }
 
-        var kalan = shell.Read();
+        transcript.Append(shell.Expect(expected, budget) ?? string.Empty);
 
-        if (kalan.Length > 0)
-        {
-            transcript.Append(kalan);
-        }
+        // Beklenen geldikten sonra tamponda kalanlar da alınıyor: `--More--`
+        // sonrası basılan satırlar burada görünüyor.
+        transcript.Append(shell.Read());
 
         return transcript.ToString();
     }
+
+    /// <summary>
+    /// Öykünmenin açılışta bastığı ilk satırın değişmez parçası — oturumun
+    /// gerçekten kurulduğunu anlamanın işareti.
+    /// </summary>
+    private const string BannerMarker = "N3 öykünmesi";
 }

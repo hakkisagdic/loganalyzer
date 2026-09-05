@@ -132,6 +132,73 @@ dosyadan** geri al.
 İlk ikisi **Docker'sız** koşuyor: `vendor-cli` saf bash ve tek başına kaynak
 alınabiliyor, yani S08'in düzeltmesi konteyner beklemeden korunuyor.
 
+## CI'ın yakaladıkları — yedi test, üç ayrı kök
+
+Bu ticket'ın testleri Docker ölüyken yazıldı ve **koşturulamadı**; ilk koşumları
+CI'da oldu ve **yedisi düştü**. Aşağısı sebeplerin kaydı, çünkü üçü de ayrı
+sınıf ve ikisi **kendi iddialarımın** yanlış olmasıydı.
+
+### 1 · Vendor hata metni stdout'a kaydı — **bu ticket'ın kendi regresyonu**
+
+S08 durum makinesini `cli_komut_isle`'e çıkarırken S06'nın
+`cli_hata … >&2` **yönlendirmesi düştü**. `SshDeviceTransport`
+`DeviceCommandResult.Error`'ı stderr'den besliyor, yani:
+
+- `Error` boş kaldı,
+- taşıma kendi sentetik cümlesine düştü (`'…' komutu 127 koduyla döndü`),
+- ve S06'nın ikinci kabul kriteri — *vendor'ın kendi metninin ürüne
+ulaşması* — **sessizce geçersiz oldu.**
+
+Çıkış kodu `127` yanıltıcı okundu: *"komut bulunamadı"* değil, dağıtıcının
+**kendi** `exit 127`'si. Kaynaktan izlenebilir bir olguydu.
+
+**Neden hiçbir bekçi görmedi — asıl ders bu.** Birim testlerinin `Bash`
+yardımcısı **yalnızca stdout okuyup stderr'i atıyordu**. İki akış onun için tek
+bir akıştı, yani metnin *varlığını* sınayan testler geçmeye devam etti —
+sınadıkları şey **ürünün okuduğu şey değildi**. Kapı vardı ve **yanlış yere
+bakıyordu**; §7'nin *"sessizce atlayan bekçi"* sınıfının bir akrabası.
+
+Yardımcı artık stderr'i ayrı döndürüyor ve yeni bekçi **çift taraflı** iddia
+ediyor: metin stderr'de **var**, stdout'ta **yok**. Tek taraflı iddia aynı
+körlüğü yeniden üretirdi. Kırmızı yandığı ölçüldü — CI'daki kusur birebir geri
+konup üç vaka da düştü.
+
+### 2 · Etkileşimli kabuk testleri boş dize okuyordu — **test hatası**
+
+Dört testin hepsi `""` gördü, banner dâhil. Sebep container değil, **okuma
+biçimi**: `ShellStream.Read()` **bloke olmayan** bir çağrı ve tamponda o an ne
+varsa onu döndürüyor. Komut yazıldıktan hemen sonra sunucu daha cevap vermemiş
+oluyor, `Read()` boş dönüyor ve döngü ilk turda kırılıyordu.
+
+Yani testler container'ı, betikleri ya da imajı değil **kendi okuma hatalarını**
+ölçüyordu — ve `Assert.Contains` boş bir dizede düştüğü için arıza *"öykünme
+hiçbir şey basmıyor"* gibi okunuyordu.
+
+Artık `Expect` ile bekleniyor. Bu **anlamsal** bir bekleme, sabit bir uyku
+değil (*"şu metin gelene kadar"*), yani §6'nın *duvar saati* kuralı korunuyor:
+bütçe bir ölçüt değil, oturum tıkandığında koşumu kilitlememek için bir tavan.
+
+### 3 · Hedef kimliği ad alanlı geliyor — **iddia yanlıştı, ürün doğruydu**
+
+`WebhookGeneratorDeliveryTests` çıplak `fw-ankara-01` bekliyordu; gelen
+`bizigo/fw-ankara-01` ve `net/fw-ankara-01` oldu.
+
+Eşleme GitHub'ın `$.repository.full_name` ve GitLab'ın
+`$.project.path_with_namespace` alanlarını **kırpmadan** alıyor, ve gerçek
+yüklerde o alanlar **zaten ad alanlı** (`bizigo/network-config`,
+`net/fw-config`). Yani üreteç sağlayıcıya sadık ve çıplak ad bekleyen iddia,
+**gerçek bir GitHub teslimatının da düşeceği** bir iddiaydı.
+
+S07'nin yönü burada da geçerli: *gerçek yük ne diyorsa o.* Aynı desenin
+üçüncü örneği — Jenkins idempotansı, `Bizigo.Api` referansı, ve şimdi bu.
+
+### Ne öğrenildi
+
+Üç kökün ikisi **testin kendisindeydi**, biri üründe. Ortak nokta: hiçbiri
+Docker'sız görülemezdi *sanılmıştı* — oysa birincisi görülebilirdi ve bekçi
+yanlış akışa baktığı için görülmedi. Docker'ın yokluğu ölçümü imkânsız
+kılmadı; **ölçümün yanlış yere bakması** kıldı.
+
 ## Öykünmenin sustuğu yer — ve neden susması doğru
 
 Bekçi yazılırken RouterOS düştü: `/export terse` sayfalama kapatma komutu
