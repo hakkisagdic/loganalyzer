@@ -26,38 +26,21 @@ namespace Bizigo.UnitTests;
 /// </summary>
 public sealed class RedactionGateTests
 {
-    private const string SahteIsaret = "SAHTE";
-    private const string BeklenenOnek = "# BEKLENEN:";
+    private const string SahteIsaret = RedactionFixtures.SahteIsaret;
 
-    private static string ProfileDirectory =>
-        Path.Combine(RepositoryLayout.Root, "catalog", "simulators");
+    private static string ProfileDirectory => RedactionFixtures.ProfileDirectory;
 
-    public static TheoryData<string> SirTasiyanFixtureler() => new()
-    {
-        "asa-dc-01", "fw-ankara-01", "rb-sube-07", "lb-web-01",
-    };
+    public static TheoryData<string> SirTasiyanFixtureler() => new(RedactionFixtures.Profiles);
 
-    private static string FixturePath(string profil) =>
-        Path.Combine(ProfileDirectory, "profiller", profil, "sir-tasiyan.log");
+    private static string FixturePath(string profil) => RedactionFixtures.FixturePath(profil);
 
     /// <summary>
-    /// Fixture'ın iki yarısı: <c>#</c> ile başlayan başlık (beklenti bildirimi)
-    /// ve gerçek log satırları. Kapıya yalnızca ikincisi giriyor — başlık log
-    /// değil, fixture'ın kendi hakkındaki beyanı.
+    /// Fixture okuma <see cref="RedactionFixtures"/>'a taşındı (T60): aynı
+    /// konvansiyonu ikinci bir yerde ayrıştırmak, biçim değiştiğinde bir
+    /// okuyucunun sessizce boş liste döndürmesi demekti.
     /// </summary>
-    private static (string Payload, IReadOnlyList<string> Beklenen) Fixture(string profil)
-    {
-        var lines = File.ReadAllLines(FixturePath(profil));
-
-        var beklenen = lines
-            .Where(l => l.StartsWith(BeklenenOnek, StringComparison.Ordinal))
-            .Select(l => l[BeklenenOnek.Length..].Trim())
-            .ToArray();
-
-        var payload = string.Join('\n', lines.Where(l => !l.StartsWith('#')));
-
-        return (payload, beklenen);
-    }
+    private static (string Payload, IReadOnlyList<string> Beklenen) Fixture(string profil) =>
+        RedactionFixtures.Fixture(profil);
 
     // ------------------------------------------------------- kriter 3, 4
 
@@ -215,14 +198,9 @@ public sealed class RedactionGateTests
     [Fact]
     public void Altin_korpusta_yanlis_pozitif_yok()
     {
-        var satirlar = Directory
-            .EnumerateFiles(RepositoryLayout.CatalogParserDirectory, "*.log", SearchOption.AllDirectories)
-            .SelectMany(File.ReadAllLines)
-            .Select(l => l.Trim())
-            .Where(l => l.Length > 0 && !l.StartsWith('#'))
-            .ToArray();
+        var satirlar = RedactionFixtures.GoldenCorpus();
 
-        Assert.True(satirlar.Length >= 80, $"Altın korpus beklenenden küçük: {satirlar.Length} satır.");
+        Assert.True(satirlar.Count >= 80, $"Altın korpus beklenenden küçük: {satirlar.Count} satır.");
 
         var maskelenen = satirlar
             .Select(l => (Satir: l, Sonuc: RedactedPrompt.Redact(l)))
@@ -231,7 +209,7 @@ public sealed class RedactionGateTests
 
         Assert.True(
             maskelenen.Length == 0,
-            $"Altın korpusun {satirlar.Length} satırından {maskelenen.Length} tanesi maskelendi. " +
+            $"Altın korpusun {satirlar.Count} satırından {maskelenen.Length} tanesi maskelendi. " +
             "Sayı 0 değilse GEREKÇESİ yazılmalı (kriter 7):\n  " +
             string.Join("\n  ", maskelenen.Take(10).Select(x => x.Satir)));
     }

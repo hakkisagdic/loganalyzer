@@ -47,8 +47,40 @@ namespace Bizigo.Contracts.Security;
 /// A'nın gölgede olmasının sebebi §4'ün asimetrisi: ölçülebilen tek hata yönü
 /// <b>fazla maskeleme</b>. Sırrı kaçırmanın belirtisi yok. A tam olarak
 /// maliyeti fazla maskeleme olan katman — hash, UUID, session id, base64 gövde
-/// ağ logunda bol — o yüzden ürüne girmeden önce kendini ölçüyor. Terfi ayrı
-/// bir ticket.
+/// ağ logunda bol — o yüzden ürüne girmeden önce kendini ölçüyor.
+/// </para>
+///
+/// <h3>T60 — terfi kararı: A maskelemeye GEÇMİYOR</h3>
+///
+/// <para>
+/// T41 terfiyi *"sayı kabul edilebilir çıkarsa"* diye ayrı bir ticket'a
+/// bırakmıştı. Ölçüldü ve terfi etmiyor; karar
+/// <see cref="ShadowPurpose"/> ile kodda duruyor
+/// (<see cref="ShadowLayerPurpose.PermanentInstrument"/>) ve gerekçesi üç
+/// ölçüme dayanıyor (<c>ShadowPromotionMeasurementTests</c>):
+/// </para>
+///
+/// <list type="number">
+/// <item><b>Marjinal kazanç sıfır.</b> Sahte sır fixture'larının bildirdiği
+/// 11 sırrın 11'ini C+B zaten maskeliyor. A'nın ek olarak yakaladığı sır
+/// sayısı <b>0</b> — kaçırmanın ölçülebildiği tek korpus bu.</item>
+/// <item><b>Ayıran eşik yok.</b> Eşik ve minimum uzunluk süpürüldüğünde,
+/// fixture sırlarını aday yapan her ayar altın korpusun adreslerini
+/// (<c>outside:192.168.80.32/53</c>), zaman damgalarını ve FortiGate imza
+/// adlarını da aday yapıyor. Yani sorun ölçülmemiş bir eşik değil; entropi
+/// <b>kodlamayı</b> ölçüyor, hassasiyeti değil.</item>
+/// <item><b>Sınıf geçidi ölçülemeyen bir kapı açardı.</b> Adayları mekanik
+/// olarak ayırmak mümkün (<see cref="ShadowTokenClass"/>) ama maskelemeyi
+/// yalnızca opak sınıfa açmak, <see cref="ShadowTokenClass.Hexadecimal"/>'i
+/// muaf tutmak demek — ve onaltılık kodlanmış bir anahtar (WPA PSK,
+/// <c>key-string</c>) tam o sınıfta. §4'ün yasakladığı yön.</item>
+/// </list>
+///
+/// <para>
+/// Sayaç <b>kalıyor</b> ve işi değişiyor: tek bir oran yerine
+/// <see cref="ShadowClasses"/> dağılımı yayılıyor. Gerekçe: <c>0.61</c> oranı
+/// yükseldiğinde okunacak şey *"sır riski arttı"* değil *"prompt'ta daha çok
+/// adres geçti"*ydi — yani sayı ölçtüğü şeyi söylemiyordu.
 /// </para>
 ///
 /// <h3>Bu kapının TANIYAMADIKLARI</h3>
@@ -64,9 +96,10 @@ namespace Bizigo.Contracts.Security;
 /// listeler bulut için yazıldı, dışarıdan besleniyor ve eskiyor.</item>
 /// <item><b>Anahtar kelimesiz taşınan sırlar.</b> Bir parolanın yanında
 /// <c>password</c> yazmıyorsa C onu görmez.</item>
-/// <item><b>Yüksek entropili bilinmeyen biçimler</b> — A gölgede olduğu sürece
-/// yalnızca sayılıyor, maskelenmiyor. Sayı
-/// <c>redaction_shadow_candidates</c>.</item>
+/// <item><b>Yüksek entropili bilinmeyen biçimler</b> — A maskelemediği için
+/// yalnızca sayılıyor. T60 bunu <b>kalıcı</b> bir sınır olarak kapattı: sayı
+/// <c>redaction_shadow_class_opaque</c>, ve o sınıf bilinmeyen bir sırrın
+/// saklanabildiği tek sınıf.</item>
 /// <item><b>Bilinmeyen üretici söz dizimi.</b> Liste bu ürünün baktığı üç
 /// vendor için yazıldı; dördüncüsü bir bakım kalemi.</item>
 /// <item><b>Düşük entropili gerçek parolalar</b> (<c>admin123</c>) — C
@@ -133,19 +166,40 @@ public sealed partial class RedactedPrompt
     private RedactedPrompt(
         string text,
         int maskedValues,
-        int shadowCandidates,
-        int evaluatedTokens,
+        IReadOnlyList<ShadowToken> shadowTokens,
         int totalTokens,
         double entropyThreshold,
         int minShadowTokenLength)
     {
         Text = text;
         MaskedValues = maskedValues;
-        ShadowCandidates = shadowCandidates;
-        EvaluatedTokens = evaluatedTokens;
+        ShadowTokens = shadowTokens;
         TotalTokens = totalTokens;
         EntropyThreshold = entropyThreshold;
         MinShadowTokenLength = minShadowTokenLength;
+
+        var classes = new Dictionary<ShadowTokenClass, int>();
+
+        // Dört sınıfın DÖRDÜ de yazılıyor, sıfır olanlar dâhil — gizlenen bir
+        // sıfır "bu sınıf hiç ölçülmedi" ile "ölçüldü, sıfır" farkını siler.
+        foreach (var known in Enum.GetValues<ShadowTokenClass>())
+        {
+            classes[known] = 0;
+        }
+
+        var candidates = 0;
+
+        foreach (var token in shadowTokens)
+        {
+            if (token.Entropy >= entropyThreshold)
+            {
+                candidates++;
+                classes[token.Class]++;
+            }
+        }
+
+        ShadowCandidates = candidates;
+        ShadowClasses = classes;
     }
 
     /// <summary>Maskelenmiş metin — prompt'a giren şey.</summary>
@@ -155,6 +209,25 @@ public sealed partial class RedactedPrompt
     public int MaskedValues { get; }
 
     /// <summary>
+    /// Entropi hesabına giren belirteçler — <b>eşik uygulanmadan</b>, sınıfı ve
+    /// entropisiyle.
+    ///
+    /// <para>
+    /// <b>Neden eşiksiz.</b> T60 eşiği süpürerek ölçmek zorundaydı ("ayıran bir
+    /// eşik var mı") ve ölçüm ikinci bir belirteçleyici yazmadan yapılmalıydı:
+    /// iki belirteçleyici, ölçümün ölçtüğü şeyle ürünün saydığı şeyin ayrıştığı
+    /// gün demekti (§9 — ikinci kopya yazma). Aynı listeden hem sayaç hem ölçüm
+    /// besleniyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Yeni bir sızıntı yüzeyi değil:</b> buradaki belirteçlerin hepsi
+    /// maskelenmemiş, yani zaten <see cref="Text"/>'in içinde duruyorlar.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<ShadowToken> ShadowTokens { get; }
+
+    /// <summary>
     /// Gölge katmanın adayları: entropi eşiğini geçen ve <b>C+B'nin
     /// maskelemediği</b> belirteç sayısı. Sorunun tamamı "ek olarak" —
     /// C+B'nin zaten maskelediğini saymak terfi kararını şişirirdi.
@@ -162,10 +235,23 @@ public sealed partial class RedactedPrompt
     public int ShadowCandidates { get; }
 
     /// <summary>
+    /// Adayların <b>mekanik sınıf dağılımı</b> (T60). Dört sınıfın dördü de
+    /// yazılı; toplamı <see cref="ShadowCandidates"/>'a eşit.
+    ///
+    /// <para>
+    /// Tek bir oran yerine bunun yayılmasının sebebi ölçüldü: altın korpustaki
+    /// <c>0.6146</c> oranının içi adres, port, zaman damgası, ürün sürümü ve
+    /// imza adı. Oran yükseldiğinde *"sır riski arttı"* diye okunuyordu; oysa
+    /// söylediği şey *"prompt'ta daha çok adres geçti"*.
+    /// </para>
+    /// </summary>
+    public IReadOnlyDictionary<ShadowTokenClass, int> ShadowClasses { get; }
+
+    /// <summary>
     /// Oranın <b>paydası</b>: entropi hesabına gerçekten giren belirteç
     /// sayısı. Payda söylenmeden oran okunamaz.
     /// </summary>
-    public int EvaluatedTokens { get; }
+    public int EvaluatedTokens => ShadowTokens.Count;
 
     /// <summary>Metindeki toplam belirteç — paydanın yanlış okunmaması için.</summary>
     public int TotalTokens { get; }
@@ -173,6 +259,18 @@ public sealed partial class RedactedPrompt
     public double EntropyThreshold { get; }
 
     public int MinShadowTokenLength { get; }
+
+    /// <summary>
+    /// Gölge sayacın <b>ne için durduğu</b> — T60'ın kararı ve terfinin
+    /// cevabı. Gerekçenin tamamı <see cref="ShadowLayerPurpose"/>'ta.
+    ///
+    /// <para>
+    /// <c>static</c>: bu bir <b>ürün kararı</b>, prompt başına değişen bir şey
+    /// değil. Örnek başına taşınsaydı iki koşumun iki farklı amaçla sayması
+    /// mümkün görünürdü.
+    /// </para>
+    /// </summary>
+    public static ShadowLayerPurpose ShadowPurpose => ShadowLayerPurpose.PermanentInstrument;
 
     /// <summary>
     /// Ham sayı prompt uzunluğuyla büyüyor; terfi kararına bakan sayı bu.
@@ -187,8 +285,9 @@ public sealed partial class RedactedPrompt
     /// gizlenen bir sıfır "henüz ölçülmedi" ile "ölçüldü, sıfır" farkını
     /// siler. Paket saklandığı için sayı sonradan da okunabiliyor.
     /// </summary>
-    public IReadOnlyDictionary<string, object> EvidenceFields() =>
-        new Dictionary<string, object>(StringComparer.Ordinal)
+    public IReadOnlyDictionary<string, object> EvidenceFields()
+    {
+        var fields = new Dictionary<string, object>(StringComparer.Ordinal)
         {
             ["redaction_masked_values"] = MaskedValues,
             ["redaction_shadow_candidates"] = ShadowCandidates,
@@ -197,7 +296,23 @@ public sealed partial class RedactedPrompt
             ["redaction_shadow_total_tokens"] = TotalTokens,
             ["redaction_shadow_entropy_threshold"] = EntropyThreshold,
             ["redaction_shadow_min_token_length"] = MinShadowTokenLength,
+
+            // T60: sayının HANGİ SORUYU cevapladığı, sayının yanında. Bu alan
+            // olmasa okuyan taraf varsayılanı seçerdi ve varsayılan "terfi
+            // bekliyor" olurdu — T41'in bıraktığı hâl.
+            ["redaction_shadow_purpose"] = ShadowPurpose.ToString().ToLowerInvariant(),
         };
+
+        // Dağılım da sıfırken yazılıyor, aynı gerekçeyle. Toplamı
+        // `redaction_shadow_candidates`'a EŞİT olmalı: beşinci bir sınıf
+        // eklenip yayılmazsa eşitlik bozulur ve ölçüm testi kırmızı yanar.
+        foreach (var (sinif, sayi) in ShadowClasses)
+        {
+            fields["redaction_shadow_class_" + sinif.ToString().ToLowerInvariant()] = sayi;
+        }
+
+        return fields;
+    }
 
     /// <summary>
     /// Metni prompt'a girmeye uygun hâle getirir.
@@ -215,7 +330,7 @@ public sealed partial class RedactedPrompt
     {
         if (string.IsNullOrEmpty(text))
         {
-            return new RedactedPrompt(string.Empty, 0, 0, 0, 0, entropyThreshold, minShadowTokenLength);
+            return new RedactedPrompt(string.Empty, 0, [], 0, entropyThreshold, minShadowTokenLength);
         }
 
         // Satır sonu normalize: `LogAssignment` çok satırlı ve `$` ile
@@ -231,17 +346,39 @@ public sealed partial class RedactedPrompt
 
         var masked = SecretRedactor.RedactExact(normalized, discovered);
 
-        var (candidates, evaluated, total) = CountShadow(masked, entropyThreshold, minShadowTokenLength);
+        var (evaluated, total) = ShadowTokenize(masked, minShadowTokenLength);
 
         return new RedactedPrompt(
             masked,
             discovered.Count,
-            candidates,
             evaluated,
             total,
             entropyThreshold,
             minShadowTokenLength);
     }
+
+    /// <summary>
+    /// Metni gölge belirteçlerine ayırır — <b>C ve B uygulanmadan</b>.
+    ///
+    /// <para>
+    /// <b>Neden gerekli (T60).</b> Terfi kararının ana sorusu *"C+B bu sırrı
+    /// kaçırsaydı A görür müydü"*. <see cref="Redact"/> üzerinden ölçmek bu
+    /// soruyu cevaplamıyor: JWT gibi bir değer B tarafından maskeleniyor,
+    /// dolayısıyla A'nın onu görüp görmediği ölçülemez hâle geliyor — ve sonuç
+    /// *"A görmedi"* diye okunuyor. Kapıyı devre dışı bırakarak ölçmek ise
+    /// bir <i>kusur</i> ölçümü olurdu, bir ölçüm değil.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Bir kapı değil ve kapıyı da atlatmıyor:</b> geri dönen şey
+    /// <see cref="RedactedPrompt"/> değil, girdisi zaten çağıranın elindeki
+    /// metin. Prompt'a giden yol hâlâ tek: <see cref="Redact"/>.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<ShadowToken> ShadowTokensOf(
+        string? text,
+        int minShadowTokenLength = DefaultMinShadowTokenLength) =>
+        string.IsNullOrEmpty(text) ? [] : ShadowTokenize(text, minShadowTokenLength).Evaluated;
 
     // ------------------------------------------------------- katman C
 
@@ -377,16 +514,23 @@ public sealed partial class RedactedPrompt
     // ------------------------------------------------------- katman A (gölge)
 
     /// <summary>
-    /// Gölge sayımı. <b>Hiçbir şeye dokunmuyor</b> — girdisi zaten maskelenmiş
-    /// metin, çıktısı üç sayı.
+    /// Gölge belirteçlemesi. <b>Hiçbir şeye dokunmuyor</b> — girdisi zaten
+    /// maskelenmiş metin, çıktısı değerlendirmeye giren belirteçler ve toplam
+    /// belirteç sayısı.
+    ///
+    /// <para>
+    /// <b>Eşik burada uygulanmıyor</b> (T60): eşik bir <i>okuma</i> parametresi,
+    /// belirteçlemenin parçası değil. Ayrılmasının sebebi ölçüm — <i>"ayıran bir
+    /// eşik var mı"</i> sorusu aynı belirteç listesi üzerinde birden çok eşik
+    /// denemeyi gerektiriyor, ve ikinci bir belirteçleyici yazmak §9'un
+    /// yasakladığı şey.
+    /// </para>
     /// </summary>
-    private static (int Candidates, int Evaluated, int Total) CountShadow(
+    private static (IReadOnlyList<ShadowToken> Evaluated, int Total) ShadowTokenize(
         string masked,
-        double entropyThreshold,
         int minTokenLength)
     {
-        var candidates = 0;
-        var evaluated = 0;
+        var evaluated = new List<ShadowToken>();
         var total = 0;
 
         foreach (var raw in masked.Split(TokenSeparators, StringSplitOptions.RemoveEmptyEntries))
@@ -405,15 +549,13 @@ public sealed partial class RedactedPrompt
                 continue;
             }
 
-            evaluated++;
-
-            if (ShannonEntropy(token) >= entropyThreshold)
-            {
-                candidates++;
-            }
+            evaluated.Add(new ShadowToken(
+                token,
+                ShannonEntropy(token),
+                ShadowTokenClassifier.Classify(token)));
         }
 
-        return (candidates, evaluated, total);
+        return (evaluated, total);
     }
 
     /// <summary>Karakter başına Shannon entropisi (bit).</summary>
@@ -437,7 +579,16 @@ public sealed partial class RedactedPrompt
         return entropy;
     }
 
-    /// <summary>Rapora ve kayda yazılacak tek satırlık özet.</summary>
+    /// <summary>
+    /// Rapora ve kayda yazılacak tek satırlık özet.
+    ///
+    /// <para>
+    /// <b>Sınıf dağılımı da basılıyor</b> (T60). Tek başına bir oran hangi
+    /// yönde okunacağını söylemiyordu: <c>0.6146</c> hem "prompt sır kaynıyor"
+    /// hem "prompt adres kaynıyor" diye okunabiliyordu ve doğru olan
+    /// ikincisiydi.
+    /// </para>
+    /// </summary>
     public static string Describe(RedactedPrompt result)
     {
         ArgumentNullException.ThrowIfNull(result);
@@ -446,6 +597,24 @@ public sealed partial class RedactedPrompt
             CultureInfo.InvariantCulture,
             $"maskelenen={result.MaskedValues} gölge_aday={result.ShadowCandidates} " +
             $"gölge_oran={result.ShadowRatio:F4} payda={result.EvaluatedTokens} " +
-            $"eşik={result.EntropyThreshold:F2}bit/krk min_uzunluk={result.MinShadowTokenLength}");
+            $"eşik={result.EntropyThreshold:F2}bit/krk min_uzunluk={result.MinShadowTokenLength} " +
+            $"opak={result.ShadowClasses[ShadowTokenClass.Opaque]} " +
+            $"onaltılık={result.ShadowClasses[ShadowTokenClass.Hexadecimal]} " +
+            $"bileşik={result.ShadowClasses[ShadowTokenClass.Composite]} " +
+            $"sözcük={result.ShadowClasses[ShadowTokenClass.Word]} " +
+            $"amaç={ShadowPurpose}");
     }
 }
+
+/// <summary>
+/// Entropi hesabına giren bir belirteç: metni, entropisi ve <b>mekanik
+/// sınıfı</b>.
+///
+/// <para>
+/// <c>Text</c> alanı maskelenmemiş bir belirteç taşıyor — ve taşıması bir
+/// sızıntı değil: maskelenmediği için zaten <see cref="RedactedPrompt.Text"/>
+/// içinde duruyor. Maskelenen bir değer buraya hiç gelmiyor (gölge katman
+/// maske işareti taşıyan belirteci atlıyor).
+/// </para>
+/// </summary>
+public readonly record struct ShadowToken(string Text, double Entropy, ShadowTokenClass Class);

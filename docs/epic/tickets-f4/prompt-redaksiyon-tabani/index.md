@@ -132,6 +132,15 @@ Bu, bu deponun kendi kuralının tersten uygulanışı: bir şeyin çalıştığ
 varsayılmıyor, ama burada ölçülen şey *"çalışıyor mu"* değil *"kaç şeye
 dokunurdu"*.
 
+> **Terfi kararı verildi ve terfi ETMEDİ** —
+> [T60](../entropi-terfi-karari/index.md). Aşağıdaki *"sayı kabul edilebilir
+> çıkarsa ikinci turda terfi eder"* cümlesi örtük olarak **doğru bir eşiğin var
+> olduğunu** varsayıyordu; T60 o varsayımı süpürerek ölçtü ve yanlışladı: sahte
+> sırların hepsini aday yapan her eşik altın korpusun adreslerini ve imza
+> adlarını da aday yapıyor. Sorun eşikte değil **eksende** — entropi
+> kodlamayı ölçüyor, hassasiyeti değil. Sayaç kalıyor ve **kalıcı bir ölçüme**
+> dönüyor (`ShadowLayerPurpose.PermanentInstrument`).
+
 #### A gölge modda ne yayıyor
 
 İki sayı, ikisi de **prompt başına** ve ikisi de kanıt paketine yazılıyor —
@@ -347,7 +356,8 @@ yüzey** olmalı ve bu tüketicilerin çağrı biçimini değiştirmemeli.
 ### Kapsam dışı
 
 - **A'nın maskelemeye terfisi.** Gölge sayıları okunduktan sonra verilecek
-  ayrı bir karar ve ayrı bir ticket.
+  ayrı bir karar ve ayrı bir ticket — [T60](../entropi-terfi-karari/index.md),
+  ve karar **terfi etmemek** oldu.
 - **Sağlayıcı anahtar katalogları** (`AKIA…`, `ghp_…`, `xoxb-…`) — §3'ün
   gerekçesiyle.
 - `masked` / `raw` düzeylerinin açılması — ayrı bir karar, bu ticket'ın çıktısı
@@ -488,6 +498,12 @@ başında **saldırı imzasının adı** gelirdi — RCA'nın cümle kurmak içi
 duyduğu tam da o. §3'ün *"A neden gölgede"* gerekçesi ölçümle doğrulandı;
 terfi ticket'ı bu iki sayıyla açılmalı.
 
+> **Açıldı ve kapandı:** [T60](../entropi-terfi-karari/index.md). Aday kümesi
+> mekanik olarak sınıflandırıldı ve dağılım bu paragrafın söylediğinden bir adım
+> öte çıktı: 59'un **48'i** `Composite` ve içinin çoğu ASA'nın
+> `arayüz:ip/port` üçlüleri — yani terfi ettirilseydi maskelenecek ilk şey
+> imzanın adı değil, **kimin kime hangi porttan konuştuğu** olurdu.
+
 ### Kırmızı yanabildiği ölçüldü — altı kusur, hepsi geri alındı
 
 Her kusur uygulandıktan sonra **dosyada gerçekten olduğu doğrulandı**, sonra
@@ -515,7 +531,10 @@ gibi taşımak gerçekten hiçbir şey bulmuyor, ve fixture'lar olmasaydı bu
 
 ### Yapılmayanlar ve bilinen boşluklar
 
-- **A'nın terfisi yapılmadı** — kapsam dışı, ayrı ticket.
+- **A'nın terfisi yapılmadı** — kapsam dışı, ayrı ticket. **T60 o ticket'ı
+  koşturdu ve cevap "terfi etmiyor" çıktı**; gölge sayaç kalıcı bir ölçüm oldu
+  ve tek oran yerine mekanik bir sınıf dağılımı yayıyor
+  ([T60](../entropi-terfi-karari/index.md)).
 - **Sağlayıcı anahtar katalogları girmedi** — bilinçli, K2 gerekçesiyle. Bir
   test bunların maskelenmediğini de yazıyor: kapsam dışı olmak bir *karar*,
   bir eksiklik değil.
