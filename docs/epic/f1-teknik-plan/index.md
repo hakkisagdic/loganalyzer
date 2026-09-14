@@ -22,7 +22,7 @@ F1 şu cümle doğru olduğunda biter:
 | Ham sadakat | Her olay ham baytına geri götürülebilir; byte-for-byte doğrulanır |
 | Parse doğruluğu | 4 vendor için altın örnek dosyalarının %100'ü testte geçer |
 | Replay | 7 günlük veri, düzeltilmiş parser sürümüyle yeniden işlenir; eski satır kalmaz |
-| Kapsam | Kapsam dışı sorgu **hiçbir** yoldan (REST, replay okuma, CLI) veri döndürmez |
+| Kapsam | Kapsam dışı sorgu **ürün yüzeylerinin hiçbirinden** (REST, MCP, arayüz) veri döndürmez. Replay okuma ve CLI **kapsam dışı**, gerekçeleri [F1 kapsam kriteri düzeltmesi](../f1-kapsam-kriteri-duzeltmesi/index.md)'nde |
 | Dayanıklılık | Süreç `kill -9` ile öldürülür; ack'lenen hiçbir olay kaybolmaz. RustFS durdurulur; ingest devam eder |
 | Arşiv bütünlüğü | Manifest'ten silinen nesne replay'de **sessizce atlanmaz**, hata olur |
 | Çok dillilik | Türkçe/Arapça/Çince gövdeli log doğru kodlamayla saklanır ve aranır |

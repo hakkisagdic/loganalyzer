@@ -432,9 +432,16 @@ Sorun ajanların dikkatinde değil, kuralın yazılı olmamasındaydı.
 - `Bizigo.Api`'yi elle koşturmak: CWD **depo kökü** (katalog/maske yolları
 oradan çözülüyor), içerik kökü **bin dizini** (appsettings oradan okunuyor),
 `ASPNETCORE_ENVIRONMENT=Development` (WAL dizini aksi hâlde `/var/lib/bizigo`).
-- Keycloak realm'inde **yalnızca `bizigo-claims` client scope var**; yerleşik
-`profile`/`email` hiç oluşmuyor. `scope=openid` geçer,
+- Keycloak realm'inde **iki** client scope var: `bizigo-claims` (varsayılan) ve
+`bizigo-mcp` (**isteğe bağlı**, M09 ekledi — RFC 8707 kaynak kimliği için).
+Yerleşik `profile`/`email` hiç oluşmuyor: `scope=openid` geçer,
 `openid profile email` canlıda `invalid_scope` alır. Ölçüldü.
+  - ⚠️ Bu satır bir zamanlar *"**yalnızca** `bizigo-claims` var"* diyordu ve M09'dan
+  sonra yanlış oldu. **Üç yerde** tekrarlanmıştı — burada ve iki vault sayfasında —
+  çünkü ikisi bu satırı kaynak gösteriyordu. M17 vault'un birini düzeltti, ikincisi
+  damgası düşene kadar görünmedi, ve **kök buydu**. Ders: bir iddiayı tek yerde
+  düzeltmek, düzeltildiği anlamına gelmiyor; kaynağı düzeltilmemiş bir kopya
+  sadakatle yanlış kalır.
 - Commit mesajları **İngilizce**, kullanıcıyla iletişim **Türkçe**.
 
 ## graphify

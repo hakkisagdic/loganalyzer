@@ -17,7 +17,7 @@ sources:
   - docs/epic/fs-simulatorler/index.md
   - docs/epic/t36-devir-notu/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 docs/epic/fs-simulatorler/index.md=22bb02d19d29 docs/epic/is-envanteri/index.md=c1ee55fd6048 docs/epic/t36-devir-notu/index.md=5027982dbb85"
+source_digest: "sha256-12/v1 CLAUDE.md=d270c2c035f1 docs/epic/fs-simulatorler/index.md=22bb02d19d29 docs/epic/is-envanteri/index.md=c1ee55fd6048 docs/epic/t36-devir-notu/index.md=5027982dbb85"
 summary: Bir açık liste, kapanacak kalemle hiç kapanmayacak kalemi bir arada tutarsa asla boşalmaz ve "bitti mi" sorusu cevapsız kalır. Ayrımı yapmanın, gerekçelendirmenin ve muafiyeti pahalı kılmanın yordamı.
 provenance:
   extracted: 0.8

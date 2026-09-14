@@ -9,7 +9,7 @@ relationships:
   - target: "[[concepts/elle-tutulan-liste-bekciyi-korlestirir]]"
     type: related
 sources: [docs/epic/fs-simulatorler/index.md, docs/epic/tickets-fs/filo-kapsam/index.md, CLAUDE.md]
-source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 docs/epic/fs-simulatorler/index.md=22bb02d19d29 docs/epic/tickets-fs/filo-kapsam/index.md=a30ad9554779"
+source_digest: "sha256-12/v1 CLAUDE.md=d270c2c035f1 docs/epic/fs-simulatorler/index.md=22bb02d19d29 docs/epic/tickets-fs/filo-kapsam/index.md=a30ad9554779"
 summary: Bir bilgiyi tek dosyada toplamak onu tek kaynak yapmıyor. Kavramın kendisi tek yerde durmalı — ve onu tanıyan predicate de. Üç ölçülmüş örnek.
 provenance:
   extracted: 0.85

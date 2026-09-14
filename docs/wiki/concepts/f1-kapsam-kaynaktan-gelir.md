@@ -23,7 +23,7 @@ sources:
   - docs/epic/tickets/api-uclari/index.md
   - docs/epic/tickets/normalizasyon/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=c9cae79ad905 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/tickets/api-uclari/index.md=4e2624c6db9a docs/epic/tickets/depolama-ve-kapsam-kapisi/index.md=7a1070c1c1da docs/epic/tickets/dispatcher-ve-envanter/index.md=5b0c998c5ca7 docs/epic/tickets/ham-arsiv/index.md=f7b6e1d7e3a0 docs/epic/tickets/kimlik/index.md=1777b62193e0 docs/epic/tickets/normalizasyon/index.md=74d881911e1b"
+source_digest: "sha256-12/v1 CLAUDE.md=d270c2c035f1 docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=61628e5aed41 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/tickets/api-uclari/index.md=4e2624c6db9a docs/epic/tickets/depolama-ve-kapsam-kapisi/index.md=7a1070c1c1da docs/epic/tickets/dispatcher-ve-envanter/index.md=5b0c998c5ca7 docs/epic/tickets/ham-arsiv/index.md=f7b6e1d7e3a0 docs/epic/tickets/kimlik/index.md=1777b62193e0 docs/epic/tickets/normalizasyon/index.md=74d881911e1b"
 summary: K17'nin iki cümlesi — kapsam olayın değil kaynağın özelliğidir ve tek bir kapıda uygulanır — F1'in yedi ticket'ına yayılıyor; şemadan nesne anahtarına, claim sözleşmesinden 404 kararına kadar.
 provenance:
   extracted: 0.85
@@ -144,16 +144,39 @@ katmanındaki örneği: kapsam doğru çalışırken denetim sessizce boşalmı�
 
 Çözüm yerleşik scope'ları kopyalamak değil, ihtiyaç duyulan claim'leri kendi
 scope'umuza yazmak oldu — Keycloak sürümünden bağımsız. Bunun bugünkü izi
-`CLAUDE.md` §12'de duruyor: realm'de yalnızca `bizigo-claims` var,
+`CLAUDE.md` §12'de duruyor: realm'de `bizigo-claims` var ve
 `scope=openid profile email` canlıda `invalid_scope` alıyor.
+
+> ⚠️ Bu cümlenin *"realm'de **yalnızca** `bizigo-claims` var"* hâli bugün
+> yanlıştı: M09 ikinci bir client scope ekledi (`bizigo-mcp`, isteğe bağlı,
+> RFC 8707 kaynak kimliği için). Aynı bayat iddia **iki** vault sayfasında
+> duruyordu; M17 birini düzeltti, ikincisi bu sayfaydı ve damgası düşene kadar
+> görünmedi. Bir iddianın tek yerde düzeltilmesi, düzeltildiği anlamına
+> gelmiyor.
 
 ## Açık kalan
 
 - Kapsamın **ölçülmüş** kanıtı F1 kapanışında yalnızca giriş akışı düzeyinde:
   `analyst.core` → `/network/core`, `analyst.edge` → `/network/edge`, collector
-  yalnızca `ingest`. Her uç için negatif test var (T10'da sekiz tane), ama
-  "hiçbir yoldan" iddiasının tam kanıtı yolların tamamının sayılmasına
-  bağlı. ^[inferred]
+  yalnızca `ingest`. Her uç için negatif test var (T10'da sekiz tane).
+
+- **"Hiçbir yoldan" iddiası ÖLÇÜLDÜ ve YANLIŞ ÇIKTI** (M18). Bu sayfanın bir
+  önceki hâli tam bunu bekliyordu — *"tam kanıtı yolların tamamının sayılmasına
+  bağlı"* — ve sayıldığında kriterin **kendisi** yanlış çıktı: F1'in kabul
+  kriteri üç yol sayıyordu (REST, replay okuma, CLI) ve **yalnızca REST** kapsam
+  kapısından geçiyor. `ReplayEngine` `AccessScope.System("replay")` ile okuyor,
+  CLI `IScopedQuery`'yi hiç anmıyor.
+
+  İkisinin kapsam dışı olması **doğru** ve ayrı sebeplerle (replay bir sistem
+  işlemi ve kapsamlanmış bir kurtarma arşivin yalnızca bir kısmını geri
+  yükleyebilirdi; CLI'da kimlik yok, çağıran zaten veritabanı erişimine sahip).
+  Yanlış olan **kriterin metni**: *"bütün okuma yolları"* ile *"kullanıcıya açık
+  sorgu yolları"* karıştırılmış. Kriter düzeltildi ve gerekçeleri
+  `docs/epic/f1-kapsam-kriteri-duzeltmesi/index.md`'de.
+
+  Ve asıl bulgu, iddianın yanlış olması değil: **F1 kapandığından beri hiçbir
+  koşum onu üç yol için sınamadı.** Bugün sınayan şey M18'in türetilmiş tüketici
+  kümesi (`ScopedQueryConsumerTests`) — elle liste değil, meta veriden.
 
 ## Kaynaklar
 
