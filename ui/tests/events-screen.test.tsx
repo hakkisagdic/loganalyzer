@@ -47,6 +47,12 @@ const sources: SourceItem[] = [
     source_class: "firewall",
     enabled: true,
     is_known_to_dispatcher: true,
+
+    // F5 · S1 — üç alan zorunlu; bu ekranın iddiası topoloji değil, o yüzden
+    // biri dolu biri boş: boş `upstream` "bilinmiyor" demek.
+    upstream: "core-01",
+    vlan: "10",
+    firmware: "7.4.2",
   },
   {
     source_id: "asa-izmir-02",
@@ -60,6 +66,9 @@ const sources: SourceItem[] = [
     source_class: "firewall",
     enabled: true,
     is_known_to_dispatcher: false,
+    upstream: "",
+    vlan: "",
+    firmware: "",
   },
 ];
 

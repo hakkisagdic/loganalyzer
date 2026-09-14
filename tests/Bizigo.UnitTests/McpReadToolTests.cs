@@ -485,5 +485,11 @@ public sealed class McpReadToolTests
         SourceClass: "firewall",
         Enabled: true,
         IsKnownToDispatcher: true,
-        CreatedAt: DateTimeOffset.UnixEpoch);
+        CreatedAt: DateTimeOffset.UnixEpoch,
+
+        // F5 · S1 — üç alan boş: bu yardımcının sorusu kapsam ve şekil, topoloji
+        // değil. Boş `Upstream` bu tipte "bilinmiyor" demek, "yok" demiyor.
+        Upstream: string.Empty,
+        Vlan: string.Empty,
+        Firmware: string.Empty);
 }

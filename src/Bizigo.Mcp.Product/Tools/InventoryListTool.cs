@@ -154,7 +154,15 @@ public sealed class InventoryListTool(IServiceScopeFactory scopes) : ProductRead
                 SourceClass: "firewall",
                 Enabled: true,
                 IsKnownToDispatcher: true,
-                CreatedAt: new DateTimeOffset(2026, 3, 1, 9, 0, 0, TimeSpan.Zero)),
+                CreatedAt: new DateTimeOffset(2026, 3, 1, 9, 0, 0, TimeSpan.Zero),
+
+                // F5 · S1 — üç topoloji alanı varsayılansız ve bu satır o
+                // kararın kanıtı: yeni bir kurma yeri üçünü de açıkça geçmek
+                // zorunda. Bu satır DOLU, aşağıdaki satır boş bırakıyor, yani
+                // örnek "bilinmiyor" hâlini de şemaya karşı doğruluyor.
+                Upstream: "core-01",
+                Vlan: "10",
+                Firmware: "7.4.2"),
 
             // İkinci satır BİLEREK parser'sız: `parser_id`'nin `null` dalı da
             // şemaya karşı doğrulansın. Tek satırlık bir örnek o dalı hiç
@@ -171,7 +179,10 @@ public sealed class InventoryListTool(IServiceScopeFactory scopes) : ProductRead
                 SourceClass: "default",
                 Enabled: false,
                 IsKnownToDispatcher: false,
-                CreatedAt: new DateTimeOffset(2026, 8, 20, 14, 30, 0, TimeSpan.Zero)),
+                CreatedAt: new DateTimeOffset(2026, 8, 20, 14, 30, 0, TimeSpan.Zero),
+                Upstream: string.Empty,
+                Vlan: string.Empty,
+                Firmware: string.Empty),
         ];
 
         // Örnek kesilmeyi de gösteriyor: `limit` iki satırın altında.

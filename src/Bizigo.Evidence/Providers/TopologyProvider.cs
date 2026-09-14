@@ -281,13 +281,12 @@ public sealed class TopologyProvider(IScopedQuery query) : IEvidenceProvider
                     .Where(row => byId.TryGetValue(row.SourceId, out var s) && ValueOf(s, field) == group.Key)
                     .Min(row => row.FirstDegradedAt),
                 Weight: lift,
+                // Tek bir interpolasyon: `string.Create`'in kültür alan aşırı
+                // yüklemesi bir `ref` handler istiyor, `+` ile birleştirilen
+                // parçalar ise `string` üretiyor ve derlenmiyor.
                 Summary: string.Create(
                     CultureInfo.InvariantCulture,
-                    $"{field}={group.Key} · bozulan {inAffected}/{affectedValues.Length} cihaz · " +
-                    $"kapsamda {inPopulation}/{populationValues.Length} · lift {lift:0.#}×" +
-                    (withoutValue > 0
-                        ? $" · ⚠ bozulan {withoutValue} cihazda {field} boş, orandan çıkarıldı"
-                        : string.Empty)),
+                    $"{field}={group.Key} · bozulan {inAffected}/{affectedValues.Length} cihaz · kapsamda {inPopulation}/{populationValues.Length} · lift {lift:0.#}×{(withoutValue > 0 ? string.Create(CultureInfo.InvariantCulture, $" · ⚠ bozulan {withoutValue} cihazda {field} boş, orandan çıkarıldı") : string.Empty)}"),
                 Payload: new Dictionary<string, string>(StringComparer.Ordinal)
                 {
                     ["field"] = field,

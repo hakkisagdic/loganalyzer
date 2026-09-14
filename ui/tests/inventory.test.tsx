@@ -37,6 +37,12 @@ function source(overrides: Partial<SourceItem> = {}): SourceItem {
     source_class: "firewall",
     enabled: true,
     is_known_to_dispatcher: true,
+
+    // F5 · S1 — boş: bu fabrikanın sınadığı şey sessizlik eşiği, topoloji
+    // değil. `Partial` ile üzerine yazılabiliyor.
+    upstream: "",
+    vlan: "",
+    firmware: "",
     ...overrides,
   };
 }
