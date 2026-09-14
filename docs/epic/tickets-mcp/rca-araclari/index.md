@@ -1,7 +1,7 @@
 ---
 title: "M05 — bizigo RCA araçları"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # M05 — RCA'yı dışarıdan tetiklemek ve okumak
@@ -65,7 +65,14 @@ Ayrıca bu hafta girdi: `Bizigo.Rca/Reasoning/` altında `RcaReportStore` ·
    `AccessScope.System` çağrısı yok.
 6. Kırmızı yanabildiği ölçüldü (`CLAUDE.md` §6).
 
-## 3.1 · Neden hâlâ `1` — ölçüldü
+## 3.1 · Bir tur `1` kaldı — ve bu bölüm artık GEÇMİŞ
+
+> ⚠️ Aşağıdaki bölüm `983bb95`'ten **önceki** hâli anlatıyor ve bilerek duruyor:
+> bir ticket'ın neden bir tur açık kaldığını silmek, kararın maliyetini silmek
+> olur. Üç aracın ikisi (`rca.trigger`, `rca.runs`) o turda yazıldı, üçüncüsü
+> (`evidence.bundle`) **kaynak olarak** karşılandı (§3.2). Ticket `2`.
+
+### Bölümün yazıldığı andaki hâl
 
 T61'in bekçisi bu ticket'ı `0`'dan çıkardı ve **`2` değil `1`** yazdı; ölçüm o
 temkinliliği doğruladı.

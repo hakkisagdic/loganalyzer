@@ -63,13 +63,14 @@ flowchart TB
 | M02 | [Komut çekirdeği ve CLI paritesi](komut-cekirdegi/index.md) | Ortak çekirdek, iki sunum katmanı, gerekçeli muafiyet + sabit sayı | M01 |
 | M03 | [`bizigo-sim` araçları](sim-araclari/index.md) | Yedi araç; **yüzey hatası** yüzeyi söylüyor, profili değil | M01, FS-a |
 | M04 | [`bizigo` okuma araçları](okuma-araclari/index.md) | `logs.*`, `alerts.*`, `inventory.*`, `catalog.*`; kapsam **tek kapıdan** | M01, M02 |
-| M05 | [`bizigo` RCA araçları](rca-araclari/index.md) | `rca.trigger` (`Idempotency-Key`), `rca.runs` (üç yönlü ayrım), `evidence.bundle` | M04, T46 |
+| M05 | [`bizigo` RCA araçları](rca-araclari/index.md) | `rca.trigger` (**yazıyor** — dört kalemli ölçüt), `rca.runs` (üç yönlü ayrım); `evidence.bundle` **kaynak olarak** karşılandı | M04, T46 |
 | M06 | [Redaksiyon ve K6 kapısı](redaksiyon-kapisi/index.md) | `RedactedPrompt` zorunluluğu **derleyicide**; sunucu ağ sınırını beyan ediyor | M04, T41, T42 |
 | M07 | [Kaynaklar ve abonelik](kaynaklar-ve-abonelik/index.md) | Belge kaynakları, `rca.runs` durum bildirimi | M05 |
 | M08 | [Kimlik taşıma](kimlik-tasima/index.md) | Keycloak kimliği MCP oturumundan uca; servis hesabı **yasak** | M04 |
 | M09 | [Kimliğin bulunması ve kaynağa bağlanması](kimlik-kesfi/index.md) | RFC 9728 keşif + RFC 8707 kaynak kimliği; **adlandırılmış şema**, 45 uç etkilenmiyor | M01 |
 | M10 | [Üç ertelenmiş ürün aracı](yeni-urun-araclari/index.md) | `logs.get` · `rca.quality` · `alerts.maintenance`; **MCP'de yazma yok** ve IL'de tutuluyor | M04, M06, T47 |
 | M11 | [Kestrel'in kör noktası: beyanın topolojisi](kestrel-kor-noktasi/index.md) | Dinleyici adresi kapının görüşüne alınıyor; joker bağlama **kanıt değil**, gerekçeli muafiyet | M06, T42 |
+| M15 | [Kota rezervi `Agent`'ı kapsamıyor](kota-rezerv-ekseni/index.md) | Rezerv yalnızca `Schedule`'a uygulanıyor; model insanın kotasını yiyebilir | M14, T46 |
 
 **M10 ticket'ı iş bittikten SONRA yazıldı** ve bunu T61'in bekçisi zorladı:
 merge edilmiş bir kimlik hiçbir tabloda anılmıyordu, kapı kırmızı yandı. Kaydın
