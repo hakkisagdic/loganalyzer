@@ -5,6 +5,7 @@ using Bizigo.Alerting;
 using System.Security.Claims;
 using Bizigo.Contracts;
 using Bizigo.ControlPlane;
+using Bizigo.Evidence;
 using Bizigo.Mcp;
 using Bizigo.Mcp.Product.Tools;
 using Bizigo.Mcp.Tools;
@@ -551,6 +552,15 @@ internal static class McpTestServices
         services.AddSingleton<AlertRuleService>();
         services.AddSingleton(new ParserCatalog());
 
+        // M10 — `rca.quality`'nin `GoldenReviewStore`'u, ÜRETİMİN kendi
+        // uzantısından (`AddBizigoEvidence`). Elle `AddScoped<GoldenReviewStore>()`
+        // yazmak daha küçük bir satır olurdu ve yanlış olurdu: kapının ölçtüğü
+        // graf ile üretimde koşan grafı ayırırdı, ve bu depo o ayrımın bedelini
+        // `AddBizigoCommandTools`/`AddBizigoSimulatorTools` kararlarıyla iki kez
+        // ödedi (§9). Uzantının ihtiyaç duyduğu iki şey — `IScopedQuery` ve
+        // `IDbContextFactory` — yukarıda zaten kayıtlı.
+        services.AddBizigoEvidence();
+
         // M02 — komut araçlarının bağımlılıkları, ÜRETİMİN kendi uzantısından
         // (`AddBizigoCommandTools`). Elle kurmak, ölçülen sunucu ile koşan
         // sunucuyu ayırırdı.
@@ -654,10 +664,13 @@ internal static class McpExpectedTools
             [
                 .. CommandCatalog.Tools.Select(static c => c.Name),
                 AlertRulesTool.ToolIdentifier,
+                AlertsMaintenanceTool.ToolIdentifier,
                 AlertTriggersTool.ToolIdentifier,
                 CatalogParsersTool.ToolIdentifier,
                 InventoryListTool.ToolIdentifier,
+                LogsGetTool.ToolIdentifier,
                 LogsSearchTool.ToolIdentifier,
+                RcaQualityTool.ToolIdentifier,
                 ServerInfoTool.ToolIdentifier,
             ],
 

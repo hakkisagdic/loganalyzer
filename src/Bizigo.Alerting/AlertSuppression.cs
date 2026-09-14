@@ -28,9 +28,35 @@ public enum SuppressionReason
 public static class AlertSuppression
 {
     /// <summary>
-    /// Pencere <b>kapalı aralık başı, açık aralık sonu</b>: <c>[StartsAt, EndsAt)</c>.
+    /// Pencere <b>şu an açık mı</b> — kuraldan bağımsız, yalnızca aralık.
+    ///
+    /// <para>
+    /// Aralık <b>kapalı aralık başı, açık aralık sonu</b>: <c>[StartsAt, EndsAt)</c>.
     /// Kabul kriteri "pencere bitince tetiklenme var" diyor; sonu kapalı almak,
     /// pencerenin bittiği saniyede hâlâ bastırıyor olmak demekti.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Neden ayrı bir metot.</b> Aralık kuralı iki farklı sorunun ortak
+    /// yarısı: <see cref="IsInMaintenanceWindow"/> <i>"bu kural bastırılıyor
+    /// mu"</i> diye soruyor, <c>alerts.maintenance</c> aracı ise <i>"bu pencere
+    /// şu an yürürlükte mi"</i>. İkincisi bir kural taşımıyor, dolayısıyla
+    /// birinciyi çağıramıyor ve <b>aralığı kendisi yazması</b> gerekiyordu — bu
+    /// deponun §9'da yasakladığı ikinci kopya, ve kopyanın ayrıştığı gün
+    /// gösterge ile bastırma zıt cevap verirdi (biri "pencere kapandı" derken
+    /// diğeri hâlâ bastırıyor olurdu). Karar tek yerde, iki çağıranı var.
+    /// </para>
+    /// </summary>
+    public static bool IsOpen(MaintenanceWindowEntity window, DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(window);
+
+        return now >= window.StartsAt && now < window.EndsAt;
+    }
+
+    /// <summary>
+    /// Pencere bu kuralı <b>şu an</b> bastırıyor mu. Aralık kararı
+    /// <see cref="IsOpen"/>'da; burada kalan tek soru <i>hangi kurallar</i>.
     /// </summary>
     public static bool IsInMaintenanceWindow(
         MaintenanceWindowEntity window,
@@ -40,7 +66,7 @@ public static class AlertSuppression
         ArgumentNullException.ThrowIfNull(window);
         ArgumentNullException.ThrowIfNull(rule);
 
-        if (now < window.StartsAt || now >= window.EndsAt)
+        if (!IsOpen(window, now))
         {
             return false;
         }

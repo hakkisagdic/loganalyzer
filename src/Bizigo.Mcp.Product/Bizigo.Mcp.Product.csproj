@@ -29,6 +29,27 @@
     <ProjectReference Include="..\Bizigo.Query\Bizigo.Query.csproj" />
     <ProjectReference Include="..\Bizigo.Parsing\Bizigo.Parsing.csproj" />
     <ProjectReference Include="..\Bizigo.Alerting\Bizigo.Alerting.csproj" />
+    <!--
+      M10 — `rca.quality`'nin sayaçları (`GoldenReviewStore`).
+
+      REFERANS KÜMESİ HÂLÂ CLI'NİN ALT KÜMESİ DEĞİL, ve bu ölçüldü: `Bizigo.Cli`
+      bugün `Bizigo.Evidence`'a referans TAŞIMIYOR. Yani yukarıdaki tablo bu
+      satırla bozuluyor ve bozulmasının bedeli açıkça şu: ürün yüzeyinin stdio
+      süreci (`bizigo mcp serve`) artık Evidence derlemesini de yüklüyor.
+
+      Bedel ÖLÇÜLDÜ ve küçük: Evidence'ın kendi referansları
+      `Bizigo.Contracts` + `Bizigo.Query`, ikisi de CLI'de ZATEN var, ve paket
+      olarak yalnızca DI/Logging soyutlamaları geliyor. Yeni bir çatı, yeni bir
+      sürücü, yeni bir ağ bağımlılığı YOK — Evidence'ın kendi csproj yorumu
+      ClickHouse.Driver bağımlılığını mimari testle yasaklıyor.
+
+      Alternatif `rca.quality`'yi ayrı bir derlemeye koymaktı ve daha pahalı:
+      ikinci bir araç derlemesi, `McpEndpoints.ToolAssemblies` ile
+      `McpCommandHandlers.ToolAssemblies` listelerinin İKİSİNE de yazılması
+      gereken ikinci bir satır demek — ve M04'ün ölçtüğü budama körlüğünün
+      yeni bir yüzeyi.
+    -->
+    <ProjectReference Include="..\Bizigo.Evidence\Bizigo.Evidence.csproj" />
   </ItemGroup>
 
   <ItemGroup>
