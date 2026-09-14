@@ -12,11 +12,26 @@ aynen koşuyor:
 Bu turda yordamın kendisi bir kez ısırdı ve kaydı burada: ölçüm ilk kez bir
 kabuk betiği olarak koşturuldu, koşum ORTASINDA öldürüldü ve kusur çalışma
 ağacında KALDI (`AlertSuppression.cs`, yarı-açık aralık kapatılmış hâlde).
-`trap` yazılıydı ama `traycer_stop_shell`'in gönderdiği sinyalle boru hattının
-tamamı düştü. Betiğin Python hâlinde geri alma `finally` içinde ve süreç
-öldürülse bile en kötü hâlde YEDEK DİZİNİ diskte kalıyor — kusur değil.
 
-Dersin genel hâli: **öldürülmüş bir ölçüm, geri alınmış bir ölçüm değildir.**
+**Sebep ÖLÇÜLDÜ ve sandığımdan farklı çıktı.** İlk yazdığım açıklama
+*"`trap` yazılıydı ama sinyalle boru hattının tamamı düştü"* idi; betiğin logu
+onu yanlışladı. Gerçekte olan sıra:
+
+  1. `SIGTERM` koşan `dotnet build` çocuğunu düşürdü (`Terminated: 15`)
+  2. `trap` ÇALIŞTI ve dosyaları geri aldı
+  3. ...ve betik DURMADI: kesilen `measure`'ı bitirdi, sonraki kusuru
+     UYGULADI ve orada kesildi
+
+Yani kusuru ağaçta bırakan şey eksik bir `trap` değil, **geri almadan sonra
+devam eden bir döngü**. `trap` bir kabukta akışı durdurmuyor; sinyali işleyip
+bulunduğu yere geri dönüyor.
+
+Bu betiğin Python hâlinde geri alma `finally` içinde ve `finally` döngüden
+ÇIKARKEN koşuyor — yani geri almadan sonra bir sonraki kusurun uygulanması
+ifade edilemiyor.
+
+Dersin genel hâli iki katmanlı: **öldürülmüş bir ölçüm, geri alınmış bir ölçüm
+değildir** — ve **çalışmış bir geri alma da durmuş bir koşum değildir.**
 Kesilen bir koşumdan sonra ağacın temiz olduğu VARSAYILMAZ, `grep` ile
 doğrulanır.
 
