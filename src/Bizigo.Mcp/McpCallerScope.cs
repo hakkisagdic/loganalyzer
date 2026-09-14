@@ -91,7 +91,23 @@ public static class McpCallerScope
 
         if (request.User?.Identity?.IsAuthenticated is not true)
         {
-            return new McpToolError(McpToolError.Unauthenticated, NoIdentityMessage);
+            // SEBEP SORULUYOR — ve bu M13'ün eklediği tek satırlık ayrım.
+            //
+            // HTTP'de kimlik yokluğunun tek sebebi var: istemci belirteç
+            // göndermedi. stdio'da İKİ sebep var ve ikisi zıt iş gerektiriyor —
+            // ortamda belirteç hiç yok (yapılandırma) ya da vardı ve süresi
+            // doldu (yeni belirteç). İkisi aynı cümleye düşerse okuyan kişi
+            // yanlış yere bakar.
+            //
+            // `GetService`, `GetRequiredService` DEĞİL: HTTP tarafında bu servis
+            // kayıtlı değil ve olmaması doğru. Bulunmazsa eski cümlede kalıyor.
+            var refusal = (request.Services ?? request.Server?.Services)
+                ?.GetService<IMcpIdentityRefusal>()
+                ?.Reason;
+
+            return new McpToolError(
+                McpToolError.Unauthenticated,
+                string.IsNullOrWhiteSpace(refusal) ? NoIdentityMessage : refusal);
         }
 
         var resolver = (request.Services ?? request.Server?.Services)

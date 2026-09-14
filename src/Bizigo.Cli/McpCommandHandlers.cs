@@ -198,7 +198,61 @@ public static class McpCommandHandlers
             return 2;
         }
 
-        await using var services = BuildServices(surface, clickHouse, controlPlane);
+        // ── M13 · KİMLİK: ortamdan belirteç, doğrulanmış ─────────────────────
+        //
+        // SIRA ÖNEMLİ: kimlik servis grafiğinden ÖNCE doğrulanıyor, çünkü
+        // `IMcpIdentityRefusal` grafiğe kaydediliyor ve `McpCallerScope` onu
+        // oradan okuyor. Sonradan kaydetmek, kabı kurulduktan sonra
+        // değiştirmeye çalışmak olurdu.
+        //
+        // Ayarlarda belirteç yoksa `identity` null kalıyor ve yüzey M13
+        // öncesindeki hâlde koşuyor: kimlik isteyen araçlar `unauthenticated`
+        // dönüyor. Sessiz bir varsayılana DÜŞÜLMÜYOR.
+        McpStdioIdentity? identity = null;
+
+        if (surface is McpSurface.Product)
+        {
+            var settings = McpStdioIdentitySettings.FromEnvironment();
+
+            (identity, var failure) = await McpStdioIdentity
+                .ValidateAsync(settings, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (failure is not null)
+            {
+                // BELİRTEÇ VARDI VE GEÇERSİZDİ → yüzey BAŞLAMIYOR.
+                //
+                // Alternatif kimliksiz başlamaktı ve elendi: operatör bir
+                // belirteç verdiğinde onu kullanmamızı bekliyor, ve sessizce
+                // kimliksiz koşan bir yüzeyin belirtisi "araçlar bir şey
+                // döndürmüyor" olurdu — sebebi hiçbir yerde durmayan bir
+                // belirti (§7).
+                await Console.Error.WriteLineAsync(failure).ConfigureAwait(false);
+
+                return 2;
+            }
+        }
+
+        await using var services = BuildServices(surface, clickHouse, controlPlane, identity);
+
+        if (identity is not null)
+        {
+            // KAPSAM EŞLEMESİ YÜKLENİYOR — ve bu satır M12'nin bıraktığı bir
+            // boşluğu kapatıyor.
+            //
+            // `AccessScopeResolver` eşleme tablosunu BELLEĞE ALIYOR ve
+            // `RefreshAsync` çağrılmazsa `GroupMapping.Empty` kalıyor: her kimlik
+            // BOŞ kapsama çözülür ve kapsamlı her araç `not_found` döner.
+            // `Bizigo.Api` bunu açılışta çağırıyor (`Program.cs`), stdio
+            // çağırmıyordu.
+            //
+            // M12'de GÖRÜNMÜYORDU çünkü hiç kimlik gelmiyordu — yani boşluk
+            // ancak kimlik yolu açıldığında ısırabilirdi. Kimliğin geldiği ilk
+            // tur bu.
+            await services.GetRequiredService<AccessScopeResolver>()
+                .RefreshAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         await McpStdioHost.RunAsync(
             surface,
@@ -206,6 +260,7 @@ public static class McpCommandHandlers
             ToolAssembliesFor(surface),
             services,
             loggerFactory,
+            identity is null ? null : identity.Principal,
             cancellationToken).ConfigureAwait(false);
 
         return 0;
@@ -335,9 +390,19 @@ public static class McpCommandHandlers
     public static ServiceProvider BuildServices(
         McpSurface surface,
         string? clickHouse,
-        string? controlPlane)
+        string? controlPlane,
+        IMcpIdentityRefusal? identity = null)
     {
         var services = new ServiceCollection();
+
+        // M13 · Kimlik ÜRETİLEMEDİĞİNDE sebebi taşıyan servis. `McpCallerScope`
+        // onu `GetService` ile arıyor; yoksa eski cümlede kalıyor. İsteğe bağlı
+        // olması bilinçli: simülatör yüzeyinde ve belirteçsiz koşumda kimlik
+        // yolu hiç açılmıyor.
+        if (identity is not null)
+        {
+            services.AddSingleton(identity);
+        }
 
         // KAYIT YÜZEYE BAĞLI DEĞİL — ve ilk hâli öyleydi, ÖLÇÜLEREK düzeltildi.
         //

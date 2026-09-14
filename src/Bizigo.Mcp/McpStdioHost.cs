@@ -1,6 +1,8 @@
 using System.Reflection;
+using System.Security.Claims;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 namespace Bizigo.Mcp;
@@ -43,6 +45,22 @@ public static class McpStdioHost
     /// </param>
     /// <param name="services">Araçların bağımlılıklarını çözecek sağlayıcı.</param>
     /// <param name="loggerFactory">Günlükler; <c>null</c> ise hiç günlük yok.</param>
+    /// <param name="user">
+    /// <b>Çağrı başına kimlik</b> (M13). <see langword="null"/> ise taşıma
+    /// sarmalanmıyor ve oturum kimliksiz kalıyor — kimlik isteyen araçlar
+    /// <c>unauthenticated</c> dönüyor, yani M13 öncesi davranış.
+    ///
+    /// <para>
+    /// <b>Bir <c>ClaimsPrincipal</c> değil bir fonksiyon</b>, ve gerekçesi
+    /// <see cref="McpIdentityTransport"/> belgesinde: belirtecin <c>exp</c>'si
+    /// gerçek bir sınır ve bir kez damgalanan sabit bir kimlik onu aşardı.
+    /// </para>
+    ///
+    /// <para>
+    /// İsteğe bağlı olması bilinçli: simülatör yüzeyi kimlik istemiyor ve bu
+    /// parametreyi vermek zorunda kalmamalı.
+    /// </para>
+    /// </param>
     /// <param name="cancellationToken">İptal.</param>
     public static async Task RunAsync(
         McpSurface surface,
@@ -50,6 +68,7 @@ public static class McpStdioHost
         IReadOnlyList<Assembly> toolAssemblies,
         IServiceProvider services,
         ILoggerFactory? loggerFactory = null,
+        Func<ClaimsPrincipal?>? user = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(toolAssemblies);
@@ -58,7 +77,10 @@ public static class McpStdioHost
         var options = BizigoMcpServer.CreateOptions(surface, boundary, toolAssemblies, services);
         var factory = loggerFactory ?? NullLoggerFactory.Instance;
 
-        await using var transport = new StdioServerTransport(options, factory);
+        await using ITransport transport = user is null
+            ? new StdioServerTransport(options, factory)
+            : new McpIdentityTransport(new StdioServerTransport(options, factory), user);
+
         await using var server = McpServer.Create(transport, options, factory, services);
 
         await server.RunAsync(cancellationToken).ConfigureAwait(false);
