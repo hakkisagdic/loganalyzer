@@ -11,12 +11,15 @@ using Bizigo.Mcp.Product.Tools;
 using Bizigo.Mcp.Tools;
 using Bizigo.Parsing.Dispatch;
 using Bizigo.Query;
+using Bizigo.Rca;
+using Bizigo.Rca.Reasoning;
 using Microsoft.EntityFrameworkCore;
 using Bizigo.Simulators.Mcp;
 using Bizigo.Simulators.Mcp.Tools;
 using Bizigo.Commands;
 using Bizigo.Commands.Mcp;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
@@ -560,6 +563,16 @@ internal static class McpTestServices
         // ödedi (§9). Uzantının ihtiyaç duyduğu iki şey — `IScopedQuery` ve
         // `IDbContextFactory` — yukarıda zaten kayıtlı.
         services.AddBizigoEvidence();
+
+        // M07 — KAYNAKLARIN bağımlılıkları, yine üretimin uzantısından.
+        //
+        // M07 bunları elle kaydetmişti (`AddScoped<EvidenceBundleStore>` +
+        // `AddSingleton<RcaReportStore>`) ve ömürleri doğru seçmişti; ama
+        // `AddBizigoRcaTriggers` ikisini de zaten kaydediyor ve elle yazmak
+        // ömürlerin ÜRETİMDE değişmesi hâlinde sessizce ayrışan bir kopya
+        // bırakırdı — kapı eski ömürle ölçmeye devam ederdi. Ömür gerekçesi
+        // uzantıların içinde duruyor, burada tekrarlanmıyor.
+        services.AddBizigoRcaTriggers();
 
         // M02 — komut araçlarının bağımlılıkları, ÜRETİMİN kendi uzantısından
         // (`AddBizigoCommandTools`). Elle kurmak, ölçülen sunucu ile koşan

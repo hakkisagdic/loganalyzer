@@ -57,7 +57,20 @@ public static class McpCallerScope
     /// <i>"eşleşme yok"</i> diye okur ve kimliğin kaybolduğunu hiç görmez.
     /// §7'nin en pahalı sınıfı tam olarak bu.
     /// </para>
+    ///
+    /// <para>
+    /// <b>Jenerik, ve bu M07'de ölçülerek oldu.</b> İmza
+    /// <c>RequestContext&lt;CallToolRequestParams&gt;</c> ile yazılmıştı, yani
+    /// yalnızca araç kanalına uyuyordu. Kaynak kanalı
+    /// (<c>ReadResourceRequestParams</c>) <b>ikinci bir model kanalı</b> ve
+    /// kimliği aynı yerden almak zorunda; imzayı jenerikleştirmek yerine orada
+    /// ikinci bir çözüm yazmak, bu deponun §9'da adı konmuş hatası olurdu —
+    /// ayrışan iki kimlik kapısı, aynı kişinin iki kanaldan <b>farklı veri
+    /// görmesi</b> demek. Gövde değişmedi; yalnızca hangi isteklere
+    /// uygulanabildiği genişledi.
+    /// </para>
     /// </summary>
+    /// <typeparam name="TParams">İsteğin parametre tipi — araç çağrısı, kaynak okuması, …</typeparam>
     /// <param name="request">SDK'nın istek bağlamı.</param>
     /// <param name="scope">Çözülen kapsam; ret hâlinde <see cref="AccessScope.Denied"/>.</param>
     /// <returns>Ret sebebi, ya da kapsam çözüldüyse <see langword="null"/>.</returns>
@@ -68,8 +81,8 @@ public static class McpCallerScope
     /// Kurulum sırasında da ayrıca yakalanıyor (<c>BizigoMcpServer.Apply</c>);
     /// burası son savunma.
     /// </exception>
-    public static McpToolError? Resolve(
-        RequestContext<CallToolRequestParams> request,
+    public static McpToolError? Resolve<TParams>(
+        RequestContext<TParams> request,
         out AccessScope scope)
     {
         ArgumentNullException.ThrowIfNull(request);

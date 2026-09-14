@@ -76,6 +76,43 @@ public static class BizigoMcpServer
     }
 
     /// <summary>
+    /// Verilen derlemelerdeki <b>kaynaklar</b> — araçlarla aynı keşifle, aynı
+    /// derleme listesinden.
+    ///
+    /// <para>
+    /// <b>Kaynaklar için İKİNCİ bir derleme listesi yok</b> ve bu bilinçli.
+    /// Yüzey ayrımı zaten bu listede yapısal (<c>McpEndpoints.ToolAssemblies</c>,
+    /// <c>McpCommandHandlers.ToolAssembliesFor</c>): <c>bizigo-sim</c>'e ürün
+    /// derlemesi hiç verilmiyor, dolayısıyla simülatör yüzeyi ürün <b>kaynağı</b>
+    /// da göremiyor — araç tarafındaki iddianın aynısı, bedava.
+    /// </para>
+    ///
+    /// <para>
+    /// İkinci bir liste yazmak, ayrışması <b>sessiz</b> olacak bir kopya
+    /// olurdu: bir derleme araç listesinde olup kaynak listesinde olmadığında
+    /// kaynakları <i>hiç ilan edilmiyor</i> ve hiçbir şey kırmızı yanmıyor —
+    /// bu deponun dört kez ödediği delik. Kaynak taşıyan bir derlemenin araç
+    /// taşımıyor olması ise sorun değil: keşif boş küme döndürür ve yetenek
+    /// ilanı <see cref="Apply"/>'de gerçeğe bağlı.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<BizigoMcpResource> Resources(
+        McpSurface surface,
+        IEnumerable<Assembly> toolAssemblies,
+        IServiceProvider services)
+    {
+        ArgumentNullException.ThrowIfNull(toolAssemblies);
+
+        var types = McpPrimitiveDiscovery.Types<BizigoMcpResource>(WithCore(toolAssemblies));
+
+        return McpPrimitiveDiscovery.Instantiate<BizigoMcpResource>(
+            types,
+            surface,
+            static resource => resource.Surface,
+            services);
+    }
+
+    /// <summary>
     /// Taşımadan bağımsız sunucu seçenekleri. stdio ve uyum kapısı bunu
     /// doğrudan kullanıyor; HTTP tarafı <c>AddBizigoMcp</c> üzerinden aynı
     /// <see cref="Apply"/>'yi çağırıyor.
@@ -155,12 +192,6 @@ public static class BizigoMcpServer
 
         options.Capabilities = new ServerCapabilities
         {
-            // YALNIZCA araçlar. Kaynaklar M07'de, istemler daha sonra.
-            //
-            // Desteklenmeyen bir yeteneği ilan etmek, istemciye olmayan bir
-            // yolu göstermek demek: `resources/list` çağıran istemci protokol
-            // hatası alıyor ve bunu bağlantı arızası sanıyor. Yetenek
-            // anlaşmasının bütün amacı bu konuşmanın hiç olmaması.
             Tools = new ToolsCapability { ListChanged = false },
         };
 
@@ -175,6 +206,63 @@ public static class BizigoMcpServer
         {
             options.ToolCollection.Add(tool);
         }
+
+        // KAYNAKLAR (M07). Yetenek ilanı KEŞFEDİLEN KÜMEYE bağlı — sabit değil.
+        //
+        // `resources` ilan edip hiç kaynak sunmayan bir sunucu istemciye olmayan
+        // bir söz veriyor: istemci `resources/list` çağırıyor, boş liste alıyor
+        // ve bunu "bugün belge yok" diye okuyor — oysa doğrusu "bu sunucu belge
+        // sunmuyor". Tersi daha kötü: kaynak sunup yeteneği ilan etmeyen bir
+        // sunucuda istemci kanalı HİÇ denemiyor, yani üç belge türü yazılmış ama
+        // ulaşılamaz kalıyor ve hiçbir şey kırmızı yanmıyor.
+        var resources = Resources(surface, toolAssemblies, services);
+
+        RequireScopeResolverIfNeeded(resources, services);
+
+        if (resources.Count == 0)
+        {
+            // BOŞ KOLEKSİYON BIRAKILMIYOR, VE BU ÖLÇÜLDÜ.
+            //
+            // İlk hâli `options.ResourceCollection ??= []` idi ve yüzey ayrımı
+            // buna güveniyordu: simülatörün kaynağı yok, dolayısıyla yeteneği de
+            // ilan edilmez sanılıyordu. Ölçüm tersini gösterdi — `bizigo-sim`
+            // el sıkışmasında `ResourcesCapability { ListChanged = True }`
+            // çıktı. Sebebi SDK: KOLEKSİYONUN VARLIĞI yeteneği ilan ettiriyor,
+            // içi boş olsa bile.
+            //
+            // Yani "ilan etmiyorum" niyeti tek başına yetmiyordu; ilan
+            // edilmemesi için koleksiyonun HİÇ OLMAMASI gerekiyor. Kendi
+            // yazdığım `Capabilities.Resources` koşulu doğruydu ve YETERSİZDİ —
+            // bu deponun §7'de tarif ettiği sınıf: niyet doğru, mekanizma
+            // eksik, ve fark ancak tel üzerinden ölçülünce görünüyor.
+            options.ResourceCollection = null;
+
+            return;
+        }
+
+        options.ResourceCollection ??= [];
+        options.ResourceCollection.Clear();
+
+        foreach (var resource in resources)
+        {
+            options.ResourceCollection.Add(resource);
+        }
+
+        options.Capabilities.Resources = new ResourcesCapability
+        {
+            // `Subscribe` gerçeğe bağlı: abonelik ilan etmek istemciye "bu
+            // değiştiğinde haber vereceğim" demek, ve bildirimi göndermeyen bir
+            // abonelik istemciyi HİÇ SORMAMAYA ikna eder — sonucu sessizce
+            // bayat veri.
+            Subscribe = resources.Any(static resource => resource.SupportsSubscription),
+
+            // `ListChanged` BİLEREK ATANMIYOR: SDK onu koleksiyonun kendisinden
+            // türetiyor ve `true` yazıyor (koleksiyon gözlemlenebilir, bildirim
+            // bağlı). Buraya `false` yazmak ÖLÇÜLDÜ ve tel üzerinde `True`
+            // çıktı — yani yazdığım değer değil SDK'nın değeri ilan ediliyordu.
+            // Ezilen bir değeri yazmaya devam etmek, kodda duran ama gerçekle
+            // ilgisi olmayan bir iddia bırakmak olurdu.
+        };
     }
 
     /// <summary>
@@ -197,18 +285,37 @@ public static class BizigoMcpServer
     /// </summary>
     private static void RequireScopeResolverIfNeeded(
         IReadOnlyList<BizigoMcpTool> tools,
-        IServiceProvider services)
-    {
-        var demanding = tools.Where(static tool => tool.RequiresCallerIdentity).ToArray();
+        IServiceProvider services) =>
+        RequireScopeResolver(
+            tools.Where(static tool => tool.RequiresCallerIdentity).Select(static tool => tool.ToolName),
+            services);
 
-        if (demanding.Length == 0 || services.GetService(typeof(Contracts.IAccessScopeResolver)) is not null)
+    /// <summary>
+    /// Aynı kapı kaynak kanalında. <b>İkinci bir mesaj yazılmadı</b>: aynı
+    /// kusurun iki farklı arıza gibi okunması, bu deponun §7'de adı konmuş
+    /// hâli.
+    /// </summary>
+    private static void RequireScopeResolverIfNeeded(
+        IReadOnlyList<BizigoMcpResource> resources,
+        IServiceProvider services) =>
+        RequireScopeResolver(
+            resources
+                .Where(static resource => resource.RequiresCallerIdentity)
+                .Select(static resource => McpResourceUri.Fixed(resource.Kind)),
+            services);
+
+    private static void RequireScopeResolver(IEnumerable<string> demanding, IServiceProvider services)
+    {
+        var names = demanding.ToArray();
+
+        if (names.Length == 0 || services.GetService(typeof(Contracts.IAccessScopeResolver)) is not null)
         {
             return;
         }
 
         throw new InvalidOperationException(
             McpCallerScope.MissingResolverMessage
-            + $" Kimlik isteyen araçlar: {string.Join(", ", demanding.Select(static t => t.ToolName))}.");
+            + $" Kimlik isteyenler: {string.Join(", ", names)}.");
     }
 
     /// <summary>
