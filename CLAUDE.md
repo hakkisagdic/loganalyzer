@@ -261,6 +261,62 @@ yerine iki koşumu da kaydet.
 **Release/Debug farkı ölçümü tek yönde yanıltabilir.** K35'te Debug tabanı
 şişirip değişikliği hak etmediği kadar ucuz gösteriyordu. Benchmark `-c Release`.
 
+### Bir kapının varlığı, neye baktığını söylemiyor
+
+Bu, aşağıdaki altı kaydın ortak çatısı ve **bir turda beş kez** ölçüldü: bekçi
+yerinde, yeşil, ve koruduğunu iddia ettiği şeyi görmüyor. Hiçbiri dikkat
+eksikliği değil — hepsi *"kapı var"* ile *"kapı doğru şeye bakıyor"* arasındaki
+mesafe.
+
+Ölçülen beş örnek: `McpBoundaryGate.Require` **silinse** K6 testi yeşil kalıyordu
+(kap boştu, her hâlde aynı istisna geliyordu) · `IlCallReader` bütün `async`
+gövdelerini kaçırıyordu (derleyici onları durum makinesine taşıyor) · kota rezerv
+kusuru **dört yerde** birbirini doğruluyordu, o yüzden hiçbiri yanmadı ·
+`RcaQuotaUsage.BySource` hesaplanıp **atılıyordu** · `pre-push` kancası CI'nın
+değil **bekçi işinin** sonucunu okuyordu.
+
+**Öldürülmüş bir ölçüm geri alınmış bir ölçüm değildir — ve çalışmış bir geri
+alma durmuş bir koşum değildir.** Kusur enjekte eden bir betik sinyalle
+kesilirse ağaçta kusur bırakıyor. Ve `trap` akışı **durdurmuyor**: sinyali
+işleyip bulunduğu yere dönüyor, döngü devam ediyor ve **bir sonraki kusuru
+uyguluyor**. Geri alma `finally` içinde ve döngüden **çıkarken** koşmalı; o zaman
+bu sıra ifade edilemez hâle geliyor. Bu turda iki worktree'de yaşandı.
+
+**Bir davranışı ölçüp yazmak, onu doğrulamak değil.** Ölçüm *"bugün böyle
+çalışıyor"* der; testin çivilediği şey *"böyle çalışması gerekiyor"*. Aradaki
+adım bir **karar** ve atlanırsa kusur bekçiye dönüşür. Ölçülen hâli: M05 kota
+rezervinin ajanı kapsamadığını ölçtü, doğru yaptı, ve testi o kusuru bir
+**özellik** olarak çiviledi.
+
+**Bir alanın okunduğunu ölçmek, okunanın kullanıldığını ölçmek değil.** IL'de bir
+`MemberRef` satırı, arızi bir `.Count` çağrısıyla da yazılır. Ve bir raporun
+*şeklini* sınayan test (adlar enum'dan, sınırlar hesaptan) taşıdığı **veriyi**
+sınamıyor olabilir.
+
+**Bir adı metinde bulmak, o tipe dokunmak değil.** `grep` yorumları da sayıyor:
+`IScopedQuery` tüketicisi ararken yedi derleme çıktı, doğru cevap dörttü — üçü
+tipi yalnızca belge yorumunda anıyordu. Küme **meta veriden** çıkarılmalı.
+
+**Bir iddiayı tek yerde düzeltmek, düzeltildiği anlamına gelmiyor.** Kaynağı
+düzeltilmemiş bir kopya sadakatle yanlış kalır. Ölçülen hâli: *"realm'de yalnızca
+`bizigo-claims` var"* **üç** yerde duruyordu — `CLAUDE.md` ve onu kaynak gösteren
+iki vault sayfası. Bir kopya düzeltildi ve düzeltme *"yanlış iddia yakalandı"*
+diye raporlandı; yakalanan şey bir **kopyaydı**. Refleks: bir iddiayı
+düzeltmeden önce **kaç yerin söylediğini say**.
+
+**Damgası düşmemiş bir vault sayfası "doğru" demek değil** — yalnızca kaynağının
+değişmediği demek. Damga bir **inceleme** değil; §11'in okuma adımı tam bu yüzden
+var.
+
+### Paylaşılan ASP.NET çatısı `Bizigo.Cli`'ye inemez
+
+Üç ayrı yerden aynı duvara çarpıldı: `AddJwtBearer` kullanmak, test derlemesine
+`InternalsVisibleTo` vermek, ve namespace seçimi. Sebep üretilen `Program` tipi —
+`Bizigo.Api` ile `Bizigo.Cli` ikisi de üretiyor ve çatı paylaşılınca `CS0433`
+geliyor. Kimlik doğrulama gibi ortak ihtiyaçlar `Microsoft.IdentityModel`
+düzeyinde çözülmeli, ve **sürüm ölçülerek** seçilmeli (API'nin zaten çözdüğü
+sürüm): ayrı sürüm, aynı belirteç hakkında farklı karar demek.
+
 ---
 
 ## 7 · Bu depoda "hata" ne demek

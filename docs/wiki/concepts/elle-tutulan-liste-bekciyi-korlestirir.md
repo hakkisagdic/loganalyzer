@@ -9,7 +9,7 @@ relationships:
   - target: "[[references/f2-kapanis]]"
     type: derived_from
 sources: [docs/epic/f2-kapanis/index.md, docs/epic/tickets-f3/produces-kapisi-bagi/index.md, docs/epic/tickets-f3/kompozisyon-koku-bagi/index.md, CLAUDE.md]
-source_digest: "sha256-12/v1 CLAUDE.md=d270c2c035f1 docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/tickets-f3/kompozisyon-koku-bagi/index.md=4f32c80bd6b5 docs/epic/tickets-f3/produces-kapisi-bagi/index.md=67247a04a205"
+source_digest: "sha256-12/v1 CLAUDE.md=3875822e3ccc docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/tickets-f3/kompozisyon-koku-bagi/index.md=4f32c80bd6b5 docs/epic/tickets-f3/produces-kapisi-bagi/index.md=67247a04a205"
 summary: Denetlenen kümeyi elle tutulan bir listeden toplayan bekçi, listede olmayanı hiç görmez ve yine de yeşil yanar. Çözüm kümeyi yansımayla bulmak — ama bir kapıdaki elle listeyi kaldırmak, o kapıda başka elle liste kalmadığını göstermiyor.
 provenance:
   extracted: 0.8
@@ -124,6 +124,34 @@ Ders şu cümleyle kayıtlı:
 `CLAUDE.md` §5'in "bir kapının kırmızı yanması ile o kırmızının okunması ayrı
 olaylardır" maddesi aynı gözlemin merge tarafındaki karşılığı — bkz.
 [[skills/paralel-ajan-koordinasyonu]].
+
+## Dördüncü kılık: bekçisi olmayan liste — **körleşecek bir şey bile yok**
+
+Bu sayfanın ilk üç kılığı *"elle liste bekçiyi körleştiriyor"* diyor: bir bekçi
+var, liste onun gözü, ve göz eksik.
+
+M18 bir adım ötesini ölçtü. `IScopedQuery`'nin belgesindeki tüketici listesinin
+**hiçbir bekçisi yoktu** — yalnızca bir düzyazı listesi, kimse onu gerçekle
+karşılaştırmıyordu. Ve üç yönde birden yanlıştı:
+
+| | Liste ne diyordu | Ölçülen |
+| --- | --- | --- |
+| **Fazla** | `CLI`, `replay okuma` | İkisi de bu arayüzü **hiç anmıyor** |
+| **Eksik** | — | `Bizigo.Alerting` tüketiyor, sayılmamış |
+| **Yanlış ad** | *"F4'ün MCP sunucusu"* | Tüketen `Bizigo.Mcp.Product`; çekirdek tanımıyor |
+
+Yani liste körleştirecek bir kapı bulamamıştı ve **kendisi** yanlıştı. Bu, ilk üç
+kılıktan daha sessiz: körleşen bir bekçi hiç değilse bir gün yanlış bir şeyi
+onaylıyor; bekçisi olmayan bir liste yalnızca **okunuyor** ve okuyanı yanlış
+yönlendiriyor.
+
+Ve liste türetilebilirdi: küme meta veriden çıkıyor (`ScopedQueryConsumerTests`).
+Yani bu turda elle liste **kaldırıldı**, bir bekçiyle değiştirilmedi — bekçi
+kümeyi kendisi buluyor.
+
+**Yan bulgu, ölçüm aracının kendisi hakkında:** ilk sayım `grep`'ti ve **yedi**
+derleme buldu; doğru cevap **dört**. Fark yorumlardı — üç derleme tipi yalnızca
+belge yorumunda anıyordu. *Bir adı metinde bulmak, o tipe dokunmak değil.*
 
 ## Açık sorular
 

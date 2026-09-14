@@ -21,7 +21,7 @@ sources:
   - docs/epic/tickets-f3/sigma-pipeline/index.md
   - docs/epic/sigma-clickhouse-arastirmasi/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=d270c2c035f1 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=ca8f23c25262 docs/epic/tickets-f3/sigma-derleme/index.md=d117ba100cfd docs/epic/tickets-f3/sigma-pipeline/index.md=6d7c85d5a5f1"
+source_digest: "sha256-12/v1 CLAUDE.md=3875822e3ccc docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=ca8f23c25262 docs/epic/tickets-f3/sigma-derleme/index.md=d117ba100cfd docs/epic/tickets-f3/sigma-pipeline/index.md=6d7c85d5a5f1"
 summary: Derlendi ile koşuyor ve doğru şeyi buluyor üç ayrı iddia; her biri farklı bir yerde sınanıyor çünkü tek yere koymak yakalayamadığı sınıfı sessizce geçiriyor.
 provenance:
   extracted: 0.85
