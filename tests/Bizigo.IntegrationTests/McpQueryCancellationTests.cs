@@ -61,6 +61,36 @@ public sealed class McpQueryCancellationTests(DevStackFixture stack) : IAsyncLif
     private const int TotalEvents = 400_000;
 
     /// <summary>
+    /// Her satırın gövdesi bu uzunluğa <b>doldurulmuş</b> metin taşıyor, ve
+    /// sebebi ölçülerek eklendi.
+    ///
+    /// <para>
+    /// İlk hâlde gövde <c>"satır {index}"</c> kadardı: 400 bin satırın tamamı
+    /// birkaç megabayt, ve <c>full_text</c> taraması <b>milisaniyeler</b>
+    /// sürüyordu. Sonucu, <see cref="Iptal_edilen_cagri_kismi_sonuc_dondurmuyor"/>
+    /// testinin <i>"Sorgu hiç başlamadı"</i> ile düşmesi: sorgu 100 ms'lik
+    /// yoklama aralığından <b>daha hızlı</b> bitiyordu, yani ölçülecek pencere
+    /// hiç yoktu. Kardeş testin geçmesi ise onu daha da kötü gösteriyor —
+    /// aynı düzenek biri geçip biri düşerek <b>duvar saatine</b> bağlı hâle
+    /// gelmişti (§6).
+    /// </para>
+    ///
+    /// <para>
+    /// Doldurma bir performans hedefi değil: taranan bayt sayısını yoklama
+    /// aralığının <b>üstüne</b> çıkarıyor. 400k × ~512 bayt ≈ 200 MB, ve
+    /// <c>LIKE</c> bunun tamamını okuyor.
+    /// </para>
+    /// </summary>
+    private const int BodyPadding = 512;
+
+    /// <summary>
+    /// Yoklama aralığı. 100 ms iken tarama penceresi ondan kısa olabiliyordu;
+    /// 10 ms ölçümü pencereye <b>sığdırıyor</b>. Aralığı küçültmek tek başına
+    /// yetmezdi — pencerenin kendisi de büyüdü (<see cref="BodyPadding"/>).
+    /// </summary>
+    private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(10);
+
+    /// <summary>
     /// <c>system.processes</c> yoklamasının üst sınırı. Bir performans bütçesi
     /// değil, <b>askıda kalmama</b> sınırı: aşılırsa test kırmızı yanıyor ve
     /// mesajı "iptal görülmedi" diyor.
@@ -265,7 +295,7 @@ public sealed class McpQueryCancellationTests(DevStackFixture stack) : IAsyncLif
                 return true;
             }
 
-            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+            await Task.Delay(PollInterval, cancellationToken);
         }
 
         return false;
@@ -350,6 +380,10 @@ public sealed class McpQueryCancellationTests(DevStackFixture stack) : IAsyncLif
         SourceId = index % 2 == 0 ? "fw-core-01" : "fw-core-02",
         SrcIp = IPAddress.IPv6Any,
         DstIp = IPAddress.IPv6Any,
-        Body = string.Create(CultureInfo.InvariantCulture, $"satır {index}"),
+        // Gövde doldurulmuş: gerekçe `BodyPadding`'de. Doldurma metni
+        // `full_text` teriminden BAĞIMSIZ olmalı — içinde geçse sorgu
+        // eşleşir ve test aramanın boş dönmesi varsayımını kaybederdi.
+        Body = string.Create(CultureInfo.InvariantCulture, $"satır {index} ")
+            .PadRight(BodyPadding, 'x'),
     };
 }
