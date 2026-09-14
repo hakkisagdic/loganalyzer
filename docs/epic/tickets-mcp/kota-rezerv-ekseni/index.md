@@ -1,7 +1,7 @@
 ---
 kind: ticket
 title: "M15 — Kota rezervi Agent kaynağını kapsamıyor"
-status: 0
+status: 2
 ---
 
 # M15 — Kota rezervi `Agent` kaynağını kapsamıyor
@@ -26,29 +26,74 @@ havuzu** yiyor. Dolayısıyla:
 > Aynı gruptaki bir modelin gürültülü koşumu, o grubun **insanını** RCA'sız
 > bırakabilir, ve `EventReservePercent` bunu engellemiyor.
 
-## Boşluk gözlemde DEĞİL, korumada
+## Ölçüm · gözlem HAZIR DEĞİL — iddia çürütüldü
 
-Ayrımı yazmak gerekiyor çünkü ikisi karıştırılırsa yanlış iş yapılır:
+Bu ticket ilk hâlinde *"gözlem hazır"* diyordu. **Ölçüldü ve çıkmadı**, ve ayrımı
+yazmak gerekiyor çünkü karıştırılması yanlış iş yaptırıyor:
 
-| | Durum |
-| --- | --- |
-| **Gözlem** | ✅ Hazır. `rca_runs` her koşumda `Source` **ve** `CountsAgainstQuota` yazıyor, yani kaynak başına tüketim okunabiliyor |
-| **Koruma** | ❌ Rezerv ekseni `Agent`'ı tanımıyor |
+| | Durum | Ölçüm |
+| --- | --- | --- |
+| Kırılım **hesaplanıyor** | ✅ | `RcaQuotaUsage.BySource`, `UsageAsync` içinde `GroupBy(r => r.Source)` |
+| Kırılım **sorulabiliyor** | ❌ | `UsageAsync`'in `src/` altında **tek** çağıranı kendi `CheckAsync`'i; `BySource`'u `src/` altında **hiç kimse okumuyor** (tek okuyan bir birim testi) |
+| **Koruma** | ❌ → ✅ | Rezerv ekseni `Agent`'ı tanımıyordu; bu ticket düzeltti |
 
-Yani operatör rezervasyonun gerekip gerekmediğini **veriden** görebiliyor; göremediği
-şey onu açtığında bir şeyin değişmesi.
+Yani kırılım **hesaplanıyor ve atılıyor**: onu yüzeye çıkaran bir uç, bir CLI
+komutu, bir MCP aracı ya da bir ekran yok. Operatörün rezervasyona ihtiyaç
+olduğunu görmesi bugün **elle SQL yazmayı** gerektiriyor.
+
+**Bir sayının hesaplanması, sorulabilir olması demek değil.** Aynı sınıf bu depoda
+`Produces<T>` kapısında ödendi — kolonlar yerindeydi, kapı üç uç dosyasını hiç
+görmedi. `RcaQuotaOptions.EventReservePercent`'in belgesinde duran *"operatör
+rezervasyonu gerektiğini veriden görebiliyor"* cümlesi bu yüzden **düzeltildi**;
+olduğu gibi kalması, olmayan bir yeteneği varmış gibi okutuyordu.
 
 ## Yapılacak
 
-1. **Rezerv eksenini ölç, sonra genişlet.** Bugünkü eksen *"`Schedule` mi değil mi"*.
-   Doğru eksen ne — *"insan mı makine mi"*, *"olay tetikli mi istek tetikli mi"*,
-   yoksa kaynak başına ayrı yüzde mi? Üçü farklı sayı ve farklı gevşeme yolu üretir.
-2. **Sayı önerme, ölç.** T46 bu sabiti bilerek `0` bıraktı ve gerekçesi hâlâ
-   geçerli: *"ölçülene kadar tek slot, yavaş ama yanlış değil."* Rezerv yüzdesi
-   gerçek kullanımdan gelmeli ve gözlem tarafı zaten hazır.
-3. **Kırmızıyı ölç.** Bugünkü ağaç bu boşluğu **taşıyor**, yani bekçi bedava: rezerv
-   açıkken bir `Agent` koşumunun limiti tükettiği ve bir `Manual` koşumun reddedildiği
-   hâl yazılabilir ve bugün **kırmızı yanar**.
+1. ~~**Rezerv eksenini ölç, sonra genişlet.**~~ **Eksen seçilmedi — zaten
+   yazılıydı.** Bu maddenin ilk hâli üç şık sunuyordu (*"insan mı makine mi"*,
+   *"olay tetikli mi istek tetikli mi"*, *"kaynak başına yüzde mi"*) ve yanlış
+   çerçeveydi: `EventReservePercent`'in kendi gerekçesi ekseni söylüyor —
+   *"korunmak istenen şey 'takvim az koşsun' değil, **olay tetikli iş aç
+   kalmasın**"*. Yapılan şey bir eksen seçimi değil bir **sadakat düzeltmesi**:
+   ölçüt artık *"kaynak olay tetikli mi"* ve yalnızca `Alert` öyle.
+
+   **Kusur üç yerde birden yazılıydı** ve birbirini doğruluyordu — uygulamada
+   (`source != Schedule`), `EffectiveLimit`'in belgesinde (`Alert`, `User`, `Api`;
+   son ikisi enum'da bile yok) ve testinde
+   (`Rezervasyon_yalnizca_takvim_kaynagini_daraltiyor`, `Manual` ile `External`'ı
+   "olay tetikli" sayıyordu). **Bekçi vardı ve yanlış eksende yeşildi**; kusuru
+   hiçbir şeyin yakalamamasının sebebi buydu.
+
+2. **Sayı önerilmedi.** T46'nın gerekçesi geçerli: *"ölçülene kadar tek slot,
+   yavaş ama yanlış değil."* Ama bu maddenin dayanağı **düzeltildi**: rezerv
+   yüzdesinin gerçek kullanımdan gelmesi, kullanımın **görünür olmasından**
+   sonra mümkün — ve yukarıdaki ölçüm görünür olmadığını gösterdi.
+
+3. **Kırmızı ölçüldü.** Bekçi bedavaydı ve iki yönlü yazıldı: rezerv açıkken
+   ajan daraltılmış sınırda **reddediliyor**, ve aynı havuzda alarm **hâlâ
+   geçiyor**. İkincisi rezervin var olma sebebi; yalnızca reddi ölçmek her şeyi
+   reddeden bir uygulamayla da geçerdi.
+
+## Bu düzeltmenin KAPATMADIĞI şey — ve tetikleyici koşulu
+
+Rezerv `Alert`'i istek tetikli kaynakların **hepsinden** koruyor, ama istek
+tetikli kaynakları **birbirinden** korumuyor. Yani M14'ün asıl endişesi bu
+düzeltmeden **sonra da** açık:
+
+> Aynı gruptaki bir `Agent` koşumu, bir `Manual` koşumun payını hâlâ yiyebilir.
+
+Bu **ayrı bir soru** ve T46 onu hiç sormadı: rezerv ekseni *olay ↔ istek*, oysa
+bu soru istek tetiklinin **içindeki** payı bölmek istiyor — *"insan mı makine
+mi"* ekseni. İkisini tek mekanizmaya yüklemek, rezervin adıyla söylediği şeyi
+bulanıklaştırırdı.
+
+**Mekanizma yazılmadı ve sayı önerilmedi** (§8 — bugün tüketicisi yok).
+Tetikleyici koşul yazılı olsun:
+
+> **Gerçek kullanımda bir `Agent` koşumunun bir `Manual` koşumu reddettirdiği
+> görüldüğünde ayrı bir ticket doğar.** O ölçümün yapılabilmesi yukarıdaki gözlem
+> boşluğunun kapanmasına bağlı — yani sıra: gözlemi yüzeye çıkar, sonra bu
+> soruyu ölç.
 
 ## Bu ticket'ın YAPMADIĞI şey
 

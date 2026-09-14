@@ -146,23 +146,129 @@ public sealed class RcaQuotaTests : IDisposable
     }
 
     /// <summary>
-    /// <b>§6.1'in kararı.</b> Takvimli senaryolar kotayı öngörülebilir biçimde ve
-    /// baştan tüketebilir; rezervasyon olay tetikli işin aç kalmamasını sağlıyor.
+    /// <b>Rezerv KAPIDAN geçiyor: ajan daraltılmış sınırda reddedilirken alarm
+    /// aynı havuzda hâlâ geçiyor</b> (M15).
+    ///
+    /// <para>
+    /// Saf fonksiyon testi ekseni ölçüyor; bu test <b>bağı</b> ölçüyor —
+    /// <see cref="RcaQuotaGate.CheckAsync"/> gerçekten <c>EffectiveLimit</c>'i
+    /// çağırıyor mu. İkisi ayrı, çünkü ayrı kaybediliyor: saf fonksiyon doğru
+    /// olup kapının onu hiç çağırmadığı bir hâl mümkün, ve o hâlde rezerv
+    /// açılmasına rağmen hiçbir şey değişmez.
+    /// </para>
+    ///
+    /// <h3>⚠️ Bu testin TOHUMLAMASI bir kırmızı ölçümünde düzeltildi</h3>
+    ///
+    /// <para>
+    /// İlk hâli <c>DailyPerGroup = 4</c> ile <b>dört</b> koşum yazıyordu, yani
+    /// <b>tam havuz da doluydu</b> (4/4). O kurulumda ajanın <i>ve</i> alarmın
+    /// reddedilmesi <b>rezervden bağımsız</b> olarak doğruydu — test iki reddi
+    /// iddia ediyordu ve ikisi rezerv hiç çalışmasa da tutuyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// §6 ölçümü bunu yakaladı: <b>üç ayrı kusurda YEŞİL KALDI</b> (eksen eski
+    /// hâline döndüğünde, kapı <c>EffectiveLimit</c>'i çağırmadığında, ve rezerv
+    /// hesabı sıfırlandığında). Yani yeşilliği hiçbir şey ifade etmiyordu — bu
+    /// deponun adını koyduğu sınıf, ve bu kez benim yazdığım bekçide.
+    /// </para>
+    ///
+    /// <para>
+    /// Düzeltilmiş kurulum <b>rezerve duyarlı</b>: iki koşum, ajanın sınırı iki
+    /// (%50 rezerv), alarmın sınırı dört. Ajan reddediliyor <b>yalnızca rezerv
+    /// yüzünden</b> — rezerv olmasa sınırı dört olurdu ve geçerdi. Alarm ise
+    /// geçiyor, ve o satır rezervin var olma sebebi.
+    /// </para>
+    ///
+    /// <para>
+    /// İki yön <b>tek testte</b> ve bilerek: ayrı testlere bölünseydi ikisi de
+    /// aynı tohumlamayı kurar ve aynı şeyi iki kez ölçerdi (§9). Ölçülen şey bir
+    /// çift — <i>daraltılan</i> ve <i>korunan</i>.
+    /// </para>
     /// </summary>
     [Fact]
-    public void Rezervasyon_yalnizca_takvim_kaynagini_daraltiyor()
+    public async Task Rezerv_kapidan_geciyor_ajani_daraltip_alarmi_koruyor()
+    {
+        var options = new RcaQuotaOptions { DailyPerGroup = 4, EventReservePercent = 50 };
+
+        // İKİ koşum: ajanın daraltılmış sınırı (2) dolu, tam havuz (4) DEĞİL.
+        // Sayı bu yüzden iki — dört olsaydı ret rezervden bağımsız doğru olurdu.
+        await SeedAsync(2, RcaTriggerSource.Alert, counts: true);
+
+        var gate = Gate(options);
+
+        // AJAN reddediliyor — YALNIZCA rezerv yüzünden.
+        Assert.Equal(
+            RcaRejectionReason.QuotaExceeded,
+            await gate.CheckAsync(Request(RcaTriggerSource.Agent), Token));
+
+        // ALARM GEÇİYOR: sınırı tam havuz. Rezervin bütün amacı bu satır, ve
+        // olmadan yukarıdaki ret "her şeyi reddet" hâliyle de yeşil kalırdı.
+        Assert.Equal(
+            RcaRejectionReason.None,
+            await gate.CheckAsync(Request(RcaTriggerSource.Alert), Token));
+    }
+
+    /// kalmamasını sağlıyor: <see cref="RcaTriggerSource.Alert"/> tam havuzu
+    /// görüyor, <b>istek tetikli her kaynak</b> rezerv düşülmüş hâlini.
+    ///
+    /// <para>
+    /// <b>Bu test bir kusuru tuttuğu için yeniden yazıldı (M15).</b> Eski hâli
+    /// <c>Rezervasyon_yalnizca_takvim_kaynagini_daraltiyor</c> adıyla duruyordu ve
+    /// <c>Manual</c> ile <c>External</c>'ın tam havuzu gördüğünü <b>iddia
+    /// ediyordu</b> — ikisini "olay tetikli" diye adlandırarak. Aynı yanlış
+    /// eksen üç yerde birden yazılıydı: uygulamada
+    /// (<c>source != Schedule</c>), <c>EffectiveLimit</c>'in belgesinde
+    /// (<c>Alert</c>, <c>User</c>, <c>Api</c> — son ikisi enum'da bile yok) ve
+    /// burada. <b>Bekçi vardı ve YANLIŞ EKSENDE yeşildi</b>; kusuru hiçbir şeyin
+    /// yakalamamasının sebebi buydu.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Küme artık enum'dan TÜRETİLİYOR</b>, elle yazılmıyor. Eski hâl üç
+    /// kaynağı elle sayıyordu ve <c>Agent</c> eklendiğinde onu <b>hiç
+    /// görmüyordu</b> — yani bekçi sessizce eksik bir kümeyi denetlemeye başladı.
+    /// Türetilmiş küme altıncı bir kaynağı kendiliğinden kapsıyor: eklemeyi yapan
+    /// kişi bu satırı hiç görmese de kaynağı ölçülüyor.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Rezervasyon_istek_tetikli_her_kaynagi_daraltiyor()
     {
         const int daily = 100;
         const int reserve = 25;
 
-        // Olay tetikli üç kaynak tam havuzu görüyor.
-        foreach (var source in new[] { RcaTriggerSource.Alert, RcaTriggerSource.Manual, RcaTriggerSource.External })
+        // OLAY TETİKLİ tam havuzu görüyor — rezerv onun İÇİN ayrılıyor.
+        Assert.Equal(daily, RcaQuotaGate.EffectiveLimit(daily, reserve, RcaTriggerSource.Alert));
+
+        // İSTEK TETİKLİ olanların hepsi rezerv düşülmüş hâlini görüyor. Küme
+        // enum'dan türüyor, yani yeni bir kaynak kendiliğinden kapsama giriyor.
+        var requestTriggered = Enum.GetValues<RcaTriggerSource>()
+            .Where(static source => source is not RcaTriggerSource.Alert)
+            .ToArray();
+
+        // Ölçüm aracının kendisi: küme boşalırsa aşağıdaki döngü hiçbir şey
+        // ölçmez ve test her zaman yeşil kalır (§6).
+        Assert.NotEmpty(requestTriggered);
+
+        foreach (var source in requestTriggered)
         {
-            Assert.Equal(daily, RcaQuotaGate.EffectiveLimit(daily, reserve, source));
+            Assert.Equal(75, RcaQuotaGate.EffectiveLimit(daily, reserve, source));
         }
 
-        // Takvim, rezervasyon düşülmüş hâlini görüyor.
-        Assert.Equal(75, RcaQuotaGate.EffectiveLimit(daily, reserve, RcaTriggerSource.Schedule));
+        // AGENT AÇIKÇA ANILIYOR — M14'ün getirdiği kaynak ve M15'in öznesi.
+        // Türetilmiş küme onu zaten kapsıyor; bu satır kapsadığını okunur
+        // kılıyor, yoksa bir sonraki kişi "ajan korunuyor mu" sorusunu
+        // enum'dan çıkarmak zorunda kalır.
+        Assert.Contains(RcaTriggerSource.Agent, requestTriggered);
+
+        // KARŞI-KANIT: rezerv sıfırsa hiçbir kaynak daraltılmıyor — tek havuz,
+        // varsayılan davranış. Olmadan yukarıdaki iddialar "her zaman daralt"
+        // diyen bir uygulamayla da geçerdi.
+        foreach (var source in Enum.GetValues<RcaTriggerSource>())
+        {
+            Assert.Equal(daily, RcaQuotaGate.EffectiveLimit(daily, reservePercent: 0, source));
+        }
     }
 
     [Fact]

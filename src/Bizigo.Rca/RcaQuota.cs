@@ -96,10 +96,33 @@ public sealed class RcaQuotaOptions
     /// </para>
     ///
     /// <para>
-    /// Varsayılan <b>0</b> — çünkü §5 sayı önermiyor. Ama risk sessiz kalmıyor:
-    /// kaynak başına tüketim <b>her zaman</b> sayılıyor
-    /// (<see cref="RcaQuotaUsage.BySource"/>), yani operatör rezervasyonu
-    /// gerektiğini veriden görebiliyor. Mekanizma hazır, sayı ölçümden gelecek.
+    /// Varsayılan <b>0</b> — çünkü §5 sayı önermiyor.
+    /// </para>
+    ///
+    /// <para>
+    /// ⚠️ <b>Burada bir zamanlar şu yazıyordu ve YANLIŞTI:</b> <i>"kaynak başına
+    /// tüketim her zaman sayılıyor, yani operatör rezervasyonu gerektiğini
+    /// veriden görebiliyor. Mekanizma hazır."</i> İlk yarısı doğru
+    /// (<see cref="RcaQuotaUsage.BySource"/> gerçekten her zaman doluyor),
+    /// <b>ikinci yarısı ölçüldü ve çıkmadı</b> (M15).
+    /// </para>
+    ///
+    /// <para>
+    /// Ölçüm: <see cref="RcaQuotaGate.UsageAsync"/>'in <c>src/</c> altındaki
+    /// <b>tek</b> çağıranı kendi <c>CheckAsync</c>'i, ve
+    /// <see cref="RcaQuotaUsage.BySource"/>'u <c>src/</c> altında <b>hiç kimse
+    /// okumuyor</b> — tek okuyan bir birim testi. Yani kırılım <b>hesaplanıyor
+    /// ve atılıyor</b>: onu yüzeye çıkaran bir uç, bir CLI komutu, bir MCP aracı
+    /// ya da bir ekran yok. Operatörün rezervasyona ihtiyaç olduğunu görmesi
+    /// bugün <b>elle SQL yazmayı</b> gerektiriyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Ayrımın adı konuldu çünkü karıştırılması yanlış iş yaptırıyor: <b>bir
+    /// sayının hesaplanması, sorulabilir olması demek değil.</b> Bu depoda aynı
+    /// sınıf <c>Produces&lt;T&gt;</c> kapısında ödendi — kolonlar yerindeydi,
+    /// kapı üç uç dosyasını hiç görmedi. Sayı ölçümden gelecek, ama <b>ölçümün
+    /// önce görünür olması gerekiyor</b>.
     /// </para>
     /// </summary>
     public int EventReservePercent { get; set; }
@@ -161,14 +184,53 @@ public sealed class RcaQuotaGate(
     /// Bu kaynak için etkin sınır — rezervasyon uygulanmış hâli.
     ///
     /// <para>
-    /// Olay tetikli kaynaklar (<c>Alert</c>, <c>User</c>, <c>Api</c>) tam havuzu
-    /// görüyor; <c>Schedule</c> havuzdan rezervasyon düşülmüş hâlini görüyor.
-    /// Rezervasyon sıfırsa ikisi aynı — yani varsayılan davranış tek havuz.
+    /// <b>Eksen OLAY TETİKLİ ↔ İSTEK TETİKLİ</b>, ve bu eksen M15'te seçilmedi:
+    /// <see cref="RcaQuotaOptions.EventReservePercent"/>'in kendi gerekçesinde
+    /// zaten yazılıydı — <i>"korunmak istenen şey 'takvim az koşsun' değil,
+    /// olay tetikli iş aç kalmasın"</i>. M15 yalnızca uygulamayı o cümleye
+    /// <b>sadık</b> hâle getirdi.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Uygulama bir zamanlar yalnızca <see cref="RcaTriggerSource.Schedule"/>'a
+    /// bakıyordu ve bu bir tercih değil bir DARALMAYDI:</b> T46 yazıldığı gün
+    /// istek tetikli tek gerçek tüketici takvimdi. M14 üçüncüsünü getirdi
+    /// (<see cref="RcaTriggerSource.Agent"/> — MCP'nin <c>rca.trigger</c>'ı) ve
+    /// daralma görünür hâle geldi: rezervasyon <b>açılsa bile</b> ajan tam havuzu
+    /// görüyordu, yani korunan şey korunmuyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// Bugünkü ölçüt tek soru: <b>kaynak olay tetikli mi.</b> Yalnızca
+    /// <see cref="RcaTriggerSource.Alert"/> öyle (alarm + Sigma; aralarında
+    /// çalışma zamanında yol farkı yok, gerekçe <see cref="RcaTriggerSource"/>
+    /// belgesinde). <see cref="RcaTriggerSource.Manual"/>,
+    /// <see cref="RcaTriggerSource.External"/>,
+    /// <see cref="RcaTriggerSource.Schedule"/> ve
+    /// <see cref="RcaTriggerSource.Agent"/> <b>istek</b> tetikli — biri
+    /// rezervden pay alamaz.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Ölçütün kaynak SAYISINDAN bağımsız olması kararın değeri:</b> beşinci
+    /// bir istek tetikli kaynak eklendiğinde bu metot değişmiyor. Eski hâl
+    /// (<c>source != Schedule</c>) her yeni kaynakta <b>sessizce</b> yanlış
+    /// oluyordu — eklemeyi yapan kişi bu satırı hiç görmüyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// ⚠️ <b>Bunun KAPATMADIĞI şey yazılı:</b> rezerv <c>Alert</c>'i istek
+    /// tetikli kaynakların hepsinden koruyor, ama istek tetikli kaynakları
+    /// <b>birbirinden</b> korumuyor — bir <c>Agent</c> koşumu aynı gruptaki bir
+    /// <c>Manual</c> koşumun payını hâlâ yiyebilir. Bu ayrı bir soru ve T46 onu
+    /// hiç sormadı; M15 onu adıyla ve tetikleyici koşuluyla kaydediyor, mekanizma
+    /// yazmıyor (§8 — bugün tüketicisi yok).
     /// </para>
     /// </summary>
     public static int EffectiveLimit(int dailyLimit, int reservePercent, RcaTriggerSource source)
     {
-        if (dailyLimit <= 0 || reservePercent <= 0 || source != RcaTriggerSource.Schedule)
+        // OLAY TETİKLİ OLAN rezervden pay ALMIYOR — rezerv onun İÇİN ayrılıyor.
+        if (dailyLimit <= 0 || reservePercent <= 0 || source is RcaTriggerSource.Alert)
         {
             return dailyLimit;
         }

@@ -150,24 +150,44 @@ public sealed class McpIdempotencyTests
     }
 
     /// <summary>
-    /// <b>Ajan kota rezervinden etkilenmiyor</b> — ölçüldü, varsayılmadı.
+    /// <b>Ajan kota rezervinden ARTIK ETKİLENİYOR</b> (M15) — ve bu testin
+    /// geçmişi bir ders taşıyor.
     ///
     /// <para>
-    /// <c>RcaQuotaGate.EffectiveLimit</c> rezervi yalnızca <c>Schedule</c> için
-    /// ayırıyor. <i>"Neden ajan rezervden yemiyor"</i> sorusu bir gün sorulacak
-    /// ve cevabı bir varsayım değil bu satır olmalı.
+    /// <b>Eski hâli tam tersini iddia ediyordu</b>
+    /// (<c>Ajan_kota_rezervinden_etkilenmiyor</c>) ve gerekçesi şuydu:
+    /// <i>"'Neden ajan rezervden yemiyor' sorusu bir gün sorulacak ve cevabı bir
+    /// varsayım değil bu satır olmalı."</i> Niyet doğruydu — davranış ölçülmüş,
+    /// varsayılmamıştı. <b>Ama ölçülen şey bir KUSURDU</b>, ve test onu bir
+    /// <i>özellik</i> olarak kaydetti.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Ders:</b> bir davranışı ölçüp yazmak, onu <b>doğrulamak</b> değil.
+    /// Rezervin ekseni <c>EventReservePercent</c>'in kendi gerekçesinde
+    /// <i>olay tetikli ↔ istek tetikli</i> diye yazılıydı; uygulama
+    /// <c>Schedule</c>'a daralmıştı ve dört yer birbirini doğruluyordu —
+    /// uygulama, <c>EffectiveLimit</c>'in belgesi, <c>RcaQuotaTests</c>'in bir
+    /// testi, ve burası. Dördü tutarlı olduğu için hiçbiri kırmızı yanmadı.
+    /// </para>
+    ///
+    /// <para>
+    /// Bugünkü cevap: ajan <b>istek tetikli</b>, dolayısıyla rezerv ona
+    /// uygulanıyor. Alarm (tek olay tetikli kaynak) tam havuzu görüyor.
     /// </para>
     /// </summary>
     [Fact]
-    public void Ajan_kota_rezervinden_etkilenmiyor()
+    public void Ajan_kota_rezervinden_etkileniyor()
     {
         const int daily = 100;
         const int reserve = 20;
 
-        Assert.Equal(daily, RcaQuotaGate.EffectiveLimit(daily, reserve, RcaTriggerSource.Agent));
+        // AJAN İSTEK TETİKLİ: rezerv düşülmüş sınırı görüyor.
+        Assert.Equal(daily - reserve, RcaQuotaGate.EffectiveLimit(daily, reserve, RcaTriggerSource.Agent));
 
-        // Ve rezerv gerçekten BİR ŞEY yapıyor: `Schedule` için düşüyor. Yoksa
-        // yukarıdaki eşitlik "rezerv hiç çalışmıyor" hâliyle de yeşil kalırdı.
-        Assert.Equal(daily - reserve, RcaQuotaGate.EffectiveLimit(daily, reserve, RcaTriggerSource.Schedule));
+        // ALARM olay tetikli: tam havuz. Bu satır olmadan yukarıdaki eşitlik
+        // "rezerv herkese uygulanıyor" hâliyle de yeşil kalırdı ve rezervin
+        // KİMİ koruduğu ölçülmemiş olurdu.
+        Assert.Equal(daily, RcaQuotaGate.EffectiveLimit(daily, reserve, RcaTriggerSource.Alert));
     }
 }
