@@ -1,7 +1,7 @@
 ---
 title: "M02 — Komut çekirdeği ve CLI paritesi"
 kind: ticket
-status: 0
+status: 2
 ---
 
 # M02 — Tek çekirdek, iki sunum

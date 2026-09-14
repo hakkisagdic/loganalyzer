@@ -1,7 +1,7 @@
 ---
 title: "M08 — Kimlik taşıma"
 kind: ticket
-status: 0
+status: 1
 ---
 
 # M08 — Kimlik MCP oturumundan uca

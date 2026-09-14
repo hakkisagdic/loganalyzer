@@ -58,9 +58,9 @@ flowchart TB
 
 ### Kapı ticket'ları
 
-Yukarıdaki on ticket fazın **ürününü** taşıyor. Aşağıdaki üçü fazın
+Yukarıdaki on ticket fazın **ürününü** taşıyor. Aşağıdakiler fazın
 **bekçilerini** taşıyor ve ayrı durmalarının sebebi bu: hiçbiri bitti tanımına
-madde eklemiyor, üçü de aynı sınıfı kapatıyor — **bir bekçinin sessizce
+madde eklemiyor, hepsi aynı sınıfı kapatıyor — **bir bekçinin sessizce
 kapsamını yitirmesi** (`CLAUDE.md` §7) — ve birbirinin devamı.
 
 | # | Ticket | Özü | Bağımlılık |
@@ -68,6 +68,8 @@ kapsamını yitirmesi** (`CLAUDE.md` §7) — ve birbirinin devamı.
 | T48 | [`Produces<T>` kapısının kör noktası](produces-kapisi-bagi/index.md) | Kapı kaydedilecek servisleri elle listeliyordu; delik **dört kez** açıldı. Liste türetiliyor | — |
 | T50 | [Kompozisyon kökü bağı](kompozisyon-koku-bagi/index.md) | Bekçiler bir uzantının **var olduğunu** sınıyordu, **bağlı olduğunu** değil. IL çağrı grafiği | T48 |
 | T53 | [Ticket statüsü bekçisi](ticket-statusu-bekcisi/index.md) | `status` alanları bayatlıyordu; statünün dört gösterimi artık birbirini yalanlayamıyor | — |
+| T56 | Vault iddia denetimi | Damıtılmış sayfaların kaynaklarına karşı denetimi (`docs/wiki/`, sekiz sayfa). **Ticket dosyası yazılmadı** ve satır bu yüzden bağsız — işin kaydı burada, kabul kriterleri hiçbir yerde | — |
+| T61 | [Statünün gerçeğe bağlanması](statu-olgusu-bekcisi/index.md) | T53'ün beyan ettiği sınır gerçekleşti: dört gösterim **birden** yanlıştı. Beşinci gösterim merge geçmişi | T53 |
 
 ## Bitti tanımı
 

@@ -1,7 +1,7 @@
 ---
 title: "MCP — İki yüzey, tek protokol: Implementasyon Ticket'ları"
 kind: story
-status: 0
+status: 1
 ---
 
 # MCP Implementasyon Ticket'ları

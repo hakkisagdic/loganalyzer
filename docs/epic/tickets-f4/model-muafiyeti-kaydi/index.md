@@ -1,7 +1,7 @@
 ---
 title: "T54 — Sessiz muafiyet: model sınırı muafiyeti koşum kaydına bağlı değil"
 kind: ticket
-status: 0
+status: 1
 ---
 
 # T54 — Muafiyet yapılandırmada var, raporda yok
