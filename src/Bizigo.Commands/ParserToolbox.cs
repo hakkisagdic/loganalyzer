@@ -1,14 +1,22 @@
 using Bizigo.Parsing.Engine;
 using Bizigo.Parsing.Grok;
 
-namespace Bizigo.Cli;
+namespace Bizigo.Commands;
 
 /// <summary>
-/// CLI'nin paylaşılan derleyici kurulumu. Pattern ve eşleme tablosu dizinleri
+/// Paylaşılan derleyici kurulumu. Pattern ve eşleme tablosu dizinleri
 /// dışarıdan verilebilir — CI, geliştirici makinesi ve F2'deki UI editörü aynı
 /// motoru farklı kataloglarla koşturacak.
+///
+/// <para>
+/// <b>M02'de <c>Bizigo.Cli</c>'den çekirdeğe taşındı ve <c>public</c> oldu.</b>
+/// CLI'de kalsaydı MCP tarafı ya ona ulaşamaz ya da ikinci bir kurulum yazardı —
+/// ve iki derleyici kurulumu, iki farklı pattern kataloğuyla koşan iki farklı
+/// ürün demekti. Sürüklenmeyi hiçbir şey göremezdi, çünkü ikisi de kendi
+/// içinde tutarlı olurdu.
+/// </para>
 /// </summary>
-internal sealed class ParserToolbox
+public sealed class ParserToolbox
 {
     private ParserToolbox(ParserCompiler compiler, string patternDirectory, string mappingDirectory)
     {

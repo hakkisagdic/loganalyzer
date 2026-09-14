@@ -1,4 +1,4 @@
-using Bizigo.Cli.Seeding;
+using Bizigo.Commands.Seeding;
 using Bizigo.Contracts;
 using Bizigo.Parsing.Dispatch;
 using Bizigo.Parsing.Engine;

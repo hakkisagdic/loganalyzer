@@ -3,6 +3,8 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Bizigo.Api;
+using Bizigo.Commands;
+using Bizigo.Commands.Mcp;
 using Bizigo.Mcp;
 using Bizigo.Mcp.Tools;
 using Microsoft.AspNetCore.Authentication;

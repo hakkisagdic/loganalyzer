@@ -1,5 +1,5 @@
 using System.Globalization;
-using Bizigo.Cli.Seeding;
+using Bizigo.Commands.Seeding;
 using Bizigo.Parsing.Grok;
 using Bizigo.Parsing.Samples;
 

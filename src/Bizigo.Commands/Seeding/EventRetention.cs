@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 
-namespace Bizigo.Cli.Seeding;
+namespace Bizigo.Commands.Seeding;
 
 /// <summary>
 /// <c>events</c> tablosunun saklama süresini <b>şema dosyasından</b> okur.

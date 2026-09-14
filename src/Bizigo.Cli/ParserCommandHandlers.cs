@@ -1,19 +1,44 @@
 using System.Globalization;
 using System.Text.Json;
+
+using Bizigo.Commands;
+using Bizigo.Contracts;
+using Bizigo.Parsing.Engine;
 using Bizigo.Parsing.Grok;
 using Bizigo.Parsing.Testing;
 
 namespace Bizigo.Cli;
 
+/// <summary>
+/// Parser komutlarının <b>CLI sunumu</b> (M02).
+///
+/// <para>
+/// <b>Bu dosya artık iş yapmıyor — çiziyor.</b> Karar
+/// <c>Bizigo.Commands.ParserCommands</c>'ta ve bir <b>değer</b> döndürüyor;
+/// burada o değer konsola çiziliyor ve bir çıkış koduna çevriliyor. Aynı değeri
+/// MCP tarafı kendi yüküne çeviriyor.
+/// </para>
+///
+/// <para>
+/// Ayrım M02'nin ölçtüğü sayıdan çıktı: hesap katmanında <c>Console</c> çağrısı
+/// <b>sıfır</b>, sunum katmanında <b>117</b>. Ortaklaştırılacak şey iş mantığı
+/// değildi — o zaten ortaktı; ortaklaşamayan şey <b>sonucun kendisiydi</b>.
+/// </para>
+/// </summary>
 internal static class ParserCommandHandlers
 {
     public static int Lint(IReadOnlyList<FileInfo> files, ParserToolbox toolbox)
     {
-        var exitCode = 0;
+        var outcome = ParserCommands.Lint([.. files.Select(static f => f.FullName)], toolbox);
 
-        foreach (var file in Expand(files))
+        if (!outcome.Ok)
         {
-            var report = ParserLinter.LintFile(file.FullName, toolbox.Compiler);
+            return Fail(outcome.Failure);
+        }
+
+        foreach (var report in outcome.Payload.Files)
+        {
+            var name = Path.GetFileName(report.Path);
 
             foreach (var error in report.SchemaErrors)
             {
@@ -30,51 +55,46 @@ internal static class ParserCommandHandlers
                 };
 
                 var writer = finding.Severity == RedosSeverity.Error ? Console.Error : Console.Out;
-                writer.WriteLine($"{label} {file.Name} [{finding.Code}] {finding.Message}");
+                writer.WriteLine($"{label} {name} [{finding.Code}] {finding.Message}");
+
                 if (finding.Fragment.Length > 0)
                 {
                     writer.WriteLine($"        → {finding.Fragment}");
                 }
             }
 
-            if (report.HasErrors)
+            if (!report.HasErrors && !report.HasWarnings)
             {
-                exitCode = 1;
-            }
-            else if (!report.HasWarnings)
-            {
-                Console.WriteLine($"tamam  {file.Name} ({report.ParserId})");
+                Console.WriteLine($"tamam  {name} ({report.ParserId})");
             }
         }
 
-        return exitCode;
+        return outcome.Payload.HasErrors ? 1 : 0;
     }
 
     public static int Test(IReadOnlyList<FileInfo> files, ParserToolbox toolbox)
     {
-        var exitCode = 0;
-        var totalPassed = 0;
-        var totalFailed = 0;
+        var outcome = ParserCommands.Test([.. files.Select(static f => f.FullName)], toolbox);
 
-        foreach (var file in Expand(files))
+        if (!outcome.Ok)
         {
-            var compiled = toolbox.Compiler.CompileFile(file.FullName);
-            if (!compiled.Ok)
+            return Fail(outcome.Failure);
+        }
+
+        foreach (var file in outcome.Payload.Files)
+        {
+            if (file.Report is null)
             {
-                foreach (var error in compiled.Errors)
+                foreach (var error in file.CompileErrors)
                 {
                     Console.Error.WriteLine($"hata   {error}");
                 }
 
-                exitCode = 1;
                 continue;
             }
 
-            var report = ParserTestRunner.Run(compiled.Value);
-            totalPassed += report.PassCount;
-            totalFailed += report.FailCount;
-
-            Console.WriteLine($"{report.ParserId}  ({file.Name})");
+            var report = file.Report;
+            Console.WriteLine($"{report.ParserId}  ({Path.GetFileName(file.Path)})");
 
             foreach (var test in report.Tests)
             {
@@ -84,7 +104,6 @@ internal static class ParserCommandHandlers
                     continue;
                 }
 
-                exitCode = 1;
                 Console.Error.WriteLine($"  ✗ {test.Name}  (satır {test.Line})");
 
                 foreach (var failure in test.Failures)
@@ -102,27 +121,27 @@ internal static class ParserCommandHandlers
             }
         }
 
-        Console.WriteLine($"toplam: {totalPassed} geçti, {totalFailed} kaldı");
-        return exitCode;
+        Console.WriteLine($"toplam: {outcome.Payload.PassCount} geçti, {outcome.Payload.FailCount} kaldı");
+
+        return outcome.Payload.HasFailures ? 1 : 0;
     }
 
     /// <summary>
-    /// Altın örnek dosyalarının kapsam raporu (T08). `test` komutundan farkı,
-    /// satırların dispatcher'dan geçmesi: ön filtre ve "ilk `ok` kazanır" kuralı
-    /// da ölçülüyor, dolayısıyla bir vendor'ın satırının başka bir parser'a
-    /// düşmesi burada görünür.
+    /// Altın örnek dosyalarının kapsam raporu (T08). <c>test</c> komutundan
+    /// farkı, satırların dispatcher'dan geçmesi: ön filtre ve "ilk `ok` kazanır"
+    /// kuralı da ölçülüyor, dolayısıyla bir vendor'ın satırının başka bir
+    /// parser'a düşmesi burada görünür.
     /// </summary>
     public static int Coverage(DirectoryInfo directory, double allowedFailedPercent, ParserToolbox toolbox)
     {
-        var report = SampleCoverage.Run(directory.FullName, toolbox.Compiler);
+        var outcome = ParserCommands.Coverage(directory.FullName, allowedFailedPercent, toolbox);
 
-        if (report.Files.Count == 0)
+        if (!outcome.Ok)
         {
-            Console.Error.WriteLine($"hata   '{directory.FullName}' altında örnek dosyası yok " +
-                $"({SampleCoverage.SamplesDirectoryName}/*.log bekleniyor).");
-            return 2;
+            return Fail(outcome.Failure);
         }
 
+        var report = outcome.Payload.Report;
         var root = directory.FullName;
 
         foreach (var file in report.Files)
@@ -144,10 +163,12 @@ internal static class ParserCommandHandlers
             $"toplam: {report.Total} satır — ok {report.Ok}, partial {report.Partial}, " +
             $"failed {report.Failed} ({report.FailedPercent:F1}%)"));
 
-        if (report.FailedPercent > allowedFailedPercent)
+        if (!outcome.Payload.WithinBudget)
         {
             Console.Error.WriteLine(string.Create(CultureInfo.InvariantCulture,
-                $"hata   failed oranı {report.FailedPercent:F1}%, izin verilen üst sınır {allowedFailedPercent:F1}%."));
+                $"hata   failed oranı {report.FailedPercent:F1}%, " +
+                $"izin verilen üst sınır {allowedFailedPercent:F1}%."));
+
             return 1;
         }
 
@@ -156,31 +177,19 @@ internal static class ParserCommandHandlers
 
     public static int Try(FileInfo file, string? input, FileInfo? inputFile, bool asJson, ParserToolbox toolbox)
     {
-        var compiled = toolbox.Compiler.CompileFile(file.FullName);
-        if (!compiled.Ok)
-        {
-            foreach (var error in compiled.Errors)
-            {
-                Console.Error.WriteLine($"hata   {error}");
-            }
+        // stdin BURADA okunuyor, çekirdekte değil: stdin bir sunum ayrıntısı ve
+        // MCP tarafında karşılığı yok. Çekirdek onu okusaydı, MCP çağrısı
+        // hiç kullanmadığı bir yola bağımlı olurdu.
+        var outcome = ParserCommands.Try(file.FullName, ReadInput(input, inputFile), toolbox);
 
-            return 1;
+        if (!outcome.Ok)
+        {
+            return Fail(outcome.Failure);
         }
 
-        var lines = ReadInput(input, inputFile);
-        if (lines.Count == 0)
+        foreach (var line in outcome.Payload.Lines)
         {
-            Console.Error.WriteLine("hata   girdi yok: --input, --input-file veya stdin kullanın.");
-            return 2;
-        }
-
-        var parser = compiled.Value;
-        var failed = false;
-
-        foreach (var line in lines)
-        {
-            var result = parser.Parse(line);
-            failed |= result.Status == Contracts.ParseStatus.Failed;
+            var result = line.Result;
 
             if (asJson)
             {
@@ -227,7 +236,7 @@ internal static class ParserCommandHandlers
             Console.WriteLine();
         }
 
-        return failed ? 1 : 0;
+        return outcome.Payload.Lines.Any(static l => l.Result.Status == ParseStatus.Failed) ? 1 : 0;
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -235,6 +244,27 @@ internal static class ParserCommandHandlers
         WriteIndented = true,
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
+
+    /// <summary>
+    /// Sebebi bir çıkış koduna çeviren <b>tek</b> yer.
+    ///
+    /// <para>
+    /// Kodlar taşınan davranışı koruyor: girdi hatası <c>2</c>, bulunamayan
+    /// <c>2</c>, gerisi <c>1</c>. İkinci bir eşleme yazılsaydı iki komut aynı
+    /// sebebe farklı kod verirdi ve betikler sessizce ayrışırdı.
+    /// </para>
+    /// </summary>
+    private static int Fail(CommandFailure failure)
+    {
+        Console.Error.WriteLine($"hata   {failure.Message}");
+
+        return failure.Kind switch
+        {
+            CommandFailureKind.InvalidArgument => 2,
+            CommandFailureKind.NotFound => 2,
+            _ => 1,
+        };
+    }
 
     private static void WriteSection(string name, IReadOnlyDictionary<string, object?> values)
     {
@@ -244,6 +274,7 @@ internal static class ParserCommandHandlers
         }
 
         Console.WriteLine($"{name}:");
+
         foreach (var (key, value) in values.OrderBy(static pair => pair.Key, StringComparer.Ordinal))
         {
             Console.WriteLine($"  {key,-24} {ValueFormatter.Format(value)}");
@@ -259,14 +290,13 @@ internal static class ParserCommandHandlers
 
         if (inputFile is not null)
         {
-            return File.ReadAllLines(inputFile.FullName)
-                .Where(static line => line.Length > 0)
-                .ToArray();
+            return [.. File.ReadAllLines(inputFile.FullName).Where(static line => line.Length > 0)];
         }
 
         if (Console.IsInputRedirected)
         {
             var lines = new List<string>();
+
             while (Console.ReadLine() is { } line)
             {
                 if (line.Length > 0)
@@ -279,26 +309,5 @@ internal static class ParserCommandHandlers
         }
 
         return [];
-    }
-
-    /// <summary>Dizin verilirse içindeki tüm YAML'lar alınır — katalog tümüne tek komut.</summary>
-    private static IEnumerable<FileInfo> Expand(IReadOnlyList<FileInfo> files)
-    {
-        foreach (var file in files)
-        {
-            if (Directory.Exists(file.FullName))
-            {
-                foreach (var path in Directory
-                             .EnumerateFiles(file.FullName, "*.yaml", SearchOption.AllDirectories)
-                             .OrderBy(static path => path, StringComparer.Ordinal))
-                {
-                    yield return new FileInfo(path);
-                }
-
-                continue;
-            }
-
-            yield return file;
-        }
     }
 }

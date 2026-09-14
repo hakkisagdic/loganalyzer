@@ -18,6 +18,14 @@
       ve sessizce görünmüyor, çünkü boş bir araç kümesi de geçerli bir kümedir.
     -->
     <ProjectReference Include="..\Bizigo.Mcp.Product\Bizigo.Mcp.Product.csproj" />
+
+    <!--
+      M02 — komut araçları. HTTP taşıması bu derlemeden sürülüyor ve keşif
+      kompozisyon kökü olarak BURAYI geziyor; referans olmazsa araçlar
+      stdio'da görünüp HTTP'de görünmezdi — aynı sunucunun iki farklı
+      araç kümesi.
+    -->
+    <ProjectReference Include="..\Bizigo.Commands.Mcp\Bizigo.Commands.Mcp.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

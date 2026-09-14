@@ -67,6 +67,7 @@ public static class McpEndpoints
     public static IReadOnlyList<System.Reflection.Assembly> ToolAssemblies { get; } =
     [
         typeof(Mcp.Product.Tools.LogsSearchTool).Assembly,
+        typeof(Commands.Mcp.CommandTool).Assembly,
     ];
 
     /// <summary>

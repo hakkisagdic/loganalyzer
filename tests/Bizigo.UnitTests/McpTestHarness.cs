@@ -13,6 +13,8 @@ using Bizigo.Query;
 using Microsoft.EntityFrameworkCore;
 using Bizigo.Simulators.Mcp;
 using Bizigo.Simulators.Mcp.Tools;
+using Bizigo.Commands;
+using Bizigo.Commands.Mcp;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Client;
@@ -445,6 +447,44 @@ internal static class McpTestServices
     /// yetmemesi doğru: M04'ün araçları ürün servislerine bağımlı ve
     /// <c>Instantiate</c> kurulamayan aracı atlamıyor, patlıyor. O testler
     /// <see cref="ForDiscoveredTools"/> kullanıyor.
+    /// <b>Artık boş DEĞİL — ve adı bilerek değişti.</b>
+    ///
+    /// <para>
+    /// M01'de boş bir grafik yetiyordu: <c>server.info</c> bağımlılık
+    /// istemiyor. M02 komut araçlarını getirince yetmez oldu ve
+    /// <c>McpToolDiscovery.Instantiate</c> kurulamayan aracı ATLAMIYOR,
+    /// patlıyor — yani kapı sessizce eksik bir kümeyi denetlemeye başlamıyor,
+    /// koşmayı reddediyor. M01'in o kararı burada karşılığını buldu.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Üretimle AYNI uzantıdan besleniyor</b> (<c>AddBizigoCommandTools</c>).
+    /// Test grafiğini elle kurmak, kapının ölçtüğü sunucu ile üretimde koşan
+    /// sunucuyu ayırırdı — kapının anlamını yok eden tek hareket bu olurdu.
+    /// </para>
+    /// </summary>
+    /// <summary>
+    /// <b>Gerçekten boş graf</b> — ve geri geldi, çünkü iki farklı soru var.
+    ///
+    /// <para>
+    /// M02'de <c>Empty()</c> <c>Production()</c>'a çevrilmişti: komut araçları
+    /// bağımlılık istiyor ve boş bir grafla <c>Instantiate</c> patlıyordu. Ama
+    /// M08 ile birlikte ölçüldü ki <b>her test aynı şeyi sormuyor</b>:
+    /// </para>
+    ///
+    /// <list type="bullet">
+    /// <item><b>Bu fabrika</b> — <i>"hiçbir kayıt yokken ne oluyor"</i>. Keşfin
+    /// belirli tipleri kurabildiğini sınayan test bunu istiyor; dolu bir graf
+    /// iddiayı zayıflatırdı, çünkü gizli bir bağımlılığın olmadığını
+    /// kanıtlayamazdı.</item>
+    /// <item><see cref="Production"/> — <i>"üretimdeki graf ne yapıyor"</i>.
+    /// Bütün araçları keşfeden testler bunu istiyor.</item>
+    /// </list>
+    ///
+    /// <para>
+    /// İkisini tek fabrikaya indirmek, iki farklı soruyu aynı yere sormak
+    /// olurdu — bu depoda <c>Debounce</c>/<c>Lineage</c> anahtarlarıyla bir kez
+    /// ödenmiş şekil.
     /// </para>
     /// </summary>
     public static ServiceProvider Empty() => new ServiceCollection().BuildServiceProvider();
@@ -510,6 +550,11 @@ internal static class McpTestServices
         services.AddSingleton(new AlertingOptions());
         services.AddSingleton<AlertRuleService>();
         services.AddSingleton(new ParserCatalog());
+
+        // M02 — komut araçlarının bağımlılıkları, ÜRETİMİN kendi uzantısından
+        // (`AddBizigoCommandTools`). Elle kurmak, ölçülen sunucu ile koşan
+        // sunucuyu ayırırdı.
+        services.AddBizigoCommandTools();
 
         // M03 — simülatör araçlarının bağımlılıkları, ÜRETİMDEKİ uzantıdan.
         // İkinci bir kayıt listesi yazmak kapının ölçtüğü sunucu ile üretimde
@@ -601,8 +646,13 @@ internal static class McpExpectedTools
     {
         string[] names = surface switch
         {
+            // M02'nin komut araçları TÜRETİLİYOR (`CommandCatalog`), elle
+            // yazılmıyor: `bizigo` komutlarının araç karşılığı zaten orada ilan
+            // ediliyor ve ikinci bir liste ayrışırdı (§9). Parite iddiası bu:
+            // stdio'da görünen her komut aracı HTTP'de de görünüyor.
             McpSurface.Product =>
             [
+                .. CommandCatalog.Tools.Select(static c => c.Name),
                 AlertRulesTool.ToolIdentifier,
                 AlertTriggersTool.ToolIdentifier,
                 CatalogParsersTool.ToolIdentifier,

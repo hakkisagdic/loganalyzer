@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    M02 — komut çekirdeğinin MCP SUNUMU. CLI'nin karşılığı.
+
+    NEDEN AYRI BİR PROJE, üç gerekçe ve üçü de ölçülmüş bir kısıttan:
+
+    · `Bizigo.Mcp`'nin içine konamaz. O projenin kendi yorumu şunu yazıyor:
+      "ürün projelerine BUGÜN hiç referans vermiyor ve bu bilinçli: çekirdek
+      protokolü konuşuyor, ürünü tanımıyor." Araçları oraya koymak o kararı
+      geri alırdı.
+
+    · `Bizigo.Commands`'ın içine konamaz. Çekirdek iki sunuma da bakmıyor;
+      `Bizigo.Mcp` referansı almak onu bir sunuma bağlar ve paritenin ölçüldüğü
+      simetriyi bozar.
+
+    · `Bizigo.Cli`'nin içine konamaz — ve bu bir tercih değil bir MEKANİK:
+      `McpToolDiscovery.ProductAssemblies` yalnızca adı `Bizigo.` ile başlayan
+      referansları geziyor. CLI'nin derleme adı `bizigo`, dolayısıyla oraya
+      yazılan bir araç KEŞFE HİÇ GÖRÜNMEZDİ — ve kapı yanlış sebeple yeşil
+      yanardı.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bizigo.Commands\Bizigo.Commands.csproj" />
+    <ProjectReference Include="..\Bizigo.Mcp\Bizigo.Mcp.csproj" />
+  </ItemGroup>
+
+</Project>

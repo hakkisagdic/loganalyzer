@@ -6,6 +6,7 @@ using System.Text.Json;
 using Bizigo.Api;
 using Bizigo.Cli;
 using Bizigo.Contracts.Security;
+using Bizigo.Commands;
 using Bizigo.Mcp;
 using Bizigo.Mcp.Product.Tools;
 using Bizigo.Mcp.Tools;
@@ -121,6 +122,19 @@ public sealed class McpComplianceTests
 
     /// <summary>Testin kendi iptali; xUnit koşumu kesildiğinde çağrılar da kesiliyor.</summary>
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
+
+    /// <summary>
+    /// Araç hatalarının <b>kapalı kümesi</b> — <c>McpToolError</c>'ın sabitleri.
+    /// Elle yazılmıyor, oradan okunuyor: iki liste olsaydı yeni bir kod eklenip
+    /// burası eski kalırdı ve kapı onu <i>"bilinmeyen"</i> sayardı.
+    /// </summary>
+    private static readonly string[] KnownErrorCodes =
+    [
+        McpToolError.InvalidArgument,
+        McpToolError.NotFound,
+        McpToolError.Unavailable,
+        McpToolError.WrongSurface,
+    ];
 
     // ---------------------------------------------------------------------
     // 1 · Keşif — kapı denetlediği kümeyi kendisi buluyor mu
@@ -251,6 +265,20 @@ public sealed class McpComplianceTests
         await using var session = await McpTestSession.StartAsync(ProductionOptions(surface, services), services, cancellationToken: Ct);
 
         var tools = await session.Client.ListToolsAsync(cancellationToken: Ct);
+
+        // M02: yedi komut aracı eklendi ve bu satır BÜYÜDÜ. Listenin elle
+        // taşınması bilinçli — yeni bir araç eklemek burayı da değiştirmeyi
+        // gerektiriyor, yani ilan edilen küme kimse karar vermeden büyüyemiyor.
+        //
+        // `bizigo-sim` yüzeyinde komut araçları YOK: hepsi `McpSurface.Product`
+        // ve simülatörün kendi araçları M03'ün.
+        string[] expected = surface == McpSurface.Product
+            ?
+            [
+                .. CommandCatalog.Tools.Select(static c => c.Name).Append(ServerInfoTool.ToolIdentifier)
+                    .Order(StringComparer.Ordinal),
+            ]
+            : [ServerInfoTool.ToolIdentifier];
 
         Assert.Equal(
             McpExpectedTools.For(surface),
@@ -438,6 +466,10 @@ public sealed class McpComplianceTests
 
             var wire = BizigoMcpTool.ToProtocol(sample);
 
+            // Beklenen şey BAŞARI DEĞİL: argümansız çağrı çoğu araçta meşru
+            // olarak düşüyor. Ölçülen şey düşüşün BİÇİMİ — kapalı kümeden bir
+            // araç hatası mı, yoksa protokolü patlatan bir istisna mı. İkincisi
+            // istemciye ürün hakkında hiçbir şey söylemeyen bir arıza verirdi.
             Assert.True(
                 wire.StructuredContent is not null,
                 $"`{tool.Name}` `outputSchema` ilan ediyor ama örneği `structuredContent` "

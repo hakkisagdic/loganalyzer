@@ -1,4 +1,4 @@
-using Bizigo.Cli.Seeding;
+using Bizigo.Commands.Seeding;
 using Bizigo.Parsing.Samples;
 using Microsoft.Extensions.Time.Testing;
 

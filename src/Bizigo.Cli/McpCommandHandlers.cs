@@ -1,4 +1,5 @@
 using System.Reflection;
+using Bizigo.Commands.Mcp;
 using Bizigo.Contracts.Security;
 using Bizigo.Mcp;
 using Bizigo.Simulators.Mcp;
@@ -57,7 +58,11 @@ public static class McpCommandHandlers
     /// </summary>
     public static IReadOnlyList<Assembly> ToolAssembliesFor(McpSurface surface) => surface switch
     {
-        McpSurface.Product => [typeof(Bizigo.Mcp.Product.Tools.LogsSearchTool).Assembly],
+        McpSurface.Product =>
+        [
+            typeof(Bizigo.Mcp.Product.Tools.LogsSearchTool).Assembly,
+            typeof(Bizigo.Commands.Mcp.CommandTool).Assembly,
+        ],
         McpSurface.Simulator => [typeof(Bizigo.Simulators.Mcp.SimulatorTool).Assembly],
         _ => throw new ArgumentOutOfRangeException(
             nameof(surface),
@@ -231,7 +236,21 @@ public static class McpCommandHandlers
         // Kaydın kendisi bir şey İLAN ETMİYOR: araçlar yüzeylerini kendileri
         // beyan ediyor ve ürün yüzeyinde hiçbiri ilan edilmiyor. Burada olan
         // tek şey, kurulabilir olmaları.
+        //
+        // NOT (M05 sonrası): keşif artık referans kapanışını yürümüyor,
+        // `ToolAssembliesFor(surface)` ne diyorsa onu geziyor — yani yukarıdaki
+        // "ürün yüzeyi simülatör araçlarını kurmak zorunda" hâli **yapısal
+        // olarak** ortadan kalktı. Kayıt yine de yüzeye bağlanmadı: iki yüzeyin
+        // grafiğini ayırmak, hangi servisin hangi yüzey için kayıtlı olduğunu
+        // ikinci bir listeye yazmak olurdu (§9), ve bugün ikisinin de kurulması
+        // ölçülebilir bir maliyet üretmiyor.
         services.AddBizigoSimulatorTools();
+
+        // M02 — komut çekirdeğinin araçları. Bugün tek bağımlılık
+        // `ParserToolbox` (dört parser aracı ve `fields.coverage` onu istiyor).
+        // Kurulum PAHALI (grok kütüphanesi + eşleme tabloları diskten okunuyor)
+        // ve süreç boyunca değişmiyor — singleton.
+        services.AddBizigoCommandTools();
 
         return services.BuildServiceProvider();
     }

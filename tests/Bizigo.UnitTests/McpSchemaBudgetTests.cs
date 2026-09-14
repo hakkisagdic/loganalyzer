@@ -153,6 +153,37 @@ public sealed class McpSchemaBudgetTests
         McpSurface.Simulator => SimulatorToolListTokenCeiling,
         _ => toolCount * PerToolTokenCeiling,
     };
+    /// <b>Araç başına</b> belirteç tavanı — toplam ondan türüyor.
+    ///
+    /// <para>
+    /// <b>M02'de yapı değişti ve sebebi ölçülmüş bir eğilim.</b> Sabit önce bir
+    /// TOPLAM tavandı (400) ve yedi araç eklenince 2.400'e çekilmesi gerekti.
+    /// Ama eğilim şunu söylüyor: MCP planı ~15 araç öngörüyor, araç başına ~280
+    /// belirteçle toplam <b>~4.500</b>'e çıkıyor. Toplam tavanla her araç
+    /// ailesi sabiti yeniden düzenlerdi — ve o noktada kapı bir <b>kayıt</b>
+    /// olmaktan çıkıp <b>güncellenmesi rutinleşen bir sabite</b> dönerdi. Bu
+    /// deponun defalarca adını koyduğu şey; elle tutulan sayı er ya da geç
+    /// bekçiyi kör ediyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Araç başına tavan bunu yapısal olarak kaldırıyor:</b> yeni bir araç
+    /// eklemek sabiti düzenlemeyi <b>gerektirmiyor</b>, ve kapı hâlâ gerçek bir
+    /// şey ölçüyor — <i>"bir aracın bütçesi şunu aşamaz"</i>. Disiplin de
+    /// maliyetin gerçekten olduğu yere biniyor: <c>description</c> metinleri.
+    /// M02'de şema açıklamaları kırpılınca yük <b>2.484 → 2.248</b>'e indi (%10).
+    /// </para>
+    ///
+    /// <para>
+    /// <b>600 nereden geliyor.</b> Ölçülen dağılım: ortalama ~280, en ucuz
+    /// <c>server.info</c> 194, en pahalı <c>fields.coverage</c> 481. Tavan en
+    /// pahalı araca <b>%25 pay</b> bırakıyor. Daha dar bir tavan (örn. 500)
+    /// gürültüyle kırmızı yanar ve rutin olarak yükseltilirdi — yani kaldırmaya
+    /// çalıştığımız hâle geri dönerdi. 600'ü aşan bir araç fazla iş yapıyor
+    /// demektir ve bir konuşmayı hak eder.
+    /// </para>
+    /// </summary>
+    private const int ToolTokenCeiling = 600;
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
