@@ -98,6 +98,62 @@ public sealed class McpSchemaBudgetTests
     /// </summary>
     private const int CheapestToolFloor = 150;
 
+    /// <summary>
+    /// Simülatör yüzeyinin tavanı — <b>ayrı, çünkü iki yüzey aynı bütçeyi
+    /// paylaşmıyor</b>.
+    ///
+    /// <para>
+    /// Tek bir tavan tutmak, yüzeylerden birine araç eklemenin diğerinin
+    /// payını yemesi demekti; oysa bir istemci <b>tek bir yüzeye</b> bağlanıyor
+    /// ve taşıdığı yük yalnızca o yüzeyin yükü. Ortak tavan, hiçbir istemcinin
+    /// gerçekten ödemediği bir toplamı ölçerdi.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Değer ölçüldü:</b> sekiz araçla <c>tools/list</c> yükü
+    /// <b>2977 belirteç</b> (10 259 karakter). Tavan onun üstüne ~%20 pay
+    /// bırakıyor. Payın işlevi bir hedef değil görünürlük: bir aracın
+    /// açıklamasını iki katına çıkarmak bu satırı kırmızı yakmalı.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Araç başına ölçülen dağılım</b> — en pahalı kalem şema değil,
+    /// şemanın <i>alan sayısı</i>:
+    /// </para>
+    /// <list type="bullet">
+    ///   <item><c>sim.webhook.emit</c> 537 · <c>sim.state</c> 424 ·
+    ///   <c>sim.syslog.burst</c> 424</item>
+    ///   <item><c>sim.fleet.list</c> 382 · <c>sim.scenario.set</c> 355 ·
+    ///   <c>sim.scenario.list</c> 330 · <c>sim.device.silence</c> 327</item>
+    ///   <item><c>server.info</c> 194 — M01'in ölçtüğü taban</item>
+    /// </list>
+    ///
+    /// <para>
+    /// <b>Ve bu sayı planın tahminini çürütüyor.</b> Ticket §6 araç başına 194
+    /// belirteçten yola çıkıp yedi araç için <i>≈1360</i> diyordu; gerçek
+    /// rakam <b>iki katından fazla</b> (~2780). Sebep <c>server.info</c>'nun
+    /// argümansız ve tek alanlı olması: taban olarak alındığında araç başına
+    /// maliyeti sistematik olarak düşük gösteriyor.
+    /// </para>
+    /// </summary>
+    private const int SimulatorToolListTokenCeiling = 3_600;
+
+    /// <summary>
+    /// Yüzeyin <c>tools/list</c> toplam tavanı.
+    ///
+    /// <para>
+    /// Ürün yüzeyinde tavan <b>türetiliyor</b> (araç sayısı ×
+    /// <see cref="PerToolTokenCeiling"/>), simülatör yüzeyinde <b>ölçülmüş</b>
+    /// bir sayı duruyor. Fark bilinçli: türetilen tavan araç eklendikçe
+    /// kendiliğinden büyüyor, ölçülmüş tavan büyümeyi bir karara zorluyor.
+    /// </para>
+    /// </summary>
+    private static int Ceiling(McpSurface surface, int toolCount) => surface switch
+    {
+        McpSurface.Simulator => SimulatorToolListTokenCeiling,
+        _ => toolCount * PerToolTokenCeiling,
+    };
+
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     /// <summary>
@@ -115,10 +171,15 @@ public sealed class McpSchemaBudgetTests
         // kurulan sağlayıcıda M04'ün okuma araçları hiç örneklenmiyor ve
         // bütçe tavanın çok altında, SESSİZCE yeşil kalıyordu.
         await using var services = McpTestServices.ForDiscoveredTools();
+        // KÖK YÜZEYE GÖRE — M03'te ölçülerek düzeltildi: bu dosya
+        // `Bizigo.Api`'de kalmıştı ve bütçe testi `bizigo-sim` için TEK araç
+        // sayıyordu (yedi sim aracı o kökten görünmüyor), tavanın çok altında
+        // kalıyor ve SESSİZCE yeşil yanıyordu. Yakalayan şey bir bekçi değildi:
+        // tavan sabitine "ölçüldü" yazılmıştı ve o sayı alınmak istendi.
         var options = BizigoMcpServer.CreateOptions(
             surface,
             McpBoundaryDeclaration.Declare(DataBoundary.Internal, "şema bütçesi: birim testi"),
-            McpEndpoints.ToolAssemblies,
+            McpComplianceTests.DeclaredAssemblies(surface),
             services);
 
         await using var session = await McpTestSession.StartAsync(options, services, cancellationToken: Ct);
@@ -153,7 +214,7 @@ public sealed class McpSchemaBudgetTests
 
         // TOPLAM TAVAN TÜRETİLİYOR, elle yazılmıyor: araç eklemek bu dosyayı
         // düzenlemeyi gerektirmiyor ve iki ticket aynı satırda buluşmuyor (§9).
-        var totalCeiling = perTool.Length * PerToolTokenCeiling;
+        var totalCeiling = Ceiling(surface, perTool.Length);
 
         var report = string.Join(
             "\n",

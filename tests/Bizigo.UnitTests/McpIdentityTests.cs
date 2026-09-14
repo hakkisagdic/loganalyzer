@@ -13,6 +13,7 @@ using Bizigo.Contracts;
 using Bizigo.Contracts.Security;
 using Bizigo.Mcp;
 using Bizigo.Mcp.Tools;
+using Bizigo.Simulators.Mcp;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -482,6 +483,24 @@ public sealed class McpIdentityTests
         return BizigoMcpServer.Tools(McpSurface.Product, McpEndpoints.ToolAssemblies, services);
     }
 
+    /// <summary>
+    /// Kapsam çözücüsü <b>ve</b> keşfin ulaştığı araçların bağımlılıkları.
+    ///
+    /// <para>
+    /// Simülatör kaydı M03'te eklendi ve gerekçesi mekanik: bu sınıfın
+    /// kompozisyon kökü <c>Bizigo.UnitTests</c>, oradan <c>Bizigo.Simulators</c>'a
+    /// ulaşılıyor, ve <c>Instantiate</c> bulduğu <b>her</b> aracı kuruyor —
+    /// yüzeye göre ancak kurduktan <b>sonra</b> eliyor, çünkü <c>Surface</c> bir
+    /// örnek özelliği. Yani ürün yüzeyini kurmak, simülatör araçlarının da
+    /// kurulabilmesini istiyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Kayıt hiçbir şey <b>ilan etmiyor</b>: <c>sim.*</c> araçları yüzeylerini
+    /// kendileri beyan ediyor ve ürün yüzeyinde hiçbiri listeye girmiyor.
+    /// Aşağıdaki testlerin ölçtüğü küme değişmiyor.
+    /// </para>
+    /// </summary>
     private static ServiceProvider ServicesWithGate(IAccessScopeResolver gate) =>
         new ServiceCollection()
 

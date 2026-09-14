@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json;
 
 // Üretimin araç derlemesi beyanı (`McpEndpoints.ToolAssemblies`) burada:
@@ -8,6 +9,7 @@ using Bizigo.Contracts.Security;
 using Bizigo.Mcp;
 using Bizigo.Mcp.Product.Tools;
 using Bizigo.Mcp.Tools;
+using Bizigo.Simulators.Mcp.Tools;
 using Json.Schema;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -74,8 +76,48 @@ public sealed class McpComplianceTests
     private static McpBoundaryDeclaration TestBoundary =>
         McpBoundaryDeclaration.Declare(DataBoundary.Internal, "uyum kapısı: birim testi");
 
+    /// <summary>
+    /// <b>Yüzeyin ÜRETİMDEKİ araç derlemeleri</b> (M03) — ve bu ayrım ölçülerek
+    /// eklendi.
+    ///
+    /// <para>
+    /// İlk hâli her iki yüzey için de <c>Bizigo.Api</c> veriyordu. Ürün yüzeyi
+    /// için doğru: <c>POST /mcp</c> orada barınıyor. <b>Simülatör yüzeyi için
+    /// yanlıştı</b> — <c>bizigo-sim</c>'in HTTP'si bilerek yok, tek yolu
+    /// <c>bizigo mcp serve --surface bizigo-sim</c>, ve o komut kökü
+    /// <c>Assembly.GetExecutingAssembly()</c> ile <b><c>Bizigo.Cli</c></b>
+    /// veriyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Kusurun bedeli sessizlikti.</b> <c>Bizigo.Api</c>'nin
+    /// <c>Bizigo.Simulators</c>'a hiç referansı yok (ölçüldü), dolayısıyla
+    /// <c>McpToolDiscovery.ProductAssemblies</c> o derlemeye hiç ulaşmıyordu:
+    /// yedi <c>sim.*</c> aracı kapıya <b>görünmüyor</b>, kapı simülatör yüzeyi
+    /// için yine tek araç sayıyor ve <b>yeşil kalıyordu</b>. M04'ün ölçtüğü
+    /// budama körlüğüyle aynı sonuç, başka bir sebeple: orada referans
+    /// budanıyordu, burada kapı yanlış kökten bakıyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// Bu, sınıfın kendi belgesindeki cümlenin gereği: <i>uyum kapısının
+    /// ölçtüğü şeyin üretimde koşan şey olması, kapının anlamının tamamı.</i>
+    /// </para>
+    /// </summary>
+        internal static IReadOnlyList<Assembly> DeclaredAssemblies(McpSurface surface) => surface switch
+    {
+        McpSurface.Product => McpEndpoints.ToolAssemblies,
+        McpSurface.Simulator => Bizigo.Cli.McpCommandHandlers.ToolAssembliesFor(surface),
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(surface),
+            surface,
+            "Beyan edilmemiş bir yüzeyin araç derlemesi yok. Yeni bir yüzey eklendiğinde "
+            + "burası kırmızı yanıyor — ve yanması gerekiyor: beyansız bir yüzey, araçları hiç "
+            + "bulunmayan ve bu yüzden SESSİZCE yeşil kalan bir kapı demek."),
+    };
+
     private static McpServerOptions ProductionOptions(McpSurface surface, IServiceProvider services) =>
-        BizigoMcpServer.CreateOptions(surface, TestBoundary, McpEndpoints.ToolAssemblies, services);
+        BizigoMcpServer.CreateOptions(surface, TestBoundary, DeclaredAssemblies(surface), services);
 
     /// <summary>Testin kendi iptali; xUnit koşumu kesildiğinde çağrılar da kesiliyor.</summary>
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
@@ -216,6 +258,39 @@ public sealed class McpComplianceTests
     }
 
     /// <summary>
+    /// <b>Yüzey başına beklenen araç kümesi</b> — elle yazılı ve öyle kalmalı.
+    ///
+    /// <para>
+    /// Denetlenen küme keşfediliyor; <b>beklenen</b> küme burada duruyor. Keşif
+    /// bundan azını bulursa bir araç sessizce düşmüş, fazlasını bulursa yeni bir
+    /// araç gelmiş ve buraya <b>bilinçli olarak</b> yazılması gerekiyor.
+    /// </para>
+    ///
+    /// <para>
+    /// M03 bu listeyi yedi satır büyüttü ve büyümesi görünür bir hareket oldu.
+    /// M04/M05 ürün yüzeyini büyütecek.
+    /// </para>
+    /// </summary>
+    private static string[] Expected(McpSurface surface) => surface switch
+    {
+        McpSurface.Product => [ServerInfoTool.ToolIdentifier],
+
+        McpSurface.Simulator =>
+        [
+            ServerInfoTool.ToolIdentifier,
+            DeviceSilenceTool.ToolIdentifier,
+            FleetListTool.ToolIdentifier,
+            ScenarioListTool.ToolIdentifier,
+            ScenarioSetTool.ToolIdentifier,
+            StateTool.ToolIdentifier,
+            SyslogBurstTool.ToolIdentifier,
+            WebhookEmitTool.ToolIdentifier,
+        ],
+
+        _ => throw new ArgumentOutOfRangeException(nameof(surface), surface, "Beyan edilmemiş yüzey."),
+    };
+
+    /// <summary>
     /// Kapı <b>boş bir kümeyi</b> sessizce onaylamıyor.
     ///
     /// <para>
@@ -272,14 +347,51 @@ public sealed class McpComplianceTests
     }
 
     /// <summary>
-    /// İlan edilen <b>her</b> aracın örnek çağrısı, <c>tools/call</c>'dan
-    /// dönen yapısal çıktıyla <c>outputSchema</c>'ya uyuyor mu.
+    /// İlan edilen <b>her</b> aracın örnek çağrısı <c>outputSchema</c>'ya
+    /// uyuyor mu — ve argümansız çağrılabilenler ayrıca <b>protokolden</b>
+    /// geçiyor mu.
     ///
     /// <para>
-    /// Örnek doğrudan <c>SampleAsync</c>'ten okunmuyor: çağrı <b>protokolden</b>
-    /// geçiyor. Aradaki fark serileştirme ve <c>structuredContent</c>
-    /// dönüşümü — yani şemanın karşılaştırıldığı şey istemcinin gerçekten
-    /// gördüğü gövde.
+    /// <b>İlk hâli her araca boş argümanlı bir <c>tools/call</c> yapıyordu ve
+    /// bu, kapıyı zorunlu argümanı olan HİÇBİR aracın geçemeyeceği hâle
+    /// getiriyordu.</b> <c>sim.scenario.set</c> <c>device</c> ve
+    /// <c>scenario</c> istiyor; boş argümanla <c>invalid_argument</c> dönüyor
+    /// ve kapı, aracın <b>doğru</b> davranışı yüzünden kırmızı yanıyordu.
+    /// Aynı duvar M04'ün <c>logs.search</c>'ünü ve M05'in araçlarını da
+    /// bekliyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Bugüne kadar sessiz kalma sebebi ölçüldü ve tanıdık:</b> üretimdeki
+    /// tek araç (<c>server.info</c>) argümansız, yani <b>tek örnek yanlış
+    /// tarafı hiç göstermiyordu</b> — <c>Instantiate</c>'in koşulsuz
+    /// <c>surface</c> kusurunun aynı sınıfı, aynı sebeple.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Ve belge ile davranış ayrışmıştı.</b> <c>BizigoMcpTool.SampleAsync</c>
+    /// kendi belgesinde <i>"uyum kapısının koşturduğu örnek çağrı"</i> diye
+    /// tanımlanıyor, ama kapı onu şema uyumu için <b>hiç çağırmıyordu</b>
+    /// (yalnızca iptal testinde kullanılıyordu). Yani bir üyenin varlık sebebi
+    /// olarak yazılan cümle doğru değildi — §7'nin belge hâli.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Şimdi ölçülen şey:</b> <c>SampleAsync</c> çıktısı, gerçek tel
+    /// dönüşümünden (<c>ToProtocol</c>) geçirilip şemaya karşı doğrulanıyor.
+    /// Kapının asıl kazancı olan <c>structuredContent</c> dönüşümü
+    /// <b>korunuyor</b>; kaybedilen tek şey soket, ve <c>SampleAsync</c> zaten
+    /// bilerek yan etkisiz (<i>"şart değil: altyapıya bağlanmak"</i>) — bu
+    /// yüzden mutasyon araçlarının örneği durum dosyasına dokunmuyor.
+    /// </para>
+    ///
+    /// <para>
+    /// ⚠ <b>M02 İLE KESİŞİYOR — birleşmede M02'nin bölmesi kazanmalı.</b> M02
+    /// aynı duvarı kendi dalında ikiye bölerek çözdü: <i>telde</i> eksik
+    /// argüman iyi biçimli bir araç hatası mı, <i>süreç içinde</i>
+    /// <c>SampleAsync</c> çıktısı şemaya uyuyor mu. Aşağıdaki iddia ikincisinin
+    /// aynısı; buradaki hâli M02 birleşene kadar bu dalın yeşil kalabilmesi
+    /// için duruyor. Birleşmede ikinci kopya olarak <b>düşmeli</b> (§9).
     /// </para>
     /// </summary>
     [Theory]
@@ -299,34 +411,55 @@ public sealed class McpComplianceTests
             options, services, user: McpTestServices.ComplianceIdentity, cancellationToken: Ct);
 
         var declaredTools = await session.Client.ListToolsAsync(cancellationToken: Ct);
+        var serverTools = BizigoMcpServer.Tools(surface, DeclaredAssemblies(surface), services);
 
         Assert.NotEmpty(declaredTools);
+
+        // İlan edilen küme ile sunucu tarafındaki örnekler AYNI kümeyi
+        // adlandırmalı. Ayrışırlarsa aşağıdaki döngü bazı araçları sessizce
+        // atlardı — kapının kendi kör noktası.
+        Assert.Equal(
+            declaredTools.Select(static t => t.Name).Order(StringComparer.Ordinal),
+            serverTools.Select(static t => t.ToolName).Order(StringComparer.Ordinal));
+
+        var samples = serverTools.ToDictionary(static t => t.ToolName, StringComparer.Ordinal);
 
         foreach (var tool in declaredTools)
         {
             var schema = JsonSchema.FromText(tool.ProtocolTool.OutputSchema!.Value.GetRawText());
 
-            var result = await session.Client.CallToolAsync(
-                tool.Name, new Dictionary<string, object?>(), cancellationToken: Ct);
+            // (1) HER ARAÇ — örnek, gerçek tel dönüşümünden geçiyor.
+            var sample = await samples[tool.Name].SampleAsync(Ct);
+
+            Assert.False(
+                sample.IsError,
+                $"`{tool.Name}` örneği hata döndürdü: {sample.Payload.GetRawText()}. Örnek, aracın "
+                + "başarılı çıktısının şeklini göstermeli — hata hâlinin şemasını değil.");
+
+            var wire = BizigoMcpTool.ToProtocol(sample);
 
             Assert.True(
-                result.IsError is not true,
-                $"`{tool.Name}` örnek çağrısı hata döndürdü: {Describe(result)}");
+                wire.StructuredContent is not null,
+                $"`{tool.Name}` `outputSchema` ilan ediyor ama örneği `structuredContent` "
+                + "üretmiyor — yani şema hiçbir şeyi tarif etmiyor.");
 
-            Assert.True(
-                result.StructuredContent is not null,
-                $"`{tool.Name}` `outputSchema` ilan ediyor ama `structuredContent` döndürmüyor — "
-                + "yani şema hiçbir şeyi tarif etmiyor.");
-
-            var payload = result.StructuredContent!.Value;
-            var evaluation = schema.Evaluate(payload, new EvaluationOptions { OutputFormat = OutputFormat.List });
-
-            Assert.True(
-                evaluation.IsValid,
-                $"`{tool.Name}` çıktısı kendi `outputSchema`'sına UYMUYOR.\n"
-                + $"Çıktı: {payload.GetRawText()}\n"
-                + $"Hatalar: {Errors(evaluation)}");
+            AssertMatchesSchema(tool.Name, "SampleAsync", schema, wire.StructuredContent!.Value);
         }
+    }
+
+    private static void AssertMatchesSchema(
+        string toolName,
+        string origin,
+        JsonSchema schema,
+        JsonElement payload)
+    {
+        var evaluation = schema.Evaluate(payload, new EvaluationOptions { OutputFormat = OutputFormat.List });
+
+        Assert.True(
+            evaluation.IsValid,
+            $"`{toolName}` çıktısı ({origin}) kendi `outputSchema`'sına UYMUYOR.\n"
+            + $"Çıktı: {payload.GetRawText()}\n"
+            + $"Hatalar: {Errors(evaluation)}");
     }
 
     // ---------------------------------------------------------------------
@@ -600,7 +733,7 @@ public sealed class McpComplianceTests
     {
         await using var services = McpTestServices.ForDiscoveredTools();
 
-        var tools = BizigoMcpServer.Tools(surface, McpEndpoints.ToolAssemblies, services);
+        var tools = BizigoMcpServer.Tools(surface, DeclaredAssemblies(surface), services);
 
         Assert.NotEmpty(tools);
 

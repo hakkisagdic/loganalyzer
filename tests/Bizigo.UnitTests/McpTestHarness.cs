@@ -11,6 +11,8 @@ using Bizigo.Mcp.Tools;
 using Bizigo.Parsing.Dispatch;
 using Bizigo.Query;
 using Microsoft.EntityFrameworkCore;
+using Bizigo.Simulators.Mcp;
+using Bizigo.Simulators.Mcp.Tools;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Client;
@@ -509,6 +511,19 @@ internal static class McpTestServices
         services.AddSingleton<AlertRuleService>();
         services.AddSingleton(new ParserCatalog());
 
+        // M03 — simülatör araçlarının bağımlılıkları, ÜRETİMDEKİ uzantıdan.
+        // İkinci bir kayıt listesi yazmak kapının ölçtüğü sunucu ile üretimde
+        // koşanı ayırırdı (§9). Kayıt yüzeye bağlı DEĞİL: `Instantiate` bulduğu
+        // her aracı kuruyor, yüzeye göre ancak kurduktan SONRA eliyor.
+        //
+        // Durum dosyası geçici dizine gidiyor — gerçek
+        // `artifacts/bizigo-sim/state.json`'a yazsaydı testi koşturmak
+        // geliştiricinin simülatör durumunu değiştirirdi.
+        services.AddBizigoSimulatorTools(
+            repositoryRoot: RepositoryLayout.Root,
+            statePath: Path.Combine(
+                Path.GetTempPath(), $"bizigo-sim-gate-{Guid.NewGuid():N}", "state.json"));
+
         return services;
     }
 
@@ -596,9 +611,23 @@ internal static class McpExpectedTools
                 ServerInfoTool.ToolIdentifier,
             ],
 
-            // `bizigo-sim` ürün verisine dokunmuyor; M03'ün araçları geldiğinde
-            // bu dal büyüyecek.
-            _ => [ServerInfoTool.ToolIdentifier],
+            // `bizigo-sim` ürün verisine dokunmuyor — M03'ün yedi aracı ve
+            // çekirdeğin `server.info`'su. Ürün araçlarının BURADA olmaması
+            // iddianın kendisi (K6).
+            McpSurface.Simulator =>
+            [
+                ServerInfoTool.ToolIdentifier,
+                DeviceSilenceTool.ToolIdentifier,
+                FleetListTool.ToolIdentifier,
+                ScenarioListTool.ToolIdentifier,
+                ScenarioSetTool.ToolIdentifier,
+                StateTool.ToolIdentifier,
+                SyslogBurstTool.ToolIdentifier,
+                WebhookEmitTool.ToolIdentifier,
+            ],
+
+            _ => throw new ArgumentOutOfRangeException(
+                nameof(surface), surface, "Beyan edilmemiş yüzey."),
         };
 
         return [.. names.Order(StringComparer.Ordinal)];

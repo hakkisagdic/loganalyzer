@@ -1,6 +1,7 @@
 using System.Reflection;
 using Bizigo.Contracts.Security;
 using Bizigo.Mcp;
+using Bizigo.Simulators.Mcp;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -37,17 +38,49 @@ public static class McpCommandHandlers
     /// </para>
     ///
     /// <para>
-    /// <c>Bizigo.Mcp.Product</c> burada da duruyor: <c>bizigo mcp serve
-    /// --surface bizigo</c> aynı okuma araçlarını stdio üzerinden sunuyor ve
-    /// keşif yüzeye göre süzüyor. İki listenin ayrı olması bilinçli — HTTP
-    /// yüzeyi simülatör araçlarını <b>hiç</b> görmemeli. <c>Bizigo.Mcp</c>
-    /// örtük olarak ekleniyor. Gerekçe ve bekçi
-    /// <c>McpEndpoints.ToolAssemblies</c> belgesinde.
+    /// <b>Beyan YÜZEY BAŞINA</b>, ve bu M05'in getirdiği modelin asıl kazancı.
+    /// Kök tarama modelinde <c>bizigo-sim</c> yüzeyi CLI derlemesinden
+    /// bakıyordu ve oradan ürün araçlarına da ulaşılıyordu; keşif hepsini
+    /// <b>kuruyor</b>, yüzeye göre ancak kurduktan sonra eliyor. Sonucu iki
+    /// yönlü: simülatörden başka bir şey sunmayan bir süreç ClickHouse ve
+    /// alarm servislerini çözmek zorunda kalıyordu, ve bir ürün aracının
+    /// simülatör yüzeyine sızmaması <b>bir çalışma zamanı süzgecine</b>
+    /// bağlıydı. Beyan yüzeye bağlanınca ikisi de yapısal olarak kapanıyor:
+    /// ürün aracı simülatör yüzeyinde <b>hiç keşfedilmiyor</b> (K6).
+    /// </para>
+    ///
+    /// <para>
+    /// <c>Bizigo.Mcp</c> hiçbir listede <b>yok</b> — çekirdek örtük olarak
+    /// ekleniyor. Gerekçe ve bekçi <c>McpEndpoints.ToolAssemblies</c>
+    /// belgesinde.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<Assembly> ToolAssembliesFor(McpSurface surface) => surface switch
+    {
+        McpSurface.Product => [typeof(Bizigo.Mcp.Product.Tools.LogsSearchTool).Assembly],
+        McpSurface.Simulator => [typeof(Bizigo.Simulators.Mcp.SimulatorTool).Assembly],
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(surface),
+            surface,
+            "Beyan edilmemiş bir yüzeyin araç derlemesi yok. Yeni bir yüzey eklendiğinde "
+            + "burası kırmızı yanıyor — ve yanması gerekiyor: beyansız bir yüzey, araçları "
+            + "hiç bulunmayan ve bu yüzden SESSİZCE yeşil kalan bir kapı demek."),
+    };
+
+    /// <summary>
+    /// stdio'nun sunduğu <b>bütün</b> araç derlemeleri — yalnızca
+    /// <c>McpToolAssemblyTests</c> için.
+    ///
+    /// <para>
+    /// Bekçinin sorusu <i>"araç taşıyan her derleme bir yerde ilan edilmiş
+    /// mi"</i>, yani birleşim. Koşan sunucu bunu <b>hiç</b> kullanmıyor:
+    /// kullanırsa yukarıdaki yüzey ayrımı geri alınmış olur.
     /// </para>
     /// </summary>
     public static IReadOnlyList<Assembly> ToolAssemblies { get; } =
     [
-        typeof(Bizigo.Mcp.Product.Tools.LogsSearchTool).Assembly,
+        .. ToolAssembliesFor(McpSurface.Product),
+        .. ToolAssembliesFor(McpSurface.Simulator),
     ];
 
     /// <summary>
@@ -128,16 +161,78 @@ public static class McpCommandHandlers
                 .AddConsole(console => console.LogToStandardErrorThreshold = LogLevel.Trace))
             : LoggerFactory.Create(static logging => logging.ClearProviders());
 
-        var services = new ServiceCollection().BuildServiceProvider();
+        await using var services = BuildServices();
 
         await McpStdioHost.RunAsync(
             surface,
             boundary,
-            ToolAssemblies,
+            ToolAssembliesFor(surface),
             services,
             loggerFactory,
             cancellationToken).ConfigureAwait(false);
 
         return 0;
+    }
+
+    /// <summary>
+    /// Yüzeyin araçlarının ihtiyaç duyduğu servisler.
+    ///
+    /// <para>
+    /// <b>Bu metot aynı zamanda bir DERLEME BAĞI, ve bu ikinci işi kasıtlı</b>
+    /// (M03/M04). Derleyici, kodunda hiçbir tipine dokunulmayan bir
+    /// <c>ProjectReference</c>'ı meta veriden <b>buduyor</b>; budanan derlemeyi
+    /// <c>McpToolDiscovery.ProductAssemblies</c> referans tablosunda
+    /// <b>göremiyor</b> ve araçları <b>sessizce</b> ilan edilmiyor — hata yok,
+    /// sayaç yok, uyum kapısı yeşil.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Ölçüldü, ve tuzağın canlı örneği bu depoda duruyor:</b>
+    /// <c>bizigo.dll</c>'in derleme referansları arasında
+    /// <c>Bizigo.Simulators</c> <b>var</b> ama <c>Bizigo.Query</c> <b>yok</b> —
+    /// ikisinin de <c>ProjectReference</c>'ı olmasına rağmen. Simülatör bugün
+    /// ayakta çünkü <c>FleetCommandHandlers</c> <c>bizigo fleet apply</c> için
+    /// <c>FleetStore</c>'a dokunuyor. <b>Yani bugün çalışması bir güvence değil
+    /// tesadüf:</b> o komut kaldırılırsa ya da başka bir derlemeye taşınırsa
+    /// yedi <c>sim.*</c> aracı ilan edilmez.
+    /// </para>
+    ///
+    /// <para>
+    /// Buradaki çağrı bağı tesadüften çıkarıyor: araçların ilan edilmesi
+    /// artık <b>araçların kaydına</b> bağlı, filo komutunun varlığına değil.
+    /// </para>
+    ///
+    /// <para>
+    /// ⚠ <b>GEÇİCİ.</b> M05 <c>AddBizigoMcpCore</c>'a araç derlemelerini
+    /// <b>açıkça</b> aldıracak; o gün doğru cevap bir çağrı yan etkisi değil
+    /// <c>SimulatorMcpSetup.ToolAssembly</c>'nin o listeye verilmesi olacak ve
+    /// bu paragraf silinecek.
+    /// </para>
+    /// </summary>
+    private static ServiceProvider BuildServices()
+    {
+        var services = new ServiceCollection();
+
+        // KAYIT YÜZEYE BAĞLI DEĞİL — ve ilk hâli öyleydi, ÖLÇÜLEREK düzeltildi.
+        //
+        // `McpToolDiscovery.Instantiate` bulduğu HER aracı KURUYOR, yüzeye göre
+        // ancak kurduktan SONRA eliyor — `Surface` bir örnek özelliği, yani
+        // örneklemeden okunamıyor. Dolayısıyla bir yüzeyi sunmak, keşfin
+        // ulaştığı BÜTÜN araçların bağımlılıklarını istiyor.
+        //
+        // Kayıt `if (surface is Simulator)` ile sınırlıyken ölçülen sonuç:
+        // `bizigo mcp serve --surface bizigo` (ÜRÜN yüzeyi) hiç ayağa
+        // kalkmıyordu — keşif `Bizigo.Simulators`'a ulaşıp yedi aracı kurmaya
+        // çalışıyor ve `SimulatorMcpContext` kayıtlı olmadığı için patlıyordu.
+        // Aynı kusur `McpIdentityTests.Kapsam_cozucusu_kayitli_degilse_kurulum_patliyor`'u
+        // da düşürdü: o test kökü `Bizigo.UnitTests` veriyor ve oradan da
+        // simülatöre ulaşılıyor.
+        //
+        // Kaydın kendisi bir şey İLAN ETMİYOR: araçlar yüzeylerini kendileri
+        // beyan ediyor ve ürün yüzeyinde hiçbiri ilan edilmiyor. Burada olan
+        // tek şey, kurulabilir olmaları.
+        services.AddBizigoSimulatorTools();
+
+        return services.BuildServiceProvider();
     }
 }
