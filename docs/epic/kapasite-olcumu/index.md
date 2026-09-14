@@ -97,24 +97,66 @@ güçlü — varışı değil **dayanıklılığı** kanıtlıyor.
   yayılımı** için ölçüm yapılamaz — ikisini karıştıran bir rapor yanlış sayı
   üretir.
 
-## 4 · Dilimleme
+## 4 · Özellik yüzeyi — ne alıyoruz, ne almıyoruz
+
+Aracın şartnamesi 47 bölüm ve alınacak asıl şey **özellik listesi değil hüküm
+verme biçimi**: ölçümün kendi kusurunu ölçtüğünde suçu hedefe yıkmayı reddediyor.
+Üç ayrı yerde bunu yapıyor ve üçü de bu deponun §6'sının aynısı.
+
+| Onun özelliği | Bizde | Karar ve gerekçe |
+| --- | --- | --- |
+| `raw` replay — satır **değiştirilmeden** | var (`SyslogEmitter`) | **Al.** Damga kaydırma kalıyor: kaydırmazsak `events`'in 90 günlük TTL'i satırı *"yazıldı"* denildikten sonra sessizce siliyor — ölçüldü, 100 satır, tabloda sıfır |
+| `tagged` — `RUN-ID`/`TEST-ID`/`SEQ`/`SEND-NS` | yok | **Al.** Gecikme ve boşluk deseni bunsuz **ölçülemez**; `raw` bilerek damga taşımıyor, yani ikisi ayrı koşum |
+| `smart` (metadata'yı "akıllıca" ekle), `envelope` | yok | **Almıyoruz.** Parser'ı biz yazıyoruz; *"parser'ın kabul edeceği yere ekle"* bizde tahmin, orada zorunluluk |
+| `--format rfc5424 / rfc3164` | yok, **bilinçli** | **Almıyoruz.** Collector `protocol: none` ile koşuyor ve başlık üretmek onu gövdenin parçası olarak arşive sokardı — gerçek cihazın bastığından farklı bir şey ölçerdik |
+| `fixed` · `max` · `ramp` · `burst` · `soak` | yok | **Al.** Beşi beş ayrı soru: sabit yük, tavan, kademeli tırmanma, kısa ani yük, uzun süre kararlılık |
+| `auto` — hızlı büyüt, sonra ikili arama; **her denemeye ayrı `RUN-ID`** | yok | **Al.** Ayrı `RUN-ID` şart: bir kademenin gecikmiş olayları diğerinin sayısını kirletiyor |
+| **`GENERATOR-LIMITED`** — üreteç istenen hıza ulaşamadıysa **hedefi suçlamıyor** (`--min-generator-attainment 95`) | yok | **Al ve birinci sınıf yap.** Bizim ölçtüğümüz pacer kusurunun tam panzehiri: bugün 10.000 EPS *istemek* mümkün, elde etmek değil, ve ikisi ayırt edilemiyor |
+| **`OBSERVER-LIMITED`** — ölçüm aracının kendi tampon kaybı varsa koşum *"hedef kaybetti"* diye raporlanmıyor | yok | **Al**, adı **`LEDGER-LIMITED`**: sayaçlarımızdan biri güvenilmezse (metrik kazıma boşluğu, sayaç sıfırlanması) rapor **kayıp** demiyor, **ölçemedim** diyor |
+| SLO — `max-loss-pct`, p95/p99, `duplicates`, `failed`, **`uncertain`**, `timeouts` → `PASS`/`FAIL` | yok | **Al.** `uncertain`'ın ayrı bir sınıf olması kritik: *eşleşti* ile *kayıp* arasında üçüncü bir hâl var ve onu kayba saymak sayıyı bozar |
+| Boşluk deseni: `head-loss` · `tail-loss` · `block-loss` · `scattered-isolated` · `periodic-suspected` · `complete-loss` | yok | **Al.** Bu depoda `tail-loss` bir kez **gerçekten oldu**: soketi son yazımdan hemen sonra kapatmak veriyi RST'le düşürüyordu, basıcı *"5 satır yazdım"* diyordu ve ClickHouse'a sıfır satır ulaşıyordu. Sınıflandırma o arızayı **adıyla** bulurdu |
+| Güvenlik devre kesici — yeni NIC RX drop, softnet drop, UDP tampon hatası, sürekli CPU, sürekli `Recv-Q` görülünce **üreteci durdur** (`--safety-consecutive 3`) | yok | **Al.** Kendi yığınımıza karşı bile: ölçüm, ölçtüğü sistemi bozarsa ürettiği sayı kendi yan etkisini ölçüyor |
+| Pasif `AF_PACKET` gözlemci + probe HTTP API'si | yok | **Almıyoruz.** Linux çekirdek yüzeyine çivili; yerine §3'ün üç sayacı |
+| Aktif alıcı / forward modu (*"lab only"*) | — | **Almıyoruz.** Bizim lab'ımızda alıcı ürünün kendisi |
+| Prometheus / Grafana | collector metrikleri **zaten** Prometheus'ta | **Bedava geliyor** |
+| Çok hedefli karşılaştırma, canlı gösterge | yok | **Erteliyoruz.** Tek yığına karşı ölçüyoruz; ikinci hedef yok |
+
+### Kanıt zincirinin iki ucu — ve asimetri
+
+Aracın kendi §44'ü sınırını açıkça yazıyor ve bizim tam **aynası**:
+
+| | Onun kanıtladığı | Bizim kanıtlayabildiğimiz |
+| --- | --- | --- |
+| Gönderildi | ✅ | ✅ |
+| **Tele/makineye vardı** | ✅ (paket yakalama) | ⚠ yalnızca OS sayaçları kadar |
+| Çekirdek/NIC sağlığı | ✅ | ✅ |
+| Parser kabul etti | ❌ *"SIEM API'si gerekir"* | ✅ `parse_status` |
+| Dayanıklı yazıldı | ❌ | ✅ ham arşiv + manifest |
+| **Aranabilir oldu** | ❌ | ✅ `events` sayımı |
+
+Onun cümlesi şuydu: *"1.000.000 arayüzde eşleşti"* demek *"1.000.000 olay aranabilir oldu"* **değildir**. Bizde tersi geçerli ve söylenmesi gerekiyor: **`events`'te 999.000 görmek, müşterinin 1.000.000 gönderdiğini kanıtlamıyor.** Ledger kaybı bir katmana yerleştiriyor ama kutunun **dışına** çıkamıyor. İki araç birlikte zinciri kapatır; tek başına hiçbiri kapatmıyor.
+
+## 5 · Dilimleme
 
 ```mermaid
 graph LR
-  B01[B01 · Pacer ve üreteç çekirdeği] --> B03[B03 · auto modu]
+  B01[B01 · Pacer, modlar, tagged] --> B03[B03 · auto keşfi]
   B02[B02 · Varış defteri] --> B03
-  B01 --> B04[B04 · Rapor ve kapasite kaydı]
+  B01 --> B05[B05 · Güvenlik devre kesici]
+  B02 --> B05
+  B03 --> B04[B04 · Hüküm, boşluk deseni, kayıt]
   B02 --> B04
 ```
 
 | Ticket | Ne | Bitti ölçütü |
 | --- | --- | --- |
-| **B01** | Gerçek hız kontrolü: token kovası, toplu yazma, çok bağlantı; `fixed`/`ramp`/`burst`/`soak`/`max`; koşum başına sha256 manifest | İstenen EPS ile **ölçülen** EPS arasındaki sapma yazılı bir tavanın altında, ve pacing'in *sessizce kaybolduğu* hâl bir bekçiyle kırmızı |
-| **B02** | Üç katmanlı varış defteri, Linux + Windows | Üç sayı tek raporda, ve **ayrıştıklarında** hangi katmanın suçlandığı yazılı |
-| **B03** | `auto`: sürdürülebilir EPS arayışı, geri besleme B02'den | Bulunan sayı **tekrarlanabilir**: aynı fixture'la iki koşum aynı aralığı veriyor |
-| **B04** | Sayının kaydı ve bekçisi | Koşumu olmayan bir kapasite iddiası **kırmızı yanıyor** (T39'un kalıbı) |
+| **B01** | Gerçek hız kontrolü (token kovası, toplu yazma, çok bağlantı); `fixed`/`ramp`/`burst`/`soak`/`max`; `raw` + `tagged` replay; koşum başına sha256 manifest | İstenen ↔ **ölçülen** EPS sapması yazılı bir tavanın altında, ve **`GENERATOR-LIMITED`** hükmü bir bekçiyle kırmızı yanabiliyor: üretecin ulaşamadığı bir hız *hedefin kaybı* diye raporlanamıyor |
+| **B02** | Üç katmanlı varış defteri (OS sayaçları · collector metrikleri · manifest ↔ ham arşiv ↔ `events`), Linux + Windows; `uncertain` ayrı bir sınıf | Üç sayı tek raporda; **ayrıştıklarında** hangi katmanın suçlandığı yazılı; ve sayaçlardan biri güvenilmezse rapor **`LEDGER-LIMITED`** diyor, *kayıp* demiyor |
+| **B03** | `auto`: hızlı büyütme + ikili arama, **deneme başına ayrı `RUN-ID`** | Bulunan sayı **tekrarlanabilir**: aynı fixture'la iki koşum aynı aralığı veriyor. Gecikmiş olayların bir sonraki kademeyi kirletmediği ölçülüyor |
+| **B04** | SLO hükmü (`PASS`/`FAIL`), boşluk deseni sınıflandırması, raporun kaydı | `tail-loss` **enjekte edilerek** ölçülüyor — soketi erken kapatmak bu depoda gerçekten olmuş bir arıza ve sınıflandırma onu adıyla bulmalı. Koşumu olmayan bir kapasite iddiası kırmızı yanıyor (T39'un kalıbı) |
+| **B05** | Güvenlik devre kesici: yeni drop / sürekli CPU / sürekli `Recv-Q` görülünce üreteci durdur, `--safety-consecutive` ile | Kesicinin **gerçekten kestiği** ölçülüyor; ve kesilmiş bir koşum *"kapasite bulundu"* diye raporlanamıyor |
 
-## 5 · Açık sorular — cevaplanmadı, burada duruyor
+## 6 · Açık sorular — cevaplanmadı, burada duruyor
 
 **Hedef ortam hangisi?** Kapasite sayısı makineye bağlı ve bu depo *"ölçülmemiş
 sayı yazma"* diyor. Tek bir sayı yazacaksak hangi donanım? Yoksa sayı bir
