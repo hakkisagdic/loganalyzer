@@ -430,6 +430,34 @@ var sigmaCommand = new Command("sigma", "Sigma kural seti işlemleri.");
 sigmaCommand.Subcommands.Add(sigmaSyncCommand);
 sigmaCommand.Subcommands.Add(sigmaPlanCommand);
 
+// ── rca quota (M16) ─────────────────────────────────────────────────────────
+// M15 bir boşluk ölçtü: kaynak başına tüketim (`RcaQuotaUsage.BySource`)
+// HESAPLANIYOR ve ATILIYOR — üretimde hiç kimse okumuyordu. Sonucu, rezerv
+// yüzdesinin gerçek kullanımdan gelmesinin imkânsız olması.
+//
+// Üç yüzey adayı ölçüldü ve ikisinin BUGÜN okuyucusu yok: RCA ekranı kotayı
+// bilerek kapsam dışında bırakmış (F4'e ertelenmiş) ve modelin cevabı zaten var
+// (`rca.trigger` reddi + `rca.runs.counts_against_quota`). Okuyucusu OLAN tek
+// aday operatör — rezerv kararını veren o. Emsal `fields coverage`: bu depoda
+// "ölç ve bas" komutunun okuyucusu bir ekran değil, karar veren bir insan.
+var quotaOwnerGroupOption = new Option<string>("--owner-group")
+{
+    Description = "Kotası okunacak grup.",
+    Required = true,
+};
+
+var rcaQuotaCommand = new Command(
+    "quota", "Bir grubun RCA kotasını ve kaynak başına dağılımını basar.");
+rcaQuotaCommand.Options.Add(quotaOwnerGroupOption);
+rcaQuotaCommand.Options.Add(connectionOption);
+rcaQuotaCommand.SetAction((parse, token) => RcaQuotaCommandHandlers.ShowAsync(
+    parse.GetValue(quotaOwnerGroupOption)!,
+    parse.GetValue(connectionOption),
+    token));
+
+var rcaCommand = new Command("rca", "Kök neden analizi işlemleri.");
+rcaCommand.Subcommands.Add(rcaQuotaCommand);
+
 // MCP'nin stdio taşıması (M01). İkinci bir host projesi AÇILMADI: aynı
 // komutların iki yerde kurulması M02'nin kaçınmak için var olduğu kopya olurdu.
 var mcpSurfaceOption = new Option<string>("--surface")
@@ -475,6 +503,7 @@ root.Subcommands.Add(fleetCommand);
 root.Subcommands.Add(seedCommand);
 root.Subcommands.Add(fieldsCommand);
 root.Subcommands.Add(sigmaCommand);
+root.Subcommands.Add(rcaCommand);
 root.Subcommands.Add(mcpCommand);
 
 return await root.Parse(args).InvokeAsync().ConfigureAwait(false);

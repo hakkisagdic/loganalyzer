@@ -133,15 +133,9 @@ public static class SigmaSyncCommandHandler
         return 0;
     }
 
-    /// <summary>
-    /// Tek koşumluk komutun fabrikası. Havuz kurmak, ömrü saniyelerle ölçülen
-    /// bir süreçte kazanç sağlamıyor.
-    /// </summary>
-    private sealed class SingleContextFactory(DbContextOptions<ControlPlaneDbContext> options)
-        : IDbContextFactory<ControlPlaneDbContext>
-    {
-        public ControlPlaneDbContext CreateDbContext() => new(options);
-    }
+    // `SingleContextFactory` ÇIKARILDI (M16): `rca quota` aynısına ihtiyaç
+    // duydu ve dört satırlık bir tipin iki kopyası bir gün ayrışır (§9).
+    // Artık `SingleContextFactory.cs`'de, aynı adla — çağrı yerleri değişmedi.
 
     private static void Report(IReadOnlyList<SigmaSyncDecision> plan, int total)
     {

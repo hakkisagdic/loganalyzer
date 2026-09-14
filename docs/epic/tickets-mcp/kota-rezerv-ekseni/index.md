@@ -95,6 +95,53 @@ Tetikleyici koşul yazılı olsun:
 > boşluğunun kapanmasına bağlı — yani sıra: gözlemi yüzeye çıkar, sonra bu
 > soruyu ölç.
 
+## M16 · gözlem yüzeye çıktı — üç aday ölçüldü, biri seçildi
+
+Yukarıdaki boşluk kapandı: `bizigo rca quota --owner-group <grup>` kaynak başına
+tüketimi **ve kaynak başına etkin sınırı** basıyor. Kırılım
+`RcaQuotaUsage.BySource`'tan geliyor; ikinci bir toplama yazılmadı.
+
+Üç aday ölçüldü ve **ikisinin bugün okuyucusu yok**:
+
+| Aday | Ölçüm | Sonuç |
+| --- | --- | --- |
+| `GET /v1/rca/quota` | RCA ekranı kotayı **bilerek** kapsam dışında bırakmış — `ui/src/app/rca/page.tsx`: *"kuyruk/kota/debounce yok — onlar dört tetikleyiciyle birlikte F4'te"* | ❌ tüketicisi **ertelenmiş** (§8) |
+| `rca.quota` MCP aracı | Modelin cevabı **zaten var**: `rca.trigger` kota dolduğunda `state=rejected` + `reason` döndürüyor, `rca.runs` her satırda `counts_against_quota` taşıyor. Reaktif yol **bedava** — reddedilen koşum kotadan düşülmüyor | ❌ ikinci yol, yeni yetenek yok (§9) |
+| `bizigo rca quota` | Okuyucu **var ve M15 onu yarattı**: rezerv yüzdesine karar verecek operatör | ✅ **seçildi** |
+
+Emsal `bizigo fields coverage`: bu depoda *"ölç ve bas"* komutunun okuyucusu bir
+ekran değil, **karar veren bir insan**.
+
+### Bekçi · "hesaplanıp atılan alan" — bir SINIFIN ilk örneği
+
+`ComputedButUnreadTests` `RcaQuotaUsage.BySource`'un üretimde bir okuyucusu
+olduğunu `Bizigo.Cli`'nin **MemberRef tablosundan** ölçüyor. M15'ten önce
+**kırmızı yanardı** — kırılımı okuyan tek yer bir birim testiydi, ve bir birim
+testi okuyucu değil.
+
+⚠️ **Genel bir kural yazılamadı ve sebebi yazılı:** bir tipin her özelliği için
+*"üretimde okunuyor mu"* sormak, meşru olarak okunmayan onlarca alanı da kırmızı
+yakardı (eşitliğe giren ama okunmayan `record` alanı, serileştirilip tele inen
+ama kod tarafından okunmayan alan). Ayrımı yapabilen mekanik bir ölçüt **yok**:
+hangi alanın bir *karar* için var olduğunu bilen tek şey onu yazan kişi. Yani bu
+bekçi sınıfın **ilk örneği**, sınıfın kendisi değil — bir sonraki kişi genel
+kuralı aramasın.
+
+## Ölçülmeyen iki komşu — yazılı, ticket açılmadı
+
+İkisi de bu ticket'ın kapsamı dışında ve **ölçülmediler**:
+
+1. **`MaxConcurrentPerGroup`'ta rezerv ekseni yok.** Rezerv yalnızca *günlük*
+   sayaçta uygulanıyor; eşzamanlılık tavanında kaynak ayrımı hiç yok. Yani bir
+   ajan grubun eşzamanlı slotlarını doldurabilir ve günlük kotası dolmamış
+   olabilir. Eşzamanlılık ayrı bir soru: günlük kota *bütçe*, eşzamanlılık
+   *anlık kapasite*, ve ikisinin rezervi aynı sayı olmak zorunda değil.
+
+2. **`Schedule` ile `Agent` daraltılmış sınırı PAYLAŞIYOR.** T46'nın §6.1
+   gerekçesi (*"bir kaynağın öngörülebilirliği, başka bir kaynağın
+   öngörülemezliğini eziyor"*) bu ikisi arasında da geçerli olabilir: takvim
+   öngörülebilir, ajan değil. Bugün ikisi aynı rezerv-sonrası havuzu yiyor.
+
 ## Bu ticket'ın YAPMADIĞI şey
 
 **Kotayı kimlik başına saymaya çevirmek.** T46 tek havuz kararını gerekçeleriyle

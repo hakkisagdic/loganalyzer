@@ -104,6 +104,19 @@ public static class CommandCatalog
                 "kontrolü ürün API'sinden sürülebilseydi, ürünün kendi süreci filoyu " +
                 "değiştirebilirdi. Simülatörün kendi yüzeyi var ve o M03'ün işi.")),
 
+        new("rca.quota", "rca quota",
+            "RCA kotası",
+            "Bir grubun RCA kotasını ve kaynak başına dağılımını basar.",
+            new CommandExposure.Exempt(
+                "MODELİN CEVABI ZATEN VAR ve ikinci bir yol yeni bir yetenek vermezdi (M16). " +
+                "`rca.trigger` kota dolduğunda `state=rejected` + `reason` döndürüyor " +
+                "(\"Kota dolduğu için RCA hiç çalıştırılmadı\") ve `rca.runs` her satırda " +
+                "`counts_against_quota` taşıyor. Reaktif yol BEDAVA: reddedilen koşum kotadan " +
+                "düşülmüyor (`CountsAgainstQuota=false`), yani modelin önden bakmak için " +
+                "ödediği bir bedel yok. Araç eklemek yalnızca araç başına bağlam bütçesi " +
+                "ekler (§9). Bu komutun okuyucusu MODEL DEĞİL: rezerv yüzdesine karar veren " +
+                "operatör — M15 o kararı yarattı ve elinde hiçbir yol yoktu.")),
+
         new("mcp.serve", "mcp serve",
             "MCP sunucusu",
             "MCP sunucusunu stdio üzerinden koşturur.",
