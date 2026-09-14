@@ -1,10 +1,12 @@
 using System.Globalization;
 using System.Net;
-using Bizigo.Contracts;
+using Bizigo.Alerting;
 using Bizigo.Contracts.Security;
-using Bizigo.Mcp;
-using Bizigo.Mcp.Product;
+using Bizigo.Contracts;
 using Bizigo.Mcp.Product.Tools;
+using Bizigo.Mcp.Product;
+using Bizigo.Mcp;
+using Bizigo.Parsing.Dispatch;
 using Bizigo.Query;
 using Bizigo.Storage.ClickHouse;
 using Microsoft.Extensions.DependencyInjection;
@@ -314,6 +316,28 @@ public sealed class McpQueryCancellationTests(DevStackFixture stack) : IAsyncLif
 
         services.AddSingleton<IAccessScopeResolver>(
             new IntegrationScopeResolver(AccessScope.ForGroups("iptal-olcumu", ["net-core"])));
+
+        // ÜRÜN YÜZEYİNİN TAMAMI kuruluyor, yalnızca `logs.search` değil — ve bu
+        // ilk CI koşumunda ölçülerek eklendi.
+        //
+        // `CreateOptions` bir DERLEME listesi alıyor (M05'in beyan modeli) ve
+        // keşif o derlemedeki BÜTÜN araçları kuruyor; yüzeye göre ancak
+        // kurduktan sonra eliyor. Yani `Bizigo.Mcp.Product`'ı beyan etmek beş
+        // aracın hepsinin bağımlılığını istiyor.
+        //
+        // Alternatif — yalnızca bu aracın tipini keşfe vermek — testi üretimin
+        // kompozisyonundan koparırdı: sunucu bu testte üretimde hiç olmayan bir
+        // araç kümesiyle kurulur ve iptal ölçümü "üretimde koşan sunucuda"
+        // yapılmış sayılmazdı.
+        //
+        // Yan kazanç, kaybettiğimizden büyük: beş aracın bağımlılık grafiği
+        // GERÇEK bir kontrol düzlemiyle çözülebiliyor mu — bunu bugüne kadar
+        // hiçbir koşum sınamıyordu.
+        services.AddSingleton(controlPlane);
+        services.AddSingleton(new AlertingOptions());
+        services.AddSingleton<AlertRuleService>();
+        services.AddSingleton(new ParserCatalog());
+        services.AddBizigoReadTools();
 
         return services.BuildServiceProvider();
     }
