@@ -23,7 +23,28 @@ jobs:
     name: Derle ve birim testleri
     runs-on: ubuntu-latest
     steps:
+      # `fetch-depth: 0` ŞART, ve eksikliği ölçülerek bulundu.
+      #
+      # T61'in statü bekçisi gerçeği MERGE GEÇMİŞİNDEN okuyor
+      # (`git log --merges`), `CiCoverageTests` de git'e bağlı.
+      # `actions/checkout` varsayılanı YÜZEYSEL klon (tek commit), yani bu
+      # işte merge geçmişi hiç yok ve dört kapı birden düşüyor.
+      #
+      # Ölçüldü (`0a1a182`): yerelde 1488/0, CI'da aynı ağaçta 4 düşüş, hepsi
+      # `EpicStatusTests`. Sebep kod değil KLON DERİNLİĞİ.
+      #
+      # Alternatif — kapıları "geçmiş yoksa atla" hâline getirmek — REDDEDİLDİ:
+      # o zaman dört kapı yalnızca yerelde koşardı ve CI ile yerel arasındaki
+      # asimetri bu depoda tam olarak arızaların saklandığı yer. §5'in
+      # simetrisi: yerelin gördüğü şey CI'nın koşmadığı şey olabilir, ve
+      # tersi de.
+      #
+      # T61 bu hâli ÖNCEDEN bildirdi ve boş küme bekçisini bu yüzden yazdı:
+      # kapılar sessizce yeşil kalmadı, gürültüyle düştü. Bekçinin ilk gerçek
+      # sınavı buydu ve geçti.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       # `actions/setup-dotnet` yerine resmî kurulum betiği — BİLİNÇLİ.
       # Action'ın kendisi `codeload.github.com`'dan iniyor ve GitHub orayı

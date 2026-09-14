@@ -82,6 +82,22 @@ public sealed class McpSchemaBudgetTests
     /// bir aracın <i>bir alan grubu daha</i> kazanmasına yetiyor, <i>iki katına
     /// çıkmasına</i> yetmiyor. Yükseltmek serbest — <b>sessizce</b> yükselmek değil.
     /// </para>
+    ///
+    /// <para>
+    /// <b>Maliyetin nerede olduğu M10'da ölçüldü ve tavanı yükseltmeye karşı
+    /// bir gerekçe:</b> <c>rca.quality</c>'nin şemasını düzleştirmek — üç iç içe
+    /// nesneyi tek düzeye indirmek — yalnızca <b>19 belirteç</b> kazandırdı
+    /// (792 → 773). Yük zarflarda değil <b>alan adlarının kendisinde</b>: her ad
+    /// <c>properties</c> ve <c>required</c> içinde <b>iki kez</b> sayılıyor. Bu
+    /// JSON Schema'nın şekli, aracın kusuru değil.
+    /// </para>
+    ///
+    /// <para>
+    /// Sonucu: bu tavanın sonraki konuşması <b>bu aracı</b> değil <b>şemanın
+    /// şeklini</b> ilgilendiriyor. Alan sayısı yüksek her yeni araç aynı yere
+    /// gelecek, ve tavanı her seferinde yükseltmek onu M02'de kaldırdığımız
+    /// <i>"rutin olarak güncellenen sabit"</i> hâline geri döndürür.
+    /// </para>
     /// </summary>
     private const int PerToolTokenCeiling = 700;
 
@@ -153,37 +169,6 @@ public sealed class McpSchemaBudgetTests
         McpSurface.Simulator => SimulatorToolListTokenCeiling,
         _ => toolCount * PerToolTokenCeiling,
     };
-    /// <b>Araç başına</b> belirteç tavanı — toplam ondan türüyor.
-    ///
-    /// <para>
-    /// <b>M02'de yapı değişti ve sebebi ölçülmüş bir eğilim.</b> Sabit önce bir
-    /// TOPLAM tavandı (400) ve yedi araç eklenince 2.400'e çekilmesi gerekti.
-    /// Ama eğilim şunu söylüyor: MCP planı ~15 araç öngörüyor, araç başına ~280
-    /// belirteçle toplam <b>~4.500</b>'e çıkıyor. Toplam tavanla her araç
-    /// ailesi sabiti yeniden düzenlerdi — ve o noktada kapı bir <b>kayıt</b>
-    /// olmaktan çıkıp <b>güncellenmesi rutinleşen bir sabite</b> dönerdi. Bu
-    /// deponun defalarca adını koyduğu şey; elle tutulan sayı er ya da geç
-    /// bekçiyi kör ediyor.
-    /// </para>
-    ///
-    /// <para>
-    /// <b>Araç başına tavan bunu yapısal olarak kaldırıyor:</b> yeni bir araç
-    /// eklemek sabiti düzenlemeyi <b>gerektirmiyor</b>, ve kapı hâlâ gerçek bir
-    /// şey ölçüyor — <i>"bir aracın bütçesi şunu aşamaz"</i>. Disiplin de
-    /// maliyetin gerçekten olduğu yere biniyor: <c>description</c> metinleri.
-    /// M02'de şema açıklamaları kırpılınca yük <b>2.484 → 2.248</b>'e indi (%10).
-    /// </para>
-    ///
-    /// <para>
-    /// <b>600 nereden geliyor.</b> Ölçülen dağılım: ortalama ~280, en ucuz
-    /// <c>server.info</c> 194, en pahalı <c>fields.coverage</c> 481. Tavan en
-    /// pahalı araca <b>%25 pay</b> bırakıyor. Daha dar bir tavan (örn. 500)
-    /// gürültüyle kırmızı yanar ve rutin olarak yükseltilirdi — yani kaldırmaya
-    /// çalıştığımız hâle geri dönerdi. 600'ü aşan bir araç fazla iş yapıyor
-    /// demektir ve bir konuşmayı hak eder.
-    /// </para>
-    /// </summary>
-    private const int ToolTokenCeiling = 600;
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
