@@ -22,7 +22,7 @@ sources:
   - docs/epic/sigma-clickhouse-arastirmasi/index.md
   - docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=1da27ea79668 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=c62deced6485 docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=37dc201f87d2"
+source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=1da27ea79668 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=950604929fb8 docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=37dc201f87d2"
 summary: F3'ün iki kolu (Sigma detection ve RCA kanıtı), planı yarı yarıya değiştiren template_id bulgusu, on ürün ticket'ının durumu, sonradan eklenen üç kapı ticket'ı, ve fazın sayılarının neden bağlayıcı olmadığı.
 provenance:
   extracted: 0.85
@@ -116,10 +116,10 @@ doğrulaması (T27).
 > ve rapor düzeltilince iddia sessizce yanlış oldu, hiçbir test kırmızı
 > yanmadan. Tarihli görüntüyü tarihiyle okuyun.
 
-### Sonradan eklenen üç kapı ticket'ı
+### Sonradan eklenen beş kapı ticket'ı
 
 Faz on ticket'a bölünmüştü; `docs/epic/tickets-f3/index.md` bugün ayrı bir
-başlık altında **üç tane daha** taşıyor. Ayrımın anlamı var: bu üçü fazın
+başlık altında **beş tane daha** taşıyor. Ayrımın anlamı var: bunlar fazın
 ürününü değil **bekçilerini** taşıyor ve bitti tanımına madde eklemiyor.
 
 | # | Ne kapatıyor |
@@ -127,10 +127,19 @@ başlık altında **üç tane daha** taşıyor. Ayrımın anlamı var: bu üçü
 | T48 | `Produces<T>` kapısı kaydedilecek servisleri elle listeliyordu; delik dört kez açıldı |
 | T50 | Bekçiler bir uzantının *var olduğunu* sınıyordu, *bağlı olduğunu* değil |
 | T53 | Ticket `status` alanları bayatlıyordu; statünün dört gösterimi artık birbirini yalanlayamıyor |
+| T56 | Damıtılmış vault sayfalarının kaynaklarına karşı denetimi. **Ticket dosyası hiç yazılmadı** — kimliği main'e girdi ve iki tur boyunca hiçbir tabloda kayıtlı değildi |
+| T61 | T53'ün **beyan ettiği sınır gerçekleşti**: dört gösterim *birden* yanlış olabiliyordu ve oldu. Beşinci gösterim depo dışından — `git`'in merge geçmişi |
 
-Üçü de aynı sınıfın örneği — [[concepts/elle-tutulan-liste-bekciyi-korlestirir]]
+Beşi de aynı sınıfın örneği — [[concepts/elle-tutulan-liste-bekciyi-korlestirir]]
 ve `CLAUDE.md` §7'nin *"bir bekçinin sessizce atlaması, bekçinin kendisinden
 tehlikelidir"* maddesi. ^[extracted]
+
+> **T61 bu sayfanın yukarıdaki uyarısını kaldırmıyor.** Beşinci gösterim de
+> `docs/epic` ile `git` arasında; `docs/wiki` sayfalarının statü iddialarını
+> hâlâ hiçbir kapı sınamıyor. T61 kendi belgesinde bunu ayrıca yazıyor: kapı
+> **tek yönlü** — `status: 0` iken işin var olduğunu yakalıyor, `status: 2`
+> iken işin **yok** olduğunu yakalamıyor, çünkü *"iş yok"* gözlenebilir bir
+> olgu değil. ^[extracted]
 
 ## Fazın açık kalan tek kararı
 

@@ -37,7 +37,7 @@ namespace Bizigo.UnitTests;
 /// </list>
 ///
 /// <para>
-/// <b>Ne sınamıyor — beyan:</b> bu bekçi statünün <b>gerçeğe</b> uyduğunu
+/// <b>Ne sınamıyor — beyan (T53):</b> bu bekçi statünün <b>gerçeğe</b> uyduğunu
 /// sınamıyor, çünkü "iş gerçekten bitti mi" gözlenebilir bir olgu değil.
 /// Sınadığı şey, statünün <b>kendi dört gösteriminin birbirini yalanlamaması</b>.
 /// Hepsi birden yanlış olabilir ve bekçi yeşil yanar. Bu bir eksiklik değil bir
@@ -46,16 +46,81 @@ namespace Bizigo.UnitTests;
 /// </para>
 ///
 /// <para>
-/// Kapsam dışında kalan iki aday ve neden: <b>git log'daki ticket atfı</b>
-/// güvenilmez — bu depodaki commit'lerin çoğu ticket kimliği taşımıyor
-/// (<c>Merge branch …</c>, <c>Restamp the two pages …</c>), yani "atıf yok"
-/// ile "iş yok" ayırt edilemiyordu. <b>Kabul kriterine karşılık gelen
-/// test/dosyanın varlığı</b> ise kriter metnini makineye okutmayı gerektiriyor
-/// ve bu, ölçtüğü şeyden daha kırılgan bir tahmin üretirdi.
+/// <b>T61 o sınırın bir dilimini kaldırdı — ve tamamını değil.</b> T53'ün
+/// beyanı bir kez daha ölçüldü ve gerçekleşti: MCP kolunun beş ticket'ı
+/// <c>status: 0</c> görünürken kodları main'deydi, <b>dört gösterim de
+/// birbiriyle tutarlıydı</b>, ve bekçi yeşil yandı. Yani iç tutarlılık kapısı
+/// bu sınıfa yapısal olarak kör.
 /// </para>
+///
+/// <para>
+/// Bağlanan <b>beşinci</b> gösterim depo dışından geliyor: <c>git</c>'in merge
+/// geçmişi. Üç aday ölçüldü ve seçim gerekçesi
+/// <c>docs/epic/tickets-f3/statu-olgusu-bekcisi/index.md</c>'de; özeti,
+/// seçilenin <b>yeni bir elle tutulan alan doğurmayan</b> tek aday olması.
+/// </para>
+///
+/// <list type="table">
+/// <item>
+/// <term>Kodda bir sembolün varlığı</term>
+/// <description>ticket → sembol eşlemesi <b>elle</b> yazılırdı; bayatlayan bir
+/// alanı ikinci bir bayatlayan alanla ölçmek olurdu.</description>
+/// </item>
+/// <item>
+/// <term>Kabul kriterinin karşılığı</term>
+/// <description>kriter metnini makineye okutmak gerekirdi — T53 bunu
+/// "ölçtüğü şeyden daha kırılgan bir tahmin" diye elemişti ve o gerekçe
+/// hâlâ geçerli.</description>
+/// </item>
+/// <item>
+/// <term><b>Merge geçmişindeki dal adı</b> (seçilen)</term>
+/// <description><c>Merge branch 'm02-komut-cekirdegi'</c> — dal adının ön eki
+/// (<c>m02</c>) ticket kimliği, ve kimlik → ticket dosyası eşlemesi
+/// <b>zaten</b> yol haritası tablolarında yazılı. Yani yeni bir liste
+/// doğmuyor: iki mevcut olgu birleştiriliyor.</description>
+/// </item>
+/// </list>
+///
+/// <para>
+/// T53 git'i <i>"commit mesajları ticket kimliği taşımıyor"</i> diye elemişti ve
+/// bu <b>doğruydu</b> — ama ölçtüğü şey commit mesajlarıydı, <b>merge dal
+/// adları</b> değil. Ölçüm: 179 merge commit'inin 27'si <c>Merge branch
+/// '&lt;dal&gt;'</c> biçiminde ve 24'ü ayrıştırılabilir bir kimlik ön eki
+/// taşıyor; 24 kimliğin <b>hiçbirinde</b> iki farklı ticket dizinine düşen bir
+/// çakışma yok.
+/// </para>
+///
+/// <para>
+/// <b>Yeni gösterimin sınırları — üçü de yazılı olmadan bırakılamaz:</b>
+/// </para>
+///
+/// <list type="number">
+/// <item>
+/// <b><c>1</c> ile <c>2</c> arasını sınamıyor.</b> Merge edilmiş bir dal işin
+/// <i>başladığını</i> kanıtlıyor, <i>bittiğini</i> değil — bir kol yarım da
+/// merge edilebilir (bugün M03 ve T32 tam olarak bu hâlde). Kapı bu yüzden
+/// yalnızca <c>0</c>'ı reddediyor. <c>1 → 2</c> geçişi bir <b>insan kararı</b>
+/// ve öyle kalıyor.
+/// </item>
+/// <item>
+/// <b>Dal adı olmayan merge'i göremiyor.</b> <c>Merge M08 and M06, bind the
+/// scope seam …</c> gibi anlatısal merge mesajları kimlik taşımıyor. Kapı
+/// yalnızca <b>eksik</b> yönde yanılıyor: göremediği iş için sessiz kalıyor,
+/// yanlış bir ticket'ı suçlamıyor.
+/// </item>
+/// <item>
+/// <b>Düzyazıyı hiç okumuyor.</b> <c>kalan-is-raporu</c>'nun MCP bölümü tam
+/// bugün <i>"sekiz kalem"</i> diyor ve kalemleri <b>tablo değil düzyazı</b>
+/// olarak sayıyor; <see cref="ReportedOpen"/> tablo satırı aradığı için o
+/// bölüme kör. Düzyazıdaki kimlikleri eşleştirmek denendi ve <b>elendi</b>:
+/// aynı paragraf kapanan ticket'ları da anıyor, yani "açık" ile "kapandı"
+/// ayırt edilemiyordu.
+/// </item>
+/// </list>
 /// </summary>
 public sealed class EpicStatusTests
 {
+    private const int NotStarted = 0;
     private const int Done = 2;
 
     /// <summary>
@@ -261,6 +326,89 @@ public sealed class EpicStatusTests
     }
 
     /// <summary>
+    /// <b>Beşinci gösterim: main'e girmiş dallar.</b> <c>Merge branch
+    /// '&lt;dal&gt;'</c> mesajlarından kimlik → dal adı eşlemesi.
+    ///
+    /// <para>
+    /// <c>--first-parent</c> <b>bilerek</b> kullanılmıyor. Bir konu dalında
+    /// koşarken main'in merge'leri ikinci ebeveyn tarafında kalıyor ve
+    /// <c>--first-parent</c> onları eliyor — yani bekçinin kapsamı hangi dalda
+    /// koştuğuna göre değişirdi. Bedeli, dalın kendi içindeki merge'lerin de
+    /// sayılması; o da yalnızca <b>daha erken</b> uyarı üretiyor: kendi dalında
+    /// merge ettiği işi <c>status: 0</c> bırakan ajanı main'e girmeden yakalıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Ön ek eşleştirmesi <b>tam</b>: <c>^([tsmb])(\d+)-</c>. Bulanık ad
+    /// eşleştirmesi denenmedi ve denenmemesi bir karar — <c>t44-llm-adimlari</c>
+    /// ile <c>llm-adimlari-ve-iki-kapi</c> dizini yalnızca ön ekle örtüşüyor, ve
+    /// bulanık eşleştirme <b>yanlış ticket'ı</b> suçlayabilirdi. Kimlikten
+    /// dizine giden yolu bulanıklaştırmak yerine yol haritası tablosuna
+    /// bırakıyor: orası zaten kimlik → dosya eşlemesinin tek kaynağı.
+    /// </para>
+    /// </summary>
+    private static readonly Lazy<IReadOnlyDictionary<string, string>> Merged = new(ReadMerged);
+
+    private static IReadOnlyDictionary<string, string> ReadMerged()
+    {
+        var merged = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var subject in Git.Lines("log", "--merges", "--format=%s"))
+        {
+            var branch = Regex.Match(subject, @"^Merge branch '([^']+)'");
+
+            if (!branch.Success)
+            {
+                continue;
+            }
+
+            var id = Regex.Match(branch.Groups[1].Value, @"^([tsmbTSMB])(\d+)-");
+
+            if (id.Success)
+            {
+                merged.TryAdd(
+                    id.Groups[1].Value.ToUpperInvariant() + id.Groups[2].Value,
+                    branch.Groups[1].Value);
+            }
+        }
+
+        return merged;
+    }
+
+    /// <summary>
+    /// <b>Bir tablo satırında adı geçen her kimlik</b> — <c>docs/epic</c>
+    /// altındaki <b>bütün</b> belgelerden, bağ verip vermediğine bakılmadan.
+    ///
+    /// <para>
+    /// <see cref="Roadmap"/>'ten iki noktada ayrılıyor ve ikisi de bilinçli:
+    /// yalnızca <c>tickets*</c> dizinlerine değil <b>her</b> belgeye bakıyor
+    /// (<c>mcp-teknik-plan</c>, <c>kalan-is-raporu</c>,
+    /// <c>kapasite-olcumu</c> hepsi kimlik anıyor), ve <b>bağsız</b> satırları
+    /// da sayıyor. Sorduğu soru "kimliğin dosyası var mı" değil, çok daha
+    /// düşük bir eşik: <b>bu kimlik depoda herhangi bir yerde kayıtlı mı.</b>
+    /// </para>
+    /// </summary>
+    private static readonly Lazy<IReadOnlySet<string>> Declared = new(ReadDeclared);
+
+    private static IReadOnlySet<string> ReadDeclared()
+    {
+        var declared = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var path in Directory.EnumerateFiles(EpicRoot, "index.md", SearchOption.AllDirectories))
+        {
+            foreach (Match row in Regex.Matches(
+                File.ReadAllText(path),
+                @"^\|\s*\*{0,2}([TSMB]\d+)\*{0,2}\s*\|",
+                RegexOptions.Multiline))
+            {
+                declared.Add(row.Groups[1].Value);
+            }
+        }
+
+        return declared;
+    }
+
+    /// <summary>
     /// <c>kalan-is-raporu</c>'nun "açık ticket'lar" bölümündeki kimlikler.
     /// </summary>
     private static IReadOnlyList<string> ReportedOpen()
@@ -443,6 +591,138 @@ public sealed class EpicStatusTests
     }
 
     /// <summary>
+    /// <b>Main'e girmiş bir iş "başlamadı" görünmüyor.</b> T61'in çekirdeği ve
+    /// bu sınıfın <b>gerçeğe</b> bağlanan tek kapısı.
+    ///
+    /// <para>
+    /// <c>status: 0</c> <i>hiç başlanmadı</i> demek. Bir dalın main'e girmiş
+    /// olması bunun <b>mekanik</b> olarak yanlış olduğunu söylüyor: insan
+    /// kararı gerektiren hiçbir yeri yok, çünkü kod orada.
+    /// </para>
+    ///
+    /// <para>
+    /// <b><c>1</c> reddedilmiyor</b> ve bu kapının en önemli satırı: yarım bir
+    /// kol da merge edilebiliyor (bugün M03 ve T32 tam olarak bu hâlde ve
+    /// ikisi de <b>doğru</b>). <c>1 → 2</c> geçişi bir insan kararı; onu
+    /// mekanikleştirmek, bekçinin ölçemediği bir şeyi ölçüyormuş gibi
+    /// göstermek olurdu.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Birlestirilmis_bir_is_baslamamis_gorunmuyor()
+    {
+        var byId = Roadmap.Value
+            .GroupBy(static row => row.Id, StringComparer.Ordinal)
+            .ToDictionary(static g => g.Key, static g => g.First().Key, StringComparer.Ordinal);
+
+        var actual = Tickets().ToDictionary(static t => t.Key, static t => t.Status, StringComparer.Ordinal);
+
+        var contradictions = Merged.Value
+            .Where(pair => !Excused($"birlesme:{pair.Key}"))
+            .Where(pair => byId.TryGetValue(pair.Key, out var key)
+                && actual.TryGetValue(key, out var status)
+                && status == NotStarted)
+            .Select(pair => $"{pair.Key}: `{pair.Value}` main'de, ticket dosyası `status: 0` ({byId[pair.Key]})")
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.True(
+            contradictions.Length == 0,
+            "Bu ticket'ların dalı merge edilmiş ama dosyaları hâlâ \"başlanmadı\" diyor:\n  " +
+            string.Join("\n  ", contradictions) +
+            "\n\nBelge \"yapılacak\", kod \"yapıldı\" diyor — ve bir sonraki brief belgeyi " +
+            "okuyor. İş bitmediyse `status: 1`, bittiyse `status: 2`; `0` bu noktadan " +
+            "sonra hiçbir hâli ifade etmiyor.");
+    }
+
+    /// <summary>
+    /// <b>Main'e girmiş her kimlik bir tabloda anılıyor.</b> Kayıtsız iş
+    /// aramıyor — <b>hiç</b> kayıt aramıyor.
+    ///
+    /// <para>
+    /// Eşik bilerek çok düşük: ticket dosyası değil, bağ değil, statü değil —
+    /// yalnızca <b>bir tablo satırı</b>. Ticket dosyası istemek yazılmamış işi
+    /// zorunlu kılardı (T53 aynı gerekçeyle "bütün çocukları bitmiş bir story
+    /// bitmiş olmak zorunda değil" demişti); bir satır istemek ise yalnızca
+    /// <i>bu iş oldu</i> demenin bedelini soruyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b><c>kapasite-olcumu</c>'nun B01–B05'i bu kapıya takılmıyor ve bu bir
+    /// karar.</b> Beşinin de tablo satırı var, ticket dosyası yok, ve hiçbiri
+    /// merge edilmedi — yani <i>plan yazıldı, iş başlamadı</i>. "Belgede adı
+    /// geçen ama dosyası olmayan ticket" hâli bu bekçinin
+    /// <b>kapsamında değil</b>: bir planın dilimleme önerisini ticket dosyası
+    /// yazma zorunluluğuna çevirirdi, ve <c>kapasite-olcumu</c> §6'nın üç açık
+    /// sorusu cevaplanmadan o dosyalar zaten yazılamaz. Kapı ilk <c>b01-*</c>
+    /// dalı merge edildiği gün konuşmaya başlıyor — yani kapsamı, bağlandığı
+    /// olguyla birlikte kendiliğinden büyüyor.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Birlestirilmis_her_kimlik_bir_tabloda_aniliyor()
+    {
+        var unrecorded = Merged.Value.Keys
+            .Where(id => !Declared.Value.Contains(id))
+            .Where(id => !Excused($"kayit:{id}"))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.True(
+            unrecorded.Length == 0,
+            "Bu dallar main'e girdi ama kimlikleri `docs/epic` altındaki hiçbir tabloda " +
+            "geçmiyor:\n  " +
+            string.Join("\n  ", unrecorded.Select(id => $"{id} (`{Merged.Value[id]}`)")) +
+            "\n\nİş oldu ve hiçbir yerde kayıtlı değil: ne yol haritası sayıyor, ne rapor " +
+            "biliyor, ne de bir sonraki tur ondan haberdar.");
+    }
+
+    /// <summary>
+    /// <b>İşi başlamış bir story "başlamadı" görünmüyor.</b>
+    ///
+    /// <para>
+    /// <see cref="Tamamlanmis_bir_story_yarim_ticket_tasimiyor"/>'un aynası ve
+    /// T53'ün bilerek sınamadığı yön <b>değil</b>: o, "bütün çocuklar bitti ⇒
+    /// story bitti" çıkarımını reddediyor (yazılmamış ticket'lar olabilir).
+    /// Buradaki çıkarım tek yönlü ve yazılmamış işe hiç dokunmuyor: bir
+    /// çocuğu <b>bitmişse</b> story'nin <c>0</c> olması, mevcut bir olgunun
+    /// inkârı.
+    /// </para>
+    ///
+    /// <para>
+    /// <c>2</c> talep edilmiyor, yalnızca <c>0</c> reddediliyor — aynı
+    /// gerekçeyle: <c>1 → 2</c> insan kararı.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Isi_baslamis_bir_story_baslamamis_gorunmuyor()
+    {
+        var broken = new List<string>();
+
+        foreach (var story in Stories().Where(static s => s.Status == NotStarted))
+        {
+            var prefix = story.Key + "/";
+
+            var done = Tickets()
+                .Where(ticket => ticket.Key.StartsWith(prefix, StringComparison.Ordinal))
+                .Where(static ticket => ticket.Status == Done)
+                .Select(static ticket => ticket.Key)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+
+            if (done.Length > 0 && !Excused($"story:{story.Key}"))
+            {
+                broken.Add($"{story.Key} (status 0) → bitmiş çocuk: {string.Join(", ", done)}");
+            }
+        }
+
+        Assert.True(
+            broken.Count == 0,
+            "Story \"başlanmadı\" diyor ama altında bitmiş ticket var:\n  " +
+            string.Join("\n  ", broken.Order(StringComparer.Ordinal)));
+    }
+
+    /// <summary>
     /// <b>Bekçi boş küme üzerinde dönmüyor.</b>
     ///
     /// <para>
@@ -452,6 +732,15 @@ public sealed class EpicStatusTests
     /// bekçi, olmayan bekçiyle aynı sonucu verir. Sayıların sıfırdan büyük
     /// olması bu yüzden ayrı bir kapı.
     /// </para>
+    ///
+    /// <para>
+    /// <b>Git tarafı ayrıca sorulmak zorunda</b> ve arıza biçimi tamamen
+    /// farklı: yüzeysel bir klon, ihracat edilmiş bir ağaç ya da merge mesajı
+    /// biçiminin değişmesi kümeyi boşaltıyor, ve T61'in üç kapısı birden
+    /// sessizleşiyor. <see cref="Git.Lines"/> boş çıktıyı zaten reddediyor,
+    /// ama ayrıştırılabilir <b>kimlik</b> sayısının sıfırdan büyük olması ayrı
+    /// bir soru — merge mesajları var ve hiçbiri kimlik taşımıyor olabilir.
+    /// </para>
     /// </summary>
     [Fact]
     public void Bekci_bos_kume_uzerinde_donmuyor()
@@ -460,6 +749,21 @@ public sealed class EpicStatusTests
         Assert.NotEmpty(Stories());
         Assert.NotEmpty(Roadmap.Value);
         Assert.NotEmpty(ReportedOpen());
+        Assert.NotEmpty(Declared.Value);
+
+        Assert.True(
+            Merged.Value.Count > 0,
+            "`git log --merges` içinde ayrıştırılabilir tek bir ticket kimliği bulunamadı — " +
+            "merge mesajı biçimi (`Merge branch '<dal>'`) değişmiş ya da geçmiş kesilmiş " +
+            "olabilir. T61'in üç kapısı bu kümenin üstünde duruyor.");
+
+        var byId = Roadmap.Value.Select(static row => row.Id).ToHashSet(StringComparer.Ordinal);
+
+        Assert.True(
+            Merged.Value.Keys.Any(byId.Contains),
+            "Merge edilmiş kimliklerin hiçbiri bir yol haritası satırına bağlanamadı — " +
+            "kimlik → ticket dosyası eşlemesi kopmuş ve " +
+            $"`{nameof(Birlestirilmis_bir_is_baslamamis_gorunmuyor)}` boş küme üzerinde dönüyor.");
 
         Assert.True(
             Roadmap.Value.Any(static row => row.DeclaredStatus is not null),
@@ -527,6 +831,33 @@ public sealed class EpicStatusTests
                 || status == Done)
             {
                 keys.Add($"rapor:{id}");
+            }
+        }
+
+        foreach (var (id, _) in Merged.Value)
+        {
+            if (byId.TryGetValue(id, out var key)
+                && actual.TryGetValue(key, out var status)
+                && status == NotStarted)
+            {
+                keys.Add($"birlesme:{id}");
+            }
+
+            if (!Declared.Value.Contains(id))
+            {
+                keys.Add($"kayit:{id}");
+            }
+        }
+
+        foreach (var story in Stories().Where(static s => s.Status == NotStarted))
+        {
+            var prefix = story.Key + "/";
+
+            if (Tickets().Any(ticket =>
+                    ticket.Key.StartsWith(prefix, StringComparison.Ordinal)
+                    && ticket.Status == Done))
+            {
+                keys.Add($"story:{story.Key}");
             }
         }
 

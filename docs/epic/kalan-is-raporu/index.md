@@ -82,11 +82,17 @@ Kalan açık kalem ticket değil **veri**: gerçek bir RouterOS cihazından tek 
 | --- | --- | --- |
 | **T49** | Dashboard container'ı | Compose'a `ui` girdi, Keycloak'ın ön/arka kanal ayrımı çözüldü. Kabul kriterlerinden **üçü** Docker istiyor ve koşulmadı: yığın kalkıyor mu · container'daki ekrandan giriş yapılabiliyor mu · e2e container'a karşı koşuyor mu. Ticket'ın öngördüğü dört sorundan **üçü çıkmadı** |
 
-### MCP — sekiz kalem
+### MCP — bir kalem açık, biri kısmî
 
-M01 (protokol çekirdeği + uyum kapısı) **koşuyor**; kalan yedisi ona bağlı.
-M02 CLI paritesi · M03 `bizigo-sim` · M04 okuma araçları · M05 RCA araçları ·
-M06 redaksiyon + K6 kapısı · M07 kaynaklar/abonelik · M08 kimlik taşıma.
+M01 (protokol çekirdeği + uyum kapısı), M02 (komut çekirdeği + CLI paritesi),
+M06 (redaksiyon + K6 kapısı) ve M09 (kimliğin bulunması) **kapandı**. M03
+(`bizigo-sim`), M04 (okuma araçları), M05 (RCA araçları) ve M08 (kimlik taşıma)
+main'de ve `status: 1` — dalları girdi, kabul kriterlerinin tamamının kapandığı
+ayrıca ölçülmedi. **M07** (kaynaklar ve abonelik) başlamadı.
+
+> ⚠️ Bu bölüm **düzyazı**, tablo değil — ve `EpicStatusTests`'in raporu okuyan
+> kapısı yalnızca tablo satırı görüyor. Yani buradaki bir bayatlama bekçiye
+> **görünmez**; bölüm bir kez tam olarak bu yüzden bayatladı (T61 §4.2).
 
 ### F5 — kapsam kararı verildi (2026-09-05)
 

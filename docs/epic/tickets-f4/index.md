@@ -1,7 +1,7 @@
 ---
 title: "F4 — Agentic RCA: Implementasyon Ticket'ları"
 kind: story
-status: 0
+status: 1
 ---
 
 # F4 Implementasyon Ticket'ları

@@ -98,48 +98,19 @@ public sealed partial class CiCoverageTests
     ///
     /// <para>
     /// Git yoksa <b>sessizce dosya sistemine düşmüyor</b>: sessizce
-    /// bozulan bir bekçi, olmayan bir bekçiden tehlikeli (§7).
+    /// bozulan bir bekçi, olmayan bir bekçiden tehlikeli (§7). Çağrı kabuğu
+    /// <see cref="Git"/>'te — T61 aynı kabuğa ikinci kez ihtiyaç duydu ve
+    /// kopyalamak yerine ortaklaştırıldı (§9).
     /// </para>
     /// </summary>
-    private static IReadOnlyList<string> TrackedFiles(string root)
-    {
-        using var git = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("git")
-        {
-            ArgumentList = { "ls-files" },
-            WorkingDirectory = root,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        }) ?? throw new InvalidOperationException("git başlatılamadı; bekçi kapsamını belirleyemez.");
-
-        var output = git.StandardOutput.ReadToEnd();
-        git.WaitForExit();
-
-        if (git.ExitCode != 0)
-        {
-            throw new InvalidOperationException(
-                $"`git ls-files` {git.ExitCode} ile döndü: {git.StandardError.ReadToEnd()}");
-        }
-
-        var files = output.Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => line.Trim())
-            .Where(line => line.Length > 0)
-            .ToArray();
-
-        if (files.Length == 0)
-        {
-            throw new InvalidOperationException(
-                "`git ls-files` hiçbir dosya döndürmedi; bekçi her paketi kapsanmış sanardı.");
-        }
-
-        return files;
-    }
+    private static IReadOnlyList<string> TrackedFiles() => Git.Lines("ls-files");
 
     private static IReadOnlyList<Suite> TestSuites()
     {
         var root = RepositoryLayout.Root;
         var suites = new SortedSet<Suite>(SuiteOrder.Instance);
 
-        foreach (var relative in TrackedFiles(root))
+        foreach (var relative in TrackedFiles())
         {
             var marker = Path.Combine(root, relative);
             var name = Path.GetFileName(relative);

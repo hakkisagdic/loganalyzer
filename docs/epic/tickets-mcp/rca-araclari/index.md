@@ -1,7 +1,7 @@
 ---
 title: "M05 — bizigo RCA araçları"
 kind: ticket
-status: 0
+status: 1
 ---
 
 # M05 — RCA'yı dışarıdan tetiklemek ve okumak
