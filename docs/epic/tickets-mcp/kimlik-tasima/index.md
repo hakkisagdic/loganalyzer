@@ -125,6 +125,21 @@ yoksa ortam değişkeni canlı mı okunuyor? **Karar M08'in.**
 5. Kırmızı yanabildiği ölçüldü: servis hesabıyla koşan bir kurulumun
    reddedildiği görüldü.
 
+## 4.1 · Neden hâlâ `1` — tek kriter, ölçüldü
+
+Beş kriterin dördü karşılanmış; **kriter 4 karşılanmamış**: *"Token'ın süresi
+dolduğunda davranış yazılı ve sınanmış."*
+
+Arandı ve **yok**: `tests/Bizigo.UnitTests/Mcp*.cs` altında süre sonuna dair tek
+bir iddia geçmiyor (`expired`, `exp`, `NotBefore`, `ValidateLifetime` — hiçbiri).
+Yani davranış bugün SDK'nın varsayılanı ne yapıyorsa o, ve ne yaptığı **yazılı
+değil**.
+
+Bu M13'ün (stdio kimliği) kapsamıyla kesişiyor ve orada aynı soru bir kez daha
+soruluyor: süre sonu hatası, kimliğin **yokluğundan** ayırt edilebiliyor mu? İkisi
+aynı `unauthenticated`'e düşüyorsa okuyan kişi yanlış yere bakar. Cevap M13'te
+ölçülecek ve buraya da yazılacak.
+
 ## 5 · Bitti tanımından karşıladıkları
 
 Doğrudan bir madde **sahiplenmiyor** — bu yazılı olsun ki M08 bir maddeye

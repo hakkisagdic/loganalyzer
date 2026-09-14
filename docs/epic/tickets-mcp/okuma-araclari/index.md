@@ -1,7 +1,7 @@
 ---
 title: "M04 — bizigo okuma araçları"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # M04 — Ürünün okunması, tek kapsam kapısından

@@ -64,6 +64,30 @@ Ayrıca bu hafta girdi: `Bizigo.Rca/Reasoning/` altında `RcaReportStore` ·
    `AccessScope.System` çağrısı yok.
 6. Kırmızı yanabildiği ölçüldü (`CLAUDE.md` §6).
 
+## 3.1 · Neden hâlâ `1` — ölçüldü
+
+T61'in bekçisi bu ticket'ı `0`'dan çıkardı ve **`2` değil `1`** yazdı; ölçüm o
+temkinliliği doğruladı.
+
+**İlan edilen üç araçtan hiçbiri main'de yok.** `src/Bizigo.Mcp.Product/Tools/`
+altında sekiz araç var ve `rca.*` olan tek şey `rca.quality` — o da M10'un işi,
+bu ticket'ın değil. Aranan üç ad (`rca.trigger`, `rca.runs`, `evidence.bundle`)
+depoda hiç geçmiyor.
+
+M05'in dalından main'e giren şey **altyapı**:
+
+| Giren | Nerede |
+| --- | --- |
+| Araç derlemesi beyan modeli (`ToolAssemblies`, kök tarama yerine) | `BizigoMcpServer`, `McpEndpoints`, `McpCommandHandlers` |
+| **Sunucudan türeyen** idempotency anahtarı | `McpIdempotency.KeyFor` + `McpIdempotencyTests` |
+| Ajan tetikli RCA'nın kendi kaynağı | `RcaTriggerSource` |
+
+Yani kriter 2 karşılandı (anahtar modelin uydurabileceği bir yerden gelmiyor) ama
+1, 3, 4 ve 5 **araçlar yazılmadığı için** karşılanamaz.
+
+Bu bir gerileme değil bir **sıra**: beyan modeli üç aracın önkoşuluydu ve M05
+onu getirdi. Kalan iş üç aracın kendisi.
+
 ## 4 · Bitti tanımından karşıladıkları
 
 Doğrudan bir madde **sahiplenmiyor** — ve bu yazılı olmalı, yoksa okuyan
