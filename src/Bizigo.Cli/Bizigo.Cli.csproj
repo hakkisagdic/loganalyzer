@@ -34,6 +34,16 @@
 
   <ItemGroup>
     <PackageReference Include="System.CommandLine" />
+
+    <!--
+      M13 — stdio kimliği. `AddJwtBearer` KULLANILAMIYOR: ASP.NET paylaşılan
+      çatısı bu projeye inince üst-düzey ifadelerin ürettiği `Program` görünür
+      hâle geliyor ve `Bizigo.Api`'nin `Program`'ıyla çakışıyor (ölçüldü,
+      gerekçe `Bizigo.Mcp.csproj`'da). Bu iki paket ASP.NET taşımıyor ve
+      API'nin belirteci doğruladığı kütüphanenin AYNI sürümü (8.19.2).
+    -->
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" />
   </ItemGroup>
 

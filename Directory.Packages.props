@@ -22,6 +22,21 @@
 
   <ItemGroup Label="Kimlik">
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
+
+    <!--
+      M13 — stdio kimliği. `bizigo mcp serve` bir belirteci ORTAMDAN alıyor ve
+      doğrulaması gerekiyor; `AddJwtBearer` KULLANILAMIYOR çünkü ASP.NET
+      paylaşılan çatısı `Bizigo.Cli`'ye inince `Program` çakışması doğuruyor
+      (ölçüldü, gerekçe `Bizigo.Mcp.csproj`'da yazılı).
+
+      Sürüm 8.19.2 SEÇİLMEDİ, ÖLÇÜLDÜ: `Microsoft.AspNetCore.Authentication.JwtBearer`
+      10.0.11 zaten bu sürümü çözüyor (`Bizigo.Api/obj/project.assets.json`).
+      Yani API'nin belirteci doğruladığı kütüphaneyle stdio'nun doğruladığı
+      kütüphane AYNI sürüm — ayrı bir sürüm, iki yüzeyin aynı belirteç
+      hakkında farklı karar vermesi demek olurdu.
+    -->
+    <PackageVersion Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.19.2" />
+    <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.19.2" />
     <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
   </ItemGroup>

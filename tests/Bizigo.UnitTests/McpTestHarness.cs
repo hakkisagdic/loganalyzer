@@ -104,7 +104,11 @@ internal sealed class McpTestSession : IAsyncDisposable
 
         if (user is not null)
         {
-            serverTransport = new IdentityStampingTransport(serverTransport, user);
+            // ÜRETİMİN TİPİ (M13). Bu sarmalayıcı eskiden burada bir test
+            // kopyasıydı; M13 üretimde de ihtiyaç duyunca `Bizigo.Mcp`'ye
+            // TAŞINDI, kopyalanmadı (§9). Kimlik burada sabit — üretimde bir
+            // fonksiyon, çünkü belirtecin `exp`'si her mesajda sorulmak zorunda.
+            serverTransport = new McpIdentityTransport(serverTransport, () => user);
         }
 
         var server = McpServer.Create(
@@ -210,77 +214,6 @@ internal abstract class ProtocolMechanicsTool : BizigoMcpTool
 {
     /// <inheritdoc/>
     public sealed override bool RequiresCallerIdentity => false;
-}
-
-/// <summary>
-/// <b>Gelen her mesaja bir kimlik damgalayan taşıma sarmalayıcısı.</b>
-///
-/// <para>
-/// Üretimde bunu akışlanabilir HTTP taşıması yapıyor:
-/// <c>HttpContext.User</c> → <c>JsonRpcMessageContext.User</c>. stdio'da kimlik
-/// <b>yok</b> ve olmaması doğru (MCP yetkilendirme spesifikasyonu stdio'yu
-/// kapsam dışında bırakıyor). Süreç içi boru oturumu üçüncü bir hâl: taşıma
-/// katmanı <i>bizim</i>, dolayısıyla kimliği <b>biz</b> koyuyoruz.
-/// </para>
-///
-/// <para>
-/// SDK bu alanı bilerek açık bırakıyor — belgesi <i>"should only be set when
-/// implementing a custom ITransport"</i> diyor, ve burada yapılan tam olarak o.
-/// Alternatif, uyum kapısını kimlik isteyen araçlar için körleştirmekti.
-/// </para>
-/// </summary>
-internal sealed class IdentityStampingTransport(ITransport inner, ClaimsPrincipal user) : ITransport
-{
-    public string? SessionId => inner.SessionId;
-
-    public ChannelReader<JsonRpcMessage> MessageReader => Stamped().Reader;
-
-    public Task SendMessageAsync(JsonRpcMessage message, CancellationToken cancellationToken = default) =>
-        inner.SendMessageAsync(message, cancellationToken);
-
-    public ValueTask DisposeAsync() => inner.DisposeAsync();
-
-    /// <summary>
-    /// Okuyucuyu <b>bir kez</b> sarmalıyor: her erişimde yeni bir kanal kurmak,
-    /// mesajların iki okuyucu arasında bölünmesi demek olurdu ve arıza
-    /// "bazı çağrılar cevapsız" diye görünürdü.
-    /// </summary>
-    private Channel<JsonRpcMessage>? stamped;
-
-    private Channel<JsonRpcMessage> Stamped()
-    {
-        if (stamped is not null)
-        {
-            return stamped;
-        }
-
-        stamped = Channel.CreateUnbounded<JsonRpcMessage>();
-
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await foreach (var message in inner.MessageReader.ReadAllAsync())
-                {
-                    message.Context ??= new JsonRpcMessageContext();
-                    message.Context.User = user;
-
-                    await stamped.Writer.WriteAsync(message);
-                }
-
-                stamped.Writer.TryComplete();
-            }
-            catch (Exception error)
-            {
-                // Sessizce yutmuyoruz: yutulan bir hata "istemci cevap
-                // beklerken asılı kaldı" diye görünür ve sebebi hiçbir yerde
-                // durmaz.
-                stamped.Writer.TryComplete(error);
-            }
-        });
-
-        return stamped;
-    }
 }
 
 /// <summary>
