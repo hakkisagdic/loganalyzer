@@ -85,9 +85,26 @@ public static class EvidenceRanking
     /// çoğunlukla belirti: hacim artışının kendisi nadiren nedendir.
     /// </item>
     /// <item>
-    /// <b>1 · <c>logs.attribute-lift</c></b> — "hepsi aynı switch'in arkasında".
-    /// Tek başına bir bulgu değil, diğer bulguları <b>gruplayan</b> bir içgörü;
-    /// değeri destekleyici olmasında.
+    /// <b>1 · <c>logs.attribute-lift</c> ve <c>topology.shared-attribute</c></b> —
+    /// etkilenenlerin <b>paylaştığı şey</b>. Tek başına bulgu değil, diğer
+    /// bulguları <b>gruplayan</b> bir içgörü; değeri destekleyici olmasında.
+    ///
+    /// <para>
+    /// <b>Aynı sırayı paylaşmaları bilinçli:</b> ikisi aynı soruyu iki farklı
+    /// kaynaktan soruyor — biri olay kolonlarından (vendor, proto, action),
+    /// diğeri envanter yapısından (upstream, vlan, firmware). Ayrı sıralar
+    /// vermek, hangisinin daha yakın olduğuna dair <b>ölçülmemiş</b> bir yargı
+    /// eklemek olurdu; altın küme (RCA §7) ikisini ayırt edecek veriyi
+    /// üretene kadar eşit duruyorlar.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Kayıt düzeltmesi:</b> bu maddenin eski hâli <i>"hepsi aynı switch'in
+    /// arkasında"</i> cümlesini <c>logs.attribute-lift</c>'e atfediyordu. F5
+    /// kapsam kararı ölçtü ki lift'in izin listesinde ne VLAN ne upstream ne
+    /// firmware vardı — o cümle tarif ettiği şeyi <b>yapmıyordu</b>. Cümlenin
+    /// gerçek sahibi <c>topology.shared-attribute</c> ve S1'den beri var.
+    /// </para>
     /// </item>
     /// <item>
     /// <b>0 · <c>logs.window</c></b> — pencerenin ham bozuk satırları. Bağlam,
@@ -103,6 +120,7 @@ public static class EvidenceRanking
         ["logs.silence"] = 3,
         ["logs.volume"] = 2,
         ["logs.attribute-lift"] = 1,
+        ["topology.shared-attribute"] = 1,
         ["logs.window"] = 0,
     };
 

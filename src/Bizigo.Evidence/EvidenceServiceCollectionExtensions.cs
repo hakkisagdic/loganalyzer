@@ -17,10 +17,11 @@ public static class EvidenceServiceCollectionExtensions
     /// </para>
     ///
     /// <para>
-    /// Metrik, trace ve topoloji <b>bilerek kayıtlı değil</b>. Boş bir
-    /// sağlayıcı kaydetmek onları "var ama sonuç yok" gibi gösterirdi; oysa
-    /// doğru cümle "bu türe hiç bakılmadı". Ayrımı
-    /// <see cref="EvidenceCollector"/> enum üzerinden kuruyor.
+    /// Metrik ve trace <b>bilerek kayıtlı değil ve olmayacak</b> —
+    /// <see cref="EvidenceKinds.Exempt"/> (F5 · S1). Boş bir sağlayıcı
+    /// kaydetmek onları "var ama sonuç yok" gibi gösterirdi; oysa doğru cümle
+    /// "bu ürün bu türe bakmıyor". Ayrımı <see cref="EvidenceCollector"/> enum
+    /// üzerinden kuruyor.
     /// </para>
     /// </summary>
     public static IServiceCollection AddBizigoEvidence(this IServiceCollection services)
@@ -44,6 +45,12 @@ public static class EvidenceServiceCollectionExtensions
         services.AddScoped<IEvidenceProvider, SilenceProvider>();
         services.AddScoped<IEvidenceProvider, AttributeLiftProvider>();
         services.AddScoped<IEvidenceProvider, PropagationProvider>();
+
+        // Topoloji (F5 · S1) — **tek satır**, ve T34'ün taşıyıcı iddiasının
+        // ikinci kez ödenmesi: `EvidenceCollector` bu satır için de
+        // değişmedi. Sağlayıcı yeni bir sorgu yüzeyi açmıyor;
+        // `GetPropagationAsync` + `SearchSourcesAsync` paylaşılıyor.
+        services.AddScoped<IEvidenceProvider, TopologyProvider>();
 
         services.AddScoped<EvidenceCollector>();
 

@@ -28,7 +28,7 @@ kapısı bu turda **koşmadı** — Docker daemon bu makinede ölü (bkz. §3).
 | **F2** — arayüz | Ekranlar, BFF, alarm, change | 16/17 · **T49 sürüyor** (canlı doğrulaması koordinatörde) |
 | **F3** — detection ve kanıt | Sigma, korelasyonlar, kanıt paketi, **üç kapı ticket'ı** | 13/14 · **T32 sürüyor** |
 | **F4** — agentic RCA | Prompt tabanı, plugin, tetikleyici, kota, LLM, rapor | 7/9 · **T47 sürüyor, T54 açık** |
-| **F5** — gözlemlenebilirlik | Metrik · trace · topoloji sağlayıcıları | **başlamadı** |
+| **F5** — gözlemlenebilirlik | Metrik · trace · topoloji sağlayıcıları | **kapsam kararı verildi (S1)**: topoloji karşılandı, metrik ve trace **kalıcı muaf** |
 | **FS** — simülatörler | Cihazsız uçtan uca koşum | **8/8 kapandı** |
 | **MCP** — protokol | İki yüzey, sekiz ticket | **M01 koşuyor**, M02–M08 açık |
 
@@ -88,15 +88,26 @@ M01 (protokol çekirdeği + uyum kapısı) **koşuyor**; kalan yedisi ona bağl�
 M02 CLI paritesi · M03 `bizigo-sim` · M04 okuma araçları · M05 RCA araçları ·
 M06 redaksiyon + K6 kapısı · M07 kaynaklar/abonelik · M08 kimlik taşıma.
 
-### F5 — başlamadı, ve ayrı bir proje büyüklüğünde
+### F5 — kapsam kararı verildi (2026-09-05)
 
-Metrik, trace ve topoloji sağlayıcıları. RCA belgesinin kendi uyarısı:
+RCA belgesinin uyarısı — *"F1–F4 bittiğinde yeniden kapsam kararı verilmeli"* —
+karşılandı. Karar: **S1 · Topoloji-lite**.
 
-> K21'in maliyeti — ürünü *"log analiz katmanı"*ndan *"gözlemlenebilirlik
-> platformu"*na taşıyor. F1–F4 bittiğinde **yeniden kapsam kararı verilmeli**.
+| Tür | Kader |
+| --- | --- |
+| **Topology** | **Karşılandı, sınırıyla:** `TopologyProvider` envanter öznitelikleri (upstream · vlan · firmware) üzerinden çalışıyor. **İlişki grafiği yok** |
+| **Metric** | **Kalıcı muaf** — `EvidenceKinds.Exempt` |
+| **Trace** | **Kalıcı muaf** — K2 (ağ cihazları trace üretmiyor) |
 
-Kanıt sözleşmesi beş türü de **bugünden tanıyor** (T34), uygulaması yok.
-Yani F5 bir genişleme değil, sıralanmış bir kapsam.
+Kararı ölçüm belirledi ve ölçüm beklenmedik çıktı: RCA §3.1'in *"lift topolojiyi
+telafi ediyor"* gerekçesi **yazılmamıştı** — ne olay tablosunda ne envanterde
+VLAN/upstream/firmware vardı. Yani F5'i ertelemenin gerekçelerinden biri var
+olmayan bir telafiye dayanıyordu.
+
+**Kapanmayan boşluk kayıtta:** §4'ün ilk maddesi (*korelasyonlar çekme
+modelinde*) **S1 ile kapanmadı** ve F5'in hiçbir seçeneği onu kapatmıyordu —
+sağlayıcı sözleşmesi çekme şeklinde. Ayrıntı ve seçenekler:
+[F5 kapsam kararı](../f5-kapsam-karari/index.md).
 
 ---
 

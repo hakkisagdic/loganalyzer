@@ -13,10 +13,27 @@ topoloji.* Aynı karar kendi uyarısını da yazdı:
 
 F1, F2 ve FS kapandı; F3'te bir kalem, F4'te iki kalem sürüyor. O an geldi.
 
-> **Bu belge karar vermiyor.** Seçenekleri, her birinin ölçülmüş bedelini ve
-> hangi bilginin hangisini seçeceğini koyuyor. Seçim kullanıcının.
+> ## ✅ Karar verildi: **S1 · Topoloji-lite** (2026-09-05)
 >
-> **Ticket de yazmıyor.** Kapsam kararı verilmeden ticket dilimlemek, bu
+> Kullanıcı seçti. Seçimin dayandığı ölçüm §3.3'te: RCA'nın *"lift topolojiyi
+> telafi ediyor"* iddiası **ölçülmemişti** — lift'te de envanterde de VLAN,
+> upstream, firmware yoktu. Yani F5'i ertelemenin gerekçelerinden biri **var
+> olmayan bir telafiye** dayanıyormuş.
+>
+> | Tür | Kader |
+> | --- | --- |
+> | **Topology** | **Karşılanıyor — sınırıyla birlikte.** `TopologyProvider`, envanter öznitelikleri üzerinden. İlişki grafiği **yok** |
+> | **Metric** | **Kalıcı muaf** — `EvidenceKinds.Exempt` |
+> | **Trace** | **Kalıcı muaf** — `EvidenceKinds.Exempt` |
+>
+> Uygulama §10'da. Belgenin geri kalanı **kararın verildiği andaki hâliyle
+> duruyor** — seçilmeyen seçenekler dahil, çünkü bir kararın gerekçesi
+> reddettiklerini de içeriyor.
+
+> **Bu belge kararı vermedi, verilebilir hâle getirdi.** Seçenekleri, her
+> birinin ölçülmüş bedelini ve hangi bilginin hangisini seçeceğini koydu.
+>
+> **Ticket de yazmadı.** Kapsam kararı verilmeden ticket dilimlemek, bu
 > deponun §8'de yasakladığı şeyin planlama katmanındaki karşılığı olurdu:
 > *tüketicisi olmayan bir tip tahmindir.*
 
@@ -360,6 +377,11 @@ korelasyonu takvimle koşturan ve eşiği aşanı tetikleyiciye çeviren bir ded
 Bu seçenek diğer dördüyle **dışlayıcı değil** — ama aynı sırayı istiyor, ve
 karar verilirken masada olmadığı için bugüne kadar hiç tartılmadı.
 
+> **S4 seçilmedi — ama kapattığı boşluk açık.** Karar S1'e gitti; bu, §4'ün
+> ölçtüğü sınırı değiştirmiyor. Ürün bugün de *"bir şey oldu"* diyemiyor ve
+> S1 bunu kapatmıyor. Kalem burada kayıtta kalıyor ki bir sonraki kapsam
+> turunda yeniden keşfedilmek zorunda kalmasın.
+
 ---
 
 ## 6 · Karar değişkenleri — hangi bilgi hangisini seçer
@@ -466,7 +488,105 @@ ayrıştığı tek yer orası.
 
 ---
 
-## 9 · Tereddütler
+## 10 · S1 uygulandı — ve iki yerde plandan saptı
+
+### 10.1 · Sapma: lift genişlemedi, **ayrı bir tür sağlayıcısı** doğdu
+
+Kapsam brief'i *"`CorrelationFields.Lift` genişleyecek"* diyordu. Ölçüm buna
+izin vermedi ve sapmanın gerekçesi tek bir bulguda:
+
+> `CorrelationFields.Lift` ile depolama tarafındaki `CorrelationReader.LiftFields`
+> **ClickHouse `events` kolonlarının** izin listesi. Oradaki her ad bir kolona
+> karşılık gelmek zorunda. `vendor`/`product` bile envanterden **gelmiyor** —
+> `EventNormalizer` onları **parser çıktısından** yazıyor
+> (`EventNormalizer.cs:47`); `ResolvedSource`'tan olaya geçen tek şey
+> `owner_group` ve `source_id`.
+
+Yani "lift bu alanları görsün" demek, envanterden olaya **yeni bir denormalize
+yolu** açmak demekti: `events`'e üç kolon, `ResolvedSource`'a üç alan, sıcak yol
+değişikliği, ve geri alınamaz bir şema kararı. Brief'in kendi maliyet zarfı
+(*"yeni ingest yok, yeni ClickHouse tablosu yok, 1 metot × 3 dosya"*) bunu
+dışlıyordu.
+
+İkinci ve daha ağır sebep **geçmiş**:
+
+| | Denormalize (lift) | Envanterden okuma (seçilen) |
+| --- | --- | --- |
+| Geçmiş olaylarda | Kolonlar **boş** — geçen ayki bir olaya bakan RCA sessizce `Empty` alır | Çalışıyor: envanter bugünkü hâliyle okunuyor |
+| Firmware yükseltilince | Olay o günkü sürümü taşır (daha doğru) | Geçmiş, **bugünkü** sürümle raporlanır |
+| Sıcak yol | Değişiyor | Değişmiyor |
+| Sınır görünür mü | Hayır — boş kolon ile "değer yok" ayırt edilemez | Evet — `Detail`'da yazılı |
+
+İkisinin de bir §7 tuzağı var ve **aynı şekilli**: cevap özniteliğin *ne zaman*
+doğru olduğuna göre değişiyor, ve hiçbir gösterim hangisini söylediğini
+belirtmiyor. Seçilen tarafta tuzak **söylenebilir**; denormalize tarafta
+görünmez.
+
+Üçüncü ve belirleyici sebep: brief'in kendi kabul ölçütü bunu **zorunlu**
+kılıyordu. *"`Topology` karşılanıyor"* demek ekranın *"(F5)"* yazmayı bırakması
+demek, ve `EvidenceCollector.UnregisteredKinds` bunu **sağlayıcı kind'lerinden**
+hesaplıyor. Sağlayıcı olmadan tür `NotRegistered` kalırdı. Sağlayıcı varken
+lift'i de genişletmek ise **aynı kavramın ikinci gösterimi** olurdu — §9'un
+açıkça yasakladığı şey.
+
+**Genişleyen liste yine de var:** `CorrelationFields.Topology`, `Lift`'in tam
+yanında, aynı izin-listesi disipliniyle ve `SourceSummary`'nin alan adlarıyla
+eşitlendiği bir testle.
+
+### 10.2 · Sapma: `IScopedQuery`'e **hiç metot eklenmedi**
+
+Brief 1 metot × 3 dosya bütçeliyordu. Gerekmedi: "etkilenen cihaz" zaten
+`GetPropagationAsync`'in cevabı, envanter zaten `SearchSourcesAsync`'in.
+Sağlayıcı ikisini besteliyor.
+
+Bu, §9'un *"ortak yüzey varsa genişlet, kopyalama"* kuralının uygulanmış hâli ve
+emsali `IScopedQuery`'nin kendi içinde yazılı: **sessizlik korelasyonunun da
+kendi metodu yok**, `GetSourceActivityAsync`'i paylaşıyor. Yan kazancı, "bozulma"
+tanımının `PropagationProvider` ile **aynı** kalması — iki tanım olsaydı aynı
+raporun iki bölümü farklı cihaz kümesinden bahsederdi.
+
+### 10.3 · Muafiyet mekanizması — belgedeki tereddüt 2'nin cevabı
+
+Karar S1'e gidince ayrım doğdu ve **sayılı liste** seçildi:
+
+```
+EvidenceKinds.Exempt              = { Metric, Trace }
+EvidenceKinds.ExpectedExemptCount = 2        // çivi
+EvidenceStatus.OutOfScope         = 7        // yeni değer
+```
+
+Yalnızca ekran metnini değiştirmek yetmezdi: `not_registered` ile *"bu ürün
+bakmıyor"* tel üzerinde **aynı değer** kalırdı ve §7'nin bütün dersi iki farklı
+olguyu tek değerde toplamamak. Ayrı bir durum değeri, ayrımı ekrana kadar
+taşıyor — ve `RcaSliceResponse`'un `switch`'i bilinmeyen durumda **fırlattığı**
+için eşleme unutulamıyor.
+
+`NotRegistered` **ölmedi**: bugün hiçbir tür orada değil ama enum'a yeni bir tür
+eklenmesi mümkün ve o gün sessizce atlanmamalı.
+
+### 10.4 · Altın kümeye *"hangi tür eksikti"* alanı **eklenmedi** — gerekçe
+
+§6'nın D1 uyarısı *"veri gelmeden önce ekle, yoksa boşluk 'eksik tür yok' mu
+'soru sorulmadı' mı ayırt edilemez"* diyordu ve doğruluğunu koruyor. Yine de
+eklenmedi:
+
+- D1, **S2/S3'ün** karar değişkeni. İkisi de seçilmedi; alan bugün hiç
+  okunmayacak bir soruyu soruyor olurdu.
+- Maliyet *"bugün bedava"* değil: nullable kolon **artı** `SchemaVersion` 3'e
+  çıkışı **artı** inceleme ekranında bir kontrol **artı** API. S1'in içine
+  sığdırılırsa ticket iki ayrı kararı taşır.
+- **"Yarın pahalı" tarihi belli ve henüz gelmedi:** altın kümede bugün
+  **sıfır satır** var (§7) ve satırlar ancak ürün gerçek bir olayda koştuktan
+  sonra birikiyor.
+
+**Kaydedilen koşullu yükümlülük:** *ilk üretim incelemesi yazılmadan önce* alan
+eklenmeli ve `SchemaVersion` artmalı. **Bunun bekçisi yok** ve olamaz — bir test
+üretim verisinin ne zaman gelmeye başladığını göremez. Yükümlülük bu yüzden
+burada, kararın kendi belgesinde duruyor; bir kod yorumunda değil.
+
+---
+
+## 11 · Tereddütler
 
 **1 · §4'ün bulgusu ticket'ın çerçevesini biraz aşıyor.** Ticket §4 sınırını
 *"F5'in bu sınırı kapatıp kapatmadığı kararın merkezinde"* diye tarif etti;

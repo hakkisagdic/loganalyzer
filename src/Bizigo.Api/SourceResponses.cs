@@ -30,7 +30,18 @@ public sealed record SourceResponse(
     [property: JsonPropertyName("source_class")] string SourceClass,
     [property: JsonPropertyName("enabled")] bool Enabled,
     /// <summary><c>parser_id</c> bağlı mı — dispatcher kademe 1.</summary>
-    [property: JsonPropertyName("is_known_to_dispatcher")] bool IsKnownToDispatcher)
+    [property: JsonPropertyName("is_known_to_dispatcher")] bool IsKnownToDispatcher,
+
+    /// <summary>
+    /// Üst düğüm (F5 · S1). Boş dizgi <b>"bilinmiyor"</b> demek, "üst düğümü
+    /// yok" değil — envanteri dolduran kişinin ne girdiğini görebilmesi için
+    /// telde de duruyor.
+    /// </summary>
+    [property: JsonPropertyName("upstream")] string Upstream,
+
+    [property: JsonPropertyName("vlan")] string Vlan,
+
+    [property: JsonPropertyName("firmware")] string Firmware)
 {
     public static SourceResponse From(SourceSummary source)
     {
@@ -47,7 +58,10 @@ public sealed record SourceResponse(
             source.Encoding,
             source.SourceClass,
             source.Enabled,
-            source.IsKnownToDispatcher);
+            source.IsKnownToDispatcher,
+            source.Upstream,
+            source.Vlan,
+            source.Firmware);
     }
 }
 

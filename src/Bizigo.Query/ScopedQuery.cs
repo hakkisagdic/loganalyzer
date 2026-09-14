@@ -38,7 +38,8 @@ public sealed class ScopedQuery(
             .Select(s => new SourceSummary(
                 s.SourceId, s.OwnerGroup, s.PeerAddress, s.Hostname,
                 s.Vendor, s.Product, s.ParserId, s.Encoding, s.SourceClass,
-                s.Enabled, !string.IsNullOrWhiteSpace(s.ParserId), s.CreatedAt))
+                s.Enabled, !string.IsNullOrWhiteSpace(s.ParserId), s.CreatedAt,
+                s.Upstream, s.Vlan, s.Firmware))
             .ToArray();
 
         await _audit.RecordAsync(new AuditRecord(

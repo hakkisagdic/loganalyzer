@@ -47,6 +47,60 @@ public sealed class SourceEntity
     [MaxLength(64)]
     public string SourceClass { get; set; } = "default";
 
+    // ---- Topoloji öznitelikleri (F5 · S1) ---------------------------------
+    //
+    // RCA §3.1 ortak öznitelik sinyalini *"aynı VLAN, aynı upstream, aynı
+    // firmware"* diye tarif ediyor ve bunu **topoloji olmadan topoloji
+    // sezgisi** diye satıyordu. F5 kapsam kararı ölçtü: bu üç alan ne olay
+    // tablosunda ne envanterde vardı, yani telafi bir niyetti, bir yetenek
+    // değil. Üçü buraya iniyor.
+    //
+    // **Neden envanterde, olayda değil.** Bunlar olayın değil **kaynağın**
+    // özellikleri; `owner_group` ile aynı cinsten. Olaya denormalize etmek
+    // sıcak yolu ve geri alınamaz bir şema kararını işin içine sokardı — ve
+    // daha kötüsü, hâlihazırda yazılmış hiçbir olayda dolu olmazlardı: geçmiş
+    // bir pencereye bakan RCA sessizce boş sonuç alırdı.
+    //
+    // **Üçü de isteğe bağlı ve boş varsayılan.** Envanter kademeli doldurulan
+    // bir şey (F1 §8: veri kaybı eksik envanterden kötüdür) ve boş bir alan
+    // sinyalin *"bilmiyorum"* demesine yol açıyor, *"aynı değil"* demesine
+    // değil — ayrımı `TopologyProvider` kuruyor.
+
+    /// <summary>
+    /// Bu kaynağın bağlı olduğu üst düğüm — tipik olarak başka bir kaynağın
+    /// <see cref="SourceId"/>'si.
+    ///
+    /// <para>
+    /// <b>Yabancı anahtar değil, bilerek.</b> Kendine referans veren bir FK,
+    /// envantere henüz girilmemiş bir upstream'i reddederdi; envanteri
+    /// doldurmak kademeli bir iş ve reddetme, doldurmayı yarıda bırakan
+    /// kişinin elindeki tek yolu kapatır. Çözülemeyen upstream bir hata değil:
+    /// sinyal onu <b>adıyla</b> raporluyor.
+    /// </para>
+    /// </summary>
+    [MaxLength(128)]
+    public string Upstream { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Ağ segmenti.
+    ///
+    /// <para>
+    /// <b>Metin, sayı değil.</b> Sahada VLAN çoğu zaman sembolik adlandırılıyor
+    /// (<c>mgmt</c>, <c>guest</c>) ve <c>int</c> seçmek o adları ya kaybeder ya
+    /// da girişte kayıplı bir dönüşüme zorlar. Sinyalin ihtiyacı eşitlik
+    /// karşılaştırması; aritmetik değil.
+    /// </para>
+    /// </summary>
+    [MaxLength(64)]
+    public string Vlan { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Cihazın firmware/yazılım sürümü — *"hepsi aynı sürümde"* hipotezinin
+    /// dayanağı.
+    /// </summary>
+    [MaxLength(64)]
+    public string Firmware { get; set; } = string.Empty;
+
     public bool Enabled { get; set; } = true;
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

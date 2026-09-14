@@ -184,6 +184,16 @@ public interface IScopedQuery
 /// bir kaynağın "susuyor" sayılıp sayılmayacağı buna bakılarak kararlaştırılıyor —
 /// aksi halde her yeni kaynak eklendiği dakika alarm üretirdi.
 /// </param>
+/// <param name="Upstream">Üst düğüm — boş ise <b>bilinmiyor</b>, "yok" değil (F5 · S1).</param>
+/// <param name="Vlan">Ağ segmenti; boş ise bilinmiyor.</param>
+/// <param name="Firmware">Firmware sürümü; boş ise bilinmiyor.</param>
+/// <remarks>
+/// Üç topoloji alanı <b>varsayılansız</b>: iki kurma yeri var ve ikisinin de
+/// alanı bilerek geçmesi isteniyor. Varsayılan verilseydi yeni bir kurma yeri
+/// üçünü de boş bırakıp derlenirdi, ve boş <c>Upstream</c> bu tipte
+/// <i>"bilinmiyor"</i> demek — yani sinyal, hiç sorulmamış bir soruyu
+/// "bilinmiyor" diye cevaplardı.
+/// </remarks>
 public sealed record SourceSummary(
     string SourceId,
     string OwnerGroup,
@@ -196,4 +206,7 @@ public sealed record SourceSummary(
     string SourceClass,
     bool Enabled,
     bool IsKnownToDispatcher,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    string Upstream,
+    string Vlan,
+    string Firmware);

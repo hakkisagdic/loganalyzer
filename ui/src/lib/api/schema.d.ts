@@ -1944,6 +1944,9 @@ export interface components {
             source_class: string;
             enabled: boolean;
             is_known_to_dispatcher: boolean;
+            upstream: string;
+            vlan: string;
+            firmware: string;
         };
         SourceUpsertRequest: {
             sourceId: string;
@@ -1956,6 +1959,9 @@ export interface components {
             encoding?: string;
             sourceClass?: string;
             enabled?: boolean;
+            upstream?: string;
+            vlan?: string;
+            firmware?: string;
         };
     };
     responses: never;

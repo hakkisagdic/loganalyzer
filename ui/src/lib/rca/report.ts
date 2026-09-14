@@ -29,16 +29,25 @@ export type RcaReasoning = components["schemas"]["RcaReasoningResponse"];
 export type RcaReasoningFinding = components["schemas"]["RcaReasoningFindingResponse"];
 
 /**
- * Raporun ekranda okunan hâli — <b>dört durumun ayrı kaldığı yer</b> (T37).
+ * Raporun ekranda okunan hâli — <b>durumların ayrı kaldığı yer</b> (T37).
  *
  * <p>
  * Bu dosyanın varlık sebebi tek bir hata: <c>empty</c>, <c>never_fed</c>,
- * <c>unavailable</c>/<c>failed</c> ve <c>not_registered</c> ekranda tek bir
- * "veri yok" kutusuna düşerse, T34 ve T36'nın kurduğu her şey tek satırda geri
- * alınır — ve <b>hiçbir şey haber vermez</b>. En pahalısı <c>never_fed</c>:
- * "değişiklik akışı hiç beslenmemiş" cümlesi "değişiklik olmadı" diye
- * okunursa kullanıcı bir sinyalin <b>yokluğunu</b> bulgu sanar ve kök nedeni
- * başka yerde aramaya başlar.
+ * <c>unavailable</c>/<c>failed</c>, <c>not_registered</c> ve
+ * <c>out_of_scope</c> ekranda tek bir "veri yok" kutusuna düşerse, T34 ve
+ * T36'nın kurduğu her şey tek satırda geri alınır — ve <b>hiçbir şey haber
+ * vermez</b>. En pahalısı <c>never_fed</c>: "değişiklik akışı hiç
+ * beslenmemiş" cümlesi "değişiklik olmadı" diye okunursa kullanıcı bir
+ * sinyalin <b>yokluğunu</b> bulgu sanar ve kök nedeni başka yerde aramaya
+ * başlar.
+ * </p>
+ *
+ * <p>
+ * <c>out_of_scope</c> F5 · S1 ile geldi ve <c>not_registered</c>'dan ayrı
+ * duruyor: birincisi <b>verilmiş bir karar</b>, ikincisi bir <b>bekleyiş</b>.
+ * Eskiden üç tür de <i>"(F5)"</i> diyordu, yani ekran bir söz veriyordu; karar
+ * verildikten sonra o söz yanlış olurdu ve yanlışlığı hiçbir yerde kırmızı
+ * yanmazdı.
  * </p>
  */
 
@@ -90,7 +99,13 @@ export const STATUS_PRESENTATION: Readonly<Record<string, StatusPresentation>> =
   },
   not_registered: {
     label: "sağlayıcı yok",
-    meaning: "Bu kanıt türü için sağlayıcı yok (F5). Bu türe hiç bakılmadı.",
+    meaning: "Bu kanıt türü için sağlayıcı yok. Bu türe hiç bakılmadı.",
+    tone: "dim",
+  },
+  out_of_scope: {
+    label: "kapsam dışı",
+    meaning:
+      "Bu ürün bu kanıt türüne bakmıyor — verilmiş bir kapsam kararı (F5 · S1), eksik bir parça değil.",
     tone: "dim",
   },
 };

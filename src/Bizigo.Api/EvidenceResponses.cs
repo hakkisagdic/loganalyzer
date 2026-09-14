@@ -97,12 +97,19 @@ public sealed record RcaFindingResponse(
 ///
 /// <para>
 /// <b><see cref="Status"/> tel üzerinde ayrı bir alan olarak duruyor ve
-/// düzleştirilmiyor.</b> Dört olgu — <c>empty</c>, <c>never_fed</c>,
-/// <c>unavailable</c>/<c>failed</c>, <c>not_registered</c> — tek bir "veri yok"
-/// değerine indirgenirse rapor, <b>bakmadığı bir şeye bakmış gibi görünür</b> ve
-/// bunu hiçbir hata mesajı bozmaz. En pahalısı <c>never_fed</c>: "değişiklik
-/// akışı hiç beslenmemiş" ekranda "değişiklik olmadı" diye okunursa kullanıcı
-/// bir sinyalin <b>yokluğunu</b> bulgu sanar.
+/// düzleştirilmiyor.</b> Beş olgu — <c>empty</c>, <c>never_fed</c>,
+/// <c>unavailable</c>/<c>failed</c>, <c>not_registered</c>, <c>out_of_scope</c>
+/// — tek bir "veri yok" değerine indirgenirse rapor, <b>bakmadığı bir şeye
+/// bakmış gibi görünür</b> ve bunu hiçbir hata mesajı bozmaz. En pahalısı
+/// <c>never_fed</c>: "değişiklik akışı hiç beslenmemiş" ekranda "değişiklik
+/// olmadı" diye okunursa kullanıcı bir sinyalin <b>yokluğunu</b> bulgu sanar.
+/// </para>
+///
+/// <para>
+/// <c>out_of_scope</c> ile <c>not_registered</c>'ın ayrı olması F5 · S1'in
+/// kararı: birincisi <b>verilmiş bir karar</b> ("bu ürün bakmıyor"), ikincisi
+/// bir <b>bekleyiş</b>. Tek değere toplansalardı ekran verilmiş bir karardan
+/// sonra da bekletmeye devam ederdi.
 /// </para>
 ///
 /// <para>
@@ -146,6 +153,7 @@ public sealed record RcaSliceResponse(
         EvidenceStatus.Unavailable => "unavailable",
         EvidenceStatus.Failed => "failed",
         EvidenceStatus.NotRegistered => "not_registered",
+        EvidenceStatus.OutOfScope => "out_of_scope",
         _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Bilinmeyen kanıt durumu."),
     };
 }

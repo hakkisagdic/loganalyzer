@@ -6678,7 +6678,10 @@
           "encoding",
           "source_class",
           "enabled",
-          "is_known_to_dispatcher"
+          "is_known_to_dispatcher",
+          "upstream",
+          "vlan",
+          "firmware"
         ],
         "type": "object",
         "properties": {
@@ -6723,6 +6726,15 @@
           },
           "is_known_to_dispatcher": {
             "type": "boolean"
+          },
+          "upstream": {
+            "type": "string"
+          },
+          "vlan": {
+            "type": "string"
+          },
+          "firmware": {
+            "type": "string"
           }
         }
       },
@@ -6771,6 +6783,15 @@
           },
           "enabled": {
             "type": "boolean"
+          },
+          "upstream": {
+            "type": "string"
+          },
+          "vlan": {
+            "type": "string"
+          },
+          "firmware": {
+            "type": "string"
           }
         }
       }

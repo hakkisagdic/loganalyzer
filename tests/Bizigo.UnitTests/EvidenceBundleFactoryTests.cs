@@ -160,8 +160,23 @@ public sealed class EvidenceBundleFactoryTests
             Enum.GetValues<EvidenceKind>().ToHashSet(),
             bundle.Slices.Select(s => s.Kind).ToHashSet());
 
-        // F5'in üç türü: metrik, trace, topoloji.
-        Assert.Equal(3, bundle.NotConsulted.Count(s => s.Status == EvidenceStatus.NotRegistered));
+        // Bu fabrikaya yalnızca iki sağlayıcı verildi, yani kalan üç tür
+        // bakılmayanlar arasında — ama **aynı sebeple değil**, ve paket bu
+        // ayrımı taşımak zorunda:
+        //   · metrik ve trace  → `OutOfScope`     (verilmiş karar, F5 · S1)
+        //   · topoloji         → `NotRegistered`  (bu fabrikaya kaydedilmedi)
+        // Tek sayıya indirgemek, saklanan pakete "neden bakılmadı" bilgisini
+        // kaybettirirdi — ve paket saklanıyor (T36), yani kayıp kalıcı olurdu.
+        Assert.Equal(
+            [EvidenceKind.Metric, EvidenceKind.Trace],
+            bundle.NotConsulted
+                .Where(s => s.Status == EvidenceStatus.OutOfScope)
+                .Select(s => s.Kind)
+                .Order());
+
+        Assert.Equal(
+            EvidenceKind.Topology,
+            Assert.Single(bundle.NotConsulted, s => s.Status == EvidenceStatus.NotRegistered).Kind);
     }
 
     /// <summary>Sayım patlıyor — depolama erişilemez.</summary>

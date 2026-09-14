@@ -267,8 +267,16 @@ internal sealed class FakeScopedQuery : IScopedQuery, IAlertQuerySource
     public Task WriteChangeAsync(ChangeEvent change, AccessScope scope, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
 
-    public static SourceSummary Source(string sourceId, string ownerGroup, DateTimeOffset createdAt) =>
-        new(sourceId, ownerGroup, null, null, "test", "test", "p", "utf-8", "default", true, true, createdAt);
+    /// <param name="upstream">Topoloji öznitelikleri (F5 · S1); boş = bilinmiyor.</param>
+    public static SourceSummary Source(
+        string sourceId,
+        string ownerGroup,
+        DateTimeOffset createdAt,
+        string upstream = "",
+        string vlan = "",
+        string firmware = "") =>
+        new(sourceId, ownerGroup, null, null, "test", "test", "p", "utf-8", "default", true, true, createdAt,
+            upstream, vlan, firmware);
 }
 
 /// <summary>
