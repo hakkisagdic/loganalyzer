@@ -9,7 +9,7 @@ relationships:
   - target: "[[skills/paralel-ajan-koordinasyonu]]"
     type: uses
 sources: [README.md, CLAUDE.md, docs/epic/f2-kapanis/index.md]
-source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 README.md=beebdd5b9080 docs/epic/f2-kapanis/index.md=c701d88f78fd"
+source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 README.md=4b11651192cf docs/epic/f2-kapanis/index.md=c701d88f78fd"
 summary: Plugin tabanlı, çok formatlı ve çok dilli log analiz platformu. F1 (boru hattı) ve F2 (görünürlük) kapandı; F3 ölçüm ağırlıklı faz.
 provenance:
   extracted: 0.9
@@ -65,6 +65,12 @@ Deponun en pahalı hata sınıfı ve onu arayan bakış:
 - .NET 10 SDK `~/.dotnet` altında; `DOTNET_ROOT` gerekiyor.
 - `Bizigo.Api`'yi elle koşturmak: CWD **depo kökü**, içerik kökü **bin dizini**,
   `ASPNETCORE_ENVIRONMENT=Development`.
+- API'yi **joker bir adrese** (`0.0.0.0`, `[::]`) bağlarsanız MCP'nin K6 kapısı
+  kalkışta duruyor ve yazılı bir gerekçe istiyor
+  (`Mcp__ListenerBoundaryOverrideReason`). Sebep *"joker demek dışa açık
+  demek"* değil, **"joker demek süreç içinden bilinemez demek"**. `dotnet run`
+  varsayılanı loopback olduğu için etkilenmiyor; container imajı gerekçesini
+  kendi Dockerfile'ında taşıyor.
 - Keycloak realm'inde **yalnızca `bizigo-claims` client scope var**;
   `openid profile email` canlıda `invalid_scope` alıyor. Ölçüldü.
 - İnceleme akışı PR üzerinden. `main` dışındaki bir dala push tek başına hiçbir

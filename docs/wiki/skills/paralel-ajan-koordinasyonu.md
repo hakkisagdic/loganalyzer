@@ -9,7 +9,7 @@ relationships:
   - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
     type: related_to
 sources: [CLAUDE.md, README.md]
-source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 README.md=beebdd5b9080"
+source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 README.md=4b11651192cf"
 summary: Bu depoda iş bir koordinatör ve paralel uygulayıcı ajanlarla yürüyor. Test bölünmesi, worktree yaşam döngüsü ve birleştirme sırası ölçülmüş olaylardan doğdu.
 provenance:
   extracted: 0.85

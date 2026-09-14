@@ -84,4 +84,25 @@ USER bizigo
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 
+# M11 · K6'nın topoloji kapısının MUAFİYETİ — ve yeri bilinçli: bir satır
+# yukarıdaki joker bağlamanın hemen altında, yani bağlamayı değiştiren kişi
+# gerekçeyi de görüyor.
+#
+# Kapı (`McpListenerBoundaryGate`) `0.0.0.0`'ı "dışa açık" saymıyor, "BİLİNMİYOR"
+# sayıyor: joker bir bağlamanın kuruma açık olup olmadığını süreç içinden
+# görmenin yolu yok — cevabı container ağı, publish kuralı ve ana makinenin
+# güvenlik duvarı veriyor. Bu değişkenin yokluğu MCP'yi ayağa kaldırmıyor, ve
+# öyle olması gerekiyor: gerekçesiz bir joker bağlama + `internal` beyanı tam
+# olarak M11'in kapattığı sessiz hâl.
+#
+# DİKKAT: bu satır container ağını gerekçe gösteriyor. `network_mode: host` ile
+# ya da ana makinede doğrudan koşturulan bir kurulumda gerekçe GEÇERSİZ olur ve
+# o kurulum kendi gerekçesini yazmak zorunda.
+#
+# Değerde `${...}` YOK ve olamaz: Dockerfile `ENV` değerlerinde değişken
+# genişletmesi yapıyor, yani compose'un publish ifadesini buraya olduğu gibi
+# yazmak metni sessizce başka bir şeye çevirirdi. Metin ASCII: bu değer
+# konteyner günlüğüne basılıyor ve orada kod sayfası bizim seçimimiz değil.
+ENV Mcp__ListenerBoundaryOverrideReason="Konteyner agi: 0.0.0.0 yalnizca container'in kendi ag alanini dinliyor; disa acilma karari compose'un publish kuralinda (API_PORT:8080) ve surec onu goremiyor."
+
 ENTRYPOINT ["./Bizigo.Api"]
