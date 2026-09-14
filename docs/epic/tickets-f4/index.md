@@ -52,6 +52,7 @@ zorunda kalması, formatın değil **K20'nin** eksikliğiydi.
 | 1 | **Referanssız cümle rapora hiç girmiyor — ama atıldığı sayılıyor ve gösteriliyor.** İçerik atılır, **sayı kalır**, ve o sayı F4'ün kalite göstergesi | [RCA §2](../rca-raporu-ozelligi/index.md) |
 | 2 | **Prompt içerik seviyesi ayarlanabilir** (`summary` · `masked` · `raw`), ama **ayarlanamayan bir tabanı var**: hiçbir seviyede sır prompt'a girmez | [RCA §2.1](../rca-raporu-ozelligi/index.md) |
 | 3 | Redaksiyon tabanı **üç katman**: üretici söz dizimi ve dar bir bilinen-biçim kümesi (PEM · JWT · `Authorization`) **maskeler**, entropi **yalnızca sayar** | [T41 §3](prompt-redaksiyon-tabani/index.md) |
+| 7 | **Entropi katmanı maskelemeye geçmiyor** — ve bu bir *"henüz değil"* değil: sayaç kalıcı bir ölçüme dönüyor. Ölçüldü: ayıran bir eşik yok, çünkü entropi kodlamayı ölçüyor hassasiyeti değil | [T60](entropi-terfi-karari/index.md) |
 | 4 | `evidence_ids_must_exist` **tek kapı değil iki kapı**: kısıt doğrulama adımı reddeder (1 tekrar), cümle bağlama cümleyi atar (sayaç artar) | [Plugin formatı §2](../f4-plugin-format-karari/index.md) |
 | 5 | Girişte **reddedilen** koşum kotadan düşülmez ama **sayılır**; süre/token tavanına takılan koşum **düşülür** — o maliyet gerçekten ödendi | [Kota kararı](../f4-kota-karari/index.md) |
 | 6 | Spec örneğindeki her sayı ya ölçülmüş, ya gerekçeli, ya **açıkça işaretli** olmalı | [RCA §8.1](../rca-raporu-ozelligi/index.md) |
@@ -94,6 +95,7 @@ flowchart TB
 | T47 | [Kalite ölçümü](kalite-olcumu/index.md) | Altın küme üzerinden atılan cümle oranı ve çelişen kanıt tiyatrosu | T44 |
 | T51 | [RCA raporu kalıcılığı ve rapor yüzeyi](rca-report-kaliciligi/index.md) | Üretilen raporun `rca_reports`'ta kalıcılığı ve atılan cümle sayacının ekranda görünmesi. Üç hâl ayrı çiziliyor: model hiç koşmadı · koştu ama üretmedi · üretti ve **hepsi atıldı** | T44 |
 | T54 | [Model muafiyetinin kaydı](model-muafiyeti-kaydi/index.md) | `model_boundary_override_reason` rapora bağlanıyor. Muafiyetin **yokluğu** da yazılıyor: yalnız `true` iken görünen bir rozet, muafiyetsiz koşumu *"bu soru sorulmamış"* hâline sokardı | T51 |
+| T60 | [Entropi katmanının terfi kararı](entropi-terfi-karari/index.md) | T41'in gölge katmanı (entropi) maskelemeye **geçmiyor** — ölçüldü: marjinal kazanç 0, ayıran eşik yok, ayıran sınıf geçidi onaltılık kodlanmış anahtarı muaf tutuyor. Sayaç **kalıcı ölçüme** dönüyor ve tek oran yerine mekanik sınıf dağılımı yayıyor | T41 |
 
 Sahipler ticket verilirken atanıyor.
 

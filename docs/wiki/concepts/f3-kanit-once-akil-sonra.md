@@ -21,7 +21,8 @@ sources:
   - docs/epic/t37-rapor-ekrani/index.md
   - docs/epic/tickets-f3/altin-kume/index.md
   - docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md
-source_digest: "sha256-12/v1 docs/epic/rca-raporu-ozelligi/index.md=1da27ea79668 docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t35-korelasyonlar/index.md=90159516d982 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/altin-kume/index.md=b8eb44ea962f docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=37dc201f87d2"
+  - docs/epic/tickets-f4/entropi-terfi-karari/index.md
+source_digest: "sha256-12/v1 docs/epic/rca-raporu-ozelligi/index.md=1da27ea79668 docs/epic/t34-kanit-sozlesmesi/index.md=8cb4e8b028b3 docs/epic/t35-korelasyonlar/index.md=90159516d982 docs/epic/t36-devir-notu/index.md=5027982dbb85 docs/epic/t36-kanit-paketi/index.md=3916d770a854 docs/epic/t37-rapor-ekrani/index.md=53dc34e77027 docs/epic/tickets-f3/altin-kume/index.md=b8eb44ea962f docs/epic/tickets-f4/entropi-terfi-karari/index.md=2d04ea9d7518 docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=575e48c5afe3"
 summary: RCA'nın tek gerçek riski inandırıcı ama yanlış rapor; tasarımın tamamı bu tek riske karşı kurulu. F3 kanıtı LLM'siz üretiyor, saklıyor ve raporun her dürüstlük satırını mekanizmaya bağlıyor.
 provenance:
   extracted: 0.85
@@ -127,7 +128,36 @@ RCA belgesinden alınıp F3'te birer mekanizmaya çevrildi:
    Ölçümün asıl söylediği şey oran değil, oranın **neyden** oluştuğu. Tek
    başına 0,61 bir eşik ayarı sorunu gibi okunurdu; içine bakınca sorunun
    eşikte olmadığı görülüyor — entropi bu alanda **sırla imzayı ayırt
-   edemiyor**. Terfi ticket'ı bu iki sayıyla açılmalı.
+   edemiyor**.
+
+   **Terfi kararı verildi ve terfi ETMEDİ** (T60). Üç ölçüm birden aynı yöne
+   çıktı: sahte sır fixture'larının bildirdiği 11 sırrın 11'ini maskeleyen
+   katmanlar zaten yakalıyor, yani entropinin **marjinal kazancı 0**; eşik ve
+   minimum uzunluk süpürüldüğünde *"sırların hepsini yakala ve hiç yanlış
+   pozitif üretme"* noktası **yok** (sahte sırların en düşük entropisi 4,28
+   bit/karakter ve o eşikte altın korpusta hâlâ beş aday var, dördü URL);
+   adayları mekanik olarak **ayırmak** mümkün ama ayrımı bir maskeleme kapısına
+   çevirmek onaltılık kodlanmış bir anahtarı (WPA PSK, `key-string`) bir sha256
+   özetiyle aynı sınıfta muaf tutmak demek — yani ölçülebilen bir yanlış
+   pozitif yerine hiç ölçülemeyecek bir kaçırma yolu satın almak.
+
+   Yani T41'in *"eşik ölçülmedi"* gerekçesi örtük olarak doğru bir eşiğin var
+   olduğunu varsayıyordu, ve varsayım yanlış çıktı: **sorun eşikte değil
+   eksende.** Shannon entropisi bir belirtecin **kodlamasını** ölçüyor,
+   hassasiyetini değil; hassasiyet bağlamda yazılı ve bağlam maskeleyen
+   katmanın ekseni.
+
+   Mekanik sınıflandırma bir şeyi daha düzeltti: 59'un başında imza adları
+   değil **adresler** var — 48'i "birleştirmeden doğan entropi" sınıfında ve
+   içinin çoğu ASA'nın `arayüz:ip/port` üçlüsü. Terfi ettirilseydi maskelenecek
+   ilk şey saldırının adı değil, **kimin kime hangi porttan konuştuğu** olurdu.
+
+   Sayaç **kalmıyor değil**: kalıyor, ama işi değişiyor. Artık *"bir gün terfi
+   için bekleyen"* bir kalem değil **kalıcı bir ölçüm**, ve bu ayrım kodda bir
+   değer olarak duruyor (`ShadowLayerPurpose`) — bir yorum olarak değil, çünkü
+   yorum okunmadan da doğru kalır. Tek oran yerine yayılan şey sınıf dağılımı;
+   okunacak sayı *"bilinmeyen bir sırrın saklanabildiği tek sınıf"*ın sayısı.
+   Bu, bu deponun `Pending` ≠ `Exempt` ayrımının dördüncü örneği.
 
    Ve bu, gölge katmanın var olma sebebinin kanıtı: aynı katman doğrudan
    maskeleyerek sevk edilseydi, kaybı **atılan cümle sayacında** görünürdü —

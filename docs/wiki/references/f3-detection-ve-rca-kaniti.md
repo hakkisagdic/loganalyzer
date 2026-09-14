@@ -21,8 +21,9 @@ sources:
   - docs/epic/rca-raporu-ozelligi/index.md
   - docs/epic/sigma-clickhouse-arastirmasi/index.md
   - docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md
+  - docs/epic/tickets-f4/entropi-terfi-karari/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=1da27ea79668 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=c62deced6485 docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=37dc201f87d2"
+source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=1da27ea79668 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=c62deced6485 docs/epic/tickets-f4/entropi-terfi-karari/index.md=2d04ea9d7518 docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=575e48c5afe3"
 summary: F3'ün iki kolu (Sigma detection ve RCA kanıtı), planı yarı yarıya değiştiren template_id bulgusu, on ürün ticket'ının durumu, sonradan eklenen üç kapı ticket'ı, ve fazın sayılarının neden bağlayıcı olmadığı.
 provenance:
   extracted: 0.85
@@ -169,6 +170,7 @@ paragrafı okumalı.
 | --- | --- | --- |
 | LLM yorumu, **beş** tetikleyici, kuyruk/kota | F4 | K22 — kanıt önce |
 | Prompt redaksiyon tabanı (T41) | F4 **önkoşulu — kapandı** | 2026-08-25: taban yoktu, yazıldı. Üç katman: üretici söz dizimi ve dar bilinen-biçim kümesi maskeliyor, entropi **yalnızca sayıyor**. Altın korpusta yanlış pozitif **0/87** |
+| Entropi katmanının terfisi (T60) | **karara bağlandı — terfi etmedi** | 2026-09-14: marjinal kazanç **0/11**, ayıran eşik yok (entropi kodlamayı ölçüyor, hassasiyeti değil), ayıran sınıf geçidi onaltılık kodlanmış anahtarı bir sha256 ile aynı sınıfta muaf tutuyor. Sayaç **kalıcı ölçüme** döndü (`ShadowLayerPurpose`) |
 | Metrik · trace · topoloji sağlayıcıları | F5 — **karara bağlandı** | K21'in bedeli. F5 kapsam kararı (2026-09-05): **topoloji karşılandı** (envanter öznitelikleri, ilişki grafiği yok), **metrik ve trace kalıcı muaf**. Bkz. [[concepts/f5-soz-ile-sinir-ayri-listeler]] |
 | Sigma korelasyon kuralları | sonra | backend destekliyor ama önce tekiller otursun |
 | PDF export | kapsam dışı | Markdown var; PDF gelirse **aynı metinden** üretilmeli |
@@ -194,3 +196,5 @@ mekanizma, bir not değil — `EvidenceKinds.Exempt` sayılı bir liste ve
 - `docs/epic/rca-raporu-ozelligi/index.md` — K19–K22, piyasa konumu, riskler
 - `docs/epic/sigma-clickhouse-arastirmasi/index.md` — backend seçiminin doğrulaması
 - `docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md` — T41, F4'ün önkoşulu
+- `docs/epic/tickets-f4/entropi-terfi-karari/index.md` — T60, gölge katmanın
+  terfi kararı ve mekanik aday sınıflandırması
