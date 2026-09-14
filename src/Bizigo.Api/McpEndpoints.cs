@@ -1,5 +1,7 @@
 using Bizigo.Mcp;
 using Bizigo.Mcp.Product;
+using Bizigo.Rca.Models;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Bizigo.Api;
 
@@ -89,6 +91,21 @@ public static class McpEndpoints
         services
             .AddBizigoMcpCore(configuration, [.. ToolAssemblies])
             .WithHttpTransport();
+
+        // M11 · K6'nın TOPOLOJİ kapısı. Yukarıdaki kayıt beyanın DÜRÜSTLÜĞÜNÜ
+        // sınıyor (`Unspecified` reddi, `external` reddi); dinleyicinin
+        // gerçekten kurum içinde kaldığını sınayan yer burası ve ayrı olmasının
+        // gerekçesi `McpListenerBoundaryCheck` belgesinde — özetle, adres
+        // Kestrel bağlandıktan sonra biliniyor ve M06'nın kapısı taşımadan
+        // bağımsız kalmak zorunda.
+        //
+        // BURADA, `Program.cs`'te DEĞİL: MCP'nin HTTP taşıması bu satırın iki
+        // üstünde kuruluyor ve kapı o taşımanın bedeli. Kompozisyon kökünde
+        // ayrı bir satır olsaydı, MCP'yi kaydedip kapıyı unutan bir kurulum
+        // mümkün olurdu — T50'nin ölçtüğü sınıf.
+        services.TryAddSingleton<IEndpointAddressResolver, DnsEndpointAddressResolver>();
+        services.TryAddSingleton<McpListenerBoundaryGate>();
+        services.AddHostedService<McpListenerBoundaryCheck>();
 
         return services;
     }

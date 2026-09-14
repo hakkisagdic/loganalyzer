@@ -68,6 +68,7 @@ flowchart TB
 | M07 | [Kaynaklar ve abonelik](kaynaklar-ve-abonelik/index.md) | Belge kaynakları, `rca.runs` durum bildirimi | M05 |
 | M08 | [Kimlik taşıma](kimlik-tasima/index.md) | Keycloak kimliği MCP oturumundan uca; servis hesabı **yasak** | M04 |
 | M09 | [Kimliğin bulunması ve kaynağa bağlanması](kimlik-kesfi/index.md) | RFC 9728 keşif + RFC 8707 kaynak kimliği; **adlandırılmış şema**, 45 uç etkilenmiyor | M01 |
+| M11 | [Kestrel'in kör noktası: beyanın topolojisi](kestrel-kor-noktasi/index.md) | Dinleyici adresi kapının görüşüne alınıyor; joker bağlama **kanıt değil**, gerekçeli muafiyet | M06, T42 |
 
 **M01'in ticket dosyası yok** ve bu bilinçli: koşuyor, kararları raporlarında,
 ve verdiği kararlar (revizyon `2026-07-28`, araç sözleşmesi, yüzey beyanı,
@@ -131,7 +132,6 @@ biliniyor. MCP yüzeyi **ingress** — istemci bize bağlanıyor ve kim olduğu
 bağlanana kadar bilinmiyor; stdio'da hiç adres yok.
 
 ### `External` + `bizigo-sim` geçiyor
-
 İki yüzeyin ayrı olmasının **sebebi** o risk ayrımı: `bizigo-sim` ürün verisi
 değil simülatör durumu döndürüyor. Kurum dışı bir istemciye açılması K6'yı
 ihlal etmiyor.
@@ -140,6 +140,24 @@ Bu yol bugün ürün kurulumunda **ulaşılamaz** — `BizigoMcpSetup` yalnızca
 yüzeyini kuruyor ve `bizigo-sim`'in HTTP yüzeyi M03'ün kararı. Kararı
 daraltmak (her yüzeyde `External` reddi) bugün ölçülemeyen bir kararı
 ölçülemeyen bir başkasıyla değiştirirdi ve M03 gerekçesiz bir kapı bulurdu.
+
+### M06'nın yazdığı kör noktalardan biri M11'de kapandı
+
+M06 kapısının kendi belgesinde üç tutamadığı yazılıydı ve üçüncüsü şuydu:
+*"HTTP taşımasında dinlenen adresi doğrulamıyor."* Yani `internal` beyanı
+kabul ediliyor, sunucu `0.0.0.0` üzerinde koşuyor olabiliyordu — ve sevk edilen
+container imajı **tam olarak öyle** bağlıyor (ölçüldü,
+`src/Bizigo.Api/Dockerfile:85`).
+
+[M11](kestrel-kor-noktasi/index.md) o boşluğu **ikinci bir kapıyla** kapattı
+(kalkışta, `IServerAddressesFeature` üzerinden) ve joker bağlamayı *"dışa
+açık"* değil ***"bilinmiyor"*** saydı — süreç içinden publish kuralını,
+container ağını ve güvenlik duvarını görmenin yolu yok. Sonuç: joker bağlama
+**yazılı bir gerekçe** istiyor, ve M06'nın kendi kalıbı ikinci kez uygulanmış
+oldu — mekanik çıkarımı beyanla değiştirmek.
+
+Kapatılmayan kalem de yazılı ve M11'in belgesinde duruyor: ters vekil arkasında
+`127.0.0.1` dinleyen bir sunucu dışa açık olabilir ve kapı ona `Verified` der.
 
 ## Bu belgenin bilmediği şey — **ikisi de cevaplandı**
 

@@ -139,6 +139,22 @@ derleme bağlamına girdiğinde container'ın kendi `restore` çıktısının ü
 yazıyor ve `publish` *"Package AWSSDK.S3 … was not found"* diyerek düşüyor —
 paketten söz eden ama sebebi paket olmayan bir hata.
 
+**Joker bir dinleyici artık yazılı bir gerekçe istiyor** (M11). MCP yüzeyi
+`Mcp:DataBoundary=Internal` beyan ediyor ve K6 *(log verisi kurum dışına
+çıkmaz)* bu beyanın tutulmasını gerektiriyor; ama beyan tek başına sunucunun
+**nereyi dinlediğini** söylemiyor. Kapı kalkışta dinleyici adresine bakıyor:
+loopback ya da özel adres uzayı geçiyor, `0.0.0.0`/`[::]` **geçmiyor** — ve
+sebebi *"joker demek dışa açık demek"* değil, ***"joker demek süreç içinden
+bilinemez demek"***: cevabı container ağı, `publish` kuralı ve güvenlik duvarı
+veriyor, üçü de sürecin göremediği yerde. Container imajı bu yüzden gerekçesini
+`Mcp__ListenerBoundaryOverrideReason` ile **yazıyor** (`src/Bizigo.Api/Dockerfile`,
+joker bağlamanın hemen altında). API'yi makinede joker bir adrese bağlayarak
+koşturursanız aynı gerekçeyi siz yazmak zorundasınız; `dotnet run` varsayılanı
+(`localhost:5058`) ve uçtan uca harness (`localhost:5080`) loopback olduğu için
+etkilenmiyor. Kapının **göremediği** hâl de yazılı: ters vekil arkasında
+`127.0.0.1` dinleyen bir sunucu dışa açık olabilir ve kapı ona *doğrulandı*
+der.
+
 | Servis | Adres | Not |
 | --- | --- | --- |
 | ClickHouse | http://localhost:8123 | `bizigo` / `bizigo` |
