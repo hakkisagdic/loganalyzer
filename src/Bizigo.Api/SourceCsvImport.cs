@@ -131,6 +131,15 @@ public static class SourceCsvImport
                 ParserId = Cell("parser_id"),
                 Encoding = Cell("encoding") is { Length: > 0 } encoding ? encoding : "auto",
                 SourceClass = Cell("source_class") is { Length: > 0 } sourceClass ? sourceClass : "default",
+
+                // Topoloji öznitelikleri (F5 · S1). Kolonlar **isteğe bağlı**:
+                // `Cell` tanımadığı başlık için boş dönüyor, yani bugünkü
+                // CSV'ler olduğu gibi yüklenmeye devam ediyor. Envanteri toplu
+                // dolduran yol bu; yalnızca tek tek yazma ucu açılsaydı
+                // "müşteri doldurur" pratikte doldurulmaz demek olurdu.
+                Upstream = Cell("upstream"),
+                Vlan = Cell("vlan"),
+                Firmware = Cell("firmware"),
             });
         }
 

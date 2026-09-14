@@ -12,9 +12,15 @@ namespace Bizigo.Evidence;
 /// <b>Hiçbir sağlayıcıya özel kod içermiyor.</b> Kayıtlı sağlayıcıları
 /// <c>IEnumerable&lt;IEvidenceProvider&gt;</c> olarak alıyor,
 /// <see cref="EvidenceKind"/> enum'unu geziyor ve karşılığı olmayan türü
-/// <see cref="EvidenceStatus.NotRegistered"/> diye raporluyor. F5'te metrik,
-/// trace ve topoloji sağlayıcıları geldiğinde burada değişecek tek şey yok —
-/// kabul kriteri bu ve bugün sınanıyor.
+/// raporluyor.
+/// </para>
+///
+/// <para>
+/// <b>İddia ikinci kez ödendi ve tuttu.</b> F5 · S1'de topoloji sağlayıcısı
+/// eklendiğinde bu sınıfın <b>toplama mantığı</b> değişmedi — yalnızca bir DI
+/// satırı eklendi. Değişen tek şey boşluğun <i>adlandırılması</i> oldu:
+/// muaf türler <see cref="EvidenceStatus.OutOfScope"/>, kalanlar
+/// <see cref="EvidenceStatus.NotRegistered"/>.
 /// </para>
 ///
 /// <para>
@@ -33,8 +39,8 @@ public sealed class EvidenceCollector(
     public IReadOnlyList<IEvidenceProvider> Providers => _providers;
 
     /// <summary>
-    /// Hiç sağlayıcısı olmayan türler — bugün <c>Metric</c>, <c>Trace</c>,
-    /// <c>Topology</c> (F5).
+    /// Hiç sağlayıcısı olmayan türler — bugün <c>Metric</c> ve <c>Trace</c>,
+    /// ikisi de <see cref="EvidenceKinds.Exempt"/> (F5 · S1).
     /// </summary>
     public IReadOnlyList<EvidenceKind> UnregisteredKinds =>
     [
@@ -72,13 +78,27 @@ public sealed class EvidenceCollector(
         // Kayıtlı sağlayıcısı olmayan tür sessizce yok sayılmıyor: rapor "bu
         // kanıt türüne bakılmadı" diyebilmek zorunda. Sessiz atlama, okuyanın
         // eksik kanıta tam kanıt muamelesi yapmasının en kolay yolu.
-        var missing = UnregisteredKinds.Select(kind => new EvidenceSlice
-        {
-            ProviderId = $"({kind.ToString().ToLowerInvariant()})",
-            Kind = kind,
-            Status = EvidenceStatus.NotRegistered,
-            Detail = "Bu kanıt türü için sağlayıcı yok — F5.",
-        });
+        //
+        // **İki ayrı boşluk, iki ayrı cümle** (F5 · S1). "Henüz sağlayıcısı
+        // yok" bir bekleyiş, "bu ürün bakmıyor" bir karar. Tek değere
+        // toplansalardı ekran verilmiş bir karardan sonra da bekletmeye devam
+        // ederdi — §8'in "bir gün kapanacak ile hiç kapanmayacak aynı listede
+        // duramaz" kuralı.
+        var missing = UnregisteredKinds.Select(kind => EvidenceKinds.IsExempt(kind)
+            ? new EvidenceSlice
+            {
+                ProviderId = $"({kind.ToString().ToLowerInvariant()})",
+                Kind = kind,
+                Status = EvidenceStatus.OutOfScope,
+                Detail = "Bu ürün bu kanıt türüne bakmıyor — F5 kapsam kararı (S1).",
+            }
+            : new EvidenceSlice
+            {
+                ProviderId = $"({kind.ToString().ToLowerInvariant()})",
+                Kind = kind,
+                Status = EvidenceStatus.NotRegistered,
+                Detail = "Bu kanıt türü için sağlayıcı yok.",
+            });
 
         return new EvidenceReport
         {

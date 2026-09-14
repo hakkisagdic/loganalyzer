@@ -6,13 +6,20 @@ namespace Bizigo.Evidence;
 public static class EvidenceMarker;
 
 /// <summary>
-/// Kanıt türleri (K21). <b>Beşi de tanımlı, ikisi uygulanıyor.</b>
+/// Kanıt türleri (K21). <b>Beşi de tanımlı, üçü karşılanıyor, ikisi kalıcı
+/// olarak kapsam dışı.</b>
 ///
 /// <para>
-/// Kalan üçü F5'te iniyor ve her biri kendi ingest+depolama işi. Sözleşmenin
-/// bugün beşini de tanımasının sebebi, F5 geldiğinde motorun yeniden
-/// yazılmaması: <see cref="EvidenceCollector"/> bu enum'u geziyor, kayıtlı
-/// sağlayıcı listesini değil.
+/// Sözleşmenin beşini birden tanımasının sebebi motorun yeniden yazılmaması:
+/// <see cref="EvidenceCollector"/> bu enum'u geziyor, kayıtlı sağlayıcı
+/// listesini değil. F5 kapsam kararı (S1) türlerin kaderini ayırdı ve ayrımın
+/// kendisi <see cref="EvidenceKinds"/>'de yazılı.
+/// </para>
+///
+/// <para>
+/// <b>Değerler kalıcı</b> — T36 kanıt paketini saklıyor. Kapsam dışı kalan bir
+/// tür bu enum'dan <b>silinmiyor</b>: silmek, o değerle yazılmış geçmiş
+/// paketleri okunamaz yapardı.
 /// </para>
 /// </summary>
 public enum EvidenceKind
@@ -23,14 +30,67 @@ public enum EvidenceKind
     /// <summary><c>change_events</c> — F3. RCA'nın en güçlü sinyali.</summary>
     Change = 2,
 
-    /// <summary>F5 — metrik ingest+depolama gerekiyor.</summary>
+    /// <summary>
+    /// <b>Kapsam dışı</b> (F5 · S1). Metrik ingest+depolama gerektiriyordu ve
+    /// K1'i aşıyordu; karar "bu ürün metriğe bakmıyor" oldu.
+    /// <see cref="EvidenceKinds.Exempt"/>.
+    /// </summary>
     Metric = 3,
 
-    /// <summary>F5 — trace ingest+depolama gerekiyor.</summary>
+    /// <summary>
+    /// <b>Kapsam dışı</b> (F5 · S1). Ağ cihazları trace üretmiyor (K2); türün
+    /// değerli olması ürünün uygulama gözlemlenebilirliğine girmesine bağlıydı
+    /// ve girilmedi. <see cref="EvidenceKinds.Exempt"/>.
+    /// </summary>
     Trace = 4,
 
-    /// <summary>F5 — envanter ilişki grafiği gerekiyor.</summary>
+    /// <summary>
+    /// <b>Karşılanıyor — sınırıyla birlikte</b> (F5 · S1).
+    /// <c>TopologyProvider</c> envanterdeki düz öznitelikleri (upstream, vlan,
+    /// firmware) okuyor; <b>ilişki grafiği yok</b>, yani iki kademe yukarıdaki
+    /// ortak ata hesaplanmıyor. Sınır sağlayıcının <c>Detail</c>'ına da giriyor.
+    /// </summary>
     Topology = 5,
+}
+
+/// <summary>
+/// Kanıt türlerinin kapsam kaderi — <b>"bir gün gelecek" ile "hiç
+/// gelmeyecek" ayrı listelerde</b> (§8).
+///
+/// <para>
+/// Bu ayrımın olmaması ölçülmüş bir sorundu. F5 kapsam kararından önce
+/// <see cref="EvidenceKind.Metric"/>, <see cref="EvidenceKind.Trace"/> ve
+/// <see cref="EvidenceKind.Topology"/> tek bir listede duruyordu ve ekran
+/// üçü için de <i>"(F5)"</i> yazıyordu — yani bir <b>söz</b>. Karar ikisini
+/// kalıcı olarak kapsam dışına aldı; söz orada kalsaydı ekran, verilmiş bir
+/// karardan sonra hâlâ bekletiyor olurdu ve yanlış olduğu hiçbir yerde kırmızı
+/// yanmazdı.
+/// </para>
+///
+/// <para>
+/// <b>Muafiyet eklemek iki bilinçli hareket gerektiriyor:</b> listeye ad
+/// eklemek <b>ve</b> <see cref="ExpectedExemptCount"/>'u artırmak. Emsali
+/// <c>ProducesContractTests</c>'in <c>ExpectedExemptCount</c>'u; gerekçe aynı —
+/// tek hareketle büyüyen bir muafiyet listesi, muafiyeti kararsız hâle getirir.
+/// </para>
+/// </summary>
+public static class EvidenceKinds
+{
+    /// <summary>
+    /// Bu ürünün <b>bakmayacağı</b> kanıt türleri. Sağlayıcısı yok ve
+    /// <b>olmayacak</b>; <see cref="EvidenceStatus.NotRegistered"/> değil
+    /// <see cref="EvidenceStatus.OutOfScope"/> üretiyorlar.
+    /// </summary>
+    public static readonly IReadOnlySet<EvidenceKind> Exempt =
+        new HashSet<EvidenceKind> { EvidenceKind.Metric, EvidenceKind.Trace };
+
+    /// <summary>
+    /// Muafiyet sayısının <b>çivisi</b>. Değiştirmek bilinçli bir hareket
+    /// olmak zorunda; bir test ikisini eşitliyor.
+    /// </summary>
+    public const int ExpectedExemptCount = 2;
+
+    public static bool IsExempt(EvidenceKind kind) => Exempt.Contains(kind);
 }
 
 /// <summary>
@@ -79,11 +139,30 @@ public enum EvidenceStatus
     Failed = 5,
 
     /// <summary>
-    /// Bu tür için hiç sağlayıcı kayıtlı değil — F5'in üç türü bugün burada.
+    /// Bu tür için hiç sağlayıcı kayıtlı değil — <b>ama bir gün olabilir</b>.
     /// <b>Sağlayıcının kendisi bu değeri üretmez</b>; <see cref="EvidenceCollector"/>
     /// türü kayıtlı listede bulamadığında üretiyor.
+    ///
+    /// <para>
+    /// F5 · S1'den sonra bugün <b>hiçbir tür burada değil</b>: ikisi
+    /// <see cref="OutOfScope"/>, üçünün sağlayıcısı var. Değer duruyor çünkü
+    /// enum'a yeni bir tür eklenmesi hâlâ mümkün ve o gün sessizce atlanmamalı.
+    /// </para>
     /// </summary>
     NotRegistered = 6,
+
+    /// <summary>
+    /// Bu ürün bu türe <b>bakmıyor</b> — ve bakmayacak (<see cref="EvidenceKinds.Exempt"/>).
+    ///
+    /// <para>
+    /// <see cref="NotRegistered"/>'dan ayrı olması bu deponun §8 kuralının
+    /// karşılığı: <i>"bir gün kapanacak"</i> ile <i>"hiç kapanmayacak"</i> aynı
+    /// listede duramaz. Tek değerde toplansaydı *"liste boşaldı mı"* sorusunun
+    /// cevabı asla evet olamazdı, ve rapor okuyan bir eksikliği bekleyen bir söz
+    /// sanardı.
+    /// </para>
+    /// </summary>
+    OutOfScope = 7,
 }
 
 /// <summary>

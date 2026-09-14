@@ -18,6 +18,14 @@ public sealed record SourceUpsertRequest
     public string Encoding { get; init; } = "auto";
     public string SourceClass { get; init; } = "default";
     public bool Enabled { get; init; } = true;
+
+    // Topoloji öznitelikleri (F5 · S1). Uç **tam değiştirme** semantiğinde —
+    // `Vendor`/`Product` de öyle — yani gönderilmeyen alan boşalır. Kısmi
+    // güncelleme burada icat edilmiyor: iki semantiği aynı uçta karıştırmak,
+    // hangi alanın neden boşaldığını okunamaz yapardı.
+    public string Upstream { get; init; } = string.Empty;
+    public string Vlan { get; init; } = string.Empty;
+    public string Firmware { get; init; } = string.Empty;
 }
 
 /// <summary>
@@ -189,6 +197,14 @@ public static class SourcesEndpoints
         existing.Encoding = request.Encoding;
         existing.SourceClass = request.SourceClass;
         existing.Enabled = request.Enabled;
+
+        // Topoloji öznitelikleri (F5 · S1). Yazma yolu olmadan "envanteri
+        // müşteri doldurur" cümlesi kurulamaz — sinyal, doldurulması imkânsız
+        // bir alana bakıyor olurdu.
+        existing.Upstream = request.Upstream;
+        existing.Vlan = request.Vlan;
+        existing.Firmware = request.Firmware;
+
         existing.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken);
@@ -200,7 +216,8 @@ public static class SourcesEndpoints
             existing.SourceId, existing.OwnerGroup, existing.PeerAddress, existing.Hostname,
             existing.Vendor, existing.Product, existing.ParserId, existing.Encoding,
             existing.SourceClass, existing.Enabled,
-            !string.IsNullOrWhiteSpace(existing.ParserId), existing.CreatedAt));
+            !string.IsNullOrWhiteSpace(existing.ParserId), existing.CreatedAt,
+            existing.Upstream, existing.Vlan, existing.Firmware));
 
         return created
             ? Results.Created($"/v1/sources/{existing.SourceId}", body)

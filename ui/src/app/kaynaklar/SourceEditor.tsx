@@ -50,6 +50,14 @@ export function SourceEditor({ ownerGroups }: Props) {
           parserId: String(form.get("parser_id") ?? "").trim(),
           encoding: String(form.get("encoding") ?? "auto").trim() || "auto",
           sourceClass: String(form.get("source_class") ?? "default").trim() || "default",
+
+          // Topoloji öznitelikleri (F5 · S1). Boş bırakmak serbest ve anlamı
+          // "bilinmiyor" — RCA'nın topoloji sinyali doldurulmamış envanteri
+          // "ortak öznitelik yok" diye DEĞİL, "bakılamadı" diye raporluyor.
+          upstream: String(form.get("upstream") ?? "").trim(),
+          vlan: String(form.get("vlan") ?? "").trim(),
+          firmware: String(form.get("firmware") ?? "").trim(),
+
           enabled: form.get("enabled") !== null,
         },
       });
@@ -143,6 +151,21 @@ export function SourceEditor({ ownerGroups }: Props) {
             hint="Yanlış değer, boru hattında kodlama uyuşmazlığı olarak sayılıyor."
           />
           <Field label="Sınıf" name="source_class" defaultValue="default" />
+
+          {/*
+            Topoloji öznitelikleri (F5 · S1). RCA'nın "hepsi aynı switch'in
+            arkasında" hipotezi bu üç alandan çıkıyor; doldurulmadıklarında
+            sinyal susmuyor, "envanterde veri yok" diyor. Boş bırakmak
+            meşru — ipuçları bunu söylüyor.
+          */}
+          <Field
+            label="Üst düğüm"
+            name="upstream"
+            placeholder="core-sw-01"
+            hint="Bu cihazın bağlı olduğu üst düğüm. Boş = bilinmiyor."
+          />
+          <Field label="VLAN" name="vlan" placeholder="mgmt" hint="Boş = bilinmiyor." />
+          <Field label="Firmware" name="firmware" placeholder="7.4.1" hint="Boş = bilinmiyor." />
         </div>
 
         <label className={styles.check}>

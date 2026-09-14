@@ -414,4 +414,33 @@ public static class CorrelationFields
     [
         "source_id", "host", "vendor", "product", "parser_id", "proto", "action", "outcome",
     ];
+
+    /// <summary>
+    /// Topoloji sinyalinin baktığı <b>envanter</b> öznitelikleri (F5 · S1).
+    ///
+    /// <para>
+    /// <b>Neden <see cref="Lift"/>'e eklenmediler.</b> RCA §3.1 ortak öznitelik
+    /// sinyalini *"aynı VLAN, aynı upstream, aynı firmware"* diye tarif ediyor
+    /// ve F5 kapsam kararı bu üçünün hiçbir yerde olmadığını ölçtü. Doğal
+    /// refleks onları <see cref="Lift"/>'e eklemekti; ölçüm buna izin vermedi:
+    /// <see cref="Lift"/> <b>ClickHouse olay kolonlarının</b> izin listesi ve
+    /// oradaki her ad bir kolona karşılık gelmek zorunda. Bu üçü ise kaynağın
+    /// özelliği, olayın değil — <c>owner_group</c> ile aynı cinsten.
+    /// </para>
+    ///
+    /// <para>
+    /// Olaya denormalize etmek iki bedeli getirirdi: sıcak yol artı geri
+    /// alınamaz bir şema kararı, <b>ve</b> hâlihazırda yazılmış hiçbir olayda
+    /// dolu olmamaları — geçmiş bir pencereye bakan RCA sessizce boş sonuç
+    /// alırdı. O yüzden ayrı liste, ayrı sağlayıcı, ayrı kanıt türü.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>İki liste birbirini yalanlayamaz.</b> Adlar
+    /// <see cref="SourceSummary"/>'nin özellik adları ve bir test ikisini
+    /// eşitliyor — <see cref="Lift"/>'in depolama tarafındaki izin listesiyle
+    /// eşitlenmesiyle aynı gerekçe.
+    /// </para>
+    /// </summary>
+    public static readonly IReadOnlyList<string> Topology = ["upstream", "vlan", "firmware"];
 }

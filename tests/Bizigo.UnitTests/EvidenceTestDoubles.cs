@@ -93,8 +93,15 @@ internal class RecordingScopedQuery : IScopedQuery
     public Task WriteChangeAsync(ChangeEvent change, AccessScope scope, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
 
+    /// <summary>
+    /// Kapsam içindeki envanter — topoloji sağlayıcısının <b>paydası</b>
+    /// (F5 · S1). Varsayılan boş: envanteri doldurmayan bir test, sağlayıcının
+    /// <c>NeverFed</c> yolunu ölçüyor demektir ve bu bilerek böyle.
+    /// </summary>
+    public List<SourceSummary> Inventory { get; } = [];
+
     public Task<IReadOnlyList<SourceSummary>> SearchSourcesAsync(AccessScope scope, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<SourceSummary>>([]);
+        Task.FromResult<IReadOnlyList<SourceSummary>>([.. Inventory]);
 
     public virtual Task<IReadOnlyList<SourceActivityRow>> GetSourceActivityAsync(
         SourceActivityWindow window, AccessScope scope, CancellationToken cancellationToken = default) =>

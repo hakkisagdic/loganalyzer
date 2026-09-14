@@ -54,17 +54,22 @@ public sealed class EvidenceCompositionTests
 
         var collector = scope.ServiceProvider.GetRequiredService<EvidenceCollector>();
 
-        // T34'te iki, T35'in beş korelasyonuyla yedi. Sayının burada yazılı
-        // olması bilinçli: bir sağlayıcı sessizce düşerse rapor onu hiç
-        // aramaz ve eksikliği yalnızca bir RCA raporunun zayıflığı olarak,
-        // aylar sonra görünür.
-        Assert.Equal(7, collector.Providers.Count);
+        // T34'te iki, T35'in beş korelasyonuyla yedi, F5 · S1'in topoloji
+        // sağlayıcısıyla sekiz. Sayının burada yazılı olması bilinçli: bir
+        // sağlayıcı sessizce düşerse rapor onu hiç aramaz ve eksikliği
+        // yalnızca bir RCA raporunun zayıflığı olarak, aylar sonra görünür.
+        Assert.Equal(8, collector.Providers.Count);
     }
 
     /// <summary>
-    /// F3'te iki sağlayıcı kayıtlı; kalan üç tür <b>kayıtlı değil</b> ve bu
-    /// bilerek. Boş bir sağlayıcı kaydetmek onları "var ama sonuç yok" gibi
-    /// gösterirdi, oysa doğru cümle "bu türe hiç bakılmadı".
+    /// Üç tür kayıtlı (log, change, topoloji); kalan ikisi <b>kayıtlı değil ve
+    /// olmayacak</b> — F5 · S1'in kalıcı muafiyeti.
+    ///
+    /// <para>
+    /// Boş bir sağlayıcı kaydetmek onları "var ama sonuç yok" gibi gösterirdi;
+    /// doğru cümle "bu ürün bu türe bakmıyor". Kayıt yokluğu bu yüzden bir
+    /// eksiklik değil, kararın taşıyıcısı.
+    /// </para>
     /// </summary>
     [Fact]
     public void F5_turleri_kayitli_degil()
@@ -74,13 +79,19 @@ public sealed class EvidenceCompositionTests
 
         var collector = scope.ServiceProvider.GetRequiredService<EvidenceCollector>();
 
+        // F5 · S1'den sonra topoloji de kayıtlı — envanter öznitelikleri
+        // üzerinden, ilişki grafiği olmadan.
         Assert.Equal(
-            [EvidenceKind.Log, EvidenceKind.Change],
+            [EvidenceKind.Log, EvidenceKind.Change, EvidenceKind.Topology],
             collector.Providers.Select(p => p.Kind).Distinct().Order());
 
+        // Kalan ikisi **kalıcı muaf**, ertelenmiş değil — ayrımın kendisi
+        // `EvidenceKindScopeTests`'te.
         Assert.Equal(
-            [EvidenceKind.Metric, EvidenceKind.Trace, EvidenceKind.Topology],
+            [EvidenceKind.Metric, EvidenceKind.Trace],
             collector.UnregisteredKinds.Order());
+
+        Assert.Equal(EvidenceKinds.Exempt.Order(), collector.UnregisteredKinds.Order());
     }
 
     /// <summary>
@@ -106,6 +117,7 @@ public sealed class EvidenceCompositionTests
                 "logs.silence",
                 "logs.volume",
                 "logs.window",
+                "topology.shared-attribute",
             ],
             ids);
         Assert.Equal(ids.Length, ids.Distinct(StringComparer.Ordinal).Count());

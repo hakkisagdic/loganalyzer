@@ -28,8 +28,8 @@ import styles from "../rca.module.css";
  *
  * <p>
  * <b>Ekranın çivili değişmezi:</b> <c>empty</c> · <c>never_fed</c> ·
- * <c>unavailable</c>/<c>failed</c> · <c>not_registered</c> ayırt edilebilir
- * kalıyor. Tek bir "veri yok" kutusu çizmek T34 ve T36'nın kurduğu her şeyi tek
+ * <c>unavailable</c>/<c>failed</c> · <c>not_registered</c> · <c>out_of_scope</c>
+ * ayırt edilebilir kalıyor. Tek bir "veri yok" kutusu çizmek T34 ve T36'nın kurduğu her şeyi tek
  * satırda geri alır ve hiçbir şey haber vermez — hata yok, sayaç yok, belirti
  * yok; yalnızca raporu okuyanın yanlış sonuca varması.
  * </p>

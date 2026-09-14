@@ -168,14 +168,21 @@ paragrafı okumalı.
 | --- | --- | --- |
 | LLM yorumu, **beş** tetikleyici, kuyruk/kota | F4 | K22 — kanıt önce |
 | Prompt redaksiyon tabanı (T41) | F4 **önkoşulu — kapandı** | 2026-08-25: taban yoktu, yazıldı. Üç katman: üretici söz dizimi ve dar bilinen-biçim kümesi maskeliyor, entropi **yalnızca sayıyor**. Altın korpusta yanlış pozitif **0/87** |
-| Metrik · trace · topoloji sağlayıcıları | F5 | K21'in bedeli; sözleşme beşini de tanıyor, uygulaması yok |
+| Metrik · trace · topoloji sağlayıcıları | F5 — **karara bağlandı** | K21'in bedeli. F5 kapsam kararı (2026-09-05): **topoloji karşılandı** (envanter öznitelikleri, ilişki grafiği yok), **metrik ve trace kalıcı muaf**. Bkz. [[concepts/f5-soz-ile-sinir-ayri-listeler]] |
 | Sigma korelasyon kuralları | sonra | backend destekliyor ama önce tekiller otursun |
 | PDF export | kapsam dışı | Markdown var; PDF gelirse **aynı metinden** üretilmeli |
 
 K21 ("kanıt türlerinin hepsi") projedeki **tek en büyük kapsam genişlemesi**
 olarak kayıtlı: metrik + trace, K1'in "sadece log analiz katmanı" sınırını
-aşıyor. Kapsam daraltılmadı, **sıralandı** — ve sözleşmenin beş türü de bugünden
-tanıması bu sıralamanın taşıyıcısı.
+aşıyor. Kapsam F3'te daraltılmadı, **sıralandı** — ve sözleşmenin beş türü de
+tanıması bu sıralamanın taşıyıcısıydı.
+
+**2026-09-05'te sıralama bir karara döndü.** F5 kapsam kararı ölçtü ki RCA
+belgesinin *"lift topolojiyi telafi ediyor"* gerekçesi yazılmamıştı: ne olay
+tablosunda ne envanterde VLAN/upstream/firmware vardı. Topoloji o yüzden
+karşılandı; metrik ve trace K1'in sınırında bırakıldı. Ayrımın taşıyıcısı bir
+mekanizma, bir not değil — `EvidenceKinds.Exempt` sayılı bir liste ve
+`EvidenceStatus.OutOfScope` telde `not_registered`'dan ayrı duruyor.
 
 ## Kaynaklar
 
