@@ -57,9 +57,23 @@ if [ -z "$status" ]; then
         exit 0
     fi
 
-    # `--limit 1`: yalnızca en son koşum. Daha eskisine bakmak, arada
-    # düzelmiş bir dalı kırmızı sanmak demek olurdu.
-    status=$(gh run list --branch main --limit 1 \
+    # `--workflow ci.yml` ŞART, ve eksikliği ölçülerek bulundu.
+    #
+    # Bu satır bir zamanlar yalnızca `--limit 1` diyordu: main'deki EN SON
+    # koşum, hangi akış olduğuna bakmadan. Ama `ci-red.yml` bir
+    # `workflow_run` tetikleyicisiyle koşuyor, yani CI'dan SONRA bitiyor —
+    # dolayısıyla "en son koşum" neredeyse her zaman BEKÇİ İŞİ, CI'nın kendisi
+    # değil. Ve bekçi işi kendi içinde başarılı olduğu sürece `success`
+    # döndürüyor; CI kırmızıyken bile.
+    #
+    # Ölçülen hâli (`07a461d`): süzgeçsiz sorgu `success ← CI kırmızı kaldı mı`
+    # dedi, aynı commit'te CI **failure**'dı. Yani bu kanca — okunmamış bir
+    # kırmızının üstüne merge konmasını engellemek için yazılmış olan kanca —
+    # tam olarak o kırmızıyı görmüyordu.
+    #
+    # Süzgeç akış DOSYA ADIYLA, görünen adla değil: görünen ad
+    # (`name:` alanı) bir düzenlemeyle değişir ve süzgeç sessizce boşa düşer.
+    status=$(gh run list --branch main --workflow ci.yml --limit 1 \
         --json conclusion --jq '.[0].conclusion' 2>/dev/null || echo "")
 
     if [ -z "$status" ]; then
@@ -68,9 +82,27 @@ if [ -z "$status" ]; then
     fi
 fi
 
+# Koşum HÂLÂ SÜRÜYOR: `conclusion` JSON `null` ve `--jq` onu "null" dizesi
+# olarak basıyor — boş DEĞİL, yani yukarıdaki "okunamadı" kontrolüne düşmüyor.
+#
+# Eski hâli bunu kırmızı sayıyordu: bir push'un hemen ardından ikinci bir push
+# `SON CI koşumu: null` diyerek engelleniyordu. Doğrusu açık geçmek — okunacak
+# bir kırmızı henüz YOK, ve bu kanca kırmızıyı okumak için var, koşumu beklemek
+# için değil.
+#
+# Kontrol test dikişinin DIŞINDA, ve bu yerleşim ölçülerek düzeltildi: dikişin
+# içinde kalmışken `BIZIGO_CI_STATUS=null` ile koşan ölçüm bu dala hiç
+# uğramıyordu, yani dal yazılmıştı ama SINANMAMIŞTI. Dikişin ölçemediği bir dal,
+# ölçülmemiş bir daldır.
+if [ "$status" = "null" ]; then
+    echo "pre-push: main'deki CI koşumu hâlâ sürüyor — okunacak bir sonuç yok." >&2
+    echo "pre-push: push'a izin veriliyor; sonucu sonra oku." >&2
+    exit 0
+fi
+
 case "$status" in
-    # Koşum hâlâ sürüyorsa `conclusion` boş döner ve yukarıda yakalandı.
-    # `success`, `skipped`, `neutral` → sorun yok.
+    # Koşum hâlâ sürüyorsa `conclusion` JSON `null`'dır ve yukarıda AYRICA
+    # yakalanıyor — boş dize değil. `success`, `skipped`, `neutral` → sorun yok.
     success|skipped|neutral)
         exit 0
         ;;
@@ -88,7 +120,10 @@ if [ -z "${BIZIGO_CI_STATUS:-}" ] && command -v gh >/dev/null 2>&1; then
     # Koşum kimliği ÖNCE alınıyor: `gh run view` kimliksiz çağrıldığında
     # etkileşimli seçici açıyor ve bir kanca içinde o, asılı kalan bir push
     # demek.
-    run_id=$(gh run list --branch main --limit 1 --json databaseId \
+    # Aynı süzgeç: teşhis, durumu okuduğu koşumun AYNISINI göstermeli.
+    # Süzgeçsiz kalsaydı mesaj bekçi işinin başlığını ve URL'sini basardı —
+    # yani okuyan kişi kırmızının olmadığı bir koşuma bakardı.
+    run_id=$(gh run list --branch main --workflow ci.yml --limit 1 --json databaseId \
         --jq '.[0].databaseId' 2>/dev/null || echo "")
 
     if [ -n "$run_id" ]; then
