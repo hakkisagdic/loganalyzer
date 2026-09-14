@@ -12,47 +12,60 @@ namespace Bizigo.Mcp.Product.Tools;
 /// <c>alerts.maintenance</c> — bakım pencereleri. Ucu
 /// <c>GET /v1/alerts/maintenance</c>.
 ///
-/// <h3>KARAR: bu araç OKUMA tarafında, ve "hayır" bir eksik değil</h3>
+/// <h3>KARAR: bu araç OKUMA tarafında — ve sınır M14'te DARALTILDI</h3>
 ///
 /// <para>
 /// M04 bu aracı kapsamdan çıkarmıştı ve açık bıraktığı soru şuydu: <i>bakım
 /// penceresi yazma işi mi okuma mı — bu ürün MCP üzerinden yazma yapıyor mu?</i>
-/// Cevap <b>bugün hayır</b>, ve dört sebebi var. Üçü mekanik, biri asıl olan.
+/// M10'un cevabı <i>"bugün hayır"</i> oldu ve <b>o cümle fazla geniş yazılmıştı</b>.
+/// </para>
+///
+/// <para>
+/// <b>M14 sınırı ölçerek daralttı.</b> Kararı taşıyan şey yazmanın kendisi
+/// değildi, aşağıdaki dördüncü maddeydi: <i>hatası SESSİZ olan yazma</i>. Ürün
+/// bugün MCP üzerinden <b>bir</b> yazma yapıyor (<c>rca.trigger</c>) ve o dört
+/// şartı birden karşılıyor — <b>idempotans · her sonucun bir kaydı · maliyet
+/// görünürlüğü · aktörün kimliği</b>. Ölçüt ve gerekçesi
+/// <see cref="ProductWriteTool"/>'da.
+/// </para>
+///
+/// <para>
+/// <b>Bakım penceresi o ölçütün DÖRDÜNÜ DE karşılamıyor</b>, ve bu yüzden karar
+/// değişmedi:
 /// </para>
 ///
 /// <list type="number">
 /// <item>
-/// <b>Yazan bir araç bu tabandan TÜREYEMİYOR.</b>
-/// <see cref="ProductReadTool.IsReadOnly"/> <c>sealed</c> ve gerekçesi orada
-/// yazılı: <c>ReadOnlyHint</c> ile yalan söylemek modele <i>"bunu serbestçe
-/// deneyebilirsin"</i> demek olurdu. Yani yazan bir araç kendi tabanını, kendi
-/// kapsam kapısını ve kendi <c>ScopeRejection</c>'ını getirirdi —
-/// <b>K17'nin yolunda ikinci bir kapı</b>, ve §9 bu depoda tam olarak bunu
-/// yasaklıyor.
+/// <b>İdempotans yok.</b> Aynı pencereyi iki kez açmak iki satır ve iki
+/// bastırma demek.
 /// </item>
 /// <item>
 /// <b>Aktör kaydı yok.</b> REST'in <c>CreateWindowAsync</c>'i
-/// <c>CreatedBy = user.Scope.Subject</c> yazıyor. MCP üzerinden o özne
-/// <i>modeli çağıran kimlik</i> olurdu ve kayıt <i>"insan karar verdi"</i> ile
-/// <i>"model karar verdi"</i> arasında hiçbir ayrım taşımazdı. Bu, T54'ün aynı
-/// sınıfı: muafiyet uygulanıyor ama kayıtta görünmüyor. Aktör ayrımı bir
-/// ayrıntı değil, yazmanın <b>önkoşulu</b>.
+/// <c>CreatedBy = scope.Subject</c> yazıyor; MCP'de o özne modeli çağıran
+/// kimlik ve kayıt <i>"insan karar verdi"</i> ile <i>"model karar verdi"</i>
+/// arasında ayrım taşımıyor. T54'ün aynı sınıfı.
 /// </item>
 /// <item>
-/// <b>Silme yolu geri alınamaz.</b> <c>DELETE /v1/alerts/maintenance/{id}</c>
-/// satırı gerçekten siliyor; bir modelin tetiklediği silme için ne bir onay ne
-/// bir iz var.
+/// <b>Maliyet görünmüyor</b> ve silme geri alınamıyor:
+/// <c>DELETE /v1/alerts/maintenance/{id}</c> satırı gerçekten siliyor.
 /// </item>
 /// <item>
-/// <b>VE ASIL SEBEP — bu yazmanın hatası SESSİZ.</b> Bakım penceresinin işi
-/// alarmları <b>bastırmak</b> (<see cref="SuppressionReason.MaintenanceWindow"/>).
-/// Yanlış açılmış bir pencerenin belirtisi bir hata değil, <b>sessizlik</b>:
-/// alarm hiç tetiklenmiyor, ekran sağlıklı görünüyor ve kimse bir şey
-/// aramıyor. Bu deponun §7'de adını koyduğu sınıfın en pahalı hâli. Ürünün MCP
-/// üzerinden vereceği <b>ilk</b> yazma yetkisi, hatası görünmeyen tek yazma
-/// olurdu.
+/// <b>VE ASIL SEBEP — hatası SESSİZ.</b> Bakım penceresinin işi alarmları
+/// <b>bastırmak</b> (<see cref="SuppressionReason.MaintenanceWindow"/>). Yanlış
+/// açılmış bir pencerenin belirtisi bir hata değil, <b>sessizlik</b>: alarm hiç
+/// tetiklenmiyor, ekran sağlıklı görünüyor ve kimse bir şey aramıyor. Bu
+/// deponun §7'de adını koyduğu sınıfın en pahalı hâli.
+/// <c>rca.trigger</c>'ın tam tersi: onun her sonucu bir <c>rca_runs</c> satırı.
 /// </item>
 /// </list>
+///
+/// <para>
+/// <b>Yazan bir araç ayrıca bu tabandan TÜREYEMİYOR:</b>
+/// <see cref="ProductReadTool.IsReadOnly"/> <c>sealed</c>. Karar mekanik olarak
+/// da tutuluyor — <c>McpReadToolTests.Hicbir_urun_araci_yazma_cagirmiyor</c>
+/// yazma çağrılarını IL'den tarıyor ve muafiyet listesi <b>sayılı</b>: ikinci
+/// bir yazma aracı iki bilinçli hareket gerektiriyor (§8).
+/// </para>
 ///
 /// <para>
 /// <b>Ve okuma tarafı modelin gerçekten ihtiyaç duyduğu şey.</b> RCA'nın

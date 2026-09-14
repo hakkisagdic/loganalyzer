@@ -617,6 +617,12 @@ internal static class McpExpectedTools
                 LogsGetTool.ToolIdentifier,
                 LogsSearchTool.ToolIdentifier,
                 RcaQualityTool.ToolIdentifier,
+                RcaRunsTool.ToolIdentifier,
+
+                // M14 · ürünün MCP üzerinden yaptığı TEK yazma. Kümede
+                // görünmesi bilinçli bir hareket — gerekçesi dört kalem hâlinde
+                // `ProductWriteTool` belgesinde.
+                RcaTriggerTool.ToolIdentifier,
                 ServerInfoTool.ToolIdentifier,
             ],
 

@@ -119,13 +119,24 @@ public sealed class McpProductScopeGateTests
     }
 
     /// <summary>
-    /// <b>Her okuma aracı <see cref="ProductReadTool"/>'dan türüyor.</b>
+    /// <b>Her ürün aracı kapsam kapısını GÖREN bir tabandan türüyor</b> — okuma
+    /// ya da yazma.
     ///
     /// <para>
-    /// Yukarıdaki mühür yalnızca o tabandan türeyenleri bağlıyor. Ürün
+    /// Yukarıdaki mühür yalnızca o tabanlardan türeyenleri bağlıyor. Ürün
     /// yüzeyinde <see cref="BizigoMcpTool"/>'dan <b>doğrudan</b> türeyen bir
     /// araç, kapsam kapısını hiç görmeden ürün verisi döndürebilirdi — ve
     /// yeşil bir test paketiyle birlikte.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>İKİ taban kabul ediliyor (M14) ve bu bir gevşetme DEĞİL:</b>
+    /// <see cref="ProductWriteTool"/> kapsam reddini <b>aynı statikten</b>
+    /// çağırıyor (<see cref="ProductReadTool.ScopeRejection"/>), yani ikinci bir
+    /// kapı açılmadı — açılsaydı §9'un yasakladığı kopya olurdu ve bu testin
+    /// ölçtüğü şey de zayıflardı. Kabul ölçütü <i>"şu iki tipten biri"</i> değil,
+    /// <b>"o statiği çağıran mühürlü bir kanca"</b>; aşağıdaki iddia bunu ayrıca
+    /// ölçüyor.
     /// </para>
     ///
     /// <para>
@@ -138,15 +149,45 @@ public sealed class McpProductScopeGateTests
     {
         var strays = McpToolDiscovery
             .ToolTypes([typeof(LogsSearchTool).Assembly])
-            .Where(static type => !typeof(ProductReadTool).IsAssignableFrom(type))
+            .Where(static type =>
+                !typeof(ProductReadTool).IsAssignableFrom(type)
+                && !typeof(ProductWriteTool).IsAssignableFrom(type))
             .Select(static type => type.FullName!)
             .Order(StringComparer.Ordinal)
             .ToArray();
 
         Assert.True(
             strays.Length == 0,
-            "Bu araç(lar) `ProductReadTool`'dan türemiyor ve kapsam kapısını hiç görmüyor:\n  "
-            + string.Join("\n  ", strays));
+            "Bu araç(lar) ne `ProductReadTool` ne `ProductWriteTool`'dan türüyor, yani kapsam "
+            + "kapısını hiç görmüyor:\n  " + string.Join("\n  ", strays));
+
+        // YAZMA TABANI DA MÜHÜRLÜ ve AYNI STATİĞİ çağırıyor. Olmadan yukarıdaki
+        // iddia bir tip adı listesine inerdi: `ProductWriteTool` kendi kapsam
+        // kontrolünü yazsaydı bu test yine yeşil kalırdı, ve K17'nin yolunda
+        // ikinci bir kapı sessizce doğardı (§9).
+        var writeHook = typeof(ProductWriteTool).GetMethod(
+            "ExecuteAsync",
+            BindingFlags.Instance | BindingFlags.NonPublic,
+            [typeof(McpToolInvocation), typeof(CancellationToken)]);
+
+        Assert.NotNull(writeHook);
+        Assert.True(
+            writeHook!.IsFinal,
+            $"`{nameof(ProductWriteTool)}` kancası `sealed` değil: yazan bir araç onu geçersiz "
+            + "kılıp kapsamı atlayabilir.");
+
+        var unresolved = 0;
+
+        var callsSharedGate = IlCallReader
+            .Callees(writeHook, ref unresolved)
+            .Any(static callee => string.Equals(
+                callee.Name, nameof(ProductReadTool.ScopeRejection), StringComparison.Ordinal));
+
+        Assert.True(
+            callsSharedGate,
+            $"`{nameof(ProductWriteTool)}` kapsam reddini `{nameof(ProductReadTool)}."
+            + $"{nameof(ProductReadTool.ScopeRejection)}`'dan ÇAĞIRMIYOR — yani ikinci bir kapsam "
+            + "kapısı yazılmış. §9: tek kapı, iki çağıran.");
     }
 
     /// <summary>
