@@ -22,7 +22,8 @@ sources:
   - docs/epic/tickets/kimlik/index.md
   - docs/epic/tickets/api-uclari/index.md
   - docs/epic/tickets/normalizasyon/index.md
-source_digest: "sha256-12/v1 docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=c9cae79ad905 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/tickets/api-uclari/index.md=4e2624c6db9a docs/epic/tickets/depolama-ve-kapsam-kapisi/index.md=7a1070c1c1da docs/epic/tickets/dispatcher-ve-envanter/index.md=5b0c998c5ca7 docs/epic/tickets/ham-arsiv/index.md=f7b6e1d7e3a0 docs/epic/tickets/kimlik/index.md=1777b62193e0 docs/epic/tickets/normalizasyon/index.md=74d881911e1b"
+  - CLAUDE.md
+source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=c9cae79ad905 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/tickets/api-uclari/index.md=4e2624c6db9a docs/epic/tickets/depolama-ve-kapsam-kapisi/index.md=7a1070c1c1da docs/epic/tickets/dispatcher-ve-envanter/index.md=5b0c998c5ca7 docs/epic/tickets/ham-arsiv/index.md=f7b6e1d7e3a0 docs/epic/tickets/kimlik/index.md=1777b62193e0 docs/epic/tickets/normalizasyon/index.md=74d881911e1b"
 summary: K17'nin iki cümlesi — kapsam olayın değil kaynağın özelliğidir ve tek bir kapıda uygulanır — F1'in yedi ticket'ına yayılıyor; şemadan nesne anahtarına, claim sözleşmesinden 404 kararına kadar.
 provenance:
   extracted: 0.85

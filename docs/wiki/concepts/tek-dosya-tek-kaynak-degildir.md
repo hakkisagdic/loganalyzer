@@ -71,8 +71,9 @@ profil doğruydu.
 Deponun "ikinci kopya yazma" kuralı *veriyi* anlatıyor; bu, **tanımanın**
 karşılığı. Ve boşluğun neden birim testlerinde görünmediği de ölçüldü: mevcut
 zincir testi baseline'ı parametresiz kurucuyla alıyordu, yani taşıyıcının config
-yolunu **adlandırılmış** baseline'la geçen tek bir test yoktu. 974 birim testi
-yeşilken CI kırmızıydı.
+yolunu **adlandırılmış** baseline'la geçen tek bir test yoktu. Sonuç
+`CLAUDE.md` §6'nın kaydettiği şekle düştü: *"iki gösterim doğdu, birim paketi
+sessiz kaldı, CI kırmızı yandı."*
 
 ## 3 · Yeni kavram eklerken onu görecek eski kodu aramamak
 

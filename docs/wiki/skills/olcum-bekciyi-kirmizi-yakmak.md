@@ -174,9 +174,9 @@ veri kaybettiği ya da çoğalttığı yollar.
 | TTL kapısı | Saklama süresinin dışındaki satır — ClickHouse kabul edip **siliyor**, yazan "yazdım" diye okuyor | `--span-days 100` → çıkış **1**, 2028 satırın 210'u dışarıda; varsayılan 30 gün → çıkış **0** |
 | `--replace` doğrulaması | `ALTER TABLE … DELETE` bir **mutasyon**; `mutations_sync = 2` sunucu tarafında geçersiz kılınabiliyor ve beklemeden dönerse eski satırlar kalır, yeniler eklenir, **veri çoğalır** | Silmeden sonra sayım tekrarlanıyor; sıfır değilse yazıma hiç geçilmiyor |
 
-İkincisinin izi ölçümde de görünüyordu: altın örnek sayıları bir gün **2476×3 =
-7428** değil **7426** çıkmıştı — tam katı olmaması, kısmen tamamlanmış bir
-mutasyonun bıraktığı iz.
+İkincisi bir **önlem**, gözlenmiş bir olay değil: T39 mutasyonun beklemeden
+dönmesi hâlinde verinin *"hiçbir hata çıkmadan"* çoğalabileceğini yazıyor ve
+kapıyı bunun için koyuyor. Aynı belgedeki çapraz kontrol **temiz** çıktı.
 
 ## Adım 5 — kuralı yazmadan önce ölç; literal hâli yanlış olabilir
 
