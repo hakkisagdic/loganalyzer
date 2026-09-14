@@ -5,17 +5,20 @@ using Bizigo.Alerting;
 using System.Security.Claims;
 using Bizigo.Contracts;
 using Bizigo.ControlPlane;
+using Bizigo.Evidence;
 using Bizigo.Mcp;
 using Bizigo.Mcp.Product.Tools;
 using Bizigo.Mcp.Tools;
 using Bizigo.Parsing.Dispatch;
 using Bizigo.Query;
+using Bizigo.Rca.Reasoning;
 using Microsoft.EntityFrameworkCore;
 using Bizigo.Simulators.Mcp;
 using Bizigo.Simulators.Mcp.Tools;
 using Bizigo.Commands;
 using Bizigo.Commands.Mcp;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
@@ -550,6 +553,19 @@ internal static class McpTestServices
         services.AddSingleton(new AlertingOptions());
         services.AddSingleton<AlertRuleService>();
         services.AddSingleton(new ParserCatalog());
+
+        // M07 — KAYNAKLARIN bağımlılıkları, ve ömürleri ÜRETİMDEKİYLE aynı.
+        //
+        // `EvidenceBundleStore` scoped (`AddScoped<EvidenceBundleStore>` —
+        // `EvidenceServiceCollectionExtensions`), `RcaReportStore` singleton
+        // (`AddSingleton<RcaReportStore>` — `RcaServiceCollectionExtensions`).
+        // Ömürleri burada eşitlemek — ikisini de singleton yazmak — kaynakların
+        // okuma başına kapsam açtığını ÖLÇÜLMEZ kılardı: esir bağımlılık testte
+        // görünmez, üretimde patlar. Araç tarafında aynı hata için yazılmış
+        // yukarıdaki gerekçenin kaynak kanalındaki hâli.
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped<EvidenceBundleStore>();
+        services.AddSingleton<RcaReportStore>();
 
         // M02 — komut araçlarının bağımlılıkları, ÜRETİMİN kendi uzantısından
         // (`AddBizigoCommandTools`). Elle kurmak, ölçülen sunucu ile koşan

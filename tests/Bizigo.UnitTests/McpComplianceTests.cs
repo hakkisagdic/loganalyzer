@@ -610,9 +610,46 @@ public sealed class McpComplianceTests
         var capabilities = session.Client.ServerCapabilities;
 
         Assert.NotNull(capabilities.Tools);
-        Assert.Null(capabilities.Resources);
         Assert.Null(capabilities.Prompts);
         Assert.Null(capabilities.Completions);
+
+        // KAYNAK YETENEĞİ SABİTE DEĞİL GERÇEĞE KARŞI ÖLÇÜLÜYOR (M07).
+        //
+        // `Assert.Null(capabilities.Resources)` yazılıydı ve M07'ye kadar
+        // doğruydu. Yerine sabit bir "artık dolu" iddiası yazmak, iki yüzeyi
+        // birbirine karıştırırdı: `bizigo` kaynak sunuyor, `bizigo-sim`
+        // SUNMUYOR — ve ikincisi K6'nın iddiasının kendisi.
+        //
+        // Ölçüt bu yüzden çift yönlü ve HER İKİ YÖNÜ de bir arıza:
+        //   · yetenek var, kaynak yok  → istemciye olmayan bir yol gösterilir
+        //   · kaynak var, yetenek yok  → istemci kanalı hiç denemez, belgeler
+        //                                yazılmış ama ulaşılamaz kalır
+        var declared = BizigoMcpServer.Resources(surface, DeclaredAssemblies(surface), services);
+
+        if (declared.Count == 0)
+        {
+            Assert.Null(capabilities.Resources);
+        }
+        else
+        {
+            Assert.NotNull(capabilities.Resources);
+
+            // `Subscribe` de gerçeğe bağlı: abonelik ilan edip bildirim
+            // göndermemek, istemciyi HİÇ SORMAMAYA ikna eder ve sonuç sessizce
+            // bayat veridir.
+            Assert.Equal(
+                declared.Any(static resource => resource.SupportsSubscription),
+                capabilities.Resources.Subscribe ?? false);
+
+            // İlan edilen küme tel üzerinde de görünüyor mu — yeteneğin
+            // varlığı ile kanalın çalışması aynı şey değil.
+            var listed = await session.Client.ListResourceTemplatesAsync(cancellationToken: Ct);
+            var fixedOnes = await session.Client.ListResourcesAsync(cancellationToken: Ct);
+
+            Assert.Equal(
+                declared.Count,
+                listed.Count + fixedOnes.Count);
+        }
 
         // `Logging` BİLEREK sınanmıyor. Çivilediğimiz revizyonda (2026-07-28)
         // günlükleme yeteneği ARTIK KULLANIMDAN KALDIRILDI (SEP-2577) ve SDK

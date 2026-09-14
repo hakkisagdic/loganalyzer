@@ -22,6 +22,24 @@
     — ve `Measure(...)` katalog değiştiyse BÜTÜN KATALOĞU yeniden ölçüyor.
     Modelin göremediği bir maliyeti modelin tetikleyebilmesi istenmedi; kapsam
     oranı bu araçta yok, gerekçesi `CatalogParsersTool` belgesinde.
+
+    M07 · EVIDENCE VE RCA EKLENDİ, VE MALİYETİ ÖLÇÜLDÜ.
+
+    Kaynaklar (`Resources/`) kanıt paketi ve RCA raporu belgelerini sunuyor,
+    yani `EvidenceBundleStore` ve `RcaReportStore` gerekiyor. Bu, yukarıdaki
+    "Cli'nin alt kümesi" kuralını genişletiyor — bilerek, ve ölçülen maliyetle:
+
+      Bizigo.Evidence → Contracts · Query                       (Cli'de İKİSİ DE var)
+      Bizigo.Rca      → Contracts · ControlPlane · ScenarioPlugin · Extensions.Http
+
+    Yeni çatı YOK; hepsi ürünün kendi katmanları ve Cli'nin bugünkü kümesi
+    ControlPlane'i (Ingest) ve Http'yi (Alerting) zaten taşıyor.
+
+    ALTERNATİF ELENDİ: kaynakları ayrı bir derlemeye koyup yalnızca
+    `Bizigo.Api`'den referans vermek. O zaman stdio taşıması (`bizigo mcp serve`)
+    bu kaynakları HİÇ göremezdi, yani aynı yüzey iki taşımada FARKLI şey sunardı
+    — M01'in "iki taşıma, aynı küme" iddiasının tam tersi, ve ayrışmayı
+    gösterecek hiçbir bekçi olmazdı.
   -->
 
   <ItemGroup>
@@ -29,6 +47,8 @@
     <ProjectReference Include="..\Bizigo.Query\Bizigo.Query.csproj" />
     <ProjectReference Include="..\Bizigo.Parsing\Bizigo.Parsing.csproj" />
     <ProjectReference Include="..\Bizigo.Alerting\Bizigo.Alerting.csproj" />
+    <ProjectReference Include="..\Bizigo.Evidence\Bizigo.Evidence.csproj" />
+    <ProjectReference Include="..\Bizigo.Rca\Bizigo.Rca.csproj" />
   </ItemGroup>
 
   <ItemGroup>
