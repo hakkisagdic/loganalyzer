@@ -114,12 +114,31 @@ public sealed class ClaimMappingTests
         Assert.DoesNotContain("Cookies", registered);
         Assert.DoesNotContain("OpenIdConnect", registered);
 
-        // Yalnızca beklenen şema kayıtlı olsun — yeni bir tarayıcı akışı
-        // eklendiğinde bu satır düşer.
-        var expected = authEnabled
-            ? JwtBearerDefaults.AuthenticationScheme
-            : AnonymousAuthenticationHandler.SchemeName;
+        // Küme TAM olarak yazılı — yeni bir şema eklendiğinde bu satır düşer,
+        // ve düşmesi gerekiyor: bir tarayıcı akışı da tam böyle "bir şema daha"
+        // olarak girer. Üçünün her birinin gerekçesi ayrı:
+        //
+        //   Bearer          — API'nin kendi kitlesi (`Auth:Audience`); 45
+        //                     `RequireAuthorization` çağrısının hepsi bunu
+        //                     kullanıyor ve varsayılan bu.
+        //   McpBearer       — AYNI issuer, AYNI claim sözleşmesi, FARKLI kitle
+        //                     (`Auth:McpResource`). İkinci bir doğrulama yolu
+        //                     değil; tek fark kitle.
+        //   Mcp             — yalnızca MEYDAN OKUMAYI üretiyor (RFC 9728
+        //                     `resource_metadata`), doğrulamayı `McpBearer`'a
+        //                     iletiyor.
+        //
+        // Üçü de Bearer taşıyıcısı; hiçbiri oturum çerezi ya da yönlendirme
+        // akışı kurmuyor, yani K31 ihlal edilmiyor.
+        string[] expected = authEnabled
+            ?
+            [
+                JwtBearerDefaults.AuthenticationScheme,
+                BizigoAuthSchemes.McpBearer,
+                BizigoAuthSchemes.Mcp,
+            ]
+            : [AnonymousAuthenticationHandler.SchemeName];
 
-        Assert.Equal([expected], registered);
+        Assert.Equal(expected.Order(StringComparer.Ordinal), registered.Order(StringComparer.Ordinal));
     }
 }
