@@ -1016,11 +1016,33 @@ public sealed class McpComplianceTests
     [Fact]
     public void Kurum_disi_beyan_sunucu_kurulumunda_reddediliyor()
     {
-        var services = new ServiceCollection().BuildServiceProvider();
         var declaration = McpBoundaryDeclaration.Declare(DataBoundary.External, "test");
 
-        Assert.Throws<InvalidOperationException>(() => BizigoMcpServer.CreateOptions(
+        // KAP DOLU, ve bu düzeltme ölçülerek yapıldı.
+        //
+        // Test bir zamanlar boş bir `ServiceProvider` veriyor ve YALNIZCA
+        // istisna TİPİNİ sınıyordu. M02/M04 DI'ya bağımlı araçlar ekledikçe o
+        // çağrı her hâlde `InvalidOperationException` fırlatmaya başladı —
+        // "araç kurulamadı" diye. Sonucu M11 ölçtü: `McpBoundaryGate.Require`
+        // **tamamen silinse bile** test yeşil kalıyordu. Yani K6 kapısının
+        // varlığını sınadığı iddia edilen test, kapının yokluğunu göremiyordu.
+        //
+        // `Produces<T>` kapısının ve T48'in `GET /v1/probe` satırının aynı
+        // sınıfı: bekçi kırmızı yanıyor ama yanlış sebeple, ve doğru sebep
+        // ortadan kalktığında rengi değişmiyor.
+        using var services = McpTestServices.ForDiscoveredTools();
+
+        var hata = Assert.Throws<InvalidOperationException>(() => BizigoMcpServer.CreateOptions(
             McpSurface.Product, declaration, McpEndpoints.ToolAssemblies, services));
+
+        // MESAJ K6'yı adlandırmalı. Tip tek başına yetmiyor: kurulum yolundaki
+        // her arıza aynı tipi fırlatıyor ve ayırt edici olan tek şey sebep.
+        Assert.Contains("K6", hata.Message, StringComparison.Ordinal);
+        Assert.Contains("external", hata.Message, StringComparison.Ordinal);
+
+        // Ve BAŞKA bir sebeple düşmediğini de yazıyor: bir araç kurulamadığı
+        // için gelen istisna bu iddiayı geçemez.
+        Assert.DoesNotContain("kurulamadı", hata.Message, StringComparison.Ordinal);
     }
 
     /// <summary>
