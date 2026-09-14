@@ -93,6 +93,19 @@ public sealed class McpKeycloakIdentityTests(DevStackFixture stack)
     /// <summary>Canlı Keycloak'ın verdiği <b>kullanıcı</b> erişim belirteci.</summary>
     private static string? AccessToken => Environment.GetEnvironmentVariable("BIZIGO_MCP_ACCESS_TOKEN");
 
+    /// <summary>
+    /// <b>`bizigo-mcp` scope'u İSTENMEDEN</b> alınmış bir belirteç — yani
+    /// API'nin gündelik token'ı. Ölçümün öznesi: bunun <c>/mcp</c>'de
+    /// <b>geçmemesi</b> gerekiyor (RFC 8707).
+    ///
+    /// <para>
+    /// <c>BIZIGO_MCP_ACCESS_TOKEN</c>'dan ayrı bir değişken, çünkü ikisi
+    /// <b>farklı</b> token olmalı; aynı değeri iki değişkene koymak testi
+    /// sessizce anlamsızlaştırır.
+    /// </para>
+    /// </summary>
+    private static string? ApiOnlyToken => Environment.GetEnvironmentVariable("BIZIGO_MCP_API_TOKEN");
+
     /// <summary>Belirtecin sahibi olan kullanıcının IdP grubu.</summary>
     private static string IdpGroup =>
         Environment.GetEnvironmentVariable("BIZIGO_MCP_IDP_GROUP") ?? "/network/core";
@@ -120,6 +133,15 @@ public sealed class McpKeycloakIdentityTests(DevStackFixture stack)
     /// kapsam kapılarını</b> atlıyor olurdu.
     /// </para>
     /// </summary>
+    /// <summary>API'nin kaynak kimliği — sevk edilen yapılandırmadaki değer.</summary>
+    private const string ApiAudience = "bizigo-api";
+
+    /// <summary>
+    /// MCP sunucusunun kendi kaynak kimliği. <see cref="ApiAudience"/>'tan
+    /// AYRI olması ölçümün öznesi.
+    /// </summary>
+    private const string McpResource = "http://localhost:5080/mcp";
+
     [Fact]
     public async Task Canli_Keycloak_kimligi_MCP_aracina_ulasiyor()
     {
@@ -239,6 +261,164 @@ public sealed class McpKeycloakIdentityTests(DevStackFixture stack)
     }
 
     /// <summary>
+    /// <b>M09 · Keşif zinciri: 401 istemciye Keycloak'ı nasıl bulacağını
+    /// söylüyor mu (RFC 9728).</b>
+    ///
+    /// <para>
+    /// <b>KOŞTURULMADI.</b> Yazan ajan Docker'a dokunmuyor (§2).
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Koşturulduğunda ne kanıtlıyor.</b> Birim paketi metadata'nın
+    /// <i>yapılandırıldığını</i> ölçüyor; bu test <b>tel üzerinde</b>
+    /// göründüğünü ölçüyor — ikisi ayrı sorular ve aradaki fark bu depoda
+    /// daha önce ısırdı. Üç halka:
+    /// </para>
+    ///
+    /// <list type="number">
+    /// <item>401 gövdesi <c>WWW-Authenticate: Bearer</c> taşıyor <b>ve</b>
+    /// içinde <c>resource_metadata</c> parametresi var. Bu olmadan istemci
+    /// yetkilendirme sunucusunu bulamıyor ve token elle yapılandırılmak
+    /// zorunda kalıyor — bugünkü hâl.</item>
+    /// <item>İşaret edilen adres <b>gerçekten açılıyor</b> ve bir kaynak
+    /// metadata belgesi döndürüyor. İşaret eden ama açılmayan bir adres,
+    /// olmayan bir metadata'dan daha kötü: istemci bulduğunu sanıp
+    /// başarısız oluyor.</item>
+    /// <item>Belgedeki <c>authorization_servers</c> realm'in adresini
+    /// gösteriyor — yani zincir Keycloak'a <b>varıyor</b>.</item>
+    /// </list>
+    /// </summary>
+    [Fact]
+    public async Task Canli_realmde_401_kaynak_metadatasini_isaret_ediyor()
+    {
+        Assert.SkipUnless(
+            Authority is not null,
+            "BIZIGO_MCP_KEYCLOAK gerekiyor — canlı Keycloak koordinatörde (§2).");
+
+        var factory = new ControlPlaneFactory(stack.PostgresConnectionString);
+
+        await using (var db = factory.CreateDbContext())
+        {
+            await db.Database.MigrateAsync(Ct);
+        }
+
+        await using var app = BuildHost(factory, new ScopeEchoTool());
+        await app.StartAsync(Ct);
+
+        using var http = new HttpClient { BaseAddress = new Uri(BaseAddress(app)) };
+
+        using var body = new StringContent(
+            """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}""",
+            System.Text.Encoding.UTF8,
+            "application/json");
+
+        using var response = await http.PostAsync(
+            new Uri(BizigoMcpServer.HttpPath, UriKind.Relative), body, Ct);
+
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
+
+        var challenge = Assert.Single(response.Headers.WwwAuthenticate);
+        Assert.Equal("Bearer", challenge.Scheme, StringComparer.Ordinal);
+        Assert.Contains(
+            "resource_metadata",
+            challenge.Parameter ?? string.Empty,
+            StringComparison.Ordinal);
+
+        var metadataUri = System.Text.RegularExpressions.Regex.Match(
+            challenge.Parameter ?? string.Empty,
+            "resource_metadata=\"(?<uri>[^\"]+)\"").Groups["uri"].Value;
+
+        Assert.False(
+            string.IsNullOrWhiteSpace(metadataUri),
+            "401 `resource_metadata` parametresini adressiz döndürdü — istemci " +
+            "işaret edilen yeri okuyamaz.");
+
+        using var metadata = await http.GetAsync(new Uri(metadataUri), Ct);
+        metadata.EnsureSuccessStatusCode();
+
+        using var document = System.Text.Json.JsonDocument.Parse(
+            await metadata.Content.ReadAsStringAsync(Ct));
+
+        Assert.Equal(
+            McpResource,
+            document.RootElement.GetProperty("resource").GetString(),
+            StringComparer.Ordinal);
+
+        Assert.Contains(
+            document.RootElement.GetProperty("authorization_servers")
+                .EnumerateArray()
+                .Select(v => v.GetString()!),
+            server => server!.StartsWith(Authority!, StringComparison.Ordinal));
+
+        await app.StopAsync(Ct);
+    }
+
+    /// <summary>
+    /// <b>M09 · Kaynak bağlama: API için basılmış token <c>/mcp</c>'de
+    /// GEÇMİYOR (RFC 8707).</b>
+    ///
+    /// <para>
+    /// <b>KOŞTURULMADI.</b> Docker koordinatörde (§2).
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Koşturulduğunda ne kanıtlıyor — ve neden bu testin negatif olması
+    /// şart.</b> Diğer bütün testler <i>"doğru token geçiyor"</i> diyor;
+    /// hiçbiri <i>"yanlış token geçmiyor"</i> demiyor. İkisi farklı sorular ve
+    /// yalnızca ikincisi kaynak bağlamayı ölçüyor: kitle doğrulaması bir gün
+    /// gevşerse <b>her pozitif test yeşil kalır</b>.
+    /// </para>
+    ///
+    /// <para>
+    /// Token <c>bizigo-mcp</c> scope'u <b>istenmeden</b> alınıyor — yani realm
+    /// onu isteğe bağlı tutuyorsa <c>aud</c>'da MCP kaynağı olmayacak ve
+    /// <c>/mcp</c> 401 dönecek. Scope bir gün yanlışlıkla <i>varsayılan</i>
+    /// yapılırsa bu test kırmızı yanıyor — realm tarafındaki bekçinin
+    /// (<c>KeycloakRealmTests.Mcp_kaynak_scopeu_istege_bagli</c>) canlı ikizi.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Canli_realmde_API_tokeni_MCP_yuzeyinde_gecmiyor()
+    {
+        Assert.SkipUnless(
+            Authority is not null && ApiOnlyToken is not null,
+            "BIZIGO_MCP_KEYCLOAK ve BIZIGO_MCP_API_TOKEN gerekiyor — `bizigo-mcp` " +
+            "scope'u İSTENMEDEN alınmış bir belirteç. Canlı Keycloak koordinatörde (§2).");
+
+        Assert.True(
+            !string.Equals(ApiOnlyToken, AccessToken, StringComparison.Ordinal),
+            "BIZIGO_MCP_API_TOKEN ile BIZIGO_MCP_ACCESS_TOKEN aynı değer. Bu testin " +
+            "ölçtüğü şey ikisinin FARKI: aynı olurlarsa test ya hep geçer ya hep düşer " +
+            "ve hiçbir şey söylemez.");
+
+        var factory = new ControlPlaneFactory(stack.PostgresConnectionString);
+
+        await using (var db = factory.CreateDbContext())
+        {
+            await db.Database.MigrateAsync(Ct);
+        }
+
+        await using var app = BuildHost(factory, new ScopeEchoTool());
+        await app.StartAsync(Ct);
+
+        using var http = new HttpClient { BaseAddress = new Uri(BaseAddress(app)) };
+        http.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", ApiOnlyToken);
+
+        using var body = new StringContent(
+            """{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}""",
+            System.Text.Encoding.UTF8,
+            "application/json");
+
+        using var response = await http.PostAsync(
+            new Uri(BizigoMcpServer.HttpPath, UriKind.Relative), body, Ct);
+
+        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, response.StatusCode);
+
+        await app.StopAsync(Ct);
+    }
+
+    /// <summary>
     /// Gerçek kimlik yapılandırmasıyla ayağa kalkan asgari bir ürün host'u.
     ///
     /// <para>
@@ -265,6 +445,14 @@ public sealed class McpKeycloakIdentityTests(DevStackFixture stack)
             [$"{AuthOptions.SectionName}:Enabled"] = "true",
             [$"{AuthOptions.SectionName}:Authority"] = Authority,
             [$"{AuthOptions.SectionName}:RequireHttpsMetadata"] = "false",
+
+            // M09 · İkisi de ZORUNLU oldu ve bu kurulum onları vermiyordu:
+            // yani sessizce `Audience = "account"` varsayılanına dayanıyordu.
+            // Varsayılan kaldırıldığı için burası artık açıkça yazıyor — ve
+            // ayrılmaları ölçümün öznesi: API kitlesiyle basılmış bir token
+            // `/mcp`'de GEÇMEMELİ (RFC 8707).
+            [$"{AuthOptions.SectionName}:Audience"] = ApiAudience,
+            [$"{AuthOptions.SectionName}:McpResource"] = McpResource,
         });
 
         builder.Services.AddRouting();

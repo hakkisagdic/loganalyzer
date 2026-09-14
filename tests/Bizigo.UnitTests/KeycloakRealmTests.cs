@@ -368,4 +368,76 @@ public sealed class KeycloakRealmTests
             redirectUris,
             StringComparer.Ordinal);
     }
+    /// <summary>
+    /// <b>M09 · MCP kaynağı istekle geliyor, varsayılan olarak değil.</b>
+    ///
+    /// <para>
+    /// <c>bizigo-mcp</c> client scope'u <c>bizigo-ui</c>'ye <b>isteğe bağlı</b>
+    /// bağlanmış olmalı. Varsayılan olsaydı her token <c>aud</c>'una MCP
+    /// kaynağını da alırdı ve <b>API için basılmış bir token <c>/mcp</c>'de
+    /// geçerdi</b> — RFC 8707'nin kaynak bağlamasının engellemek istediği şey
+    /// tam olarak bu. Yani bu satırın "isteğe bağlı" olması bir tercih değil,
+    /// önlemin kendisi.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Mcp_kaynak_scopeu_istege_bagli()
+    {
+        var scope = Root.GetProperty("clientScopes")
+            .EnumerateArray()
+            .SingleOrDefault(s => s.GetProperty("name").GetString() == "bizigo-mcp");
+
+        Assert.True(
+            scope.ValueKind is JsonValueKind.Object,
+            "`bizigo-mcp` client scope'u realm'de yok — MCP sunucusunun kaynak kimliğini " +
+            "basacak tek yer orası.");
+
+        var ui = Clients.Single(c => c.GetProperty("clientId").GetString() == "bizigo-ui");
+
+        Assert.Contains(
+            "bizigo-mcp",
+            ui.GetProperty("optionalClientScopes").EnumerateArray().Select(v => v.GetString()!),
+            StringComparer.Ordinal);
+
+        Assert.DoesNotContain(
+            "bizigo-mcp",
+            ui.GetProperty("defaultClientScopes").EnumerateArray().Select(v => v.GetString()!),
+            StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// <b>İki gösterim ayrışamaz.</b> Realm'in bastığı <c>aud</c> ile API'nin
+    /// doğruladığı <c>Auth:McpResource</c> <b>birebir</b> aynı olmalı.
+    ///
+    /// <para>
+    /// Ayrışırlarsa hiçbir hata alınmıyor: Keycloak token'ı basıyor, API
+    /// reddediyor, ve görünen tek şey *"MCP çalışmıyor"* oluyor. T53'ün ölçtüğü
+    /// sınıfın kimlik katmanındaki hâli — aynı şeyin iki gösterimi, ve arada
+    /// bekçi yok.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Realmin_bastigi_MCP_kitlesi_APInin_dogruladigiyla_ayni()
+    {
+        var mapped = Root.GetProperty("clientScopes")
+            .EnumerateArray()
+            .Single(s => s.GetProperty("name").GetString() == "bizigo-mcp")
+            .GetProperty("protocolMappers")
+            .EnumerateArray()
+            .Single(m => m.GetProperty("protocolMapper").GetString() == "oidc-audience-mapper")
+            .GetProperty("config")
+            .GetProperty("included.custom.audience")
+            .GetString();
+
+        using var settings = JsonDocument.Parse(
+            File.ReadAllText(Path.Combine(
+                RepositoryLayout.Root, "src", "Bizigo.Api", "appsettings.json")));
+
+        var configured = settings.RootElement
+            .GetProperty("Auth")
+            .GetProperty("McpResource")
+            .GetString();
+
+        Assert.Equal(configured, mapped, StringComparer.Ordinal);
+    }
 }

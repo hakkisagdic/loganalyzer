@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using ModelContextProtocol.Authentication;
 
 namespace Bizigo.Api;
 
@@ -41,8 +42,43 @@ public sealed class AuthOptions
     /// </summary>
     public string MetadataAddress { get; set; } = string.Empty;
 
-    /// <summary>Token'ın <c>aud</c> claim'i. Keycloak varsayılanı <c>account</c>.</summary>
-    public string Audience { get; set; } = "account";
+    /// <summary>
+    /// API'nin kaynak kimliği — token'ın <c>aud</c> claim'i.
+    ///
+    /// <para>
+    /// <b>Varsayılanı yok ve olmamalı.</b> Burada bir zamanlar
+    /// <c>= "account"</c> yazıyordu — Keycloak'ın varsayılan kitlesi. Sevk
+    /// edilen yapılandırma onu <c>bizigo-api</c> ile eziyordu, yani varsayılan
+    /// hiç devreye girmiyordu; ama <c>Auth:Audience</c> yazılmayan bir dağıtım
+    /// <b>sessizce</b> Keycloak'ın varsayılan kitlesine doğrular ve hata
+    /// vermezdi. Doğru yapılandırılmış olmak, yanlış yapılandırılamayacağı
+    /// anlamına gelmiyor (<c>CLAUDE.md</c> §7).
+    /// </para>
+    ///
+    /// <para>
+    /// Eksikse <see cref="AuthenticationSetup.AddBizigoAuthentication"/>
+    /// <b>açılışta</b> patlıyor — çağrı anında zayıf doğrulama yapmıyor.
+    /// </para>
+    /// </summary>
+    public string Audience { get; set; } = string.Empty;
+
+    /// <summary>
+    /// <b>MCP sunucusunun kendi kaynak kimliği</b> — <see cref="Audience"/>'tan
+    /// ayrı, ve ayrılmasının sebebi RFC 8707.
+    ///
+    /// <para>
+    /// Spesifikasyon token'ın <b>o kaynağa</b> düzenlenmiş olmasını istiyor.
+    /// İkisi aynı değer olsaydı, API için basılmış bir token MCP sunucusunda
+    /// <b>yeniden kullanılabilirdi</b> — kaynak bağlamanın engellemek istediği
+    /// şey tam olarak bu. Ayrı bir değer, MCP oturumu için ayrıca istenmiş bir
+    /// token gerektiriyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <see cref="Audience"/> gibi varsayılansız: eksikse açılışta patlıyor.
+    /// </para>
+    /// </summary>
+    public string McpResource { get; set; } = string.Empty;
 
     /// <summary>Yerel geliştirmede Keycloak düz HTTP konuşuyor.</summary>
     public bool RequireHttpsMetadata { get; set; }
@@ -50,6 +86,37 @@ public sealed class AuthOptions
     // İstemci kimliği ve gizli anahtarı BURADA DEĞİL: K31 ile OIDC akışı Next.js
     // BFF'ine taşındı. `bizigo-ui` gizli anahtarı yalnızca orada duruyor; API
     // kimseyi Keycloak'a yönlendirmiyor, yalnızca gelen token'ı doğruluyor.
+}
+
+/// <summary>
+/// <b>Adlandırılmış kimlik şemaları.</b>
+///
+/// <para>
+/// MCP kendi şemasını taşıyor ve varsayılanı <b>değiştirmiyor</b>. Gerekçe
+/// ölçüldü: bu API'de <b>45</b> <c>RequireAuthorization</c> çağrısı var, 14 uç
+/// dosyasına dağılmış, ve <b>hiçbiri</b> kendi kimlik şemasını belirtmiyor —
+/// hepsi <c>DefaultChallengeScheme</c>'e bağlı. SDK'nın önerdiği
+/// <c>AddMcp(builder, configure)</c> yolu varsayılanı değiştiriyor, yani o 45
+/// ucun tamamının 401 davranışını değiştirir ve BFF'in oturum akışını (K31)
+/// ilgilendirir.
+/// </para>
+///
+/// <para>
+/// SDK'nın <c>AddMcp(builder, <b>scheme</b>, displayName, configure)</c>
+/// aşırı yüklemesi bu ayrımı mümkün kılıyor — ölçüldü, varsayıldı değil.
+/// </para>
+/// </summary>
+public static class BizigoAuthSchemes
+{
+    /// <summary>MCP kimlik şeması: meydan okumayı üretir, doğrulamayı iletir.</summary>
+    public const string Mcp = "bizigo-mcp";
+
+    /// <summary>
+    /// MCP'nin token doğrulayıcısı — ayrı bir JWT şeması, çünkü <b>kitlesi
+    /// farklı</b> (<see cref="AuthOptions.McpResource"/>). Varsayılan JWT
+    /// şeması API'nin kitlesini doğruluyor ve o değişmiyor.
+    /// </summary>
+    public const string McpBearer = "bizigo-mcp-bearer";
 }
 
 public static class BizigoAuthPolicies
@@ -125,53 +192,53 @@ public static class AuthenticationSetup
             return services;
         }
 
+        Require(options.Audience, $"{AuthOptions.SectionName}:Audience");
+        Require(options.McpResource, $"{AuthOptions.SectionName}:McpResource");
+
         services
-            .AddAuthentication(options =>
+            .AddAuthentication(auth =>
             {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                // DEĞİŞMİYOR. 45 `RequireAuthorization` çağrısının hiçbiri kendi
+                // şemasını belirtmiyor, yani buraya dokunmak API'nin TAMAMININ
+                // 401 davranışını değiştirir. MCP kendi adlandırılmış şemasını
+                // alıyor (`BizigoAuthSchemes`).
+                auth.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                auth.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             })
-            .AddJwtBearer(jwt =>
-            {
-                jwt.Authority = options.Authority;
-                jwt.Audience = options.Audience;
-                jwt.RequireHttpsMetadata = options.RequireHttpsMetadata;
+            .AddJwtBearer(jwt => ConfigureBearer(jwt, options, options.Audience))
 
-                // Yalnızca AÇIKÇA verildiğinde ayarlanıyor. Boş bir değer
-                // atamak handler'ın kendi türetmesini bastırır ve tek makinede
-                // koşan kurulum anahtarları hiç bulamaz.
-                if (!string.IsNullOrWhiteSpace(options.MetadataAddress))
+            // MCP'nin token doğrulayıcısı: AYNI issuer, AYNI claim sözleşmesi,
+            // FARKLI kitle. Tek fark bu ve tek olması gerekiyor — ikinci bir
+            // doğrulama yolu yazmak §9'un yasakladığı kopya olurdu.
+            .AddJwtBearer(
+                BizigoAuthSchemes.McpBearer,
+                jwt => ConfigureBearer(jwt, options, options.McpResource))
+
+            // Meydan okumayı MCP işleyicisi üretiyor: 401 gövdesine
+            // `WWW-Authenticate: Bearer resource_metadata="…"` koyuyor ve
+            // `/.well-known/oauth-protected-resource` belgesini kendisi
+            // sunuyor (RFC 9728). Doğrulamayı yukarıdaki şemaya İLETİYOR —
+            // yani token doğrulama mantığı tek yerde kalıyor.
+            .AddMcp(
+                BizigoAuthSchemes.Mcp,
+                "Bizigo MCP",
+                mcp =>
                 {
-                    jwt.MetadataAddress = options.MetadataAddress;
-                }
+                    mcp.ForwardAuthenticate = BizigoAuthSchemes.McpBearer;
+                    mcp.ResourceMetadata = new ProtectedResourceMetadata
+                    {
+                        Resource = options.McpResource,
+                        AuthorizationServers = { options.Authority },
+                        ScopesSupported = { McpScope },
 
-                // Claim sözleşmesinin ÇALIŞMASI bu satıra bağlı. Varsayılan
-                // `true` iken handler gelen claim'leri Microsoft'un uzun URI
-                // şemasına çeviriyor: `sub` → `.../nameidentifier`, `roles` →
-                // görünmez oluyor. Aşağıdaki `RoleClaimType`/`NameClaimType`
-                // ayarları o durumda hiçbir şeye denk gelmiyor.
-                //
-                // Ölçülen hâli: collector'ın `roles: ["ingest"]` taşıyan
-                // token'ıyla `/v1/logs` 403 dönüyordu ve `/auth/me` `roles: []`
-                // gösteriyordu. `sub`'ın yine de bulunması yanıltıcıydı —
-                // `AccessScopeResolver` onu `ClaimTypes.NameIdentifier`
-                // yedeğinden okuyordu, yani eşleme zaten devredeydi.
-                jwt.MapInboundClaims = false;
-
-                jwt.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidIssuer = options.Authority,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-
-                    // Claim sözleşmesi (F1 §10.1.1): rol ve ad claim'leri düz
-                    // adlarıyla okunuyor, Microsoft'un uzun URI şemasıyla değil.
-                    RoleClaimType = BizigoClaims.Roles,
-                    NameClaimType = BizigoClaims.PreferredUsername,
-                };
-            });
+                        // Realm'de YALNIZCA `bizigo-claims` client scope var ve
+                        // yerleşik `profile`/`email` hiç oluşturulmamış:
+                        // `openid profile email` canlıda `invalid_scope` alıyor.
+                        // Ölçüldü (CLAUDE.md §12) — burada ilan edilen kapsam
+                        // istemciyi var olmayan bir scope istemeye göndermemeli.
+                        BearerMethodsSupported = { "header" },
+                    };
+                });
 
         services.AddAuthorizationBuilder()
             .AddPolicy(BizigoAuthPolicies.Ingest, p => p.RequireRole(BizigoRoles.Ingest))
@@ -182,6 +249,81 @@ public static class AuthenticationSetup
             .AddPolicy(BizigoAuthPolicies.Admin, p => p.RequireRole(BizigoRoles.Admin));
 
         return services;
+    }
+
+    /// <summary>
+    /// MCP oturumu için istenen kapsam. Realm'de var olan tek client scope
+    /// <c>bizigo-claims</c>; <c>openid</c> geçiyor, <c>profile email</c>
+    /// canlıda <c>invalid_scope</c> alıyor (ölçüldü).
+    /// </summary>
+    private const string McpScope = "openid";
+
+    /// <summary>
+    /// Yapılandırma eksikse <b>açılışta</b> patlıyor.
+    ///
+    /// <para>
+    /// Emsali M08'in çözücüsü: kayıtlı değilse kurulumda patlıyor, çağrıda
+    /// değil. Sessizce zayıf doğrulama yapan bir varsayılan, bu deponun §7'de
+    /// tarif ettiği sınıfa giriyor — hata yok, sayaç yok, belirti yok.
+    /// </para>
+    /// </summary>
+    private static void Require(string value, string key)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException(
+                $"`{key}` yapılandırılmadı. Kimlik açıkken bu değerin varsayılanı YOK: " +
+                "eksik bırakmak, token'ın kitlesini doğrulamadan kabul etmeye ya da " +
+                "sağlayıcının varsayılan kitlesine sessizce güvenmeye yol açardı.");
+        }
+    }
+
+    /// <summary>
+    /// İki JWT şemasının <b>ortak</b> yapılandırması. Aralarındaki tek fark
+    /// <paramref name="audience"/> — ve tek fark olması gerekiyor: ikinci bir
+    /// doğrulama yolu, iki şemanın claim sözleşmesinin sessizce ayrışması
+    /// demek olurdu.
+    /// </summary>
+    private static void ConfigureBearer(JwtBearerOptions jwt, AuthOptions options, string audience)
+    {
+        jwt.Authority = options.Authority;
+        jwt.Audience = audience;
+        jwt.RequireHttpsMetadata = options.RequireHttpsMetadata;
+
+        // Yalnızca AÇIKÇA verildiğinde ayarlanıyor. Boş bir değer atamak
+        // handler'ın kendi türetmesini bastırır ve tek makinede koşan kurulum
+        // anahtarları hiç bulamaz.
+        if (!string.IsNullOrWhiteSpace(options.MetadataAddress))
+        {
+            jwt.MetadataAddress = options.MetadataAddress;
+        }
+
+        // Claim sözleşmesinin ÇALIŞMASI bu satıra bağlı. Varsayılan `true` iken
+        // handler gelen claim'leri Microsoft'un uzun URI şemasına çeviriyor:
+        // `sub` → `.../nameidentifier`, `roles` → görünmez oluyor. Aşağıdaki
+        // `RoleClaimType`/`NameClaimType` ayarları o durumda hiçbir şeye denk
+        // gelmiyor.
+        //
+        // Ölçülen hâli: collector'ın `roles: ["ingest"]` taşıyan token'ıyla
+        // `/v1/logs` 403 dönüyordu ve `/auth/me` `roles: []` gösteriyordu.
+        // `sub`'ın yine de bulunması yanıltıcıydı — `AccessScopeResolver` onu
+        // `ClaimTypes.NameIdentifier` yedeğinden okuyordu, yani eşleme zaten
+        // devredeydi.
+        jwt.MapInboundClaims = false;
+
+        jwt.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = options.Authority,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+
+            // Claim sözleşmesi (F1 §10.1.1): rol ve ad claim'leri düz adlarıyla
+            // okunuyor, Microsoft'un uzun URI şemasıyla değil.
+            RoleClaimType = BizigoClaims.Roles,
+            NameClaimType = BizigoClaims.PreferredUsername,
+        };
     }
 }
 
