@@ -107,11 +107,18 @@ public sealed class RcaSingleQueueTests
     }
 
     /// <summary>
-    /// Dördü de <b>gerçekten</b> kapıdan geçiyor ve dördünün de kaydı düşüyor.
-    /// Yapısal bekçinin davranış tarafındaki karşılığı.
+    /// Kaynakların hepsi <b>gerçekten</b> kapıdan geçiyor ve hepsinin kaydı
+    /// düşüyor. Yapısal bekçinin davranış tarafındaki karşılığı.
+    ///
+    /// <para>
+    /// M05 beşinciyi ekledi (<c>agent</c>). Sayıyı büyütmek yetmezdi: §5'in
+    /// tek-kuyruk garantisi <b>yeni değerler için tanımsız</b>, yani yeni
+    /// kaynağın diğerlerini debounce etmediği ayrıca ölçülmeli. Aksi hâlde
+    /// bekçi susturulmuş, garanti genişletilmemiş olurdu.
+    /// </para>
     /// </summary>
     [Fact]
-    public async Task Dort_kaynak_da_kapidan_gecip_kayit_birakiyor()
+    public async Task Her_kaynak_kapidan_gecip_kayit_birakiyor()
     {
         using var factory = new InMemoryControlPlaneFactory();
 
@@ -135,29 +142,52 @@ public sealed class RcaSingleQueueTests
         await gate.AdmitAsync(RcaTriggerSources.FromExternal("svc", "k1", ["network/core"], Now.AddHours(-1), Now), Token);
         await gate.AdmitAsync(RcaTriggerSources.FromSchedule("gunluk", ["network/core"], Now.AddHours(-1), Now), Token);
 
+        // M05: ajan tetiklemesi. Anahtarı sunucu türetiyor (`McpIdempotency`),
+        // çağıran vermiyor — gerekçe `RcaTriggerSource.Agent` belgesinde.
+        await gate.AdmitAsync(
+            RcaTriggerSources.FromAgent(
+                "ajan",
+                McpIdempotency.KeyFor("ajan", ["network/core"], Now.AddHours(-1), Now),
+                ["network/core"],
+                Now.AddHours(-1),
+                Now),
+            Token);
+
         await using var db = factory.CreateDbContext();
         var runs = db.RcaRuns.ToList();
 
-        Assert.Equal(4, runs.Count);
+        var sourceCount = Enum.GetValues<RcaTriggerSource>().Length;
+
+        Assert.Equal(sourceCount, runs.Count);
         Assert.All(runs, run => Assert.True(run.Accepted));
 
-        // Dört ayrı kaynak, dört ayrı anahtar: hiçbiri diğerini debounce etmedi.
-        Assert.Equal(4, runs.Select(r => r.DebounceKey).Distinct(StringComparer.Ordinal).Count());
+        // Her kaynak ayrı bir anahtar: hiçbiri diğerini debounce etmedi.
+        Assert.Equal(
+            sourceCount,
+            runs.Select(r => r.DebounceKey).Distinct(StringComparer.Ordinal).Count());
     }
 
     /// <summary>
     /// Kapalı kümenin boyutu sabitleniyor.
     ///
     /// <para>
-    /// Beşinci bir <b>kaynak</b> eklemek çekirdek kararı: §5'in tek-kuyruk
+    /// Yeni bir <b>kaynak</b> eklemek çekirdek kararı: §5'in tek-kuyruk
     /// garantisi yeni değerler için tanımsız. Anomali zinciri buraya
     /// eklenmemeli — o bir kaynak değil devam kuralı ve izi <c>Depth</c>'te.
     /// </para>
+    ///
+    /// <para>
+    /// <b>Dörtten beşe M05'te çıktı</b> (<c>Agent</c>) ve bu bekçi o turda
+    /// kırmızı yanarak işini yaptı: sayıyı büyütmek tek başına yeterli
+    /// olmadı, garantinin yeni değere de uygulandığı
+    /// <see cref="Her_kaynak_kapidan_gecip_kayit_birakiyor"/> içinde ayrıca
+    /// ölçüldü. Gerekçenin tamamı <c>RcaTriggerSource.Agent</c> belgesinde.
+    /// </para>
     /// </summary>
     [Fact]
-    public void Kaynak_kumesi_dort_degerde_kapali()
+    public void Kaynak_kumesi_bes_degerde_kapali()
     {
-        Assert.Equal(4, Enum.GetValues<RcaTriggerSource>().Length);
+        Assert.Equal(5, Enum.GetValues<RcaTriggerSource>().Length);
 
         Assert.DoesNotContain(
             Enum.GetNames<RcaTriggerSource>(),

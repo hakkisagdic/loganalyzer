@@ -352,7 +352,18 @@ public sealed class ArchitectureTests
             return builder.Configuration.GetConnectionString("ControlPlane")!;
         }
 
-        // M01: `AddBizigoMcpCore` kompozisyon kökünü ELLE alıyor. Araçlar
+        // M05: `AddBizigoMcpCore` artık ARAÇ DERLEMELERİNİ alıyor (`params
+        // Assembly[]`), kompozisyon kökünü değil. Kök yetmiyordu: derleyici,
+        // kodunda hiçbir tipine dokunulmayan `ProjectReference`'ı meta veriden
+        // buduyor ve araç derlemesi referans kapanışında HİÇ görünmüyordu.
+        //
+        // Doğru argüman üretimin beyan ettiği listenin kendisi.
+        if (parameter.ParameterType == typeof(Assembly[]))
+        {
+            return Bizigo.Api.McpEndpoints.ToolAssemblies.ToArray();
+        }
+
+        // M01 (TARİHÎ): `AddBizigoMcpCore` kompozisyon kökünü ELLE alıyordu. Araçlar
         // `Bizigo.Mcp`'nin AŞAĞISINDA yaşıyor, yani referans oku ters yöne
         // bakıyor ve o derlemeden onlara ulaşmak mümkün değil; `AppDomain`
         // taraması ise bu deponun elediği yol (dokunulmamış derleme yüklü

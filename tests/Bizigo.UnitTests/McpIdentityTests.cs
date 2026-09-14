@@ -258,7 +258,7 @@ public sealed class McpIdentityTests
         // Üretimin kendi kurulumu; araç sonradan ekleniyor çünkü keşif
         // `Bizigo.Api` kökünden koşuyor ve bu araç test derlemesinde.
         var options = BizigoMcpServer.CreateOptions(
-            McpSurface.Product, IdentityTestBoundary, typeof(global::Program).Assembly, services);
+            McpSurface.Product, IdentityTestBoundary, McpEndpoints.ToolAssemblies, services);
         options.ToolCollection!.Add(tool);
 
         // Akış taşıması — `StdioServerTransport`'un taban sınıfı, yani ölçülen
@@ -427,7 +427,7 @@ public sealed class McpIdentityTests
 
         var error = Assert.Throws<InvalidOperationException>(
             () => BizigoMcpServer.CreateOptions(
-                McpSurface.Product, IdentityTestBoundary, typeof(McpIdentityTests).Assembly, without));
+                McpSurface.Product, IdentityTestBoundary, [typeof(McpIdentityTests).Assembly], without));
 
         Assert.Contains(nameof(IAccessScopeResolver), error.Message, StringComparison.Ordinal);
 
@@ -440,7 +440,7 @@ public sealed class McpIdentityTests
         await using var with = ServicesWithGate(new RecordingScopeResolver(DefaultMapping));
 
         var options = BizigoMcpServer.CreateOptions(
-            McpSurface.Product, IdentityTestBoundary, typeof(McpIdentityTests).Assembly, with);
+            McpSurface.Product, IdentityTestBoundary, [typeof(McpIdentityTests).Assembly], with);
 
         Assert.NotEmpty(options.ToolCollection!);
     }
@@ -457,15 +457,23 @@ public sealed class McpIdentityTests
     private static GroupMapping DefaultMapping { get; } = GroupMapping.From(
         [("network/core", "core"), ("guvenlik", "guvenlik")]);
 
+    /// <summary>
+    /// Üretimin ilan ettiği araçlar — <b>üretimin kendi yolundan</b>.
+    ///
+    /// <para>
+    /// Önceki hâli keşfi elle kuruyordu (<c>ProductAssemblies</c> +
+    /// <c>ToolTypes</c> + <c>Instantiate</c>). O yol M05'te kaldırıldı: kökten
+    /// referans izleme, derleyicinin buduğu bir <c>ProjectReference</c>'ı
+    /// göremiyordu. Artık <c>BizigoMcpServer.Tools</c> çağrılıyor, yani bu test
+    /// üretimin <b>gerçekten</b> ilan ettiği kümeye bakıyor — ikinci bir keşif
+    /// kurulumu, ayrışabilecek ikinci bir gösterim olurdu.
+    /// </para>
+    /// </summary>
     private static IReadOnlyList<BizigoMcpTool> ProductionTools()
     {
         var services = McpTestServices.Empty();
 
-        return McpToolDiscovery.Instantiate(
-            McpToolDiscovery.ToolTypes(
-                McpToolDiscovery.ProductAssemblies(typeof(global::Program).Assembly)),
-            McpSurface.Product,
-            services);
+        return BizigoMcpServer.Tools(McpSurface.Product, McpEndpoints.ToolAssemblies, services);
     }
 
     private static ServiceProvider ServicesWithGate(IAccessScopeResolver gate) =>

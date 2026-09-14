@@ -67,8 +67,14 @@ public static class ScenarioTriggers
         new HashSet<string>(StringComparer.Ordinal) { Anomaly };
 
     /// <summary>
-    /// Bir pluginin <c>trigger.on</c>'da yazabileceği her şey: dört kaynak,
-    /// artık <see cref="Continuations"/>.
+    /// Bir pluginin <c>trigger.on</c>'da yazabileceği her şey: kaynakların
+    /// tamamı, artık <see cref="Continuations"/>.
+    ///
+    /// <para>
+    /// Sayı yazılmıyor — küme <see cref="RcaTriggerSource"/>'tan türüyor ve
+    /// bir sayı, enum büyüdüğü an sessizce yanlış olur. M05 beşten altıya
+    /// çıkardı (<c>agent</c>) ve o tur bu satır <i>"dört kaynak"</i> diyordu.
+    /// </para>
     /// </summary>
     public static readonly IReadOnlySet<string> Known =
         RcaTriggerVocabulary.WireNames

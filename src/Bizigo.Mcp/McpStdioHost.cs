@@ -37,22 +37,25 @@ public static class McpStdioHost
     /// Beyanı operatör veriyor: <c>bizigo mcp serve --data-boundary</c>.
     /// </para>
     /// </param>
-    /// <param name="compositionRoot">Araçların aranacağı kök derleme.</param>
+    /// <param name="toolAssemblies">
+    /// Araç taşıyan derlemeler; <c>Bizigo.Mcp</c> her zaman ekleniyor.
+    /// Gerekçe <c>BizigoMcpSetup.AddBizigoMcpCore</c> belgesinde.
+    /// </param>
     /// <param name="services">Araçların bağımlılıklarını çözecek sağlayıcı.</param>
     /// <param name="loggerFactory">Günlükler; <c>null</c> ise hiç günlük yok.</param>
     /// <param name="cancellationToken">İptal.</param>
     public static async Task RunAsync(
         McpSurface surface,
         McpBoundaryDeclaration boundary,
-        Assembly compositionRoot,
+        IReadOnlyList<Assembly> toolAssemblies,
         IServiceProvider services,
         ILoggerFactory? loggerFactory = null,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(compositionRoot);
+        ArgumentNullException.ThrowIfNull(toolAssemblies);
         ArgumentNullException.ThrowIfNull(services);
 
-        var options = BizigoMcpServer.CreateOptions(surface, boundary, compositionRoot, services);
+        var options = BizigoMcpServer.CreateOptions(surface, boundary, toolAssemblies, services);
         var factory = loggerFactory ?? NullLoggerFactory.Instance;
 
         await using var transport = new StdioServerTransport(options, factory);

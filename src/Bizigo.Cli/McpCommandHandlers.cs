@@ -28,6 +28,22 @@ namespace Bizigo.Cli;
 public static class McpCommandHandlers
 {
     /// <summary>
+    /// stdio yüzeyinin araç derlemeleri — <b>CLI'nın kendi beyanı.</b>
+    ///
+    /// <para>
+    /// <c>Bizigo.Api</c>'ninkinden ayrı olması bilinçli: iki host farklı araç
+    /// kümeleri sunabilir (stdio'da simülatör yüzeyi de açık, HTTP'de değil).
+    /// Tek bir liste paylaşmak, o ayrımı sessizce yok ederdi.
+    /// </para>
+    ///
+    /// <para>
+    /// Bugün boş; <c>Bizigo.Mcp</c> örtük olarak ekleniyor. Gerekçe ve bekçi
+    /// <c>McpEndpoints.ToolAssemblies</c> belgesinde.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<Assembly> ToolAssemblies { get; } = [];
+
+    /// <summary>
     /// Sunucuyu koşturur. Süreç kapanana kadar dönmez.
     /// </summary>
     /// <param name="surfaceName">
@@ -110,7 +126,7 @@ public static class McpCommandHandlers
         await McpStdioHost.RunAsync(
             surface,
             boundary,
-            Assembly.GetExecutingAssembly(),
+            ToolAssemblies,
             services,
             loggerFactory,
             cancellationToken).ConfigureAwait(false);

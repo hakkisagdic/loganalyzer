@@ -92,6 +92,27 @@ internal sealed class McpTestSession : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Sunucu döngüsünün kapanması için verilen üst sınır.
+    ///
+    /// <para>
+    /// <b>Bu sayı bir ölçümden doğdu.</b> İlk hâl <c>await serverLoop</c> idi —
+    /// sınırsız. İptal bekçisinin <b>kırmızı ölçümünde</b> (belirteç araca
+    /// taşınmıyor kusuru) o satır <b>asıldı</b>: kusurlu sunucuda
+    /// <c>test.never_ending</c> hiç dönmüyor, dolayısıyla döngü de boşalmıyor
+    /// ve koşum 25 dakika sonra elle kesildi.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Asılan bir bekçi, kırmızı yanan bir bekçi değildir.</b> CI'da sonucu
+    /// bir iş zaman aşımı olur ve mesajı ürün hakkında hiçbir şey söylemez —
+    /// bu depoda "okunmayan kırmızı" diye adı konmuş şeyin daha kötü hâli,
+    /// çünkü okunacak bir kırmızı bile yok. Sınır, kusurun testin <b>kendi
+    /// iddiasında</b> görünmesini sağlıyor.
+    /// </para>
+    /// </summary>
+    private static readonly TimeSpan ShutdownBudget = TimeSpan.FromSeconds(10);
+
     public async ValueTask DisposeAsync()
     {
         await lifetime.CancelAsync();
@@ -100,11 +121,18 @@ internal sealed class McpTestSession : IAsyncDisposable
 
         try
         {
-            await serverLoop;
+            await serverLoop.WaitAsync(ShutdownBudget);
         }
         catch (OperationCanceledException)
         {
             // Beklenen: döngüyü biz iptal ettik.
+        }
+        catch (TimeoutException)
+        {
+            // Döngü bütçe içinde boşalmadı — yani bir araç çağrısı hâlâ
+            // askıda. Testi BURADA düşürmüyoruz: asıl iddia testin kendisinde
+            // ve onu bir temizlik hatasıyla gölgelemek, kusurun sebebini
+            // yanlış yere gösterirdi.
         }
 
         lifetime.Dispose();
@@ -237,10 +265,15 @@ internal sealed class NeverEndingTool : ProtocolMechanicsTool
 
         try
         {
-            // Duvar saatiyle ölçmüyoruz: `Delay(Infinite)` yalnızca iptalle
-            // dönüyor. Bir zaman aşımı yazsaydık test "iptal çalıştı" ile
-            // "süre doldu"yu ayırt edemezdi.
-            await Task.Delay(Timeout.Infinite, cancellationToken);
+            // Duvar saatiyle ÖLÇMÜYORUZ: bu bekleme yalnızca iptalle dönmeli,
+            // yoksa test "iptal çalıştı" ile "süre doldu"yu ayırt edemezdi.
+            //
+            // Sınır yine de var ve bir kaçak önlüyor: `Timeout.Infinite`
+            // yazıldığında, belirteci taşımayan KUSURLU bir sunucuda bu görev
+            // süreç ömrü boyunca yaşıyordu. Sınır testin iddiasının çok
+            // üstünde (30 sn bütçe ↔ 5 dk), yani ölçünün anlamına dokunmuyor;
+            // yalnızca kusurlu koşumun arkasında görev bırakmamasını sağlıyor.
+            await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
         }
         catch (OperationCanceledException)
         {

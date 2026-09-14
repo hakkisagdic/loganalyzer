@@ -81,19 +81,33 @@ public static class BizigoMcpSetup
     /// </summary>
     /// <param name="services">Servis koleksiyonu.</param>
     /// <param name="configuration">Uygulama yapılandırması.</param>
-    /// <param name="compositionRoot">
-    /// Araçların aranacağı kök derleme — normalde <c>Bizigo.Api</c>. Gerekçesi
-    /// <c>BizigoMcpServer</c> belgesinde: referans oku ters yöne bakıyor ve
-    /// <c>AppDomain</c> taraması sessizce eksik kalıyor.
+    /// <param name="toolAssemblies">
+    /// Araç <b>taşıyan</b> derlemeler — kompozisyon kökü değil.
+    ///
+    /// <para>
+    /// Her biri <c>typeof(X).Assembly</c> ile verilmeli: bir tip adı yazmak
+    /// referansı <b>gerçek</b> yapıyor. İlk imza kökü alıp referans kapanışını
+    /// çıkarıyordu ve sessizce eksik çalışıyordu — derleyici, kodunda hiçbir
+    /// tipine dokunulmayan projeyi meta veriden buduyor. Ayrıntı ve ölçüm
+    /// <c>McpToolDiscovery</c> içinde.
+    /// </para>
+    ///
+    /// <para>
+    /// Boş bırakmak <b>geçerli</b>: <c>Bizigo.Mcp</c> her zaman ekleniyor, yani
+    /// sunucu en azından <c>server.info</c>'yu ilan ediyor. "Çağıran unuttu"
+    /// hâlini bir çalışma zamanı hatası değil bir <b>bekçi</b> tutuyor
+    /// (<c>McpToolAssemblyTests</c>) — çünkü çalışma zamanında "unutuldu" ile
+    /// "gerçekten yok" ayırt edilemez.
+    /// </para>
     /// </param>
     public static IMcpServerBuilder AddBizigoMcpCore(
         this IServiceCollection services,
         IConfiguration configuration,
-        Assembly compositionRoot)
+        params Assembly[] toolAssemblies)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
-        ArgumentNullException.ThrowIfNull(compositionRoot);
+        ArgumentNullException.ThrowIfNull(toolAssemblies);
 
         var builder = services.AddMcpServer();
 
@@ -111,7 +125,7 @@ public static class BizigoMcpSetup
         services
             .AddOptions<McpServerOptions>()
             .Configure<IServiceProvider>((options, provider) =>
-                BizigoMcpServer.Apply(options, McpSurface.Product, boundary, compositionRoot, provider));
+                BizigoMcpServer.Apply(options, McpSurface.Product, boundary, toolAssemblies, provider));
 
         return builder;
     }

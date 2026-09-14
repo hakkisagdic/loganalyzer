@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Bizigo.Api;
 using Bizigo.Contracts.Security;
 using Bizigo.Mcp;
 using Microsoft.ML.Tokenizers;
@@ -70,7 +71,7 @@ public sealed class McpSchemaBudgetTests
         var options = BizigoMcpServer.CreateOptions(
             surface,
             McpBoundaryDeclaration.Declare(DataBoundary.Internal, "şema bütçesi: birim testi"),
-            typeof(global::Program).Assembly,
+            McpEndpoints.ToolAssemblies,
             services);
 
         await using var session = await McpTestSession.StartAsync(options, services, cancellationToken: Ct);
