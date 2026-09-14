@@ -54,6 +54,31 @@ internal sealed class FakeScopedQuery : IScopedQuery, IAlertQuerySource
     /// <summary>Sayım çağrısında beklemek için: zaman aşımı bekçisi bunu kullanıyor.</summary>
     public Func<CancellationToken, Task>? BeforeCount { get; set; }
 
+    /// <summary>
+    /// <c>GetEventAsync</c>'in cevabı — <b>M10'un <c>logs.get</c> gövdesi için</b>.
+    ///
+    /// <para>
+    /// Varsayılan <see langword="null"/>, yani sahte <i>"kapsamda yok"</i>
+    /// diyor; bu hâlin kendisi de ölçülüyor
+    /// (<c>Logs_get_kapsam_disi_olay_not_found_aliyor</c>). Kanca olmadan
+    /// <c>logs.get</c>'in <b>başarılı</b> yolu hiç sınanamazdı — ve redaksiyon
+    /// kapısının ölçüldüğü tek yer o yol.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Kapsam KANCANIN İÇİNDE uygulanmıyor</b> ve bu bilinçli: sahtenin işi
+    /// depolamayı taklit etmek, kapsamı taklit etmek değil. Kapsamın gerçekten
+    /// uygulandığı yer <c>ScopedQuery</c> ve o entegrasyon testinin konusu
+    /// (<c>ScopeNegativeTests</c>). Burada kancaya verilen kapsam
+    /// <see cref="LastEventScope"/>'ta durur, yani aracın onu <b>geçirdiği</b>
+    /// ölçülebilir.
+    /// </para>
+    /// </summary>
+    public Func<Guid, LogEvent?>? EventFactory { get; set; }
+
+    /// <summary>Son <c>GetEventAsync</c> çağrısına verilen kapsam.</summary>
+    public AccessScope? LastGetEventScope { get; private set; }
+
     public int CountCalls => Volatile.Read(ref _countCalls);
     public int ActivityCalls => Volatile.Read(ref _activityCalls);
     public int InventoryCalls => Volatile.Read(ref _inventoryCalls);
@@ -173,8 +198,12 @@ internal sealed class FakeScopedQuery : IScopedQuery, IAlertQuerySource
         return Task.FromResult(visible);
     }
 
-    public Task<LogEvent?> GetEventAsync(Guid eventId, AccessScope scope, CancellationToken cancellationToken = default) =>
-        Task.FromResult<LogEvent?>(null);
+    public Task<LogEvent?> GetEventAsync(Guid eventId, AccessScope scope, CancellationToken cancellationToken = default)
+    {
+        LastGetEventScope = scope;
+
+        return Task.FromResult(EventFactory?.Invoke(eventId));
+    }
 
     public Task<long> CountOutOfScopeEventsAsync(EventQuery query, AccessScope scope, CancellationToken cancellationToken = default) =>
         Task.FromResult(0L);
