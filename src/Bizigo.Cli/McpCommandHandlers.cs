@@ -6,6 +6,7 @@ using Bizigo.Contracts.Security;
 using Bizigo.ControlPlane;
 using Bizigo.Evidence;
 using Bizigo.Mcp;
+using Bizigo.Rca;
 using Bizigo.Mcp.Product;
 using Bizigo.Parsing;
 using Bizigo.Query;
@@ -419,6 +420,18 @@ public static class McpCommandHandlers
         services.AddBizigoParsing(configuration);
         services.AddBizigoAlerting(configuration);
         services.AddBizigoEvidence();
+
+        // M07 — KAYNAKLARIN deposu (`RcaReportStore`), ve bu satır ölçülerek
+        // eklendi. M12 bu grafiği ARAÇLAR için kurdu; M07 keşfi ilkellere
+        // genişletti (`McpPrimitiveDiscovery`) ve `RcaReportResource`
+        // `RcaReportStore` istiyor. Yani ürün yüzeyi yeniden kalkmıyordu ve
+        // arıza bu kez M12'nin kendi bekçisinde göründü — bekçi işini yaptı.
+        //
+        // Kayıt `AddBizigoRcaTriggers` üzerinden, elle değil: `RcaReportStore`
+        // orada kayıtlı ve ömrü orada gerekçeli. Ayrıca uzantı yapılandırmayı
+        // isteğe bağlı alıyor, yani kota bölümü olmayan bir stdio süreci de
+        // varsayılanlarla kurulabiliyor.
+        services.AddBizigoRcaTriggers(configuration);
 
         // `TimeProvider` (TryAdd) — `logs.search`'ün varsayılan penceresi ve
         // `alerts.maintenance`'ın "şimdi"si buradan.
