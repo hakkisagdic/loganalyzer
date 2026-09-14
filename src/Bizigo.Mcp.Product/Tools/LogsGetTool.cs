@@ -59,7 +59,9 @@ namespace Bizigo.Mcp.Product.Tools;
 /// kanalda kapıyı atlayan çağrı derlenmiyor. Yapısal kanalda böyle bir şart
 /// <b>yok</b>: <see cref="Payload.Body"/> alanı <c>string</c> yazılıp
 /// <c>source.Body</c> olduğu gibi verildiğinde çözüm <b>0 hata 0 uyarı
-/// derlendi</b> (<c>tools/m10-kirmizi-olcumu.py</c>, ilk kusur). Yani kapıyı
+/// derlendi</b> — ve bu <b>iki bağımsız koşumda</b> ölçüldü
+/// (<c>tools/m10-kirmizi-olcumu.py</c>'nin ilk kusuru, ve ondan önce aynı
+/// kusuru uygulayan bir kabuk betiği). Yani kapıyı
 /// atlamak bu kanalda bir derleme hatası değil, yalnızca iki bekçinin
 /// yakaladığı bir davranış. M06 bunu kendi belgesinde beyan etmişti
 /// (<c>McpToolResult</c>: <i>"o alanın öyle yazılması bugün MEKANİK OLARAK
