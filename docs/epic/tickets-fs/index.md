@@ -67,6 +67,7 @@ flowchart TB
 | S07 | [İmzalı webhook üreteci](webhook-ureteci/index.md) | GitHub/GitLab/Jenkins/generic | S01 | ✅ dört biçim; idempotans S08'de tek testte buluştu |
 | S08 | [Çekim modeli ve teşhis](cekim-modeli/index.md) | S06'nın bulgusunun düzeltmesi | S06 | ✅ komut kendi kendine yetiyor; `ConfigCapture` türü taşıyor |
 | T55 | [Keşif konsolidasyonu](kesif-konsolidasyonu/index.md) | §9 borcu — üç kapının ortak keşif yüklemi | — | ✅ üç kapsam korundu; keşfin iki kör noktası kapandı |
+| T57 | [Sessiz tuzaklar](sessiz-tuzaklar/index.md) | Çift yapılandırma anahtarı · penceresiz idempotency | — | ✅ biri bekçiye bağlandı, diğeri şemanın zorladığı karar olarak yazıldı |
 
 Sahipler ticket verilirken atanıyor — planda değil.
 

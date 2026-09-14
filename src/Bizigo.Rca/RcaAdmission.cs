@@ -23,6 +23,48 @@ public sealed record RcaTriggerRequest
     public required DateTimeOffset WindowTo { get; init; }
 
     public RcaRunEntity? Parent { get; init; }
+
+    /// <summary>
+    /// Dış API'nin <c>Idempotency-Key</c> başlığı. <b>Kalıcıdır: süresi
+    /// dolmaz.</b>
+    ///
+    /// <para>
+    /// Bir anahtar bir kez kullanıldıysa, <b>aradan ne kadar zaman geçerse
+    /// geçsin</b> aynı koşumu döndürüyor. Bu bir gözden kaçma değil,
+    /// <b>şemanın zorladığı</b> bir karar: <c>idempotency_key</c> üzerinde
+    /// filtreli <b>TEKİL</b> indeks var (<c>ControlPlaneDbContext</c>). T57'de
+    /// yazılı hâle getirildi, çünkü o güne kadar hiçbir yerde yazılı değildi
+    /// ve <i>"kimse karar vermedi"</i> gibi okunuyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Aramaya bir zaman penceresi koymak ETKİSİZ olurdu</b> ve bu ölçüldü:
+    /// pencere "süresi dolmuş" bir anahtarı atlasa bile, sonraki <c>INSERT</c>
+    /// tekil indekse çarpar, <c>DbUpdateException</c> yakalanır, ve
+    /// <see cref="RcaAdmission"/> <b>yine eski koşumu</b> döndürür
+    /// (<c>Existing: true</c>). Yani gözlenebilir davranış değişmez; yalnızca
+    /// başarısız bir yazma eklenirdi. Davranışı gerçekten değiştirmek
+    /// <b>indeksin tanımını</b> değiştiren bir göç ister — örneğin
+    /// <c>(anahtar, pencere kovası)</c> üzerinde tekillik.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Bugün buna dayanan tüketici:</b> anahtarı <b>istemci</b> üretiyor
+    /// (<c>POST /v1/rca</c> başlığı); ürün hiçbir yerde kendi üretmiyor. HTTP
+    /// idempotency sözleşmesine uyan bir istemci mantıksal işlem başına yeni
+    /// anahtar üretir, yani kalıcılık onu <b>hiç etkilemiyor</b>.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Ama TÜRETİLMİŞ anahtarlar bu sözleşmenin dışında.</b> İçerikten
+    /// türetilen bir anahtar (örneğin <c>{konu}:{sha256(kimlik + pencere)}</c>)
+    /// tanım gereği <b>tekrar eder</b>: aynı alarmın aynı penceresi aynı
+    /// anahtarı verir. Kalıcı arama, o pencere için ikinci bir RCA'yı
+    /// <b>sonsuza kadar</b> bastırır. Böyle bir anahtar türeten her çağıran
+    /// ya penceresini anahtara katmalı ya da anahtarsız gelmeli — ikincisi
+    /// debounce ve kotaya tabi olmak demek, ve istenen çoğu zaman odur.
+    /// </para>
+    /// </summary>
     public string? IdempotencyKey { get; init; }
     public string RequestedBy { get; init; } = string.Empty;
 }
