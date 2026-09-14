@@ -107,7 +107,22 @@ public sealed record GoldenSetQualityResponse(
     [property: JsonPropertyName("contradicting_unspecified")] long ContradictingUnspecified,
     [property: JsonPropertyName("rank_asked")] long RankAsked,
     [property: JsonPropertyName("accuracy_at_one")] double? AccuracyAtOne,
-    [property: JsonPropertyName("accuracy_at_three")] double? AccuracyAtThree);
+    [property: JsonPropertyName("accuracy_at_three")] double? AccuracyAtThree,
+
+    // --- Karar 1: atılan cümle oranı (T47) ---------------------------------
+    // Üç hâl AYRI: `reasoning_absent` paydaya girmiyor (model hiç koşmadı),
+    // `produced_nothing` ve `all_dropped` toplamların gizlediği iki hâl.
+    [property: JsonPropertyName("reviewed_bundles")] long ReviewedBundles,
+    [property: JsonPropertyName("reasoning_absent")] long ReasoningAbsent,
+    [property: JsonPropertyName("reports_measured")] long ReportsMeasured,
+    [property: JsonPropertyName("produced_nothing")] long ProducedNothing,
+    [property: JsonPropertyName("all_dropped")] long AllDropped,
+    [property: JsonPropertyName("produced_sentences")] long ProducedSentences,
+    [property: JsonPropertyName("dropped_sentences")] long DroppedSentences,
+    [property: JsonPropertyName("fabricated_sentences")] long FabricatedSentences,
+    [property: JsonPropertyName("dropped_sentence_ratio")] double? DroppedSentenceRatio,
+    [property: JsonPropertyName("fabricated_citation_ratio")] double? FabricatedCitationRatio,
+    [property: JsonPropertyName("measured_coverage")] double? MeasuredCoverage);
 
 /// <summary>
 /// Alarm kapatma ve altın küme göstergesi (T38).
@@ -213,6 +228,7 @@ public static class AlertClosureEndpoints
         CancellationToken cancellationToken)
     {
         var quality = await reviews.QualityAsync(user.Scope, cancellationToken);
+        var reasoning = await reviews.ReasoningQualityAsync(user.Scope, cancellationToken);
 
         return Results.Ok(new GoldenSetQualityResponse(
             quality.Total,
@@ -229,7 +245,18 @@ public static class AlertClosureEndpoints
             quality.ContradictingUnspecified,
             quality.RankAsked,
             quality.AccuracyAtOne,
-            quality.AccuracyAtThree));
+            quality.AccuracyAtThree,
+            reasoning.ReviewedBundles,
+            reasoning.ReasoningAbsent,
+            reasoning.ReportsMeasured,
+            reasoning.ProducedNothing,
+            reasoning.AllDropped,
+            reasoning.ProducedSentences,
+            reasoning.DroppedSentences,
+            reasoning.FabricatedSentences,
+            reasoning.DroppedSentenceRatio,
+            reasoning.FabricatedCitationRatio,
+            reasoning.MeasuredCoverage));
     }
 }
 

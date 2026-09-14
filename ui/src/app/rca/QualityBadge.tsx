@@ -127,7 +127,65 @@ export function QualityBadge({ quality, error }: QualityBadgeProps) {
             )}
           </dd>
         </div>
+        <div>
+          <dt>Ölçülen rapor</dt>
+          {/* Atılan cümle oranının kapsamı: incelenmiş paketlerin kaçı
+              ölçülebildi. Bu sayı olmadan oran temsil ettiğinden geniş okunur. */}
+          <dd data-field="reports_measured">
+            {display.reportsMeasured} / {display.reviewedBundles}
+          </dd>
+        </div>
+
+        <div>
+          <dt>Model hiç koşmadı</dt>
+          {/* A · paydaya girmiyor. */}
+          <dd data-field="reasoning_absent">{display.reasoningAbsent}</dd>
+        </div>
+
+        <div>
+          <dt>Atılan cümle</dt>
+          <dd data-field="dropped_sentence_ratio" data-kind={display.droppedSentenceRatio.kind}>
+            {display.droppedSentenceRatio.kind === "ratio" ? (
+              display.droppedSentenceRatio.percent
+            ) : (
+              <span className={styles.quiet}>{display.droppedSentenceRatio.label}</span>
+            )}
+          </dd>
+        </div>
+
+        <div>
+          <dt>Atıf uydurmuş</dt>
+          <dd data-field="fabricated_citation_ratio" data-kind={display.fabricatedCitationRatio.kind}>
+            {display.fabricatedCitationRatio.kind === "ratio" ? (
+              display.fabricatedCitationRatio.percent
+            ) : (
+              <span className={styles.quiet}>{display.fabricatedCitationRatio.label}</span>
+            )}
+          </dd>
+        </div>
+
+        {/*
+          B ve C toplamların GİZLEDİĞİ iki hâl ve ayrı ayrı duruyorlar: biri
+          iki toplama da sıfır katıyor, diğeri ikisine de eşit katıyor. İkisi de
+          oranı hareket ettirmiyor ama zıt şeyler söylüyor.
+        */}
+        <div>
+          <dt>Koştu, üretmedi</dt>
+          <dd data-field="produced_nothing">{display.producedNothing}</dd>
+        </div>
+
+        <div>
+          <dt>Koştu, hepsi atıldı</dt>
+          <dd data-field="all_dropped">{display.allDropped}</dd>
+        </div>
       </dl>
+
+      <p className={styles.quiet}>
+        &quot;Koştu, üretmedi&quot; ile &quot;koştu, hepsi atıldı&quot; ekranda aynı
+        boş bulgu listesini veriyor ama zıt şeyler söylüyor: ikincisi modelin
+        cümle uydurup hepsinin elendiği hâl. Oran ikisini de hareket
+        ettirmediği için ayrı sayılıyorlar.
+      </p>
 
       <p className={styles.quiet}>
         &quot;Bilmiyorum&quot; oranı kendisi bir gösterge: yüksekse ya kanıt paketi

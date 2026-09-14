@@ -56,14 +56,46 @@ export interface QualityDisplay {
   readonly contradictingTrivialRatio: RatioDisplay;
   /**
    * Rank sorusunun <b>sorulduğu</b> inceleme sayısı — <c>accuracy@k</c>'nın
-   * paydası. Sorunun eklenmesinden önceki incelemeler burada yok, ve bu ayrım
-   * sunucuda kaydın şema sürümünden geliyor.
+   * paydası. Soruyu <b>soramayan</b> yakalama yolları (bulguları göstermeyen
+   * ekranlar) burada yok, ve ayrım sunucuda açık bir alandan geliyor.
    */
   readonly rankAsked: number;
   /** Doğru bulgu ilk sıradaydı. */
   readonly accuracyAtOne: RatioDisplay;
   /** Doğru bulgu ilk üçteydi. Aynı alandan çıkıyor, ikinci bir eksen yok. */
   readonly accuracyAtThree: RatioDisplay;
+
+  // --- Karar 1: atılan cümle oranı (T47) -----------------------------------
+
+  /**
+   * İncelenmiş <b>ayrık</b> paket sayısı — altın kümenin büyüklüğü.
+   */
+  readonly reviewedBundles: number;
+  /**
+   * <b>A</b> · incelenmiş ama raporu olmayan paket: model hiç koşmadı.
+   * Oranın paydasına <b>girmiyor</b>.
+   */
+  readonly reasoningAbsent: number;
+  /** Ölçüme giren rapor — paket başına bir tane (sonuncusu). */
+  readonly reportsMeasured: number;
+  /** <b>B</b> · koştu, hiç cümle üretmedi. */
+  readonly producedNothing: number;
+  /**
+   * <b>C</b> · koştu, ürettiklerinin <b>hepsi atıldı</b>. B ile saf sayımda
+   * aynı görünüyor (ikisi de boş bulgu listesi) ve <b>en pahalısı</b> bu.
+   */
+  readonly allDropped: number;
+  /** Toplam üretilen cümle — oranın paydası. */
+  readonly producedSentences: number;
+  /** Atılan cümle oranı; payda cümle, rapor değil. */
+  readonly droppedSentenceRatio: RatioDisplay;
+  /** Atılan cümlelerin kaçta kaçı atıf uydurmuştu; paydası atılanlar. */
+  readonly fabricatedCitationRatio: RatioDisplay;
+  /**
+   * İncelenmiş paketlerin kaçta kaçı ölçülebildi — <b>kapsamın kendisi</b>.
+   * Düşükse üstteki oran altın kümenin küçük bir diliminden geliyor.
+   */
+  readonly measuredCoverage: RatioDisplay;
 }
 
 /**
@@ -114,5 +146,14 @@ export function presentQuality(quality: GoldenSetQuality): QualityDisplay {
     rankAsked: count(quality.rank_asked),
     accuracyAtOne: ratio(quality.accuracy_at_one, "bulgu sırası sorulmadı"),
     accuracyAtThree: ratio(quality.accuracy_at_three, "bulgu sırası sorulmadı"),
+    reviewedBundles: count(quality.reviewed_bundles),
+    reasoningAbsent: count(quality.reasoning_absent),
+    reportsMeasured: count(quality.reports_measured),
+    producedNothing: count(quality.produced_nothing),
+    allDropped: count(quality.all_dropped),
+    producedSentences: count(quality.produced_sentences),
+    droppedSentenceRatio: ratio(quality.dropped_sentence_ratio, "model hiç koşmadı"),
+    fabricatedCitationRatio: ratio(quality.fabricated_citation_ratio, "atılan cümle yok"),
+    measuredCoverage: ratio(quality.measured_coverage, "incelenmiş paket yok"),
   };
 }

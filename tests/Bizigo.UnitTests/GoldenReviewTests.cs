@@ -687,5 +687,244 @@ public sealed class GoldenReviewTests : IDisposable
         Assert.NotEqual(ContradictingEvidenceVerdict.NotPresent, default);
     }
 
+    // ---------------------------------------------------------------------
+    // Atılan cümle oranı — üç hâl (T47, Karar 1)
+    // ---------------------------------------------------------------------
+
+    private async Task SeedReportAsync(
+        Guid bundleId,
+        int produced,
+        int dropped,
+        int fabricated = 0,
+        DateTimeOffset? createdAt = null)
+    {
+        await using var db = _factory.CreateDbContext();
+        db.RcaReports.Add(new RcaReportEntity
+        {
+            Id = Guid.CreateVersion7(createdAt ?? Now),
+            BundleId = bundleId,
+            CreatedAt = createdAt ?? Now,
+            SchemaVersion = 1,
+            ScenarioId = "builtin.rca.network",
+            ScenarioVersion = "1.0.0",
+            ProducedSentenceCount = produced,
+            DroppedSentenceCount = dropped,
+            FabricatedCitationSentenceCount = fabricated,
+            Payload = "{}",
+        });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+    }
+
+    /// <summary>
+    /// <b>A · raporu olmayan incelenmiş paket paydaya girmiyor.</b>
+    ///
+    /// <para>
+    /// Model hiç koşmamış bir paketi paydaya koymak, koşmamış bir modeli
+    /// <i>"hiç cümle atmadı"</i> diye ölçmek olurdu — yani en iyi skoru
+    /// hiç çalışmamış olana vermek.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Raporu_olmayan_paket_paydaya_girmiyor()
+    {
+        var withReport = await SeedBundleAsync();
+        var withoutReport = await SeedBundleAsync();
+
+        await WriteAsync(withReport, ReviewVerdict.Correct);
+        await WriteAsync(withoutReport, ReviewVerdict.Correct);
+        await SeedReportAsync(withReport, produced: 10, dropped: 2);
+
+        var q = await Store().ReasoningQualityAsync(Scope("network-core"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, q.ReviewedBundles);
+        Assert.Equal(1, q.ReasoningAbsent);
+        Assert.Equal(1, q.ReportsMeasured);
+        Assert.Equal(10, q.ProducedSentences);
+        Assert.Equal(0.2, q.DroppedSentenceRatio);
+        Assert.Equal(0.5, q.MeasuredCoverage);
+    }
+
+    /// <summary>
+    /// <b>B ile C ayrı sayılıyor</b> — ikisi de boş bulgu listesi veriyor ve
+    /// ikisi de oranı hareket ettirmiyor, ama zıt şeyler söylüyorlar.
+    ///
+    /// <para>
+    /// C modelin beş cümle uydurup hepsinin elendiği hâl: F4'ün ölçmek
+    /// istediği şeyin kendisi. Toplamlar onu gizliyor (paya ve paydaya eşit
+    /// katıyor), o yüzden ayrı bir sayaç.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Uretmeyen_ile_hepsi_atilan_ayri_sayiliyor()
+    {
+        var producedNothing = await SeedBundleAsync();
+        var allDropped = await SeedBundleAsync();
+
+        await WriteAsync(producedNothing, ReviewVerdict.Wrong);
+        await WriteAsync(allDropped, ReviewVerdict.Wrong);
+
+        await SeedReportAsync(producedNothing, produced: 0, dropped: 0);
+        await SeedReportAsync(allDropped, produced: 5, dropped: 5, fabricated: 2);
+
+        var q = await Store().ReasoningQualityAsync(Scope("network-core"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, q.ReportsMeasured);
+        Assert.Equal(1, q.ProducedNothing);
+        Assert.Equal(1, q.AllDropped);
+
+        // İkisi birlikte: 5 üretildi, 5 atıldı.
+        Assert.Equal(5, q.ProducedSentences);
+        Assert.Equal(5, q.DroppedSentences);
+        Assert.Equal(1.0, q.DroppedSentenceRatio);
+        Assert.Equal(0.4, q.FabricatedCitationRatio);
+    }
+
+    /// <summary>
+    /// Oran <b>cümle başına</b>, rapor başına değil.
+    ///
+    /// <para>
+    /// Rapor başına ortalama alınsaydı iki cümlelik bir rapor, iki yüz
+    /// cümlelikle aynı ağırlığı taşırdı. Burada 1/1 ve 1/99 raporları var:
+    /// cümle bazlı oran <c>2/100</c>, rapor bazlı ortalama ise <c>~0.505</c>.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Oran_cumle_basina_rapor_basina_degil()
+    {
+        var kucuk = await SeedBundleAsync();
+        var buyuk = await SeedBundleAsync();
+
+        await WriteAsync(kucuk, ReviewVerdict.Correct);
+        await WriteAsync(buyuk, ReviewVerdict.Correct);
+
+        await SeedReportAsync(kucuk, produced: 1, dropped: 1);
+        await SeedReportAsync(buyuk, produced: 99, dropped: 1);
+
+        var q = await Store().ReasoningQualityAsync(Scope("network-core"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(100, q.ProducedSentences);
+        Assert.Equal(2, q.DroppedSentences);
+        Assert.Equal(0.02, q.DroppedSentenceRatio);
+    }
+
+    /// <summary>
+    /// <b>Uydurma atıf oranının paydası <i>atılan</i> cümleler, üretilen
+    /// değil.</b>
+    ///
+    /// <para>
+    /// Fixture bunu <b>ifade edebilmek zorunda</b>: <c>produced == dropped</c>
+    /// olan bir örnekte iki payda aynı sayıyı verir ve payda hatası
+    /// görünmez. Ölçüldü — üstteki "hepsi atıldı" testi tam olarak öyleydi ve
+    /// paydayı <c>produced</c>'a çeviren mutasyon <b>yeşil geçti</b>.
+    /// </para>
+    ///
+    /// <para>
+    /// Burada <c>10 üretildi / 4 atıldı / 2 uydurma</c>: doğru oran
+    /// <c>2/4 = 0,5</c>, yanlış payda <c>2/10 = 0,2</c> verirdi.
+    /// </para>
+    ///
+    /// <para>
+    /// Anlamı da payda belirliyor: <i>"hiç atıf yapmadı"</i> ile <i>"atıf
+    /// uydurdu"</i> iki farklı kalite sorunu — biri prompt'un, diğeri modelin —
+    /// ve ikincinin payı yalnızca birincinin içinde okunabilir.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Uydurma_atif_paydasi_atilan_cumleler()
+    {
+        var bundle = await SeedBundleAsync();
+        await WriteAsync(bundle, ReviewVerdict.Wrong);
+        await SeedReportAsync(bundle, produced: 10, dropped: 4, fabricated: 2);
+
+        var q = await Store().ReasoningQualityAsync(Scope("network-core"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(10, q.ProducedSentences);
+        Assert.Equal(4, q.DroppedSentences);
+        Assert.Equal(2, q.FabricatedSentences);
+
+        Assert.Equal(0.4, q.DroppedSentenceRatio);
+        Assert.Equal(0.5, q.FabricatedCitationRatio);
+    }
+
+    /// <summary>
+    /// Paket başına <b>son</b> rapor sayılıyor — <c>LatestForAsync</c> ile aynı
+    /// sıra. Ayrışsalardı ekran bir raporu gösterir, gösterge başkasını sayardı.
+    /// </summary>
+    [Fact]
+    public async Task Paket_basina_son_rapor_sayiliyor()
+    {
+        var bundle = await SeedBundleAsync();
+        await WriteAsync(bundle, ReviewVerdict.Correct);
+
+        await SeedReportAsync(bundle, produced: 10, dropped: 9, createdAt: Now.AddHours(-2));
+        await SeedReportAsync(bundle, produced: 10, dropped: 1, createdAt: Now);
+
+        var q = await Store().ReasoningQualityAsync(Scope("network-core"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, q.ReportsMeasured);
+        Assert.Equal(10, q.ProducedSentences);
+        Assert.Equal(0.1, q.DroppedSentenceRatio);
+    }
+
+    /// <summary>
+    /// Hiç cümle üretilmemişse oran <b><c>null</c></b>, sıfır değil — telin
+    /// kendi kuralının toplam hâli.
+    /// </summary>
+    [Fact]
+    public async Task Uretilen_cumle_yoksa_oran_yok_sifir_degil()
+    {
+        var bundle = await SeedBundleAsync();
+        await WriteAsync(bundle, ReviewVerdict.Correct);
+        await SeedReportAsync(bundle, produced: 0, dropped: 0);
+
+        var q = await Store().ReasoningQualityAsync(Scope("network-core"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, q.ReportsMeasured);
+        Assert.Null(q.DroppedSentenceRatio);
+        Assert.Null(q.FabricatedCitationRatio);
+    }
+
+    /// <summary>
+    /// Ölçüm <b>kapsam kapısından</b> geçiyor: başka grubun incelediği paketin
+    /// raporu bizim sayımıza karışmıyor.
+    ///
+    /// <para>
+    /// <c>rca_reports</c>'un kendi <c>owner_group</c> kolonu yok, yani filtre
+    /// yalnızca incelemeden gelebiliyor. Bu bağ koparsa sızıntı hiçbir yerde
+    /// hata vermez — yalnızca başka ekibin sayısı bizim oranımıza karışır.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Baska_grubun_raporu_olcume_girmiyor()
+    {
+        var core = await SeedBundleAsync();
+        var other = await SeedBundleAsync();
+
+        await WriteAsync(core, ReviewVerdict.Correct, "network-core");
+        await WriteAsync(other, ReviewVerdict.Correct, "app-team");
+
+        await SeedReportAsync(core, produced: 10, dropped: 1);
+        await SeedReportAsync(other, produced: 10, dropped: 9);
+
+        var q = await Store().ReasoningQualityAsync(Scope("network-core"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, q.ReviewedBundles);
+        Assert.Equal(1, q.ReportsMeasured);
+        Assert.Equal(10, q.ProducedSentences);
+        Assert.Equal(0.1, q.DroppedSentenceRatio);
+    }
+
+    /// <summary>Boş altın kümede oran <b>yok</b> ve sayılar sıfır.</summary>
+    [Fact]
+    public async Task Bos_kumede_oran_yok()
+    {
+        var q = await Store().ReasoningQualityAsync(Scope("network-core"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, q.ReviewedBundles);
+        Assert.Equal(0, q.ReportsMeasured);
+        Assert.Null(q.DroppedSentenceRatio);
+        Assert.Null(q.MeasuredCoverage);
+    }
+
     public void Dispose() => _factory.Dispose();
 }
