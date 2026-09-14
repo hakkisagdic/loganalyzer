@@ -12,6 +12,60 @@ namespace Bizigo.Query;
 /// Her metot <see cref="AccessScope"/> istiyor; kapsamsız çağrı yazılamıyor.
 /// Mimari test (T02) ayrıca bu derlemenin dışından <c>ClickHouse.Driver</c>'a
 /// referans verilmesini yasaklıyor, yani kimse kapıyı atlayamıyor.
+///
+/// <h3>CLI bir kapsam SINIRI değil — ve bu bir muafiyet, kaçak değil</h3>
+///
+/// <para>
+/// Yukarıdaki liste CLI'yı da sayıyor ve doğru sayıyor: <c>bizigo</c> komutları
+/// da bu kapıdan geçiyor, yani <b>kapsamsız bir sorgu yazamıyorlar</b>. Ama
+/// kapıya <i>hangi</i> kapsamı verdikleri ayrı bir soru, ve cevabı ürün
+/// yüzeylerindekinden <b>farklı</b>: kapsamı bir kimlik belirlemiyor,
+/// <b>operatör seçiyor</b> (örneğin bir <c>--owner-group</c> bayrağıyla).
+/// </para>
+///
+/// <para>
+/// <b>Bu bilinçli, ve iki gerekçesi var:</b>
+/// </para>
+///
+/// <list type="number">
+/// <item>
+/// <b>CLI'da kimlik yok ve olamaz.</b> Bir komutun koşması için kontrol düzlemi
+/// ya da ClickHouse bağlantı dizgesi gerekiyor — yani çağıran <b>zaten</b>
+/// veritabanı erişimine sahip. Oraya bir kapsam kontrolü koymak, elinde
+/// <c>psql</c> olan birini bir bayrakla durdurmaya çalışmak olurdu: kapının
+/// önünde duvar yokken kapı takmak.
+/// </item>
+/// <item>
+/// <b>K17 ürün yüzeylerinin sözü.</b> Kapsam sınırı REST, MCP ve arayüz için
+/// var; üçünde de çağıran bir <b>kullanıcı</b> ve kimliği IdP'den geliyor
+/// (<c>IAccessScopeResolver</c> → <c>idp_group_mapping</c>). CLI'da o zincirin
+/// ilk halkası yok, dolayısıyla geri kalanı da yok.
+/// </item>
+/// </list>
+///
+/// <para>
+/// <b>Muafiyetin yazılı olması şart</b> ve sebebi bu depoda ölçüldü: yazılı
+/// olmayan bir muafiyet, bir gün <i>"CLI'da neden kapsam yok"</i> diye
+/// sorulduğunda <b>cevabı olmayan</b> bir muafiyet olur — ve o an ya gereksiz
+/// bir kontrol eklenir ya da gerçek bir kaçak muafiyet sanılır.
+/// </para>
+///
+/// <para>
+/// ⚠️ <b>Bugün kapsam sormayan komutlar BURADA SAYILMIYOR</b>, ve bu bir
+/// eksiklik değil bir karar: böyle bir liste bayatlar. Yeni bir komut
+/// eklendiğinde listeyi güncellemeyi hatırlamak gerekirdi, ve hatırlamaya
+/// dayanan mekanizmanın bu depoda kaç kez kaybettiği ölçüldü. Kural
+/// <b>yüzey düzeyinde</b> okunuyor: <i>CLI bir kapsam sınırı değil.</i>
+/// </para>
+///
+/// <para>
+/// <b>Bunun tersi de yazılı olsun:</b> bir CLI komutu bir gün <b>ürün</b>
+/// yüzeyi hâline gelirse (bir uca ya da MCP aracına sarılırsa) kapsamı artık
+/// operatör seçmiyor — o an kimlikten türemesi gerekiyor. M14'ün
+/// <c>rca.trigger</c>'ı tam bu geçişin örneği: aynı iş, ama MCP yüzeyinde
+/// kapsam <c>AccessScope</c>'tan geliyor ve grubun kapsamda olduğu <b>açıkça</b>
+/// soruluyor.
+/// </para>
 /// </summary>
 public interface IScopedQuery
 {

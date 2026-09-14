@@ -725,6 +725,97 @@ CLI repo içindeki herhangi bir alt dizinden çağrılabilir.
 export DOTNET_ROOT="$HOME/.dotnet"
 ```
 
+### MCP yüzeyi — `bizigo mcp serve`
+
+Ürünün iki MCP yüzeyi var ve **taşımaları farklı**: `bizigo` (ürün araçları) hem
+`POST /mcp` üzerinden hem stdio'dan, `bizigo-sim` (simülatör) **yalnızca**
+stdio'dan. Simülatörün HTTP'si bilerek yok — ürünün kendi süreci simülatör
+filosunu değiştirebilir hâle gelirdi.
+
+```bash
+export DOTNET_ROOT="$HOME/.dotnet"
+BIN=src/Bizigo.Cli/bin/Debug/net10.0/bizigo
+
+# Simülatör yüzeyi: ayar istemiyor.
+$BIN mcp serve --surface bizigo-sim --data-boundary internal
+
+# Ürün yüzeyi: iki bağlantı ayarı ZORUNLU.
+export BIZIGO_CLICKHOUSE='Host=localhost;Port=8123;Database=bizigo;Username=bizigo;Password=bizigo'
+export BIZIGO_CONTROLPLANE='Host=localhost;Port=5432;Database=bizigo;Username=bizigo;Password=bizigo'
+$BIN mcp serve --surface bizigo --data-boundary internal
+```
+
+**`--data-boundary`'nin varsayılanı yok ve olmayacak** (K6). *"stdio, demek ki iç
+ağ"* çıkarımı yapılmadı çünkü bu taşımanın en olası istemcisi bir masaüstü MCP
+istemcisi ve o aldığı metni **buluta** gönderiyor. Beyanı operatör veriyor.
+
+**Ürün yüzeyi adres TAHMİN ETMİYOR.** İki değişken eksikse süreç adıyla söyleyip
+çıkıyor (exit 2), `localhost`'a düşmüyor — ve sebebi bağlanamamak değil,
+**tahminin tutması**: geliştiricinin makinesinde gerçekten bir ClickHouse olabilir
+ve o zaman yüzey *başka bir kurulumun* log verisini modele okur. `schema migrate`
+localhost'a düşüyor çünkü onu bir insan depo kökünden koşturuyor ve yanlış tahmin
+gürültülü düşüyor; `mcp serve`'i **başka bir program** başlatıyor ve `stdout`
+protokolün kendisi.
+
+#### Kimlik — ortamdan TOKEN, ayardan KAPSAM değil
+
+stdio MCP yetkilendirme spesifikasyonunun dışında, yani protokol kimlik
+taşımıyor. Kimlik **ortamdan** geliyor:
+
+```bash
+export BIZIGO_MCP_TOKEN=<Keycloak erişim belirteci>     # zorunlu (kimlik için)
+export BIZIGO_MCP_AUTHORITY=http://localhost:8180/realms/bizigo
+export BIZIGO_MCP_RESOURCE=bizigo-mcp                  # beklenen `aud`
+export BIZIGO_MCP_METADATA=...                          # opsiyonel; container'da issuer≠erişilebilir adres
+```
+
+Ayrım kritik: değişken **kimliği taşıyor, kapsamı belirlemiyor**. Bir
+`BIZIGO_MCP_OWNER_GROUP` olsaydı veri kapsamı bir süreç ayarı olurdu (K17
+ihlali); burada kapsam hâlâ claim'lerden ve `idp_group_mapping` üzerinden
+çıkıyor — REST uçlarının geçtiği **aynı** kapıdan.
+
+| Hâl | Davranış |
+| --- | --- |
+| Belirteç **yok** | Yüzey kalkıyor, kimlik isteyen araçlar `unauthenticated` döner |
+| Belirteç var, issuer/kitle **eksik** | Süreç **başlamıyor**, eksik değişkeni adıyla söyler (exit 2) |
+| Belirteç **geçersiz** ya da kitlesi yanlış | Süreç **başlamıyor** — API için basılmış belirteç burada geçmez (RFC 8707) |
+| Belirtecin **süresi doldu** | Araçlar `unauthenticated` döner, **ama ayrı bir cümleyle**: yenileme yok, süreç yeni belirteçle yeniden başlatılır |
+
+Son satır bilinçli bir sınır: yenileme bir `refresh_token` ve istemci sırrı
+ister, ikisini bir masaüstü istemcisinin `env` bloğuna koymak uzun ömürlü bir
+kimlik bilgisini süreç ortamına yazmak olurdu.
+
+> ⚠️ **Canlı Keycloak yolu bu depoda henüz koşturulmadı.** Yukarıdaki dört
+> davranıştan ilk ikisi gerçek süreçle ölçüldü; **geçerli bir belirtecin kabul
+> edilmesi ve yanlış kitlenin reddedilmesi ölçülmedi** — testleri yazılı
+> (`McpStdioIdentityKeycloakTests`) ve `Assert.SkipUnless` ile atlanıyor, sessiz
+> yeşil değil. Doğrulama kuralları API'nin `AddJwtBearer`'ıyla aynı kütüphaneden
+> ve aynı sürümden (8.19.2) geliyor, ama *"ölçüldü"* diyemiyoruz.
+
+### RCA kotası — `bizigo rca quota`
+
+```bash
+$BIN rca quota --owner-group network/core
+```
+
+Bir grubun günlük RCA kotasını, **kaynak başına tüketimi** ve **kaynak başına
+etkin sınırı** basıyor. Son ikisi ayrı: rezerv açıkken olay tetikli kaynak
+(`alert`) tam havuzu görüyor, istek tetikli olanlar (`manual`, `schedule`,
+`agent`, `external`) rezerv düşülmüş hâlini. Tek bir "limit" satırı rezervin
+varlığını görünmez kılardı.
+
+**Neden CLI, neden uç ya da MCP aracı değil.** RCA ekranı kotayı bilerek kapsam
+dışında bırakmış (F4'e ertelenmiş), ve modelin cevabı zaten var: `rca.trigger`
+kota dolduğunda sebebini döndürüyor ve `rca.runs` her satırda
+`counts_against_quota` taşıyor. Okuyucusu olan tek taraf **rezerv yüzdesine karar
+veren operatör**, ve rezerv varsayılanı `0` — yani sayı gerçek kullanımdan
+gelecek, bu komut da onu görünür kılmak için var.
+
+**CLI bir kapsam sınırı değil**: komut `--owner-group` ile herhangi bir grubu
+okuyor, çünkü koşması için zaten bir veritabanı bağlantısı gerekiyor. Kapsam
+sınırı ürün yüzeylerinde (REST, MCP, arayüz) ve orada kimlik IdP'den geliyor;
+gerekçesi `IScopedQuery` belgesinde.
+
 ## Bilgi tabanı — Obsidian vault
 
 Deponun belgelerinden beslenen bir bilgi tabanı `docs/wiki/` altında duruyor ve

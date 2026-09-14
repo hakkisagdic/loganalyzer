@@ -11,7 +11,7 @@ relationships:
   - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
     type: derived_from
 sources: [docs/epic/f2-kapanis/index.md, docs/epic/t27-kapanis-taramasi/index.md, README.md]
-source_digest: "sha256-12/v1 README.md=4b11651192cf docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/t27-kapanis-taramasi/index.md=fc23cd892d11"
+source_digest: "sha256-12/v1 README.md=c8129c49b36e docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/t27-kapanis-taramasi/index.md=fc23cd892d11"
 summary: docs/epic/f2-kapanis/index.md özeti — F2'nin ölçülen kısıtları, yanlış çıkan altı iddiası, bekçilerin durumu ve F3'e devredilen beş soru.
 provenance:
   extracted: 0.9

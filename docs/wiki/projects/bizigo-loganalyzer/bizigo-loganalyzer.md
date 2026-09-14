@@ -9,7 +9,7 @@ relationships:
   - target: "[[skills/paralel-ajan-koordinasyonu]]"
     type: uses
 sources: [README.md, CLAUDE.md, docs/epic/f2-kapanis/index.md]
-source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 README.md=4b11651192cf docs/epic/f2-kapanis/index.md=c701d88f78fd"
+source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 README.md=c8129c49b36e docs/epic/f2-kapanis/index.md=c701d88f78fd"
 summary: Plugin tabanlı, çok formatlı ve çok dilli log analiz platformu. F1 (boru hattı) ve F2 (görünürlük) kapandı; F3 ölçüm ağırlıklı faz.
 provenance:
   extracted: 0.9
@@ -71,8 +71,12 @@ Deponun en pahalı hata sınıfı ve onu arayan bakış:
   demek"* değil, **"joker demek süreç içinden bilinemez demek"**. `dotnet run`
   varsayılanı loopback olduğu için etkilenmiyor; container imajı gerekçesini
   kendi Dockerfile'ında taşıyor.
-- Keycloak realm'inde **yalnızca `bizigo-claims` client scope var**;
-  `openid profile email` canlıda `invalid_scope` alıyor. Ölçüldü.
+- Keycloak realm'inde **iki client scope var**: `bizigo-claims` ve
+  `bizigo-mcp`. İkincisi MCP yüzeyinin kendi kitlesi (M09) ve **isteğe bağlı** —
+  istenmeden alınan bir belirteç `/mcp`'de geçmiyor (RFC 8707). `openid profile
+  email` canlıda `invalid_scope` alıyor; ölçüldü.
+  *(Bu satır bir zamanlar "yalnızca `bizigo-claims` var" diyordu ve M09'dan
+  sonra yanlıştı — §11 gözden geçirmesinde yakalandı.)*
 - İnceleme akışı PR üzerinden. `main` dışındaki bir dala push tek başına hiçbir
   kapıyı çalıştırmıyor.
 
