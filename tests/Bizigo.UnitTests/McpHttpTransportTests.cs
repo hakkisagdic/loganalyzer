@@ -75,6 +75,18 @@ public sealed class McpHttpTransportTests
 
         // ÜRETİMİN kaydı. İkinci bir kurulum yazmak, ölçülen sunucu ile koşan
         // sunucuyu ayırırdı.
+        // M04'ün araçları ürün servislerine bağımlı ve keşif onları kurmayı
+        // DENİYOR (kurulamayan araç atlanmıyor, patlıyor). Yalın bir host artık
+        // `AddBizigoMcp` ile yetmiyor — ve yetmemesi doğru: üretimde bu servisler
+        // `Program.cs`'te kayıtlı. Kayıtlar uyum kapısıyla PAYLAŞILIYOR, ikinci
+        // bir kopya yazılmadı (§9).
+        builder.Services.AddDiscoveredToolDependencies();
+
+        // M08'in kapısı kimlik isteyen araç ilan edilmişse çözücü istiyor.
+        // Bu test TAŞIMAYI ölçüyor (el sıkışma HTTP üzerinde çalışıyor mu),
+        // kimliği değil — kimlik `McpIdentityTests`'in konusu.
+        builder.Services.AddComplianceScopeResolver();
+
         builder.Services.AddBizigoMcp(builder.Configuration);
 
         var app = builder.Build();
@@ -121,7 +133,9 @@ public sealed class McpHttpTransportTests
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal([ServerInfoTool.ToolIdentifier], tools);
+        // Beklenen küme uyum kapısıyla PAYLAŞILIYOR. İki testin kümeyi ayrı
+        // yazması M04'te ölçülerek ayrıştı; tek kaynak `McpExpectedTools`.
+        Assert.Equal(McpExpectedTools.For(McpSurface.Product), tools);
 
         // Araç HTTP üzerinden de gerçekten koşuyor — ilan edilmek ile
         // çağrılabilmek ayrı şeyler.

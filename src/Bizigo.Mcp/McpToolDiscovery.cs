@@ -111,6 +111,13 @@ public static class McpToolDiscovery
                 // yüzeyde de tek sınıfla durmaya devam ediyor; yüzeyi sabit
                 // olanlar argümanı hiç görmüyor ve aşağıdaki filtre onları
                 // eliyor.
+                //
+                // M01'DE NEDEN GÖRÜNMEDİĞİ (M04'te bağımsız olarak da ölçüldü):
+                // o gün ilan edilen tek araç yüzeyi yapıcıdan ALIYORDU, ve
+                // yüzeyi sabit olan iki örnek (`TestOnlyTool`,
+                // `NeverEndingTool`) yalnızca `ToolTypes` ile keşfedilip HİÇ
+                // ÖRNEKLENMİYORDU. Yani kusur bir testin kapsamı dışındaydı,
+                // dikkatinin değil — ve ilk ürün aracı gelene kadar öyle kaldı.
                 tool = (BizigoMcpTool)(WantsSurface(type)
                     ? ActivatorUtilities.CreateInstance(services, type, surface)
                     : ActivatorUtilities.CreateInstance(services, type));

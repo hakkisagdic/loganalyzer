@@ -1,4 +1,5 @@
 using Bizigo.Mcp;
+using Bizigo.Mcp.Product;
 
 namespace Bizigo.Api;
 
@@ -55,12 +56,18 @@ public static class McpEndpoints
     /// </para>
     ///
     /// <para>
-    /// Bugün <b>boş</b>: ürün araçları M03/M04/M05 ile geliyor. Boşluğun
-    /// kendisi bir bekçiyle korunuyor (<c>McpToolAssemblyTests</c>): derlenmiş
-    /// çıktıda araç taşıyan bir derleme varsa ve burada değilse <b>kırmızı</b>.
+    /// Bugün <b>tek giriş</b>: <c>Bizigo.Mcp.Product</c>, M04'ün beş okuma aracı.
+    /// M03'ün <c>sim.*</c> araçları buraya <b>girmiyor</b> — HTTP yüzeyi yalnızca
+    /// ürün, simülatör kontrolü stdio'da (<c>McpCommandHandlers.ToolAssemblies</c>).
+    /// Boş kalmanın kendisi bir bekçiyle korunuyor
+    /// (<c>McpToolAssemblyTests</c>): derlenmiş çıktıda araç taşıyan bir derleme
+    /// varsa ve burada değilse <b>kırmızı</b>.
     /// </para>
     /// </summary>
-    public static IReadOnlyList<System.Reflection.Assembly> ToolAssemblies { get; } = [];
+    public static IReadOnlyList<System.Reflection.Assembly> ToolAssemblies { get; } =
+    [
+        typeof(Mcp.Product.Tools.LogsSearchTool).Assembly,
+    ];
 
     /// <summary>
     /// MCP çekirdeğini ve <b>HTTP taşımasını</b> kaydeder.
@@ -70,6 +77,13 @@ public static class McpEndpoints
         IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
+
+        // SIRA ÖNEMLİ VE GEREKÇESİ ÖLÇÜLDÜ. Bu çağrı, M04'ün araç derlemesini
+        // keşfin referans kapanışına sokan şey: `csproj`'daki `ProjectReference`
+        // TEK BAŞINA YETMİYOR, çünkü derleyici kodda hiç kullanılmayan referansı
+        // meta veriden düşürüyor. Ölçüm ve iki bekçi
+        // `BizigoReadToolsSetup` belgesinde.
+        services.AddBizigoReadTools();
 
         services
             .AddBizigoMcpCore(configuration, [.. ToolAssemblies])

@@ -423,7 +423,9 @@ public sealed class McpIdentityTests
     [Fact]
     public async Task Kapsam_cozucusu_kayitli_degilse_kurulum_patliyor()
     {
-        await using var without = McpTestServices.Empty();
+        // Araç bağımlılıkları VAR, çözücü YOK: aksi hâlde kurulum kimlikten
+        // değil DI'dan şikâyet eder ve bu test yanlış sebeple kırmızı yanar.
+        await using var without = McpTestServices.ForDiscoveredToolsWithoutResolver();
 
         var error = Assert.Throws<InvalidOperationException>(
             () => BizigoMcpServer.CreateOptions(
@@ -471,13 +473,24 @@ public sealed class McpIdentityTests
     /// </summary>
     private static IReadOnlyList<BizigoMcpTool> ProductionTools()
     {
-        var services = McpTestServices.Empty();
+        // Ürün kapanışının TAMAMI keşfe veriliyor, yani M04'ün araçları da
+        // kuruluyor ve onlar ürün servislerine bağımlı. Boş bir kap burada
+        // "kurulamadı" ile düşerdi — ve o kırmızı kimlik hakkında hiçbir şey
+        // söylemezdi.
+        var services = McpTestServices.ForDiscoveredTools();
 
         return BizigoMcpServer.Tools(McpSurface.Product, McpEndpoints.ToolAssemblies, services);
     }
 
     private static ServiceProvider ServicesWithGate(IAccessScopeResolver gate) =>
-        new ServiceCollection().AddSingleton(gate).BuildServiceProvider();
+        new ServiceCollection()
+
+            // M04'ün araçları da keşfe giriyor ve ürün servislerine bağımlı.
+            // Kayıtlar uyum kapısıyla PAYLAŞILIYOR; ikinci bir kopya, bir gün
+            // birinde olup diğerinde olmayan bir kayıt demek olurdu (§9).
+            .AddDiscoveredToolDependencies()
+            .AddSingleton(gate)
+            .BuildServiceProvider();
 
     private static WebApplication BuildHost(ScopeEchoTool tool, IAccessScopeResolver gate)
     {
@@ -493,6 +506,11 @@ public sealed class McpIdentityTests
             .AddScheme<AuthenticationSchemeOptions, ClaimsFromHeader>(TestScheme, configureOptions: null);
 
         builder.Services.AddSingleton(gate);
+
+        // M04'ün araçları da keşfe giriyor ve ürün servislerine bağımlı; keşif
+        // kurulamayan aracı atlamıyor, patlıyor. Kayıtlar uyum kapısıyla
+        // PAYLAŞILIYOR (§9).
+        builder.Services.AddDiscoveredToolDependencies();
 
         // ÜRETİMİN kaydı. İkinci bir kurulum yazmak, ölçülen sunucu ile koşan
         // sunucuyu ayırırdı.

@@ -6,6 +6,7 @@ using Bizigo.Api;
 using Bizigo.Cli;
 using Bizigo.Contracts.Security;
 using Bizigo.Mcp;
+using Bizigo.Mcp.Product.Tools;
 using Bizigo.Mcp.Tools;
 using Json.Schema;
 using Microsoft.Extensions.Configuration;
@@ -183,19 +184,34 @@ public sealed class McpComplianceTests
     /// içinde de duruyor ve T48 onu da kaldırmadı — ölçüt <i>"elle liste var
     /// mı"</i> değil, <b>"elle liste kapının gözü mü, yoksa kapının beyanı
     /// mı"</b>. Gözse kaldırılır; beyansa kalır.
+    ///
+    /// <para>
+    /// <b>Küme artık yüzeye göre.</b> M04'ün okuma araçları yalnızca
+    /// <c>bizigo</c>'da; <c>bizigo-sim</c> ürün verisine dokunmuyor. Tek bir
+    /// beklenen küme yazmak, ürün araçlarının simülatör yüzeyine sızmasını
+    /// <b>ölçülmez</b> kılardı (K6).
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Bu test M04'te bir kez ÖLÇÜLEREK kırmızı yandı ve sebebi bir kusurdu:</b>
+    /// beş araç yazılıp <c>ProjectReference</c> eklendiğinde bile keşif onları
+    /// bulamıyordu, çünkü derleyici kullanılmayan referansı meta veriden
+    /// düşürüyor. Ölçüm ve düzeltme <c>BizigoReadToolsSetup</c> belgesinde.
+    /// Kapının <b>yeşilliği bir şey ifade etsin</b> diye bu satırın elle
+    /// tutulması tam olarak bu yüzden değerli.
     /// </para>
     /// </summary>
     [Theory]
     [MemberData(nameof(Surfaces))]
     public async Task Sunucunun_ilan_ettigi_araclar(McpSurface surface)
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.ForDiscoveredTools();
         await using var session = await McpTestSession.StartAsync(ProductionOptions(surface, services), services, cancellationToken: Ct);
 
         var tools = await session.Client.ListToolsAsync(cancellationToken: Ct);
 
         Assert.Equal(
-            [ServerInfoTool.ToolIdentifier],
+            McpExpectedTools.For(surface),
             tools.Select(static t => t.Name).Order(StringComparer.Ordinal).ToArray());
     }
 
@@ -213,7 +229,7 @@ public sealed class McpComplianceTests
     [MemberData(nameof(Surfaces))]
     public async Task Her_yuzey_en_az_bir_arac_ilan_ediyor(McpSurface surface)
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.ForDiscoveredTools();
         await using var session = await McpTestSession.StartAsync(ProductionOptions(surface, services), services, cancellationToken: Ct);
 
         Assert.NotEmpty(await session.Client.ListToolsAsync(cancellationToken: Ct));
@@ -237,7 +253,7 @@ public sealed class McpComplianceTests
     [MemberData(nameof(Surfaces))]
     public async Task Her_aracin_semasi_gecerli(McpSurface surface)
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.ForDiscoveredTools();
         await using var session = await McpTestSession.StartAsync(ProductionOptions(surface, services), services, cancellationToken: Ct);
 
         foreach (var tool in await session.Client.ListToolsAsync(cancellationToken: Ct))
@@ -270,9 +286,17 @@ public sealed class McpComplianceTests
     [MemberData(nameof(Surfaces))]
     public async Task Ornek_cagri_cikti_semasina_uyuyor(McpSurface surface)
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.ForDiscoveredTools();
         var options = ProductionOptions(surface, services);
-        await using var session = await McpTestSession.StartAsync(options, services, cancellationToken: Ct);
+
+        // OTURUM KİMLİKLİ. M04'ten itibaren ürün araçları kimlik istiyor (M08)
+        // ve kimliksiz bir oturumda bu kapı şemayı değil `unauthenticated`
+        // retini ölçerdi. Gerekçenin tamamı `McpTestSession.StartAsync`
+        // belgesinde; kısası: kapıyı `SampleAsync`'e çevirmek serileştirmeyi ve
+        // `structuredContent` dönüşümünü ölçümden düşürürdü — M01'in kapıyı
+        // protokolden geçirme kararının tam tersi.
+        await using var session = await McpTestSession.StartAsync(
+            options, services, user: McpTestServices.ComplianceIdentity, cancellationToken: Ct);
 
         var declaredTools = await session.Client.ListToolsAsync(cancellationToken: Ct);
 
@@ -329,12 +353,12 @@ public sealed class McpComplianceTests
     [Fact]
     public async Task Yazili_revizyon_el_sikismada_kabul_ediliyor()
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.ForDiscoveredTools();
 
         var clientOptions = new McpClientOptions { ProtocolVersion = McpRevision.Supported };
 
         await using var session = await McpTestSession.StartAsync(
-            ProductionOptions(McpSurface.Product, services), services, clientOptions, Ct);
+            ProductionOptions(McpSurface.Product, services), services, clientOptions, cancellationToken: Ct);
 
         // El sıkışma gerçekten oldu: istemci sunucunun kimliğini biliyor.
         Assert.Equal(McpSurfaces.ProductName, session.Client.ServerInfo?.Name);
@@ -361,12 +385,12 @@ public sealed class McpComplianceTests
     [Fact]
     public async Task Anlasma_eski_istemciyi_indiriyor()
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.ForDiscoveredTools();
 
         var clientOptions = new McpClientOptions { ProtocolVersion = McpRevision.PreviousStable };
 
         await using var session = await McpTestSession.StartAsync(
-            ProductionOptions(McpSurface.Product, services), services, clientOptions, Ct);
+            ProductionOptions(McpSurface.Product, services), services, clientOptions, cancellationToken: Ct);
 
         Assert.NotEmpty(await session.Client.ListToolsAsync(cancellationToken: Ct));
     }
@@ -384,7 +408,7 @@ public sealed class McpComplianceTests
     [MemberData(nameof(Surfaces))]
     public async Task Server_info_yazili_revizyonu_soyluyor(McpSurface surface)
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.ForDiscoveredTools();
         await using var session = await McpTestSession.StartAsync(ProductionOptions(surface, services), services, cancellationToken: Ct);
 
         var result = await session.Client.CallToolAsync(
@@ -415,7 +439,7 @@ public sealed class McpComplianceTests
     [MemberData(nameof(Surfaces))]
     public async Task Desteklenmeyen_yetenek_ilan_edilmiyor(McpSurface surface)
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.ForDiscoveredTools();
         await using var session = await McpTestSession.StartAsync(ProductionOptions(surface, services), services, cancellationToken: Ct);
 
         var capabilities = session.Client.ServerCapabilities;
@@ -452,7 +476,7 @@ public sealed class McpComplianceTests
     [Fact]
     public async Task Arac_hatasi_ile_protokol_hatasi_ayri()
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.ForDiscoveredTools();
         var options = ProductionOptions(McpSurface.Product, services);
 
         // Argümanı zorunlu bir araç ekleniyor: hata yolunu ölçmek için hata
@@ -501,7 +525,7 @@ public sealed class McpComplianceTests
     [Fact]
     public async Task Iptal_bildirimi_araci_gercekten_iptal_ediyor()
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.ForDiscoveredTools();
         var options = ProductionOptions(McpSurface.Product, services);
 
         var tool = new NeverEndingTool();
@@ -574,7 +598,7 @@ public sealed class McpComplianceTests
     [MemberData(nameof(Surfaces))]
     public async Task Her_arac_iptal_edilmis_belirteci_gozetiyor(McpSurface surface)
     {
-        await using var services = McpTestServices.Empty();
+        await using var services = McpTestServices.ForDiscoveredTools();
 
         var tools = BizigoMcpServer.Tools(surface, McpEndpoints.ToolAssemblies, services);
 

@@ -1,6 +1,16 @@
 using System.IO.Pipelines;
+using System.Threading.Channels;
 using System.Text.Json;
+using Bizigo.Alerting;
+using System.Security.Claims;
+using Bizigo.Contracts;
+using Bizigo.ControlPlane;
 using Bizigo.Mcp;
+using Bizigo.Mcp.Product.Tools;
+using Bizigo.Mcp.Tools;
+using Bizigo.Parsing.Dispatch;
+using Bizigo.Query;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Client;
@@ -45,10 +55,32 @@ internal sealed class McpTestSession : IAsyncDisposable
 
     public McpClient Client { get; }
 
+    /// <param name="serverOptions">Sunucu seçenekleri.</param>
+    /// <param name="services">Araçların bağımlılıklarını çözecek sağlayıcı.</param>
+    /// <param name="clientOptions">İstemci seçenekleri.</param>
+    /// <param name="user">
+    /// Oturumun <b>kimliği</b>. <see langword="null"/> ise oturum kimliksiz ve
+    /// M08'in kapısı kimlik isteyen araçları <b>koşmadan</b> reddediyor —
+    /// kimliksiz hâlin kendisi de ölçülmek istendiği için varsayılan bu.
+    ///
+    /// <para>
+    /// <b>Neden kimlik verilebilir olması gerekiyordu.</b> M04 kimlik isteyen
+    /// beş araç getirdi ve uyum kapısı örnek çıktıyı <c>tools/call</c> ile
+    /// alıyor — yani kimliksiz bir oturumda o kapı artık şemayı değil
+    /// <c>unauthenticated</c> retini ölçerdi. İki yol vardı: kapıyı
+    /// <c>SampleAsync</c>'e çevirmek (serileştirme ve
+    /// <c>structuredContent</c> dönüşümünü ölçümden düşürürdü — M01'in kapıyı
+    /// protokolden geçirme kararının tam tersi) ya da <b>oturuma kimlik
+    /// vermek</b>. İkincisi seçildi: kapı hem protokolden geçmeye devam ediyor
+    /// hem üretime yaklaşıyor.
+    /// </para>
+    /// </param>
+    /// <param name="cancellationToken">İptal.</param>
     public static async Task<McpTestSession> StartAsync(
         McpServerOptions serverOptions,
         IServiceProvider services,
         McpClientOptions? clientOptions = null,
+        ClaimsPrincipal? user = null,
         CancellationToken cancellationToken = default)
     {
         // İki boru: biri istemciden sunucuya, biri sunucudan istemciye.
@@ -56,11 +88,16 @@ internal sealed class McpTestSession : IAsyncDisposable
         var toClient = new Pipe();
         var lifetime = new CancellationTokenSource();
 
-        var serverTransport = new StreamServerTransport(
+        ITransport serverTransport = new StreamServerTransport(
             toServer.Reader.AsStream(),
             toClient.Writer.AsStream(),
             serverOptions.ServerInfo?.Name ?? "test",
             NullLoggerFactory.Instance);
+
+        if (user is not null)
+        {
+            serverTransport = new IdentityStampingTransport(serverTransport, user);
+        }
 
         var server = McpServer.Create(
             serverTransport, serverOptions, NullLoggerFactory.Instance, services);
@@ -86,6 +123,7 @@ internal sealed class McpTestSession : IAsyncDisposable
             // prosestir.
             await lifetime.CancelAsync();
             await server.DisposeAsync();
+            await serverTransport.DisposeAsync();
             lifetime.Dispose();
 
             throw;
@@ -164,6 +202,77 @@ internal abstract class ProtocolMechanicsTool : BizigoMcpTool
 {
     /// <inheritdoc/>
     public sealed override bool RequiresCallerIdentity => false;
+}
+
+/// <summary>
+/// <b>Gelen her mesaja bir kimlik damgalayan taşıma sarmalayıcısı.</b>
+///
+/// <para>
+/// Üretimde bunu akışlanabilir HTTP taşıması yapıyor:
+/// <c>HttpContext.User</c> → <c>JsonRpcMessageContext.User</c>. stdio'da kimlik
+/// <b>yok</b> ve olmaması doğru (MCP yetkilendirme spesifikasyonu stdio'yu
+/// kapsam dışında bırakıyor). Süreç içi boru oturumu üçüncü bir hâl: taşıma
+/// katmanı <i>bizim</i>, dolayısıyla kimliği <b>biz</b> koyuyoruz.
+/// </para>
+///
+/// <para>
+/// SDK bu alanı bilerek açık bırakıyor — belgesi <i>"should only be set when
+/// implementing a custom ITransport"</i> diyor, ve burada yapılan tam olarak o.
+/// Alternatif, uyum kapısını kimlik isteyen araçlar için körleştirmekti.
+/// </para>
+/// </summary>
+internal sealed class IdentityStampingTransport(ITransport inner, ClaimsPrincipal user) : ITransport
+{
+    public string? SessionId => inner.SessionId;
+
+    public ChannelReader<JsonRpcMessage> MessageReader => Stamped().Reader;
+
+    public Task SendMessageAsync(JsonRpcMessage message, CancellationToken cancellationToken = default) =>
+        inner.SendMessageAsync(message, cancellationToken);
+
+    public ValueTask DisposeAsync() => inner.DisposeAsync();
+
+    /// <summary>
+    /// Okuyucuyu <b>bir kez</b> sarmalıyor: her erişimde yeni bir kanal kurmak,
+    /// mesajların iki okuyucu arasında bölünmesi demek olurdu ve arıza
+    /// "bazı çağrılar cevapsız" diye görünürdü.
+    /// </summary>
+    private Channel<JsonRpcMessage>? stamped;
+
+    private Channel<JsonRpcMessage> Stamped()
+    {
+        if (stamped is not null)
+        {
+            return stamped;
+        }
+
+        stamped = Channel.CreateUnbounded<JsonRpcMessage>();
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await foreach (var message in inner.MessageReader.ReadAllAsync())
+                {
+                    message.Context ??= new JsonRpcMessageContext();
+                    message.Context.User = user;
+
+                    await stamped.Writer.WriteAsync(message);
+                }
+
+                stamped.Writer.TryComplete();
+            }
+            catch (Exception error)
+            {
+                // Sessizce yutmuyoruz: yutulan bir hata "istemci cevap
+                // beklerken asılı kaldı" diye görünür ve sebebi hiçbir yerde
+                // durmaz.
+                stamped.Writer.TryComplete(error);
+            }
+        });
+
+        return stamped;
+    }
 }
 
 /// <summary>
@@ -293,8 +402,205 @@ internal sealed class NeverEndingTool : ProtocolMechanicsTool
     }
 }
 
-/// <summary>Test oturumları için asgari servis sağlayıcısı.</summary>
+/// <summary>
+/// Test oturumları için servis sağlayıcısı.
+///
+/// <para>
+/// <b>Boş bir kap yetmiyor ve bu bir kusur değil, kapının çalıştığının
+/// kanıtı.</b> M01'de bu metot gerçekten boş bir <c>ServiceCollection</c>
+/// döndürüyordu — o gün ilan edilen tek araç (<c>server.info</c>) hiçbir şeye
+/// bağımlı değildi. M04'ün araçları ürün servislerine bağımlı ve
+/// <c>McpToolDiscovery.Instantiate</c> kurulamayan aracı <b>atlamıyor,
+/// patlıyor</b>. Yani boş kap bugün kapıyı düşürüyor; düşürmesi gerekiyor.
+/// </para>
+///
+/// <para>
+/// <b>Kaydedilenler sahte, ama kapının ölçtüğü şey veri değil.</b> Uyum kapısı
+/// şemaları, anlaşmayı, hata dönüşümünü ve iptali ölçüyor; ClickHouse'un ne
+/// cevap verdiği entegrasyon testinin işi (§2). Sahteler bu depoda <b>zaten
+/// var</b> ve ikinci kopyaları yazılmadı (§9): <c>FakeScopedQuery</c>,
+/// <c>InMemoryControlPlaneFactory</c>.
+/// </para>
+/// </summary>
 internal static class McpTestServices
 {
+    /// <summary>
+    /// Keşfedilen araçların <b>kurulabilmesi</b> için gereken asgari kap.
+    ///
+    /// <para>
+    /// Yeni bir araç yeni bir bağımlılık getirdiğinde bu metot <b>kırmızı
+    /// yanıyor</b> ("MCP aracı ... kurulamadı") — ve o kırmızı doğru soruyu
+    /// soruyor: <i>üretimde bu servis kayıtlı mı?</i>
+    /// </para>
+    /// </summary>
+    /// <summary>
+    /// <b>Gerçekten boş</b> kap. Kapsamı dar ve bilinçli: yalnızca keşfin
+    /// <b>belirli</b> türlere uygulandığı ya da yokluğun kendisinin ölçüldüğü
+    /// testler için (örn. çözücü kayıtlı değilse kurulum patlıyor mu).
+    ///
+    /// <para>
+    /// Ürün derlemesinin tamamı keşfe verildiğinde bu kap <b>yetmiyor</b> ve
+    /// yetmemesi doğru: M04'ün araçları ürün servislerine bağımlı ve
+    /// <c>Instantiate</c> kurulamayan aracı atlamıyor, patlıyor. O testler
+    /// <see cref="ForDiscoveredTools"/> kullanıyor.
+    /// </para>
+    /// </summary>
     public static ServiceProvider Empty() => new ServiceCollection().BuildServiceProvider();
+
+    public static ServiceProvider ForDiscoveredTools() =>
+        new ServiceCollection()
+            .AddDiscoveredToolDependencies()
+            .AddComplianceScopeResolver()
+            .BuildServiceProvider();
+
+    /// <summary>
+    /// Araç bağımlılıkları <b>ama çözücü YOK</b>.
+    ///
+    /// <para>
+    /// Tek tüketicisi M08'in <i>"çözücü kayıtlı değilse kurulum patlıyor"</i>
+    /// testi. Ayrı bir aşırı yükleme olması şart: çözücüyü de kaydeden bir kap
+    /// o testi <b>hiçbir şey ölçmeyen</b> hâle getirirdi, ve araç bağımlılıkları
+    /// olmayan bir kap ise kurulumu <b>başka bir sebeple</b> düşürüp aynı testi
+    /// yanlış sebeple yeşil... hayır, yanlış sebeple KIRMIZI yapardı — mesaj
+    /// kimlikten değil DI'dan şikâyet ederdi.
+    /// </para>
+    /// </summary>
+    public static ServiceProvider ForDiscoveredToolsWithoutResolver() =>
+        new ServiceCollection().AddDiscoveredToolDependencies().BuildServiceProvider();
+
+    /// <summary>
+    /// Uyum kapısının kimliği: <b>oturuma</b> konan principal.
+    ///
+    /// <para>
+    /// Kapsam çözücüsüyle <b>tutarlı</b> olması gerekiyor; ikisi ayrışsaydı kapı
+    /// kimlik hakkında bir şey söylüyor gibi görünüp aslında sabit bir kapsam
+    /// ölçüyor olurdu.
+    /// </para>
+    /// </summary>
+    public static ClaimsPrincipal ComplianceIdentity { get; } = new(
+        new ClaimsIdentity(
+            [new Claim(BizigoClaims.Subject, "uyum-kapisi")],
+            authenticationType: "uyum-kapisi-test"));
+
+    /// <summary>
+    /// Aynı kayıtların <see cref="IServiceCollection"/> hâli.
+    ///
+    /// <para>
+    /// Ayrı bir aşırı yükleme, çünkü iki tüketicisi var ve ikisi kabı kendi
+    /// kuruyor: uyum kapısı (yalın bir kap) ve <c>McpHttpTransportTests</c>
+    /// (gerçek bir <c>WebApplication</c>). İkinci bir kopya, bir gün birinde
+    /// olup diğerinde olmayan bir kayıt demek olurdu (§9).
+    /// </para>
+    /// </summary>
+    public static IServiceCollection AddDiscoveredToolDependencies(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        // M04 — okuma araçlarının bağımlılıkları.
+        //
+        // SCOPED, singleton DEĞİL: üretimdeki kayıt da scoped
+        // (`QueryServiceCollectionExtensions`). Burada singleton yazmak,
+        // araçların çağrı başına kapsam açmasını ölçülmez kılardı — esir
+        // bağımlılık testte görünmezdi ve üretimde patlardı.
+        services.AddScoped<IScopedQuery>(static _ => new FakeScopedQuery());
+
+        services.AddSingleton<IDbContextFactory<ControlPlaneDbContext>>(new InMemoryControlPlaneFactory());
+        services.AddSingleton(new AlertingOptions());
+        services.AddSingleton<AlertRuleService>();
+        services.AddSingleton(new ParserCatalog());
+
+        return services;
+    }
+
+    /// <summary>
+    /// Sabit kapsam veren çözücü. Gerekçesi <see cref="FixedScopeResolver"/>'da.
+    /// </summary>
+    public static IServiceCollection AddComplianceScopeResolver(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.AddSingleton<IAccessScopeResolver>(new FixedScopeResolver(
+            AccessScope.ForGroups("uyum-kapisi", ["network/core"])));
+
+        return services;
+    }
+}
+
+/// <summary>
+/// Sabit kapsam döndüren çözücü — <b>yalnızca protokol kapıları için</b>.
+///
+/// <para>
+/// M08'in kapısı bir çözücü istiyor ve istemesi doğru: kimlik isteyen bir araç
+/// ilan edilip çözücü kaydedilmemişse kurulum patlıyor (<i>"kapsam çözücüsüz bir
+/// ürün yüzeyi ya her şeyi açar ya hiçbir şeyi döndürmez; ikisi de sessizce
+/// yanlıştır"</i>).
+/// </para>
+///
+/// <para>
+/// <b>Bu bir gevşetme değil.</b> Uyum kapısının sorusu PROTOKOL: şema geçerli
+/// mi, örnek çıktı ona uyuyor mu, iptal iletiliyor mu. Kimliğin zorunlu olduğu,
+/// kimliksiz oturumun koşmadan reddedildiği ve kapsamın REST'le aynı kapıdan
+/// geldiği <c>McpIdentityTests</c>'te <b>ayrıca</b> ölçülüyor. Aynı şeyi burada
+/// bir kez daha ölçmeye çalışmak iki kapıyı birbirine bağlar ve ikisini de
+/// bulanıklaştırır.
+/// </para>
+///
+/// <para>
+/// Kimlikten kapsama çevrimin kendisi <c>GroupMapping</c>'de ve orada
+/// sınanıyor; burada çevrilecek bir kimlik yok, çünkü uyum kapısı bir kimlik
+/// kapısı değil. Kapsam <b>boş olmayan</b> seçiliyor: boş kapsam
+/// <c>ProductReadTool</c>'un <c>not_found</c> dalını tetikler ve kapı şemayı
+/// değil o reddi ölçerdi.
+/// </para>
+/// </summary>
+internal sealed class FixedScopeResolver(AccessScope scope) : IAccessScopeResolver
+{
+    public AccessScope Resolve(ClaimsPrincipal? principal) => scope;
+}
+
+/// <summary>
+/// <b>Yüzey başına ilan edilmesi BEKLENEN araç kümesi — elle yazılı, TEK yerde.</b>
+///
+/// <para>
+/// Elle olması bilinçli: keşif kümeyi kendisi buluyor, bu liste onun
+/// <b>beklentisi</b>. Keşif azını bulursa bir araç sessizce düşmüş, fazlasını
+/// bulursa yeni bir araç gelmiş ve buraya yazılması <b>bilinçli bir hareket</b>.
+/// </para>
+///
+/// <para>
+/// <b>Tek yerde olması da bilinçli ve M04'te ölçüldü.</b> Küme iki testte ayrı
+/// ayrı yazılıydı (uyum kapısı ve HTTP taşıması) ve M04'ün beş aracı geldiğinde
+/// ikisi <b>ayrıştı</b>: biri güncellendi, diğeri eski hâliyle kırmızı yandı.
+/// İki liste bu depoda hep ayrışıyor (§9).
+/// </para>
+///
+/// <para>
+/// <b>Ürün araçları yalnızca <c>bizigo</c>'da.</b> Tek bir küme yazmak,
+/// bir ürün aracının simülatör yüzeyine sızmasını <b>ölçülmez</b> kılardı (K6).
+/// </para>
+/// </summary>
+internal static class McpExpectedTools
+{
+    /// <summary>Yüzeyin ilan etmesi beklenen araç adları, ada göre sıralı.</summary>
+    public static string[] For(McpSurface surface)
+    {
+        string[] names = surface switch
+        {
+            McpSurface.Product =>
+            [
+                AlertRulesTool.ToolIdentifier,
+                AlertTriggersTool.ToolIdentifier,
+                CatalogParsersTool.ToolIdentifier,
+                InventoryListTool.ToolIdentifier,
+                LogsSearchTool.ToolIdentifier,
+                ServerInfoTool.ToolIdentifier,
+            ],
+
+            // `bizigo-sim` ürün verisine dokunmuyor; M03'ün araçları geldiğinde
+            // bu dal büyüyecek.
+            _ => [ServerInfoTool.ToolIdentifier],
+        };
+
+        return [.. names.Order(StringComparer.Ordinal)];
+    }
 }

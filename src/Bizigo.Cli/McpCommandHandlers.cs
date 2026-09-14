@@ -37,11 +37,18 @@ public static class McpCommandHandlers
     /// </para>
     ///
     /// <para>
-    /// Bugün boş; <c>Bizigo.Mcp</c> örtük olarak ekleniyor. Gerekçe ve bekçi
+    /// <c>Bizigo.Mcp.Product</c> burada da duruyor: <c>bizigo mcp serve
+    /// --surface bizigo</c> aynı okuma araçlarını stdio üzerinden sunuyor ve
+    /// keşif yüzeye göre süzüyor. İki listenin ayrı olması bilinçli — HTTP
+    /// yüzeyi simülatör araçlarını <b>hiç</b> görmemeli. <c>Bizigo.Mcp</c>
+    /// örtük olarak ekleniyor. Gerekçe ve bekçi
     /// <c>McpEndpoints.ToolAssemblies</c> belgesinde.
     /// </para>
     /// </summary>
-    public static IReadOnlyList<Assembly> ToolAssemblies { get; } = [];
+    public static IReadOnlyList<Assembly> ToolAssemblies { get; } =
+    [
+        typeof(Bizigo.Mcp.Product.Tools.LogsSearchTool).Assembly,
+    ];
 
     /// <summary>
     /// Sunucuyu koşturur. Süreç kapanana kadar dönmez.

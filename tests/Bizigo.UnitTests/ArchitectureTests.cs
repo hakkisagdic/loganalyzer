@@ -190,6 +190,7 @@ public sealed class ArchitectureTests
                 // olarak da (stdio yolu) doğru bir grafik kurduğunu göstermiyor.
                 "AddBizigoMcp", "AddBizigoMcpCore",
 
+
                 // T42: model sağlayıcısı ve K6'nın kapısı. Uç burada
                 // DOĞRULANMIYOR — doğrulama ağ çözümlemesi yapıyor ve kayıt
                 // anına konsaydı DNS erişilemediğinde API'nin tamamı ayağa
@@ -199,7 +200,28 @@ public sealed class ArchitectureTests
                 // T45: RCA tetikleyici kabul kapısı. Kuyruğun kendisi ve kota
                 // T46'da — bu uzantı şimdilik yalnızca kapıyı ve kota
                 // kancasının varsayılanını kaydediyor.
-                "AddBizigoRcaTriggers", "AddBizigoReplay",
+                "AddBizigoRcaTriggers",
+
+                // M04: `bizigo` okuma araçları. Bu kayıt neredeyse hiçbir şey
+                // KAYDETMİYOR (yalnızca `TimeProvider`) ve asıl işi başka:
+                // araç derlemesini keşfin referans kapanışına SOKMAK.
+                //
+                // Gerekçe ölçüldü ve şu bekçiyi de doğrudan ilgilendiriyor:
+                // `ProductAssemblies` kompozisyon kökünden
+                // `GetReferencedAssemblies()` ile yürüyor, ve o tablo yalnızca
+                // GERÇEKTEN KULLANILAN referansları taşıyor. `csproj`'a
+                // `ProjectReference` yazmak yetmiyor — derleyici kodda hiç
+                // dokunulmayan referansı meta veriden düşürüyor. M04'te beş
+                // araç yazıldı, referans eklendi, çözüm 0 hata 0 uyarı
+                // derlendi, ve uyum kapısı YEŞİL kaldı: sunucu hâlâ tek araç
+                // ilan ediyordu. Ayrıntı `BizigoReadToolsSetup` belgesinde.
+                //
+                // Yani bu satırın buradaki varlığı bir formalite değil: bu
+                // bekçinin kendi keşfi de aynı kör noktayı taşıyor.
+                "AddBizigoReadTools",
+
+                "AddBizigoReplay",
+
 
                 // T44 ile GÖRÜNÜR OLDU, T44 ile yazılmadı: uzantı T43'ten beri
                 // duruyordu ama `Bizigo.ScenarioPlugin` kompozisyon kökünün

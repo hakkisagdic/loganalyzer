@@ -280,31 +280,34 @@ public static class AlertEndpoints
         ICurrentUser user,
         CancellationToken cancellationToken)
     {
-        var visible = await rules.ListAsync(user.Scope, cancellationToken);
-        var visibleIds = visible.Select(r => r.Id).ToHashSet();
+        // KAPSAM KARARI `AlertRuleService`'te, bu gövdede DEĞİL (M04).
+        // Görünür kural kümesinin türetilmesi burada duruyordu ve MCP okuma
+        // yüzeyi ikinci tüketici olarak geldiğinde tek seçenek onu kopyalamak
+        // olurdu — iki kopyanın ayrışması ancak biri yanlış veri gösterdiğinde
+        // fark edilirdi (§9). Sunum (teslim birleştirmesi, ad çözümü) burada
+        // kalıyor; kapsam orada.
+        var visibleScope = await rules.ResolveTriggerScopeAsync(user.Scope, ruleId, cancellationToken);
 
-        if (ruleId is { } requested && !visibleIds.Contains(requested))
+        if (visibleScope is null)
         {
+            // İstenen kural bu kapsamda görünmüyor. 403 değil 404: "böyle bir
+            // kural var ama göremezsin" bilgisi de sızıntıdır.
             return Results.NotFound();
         }
 
-        var wanted = ruleId is { } single ? [single] : visibleIds.ToArray();
+        // Tetiklenme sorgusu da servise taşındı: iki sunum katmanı aynı sıralama
+        // ve aynı tavana uysun. Burada kalan şey SUNUM — teslim kayıtlarının
+        // birleştirilmesi, ki MCP yükünde bilerek yok.
+        var rows = await rules.ListTriggersAsync(visibleScope, limit, cancellationToken);
 
-        if (wanted.Length == 0)
+        if (rows.Count == 0)
         {
             return Results.Ok(new AlertTriggerListResponse(0, []));
         }
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
-        var rows = await db.AlertTriggers
-            .AsNoTracking()
-            .Where(t => wanted.Contains(t.RuleId))
-            .OrderByDescending(t => t.FiredAt)
-            .Take(Math.Clamp(limit ?? 100, 1, 500))
-            .ToListAsync(cancellationToken);
-
-        var names = visible.ToDictionary(r => r.Id, r => r.Name);
+        var names = visibleScope.Names;
 
         // "Gönderildi" ile "ulaştı" AYRI (T23 kabul kriteri). Teslim kayıtları
         // tetiklenmeyle birlikte dönüyor: ayrı bir uçtan çekilseydi ekran satır
