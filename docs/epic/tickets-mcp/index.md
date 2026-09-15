@@ -71,7 +71,31 @@ flowchart TB
 | M10 | [Üç ertelenmiş ürün aracı](yeni-urun-araclari/index.md) | `logs.get` · `rca.quality` · `alerts.maintenance`; **MCP'de yazma yok** ve IL'de tutuluyor | M04, M06, T47 |
 | M11 | [Kestrel'in kör noktası: beyanın topolojisi](kestrel-kor-noktasi/index.md) | Dinleyici adresi kapının görüşüne alınıyor; joker bağlama **kanıt değil**, gerekçeli muafiyet | M06, T42 |
 | M15 | [Kota rezervi `Agent`'ı kapsamıyor](kota-rezerv-ekseni/index.md) | Rezerv yalnızca `Schedule`'a uygulanıyor; model insanın kotasını yiyebilir | M14, T46 |
-| M16 | [Abonelik kimliği ve kapsam süzgeci](abonelik-kimligi-ve-kapsam/index.md) | Bildirim **etiketsiz** ve kapsam süzgeci **yok**; ikisi de `SubscriptionsListenHandler`'ı devralmaya bakıyor | M07 |
+| M20 | [Abonelik kimliği ve kapsam süzgeci](abonelik-kimligi-ve-kapsam/index.md) | Bildirim **etiketsiz** ve kapsam süzgeci **yok**; ikisi de `SubscriptionsListenHandler`'ı devralmaya bakıyor | M07 |
+
+### Tüketilmiş kimlikler — **M16–M19 ticket değil**
+
+M20'nin numarası ilk yazıldığında **M16** seçildi ve M16 aslında **alınmıştı**.
+Sebep bu tabloydu: en son satır M15'ti, dolayısıyla *"sıradaki M16"* çıkarımı
+tablodan bakınca doğru görünüyordu.
+
+Dört kimlik **yalnızca commit mesajlarında** yaşıyordu. Hiçbiri bir ticket değil
+— iş olarak verildiler, ürünleri belgelere dağıldı, ve numaraları hiçbir yerde
+kayıtlı olmadı. Tabloya ticket satırı olarak yazmak ikinci bir yanlış olurdu;
+kimlik uzayının **görünür** olması yeterli:
+
+| Kimlik | Ne yapıldı | Commit | Ürünü nerede |
+| --- | --- | --- | --- |
+| M16 | Kota gözlemi CLI'ya çıkarıldı; üç adaydan ikisinin okuyucusu yok | `936de1e` | `README.md` — *RCA kotası* |
+| M17 | CLI'nın kapsam sınırı olmadığı yazıldı, muafiyet belgelendi | `c004737` | [F1 kapsam kriteri düzeltmesi](../f1-kapsam-kriteri-duzeltmesi/index.md) |
+| M18 | `IScopedQuery` tüketici listesi türetildi; elle liste üç yönde yanlıştı | `7d3a016` | [T10 kararlar](../t10-kararlar/index.md) |
+| M19 | HTTP süre-sonu toleransı **açıkça** 30 s seçildi; F1 tablosunda üç boşluk | `3321d1c` | [M08](kimlik-tasima/index.md) · [F1-D1](../tickets/dayaniklilik-olcumu/index.md) |
+
+**Ders, numaralandırmadan büyük:** bir kimlik uzayının kaydı, o uzaydan numara
+**dağıtan** yerde olmak zorunda. Burada dağıtım sohbette oluyordu ve kayıt
+tabloydu — ikisi ayrı olduğu için tablo *"M15 son"* diyebiliyordu ve doğruyu
+söylüyordu, yalnızca sorulan soruya değil **başka bir soruya** cevap veriyordu.
+
 
 **M10 ticket'ı iş bittikten SONRA yazıldı** ve bunu T61'in bekçisi zorladı:
 merge edilmiş bir kimlik hiçbir tabloda anılmıyordu, kapı kırmızı yandı. Kaydın

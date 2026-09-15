@@ -1,10 +1,10 @@
 ---
-title: "F1-D1 — Dayanıklılık kriterinin ÖLÇÜMÜ"
+title: "T63 — Dayanıklılık kriterinin ÖLÇÜMÜ"
 kind: ticket
 status: 0
 ---
 
-# F1-D1 — "kill -9" taklit ediliyor, "RustFS durdurulur" hiç ölçülmüyor
+# T63 — "kill -9" taklit ediliyor, "RustFS durdurulur" hiç ölçülmüyor
 
 F1'in dayanıklılık kabul kriteri şu:
 

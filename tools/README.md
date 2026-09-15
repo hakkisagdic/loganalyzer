@@ -95,6 +95,28 @@ makinede yanlış kırmızı **üretmez**? Aday eksen sıkıştırılmış sayfa
 oranı (burada 7.2/16 ≈ %45), ama bir eşik önerilmeden önce boş ve yüklü
 makinelerde ölçülmesi gerekiyor.
 
-**Bugünkü operasyonel sonuç, kapıdan bağımsız ve kesin:** 16 GiB'lık bu makinede
-**beş paralel ajan ile container ölçümü bir arada durmuyor.** Container isteyen
-koşum, ajanlar tur arasındayken yapılıyor.
+### Sebep ölçüldü ve ilk atıf YANLIŞTI
+
+Buraya önce *"beş paralel ajan ile container ölçümü bir arada durmuyor"* yazıldı.
+**Ölçüm bunu çürüttü:** ajanların bütün `dotnet` ve `node` süreçleri toplam
+**0.84 GiB**. Docker öldüğünde beş ajan koşuyordu ve korelasyon nedensellik
+sayıldı — bu dosyanın kataloglamak için var olduğu hatanın kendisi.
+
+Gerçek sebep bir **ayırma**:
+
+| Tüketici | |
+| --- | --- |
+| Masaüstü tabanı (Kiro 1.95 · Chrome 1.86 · Traycer 1.75 · Claude 0.66 · wired 2.94 …) | **~11 GiB** |
+| Docker Desktop VM'e **ayrılan** (`MemoryMiB: 8192`, Docker'ın varsayılanı = RAM/2) | **8 GiB** |
+| Toplam talep / makine | **19 GiB / 16 GiB** |
+
+Yani VM **ajan sayısından bağımsız olarak** sığmıyordu. Ayar 4096'ya çekildi
+(`~/Library/Group Containers/group.com.docker/settings-store.json`, yedeği
+`.bak-bizigo`) ve yığın sekiz servisle kalktı.
+
+**Kapının görmediği şey de bu ayrımla netleşiyor:** RAM'e *taahhüt edilmiş ama
+henüz dokunulmamış* bir ayırma hiçbir sayaçta görünmüyor. `memory_pressure`
+sayfa durumunu okuyor; 8 GiB'lık bir VM ayarı bir sayfa durumu değil, bir
+**gelecek talep**. Kapı ona bakamaz, ama bakabileceği bir şey var ve yazılı
+olması yeterli: **Docker'ın ayrılmış belleği + masaüstü tabanı, RAM'i aşıyorsa
+container işi yapılmaz.**
