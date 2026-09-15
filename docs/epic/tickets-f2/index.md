@@ -82,6 +82,18 @@ flowchart TB
 | T27 | [F2 doğrulaması](f2-dogrulamasi/index.md) | Uçtan uca akışlar, kapsam ayrışması, bekçiler | T16, T20, T23, T26 |
 | T28 | [UI/UX ve estetik denetimi](ui-ux-denetimi/index.md) | Tutarlılık, dört durum, çok dilli gövde, erişilebilirlik, kanıt | T16, T20, T23, T25 |
 
+### F2 sonrası — dağıtım ve sağlık
+
+F2'nin **bitti tanımına madde eklemeyen**, ama F2'nin ürettiği yüzeyi
+dağıtılabilir ve gözlenebilir kılan iki ticket. Ayrı bir alt başlıkta
+duruyorlar çünkü yukarıdaki tablo fazın **ürününü** anlatıyor; bu ikisi o ürünün
+**kalkışını** anlatıyor. (Kalıp F3'ün "Kapı ticket'ları" alt başlığının aynısı.)
+
+| # | Ticket | Özü | Bağımlılık |
+| --- | --- | --- | --- |
+| T49 | [Dashboard container'ı](ui-container/index.md) | Ekran compose'a giriyor; Keycloak'ın **iki adresi** ayrılıyor (ön kanal ↔ arka kanal), `e2e:container` | T13, T27 |
+| T62 | [BFF hazırlık ucu](bff-saglik-ucu/index.md) | `--wait` yeşil dönerken oturum deposu kırık olabiliyordu; üç kör bağımlılık yoklanıyor | T49, B7 |
+
 ## Bitti tanımı
 
 F2, şu cümleler doğru olduğunda biter:

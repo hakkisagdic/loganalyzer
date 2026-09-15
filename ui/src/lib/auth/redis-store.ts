@@ -1,4 +1,9 @@
-import { SessionStoreUnavailableError, type SessionRecord, type SessionStore } from "./store";
+import {
+  SessionStoreUnavailableError,
+  type SessionRecord,
+  type SessionStore,
+  type SessionStoreReadiness,
+} from "./store";
 
 /**
  * Paylaşılan oturum deposu (B7).
@@ -165,6 +170,29 @@ export class RedisSessionStore implements SessionStore {
    */
   size(): number {
     return -1;
+  }
+
+  /**
+   * Sağlık sondasının sorusu (T62): depoya erişilebiliyor mu.
+   *
+   * <p>
+   * <b><c>#ready()</c> yeniden kullanılıyor</b>, ikinci bir hazırlık mantığı
+   * yazılmıyor: soğuk açılış beklemesi ile kesinti ayrımı (bu sınıfın en
+   * pahalı ayrımı) sağlık ucunda da aynen geçerli. İkinci bir kopya, açılışın
+   * ilk saniyelerinde sağlık ucunun <b>kırmızı</b> yanıp servisin hiç
+   * <c>healthy</c> olmaması demek olurdu — yani <c>--wait</c> zaman aşımı, ve
+   * sebebi "Redis yok" gibi okunurdu.
+   * </p>
+   *
+   * <p>
+   * Komut <b>çalıştırmıyor</b>: bir <c>PING</c> yazmak dar arayüze beşinci bir
+   * metot eklemek olurdu ve o metodun cevabı bağlantı durumundan fazlasını
+   * söylemiyor. Ölçülen şey bağlantı; deponun kendi okuma/yazma yolu zaten
+   * <c>#guard</c> üzerinden aynı bayrağa bakıyor.
+   * </p>
+   */
+  async probe(): Promise<SessionStoreReadiness> {
+    return { kind: "redis", reachable: await this.#ready() };
   }
 
   /** Her çağrıyı aynı hata sözleşmesine bağlıyor. */
