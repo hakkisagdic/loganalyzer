@@ -615,7 +615,105 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
     /// </para>
     /// </summary>
     private async Task<(ReplayEngine Engine, IReadOnlyList<RawRecord> Records, string ParserVersion)>
-        BuildReplayAsync()
+        BuildReplayAsync() => (await BuildReplayCoreAsync(loseObjects: false)) switch
+        {
+            var r => (r.Engine, r.Records, r.ParserVersion),
+        };
+
+    /// <summary>
+    /// <b>F1 kabul kriteri 5'in bekçisi</b> — manifest'te olan ama arşivde
+    /// olmayan nesne replay'i <b>durduruyor</b> (M19).
+    ///
+    /// <para>
+    /// Kriter bekçisiz kalmıştı ve M19'da tarandı: testlerdeki iki
+    /// <c>MissingObjects</c> iddiası (<c>RawArchiveTests</c>) <b>scrub</b>'ı
+    /// ölçüyor — nesne kaybının <i>tespitini</i>. Bu testin öznesi farklı:
+    /// <b>replay'in durması</b>. İkisi ayrı ayrı kaybedilebilir — scrub kaybı
+    /// görürken replay onu atlayabilir, ve o hâlde replay <i>"7 gün yerine 5
+    /// gün"</i> döner, üstelik başarıyla.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Kriterin metni de yanlıştı ve ölçüldü:</b> <c>ReplayEngine</c> istisna
+    /// <b>fırlatmıyor</b>; <c>LogError</c> basıp <c>Applied = false</c> ve
+    /// <c>MissingObjects</c> dolu bir rapor <b>döndürüyor</b>. Yani
+    /// <i>"sessizce atlanmıyor"</i> doğru, <i>"hata olur"</i> değil — ve dönen
+    /// rapor daha iyi bir tasarım, çünkü çağıran eksik listesini görüyor.
+    /// </para>
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task Eksik_nesne_replayi_durduruyor()
+    {
+        var (engine, _, pinnedVersion, lossy) = await BuildReplayCoreAsync(loseObjects: true);
+
+        // Nesneler manifest'e YAZILDIKTAN SONRA kayboluyor: kriterin anlattığı
+        // hâl bu — manifest satırı var, nesne yok. Yükleme gerçek depoya gitti.
+        Assert.NotNull(lossy);
+        lossy!.Hide();
+
+        var report = await engine.DryRunAsync(
+            new ReplayPlan
+            {
+                From = Day.AddDays(-1),
+                To = Day.AddDays(2),
+                ParserId = ParserId,
+                ParserVersion = pinnedVersion,
+            },
+            Token);
+
+        Assert.False(
+            report.Applied,
+            "Eksik nesneye rağmen replay uygulandı — kriterin kapatmak istediği "
+            + "sessiz hâlin kendisi: replay eksik veriyle 'başarılı' dönüyor.");
+
+        Assert.NotEmpty(report.MissingObjects);
+    }
+
+    /// <summary>
+    /// <b>Karşı-kanıt: <c>ContinueOnMissingObjects</c> açıkken devam ediyor.</b>
+    ///
+    /// <para>
+    /// Bu test olmadan <see cref="Eksik_nesne_replayi_durduruyor"/>, <b>her</b>
+    /// replay'i durduran bir arızayı da geçirirdi — yani bekçi bayrağın işe
+    /// yaradığını değil, yalnızca eksik nesnenin görüldüğünü söylerdi.
+    /// </para>
+    /// </summary>
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task Bayrak_acikken_eksik_nesneye_ragmen_devam_ediyor()
+    {
+        var (engine, _, pinnedVersion, lossy) = await BuildReplayCoreAsync(loseObjects: true);
+
+        lossy!.Hide();
+
+        var report = await engine.DryRunAsync(
+            new ReplayPlan
+            {
+                From = Day.AddDays(-1),
+                To = Day.AddDays(2),
+                ParserId = ParserId,
+                ParserVersion = pinnedVersion,
+                ContinueOnMissingObjects = true,
+            },
+            Token);
+
+        Assert.NotEmpty(report.MissingObjects);
+
+        Assert.True(
+            report.Applied,
+            "`ContinueOnMissingObjects` açıkken replay yine durdu: bayrak bir şey "
+            + "yapmıyor demek, ve o hâlde operatörün elinde devam etme yolu yok.");
+    }
+
+    /// <summary>
+    /// Aynı fixture, ama arşiv deposu <see cref="FakeObjectStoreOverS3"/> ile
+    /// sarılabiliyor — F1 kabul kriteri 5'in bekçisi (M19) kayıp nesne hâline
+    /// ihtiyaç duyuyor ve <b>ikinci bir fixture yazmak</b> replay kurulumunun
+    /// ikinci kopyası olurdu (§9).
+    /// </summary>
+    private async Task<(ReplayEngine Engine, IReadOnlyList<RawRecord> Records, string ParserVersion, FakeObjectStoreOverS3? Lossy)>
+        BuildReplayCoreAsync(bool loseObjects)
     {
         var factory = await DevStackSetup.ControlPlaneAsync(stack, Token);
 
@@ -632,8 +730,15 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
         }
 
         var options = DevStackSetup.RawOptions(stack);
-        var store = new S3RawObjectStore(Options.Create(options));
-        await store.EnsureBucketAsync(Token);
+        var s3 = new S3RawObjectStore(Options.Create(options));
+        await s3.EnsureBucketAsync(Token);
+
+        // Yükleme GERÇEK depoya gidiyor; kayıp yalnızca OKUMA tarafında taklit
+        // ediliyor. Tersi (yüklemeyi de engellemek) manifest satırını hiç
+        // oluşturmaz ve o zaman ölçülen şey "eksik nesne" değil "hiç iş yok"
+        // olurdu.
+        FakeObjectStoreOverS3? lossy = loseObjects ? new FakeObjectStoreOverS3(s3) : null;
+        IRawObjectStore store = lossy ?? (IRawObjectStore)s3;
 
         var records = new[]
         {
@@ -652,7 +757,7 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
 
         var uploader = new RawArchiveUploader(
             segments,
-            store,
+            s3,
             factory,
             directory,
             new NullRawRefSink(),
@@ -687,7 +792,7 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
 
         var pinned = Assert.Contains(ParserId, catalog.Current.ByParserId);
 
-        return (engine, records, pinned.Version);
+        return (engine, records, pinned.Version, lossy);
     }
 
     /// <summary>
