@@ -448,6 +448,14 @@ public sealed class RcaAdmission(
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
+        // M07 · YAYIN NOKTASI 4/4 — koşum BAŞLADI (`Running`).
+        //
+        // Bu nokta T54 bekleniyordu: aynı turda bu metodun imzası değişiyordu
+        // (`RcaModelBoundaryStamp`) ve derleyicinin zorladığı değişiklik önce
+        // gelmeliydi (§5). T54 main'e girdi ve satır bağlandı; dört geçişin
+        // dördü de artık duyuruluyor.
+        await DuyurAsync(run, cancellationToken).ConfigureAwait(false);
+
         return true;
     }
 
@@ -512,32 +520,27 @@ public sealed class RcaAdmission(
     /// bağlardı.
     /// </para>
     ///
-    /// <h3>⚠ DÖRT GEÇİŞTEN ÜÇÜ BAĞLI — <c>TryStartAsync</c> BAĞLI DEĞİL</h3>
+    /// <h3>Dört geçişin dördü de bağlı</h3>
     ///
-    /// <para>
-    /// Koşumun yaşam döngüsü dört geçiş yapıyor ve bugün <b>üçü</b> duyuruluyor:
-    /// </para>
     /// <list type="table">
-    /// <item><term><c>AdmitAsync</c></term><description>→ <c>Queued</c> · BAĞLI</description></item>
-    /// <item><term><c>TryStartAsync</c></term><description>→ <c>Running</c> · <b>BAĞLI DEĞİL</b></description></item>
-    /// <item><term><c>AttachBundleAsync</c></term><description>→ terminal · BAĞLI</description></item>
-    /// <item><term><c>StopAsync</c></term><description>→ terminal · BAĞLI</description></item>
+    /// <item><term><c>AdmitAsync</c></term><description>→ <c>Queued</c></description></item>
+    /// <item><term><c>TryStartAsync</c></term><description>→ <c>Running</c></description></item>
+    /// <item><term><c>AttachBundleAsync</c></term><description>→ terminal</description></item>
+    /// <item><term><c>StopAsync</c></term><description>→ terminal</description></item>
     /// </list>
     ///
     /// <para>
-    /// Sebebi bir unutma değil bir <b>sıra kararı</b>: T54 aynı turda
-    /// <c>TryStartAsync</c>'in <b>imzasını</b> değiştiriyor
-    /// (<c>RcaModelBoundaryStamp</c> parametresi eklenerek) ve derleyicinin
-    /// zorladığı değişiklik her zaman önce gelmeli — tersi sırada bu satır
-    /// metinsel olarak temiz merge olur ve <b>derlenmeyen</b> bir ağaç kalır
-    /// (§5).
+    /// <c>TryStartAsync</c> bir tur <b>bekletildi</b> ve sebebi bir unutma değil
+    /// bir sıra kararıydı: T54 aynı turda o metodun imzasını değiştiriyordu
+    /// (<c>RcaModelBoundaryStamp</c>) ve derleyicinin zorladığı değişiklik önce
+    /// gelmeli — tersi sırada eklenen çağrı metinsel olarak temiz merge olur ve
+    /// <b>derlenmeyen</b> bir ağaç kalırdı (§5). T54 indi, satır bağlandı.
     /// </para>
     ///
     /// <para>
-    /// <b>Bunun ölçülebilir sonucu:</b> bir abone koşumun <i>başladığını</i>
-    /// öğrenmiyor — yalnızca kuyruğa girdiğini ve bittiğini. Yani abonelik
-    /// çalışıyor ama <b>eksik</b>, ve eksik olduğu burada yazılı: bu paragraf
-    /// silinmeden abonelik <i>"tamam"</i> sayılmamalı.
+    /// Bir koşumun tam yaşam döngüsü artık <b>üç</b> bildirim üretiyor
+    /// (kabul → başlangıç → terminal); sayı
+    /// <c>McpResourceSubscriptionTests.Kosum_basina_uc_bildirim</c>'de kilitli.
     /// </para>
     /// </summary>
     private async Task DuyurAsync(RcaRunEntity run, CancellationToken cancellationToken)

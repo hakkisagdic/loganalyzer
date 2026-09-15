@@ -52,6 +52,15 @@ public sealed class McpResourceBudgetTests
     /// </para>
     ///
     /// <para>
+    /// <b>ETİKETLEME DE SIFIR EKLEDİ — ölçüldü.</b> M20 her bildirime
+    /// <c>_meta/io.modelcontextprotocol/subscriptionId</c> koydu ve bu sayı
+    /// <b>594'te kaldı</b>. Sebebi yapısal: <c>_meta</c> <b>bildirimin</b>
+    /// parametresinde, ilanın değil — kaynak listesi onu hiç taşımıyor. Yani
+    /// etiketleme bağlam bütçesinde değil <b>akış</b> bütçesinde, ve orada da
+    /// abonelik kimliği bir dizge (bugün tek hane).
+    /// </para>
+    ///
+    /// <para>
     /// <b>İlk ölçüm 500 çıktı ve YANLIŞTI</b> — <c>JsonSerializerDefaults.Web</c>
     /// ile ölçülmüştü ve o seçenekler <c>null</c> alanları da yazıyor. Tel
     /// üzerinde giden şey SDK'nın <c>McpJsonUtilities.DefaultOptions</c>'ı;

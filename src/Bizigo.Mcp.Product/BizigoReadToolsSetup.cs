@@ -108,6 +108,10 @@ public static class BizigoReadToolsSetup
         // geçiyor ve HTTP tarafı da onu çağırıyor. Yeteneğin ilan edilip
         // edilmemesi kaydın varlığına bağlı (`McpStdioHost`), yani kaydı
         // atlamanın bedeli "abonelik yok" — sessiz bir yalan değil.
+        // Abonelik defteri de SINGLETON: açık abonelikleri tutuyor ve scoped
+        // olsaydı her istek kendi boş defterini görürdü — hiçbir bildirim
+        // eşleşmezdi ve hiçbir şey kırmızı yanmazdı.
+        services.TryAddSingleton<McpSubscriptionRegistry>();
         services.TryAddSingleton<McpResourceUpdates>();
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IRcaRunChangeListener, Resources.McpRcaRunChangeListener>());
