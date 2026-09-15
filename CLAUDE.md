@@ -342,6 +342,26 @@ Aynı turun ironisi kuralın kendisini anlatıyor: kapanmayan kriterin kusuru
 *"tolerans seçilmemiş"*, bekçinin kusuru *"seçilmemiş varsayılana yapışık"* —
 tek kök, iki kılık.
 
+### Bir davranışın ölçülmesi, o davranışı BİLDİREN sayacın ölçülmesi değil
+
+Ölçüldü: WAL dolduğunda ack'in durması **çiviliydi** — `WalFullException` →
+`RejectFull()` → `IngestResult(Full, …)` → 503, ve sonucun `Full` olduğu ile
+`Retry-After` ipucunun yapılandırmadan geldiği testliydi. **Sayacın kendisine
+hiçbir test bakmıyordu.**
+
+Bedeli asimetrik: `RejectFull()` çağrısı düşse **davranış aynı kalıyor** —
+istemci yine 503 alıyor, mevcut testler yeşil kalıyor — ve *"ingest durdu mu"*
+sorusunu sayaçtan okuyan bir ölçüm **0** görüp *"hayır"* diyor. Yani kusur
+davranışta değil **raporlamada**, ve raporlamayı okuyan taraf başka bir ölçüm.
+
+Ayrım şu: bir sayaç bir bekçinin **öznesi** değil, başka bir ölçümün **girdisi**.
+Girdisi olan şeyin doğru olduğunu hiçbir davranış testi göstermiyor.
+
+Refleks: bir ölçüm bir sayaç okuyacaksa, o sayacın **arttığı** ayrı bir bekçiyle
+tutulacak — ve **karşı yön de**: hem reddeden hem kabul sayan bir hata, okuyana
+*"devam ediyor"* dedirtir. İki iddia, tek testte: `RejectedFull = 1` **ve**
+`AcceptedBatches = 0`.
+
 ### Doğrulama çıktısını `tail`'den geçirmek, aradığın arızayı yutuyor
 
 İki kez oldu ve ikisinde de kaybedilen şey **arızanın kimliği**:

@@ -9,7 +9,7 @@ relationships:
   - target: "[[skills/paralel-ajan-koordinasyonu]]"
     type: uses
 sources: [README.md, CLAUDE.md, docs/epic/f2-kapanis/index.md]
-source_digest: "sha256-12/v1 CLAUDE.md=ed0e0490c47f README.md=662f19b4c25f docs/epic/f2-kapanis/index.md=c701d88f78fd"
+source_digest: "sha256-12/v1 CLAUDE.md=d1f9862fea36 README.md=662f19b4c25f docs/epic/f2-kapanis/index.md=c701d88f78fd"
 summary: Plugin tabanlı, çok formatlı ve çok dilli log analiz platformu. F1 (boru hattı) ve F2 (görünürlük) kapandı; F3 ölçüm ağırlıklı faz.
 provenance:
   extracted: 0.9
