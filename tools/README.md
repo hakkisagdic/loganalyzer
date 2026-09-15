@@ -59,3 +59,42 @@ Geri almanın `git checkout` ile yapılmaması bilinçli: commit edilmemiş işi
 `copy2` yerine `copy` + `touch` da bilinçli — `copy2` zaman damgasını da
 kopyalıyor ve MSBuild değişikliği görmüyor, yani "geri alındı" denen ağaç
 derlemeye hiç ulaşmıyor.
+
+## Ölçülen üçüncü sessizlik: bellek kapısı, VM'i öldüren baskıyı görmüyor
+
+Beş ajan paralel `dotnet build`/`test` koşarken **Docker Desktop'ın VM'i on dakika
+içinde iki kez öldü**, ve `check` her iki seferden önce de **yeşildi**. Ölçülen hâl:
+
+| Kapının okuduğu | Makinenin gerçek hâli |
+| --- | --- |
+| `memory_pressure`: **%40 boş** (taban %15 → geçer) | **0.06 GiB** boş / 16 GiB |
+| `swapin_rate`: düşük | takas **17.4 / 18.4 GB** dolu, sıkıştırılmış **7.2 GiB** |
+
+İki okumanın ikisi de yanlış değil, ikisi de **başka bir soruya** cevap veriyor:
+
+- `memory_pressure`'ın *free percentage*'ı **geri kazanılabilir** sayfaları boş
+  sayıyor. Çekirdek *"istenirse sayfa bulurum"* diyor; sorulan soru ise *"bir
+  VM'e ayıracak birkaç GiB var mı"*.
+- `swapin_rate` **sürmekte olan** takası yakalıyor. Her şeyi çoktan diske yazmış
+  ve orada duran bir makine **düşük anlık hız** gösteriyor — thrash bitmiş,
+  sonucu duruyor.
+
+Docker Desktop'ın kendi logu ölümü onaylıyor:
+`unable to accept vfkit connection: invalid magic length: 0/4` — VM süreci
+gitmiş, arka uç ona bağlanmaya çalışıyor.
+
+**Eşik BİLEREK değiştirilmedi.** Betiğin kendi yorumu takas yüzdesini niye
+eşiklemediğini yazıyor ve gerekçesi duruyor: *"used" bir yüksek-su işareti,
+saatler önce zorlanmış bir makine boştayken de %93 okuyor, ve hep kırmızı yanan
+bir kapı herkesin görmezden gelmeyi öğrendiği kapıdır.* Buraya bir sayı yazmak,
+**doğrulanmamış bir kapı** eklemek olurdu — bu deponun bütün gün kataloglayıp
+durduğu hatanın kendisi.
+
+**Açık kalem — kendi ölçümünü istiyor:** hangi sayı bu hâli yakalar ve boş bir
+makinede yanlış kırmızı **üretmez**? Aday eksen sıkıştırılmış sayfaların RAM'e
+oranı (burada 7.2/16 ≈ %45), ama bir eşik önerilmeden önce boş ve yüklü
+makinelerde ölçülmesi gerekiyor.
+
+**Bugünkü operasyonel sonuç, kapıdan bağımsız ve kesin:** 16 GiB'lık bu makinede
+**beş paralel ajan ile container ölçümü bir arada durmuyor.** Container isteyen
+koşum, ajanlar tur arasındayken yapılıyor.

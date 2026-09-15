@@ -351,4 +351,39 @@ public sealed class McpStdioIdentityTests
 
         Assert.Null(services.GetService(typeof(IMcpIdentityRefusal)));
     }
+
+    /// <summary>
+    /// <b>Süre toleransı AÇIK ve otuz saniye — devralınmıyor.</b>
+    ///
+    /// <para>
+    /// Canlı Keycloak'la ölçüldü: <c>ClockSkew</c> ayarlanmadığında varsayılanı
+    /// <b>beş dakika</b> ve <c>exp</c>'ten bir saniye sonra basılmış bir saat
+    /// hâlâ belirteci <b>kabul ediyordu</b>. Yani <c>ValidateLifetime = true</c>
+    /// yazmak, süre sonunun görüldüğünü göstermiyor — bugünün kuralının bir
+    /// örneği daha: <i>bir kapının varlığı, neye baktığını söylemiyor.</i>
+    /// </para>
+    ///
+    /// <para>
+    /// Bekçi değeri <b>ismiyle</b> tutuyor, çünkü kusur bir yanlış sayı değil
+    /// <b>seçilmemiş bir sayıydı</b>: kütüphane sürümü varsayılanı değiştirse
+    /// bile bu yüzeyin davranışı değişmemeli.
+    /// </para>
+    ///
+    /// <para>
+    /// Sıfır <b>değil</b>, ve sebebi kodda yazılı: <c>ClockSkew</c> tek bir düğme
+    /// ve <c>nbf</c>'i de sıkıyor. Bu yüzeyde yenileme olmadığı için <c>nbf</c>
+    /// yönündeki bir red <b>kurtarılamıyor</b> — süreç yeniden başlar ve aynı
+    /// hatayı alır.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Sure_toleransi_acik_ve_otuz_saniye()
+    {
+        var p = McpStdioIdentity.ValidationParameters(
+            new McpStdioIdentitySettings("t", "http://localhost:8180/realms/bizigo", "http://localhost:5080/mcp", null),
+            signingKeys: null);
+
+        Assert.True(p.ValidateLifetime);
+        Assert.Equal(TimeSpan.FromSeconds(30), p.ClockSkew);
+    }
 }

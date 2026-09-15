@@ -262,6 +262,32 @@ public sealed class McpStdioIdentity : IMcpIdentityRefusal
             ValidateAudience = true,
             ValidAudience = settings.Resource,
             ValidateLifetime = true,
+
+            // AÇIK otuz saniye — devralınan varsayılan DEĞİL, ve sıfır da değil.
+            //
+            // Ölçüldü (canlı Keycloak, `Suresi_dolan_belirtec_ayri_sebep_donduruyor`):
+            // `ClockSkew` ayarlanmadığında varsayılanı **beş dakika** ve belirteç
+            // `exp`'ten beş dakika sonra bile kabul ediliyordu. Kusur toleransın
+            // büyüklüğü değil, **kimsenin seçmemiş olması**: `ValidateLifetime = true`
+            // yazmak süre sonunun görüldüğünü göstermiyor.
+            //
+            // İlk karar sıfırdı ve **geri alındı**: `ClockSkew` tek bir düğme, `exp`'i
+            // sıktığı gibi `nbf`'i de sıkıyor. Sıfır tolerans, saati bu makineden ileri
+            // olan bir IdP'nin bastığı belirteci *"henüz geçerli değil"* diye
+            // reddettirir — ve bu yüzeyde **yenileme yok** (M13), yani operatör süreci
+            // yeniden başlatır ve **aynı hatayı** alır. `exp` tarafında kurtarma yolu
+            // var (yeni belirteç), `nbf` tarafında yok. Risk stdio'da en yüksek:
+            // doğrulayan taraf operatörün masaüstü ve masaüstü saatleri sunuculardan
+            // daha çok kayıyor. Keycloak'ın `nbf` basıp basmadığı ölçülmedi; karar
+            // buna dayanmıyor, çünkü belgelenen geçiş hedefi Entra ID **basıyor**.
+            //
+            // Otuz saniyenin bedeli yazılı: belgede duran *"süresi doldu → araçlar
+            // `unauthenticated` döner"* cümlesi otuz saniye boyunca yanlış. Beş dakika
+            // yerine otuz saniye olmasının sebebi süre değil, sınırın **seçilmiş**
+            // olması. HTTP yüzeyi de otuz saniyede (`AuthenticationSetup`), ama oraya
+            // kopyalanarak değil kendi ölçümünden varıldı ve gerekçesi ayrı.
+            ClockSkew = TimeSpan.FromSeconds(30),
+
             ValidateIssuerSigningKey = true,
             IssuerSigningKeys = signingKeys,
             RoleClaimType = BizigoClaims.Roles,

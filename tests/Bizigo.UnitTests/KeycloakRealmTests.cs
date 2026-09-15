@@ -225,6 +225,62 @@ public sealed class KeycloakRealmTests
     }
 
     /// <summary>
+    /// <b>MCP kitlesi realm'de ne basılıyorsa belgede de o yazıyor.</b>
+    ///
+    /// <para>
+    /// Ölçülerek bulundu ve iki taraf <b>ayrışmıştı</b>: realm
+    /// <c>http://localhost:5080/mcp</c> basıyordu, README ise beklenen
+    /// <c>aud</c> olarak <c>bizigo-mcp</c> yazıyordu. İkisi de kendi içinde
+    /// tutarlı, ve <b>hiçbir şey ikisini karşılaştırmıyordu</b>.
+    /// </para>
+    ///
+    /// <para>
+    /// Bedeli, bu ürünün en pahalı arıza biçimi: operatör belgedeki değeri
+    /// <c>BIZIGO_MCP_RESOURCE</c>'a yazıyor, süreç <b>kalkıyor</b> — çünkü
+    /// değişken dolu — ve her araç çağrısı <c>unauthenticated</c> dönüyor.
+    /// Belirti bir kimlik hatası gibi duruyor; sebep iki dosyada duran iki
+    /// dizge. Aynı olguyu iki yerde temsil etmenin sonucu (§9).
+    /// </para>
+    ///
+    /// <para>
+    /// Bekçi realm'i <b>kaynak</b> sayıyor: RFC 8707 kaynak göstergelerini URI
+    /// olarak tanımlıyor, yani ayrışmada doğru olan taraf realm'di. Test
+    /// belgeyi realm'e karşı okuyor — ters yön, belgeyi kaynak yapardı.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Mcp_kitlesi_realmde_ve_belgede_ayni()
+    {
+        var basilan = Root.GetProperty("clientScopes")
+            .EnumerateArray()
+            .Single(s => s.GetProperty("name").GetString() == "bizigo-mcp")
+            .GetProperty("protocolMappers")
+            .EnumerateArray()
+            .Single(m => m.GetProperty("protocolMapper").GetString() == "oidc-audience-mapper")
+            .GetProperty("config")
+            .GetProperty("included.custom.audience")
+            .GetString();
+
+        Assert.False(
+            string.IsNullOrWhiteSpace(basilan),
+            "bizigo-mcp scope'u bir kitle basmıyor — MCP yüzeyi için belirteç üretilemez.");
+
+        // Belgede yazan hâli. Tek satır, tek dizge — README bu değeri
+        // operatöre veriyor ve operatörün başka bir kaynağı yok.
+        var readme = File.ReadAllLines(Path.Combine(RepositoryLayout.Root, "README.md"))
+            .Select(l => l.Trim())
+            .SingleOrDefault(l => l.StartsWith("export BIZIGO_MCP_RESOURCE=", StringComparison.Ordinal));
+
+        Assert.NotNull(readme);
+
+        var belgedeki = readme!["export BIZIGO_MCP_RESOURCE=".Length..]
+            .Split('#')[0]
+            .Trim();
+
+        Assert.Equal(basilan, belgedeki);
+    }
+
+    /// <summary>
     /// <c>full.path=true</c> kapatılırsa iç içe gruplarda ad çakışması olur:
     /// <c>network/core</c> ile <c>platform/core</c> ayırt edilemez ve kapsam
     /// kapısı yanlış grubu eşler.
