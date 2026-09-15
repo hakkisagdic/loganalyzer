@@ -1,7 +1,7 @@
 ---
 title: "M03 — bizigo-sim araçları"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # M03 — Simülatörü çalışırken yönetmek
@@ -195,3 +195,33 @@ sayısı da bu yüzden düşük — yalnız simülatör kolu neredeyse o kadar.
   `AddBizigoSimulatorTools`'u **MCP yolundan** çağırıyor; bağ tesadüften çıktı.
   ⚠ **Geçici**: M05'in açık derleme listesi geldiğinde doğru cevap bir çağrı yan
   etkisi değil, `SimulatorMcpSetup.ToolAssembly`'nin o listeye verilmesi olacak.
+
+## 8 · Kapanış — koordinatör
+
+`status: 1 → 2`. Dört kriterin dördü de **ölçülüyor** ve bekçileri adıyla yazılı
+(§7). Kapanmasını engelleyen bir kalem yoktu; engelleyen şey **yazılmamışlıktı** —
+iş bitmişti, belge *"açık"* diyordu. Bugün bu üçüncü kez oldu.
+
+Bağımsız doğruladığım tek iddia şema zarfıydı, çünkü *"2977 belirteç 700'lük
+tavanı nasıl geçiyor"* sorusunun cevabı bir muafiyet olsaydı gerekçesiz bir kapı
+demekti. Muafiyet **yok**:
+
+- `PerToolTokenCeiling = 700` yüzey ayrımı **yapmadan** her araca uygulanıyor
+  (`McpSchemaBudgetTests` — araç başına kontrol tek ve süzgeçsiz), ve simülatörün
+  en pahalı aracı `sim.webhook.emit` **537**, yani tavanın altında.
+- `SimulatorToolListTokenCeiling = 3600` bir muafiyet değil **ayrı bir soru**:
+  yüzeyin `tools/list` toplamı. Diğer yüzeylerde o toplam `araç sayısı × 700`
+  ile **türetiliyor**, simülatörde **ölçülmüş**.
+
+Ayrımın taşıyıcı yarısı ikinci cümlede: türetilen tavan araç eklendikçe
+kendiliğinden büyüyor, **ölçülmüş tavan büyümeyi bir karara zorluyor**. İki yüzeyin
+tavanı ortak olsaydı hiçbir istemcinin ödemediği bir toplam ölçülürdü — bir istemci
+tek yüzeye bağlanıyor.
+
+### Kapanışa dahil OLMAYAN kalem
+
+`sim.*` araçları **gerçek bir MCP istemcisiyle** hiç koşmadı: birim paketi süreç
+içi istemci kullanıyor, gerçek stdio boruları ve gerçek el sıkışma ölçülmedi. Bu
+M03'ün bir kriteri **değil** — MCP kolunun tamamı için geçerli, iki yüzeyde de
+açık, ve bu yüzden M03'ü açık tutmak onu görünmez kılardı. Kolun kapanışında
+adıyla duracak.

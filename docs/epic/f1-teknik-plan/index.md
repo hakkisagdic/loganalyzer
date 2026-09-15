@@ -23,7 +23,9 @@ F1 şu cümle doğru olduğunda biter:
 | Parse doğruluğu | 4 vendor için altın örnek dosyalarının %100'ü testte geçer |
 | Replay | 7 günlük veri, düzeltilmiş parser sürümüyle yeniden işlenir; eski satır kalmaz |
 | Kapsam | Kapsam dışı sorgu **ürün yüzeylerinin hiçbirinden** (REST, MCP, arayüz) veri döndürmez. Replay okuma ve CLI **kapsam dışı**, gerekçeleri [F1 kapsam kriteri düzeltmesi](../f1-kapsam-kriteri-duzeltmesi/index.md)'nde |
-| Dayanıklılık | Süreç `kill -9` ile öldürülür; ack'lenen hiçbir olay kaybolmaz. RustFS durdurulur; ingest devam eder |
+| Dayanıklılık — **sıralama** | Süreç `kill -9` ile öldürülür; ack'lenen hiçbir olay kaybolmaz. **ÖLÇÜLDÜ, geçiyor** (T63) |
+| Dayanıklılık — **fsync** | Baytların gerçekten diskte olması. **ÖLÇÜLMEDİ** ve `kill -9` ile ölçülemez — gerekçe aşağıda |
+| Dayanıklılık — **depo kesintisi** | RustFS durdurulur; ingest devam eder. **ÖLÇÜLMEDİ**, ve *"devam eder"*in bir son tarihi var (aşağıda) |
 | Arşiv bütünlüğü | Manifest'ten silinen nesne replay'de **sessizce atlanmaz**, hata olur |
 | Çok dillilik | Türkçe/Arapça/Çince gövdeli log doğru kodlamayla saklanır ve aranır |
 
@@ -116,6 +118,48 @@ Sonuçları:
 | Syslog başlık ayrıştırması bize düşer | ✅ **İstediğimiz bu** — ayrıştırmanın tamamı tek yerde (YAML motoru), replay'de aynı kod koşar |
 | `protocol: none` "experimental" etiketli | ⚠️ Risk. Azaltma: collector sürümü sabitlenir; kaybolursa `protocol: rfc3164` + OTTL ile gövdeyi kopyalamak yedek plan |
 | RFC5424 structured-data | Kendi grok/kv adımlarımızla çözülür; hazır pattern var |
+
+### Dayanıklılık kriterinin ÜÇE ayrılmasının sebebi
+
+Kriter tek cümleydi ve **iki arıza kipini** birbirine karıştırıyordu. T63'te
+ölçüldü:
+
+| Arıza kipi | Ne koruyor | `kill -9` ölçer mi |
+| --- | --- | --- |
+| **Süreç ölümü** | Uygulamanın ack'ten **önce** yazmış olması — bir *sıralama* iddiası | **Evet** |
+| **Makine ölümü** | `fsync` — baytların gerçekten diskte olması | **Hayır** |
+
+Ölçülen hâli: gerçek alt süreç, ack'ten hemen sonra süreç **grubuna** gerçek
+`SIGKILL`. `FlushToDisk = true` → 8 ack / 8 diskte / **0 kayıp**. `FlushToDisk =
+false` → **aynı sonuç**.
+
+**Yani kriter fsync olmadan da karşılanıyor**, ve sebebi ölçümün zayıflığı değil:
+süreci öldürmek yazılan baytları işletim sisteminin **sayfa önbelleğinden
+silmiyor**. `write()` döndüğü anda baytlar çekirdeğin sorumluluğunda ve süreç ölse
+de diske iniyorlar. `fsync`'in koruduğu şey sürecin değil **makinenin** ölümü.
+
+`kill -9` koşumunun değeri duruyor ve küçük değil: **ack'i yazmadan önce veren bir
+hatayı yakalıyor.** Ölçtüğü şey dayanıklılık değil **sıralama**, ve o da gerçek bir
+iddia.
+
+fsync satırı kapsam dışı bırakıldı: VM'i zorla sıfırlayan ya da yazmaları yutan
+(`dm-flakey`) bir koşum bu deponun altyapısına benzemiyor ve CI'da yeri yok. Ama
+**yazılı** — yoksa yeşil yanan bir `kill -9` koşumu fsync'in ölçüldüğü sanısını
+üretir, ki bu tam olarak T63'ü doğuran hata sınıfı.
+
+### *"İngest devam eder"*in son tarihi — kriterde yazılı değildi
+
+WAL sınırlı: `MaxTotalBytes` **8 GiB**, segment **128 MiB**. Depo dururken
+segmentler birikiyor; kapasite dolunca `WalFullException` → `RejectedFull` artıyor
+→ **ack duruyor**. Yani iddia süresiz değil:
+
+```
+dayanma süresi = 8 GiB ÷ ingest hızı
+```
+
+Operatörün gerçek sorusu *"kaç saatlik depo kesintisine dayanır"* ve bugün o sayı
+**hiçbir yerde yazılı değil**. Cevabı bir kapasite ölçümü, bir kabul kriteri değil —
+kapasite epic'ine ait (B01–B05), çünkü paydası ölçülmemiş ingest hızı.
 
 ### 2.3 Dayanıklılık sınırı ve backpressure
 
@@ -656,7 +700,7 @@ tests/
 | Grok derleyici | Property test: rastgele pattern → derlenir veya anlamlı hata; ReDoS corpus'u ile timeout doğrulaması |
 | Kodlama | TR/AR/CJK + windows-1254 + bozuk bayt dizisi fixture'ları; tur-gidiş (round-trip) bayt eşitliği |
 | Kapsam | **Negatif test zorunlu**: her uç için "başka grubun verisi" testi. NetArchTest ile katman kuralı |
-| Dayanıklılık | `kill -9` altında ack'lenmiş olayların kaybolmadığı entegrasyon testi |
+| Dayanıklılık | `kill -9` altında ack'lenmiş olayların kaybolmadığı entegrasyon testi — **sıralamayı** ölçüyor, fsync'i ölçmüyor (T63) |
 | Replay | Kasten bozuk parser → veri yükle → düzelt → replay → beklenen satırlar; eski kuşak kalmadığı doğrulanır |
 | **Ham arşiv bütünlüğü** | Manifest'teki bir nesne kasten silinir → replay **sessizce kısa dönmez**, eksik aralığı bildirir. Scrub sha256 uyuşmazlığını yakalar |
 | **RustFS kesintisi** | RustFS durdurulur → ingest devam eder, WAL büyür, ack'ler sürer; RustFS dönünce birikmiş segmentler yüklenir ve doğrulanır |
