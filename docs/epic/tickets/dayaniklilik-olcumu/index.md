@@ -175,12 +175,40 @@ yükleyici onları boşaltamıyor. Kapasite dolduğunda `WalFullException` atıl
 `RejectedFull` artıyor ve **ack durmaya başlıyor**.
 
 Yani kriterin doğru hâli: **ingest, WAL kapasitesi dolana kadar devam eder.**
-Süre = `8 GiB ÷ (ingest hızı)`. Ölçüm bunu da raporlayacak — çünkü *"devam
-eder"* diye yazılmış bir iddia, operatörün elinde **kaç saatlik** bir kesintiye
-dayanabileceği sorusuna dönüşüyor ve bugün o sayı hiçbir yerde yazılı değil.
+Süre = `8 GiB ÷ (ingest hızı)` — ve **payda ölçülmemiş**, yani bu bir kabul
+kriteri değil bir **kapasite ölçümü** (B01–B05 ailesi).
 
-`RetryAfterSeconds` **5**: yani doluyken istemciye geri çekilme süresi
-söyleniyor, sessiz bir hata değil.
+### 4.3 · Kapasite ayarı testten VERİLEBİLİYOR — 8 GiB doldurmak gerekmiyor
+
+**Ölçüldü (M21), iki yol da açık:**
+
+| Yol | Nasıl | Kanıt |
+| --- | --- | --- |
+| Birim testi | `o.MaxTotalBytes = 32` | `IngestGatewayTests.WAL_dolunca_503_ve_Retry_After_donuyor` bunu **zaten** yapıyor |
+| Gerçek süreç / compose | `Ingest__Wal__MaxTotalBytes=<bayt>` | `IngestServiceCollectionExtensions:34` — `services.Configure<WalOptions>(configuration.GetSection("Ingest:Wal"))` |
+
+**Ve zincirin çoğu ZATEN ölçülüyordu.** `WalFullException` →
+`_stats.RejectFull()` → `IngestResult(Full, 0, …, RetryAfterSeconds)` → 503
+(`IngestGateway.cs:103–115`). Bunun **davranış** tarafı bir birim testiyle
+çivili: sonuç `Full`, ipucu yapılandırmadan geliyor.
+
+> ⚠️ **Ölçülmeyen taraf SAYACIN KENDİSİYDİ** — yani bu ölçümün **girdisi**.
+> Hiçbir test `IngestStats.RejectedFull`'a bakmıyordu. `RejectFull()` çağrısı
+> düşse **davranış aynı kalırdı** (istemci yine 503 alır) ve depo yarısı
+> *"ingest durdu mu"* sorusuna **0** okuyup *"hayır"* derdi.
+>
+> M21'de kapatıldı: `WAL_dolunca_RejectedFull_sayaci_artiyor_ve_kabul_sayaci_artmiyor`
+> ve karşı-kanıtı `Normal_kabulde_AcceptedBatches_ve_AcceptedRecords_artiyor`
+> (+1 batch / +3 kayıt — protokolün `+N / +(N×M)` beklentisinin birim
+> karşılığı). §6 ile kırmızı yanabildiği ölçüldü.
+>
+> Ders: **bir davranışın ölçülmesi, o davranışı bildiren sayacın ölçülmesi
+> değil.**
+
+Yani **depo yarısının koşumu artık daha küçük bir soru soruyor**: WAL'ın dolması
+ve ack'in durması birim düzeyinde çivili; compose koşumunun kanıtlaması gereken
+şey yalnızca **depo erişilemezken ack'in DEVAM ettiği** ve segmentlerin
+biriktiği.
 
 3. **Depo geri kaldırılacak ve arşivin YETİŞTİĞİ ölçülecek.** Bu yarı olmadan
    ölçüm eksik: ingest'in devam etmesi, biriken segmentlerin sonunda arşive
