@@ -18,7 +18,7 @@ sources:
   - docs/epic/tickets/normalizasyon/index.md
   - docs/epic/tickets/api-uclari/index.md
   - docs/epic/t08-motor-geri-beslemesi/index.md
-source_digest: "sha256-12/v1 docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=61628e5aed41 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/t08-motor-geri-beslemesi/index.md=5ce87e36f831 docs/epic/tickets/api-uclari/index.md=4e2624c6db9a docs/epic/tickets/depolama-ve-kapsam-kapisi/index.md=7a1070c1c1da docs/epic/tickets/normalizasyon/index.md=74d881911e1b"
+source_digest: "sha256-12/v1 docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=8467cc3e3e94 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/t08-motor-geri-beslemesi/index.md=5ce87e36f831 docs/epic/tickets/api-uclari/index.md=4e2624c6db9a docs/epic/tickets/depolama-ve-kapsam-kapisi/index.md=7a1070c1c1da docs/epic/tickets/normalizasyon/index.md=74d881911e1b"
 summary: ClickHouse sıralama anahtarı, tam metin indeksi ve OCSF/OTel türetmesi geri alınması pahalı kararlar; üçü de ölçümle bağlandı ve ölçümler F2'nin arayüzünü doğrudan kısıtlıyor.
 provenance:
   extracted: 0.9

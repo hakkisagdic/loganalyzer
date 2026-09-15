@@ -19,7 +19,7 @@ sources:
   - docs/epic/f1-kapanis/index.md
   - docs/epic/tickets/depolama-ve-kapsam-kapisi/index.md
   - docs/epic/tickets/api-uclari/index.md
-source_digest: "sha256-12/v1 docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=61628e5aed41 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/tickets/api-uclari/index.md=4e2624c6db9a docs/epic/tickets/depolama-ve-kapsam-kapisi/index.md=7a1070c1c1da docs/epic/tickets/index.md=40f562ac1264"
+source_digest: "sha256-12/v1 docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=8467cc3e3e94 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/tickets/api-uclari/index.md=4e2624c6db9a docs/epic/tickets/depolama-ve-kapsam-kapisi/index.md=7a1070c1c1da docs/epic/tickets/index.md=40f562ac1264"
 summary: Faz sıralamasının ölçütü "önce kolay olan" değil; geçmiş biriktirmek zorunda olan şey ilk faza girer, biriktirmeyen ertelenir. Ham arşiv ve change_events F1'de bu yüzden var.
 provenance:
   extracted: 0.82

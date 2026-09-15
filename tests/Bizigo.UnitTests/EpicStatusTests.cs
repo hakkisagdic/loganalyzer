@@ -167,6 +167,15 @@ public sealed class EpicStatusTests
         ["yol-haritasi:tickets-f4/senaryo-plugin-cekirdegi"] = "T43 — F4 tablosunda ticket satırı yok.",
         ["yol-haritasi:tickets/ham-arsiv-kurtarma"] = "F1 tablosunda yok.",
 
+        // M19'da açıldı ve tablosu DA yazıldı (`tickets-f1/index.md`), ama satır
+        // bekçiye görünmüyor: kimlik deseni `[TSM]\d+` istiyor, satırın kimliği
+        // `F1-D1`. Numara BİLEREK alınmadı — `T62` koordinatörün konuştuğu bir
+        // ticket ve tablolarda geçmiyor, yani serbest sanılan bir numarayı almak
+        // çakışma üretebilirdi. Kimlik koordinatörden gelince bu satır düşecek
+        // ve `Listeler_bayat_giris_tasimiyor` onu kırmızıyla hatırlatacak.
+        ["yol-haritasi:tickets-f1/dayaniklilik-olcumu"] =
+            "F1-D1 — tablosu var, kimlik deseni tutmuyor; numara koordinatörde.",
+
         // 2 · `tickets-fs` tablosunun Durum sütunu ile ticket dosyaları
         //     çelişiyor. `kalan-is-raporu` §6 bu dördü bir kez düzeltmişti;
         //     mekanizma olmadığı için yeniden ayrıştılar — raporun kendi

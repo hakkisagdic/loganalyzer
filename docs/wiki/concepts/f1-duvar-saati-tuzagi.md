@@ -18,7 +18,7 @@ sources:
   - docs/epic/tickets/parser-motoru/index.md
   - docs/epic/tickets/sidecar/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=3875822e3ccc docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=61628e5aed41 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/t08-motor-geri-beslemesi/index.md=5ce87e36f831 docs/epic/tickets/parser-motoru/index.md=aeac91406893 docs/epic/tickets/sidecar/index.md=b9ae8ba0558e"
+source_digest: "sha256-12/v1 CLAUDE.md=3875822e3ccc docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=8467cc3e3e94 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/t08-motor-geri-beslemesi/index.md=5ce87e36f831 docs/epic/tickets/parser-motoru/index.md=aeac91406893 docs/epic/tickets/sidecar/index.md=b9ae8ba0558e"
 summary: F1'de aynı hata sınıfı beş yerde çıktı ve hepsinde belirti "test kararsız"dı. Zaman aşımı pattern'in karmaşıklığını değil işlemin beklediği süreyi ölçüyor; sonuç yüklü makinede sessizce yanlış veri.
 provenance:
   extracted: 0.9

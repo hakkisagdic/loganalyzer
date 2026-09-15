@@ -20,7 +20,7 @@ sources:
   - docs/epic/tickets/replay/index.md
   - docs/epic/f1-kapanis/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=3875822e3ccc docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=61628e5aed41 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/tickets/ham-arsiv-kurtarma/index.md=791799eef7a1 docs/epic/tickets/ham-arsiv/index.md=f7b6e1d7e3a0 docs/epic/tickets/replay/index.md=a6e378b9614b"
+source_digest: "sha256-12/v1 CLAUDE.md=3875822e3ccc docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=8467cc3e3e94 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/tickets/ham-arsiv-kurtarma/index.md=791799eef7a1 docs/epic/tickets/ham-arsiv/index.md=f7b6e1d7e3a0 docs/epic/tickets/replay/index.md=a6e378b9614b"
 summary: Olgunlaşmamış bir nesne deposu (RustFS 1.0-beta) replay'in tek kaynağıyken tasarımın veri kaybını varsayması gerekiyor. Beş koruma, en değerlisi manifest — ve T40'ın gösterdiği şey belgelenmiş bir korumanın mekanizmasız kalabildiği.
 provenance:
   extracted: 0.87
@@ -56,6 +56,17 @@ oradan T40'ın açtığı boşluğa kadar birleştiriyor.
 | 3 | Segment, yüklendiği **doğrulandıktan** sonra +48 saat daha tutuluyor | Son 48 saatte kaybolan nesne yerelden geri yüklenebilir |
 | 4 | **Manifest Postgres'te** (`object_key, sha256, byte_size, event_count, ts_from, ts_to, verified_at`) | Nesne kaybolursa **ne kaybolduğu bilinir** |
 | 5 | **Periyodik scrub** — örneklenen nesneler indirilip sha256 doğrulanıyor | Sessiz bozulma replay anında değil, olduğu gün görülüyor |
+
+> ⚠️ **2. satır bir TASARIM iddiası; ölçülmüş bir davranış değil.**
+> *"Depo kesintisi ingest'i durdurmuyor"* — bunu ölçen **hiçbir koşum yok**
+> (M19'da arandı). WAL'ın kendi testleri var, ama depo **erişilemezken** ingest'in
+> ack vermeye devam ettiğini gösteren bir test yazılmamış; `RawArchiveTests` nesne
+> **kaybını** taklit ediyor, depo kesintisini değil — ve ikisi aynı şey değil:
+> erişilemez bir ağ servisi zaman aşımı, bağlantı reddi ve yeniden deneme
+> üretiyor, `null` dönen bir arayüz anında cevap veriyor.
+>
+> İddia **yanlış değil**, ölçülmemiş. Envanter ve ölçüm protokolü:
+> [F1'in ölçülmemiş kalemleri](../../epic/f1-olculmemis-kalemler/index.md) · kalem 4.
 
 Dördüncüsü tek başına en değerlisi ve gerekçesi bir cümlede duruyor: manifest
 olmadan *"replay 7 gün yerine 5 gün döndü"* durumu **fark edilmez**; manifest'le
