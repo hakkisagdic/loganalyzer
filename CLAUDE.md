@@ -362,6 +362,42 @@ tutulacak — ve **karşı yön de**: hem reddeden hem kabul sayan bir hata, oku
 *"devam ediyor"* dedirtir. İki iddia, tek testte: `RejectedFull = 1` **ve**
 `AcceptedBatches = 0`.
 
+### `git diff A..B` içindeki silmeler, B'nin sildiğini söylemiyor
+
+Ölçüldü ve bu kez yanılan koordinatördü. `git diff --stat main..dal` çıktısı
+1403 satır **silme** gösterdi ve *"dal ölçüm konağını sildi"* diye okundu.
+Yanlış: dosyalar **main'e** başka bir dalın merge'iyle girmişti ve o dal onlara
+hiç sahip olmamıştı. `A..B` biçimi B'yi A'ya göre gösteriyor, yani *"A'da var
+B'de yok"* hâli **silme gibi** basılıyor — oysa ortada bir silme eylemi yok.
+
+Bedeli somut: konağın silindiği varsayılıp *"bulgu da silindi mi"* diye bir tur
+harcandı, ve gerçek soru (*"iki dalın hangisi bu dosyaya dokundu"*) hiç
+sorulmadı. `git log --oneline A..B -- <yol>` sorar; `diff` sormaz.
+
+Genel hâli bugünün listesinde zaten var ama tersten: **bir aracın çıktısını
+okumak, o aracın neyi ölçtüğünü bilmek değil.** Silme satırı bir olay değil bir
+**karşılaştırma sonucu**, ve karşılaştırmanın yönü sonucun anlamını belirliyor.
+
+### Yanlış katmanı suçlamak, hiç suçlamamaktan kötüdür
+
+Ölçüldü: varış defterinin ilk hâli tel katmanında `drops > 0` görünce kaybı
+**koşulsuz** oraya yazıyordu. Ama collector beklenen kadar kayıt görmüşse o
+satırlar tele **varmış** demektir, ve sayaçtaki düşürmeler aynı sokete gelen
+**başka trafiğe** ait olabilir.
+
+Bedeli, hiç hüküm vermemekten yüksek: *"kayıp telde"* diyen bir rapor aramayı
+**yanlış yerde başlatıyor** — operatör ağa, güvenlik duvarına, MTU'ya bakıyor,
+oysa kayıp bir sonraki katmanda. Sessiz kalan bir ölçüm hiç değilse arama yerini
+seçmiyor.
+
+Refleks: bir katmana kayıp yazmak için o katmanın **kendi** kanıtı gerekiyor, ve
+bir üst katmanın *"ben gördüm"* demesi alt katmanın suçsuzluğunun kanıtıdır.
+Açıklanamayan sayı silinmiyor — **not** olarak raporlanıyor, hükme çevrilmiyor.
+
+Aynı disiplinin ikinci yüzü: bir katman **okunamadığında** hüküm *"kayıp"* değil
+*"o katmanı ölçemedim"* olacak (`LEDGER-LIMITED`). Ölçülmemiş bir katmanı sıfır
+saymak, onu **temiz** ilan etmektir.
+
 ### Doğrulama çıktısını `tail`'den geçirmek, aradığın arızayı yutuyor
 
 İki kez oldu ve ikisinde de kaybedilen şey **arızanın kimliği**:
