@@ -159,7 +159,8 @@ public sealed class RcaAdmission(
     IDbContextFactory<ControlPlaneDbContext> factory,
     IRcaQuotaGate quota,
     ILogger<RcaAdmission> logger,
-    TimeProvider? timeProvider = null)
+    TimeProvider? timeProvider = null,
+    IEnumerable<IRcaRunChangeListener>? changeListeners = null)
 {
     /// <summary>
     /// İzin verilen en büyük derinlik. <c>depth ≥ 2</c> reddediliyor (RCA §5),
@@ -293,6 +294,12 @@ public sealed class RcaAdmission(
                 run.Depth);
         }
 
+        // M07 · YAYIN NOKTASI 1/4 — koşum KABUL EDİLDİ (`Queued`). Yalnızca
+        // YENİ koşumda: idempotent tekrar denemede (`Existing: true`) hiçbir şey
+        // değişmiyor ve bildirim göndermek aboneyi değişmemiş bir belgeyi
+        // okumaya iterdi.
+        await DuyurAsync(run, cancellationToken).ConfigureAwait(false);
+
         return new RcaAdmissionResult(run, Existing: false);
     }
 
@@ -387,6 +394,9 @@ public sealed class RcaAdmission(
         // ölçülmemiş bir sayıyı ölçülmüş gibi göstermek olurdu — kuyruk bekleme
         // süresi bu yolda ölçülmüyor, sıfır da değil.
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        // M07 · YAYIN NOKTASI 2/4 — koşum TERMİNALE geçti (paket bağlandı).
+        await DuyurAsync(run, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -457,6 +467,98 @@ public sealed class RcaAdmission(
         run.StateDetail = detail.Length <= 512 ? detail : detail[..512];
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        // M07 · YAYIN NOKTASI 3/4 — koşum kesinti sebebiyle TERMİNALE geçti.
+        await DuyurAsync(run, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Koşum durumu değişti — <b>dinleyicilere</b> haber ver (M07).
+    ///
+    /// <para>
+    /// <b>Kayıttan SONRA çağrılıyor, önce değil.</b> Bildirim bir <i>olmuş
+    /// bitmiş</i> şeyi duyuruyor; önce duyurmak, abonenin belgeyi okuyup
+    /// <b>eski</b> durumu görmesi demek olurdu — ve o hâl sessiz olurdu: abone
+    /// bildirimi aldı, sordu, hiçbir şey değişmemiş buldu ve bir daha sormadı.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Hiçbir istisna yukarı çıkmıyor.</b> Bir bildirim kanalının kırılması
+    /// veritabanına yazılmış bir gerçeği geri almaz; istisnayı yukarı vermek
+    /// koşumun terminal duruma geçtiği kaydı <b>kaybettirirdi</b>. Sessiz de
+    /// değil: uyarı olarak günlüğe düşüyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Dinleyici yokluğu bir arıza değil</b> — MCP yüzeyi kurulmamış bir
+    /// süreçte (CLI komutları, arka plan işçileri) dinleyici olmaması normal
+    /// çalışma. Zorunlu tek bir dinleyici, RCA çekirdeğini MCP'nin kurulmasına
+    /// bağlardı.
+    /// </para>
+    ///
+    /// <h3>⚠ DÖRT GEÇİŞTEN ÜÇÜ BAĞLI — <c>TryStartAsync</c> BAĞLI DEĞİL</h3>
+    ///
+    /// <para>
+    /// Koşumun yaşam döngüsü dört geçiş yapıyor ve bugün <b>üçü</b> duyuruluyor:
+    /// </para>
+    /// <list type="table">
+    /// <item><term><c>AdmitAsync</c></term><description>→ <c>Queued</c> · BAĞLI</description></item>
+    /// <item><term><c>TryStartAsync</c></term><description>→ <c>Running</c> · <b>BAĞLI DEĞİL</b></description></item>
+    /// <item><term><c>AttachBundleAsync</c></term><description>→ terminal · BAĞLI</description></item>
+    /// <item><term><c>StopAsync</c></term><description>→ terminal · BAĞLI</description></item>
+    /// </list>
+    ///
+    /// <para>
+    /// Sebebi bir unutma değil bir <b>sıra kararı</b>: T54 aynı turda
+    /// <c>TryStartAsync</c>'in <b>imzasını</b> değiştiriyor
+    /// (<c>RcaModelBoundaryStamp</c> parametresi eklenerek) ve derleyicinin
+    /// zorladığı değişiklik her zaman önce gelmeli — tersi sırada bu satır
+    /// metinsel olarak temiz merge olur ve <b>derlenmeyen</b> bir ağaç kalır
+    /// (§5).
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Bunun ölçülebilir sonucu:</b> bir abone koşumun <i>başladığını</i>
+    /// öğrenmiyor — yalnızca kuyruğa girdiğini ve bittiğini. Yani abonelik
+    /// çalışıyor ama <b>eksik</b>, ve eksik olduğu burada yazılı: bu paragraf
+    /// silinmeden abonelik <i>"tamam"</i> sayılmamalı.
+    /// </para>
+    /// </summary>
+    private async Task DuyurAsync(RcaRunEntity run, CancellationToken cancellationToken)
+    {
+        if (changeListeners is null)
+        {
+            return;
+        }
+
+        // DURUM ETİKETİ TEL ADI DEĞİL — ve kasten değil.
+        //
+        // `rca.runs` durumu tele `ToString().ToLowerInvariant()` ile yazıyor ve o
+        // TEK yer. Aynı biçimi burada da üretmek, aynı sözleşmenin ikinci
+        // gösterimi olurdu (§9) ve bir gün biri değişip diğeri kalırdı. Buradaki
+        // değer bir TEŞHİS etiketi: günlüğe düşüyor, tele çıkmıyor — bildirim
+        // yalnızca ADRES taşıyor, durumu abone belgeyi OKUYARAK öğreniyor ve o
+        // okuma kapsam kapısından geçiyor.
+        //
+        // Biçimin bilerek FARKLI olması (PascalCase) bu ayrımı görünür yapıyor:
+        // buradan tel adı bekleyen bir tüketici doğarsa derhal ayrışıyor.
+        var change = new RcaRunChange(run.Id, run.OwnerGroup, run.State.ToString());
+
+        foreach (var listener in changeListeners)
+        {
+            try
+            {
+                await listener.RunChangedAsync(change, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception error) when (error is not OperationCanceledException)
+            {
+                logger.LogWarning(
+                    error,
+                    "RCA koşum bildirimi gönderilemedi: {RunId} → {State}. Koşum kaydı etkilenmedi.",
+                    run.Id,
+                    change.State);
+            }
+        }
     }
 
     /// <summary>

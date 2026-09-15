@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Bizigo.Contracts;
 using Bizigo.Contracts.Security;
 using Bizigo.Evidence;
@@ -26,7 +27,7 @@ public sealed class McpResourceContractTests
         McpBoundaryDeclaration.Declare(DataBoundary.Internal, "kaynak kapısı: yerel bellek içi taşıma");
 
     /// <summary>
-    /// <b>Üç belge türü de adreslenebiliyor</b> (kabul kriteri 1).
+    /// <b>Dört belge türü de adreslenebiliyor</b> (kabul kriteri 1).
     ///
     /// <para>
     /// Küme <b>elle</b> yazılı ve bu bilinçli — araç tarafındaki
@@ -47,11 +48,52 @@ public sealed class McpResourceContractTests
     /// </para>
     /// </summary>
     [Fact]
-    public void Uc_belge_turu_de_ilan_ediliyor()
+    public void Dort_belge_turu_de_ilan_ediliyor()
     {
         var kinds = Urun().Select(static resource => resource.Kind).Order(StringComparer.Ordinal);
 
-        Assert.Equal(["evidence-bundle", "parser", "rca-report"], kinds);
+        // `rca-runs` M07'nin ikinci turunda eklendi ve BU LİSTE onu görerek
+        // kırmızı yandı — elle yazılı bir beyanın istendiği davranış tam bu:
+        // yeni bir kaynak sessizce girmiyor, bilinçli bir hareket gerektiriyor.
+        Assert.Equal(["evidence-bundle", "parser", "rca-report", "rca-runs"], kinds);
+    }
+
+    /// <summary>
+    /// <b>Koşum listesinin gövdesi gerçekten belgeyi taşıyor</b> — ve kapıdan
+    /// geçmiş.
+    ///
+    /// <para>
+    /// <c>rca-runs</c> gövdesini <c>rca.runs</c> aracının kendi yükünden
+    /// üretiyor; ölçüt yükün <b>şeklinin</b> gövdede görünmesi. Bu olmadan
+    /// redaksiyon kapısından geçmiş <b>boş</b> bir gövde de testleri geçerdi:
+    /// <c>mimeType</c> doğru, kapı geçilmiş, içerik <b>yok</b> — ve bu depoda
+    /// adı konmuş hâl tam olarak bu (<i>ölçülmüş görünen bir hiçlik</i>).
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Kosum_listesi_govdesi_kapidan_geciyor()
+    {
+        using var services = McpTestServices.ForDiscoveredTools();
+
+        var resource = Urun(services).OfType<RcaRunsResource>().Single();
+
+        var body = await resource.ReadScopedAsync(
+            new McpResourceRead(
+                new McpResourceUri(RcaRunsResource.ResourceKind, string.Empty),
+                AccessScope.ForGroups("okuyucu", ["network/core"])),
+            TestContext.Current.CancellationToken);
+
+        Assert.NotNull(body);
+        Assert.Equal(McpResourceMimeTypes.Json, body.MimeType);
+
+        // Gövde AYRIŞTIRILABİLİR ve aracın yükünün şeklini taşıyor.
+        using var parsed = JsonDocument.Parse(body.Text);
+
+        Assert.Equal(JsonValueKind.Object, parsed.RootElement.ValueKind);
+        Assert.True(
+            parsed.RootElement.EnumerateObject().Any(),
+            "Koşum listesi gövdesi boş bir nesne. Redaksiyon kapısından geçmiş boş bir "
+            + "gövde, 'kapı çalışıyor' diyen ama hiçbir şey taşımayan bir kaynak olurdu.");
     }
 
     /// <summary>

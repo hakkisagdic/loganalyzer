@@ -138,14 +138,33 @@ public abstract class BizigoMcpResource : McpServerResource
     public virtual bool ReadsScopedData => true;
 
     /// <summary>
-    /// Kaynak <b>abonelik</b> destekliyor mu — <c>resources/subscribe</c>.
+    /// Kaynak <b>abonelik</b> destekliyor mu.
+    ///
+    /// <para>
+    /// <b>Hangi RPC — ve burada bir bayat ad duruyordu.</b> Bu satır
+    /// <c>resources/subscribe</c> yazıyordu ve o metot çivilediğimiz revizyonda
+    /// <b>yok</b>: <c>2026-07-28</c> (SEP-2575) onu ve <c>resources/unsubscribe</c>'ı
+    /// kaldırıp yerine <c>subscriptions/listen</c> + <c>resourceSubscriptions</c>
+    /// koydu. Ölçüldü — sunucu eski metodu göç ipucuyla reddediyor:
+    /// <i>"The method 'resources/subscribe' is not available on protocol version
+    /// '2026-07-28'. Use 'subscriptions/listen' with 'resourceSubscriptions'
+    /// instead."</i>
+    /// </para>
+    ///
+    /// <para>
+    /// Yani bayrak <c>subscriptions/listen</c>'in <c>resourceSubscriptions</c>
+    /// listesini <b>onaylayıp onaylamamayı</b> belirliyor, ve bu bir süsleme
+    /// değil: ölçüldü — bayrak kapalıyken sunucu o isteği <b>onaylamıyor</b>
+    /// (<c>subscriptions/acknowledged</c>'ın <c>notifications</c>'ı boş dönüyor).
+    /// </para>
     ///
     /// <para>
     /// Varsayılan <see langword="false"/>, ve varsayılanın burada olması
     /// bilinçli: abonelik ilan etmek istemciye <i>"bu değiştiğinde haber
     /// vereceğim"</i> demek. Bildirimi göndermeyen bir abonelik, istemciyi
     /// <b>hiç sormamaya</b> ikna eder — yani sessizce bayat veri. Plan yalnızca
-    /// koşum durumunu <i>"anlamlı"</i> işaretliyor.
+    /// koşum durumunu <i>"anlamlı"</i> işaretliyor ve bugün abonelik destekleyen
+    /// tek kaynak <c>bizigo://rca-runs</c>.
     /// </para>
     /// </summary>
     public virtual bool SupportsSubscription => false;

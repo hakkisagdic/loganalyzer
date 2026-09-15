@@ -71,6 +71,7 @@ flowchart TB
 | M10 | [Üç ertelenmiş ürün aracı](yeni-urun-araclari/index.md) | `logs.get` · `rca.quality` · `alerts.maintenance`; **MCP'de yazma yok** ve IL'de tutuluyor | M04, M06, T47 |
 | M11 | [Kestrel'in kör noktası: beyanın topolojisi](kestrel-kor-noktasi/index.md) | Dinleyici adresi kapının görüşüne alınıyor; joker bağlama **kanıt değil**, gerekçeli muafiyet | M06, T42 |
 | M15 | [Kota rezervi `Agent`'ı kapsamıyor](kota-rezerv-ekseni/index.md) | Rezerv yalnızca `Schedule`'a uygulanıyor; model insanın kotasını yiyebilir | M14, T46 |
+| M16 | [Abonelik kimliği ve kapsam süzgeci](abonelik-kimligi-ve-kapsam/index.md) | Bildirim **etiketsiz** ve kapsam süzgeci **yok**; ikisi de `SubscriptionsListenHandler`'ı devralmaya bakıyor | M07 |
 
 **M10 ticket'ı iş bittikten SONRA yazıldı** ve bunu T61'in bekçisi zorladı:
 merge edilmiş bir kimlik hiçbir tabloda anılmıyordu, kapı kırmızı yandı. Kaydın

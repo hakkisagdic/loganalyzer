@@ -121,11 +121,12 @@ public static class BizigoMcpServer
         McpSurface surface,
         McpBoundaryDeclaration boundary,
         IEnumerable<Assembly> toolAssemblies,
-        IServiceProvider services)
+        IServiceProvider services,
+        bool subscriptionsDeliverable = false)
     {
         var options = new McpServerOptions();
 
-        Apply(options, surface, boundary, toolAssemblies, services);
+        Apply(options, surface, boundary, toolAssemblies, services, subscriptionsDeliverable);
 
         return options;
     }
@@ -142,12 +143,33 @@ public static class BizigoMcpServer
     /// Araç <b>taşıyan</b> derlemeler; <c>Bizigo.Mcp</c> her zaman ekleniyor.
     /// </param>
     /// <param name="services">Araçların bağımlılıklarını çözecek sağlayıcı.</param>
+    /// <param name="subscriptionsDeliverable">
+    /// Bu taşıma abonelik bildirimini <b>gönderebiliyor mu</b> — yani canlı bir
+    /// sunucu örneği <see cref="McpResourceUpdates"/> defterinde tutulabiliyor mu.
+    ///
+    /// <para>
+    /// <b>Varsayılan <see langword="false"/> ve bu bilinçli:</b> burada tehlikeli
+    /// taraf <i>fazla ilan etmek</i>. Gönderilemeyecek bir aboneliği ilan eden
+    /// sunucu, istemciyi belgeyi bir daha sormamaya ikna ediyor — sessizce bayat
+    /// veri. Yeni bir taşıma eklendiğinde unutulan bayrak, o taşımayı
+    /// <i>abonelik yok</i> tarafına düşürüyor; tersi olsaydı unutkanlığın bedeli
+    /// yanlış bir söz olurdu. Kalıp <see cref="McpSurface.Unspecified"/>'ınkiyle
+    /// aynı.
+    /// </para>
+    ///
+    /// <para>
+    /// stdio <see langword="true"/> veriyor (tek, uzun ömürlü sunucu);
+    /// akışlanabilir HTTP <b>vermiyor</b> — gerekçe ve ölçüm
+    /// <see cref="McpResourceUpdates"/> belgesinde.
+    /// </para>
+    /// </param>
     public static void Apply(
         McpServerOptions options,
         McpSurface surface,
         McpBoundaryDeclaration boundary,
         IEnumerable<Assembly> toolAssemblies,
-        IServiceProvider services)
+        IServiceProvider services,
+        bool subscriptionsDeliverable = false)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(toolAssemblies);
@@ -250,11 +272,27 @@ public static class BizigoMcpServer
 
         options.Capabilities.Resources = new ResourcesCapability
         {
-            // `Subscribe` gerçeğe bağlı: abonelik ilan etmek istemciye "bu
-            // değiştiğinde haber vereceğim" demek, ve bildirimi göndermeyen bir
-            // abonelik istemciyi HİÇ SORMAMAYA ikna eder — sonucu sessizce
-            // bayat veri.
-            Subscribe = resources.Any(static resource => resource.SupportsSubscription),
+            // ABONELİK GERÇEĞE BAĞLI, VE İKİ KOŞULA BİRDEN.
+            //
+            // 1) Bir kaynak abonelik destekliyor mu (`SupportsSubscription`).
+            // 2) Bu TAŞIMA bildirimi gönderebiliyor mu
+            //    (`subscriptionsDeliverable`).
+            //
+            // İkincisi ölçülerek eklendi: çivilediğimiz revizyon (2026-07-28,
+            // SEP-2567) `Mcp-Session-Id`'yi kaldırdı, yani akışlanabilir HTTP'de
+            // OTURUM YOK ve tutulacak bir sunucu örneği de yok. O taşımada
+            // `subscribe` ilan etmek, gönderilemeyecek bir bildirimi vaat etmek
+            // olur — istemci belgeyi bir daha SORMAZ ve sonuç sessizce bayat
+            // veri. Kalıp SDK'nın kendi kararından: o da `listChanged`'ı
+            // "onurlandırmasının yolu olmadığı" yanıtlarda bastırıyor.
+            //
+            // ÖLÇÜLDÜ (ham JSON-RPC, `McpResourceSubscriptionTests`): bu bayrak
+            // `false` iken sunucu `subscriptions/listen`'in
+            // `resourceSubscriptions` isteğini ONAYLAMIYOR (`notifications:{}`
+            // dönüyor). Yani bayrak bir süsleme değil, aboneliğin kabul
+            // edilmesinin şartı.
+            Subscribe = subscriptionsDeliverable
+                && resources.Any(static resource => resource.SupportsSubscription),
 
             // `ListChanged` BİLEREK ATANMIYOR: SDK onu koleksiyonun kendisinden
             // türetiyor ve `true` yazıyor (koleksiyon gözlemlenebilir, bildirim
