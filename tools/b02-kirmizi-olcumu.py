@@ -81,14 +81,14 @@ KUSURLAR = [
         ad="`netstat` etiketi bulunamazsa sıfır dönüyor",
         dosya=WIRE,
         bul="        return found\n            ? LedgerReading.Measured(LedgerLayer.Wire, NetstatSummary, total)",
-        koy="        return total >= 0\n            ? LedgerReading.Measured(LedgerLayer.Wire, NetstatSummary, total)",
+        koy="        return found || total >= 0\n            ? LedgerReading.Measured(LedgerLayer.Wire, NetstatSummary, total)",
         kirmizi_bekleniyor=["Yerellestirilmis_netstat_ciktisi_kisit_uretiyor"],
     ),
     Kusur(
         ad="metrik sergilemede yoksa sıfır dönüyor",
         dosya=METRICS,
         bul="        return found\n            ? LedgerReading.Measured(LedgerLayer.Collector, metric, (long)total)",
-        koy="        return total >= 0\n            ? LedgerReading.Measured(LedgerLayer.Collector, metric, (long)total)",
+        koy="        return found || total >= 0\n            ? LedgerReading.Measured(LedgerLayer.Collector, metric, (long)total)",
         kirmizi_bekleniyor=["Metrik_ucu_erisilemezse_kisit"],
     ),
     Kusur(
