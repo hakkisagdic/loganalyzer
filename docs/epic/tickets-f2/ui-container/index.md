@@ -168,3 +168,27 @@ bu yüzden **1**.
 `ui` servisinin sağlık kontrolü ölçütü `< 500` ve dayandığı varsayım —
 oturumsuz isteğin kök sayfadan giriş akışına yönlenmesi (3xx) — **doğrulanmadı**.
 Sağlıklıya dönmezse ilk bakılacak yer o satır, ikincisi `HOSTNAME=0.0.0.0`.
+
+### Sağlık kontrolünün varsayımı — KOD OKUNDU, koşturulmadı
+
+Yukarıdaki satır *"doğrulanmadı"* diyordu. Kod yolu izlendi ve varsayım
+**tutuyor**; koşum hâlâ yapılmadı, yani bu bir kod okuması, bir ölçüm değil:
+
+| Adım | Dosya | Ne oluyor |
+| --- | --- | --- |
+| Çerez yok | `ui/src/lib/auth/session.ts:80` | `resolveSession` **oturum deposuna hiç gitmeden** `undefined` dönüyor |
+| Kimlik anonim | `ui/src/lib/auth/currentUser.ts` | `status: "anonymous"` |
+| Kök sayfa | `ui/src/app/page.tsx:31` | `redirect("/api/auth/login?returnTo=%2F")` → 307 |
+
+307 < 500, yani sağlık kontrolü yeşile dönüyor.
+
+**Ama aynı zincir bir kör noktayı da gösteriyor ve bu yazılmalı: sağlık kontrolü
+oturum deposunu göremiyor.** Sonda çerez taşımadığı için istek `redis-session`'a
+hiç uğramıyor; Redis tamamen kırıkken de `ui` servisi **healthy** görünür ve
+belirti ilk giriş denemesinde çıkar. Sondaya çerez koymak bunu çözmüyor
+(geçerli bir oturum kimliği gerekirdi); doğru çözüm bir BFF sağlık ucu olurdu ve
+o bu ticket'ın kapsamı dışında bırakıldı — kapsam gerekçesi yukarıda, sağlık
+kontrolü yorumunda.
+
+Yani üç kabul kriterinin koşturulması hâlâ eksik; bu bölüm yalnızca *"yeşile
+dönmezse nereye bakılacak"* sorusunu bir tahminden bir kod yoluna çeviriyor.
