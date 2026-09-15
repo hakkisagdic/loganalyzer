@@ -158,29 +158,127 @@ Araç tavanı (700) **değiştirilmedi**; kaynakların kendi tavanı var (200), 
 iki liste ayrı yanıtlarda taşınıyor ve tek sayıya toplanması hangisinin
 büyüdüğünü gizlerdi.
 
-## 7 · Yazılmayan: abonelik — ve gerekçesi
+## 7 · Abonelik — yazıldı, ve iki sınırı ölçüldü
 
-`rca.runs` aboneliği (kabul kriteri 2 ve 4) **yazılmadı**, ve sebebi bir zaman
-kısıtı değil §8:
+M07'nin **birinci turunda** abonelik yazılmamıştı ve gerekçesi §8'di: *"`rca.runs`
+main'de yok — aboneliğin hedefi olan belge yokken abonelik yazmak tüketicisi
+olmayan bir tip yazmaktır."* `rca.runs` M14 ile main'e girdi, önkoşul oluştu.
 
-**`rca.runs` main'de yok.** Ölçüldü: `Bizigo.Mcp.Product/Tools/` altında beş araç
-var (`alerts.rules`, `alerts.triggers`, `catalog.parsers`, `inventory.list`,
-`logs.search`) ve **hiçbir `rca.*` aracı yok**. Ticket'ın §5'i M05'i bağımlılık
-olarak sayıyor ve o dilim henüz inmemiş. Aboneliğin hedefi olan belge
-yokken abonelik yazmak, *tüketicisi olmayan bir tip* yazmaktır.
+### 7.1 · Kurulan şey
 
-**İkinci sebep mekanizmanın yeri.** Bildirim bir **yayın noktası** istiyor:
-koşum durumu `RcaAdmission.TryStartAsync` / `StopAsync` / `AttachBundleAsync`
-içinde değişiyor. Doğru tasarım `Bizigo.Contracts`'ta bir bildirim arayüzü ve
-`RcaAdmission`'a isteğe bağlı bir yayıncı — ama o dosya T45/T46'nın alanı ve
-`rca.runs` gelmeden yayınlanacak bir şey de yok.
+| Parça | Nerede |
+| --- | --- |
+| Abonelik hedefi kaynak | `RcaRunsResource` — `bizigo://rca-runs`, **şablonsuz** |
+| Yayın sözleşmesi | `Bizigo.Contracts` · `IRcaRunChangeListener` + `RcaRunChange` |
+| Yayın kanalı | `Bizigo.Mcp` · `McpResourceUpdates` (canlı sunucu defteri) |
+| Köprü | `Bizigo.Mcp.Product` · `McpRcaRunChangeListener` |
+| Yayın noktaları | `RcaAdmission` · `AdmitAsync`, `AttachBundleAsync`, `StopAsync` |
 
-Bugünkü hâl bu boşluğu **sessiz bırakmıyor**: `SupportsSubscription` her kaynakta
-`false` ve `Capabilities.Resources.Subscribe` ondan **türüyor**. Yani sunucu
-abonelik **ilan etmiyor** — istemciye verilmemiş bir söz yok. Bir kaynak bir gün
-`true` derse yetenek kendiliğinden açılıyor ve bekçi
-(`Desteklenmeyen_yetenek_ilan_edilmiyor`) bildirimi göndermeyen bir aboneliği
-yakalıyor.
+`rca-runs` gövdesi `rca.runs` aracının **kendi** `ExecuteScopedAsync`'inden
+üretiliyor — ikinci bir sorgu yok. Bedeli olurdu: aracın kapsam filtresi
+`Take`'ten **önce** uygulanıyor ve o kararı ikinci kez doğru yazmak zorunda
+kalmak, bir gün yanlış yazmak demektir.
+
+### 7.2 · ⚠ Dört geçişten üçü bağlı
+
+`TryStartAsync` (→ `Running`) **bağlı değil**: T54 aynı turda o metodun imzasını
+değiştiriyor ve derleyicinin zorladığı değişiklik önce gelmeli — tersi sırada
+eklenen çağrı metinsel olarak temiz merge olur ve **derlenmeyen** bir ağaç kalır
+(§5). Sonucu ölçülebilir: bir abone koşumun *başladığını* öğrenmiyor, yalnızca
+kuyruğa girdiğini ve bittiğini.
+
+`Kosum_basina_uc_bildirim` testi `TryStartAsync`'i **bilerek çağırıyor**;
+bağlandığı gün sayı 2'den 3'e çıkıp test kırmızı yanıyor.
+
+### 7.3 · Revizyon: `resources/subscribe` KALDIRILMIŞ
+
+Çivilediğimiz `2026-07-28` (SEP-2575) `resources/subscribe` ve
+`resources/unsubscribe`'ı kaldırıp yerine `subscriptions/listen` +
+`resourceSubscriptions` koymuş. Ölçüldü — sunucunun cevabı göç ipucu taşıyor:
+
+```
+The method 'resources/subscribe' is not available on protocol version
+'2026-07-28'. Use 'subscriptions/listen' with 'resourceSubscriptions' instead.
+```
+
+**SDK'nın istemci tarafı bu göçü yapmamış:** `McpClient.SubscribeToResourceAsync`
+hâlâ kaldırılmış RPC'yi çağırıyor ve `subscriptions/listen` için hiçbir istemci
+API'si yok. Bekçiler bu yüzden **ham JSON-RPC** yazıyor — zinciri SDK
+istemcisiyle ölçmek mümkün değil.
+
+### 7.4 · Yetenek taşımaya bağlı
+
+`Apply` bir parametre daha alıyor: `subscriptionsDeliverable`, **varsayılan
+`false`** (tehlikeli taraf *fazla ilan etmek*). Gerekçe SEP-2567: aynı revizyon
+`Mcp-Session-Id`'yi kaldırdı, yani akışlanabilir HTTP'de **oturum yok** ve
+tutulacak bir sunucu örneği de yok. stdio veriyor, HTTP vermiyor.
+
+Ölçülen: bayrak `false` iken sunucu `resourceSubscriptions` isteğini
+**onaylamıyor** (`notifications:{}`). Yani bayrak aboneliğin kabul edilmesinin
+şartı, bir süsleme değil.
+
+### 7.5 · İki ölçülen sınır — açık kalem
+
+1. **Bildirim abonelik kimliğiyle etiketlenmiyor.** Spesifikasyon
+   `_meta/io.modelcontextprotocol/subscriptionId` istiyor; onay bildirimi
+   etiketli geliyor (SDK'nın kendi yolu), bizim yayınımız değil — erişilebilen
+   tek yayın ilkeli oturum geneline yazan `SendNotificationAsync`, SDK'nın
+   yönlendirmesi `internal`.
+2. **Bildirim kapsam süzgecinden geçmiyor.** İçerik taşımadığı için veri
+   sızmıyor (adresi okumak kapsam kapısından geçiyor), ama *zamanlaması* bir
+   sinyal: abone kapsamı dışındaki bir grupta bir şey olduğunu öğreniyor.
+
+İkisinin de çözümü aynı: `SubscriptionsListenHandler`'ı **sahiplenmek**
+(`McpRequestHandler<SubscriptionsListenRequestParams, EmptyResult>`). Bugün
+yapılmadı çünkü SDK'nın kendi işleyicisi aynı akışta `*/list_changed` yayılımını
+da taşıyor. Sınırın ikisi de **bekçiyle kilitli**
+(`Bildirim_abonelik_kimligiyle_etiketlenmiyor`) — SDK bir gün yüzey açarsa
+kırmızı yanıp haber veriyor.
+
+### 7.7 · Neden ham JSON-RPC — SDK'nın istemcisi sunucusunu izlemiyor
+
+Bekçiler abonelik zincirini **ham JSON-RPC** ile ölçüyor ve bir sonraki kişi
+*"neden SDK istemcisi kullanılmadı"* diye soracak. Cevap ölçüldü:
+
+**`McpClient.SubscribeToResourceAsync` hâlâ kaldırılmış `resources/subscribe`
+RPC'sini çağırıyor ve `subscriptions/listen` için hiçbir istemci API'si yok.**
+Aynı paket, aynı sürüm — sunucu tarafı `2026-07-28`'e geçmiş, istemci tarafı
+geçmemiş.
+
+Bu M01'de çivilediğimiz ayrımın en net kanıtı (*"güven SDK'ya değil ölçüme
+bağlı"*) ve genelleştirilebilir hâli şu: **bir SDK'nın sunucu tarafının bir
+revizyona geçmesi, istemci tarafının geçtiğini göstermiyor** — ve *"aynı paket,
+aynı sürüm"* cümlesi bunu gizliyor.
+
+Bekçilerin ham mesaj yazmak zorunda kalması bir zahmet değil, **kanıtın
+kendisi**: zincir SDK'nın kendi istemcisiyle ölçülemiyor.
+
+### 7.8 · Doğru bir gerekçe, yeterli bir gerekçe değil
+
+Bu turda kendi kodumda bir açık çıktı ve şekli kayda değer.
+
+`subscriptionsDeliverable` ilk hâlinde stdio'da **sabit `true`**'ydu ve
+gerekçesi yazılıydı: *"stdio'da tek, uzun ömürlü bir sunucu var."* Cümle
+**doğruydu** ve **yetmiyordu**: şart iki parçalıydı — kanal var **ve** yayıncı
+var — ve ikincisi varsayılmıştı. Yayın defteri DI'da kayıtlı değilse
+yayınlayacak kimse yok, ama sunucu `subscribe` ilan etmeye devam ediyordu. Yani
+kaçınmak istediğim şey — *ilan edilen ama kullanılmayan yetenek* — tam o satırın
+kendisinde duruyordu.
+
+Kuralın hâli: **bir kararın gerekçesi doğru olduğu için tam olmuyor.** Gerekçe
+bir şartın bir parçasını anlatıyorsa, geri kalanı yazılmadığı sürece
+varsayılmış oluyor — ve varsayım tam olarak kapının olmadığı yer.
+
+### 6.4 · Bildirim sıklığı bir bütçe kalemi mi — dolaylı olarak
+
+Ölçülen: **koşum başına 2 bildirim** (bugün), `TryStartAsync` bağlanınca **3**.
+
+Bildirim **içerik taşımıyor**, yalnızca adres (~10 belirteç). Yani bağlamı şişiren
+şey bildirimin kendisi **değil**, abonenin her bildirimde belgeyi **yeniden
+okuması**: koşum başına üç okuma, her okuma `rca-runs` gövdesi kadar.
+
+Kaynak **ilanı** tarafında abonelik hiçbir şey eklemedi — yetenek nesnesinde tek
+bir bayrak, bildirimler listeye hiç girmiyor.
 
 ## 8 · Ölçülen ve M07'nin dışında kalan iki kalem
 

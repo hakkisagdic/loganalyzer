@@ -1,3 +1,4 @@
+using Bizigo.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -90,6 +91,26 @@ public static class BizigoReadToolsSetup
         ArgumentNullException.ThrowIfNull(services);
 
         services.TryAddSingleton(TimeProvider.System);
+
+        // M07 · ABONELİK YAYIN KANALI.
+        //
+        // `McpResourceUpdates` SINGLETON olmak zorunda: canlı sunucuların
+        // defterini tutuyor ve scoped olsaydı her istek kendi boş defterini
+        // görürdü — yani hiçbir bildirim gönderilmezdi ve hiçbir şey kırmızı
+        // yanmazdı.
+        //
+        // Dinleyici `IRcaRunChangeListener` olarak kaydediliyor, `RcaAdmission`
+        // onu bir KOLEKSİYON olarak alıyor. Tek dinleyici için de koleksiyon
+        // olması bilinçli: ikinci bir dinleyici (örn. arayüzün SSE kanalı)
+        // eklendiğinde `RcaAdmission`'ın imzası değişmiyor.
+        //
+        // KAYIT BURADA, `AddBizigoMcp`'de DEĞİL: stdio taşıması bu uzantıdan
+        // geçiyor ve HTTP tarafı da onu çağırıyor. Yeteneğin ilan edilip
+        // edilmemesi kaydın varlığına bağlı (`McpStdioHost`), yani kaydı
+        // atlamanın bedeli "abonelik yok" — sessiz bir yalan değil.
+        services.TryAddSingleton<McpResourceUpdates>();
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IRcaRunChangeListener, Resources.McpRcaRunChangeListener>());
 
         return services;
     }
