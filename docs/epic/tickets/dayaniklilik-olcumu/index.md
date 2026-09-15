@@ -92,9 +92,51 @@ Sıra ve her adımın **neyi** kanıtladığı:
    mı" sorusuyla görünmez.
 
 **Ölçümün kendisi de ölçülecek (§6):** fsync çağrısı üretim kodundan
-kaldırıldığında bu koşum **kırmızı yanmalı**. Yanmıyorsa ölçüm `kill -9`'u değil
-başka bir şeyi ölçüyor — ve bu ticket'ın var olma sebebi tam olarak o durumun bir
-kez gerçekleşmiş olması.
+kaldırıldığında bu koşum **kırmızı yanmalı**.
+
+## 3.1 · ÖLÇÜLDÜ — ve bu beklenti YANLIŞ çıktı
+
+Protokol koşturuldu (`tools/t63-wal-kill-olcumu.py`, konak
+`tools/t63-wal-harness/`). Gerçek alt süreç, ack'ten hemen sonra gerçek
+`SIGKILL` (süreç **grubuna**, yoksa `dotnet run` sarmalayıcısının çocuğu yaşar
+ve `Dispose` fsync eder).
+
+| Koşum | ack | diskte | kayıp |
+| --- | --- | --- | --- |
+| `FlushToDisk = true` (üretim) | 8 | 8 | **0** |
+| `FlushToDisk = false` (§6 kusuru) | 8 | 8 | **0** |
+
+**Kriter geçiyor. Ama kusurlu koşum da geçiyor** — yani yukarıdaki §6 beklentisi
+karşılanmıyor, ve sebebi ölçümün zayıflığı **değil**:
+
+> **`kill -9` fsync'i ölçemez.** Süreci öldürmek, yazılan baytları işletim
+> sisteminin sayfa önbelleğinden **silmiyor** — `write()` çağrıldığı anda baytlar
+> çekirdeğin sorumluluğunda ve süreç ölse de diske iniyorlar. fsync'in koruduğu
+> şey **sürecin** ölümü değil, **makinenin** ölümü: elektrik kesintisi, çekirdek
+> paniği, VM'in zorla sıfırlanması.
+
+Yani F1'in kriteri (*"süreç `kill -9` ile öldürülür; ack'lenen hiçbir olay
+kaybolmaz"*) **fsync olmadan da karşılanıyor**. Kriter, ürünün dayanıklılık
+hikâyesinin (*"ack, ham batch fsync edildikten sonra verilir"*) sandığı şeyi
+ölçmüyor.
+
+**Bu, benim bu ticket'ta yazdığım bir beklentinin düzeltilmesi.** İki arıza kipi
+tek cümleye sıkıştırılmıştı:
+
+| Arıza kipi | Ne koruyor | `kill -9` ölçer mi | Ölçmek için ne gerekir |
+| --- | --- | --- | --- |
+| **Süreç ölümü** | Uygulamanın ack'ten **önce** yazmış olması | **Evet** — ölçüldü, geçiyor | Bu koşum. `AppendAsync` dönmeden ack veren bir hata burada yanar |
+| **Makine ölümü** | fsync — baytların gerçekten diskte olması | **Hayır** | Host düzeyi arıza enjeksiyonu: VM'i zorla sıfırlamak, ya da `dm-flakey` gibi bir katmanla yazmaları yutmak |
+
+İkinci satır **bu ticket'ın kapsamı dışında** ve bilerek: bir VM'i zorla
+sıfırlayan bir koşum, bu deponun bugün taşıdığı hiçbir altyapıya benzemiyor ve
+CI'da yeri olmaz. Ama **yazılı olması** şart — yoksa yeşil yanan bir `kill -9`
+koşumu, fsync'in ölçüldüğü sanısını üretir. Tam olarak bu ticket'ın doğmasına yol
+açan hata sınıfı.
+
+**`kill -9` koşumunun kendi değeri duruyor ve küçük değil:** ack'i yazmadan önce
+veren bir hatayı yakalıyor — yani sıralama iddiasını ölçüyor. Ölçmediği şey
+sıralamanın **dayanıklılık** kısmı.
 
 ## 4 · Ölçüm protokolü — ikinci yarı (depo erişilemez)
 
@@ -150,14 +192,25 @@ söyleniyor, sessiz bir hata değil.
 
 ## 5 · Kabul kriterleri
 
-1. Gerçek bir süreç `SIGKILL` ile öldürülüyor ve ack verilen **her** satır
-   yeniden başlatma sonrası sorguyla bulunuyor.
-2. fsync kaldırıldığında (1)'in koşumu **kırmızı** yanıyor — ölçümün ölçüm
-   olduğunun kanıtı.
+1. ✅ **KARŞILANDI (ölçüldü).** Gerçek bir süreç `SIGKILL` ile öldürülüyor ve
+   ack verilen **her** çerçeve diskte bulunuyor (8/8, kayıp 0). Koşum:
+   `tools/t63-wal-kill-olcumu.py`.
+2. ❌ **KARŞILANAMAZ — ve sebebi bu ticket'ta düzeltildi (§3.1).** fsync
+   kaldırıldığında koşum kırmızı yanMIYOR, çünkü `kill -9` fsync'i ölçemez:
+   süreci öldürmek baytları sayfa önbelleğinden silmiyor. fsync'in koruduğu şey
+   makinenin ölümü, sürecin değil. Bu kriter host düzeyi arıza enjeksiyonu
+   istiyor ve **kapsam dışına** alındı.
 3. Object storage durdurulmuşken ack alınıyor ve devam bir **sayaçtan** okunuyor.
 4. Depo geri geldiğinde arşiv yetişiyor ve `verified_at` doluyor.
-5. `WriteAheadLogTests`'in başlığındaki iddia **daraltılıyor**: o test yarım
-   çerçeve okumasını ölçüyor, `kill -9`'u değil. Test kalıyor, iddia küçülüyor.
+5. ✅ **YAPILDI.** `WriteAheadLogTests`'in başlığındaki iddia **daraltıldı**: o
+   test yarım çerçeve okumasını ölçüyor, `kill -9`'u değil. Test kaldı, iddia
+   küçüldü, ve gerçek `kill -9`'un T63'te olduğu yazıldı.
+
+6. **F1 kriterinin metni de düzeltilecek** (koordinatörde): *"süreç `kill -9` ile
+   öldürülür; ack'lenen hiçbir olay kaybolmaz"* **fsync olmadan da** karşılanıyor,
+   yani kriter ürünün dayanıklılık iddiasını ölçmüyor. Kriter iki cümleye
+   ayrılmalı: sıralama (ölçüldü, geçiyor) ve dayanıklılık (ölçülmedi, host
+   düzeyi arıza gerektiriyor).
 
 ## 6 · Bilinen sınırlar
 
