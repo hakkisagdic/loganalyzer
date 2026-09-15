@@ -66,6 +66,13 @@
     <ProjectReference Include="..\..\sim\Bizigo.Simulators\Bizigo.Simulators.csproj" />
 
     <!--
+      B02 · varış defteri. Ayrıştırıcılar ve hüküm KONTEYNERSİZ sınanıyor;
+      defterin hiçbir proje referansı yok, o yüzden bu referans testlere yeni
+      bir bağımlılık getirmiyor.
+    -->
+    <ProjectReference Include="..\..\sim\Bizigo.Capacity\Bizigo.Capacity.csproj" />
+
+    <!--
       S08: webhook alıcısının imza ve eşleme yolu burada yaşıyor ve
       `WebhookGeneratorDeliveryTests` üretecin gövdesini o yoldan geçirip
       GERÇEK Postgres'e yazıyor. İdempotansın sınandığı yer bir veritabanı
