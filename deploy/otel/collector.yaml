@@ -117,3 +117,43 @@ service:
   telemetry:
     logs:
       level: warn
+
+    # ------------------------------------------------------------------------
+    # B02 · varış defterinin İKİNCİ katmanı bu uçtan okunuyor.
+    #
+    # ÖLÇÜLDÜ: bu blok yazılmadan önce collector'ın kendi metrikleri makineden
+    # ERİŞİLEMİYORDU, ve kapasite belgesinin "collector metrikleri zaten
+    # Prometheus'ta / bedava geliyor" cümlesi bu yüzden yarım doğruydu. İki
+    # bağımsız sebep vardı ve ikisi de sessiz:
+    #
+    #   1. Varsayılan uç `127.0.0.1:8888` — yani container'ın KENDİ
+    #      loopback'i. Port yayınlansa bile host oraya ulaşamıyor. (Aynı sınıf
+    #      hata README'de Keycloak backchannel'ında bir kez ödendi.)
+    #   2. `docker-compose.yml` 8888'i hiç yayınlamıyordu.
+    #
+    # `readers:` biçimi ZORUNLU, eski `metrics: address:` DEĞİL: o ayar
+    # collector v0.123.0'dan beri SESSİZCE YOK SAYILIYOR ve bu imaj 0.159.0.
+    # Yani eski biçimi yazmak "yapılandırdım" sanmak, hiçbir şey değişmemek
+    # olurdu — bu deponun sessiz-yanlış sınıfı.
+    #
+    # `without_type_suffix` / `without_units` ELLE ayarlanıyor: uç elle
+    # yapılandırıldığında bu iki bayrak varsayılan olarak GELMİYOR ve sayaç
+    # `otelcol_receiver_accepted_log_records_total` adıyla yayılıyor. Defterin
+    # okuyucusu iki adı da kabul ediyor (yapılandırmanın değişmesi defterin
+    # körleşmesi olmamalı), ama ad burada da sabitleniyor — iki savunma, biri
+    # yapılandırmada biri kodda.
+    #
+    # `0.0.0.0` bilinçli ve kapsamı yazılı: bu dosya GELİŞTİRME yığınının
+    # yapılandırması (`deploy/`), üretim değil. Üretimde uç ya kapalı olmalı ya
+    # da yalnızca kazıyıcının gördüğü bir ağda.
+    # ------------------------------------------------------------------------
+    metrics:
+      level: basic
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: '0.0.0.0'
+                port: 8888
+                without_type_suffix: true
+                without_units: true

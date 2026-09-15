@@ -391,8 +391,25 @@ Arayüzde ve OpenAPI belgesinde değişiklik yok (§8'de aranmış hâli), dolay
 **Anahtar kelimesiz sırlar hâlâ kör noktada** ve T60 bunu kapatmıyor —
 kapatamayacağını **ölçüyor**. Entropi ekseni bu boşluk için yanlış araç; doğru
 eksen katman C'nin ekseni (bağlam), ve orada yapılabilecek şey listeyi ya da
-çapayı genişletmek. Ölçülmüş bir öneri değil, bir yön: yeni bir üretici söz
-dizimi bir bakım kalemi, ve T41 o maliyeti zaten kabul etti.
+çapayı genişletmek.
+
+**Bu bir ticket DEĞİL, tetikleyicisi yazılı bir bilinen sınır** (koordinatör,
+2026-09-14). Ayrımın sebebi bu ticket'ın kendi kalıbı: bir ticket *"yapılacak
+bir iş var"* der, oysa ölçüm ekseni yanlışladı — bugün yazılabilecek şey bir
+çözüm değil bir **koşul**:
+
+> Gerçek veride C+B'nin kaçırdığı bir sır **gözlendiğinde** ticket doğar, ve o
+> gün doğru eksen katman **C**'dir (çapa ya da anahtar kelime genişletmesi),
+> entropi değil.
+
+**Tetikleyici yazılmadan** *"bilinen sınır"* ile *"unutulmuş kalem"* aynı
+görünüyor — ve ayıran tek şey koşulun kayıtlı olması. `Pending` ≠ `Exempt`
+ayrımının aynısı, bir kat yukarıda: §4 sayacın **hangi soruyu** cevapladığını
+çiviliyor, bu paragraf boşluğun **hangi olayla** iş hâline geldiğini.
+
+Yeni bir üretici söz dizimi bir bakım kalemi ve T41 o maliyeti zaten kabul etti;
+yani tetikleyici gerçekleştiğinde iş **küçük**. Bugünden açılmış bir ticket ise
+kapanmayan bir kalem olurdu: kapanma koşulu bizim elimizde değil, gözlemde.
 
 **Gölge sayacın kendi faydası ölçülmedi.** `redaction_shadow_class_opaque`'ın
 gerçek veride bir sürüklenme sinyali olarak işe yarayıp yaramadığı ancak gerçek
