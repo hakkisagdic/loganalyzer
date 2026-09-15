@@ -232,6 +232,14 @@ services:
       - "${SYSLOG_TCP_PORT:-5140}:5140"
       - "${SYSLOG_UDP_PORT:-5141}:5141/udp"
       - "${OTLP_HTTP_PORT:-4318}:4318"
+
+      # B02 · collector'ın KENDİ metrikleri (varış defterinin ikinci katmanı).
+      # Bu satır olmadan defter o katmanı okuyamıyor ve hüküm LEDGER-LIMITED
+      # oluyor — ölçüldü. Yayınlamak tek başına YETMİYOR: uç varsayılan olarak
+      # container'ın loopback'ine bağlanıyor, o yüzden `otel/collector.yaml`
+      # `readers:` bloğu ile `0.0.0.0`'a taşıyor. İki değişiklik birlikte
+      # anlamlı; biri eksikse sessizce çalışmıyor.
+      - "${OTEL_METRICS_PORT:-8888}:8888"
     volumes:
       - ./otel/collector.yaml:/etc/otel/collector.yaml:ro
       - otel_queue:/var/lib/otelcol

@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    B02 — üç katmanlı varış defteri (kapasite ölçümü).
+
+    `src/` ALTINDA DEĞİL, `sim/` altında ve gerekçesi `Bizigo.Simulators`'ın
+    aynısı: burası ürün değil, ürünün iddiasını ürünün DIŞINDAN sınamak için
+    var. Ürün burayı hiç görmüyor.
+
+    AYRI BİR DERLEME, `Bizigo.Simulators`'ın içine konmadı: simülatör bir
+    SADAKAT basıcısı (baytlar doğru mu), defter bir MUHASEBE aracı (satır
+    kayboldu mu, nerede). İkisini tek derlemeye koymak, sadakat basıcısına
+    kapasite defterinin bağımlılıklarını taşımak olurdu.
+
+    HİÇBİR PROJE REFERANSI YOK ve bu bir tasarım kararı, tembellik değil.
+    Defterin üçüncü katmanı ürünün okuma tarafını (ham arşiv + `events`)
+    saymak zorunda; o sayıyı BURADA üretmek `Bizigo.Storage.Raw` ve
+    `Bizigo.Storage.ClickHouse` referanslarını buraya çekerdi ve defter
+    konteynersiz sınanamaz hâle gelirdi. Yerine bir SONDA sözleşmesi var
+    (`ArrivalProbe`): ürün tarafını çağıran taraf bağlıyor, defter yalnızca
+    sayıyı ve "ölçemedim" hâlini biliyor.
+
+    Sonuç ölçülebilir: bu derlemenin bütün mantığı — ayrıştırıcılar, hüküm,
+    LEDGER-LIMITED — birim testlerinde konteyner olmadan koşuyor (CLAUDE.md §2).
+  -->
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+</Project>

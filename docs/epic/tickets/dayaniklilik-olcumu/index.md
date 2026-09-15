@@ -92,9 +92,51 @@ Sıra ve her adımın **neyi** kanıtladığı:
    mı" sorusuyla görünmez.
 
 **Ölçümün kendisi de ölçülecek (§6):** fsync çağrısı üretim kodundan
-kaldırıldığında bu koşum **kırmızı yanmalı**. Yanmıyorsa ölçüm `kill -9`'u değil
-başka bir şeyi ölçüyor — ve bu ticket'ın var olma sebebi tam olarak o durumun bir
-kez gerçekleşmiş olması.
+kaldırıldığında bu koşum **kırmızı yanmalı**.
+
+## 3.1 · ÖLÇÜLDÜ — ve bu beklenti YANLIŞ çıktı
+
+Protokol koşturuldu (`tools/t63-wal-kill-olcumu.py`, konak
+`tools/t63-wal-harness/`). Gerçek alt süreç, ack'ten hemen sonra gerçek
+`SIGKILL` (süreç **grubuna**, yoksa `dotnet run` sarmalayıcısının çocuğu yaşar
+ve `Dispose` fsync eder).
+
+| Koşum | ack | diskte | kayıp |
+| --- | --- | --- | --- |
+| `FlushToDisk = true` (üretim) | 8 | 8 | **0** |
+| `FlushToDisk = false` (§6 kusuru) | 8 | 8 | **0** |
+
+**Kriter geçiyor. Ama kusurlu koşum da geçiyor** — yani yukarıdaki §6 beklentisi
+karşılanmıyor, ve sebebi ölçümün zayıflığı **değil**:
+
+> **`kill -9` fsync'i ölçemez.** Süreci öldürmek, yazılan baytları işletim
+> sisteminin sayfa önbelleğinden **silmiyor** — `write()` çağrıldığı anda baytlar
+> çekirdeğin sorumluluğunda ve süreç ölse de diske iniyorlar. fsync'in koruduğu
+> şey **sürecin** ölümü değil, **makinenin** ölümü: elektrik kesintisi, çekirdek
+> paniği, VM'in zorla sıfırlanması.
+
+Yani F1'in kriteri (*"süreç `kill -9` ile öldürülür; ack'lenen hiçbir olay
+kaybolmaz"*) **fsync olmadan da karşılanıyor**. Kriter, ürünün dayanıklılık
+hikâyesinin (*"ack, ham batch fsync edildikten sonra verilir"*) sandığı şeyi
+ölçmüyor.
+
+**Bu, benim bu ticket'ta yazdığım bir beklentinin düzeltilmesi.** İki arıza kipi
+tek cümleye sıkıştırılmıştı:
+
+| Arıza kipi | Ne koruyor | `kill -9` ölçer mi | Ölçmek için ne gerekir |
+| --- | --- | --- | --- |
+| **Süreç ölümü** | Uygulamanın ack'ten **önce** yazmış olması | **Evet** — ölçüldü, geçiyor | Bu koşum. `AppendAsync` dönmeden ack veren bir hata burada yanar |
+| **Makine ölümü** | fsync — baytların gerçekten diskte olması | **Hayır** | Host düzeyi arıza enjeksiyonu: VM'i zorla sıfırlamak, ya da `dm-flakey` gibi bir katmanla yazmaları yutmak |
+
+İkinci satır **bu ticket'ın kapsamı dışında** ve bilerek: bir VM'i zorla
+sıfırlayan bir koşum, bu deponun bugün taşıdığı hiçbir altyapıya benzemiyor ve
+CI'da yeri olmaz. Ama **yazılı olması** şart — yoksa yeşil yanan bir `kill -9`
+koşumu, fsync'in ölçüldüğü sanısını üretir. Tam olarak bu ticket'ın doğmasına yol
+açan hata sınıfı.
+
+**`kill -9` koşumunun kendi değeri duruyor ve küçük değil:** ack'i yazmadan önce
+veren bir hatayı yakalıyor — yani sıralama iddiasını ölçüyor. Ölçmediği şey
+sıralamanın **dayanıklılık** kısmı.
 
 ## 4 · Ölçüm protokolü — ikinci yarı (depo erişilemez)
 
@@ -104,27 +146,99 @@ kez gerçekleşmiş olması.
    bağlantı reddi ve yeniden deneme üretiyor, diğeri anında cevap veriyor.
 2. **Depo dururken batch gönderilecek ve ack BEKLENECEK.** Kriter *"ingest devam
    eder"* diyor; devam etmenin gözlemlenebilir hâli ack'in gelmesi.
-3. **Devam ettiği HANGİ sayaçtan okunacak:** `IngestStats`'in ack sayacı ve WAL'a
-   yazılan segment sayısı. *"Hata log'u yok"* bir kanıt değil — sessizce
-   duran bir boru hattı da hata basmaz.
-4. **Depo geri kaldırılacak ve arşivin YETİŞTİĞİ ölçülecek.** Bu yarı olmadan
+
+### 4.1 · HANGİ sayaç, HANGİ değer — rakamla
+
+Bu, ölçümün kalbi. Kendi cümlemiz şunu gerektiriyor: *"hata log'u yok"* kanıt
+değil, sessizce duran bir boru hattı da hata basmaz. O yüzden okunacak şey bir
+**sayaç**, ve hangisi olduğu keyfî değil.
+
+`IngestStats` (`src/Bizigo.Ingest/Pipeline/IngestStats.cs`):
+
+| Sayaç | Depo DURURKEN beklenen | Neden bu değer |
+| --- | --- | --- |
+| **`AcceptedBatches`** | **artmaya devam eder** — gönderilen her batch için +1 | `Accepted()` **WAL yolunda** çağrılıyor, arşiv yüklemesinden **önce**. Depo, WAL'ı değil **yükleyiciyi** (`RawArchiveUploader`) etkiliyor |
+| **`AcceptedRecords`** | gönderilen kayıt sayısı kadar artar | Batch başına değil kayıt başına; batch sayısı eşitken kayıt kaybını görünür kılıyor |
+| **`RejectedFull`** | **0** — WAL kapasitesi dolana kadar | Doldu demek ack'in **durduğu** an demek; bu sayaç 0'dan çıktığı anda *"ingest devam ediyor"* artık doğru değil |
+| `RejectedInvalid` | 0 | Değişirse ölçüm depo kesintisini değil bozuk girdiyi ölçüyor |
+| `ProcessedRecords` | **BU SAYAÇ OKUNMAYACAK** | Ayrı eksen: parse + ClickHouse yazımı. ClickHouse da düşükse burası durur ama `AcceptedBatches` artmaya devam eder — yani **yanlış sayacı okumak yanlış hüküm verir** |
+
+**Somut kabul:** N batch × M kayıt gönderildiğinde,
+`AcceptedBatches` **+N**, `AcceptedRecords` **+(N×M)**, `RejectedFull` **0**.
+
+### 4.2 · İddianın bir SON TARİHİ var ve kriterde yazılı değil
+
+*"Ingest devam eder"* **süresiz değil**. WAL sınırlı:
+`WalOptions.MaxTotalBytes` varsayılanı **8 GiB**
+(`MaxSegmentBytes` **128 MiB**). Depo dururken segmentler **birikiyor**, çünkü
+yükleyici onları boşaltamıyor. Kapasite dolduğunda `WalFullException` atılıyor,
+`RejectedFull` artıyor ve **ack durmaya başlıyor**.
+
+Yani kriterin doğru hâli: **ingest, WAL kapasitesi dolana kadar devam eder.**
+Süre = `8 GiB ÷ (ingest hızı)` — ve **payda ölçülmemiş**, yani bu bir kabul
+kriteri değil bir **kapasite ölçümü** (B01–B05 ailesi).
+
+### 4.3 · Kapasite ayarı testten VERİLEBİLİYOR — 8 GiB doldurmak gerekmiyor
+
+**Ölçüldü (M21), iki yol da açık:**
+
+| Yol | Nasıl | Kanıt |
+| --- | --- | --- |
+| Birim testi | `o.MaxTotalBytes = 32` | `IngestGatewayTests.WAL_dolunca_503_ve_Retry_After_donuyor` bunu **zaten** yapıyor |
+| Gerçek süreç / compose | `Ingest__Wal__MaxTotalBytes=<bayt>` | `IngestServiceCollectionExtensions:34` — `services.Configure<WalOptions>(configuration.GetSection("Ingest:Wal"))` |
+
+**Ve zincirin çoğu ZATEN ölçülüyordu.** `WalFullException` →
+`_stats.RejectFull()` → `IngestResult(Full, 0, …, RetryAfterSeconds)` → 503
+(`IngestGateway.cs:103–115`). Bunun **davranış** tarafı bir birim testiyle
+çivili: sonuç `Full`, ipucu yapılandırmadan geliyor.
+
+> ⚠️ **Ölçülmeyen taraf SAYACIN KENDİSİYDİ** — yani bu ölçümün **girdisi**.
+> Hiçbir test `IngestStats.RejectedFull`'a bakmıyordu. `RejectFull()` çağrısı
+> düşse **davranış aynı kalırdı** (istemci yine 503 alır) ve depo yarısı
+> *"ingest durdu mu"* sorusuna **0** okuyup *"hayır"* derdi.
+>
+> M21'de kapatıldı: `WAL_dolunca_RejectedFull_sayaci_artiyor_ve_kabul_sayaci_artmiyor`
+> ve karşı-kanıtı `Normal_kabulde_AcceptedBatches_ve_AcceptedRecords_artiyor`
+> (+1 batch / +3 kayıt — protokolün `+N / +(N×M)` beklentisinin birim
+> karşılığı). §6 ile kırmızı yanabildiği ölçüldü.
+>
+> Ders: **bir davranışın ölçülmesi, o davranışı bildiren sayacın ölçülmesi
+> değil.**
+
+Yani **depo yarısının koşumu artık daha küçük bir soru soruyor**: WAL'ın dolması
+ve ack'in durması birim düzeyinde çivili; compose koşumunun kanıtlaması gereken
+şey yalnızca **depo erişilemezken ack'in DEVAM ettiği** ve segmentlerin
+biriktiği.
+
+3. **Depo geri kaldırılacak ve arşivin YETİŞTİĞİ ölçülecek.** Bu yarı olmadan
    ölçüm eksik: ingest'in devam etmesi, biriken segmentlerin sonunda arşive
    inmesi anlamına gelmiyor. `raw_manifest` satırlarının `verified_at`'i
    dolmalı.
-5. **Doğrulanmamış segmentin silinmediği ölçülecek.** Ürünün sözü bu
+4. **Doğrulanmamış segmentin silinmediği ölçülecek.** Ürünün sözü bu
    (*"doğrulanmamış segment asla silinmez"*) ve depo kesintisi o sözün en
    olası kırılma anı.
 
 ## 5 · Kabul kriterleri
 
-1. Gerçek bir süreç `SIGKILL` ile öldürülüyor ve ack verilen **her** satır
-   yeniden başlatma sonrası sorguyla bulunuyor.
-2. fsync kaldırıldığında (1)'in koşumu **kırmızı** yanıyor — ölçümün ölçüm
-   olduğunun kanıtı.
+1. ✅ **KARŞILANDI (ölçüldü).** Gerçek bir süreç `SIGKILL` ile öldürülüyor ve
+   ack verilen **her** çerçeve diskte bulunuyor (8/8, kayıp 0). Koşum:
+   `tools/t63-wal-kill-olcumu.py`.
+2. ❌ **KARŞILANAMAZ — ve sebebi bu ticket'ta düzeltildi (§3.1).** fsync
+   kaldırıldığında koşum kırmızı yanMIYOR, çünkü `kill -9` fsync'i ölçemez:
+   süreci öldürmek baytları sayfa önbelleğinden silmiyor. fsync'in koruduğu şey
+   makinenin ölümü, sürecin değil. Bu kriter host düzeyi arıza enjeksiyonu
+   istiyor ve **kapsam dışına** alındı.
 3. Object storage durdurulmuşken ack alınıyor ve devam bir **sayaçtan** okunuyor.
 4. Depo geri geldiğinde arşiv yetişiyor ve `verified_at` doluyor.
-5. `WriteAheadLogTests`'in başlığındaki iddia **daraltılıyor**: o test yarım
-   çerçeve okumasını ölçüyor, `kill -9`'u değil. Test kalıyor, iddia küçülüyor.
+5. ✅ **YAPILDI.** `WriteAheadLogTests`'in başlığındaki iddia **daraltıldı**: o
+   test yarım çerçeve okumasını ölçüyor, `kill -9`'u değil. Test kaldı, iddia
+   küçüldü, ve gerçek `kill -9`'un T63'te olduğu yazıldı.
+
+6. **F1 kriterinin metni de düzeltilecek** (koordinatörde): *"süreç `kill -9` ile
+   öldürülür; ack'lenen hiçbir olay kaybolmaz"* **fsync olmadan da** karşılanıyor,
+   yani kriter ürünün dayanıklılık iddiasını ölçmüyor. Kriter iki cümleye
+   ayrılmalı: sıralama (ölçüldü, geçiyor) ve dayanıklılık (ölçülmedi, host
+   düzeyi arıza gerektiriyor).
 
 ## 6 · Bilinen sınırlar
 

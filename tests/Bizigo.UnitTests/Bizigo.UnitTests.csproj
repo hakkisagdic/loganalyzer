@@ -70,6 +70,13 @@
     -->
     <ProjectReference Include="..\..\src\Bizigo.Commands\Bizigo.Commands.csproj" />
     <ProjectReference Include="..\..\sim\Bizigo.Simulators\Bizigo.Simulators.csproj" />
+
+    <!--
+      B02 · varış defteri. Ayrıştırıcılar ve hüküm KONTEYNERSİZ sınanıyor;
+      defterin hiçbir proje referansı yok, o yüzden bu referans testlere yeni
+      bir bağımlılık getirmiyor.
+    -->
+    <ProjectReference Include="..\..\sim\Bizigo.Capacity\Bizigo.Capacity.csproj" />
   </ItemGroup>
 
 </Project>

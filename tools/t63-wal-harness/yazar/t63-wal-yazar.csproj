@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    T63 ÖLÇÜM KONAĞI — ürün kodu değil.
+
+    `Bizigo.sln`de KAYITLI DEĞİL, yani `dotnet build` kökte bunu derlemiyor ve
+    ana derlemeye bedeli yok. Ama depo İÇİNDE olmak zorunda: dışına kurulan bir
+    proje `Bizigo.Ingest`e referans verdiğinde onun kendi göreli
+    ProjectReference'ları yanlış çözülüyor ve MSB3202 ile düşüyor (ölçüldü).
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+
+    <!-- Ölçüm konağı; depo analiz kapılarının öznesi değil. -->
+    <EnableNETAnalyzers>false</EnableNETAnalyzers>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Bizigo.Ingest/Bizigo.Ingest.csproj" />
+  </ItemGroup>
+
+</Project>

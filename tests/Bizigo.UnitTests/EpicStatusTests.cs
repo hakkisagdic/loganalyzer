@@ -171,6 +171,7 @@ public sealed class EpicStatusTests
         ["yol-haritasi:tickets-f4/senaryo-plugin-cekirdegi"] = "T43 — F4 tablosunda ticket satırı yok.",
         ["yol-haritasi:tickets/ham-arsiv-kurtarma"] = "F1 tablosunda yok.",
 
+
         // 2 · `tickets-fs` tablosunun Durum sütunu ile ticket dosyaları
         //     çelişiyor. `kalan-is-raporu` §6 bu dördü bir kez düzeltmişti;
         //     mekanizma olmadığı için yeniden ayrıştılar — raporun kendi
