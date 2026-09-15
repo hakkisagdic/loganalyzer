@@ -1162,6 +1162,15 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasColumnType("character varying(512)")
                         .HasColumnName("lineage_key");
 
+                    b.Property<int>("ModelBoundary")
+                        .HasColumnType("integer")
+                        .HasColumnName("model_boundary");
+
+                    b.Property<string>("ModelBoundaryOverrideReason")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("model_boundary_override_reason");
+
                     b.Property<string>("OwnerGroup")
                         .IsRequired()
                         .HasMaxLength(64)

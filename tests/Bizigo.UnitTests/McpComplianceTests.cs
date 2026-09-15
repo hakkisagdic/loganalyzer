@@ -610,9 +610,50 @@ public sealed class McpComplianceTests
         var capabilities = session.Client.ServerCapabilities;
 
         Assert.NotNull(capabilities.Tools);
-        Assert.Null(capabilities.Resources);
         Assert.Null(capabilities.Prompts);
         Assert.Null(capabilities.Completions);
+
+        // KAYNAK YETENEĞİ SABİTE DEĞİL GERÇEĞE KARŞI ÖLÇÜLÜYOR (M07).
+        //
+        // `Assert.Null(capabilities.Resources)` yazılıydı ve M07'ye kadar
+        // doğruydu. Yerine sabit bir "artık dolu" iddiası yazmak, iki yüzeyi
+        // birbirine karıştırırdı: `bizigo` kaynak sunuyor, `bizigo-sim`
+        // SUNMUYOR — ve ikincisi K6'nın iddiasının kendisi.
+        //
+        // Ölçüt bu yüzden çift yönlü ve HER İKİ YÖNÜ de bir arıza:
+        //   · yetenek var, kaynak yok  → istemciye olmayan bir yol gösterilir
+        //   · kaynak var, yetenek yok  → istemci kanalı hiç denemez, belgeler
+        //                                yazılmış ama ulaşılamaz kalır
+        var declared = BizigoMcpServer.Resources(surface, DeclaredAssemblies(surface), services);
+
+        if (declared.Count == 0)
+        {
+            Assert.Null(capabilities.Resources);
+        }
+        else
+        {
+            Assert.NotNull(capabilities.Resources);
+
+            // ABONELİK BURADA DAİMA KAPALI OLMALI — ve bu bir gevşetme değil,
+            // ölçümün kendisi.
+            //
+            // `ProductionOptions` `subscriptionsDeliverable` VERMİYOR, yani bu
+            // oturum bildirimi gönderemeyen bir taşımayı temsil ediyor.
+            // Abonelik yeteneğinin o hâlde ilan edilmemesi M07'nin kararı:
+            // gönderilemeyecek bir bildirimi ilan etmek istemciyi belgeyi bir
+            // daha sormamaya ikna eder. Yeteneğin AÇIK hâli
+            // `McpResourceSubscriptionTests`'te iki yönlü ölçülüyor.
+            Assert.False(capabilities.Resources.Subscribe ?? false);
+
+            // İlan edilen küme tel üzerinde de görünüyor mu — yeteneğin
+            // varlığı ile kanalın çalışması aynı şey değil.
+            var listed = await session.Client.ListResourceTemplatesAsync(cancellationToken: Ct);
+            var fixedOnes = await session.Client.ListResourcesAsync(cancellationToken: Ct);
+
+            Assert.Equal(
+                declared.Count,
+                listed.Count + fixedOnes.Count);
+        }
 
         // `Logging` BİLEREK sınanmıyor. Çivilediğimiz revizyonda (2026-07-28)
         // günlükleme yeteneği ARTIK KULLANIMDAN KALDIRILDI (SEP-2577) ve SDK
@@ -979,11 +1020,33 @@ public sealed class McpComplianceTests
     [Fact]
     public void Kurum_disi_beyan_sunucu_kurulumunda_reddediliyor()
     {
-        var services = new ServiceCollection().BuildServiceProvider();
         var declaration = McpBoundaryDeclaration.Declare(DataBoundary.External, "test");
 
-        Assert.Throws<InvalidOperationException>(() => BizigoMcpServer.CreateOptions(
+        // KAP DOLU, ve bu düzeltme ölçülerek yapıldı.
+        //
+        // Test bir zamanlar boş bir `ServiceProvider` veriyor ve YALNIZCA
+        // istisna TİPİNİ sınıyordu. M02/M04 DI'ya bağımlı araçlar ekledikçe o
+        // çağrı her hâlde `InvalidOperationException` fırlatmaya başladı —
+        // "araç kurulamadı" diye. Sonucu M11 ölçtü: `McpBoundaryGate.Require`
+        // **tamamen silinse bile** test yeşil kalıyordu. Yani K6 kapısının
+        // varlığını sınadığı iddia edilen test, kapının yokluğunu göremiyordu.
+        //
+        // `Produces<T>` kapısının ve T48'in `GET /v1/probe` satırının aynı
+        // sınıfı: bekçi kırmızı yanıyor ama yanlış sebeple, ve doğru sebep
+        // ortadan kalktığında rengi değişmiyor.
+        using var services = McpTestServices.ForDiscoveredTools();
+
+        var hata = Assert.Throws<InvalidOperationException>(() => BizigoMcpServer.CreateOptions(
             McpSurface.Product, declaration, McpEndpoints.ToolAssemblies, services));
+
+        // MESAJ K6'yı adlandırmalı. Tip tek başına yetmiyor: kurulum yolundaki
+        // her arıza aynı tipi fırlatıyor ve ayırt edici olan tek şey sebep.
+        Assert.Contains("K6", hata.Message, StringComparison.Ordinal);
+        Assert.Contains("external", hata.Message, StringComparison.Ordinal);
+
+        // Ve BAŞKA bir sebeple düşmediğini de yazıyor: bir araç kurulamadığı
+        // için gelen istisna bu iddiayı geçemez.
+        Assert.DoesNotContain("kurulamadı", hata.Message, StringComparison.Ordinal);
     }
 
     /// <summary>

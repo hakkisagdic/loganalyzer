@@ -15,7 +15,7 @@ relationships:
 sources:
   - docs/epic/f5-kapsam-karari/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 docs/epic/f5-kapsam-karari/index.md=9c4afd982807"
+source_digest: "sha256-12/v1 CLAUDE.md=ed0e0490c47f docs/epic/f5-kapsam-karari/index.md=9c4afd982807"
 summary: Ertelenmiş bir eksik ile kalıcı bir kapsam sınırı aynı değerde toplanırsa ekran, verilmiş bir karardan sonra da söz vermeye devam eder — ve yanlışlığı hiçbir yerde kırmızı yanmaz. F5 kapsam kararının ürettiği mekanizma.
 provenance:
   extracted: 0.88

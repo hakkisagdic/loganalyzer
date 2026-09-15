@@ -108,8 +108,12 @@ public sealed class McpProductToolChainTests(DevStackFixture stack) : IAsyncLife
 
         // Araçlar kapsamı ÇAĞRI BAŞINA açıyor, yani gerçek bir
         // `IServiceScopeFactory` gerekiyor — üretimdeki ömürle aynı (scoped).
+        // Kayıt ARAYÜZE, somut tipe değil — ve bu ilk CI koşumunda ölçüldü.
+        // `AddScoped(_ => query)` `ScopedQuery`'yi kaydediyor; araçlar
+        // `IScopedQuery` çözüyor ve kap "kayıtlı değil" diyor. Derleme temiz,
+        // birim paketi sessiz, arıza yalnızca konteynerli koşumda görünüyor.
         _scopes = new ServiceCollection()
-            .AddScoped(_ => query)
+            .AddScoped<IScopedQuery>(_ => query)
             .AddSingleton(_factory)
             .AddScoped<GoldenReviewStore>()
             .BuildServiceProvider()
@@ -309,7 +313,7 @@ public sealed class McpProductToolChainTests(DevStackFixture stack) : IAsyncLife
 
         // (c) `open_only` gerçekten süzüyor: bitmiş pencere listeden düşüyor.
         var filtered = await new AlertsMaintenanceTool(_factory, new FakeTimeProvider(ends))
-            .ExecuteScopedAsync(Invocation(("open_only", "true")), Core, Token);
+            .ExecuteScopedAsync(Invocation(("open_only", "json:true")), Core, Token);
 
         Assert.Equal(0, filtered.Payload.GetProperty("total").GetInt32());
     }
@@ -372,13 +376,30 @@ public sealed class McpProductToolChainTests(DevStackFixture stack) : IAsyncLife
         Assert.Equal(2, all.Total);
     }
 
+    /// <summary>
+    /// Argümanın <b>dize olmadığını</b> söyleyen önek. Şema <c>boolean</c> ya da
+    /// <c>integer</c> istiyorsa değer bununla veriliyor; öneksiz her değer dize.
+    /// </summary>
+    private const string VerbatimPrefix = "json:";
+
     private static McpToolInvocation Invocation(params (string Name, string Value)[] arguments)
     {
         var map = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
 
         foreach (var (name, value) in arguments)
         {
-            map[name] = JsonSerializer.SerializeToElement(value);
+            // Değer TELDEKİ HÂLİYLE geçiyor, dizeye sarılarak değil — ve fark
+            // ölçüldü: `SerializeToElement("true")` JSON `"true"` üretiyor,
+            // yani bir DİZE, ve `open_only` (`"type": "boolean"`) onu
+            // ayrıştıramayıp `McpToolArgumentException` fırlatıyor. Şemasına
+            // uymayan bir argümanla çağıran bir test, aracı değil kendi
+            // yardımcısını ölçüyor.
+            //
+            // `Verbatim` öneki olmayan değer bir DİZE sayılıyor: `event_id`
+            // gibi kimlikler JSON'a benzese bile (`123`) dize kalmalı.
+            map[name] = value.StartsWith(VerbatimPrefix, StringComparison.Ordinal)
+                ? JsonDocument.Parse(value[VerbatimPrefix.Length..]).RootElement.Clone()
+                : JsonSerializer.SerializeToElement(value);
         }
 
         // Çağrı nesnesinin kapsamı bilerek `Denied`: gövde kapsamı PARAMETRE

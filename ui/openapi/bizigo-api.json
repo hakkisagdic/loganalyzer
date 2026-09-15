@@ -6114,6 +6114,8 @@
           "state",
           "reason",
           "counts_against_quota",
+          "model_boundary",
+          "model_boundary_override_reason",
           "requested_at",
           "finished_at"
         ],
@@ -6140,6 +6142,15 @@
           },
           "counts_against_quota": {
             "type": "boolean"
+          },
+          "model_boundary": {
+            "type": "string"
+          },
+          "model_boundary_override_reason": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "requested_at": {
             "type": "string",

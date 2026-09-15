@@ -1,8 +1,18 @@
 using System.Reflection;
+using Bizigo.Alerting;
 using Bizigo.Commands.Mcp;
+using Bizigo.Contracts;
 using Bizigo.Contracts.Security;
+using Bizigo.ControlPlane;
+using Bizigo.Evidence;
 using Bizigo.Mcp;
+using Bizigo.Rca;
+using Bizigo.Mcp.Product;
+using Bizigo.Parsing;
+using Bizigo.Query;
 using Bizigo.Simulators.Mcp;
+using Bizigo.Storage.ClickHouse;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -166,7 +176,83 @@ public static class McpCommandHandlers
                 .AddConsole(console => console.LogToStandardErrorThreshold = LogLevel.Trace))
             : LoggerFactory.Create(static logging => logging.ClearProviders());
 
-        await using var services = BuildServices();
+        // ── M12 · AYARLAR, ve ret DERLEME ANINDA DEĞİL KALKIŞTA ─────────────
+        //
+        // Okuma yolu CLI'ın kendi yolu: aynı iki ortam değişkeni `schema
+        // migrate`, `seed golden`, `fleet apply` ve `sigma sync` tarafından
+        // zaten okunuyor (§9 — ikinci bir yol yazılmadı).
+        //
+        // Ret SUNUCU KURULMADAN önce: eksik ayar bir DI hatası olarak
+        // patladığında (bugüne kadarki hâl) okuyan kişi `AlertRuleService`'in
+        // kaydına bakıyor, oysa eksik olan bir ayar. Kalıp M06'nın
+        // "yarım başlamıyor" kararının aynısı.
+        var clickHouse = Environment.GetEnvironmentVariable(ClickHouseVariable);
+        var controlPlane = Environment.GetEnvironmentVariable(ControlPlaneVariable);
+
+        if (surface is McpSurface.Product
+            && MissingProductSetting(clickHouse, controlPlane) is { } missing)
+        {
+            // stdout'a tek satır gitmiyor — orası protokolün.
+            await Console.Error.WriteLineAsync(missing).ConfigureAwait(false);
+
+            return 2;
+        }
+
+        // ── M13 · KİMLİK: ortamdan belirteç, doğrulanmış ─────────────────────
+        //
+        // SIRA ÖNEMLİ: kimlik servis grafiğinden ÖNCE doğrulanıyor, çünkü
+        // `IMcpIdentityRefusal` grafiğe kaydediliyor ve `McpCallerScope` onu
+        // oradan okuyor. Sonradan kaydetmek, kabı kurulduktan sonra
+        // değiştirmeye çalışmak olurdu.
+        //
+        // Ayarlarda belirteç yoksa `identity` null kalıyor ve yüzey M13
+        // öncesindeki hâlde koşuyor: kimlik isteyen araçlar `unauthenticated`
+        // dönüyor. Sessiz bir varsayılana DÜŞÜLMÜYOR.
+        McpStdioIdentity? identity = null;
+
+        if (surface is McpSurface.Product)
+        {
+            var settings = McpStdioIdentitySettings.FromEnvironment();
+
+            (identity, var failure) = await McpStdioIdentity
+                .ValidateAsync(settings, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (failure is not null)
+            {
+                // BELİRTEÇ VARDI VE GEÇERSİZDİ → yüzey BAŞLAMIYOR.
+                //
+                // Alternatif kimliksiz başlamaktı ve elendi: operatör bir
+                // belirteç verdiğinde onu kullanmamızı bekliyor, ve sessizce
+                // kimliksiz koşan bir yüzeyin belirtisi "araçlar bir şey
+                // döndürmüyor" olurdu — sebebi hiçbir yerde durmayan bir
+                // belirti (§7).
+                await Console.Error.WriteLineAsync(failure).ConfigureAwait(false);
+
+                return 2;
+            }
+        }
+
+        await using var services = BuildServices(surface, clickHouse, controlPlane, identity);
+
+        if (identity is not null)
+        {
+            // KAPSAM EŞLEMESİ YÜKLENİYOR — ve bu satır M12'nin bıraktığı bir
+            // boşluğu kapatıyor.
+            //
+            // `AccessScopeResolver` eşleme tablosunu BELLEĞE ALIYOR ve
+            // `RefreshAsync` çağrılmazsa `GroupMapping.Empty` kalıyor: her kimlik
+            // BOŞ kapsama çözülür ve kapsamlı her araç `not_found` döner.
+            // `Bizigo.Api` bunu açılışta çağırıyor (`Program.cs`), stdio
+            // çağırmıyordu.
+            //
+            // M12'de GÖRÜNMÜYORDU çünkü hiç kimlik gelmiyordu — yani boşluk
+            // ancak kimlik yolu açıldığında ısırabilirdi. Kimliğin geldiği ilk
+            // tur bu.
+            await services.GetRequiredService<AccessScopeResolver>()
+                .RefreshAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         await McpStdioHost.RunAsync(
             surface,
@@ -174,9 +260,96 @@ public static class McpCommandHandlers
             ToolAssembliesFor(surface),
             services,
             loggerFactory,
+            identity is null ? null : identity.Principal,
             cancellationToken).ConfigureAwait(false);
 
         return 0;
+    }
+
+    /// <summary>
+    /// Ürün yüzeyinin ihtiyaç duyduğu ayarların adları — ve bunlar CLI'ın
+    /// <b>zaten kullandığı</b> değişkenler, ikinci bir okuma yolu değil (§9):
+    /// <c>schema migrate</c> ile <c>seed golden</c>
+    /// <see cref="ClickHouseVariable"/>'ı, <c>fleet apply</c> ile
+    /// <c>sigma sync</c> <see cref="ControlPlaneVariable"/>'ı okuyor.
+    /// </summary>
+    public const string ClickHouseVariable = "BIZIGO_CLICKHOUSE";
+
+    /// <inheritdoc cref="ClickHouseVariable"/>
+    public const string ControlPlaneVariable = "BIZIGO_CONTROLPLANE";
+
+    /// <summary>
+    /// Ürün yüzeyi için eksik ayar var mı — varsa <b>adıyla</b> söyleyen mesaj,
+    /// yoksa <see langword="null"/>.
+    ///
+    /// <h3>Neden localhost'a DÜŞMÜYOR — CLI'ın diğer komutlarından bilinçli bir
+    /// ayrılık</h3>
+    ///
+    /// <para>
+    /// CLI'da iki politika bir arada duruyor: <c>schema migrate</c> ile
+    /// <c>fleet apply</c> ayar yoksa <c>localhost</c>'a düşüyor;
+    /// <c>sigma sync</c> ise <b>reddediyor</b> ve eksik değişkenin adını
+    /// yazıyor. Burada ikincisi seçildi, iki ölçütle:
+    /// </para>
+    ///
+    /// <list type="number">
+    /// <item>
+    /// <b>Bu komutu bir insan değil BAŞKA BİR PROGRAM başlatıyor.</b> stdio'nun
+    /// gerçek istemcisi bir masaüstü MCP istemcisi ve <c>stdout</c> protokolün
+    /// kendisi. Yanlış ama makul bir varsayılan burada terminalde görülen bir
+    /// hata üretmiyor; <b>çağrı anında</b>, <b>modelin bağlamında</b>, aracın
+    /// suçu gibi görünen bir arıza üretiyor.
+    /// </item>
+    /// <item>
+    /// <b>Ve tahmin TUTABİLİR.</b> Asıl tehlike bağlanamamak değil: bir
+    /// geliştiricinin makinesinde <c>localhost</c>'ta gerçekten bir ClickHouse
+    /// olabilir, ve o zaman yüzey <b>başka bir kurulumun log verisini</b> modele
+    /// okur. K6'nın alanında sessizce yanlış çalışan bir varsayılan, hiç
+    /// çalışmayan bir varsayılandan pahalıdır.
+    /// </item>
+    /// </list>
+    ///
+    /// <para>
+    /// <c>schema migrate</c> için aynı ölçütler geçerli değil: onu bir insan
+    /// depo kökünden koşturuyor, çıktısını görüyor ve yanlış tahmin gürültülü
+    /// biçimde düşüyor. Politika farkı komutların farkından geliyor, bir
+    /// tutarsızlıktan değil.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Mesaj DI'dan şikâyet ETMİYOR</b>, ve bu madde bir bulgudan doğdu: bu
+    /// yüzeyin bugüne kadarki arızası
+    /// <c>Unable to resolve service for type 'AlertRuleService'</c> diyordu —
+    /// eksik olan bir <i>ayar</i>ken okuyanı <b>DI kaydına</b> gönderiyordu.
+    /// Hata mesajının yanlış yüzeyi işaret etmesi S04'ün düzelttiği sınıf;
+    /// bekçisi <c>McpStdioSurfaceTests.Eksik_ayar_adiyla_reddediliyor</c>.
+    /// </para>
+    /// </summary>
+    public static string? MissingProductSetting(string? clickHouse, string? controlPlane)
+    {
+        var missing = new List<string>(2);
+
+        if (string.IsNullOrWhiteSpace(clickHouse))
+        {
+            missing.Add(ClickHouseVariable);
+        }
+
+        if (string.IsNullOrWhiteSpace(controlPlane))
+        {
+            missing.Add(ControlPlaneVariable);
+        }
+
+        if (missing.Count == 0)
+        {
+            return null;
+        }
+
+        return $"`{McpSurfaces.ProductName}` yüzeyi için bağlantı ayarı eksik: "
+            + string.Join(", ", missing.Select(static name => $"`{name}`"))
+            + ". Bu yüzey ürünün kendi verisini okuyor ve adres TAHMİN EDİLMİYOR: yanlış ama "
+            + "ulaşılabilir bir adres, başka bir kurulumun log verisini modele okumak olurdu (K6). "
+            + "Ortam değişkenlerini kurun — MCP istemci yapılandırmasında `env` bloğu — ya da "
+            + $"yalnızca simülatörü sunmak için `--surface {McpSurfaces.SimulatorName}` verin.";
     }
 
     /// <summary>
@@ -214,9 +387,22 @@ public static class McpCommandHandlers
     /// bu paragraf silinecek.
     /// </para>
     /// </summary>
-    private static ServiceProvider BuildServices()
+    public static ServiceProvider BuildServices(
+        McpSurface surface,
+        string? clickHouse,
+        string? controlPlane,
+        IMcpIdentityRefusal? identity = null)
     {
         var services = new ServiceCollection();
+
+        // M13 · Kimlik ÜRETİLEMEDİĞİNDE sebebi taşıyan servis. `McpCallerScope`
+        // onu `GetService` ile arıyor; yoksa eski cümlede kalıyor. İsteğe bağlı
+        // olması bilinçli: simülatör yüzeyinde ve belirteçsiz koşumda kimlik
+        // yolu hiç açılmıyor.
+        if (identity is not null)
+        {
+            services.AddSingleton(identity);
+        }
 
         // KAYIT YÜZEYE BAĞLI DEĞİL — ve ilk hâli öyleydi, ÖLÇÜLEREK düzeltildi.
         //
@@ -251,6 +437,86 @@ public static class McpCommandHandlers
         // Kurulum PAHALI (grok kütüphanesi + eşleme tabloları diskten okunuyor)
         // ve süreç boyunca değişmiyor — singleton.
         services.AddBizigoCommandTools();
+
+        // ── M12 · ÜRÜN YÜZEYİNİN GRAFİĞİ, ve bu blok YÜZEYE BAĞLI ────────────
+        //
+        // Yukarıdaki iki kayıt yüzeye bağlı DEĞİL ve öyle kalıyor: ikisi de
+        // ayar istemiyor, ölçülebilir bir maliyet üretmiyor, ve ayırmak "hangi
+        // servis hangi yüzey için" diye ikinci bir liste yazmak olurdu (§9).
+        //
+        // Bu blok BAŞKA bir şey: bağlantı ayarı ZORUNLU. Koşulsuz kaydetmek,
+        // ClickHouse'a ve kontrol düzlemine hiç dokunmayan simülatör yüzeyinden
+        // de iki ortam değişkeni istemek demek olurdu — ve o yüzey bugün
+        // ayarsız çalışıyor (ölçüldü: `--surface bizigo-sim` → exit 0).
+        // İlgisiz bir ayarı zorunlu kılmak, bekçisi olan bir gerileme.
+        if (surface is not McpSurface.Product)
+        {
+            return services.BuildServiceProvider();
+        }
+
+        // Ayarlar BURADA ARANMIYOR. Eksikliğin cevabı `MissingProductSetting`'te
+        // ve çağrı yeri `ServeAsync`: kalkış reddi bir DI hatası olarak
+        // patlamıyor, ayarı adıyla söylüyor. Buraya bir kontrol daha koymak,
+        // aynı kararı iki yerde tutmak olurdu.
+        ArgumentException.ThrowIfNullOrWhiteSpace(clickHouse);
+        ArgumentException.ThrowIfNullOrWhiteSpace(controlPlane);
+
+        // BOŞ YAPILANDIRMA, ve bilerek. `AddBizigoAlerting`/`AddBizigoParsing`
+        // bir `IConfiguration` istiyor ve bu süreçte `appsettings.json` YOK —
+        // stdio sunucusunu başlatan şey bir masaüstü MCP istemcisi ve onun
+        // verdiği kanal `env`. Boş yapılandırma ikisini de kendi
+        // varsayılanlarına bırakıyor; ihtiyaç duyulan tek iki ayar yukarıdaki
+        // bağlantı dizgeleri ve onlar açık parametre olarak geliyor.
+        //
+        // ⚠ SONUCU YAZILI: `Security:SecretKey` bu süreçte YOK, yani
+        // `SecretProtector` anahtarsız kuruluyor. Ürün kuralı zaten
+        // "anahtar yoksa gizli bilgi KAYDEDİLMİYOR" ve bu yüzey hiçbir şey
+        // yazmıyor (bekçi: `Hicbir_urun_araci_yazma_cagirmiyor`), dolayısıyla
+        // anahtarsızlık bu yüzeyde bir yetenek kaybı değil.
+        var configuration = new ConfigurationBuilder().Build();
+
+        // ÜRETİMİN KENDİ UZANTILARI — elle kayıt listesi YAZILMIYOR. İkinci bir
+        // liste, HTTP yüzeyinde çözülen bir servisin stdio'da farklı ömürle ya
+        // da hiç kaydedilmemiş olması demek; bu depo o ayrışmayı
+        // `AddBizigoCommandTools`/`AddBizigoSimulatorTools` kararlarıyla iki kez
+        // ödedi (§9).
+        services.AddControlPlane(controlPlane);
+        services.AddBizigoDataPlane(new ClickHouseOptions { ConnectionString = clickHouse });
+        services.AddBizigoParsing(configuration);
+        services.AddBizigoAlerting(configuration);
+        services.AddBizigoEvidence();
+
+        // M07 — KAYNAKLARIN deposu (`RcaReportStore`), ve bu satır ölçülerek
+        // eklendi. M12 bu grafiği ARAÇLAR için kurdu; M07 keşfi ilkellere
+        // genişletti (`McpPrimitiveDiscovery`) ve `RcaReportResource`
+        // `RcaReportStore` istiyor. Yani ürün yüzeyi yeniden kalkmıyordu ve
+        // arıza bu kez M12'nin kendi bekçisinde göründü — bekçi işini yaptı.
+        //
+        // Kayıt `AddBizigoRcaTriggers` üzerinden, elle değil: `RcaReportStore`
+        // orada kayıtlı ve ömrü orada gerekçeli. Ayrıca uzantı yapılandırmayı
+        // isteğe bağlı alıyor, yani kota bölümü olmayan bir stdio süreci de
+        // varsayılanlarla kurulabiliyor.
+        services.AddBizigoRcaTriggers(configuration);
+
+        // `TimeProvider` (TryAdd) — `logs.search`'ün varsayılan penceresi ve
+        // `alerts.maintenance`'ın "şimdi"si buradan.
+        services.AddBizigoReadTools();
+
+        // M08 · KAPSAM ÇÖZÜCÜSÜ. `BizigoMcpServer.Apply` kimlik isteyen bir
+        // araç varsa bunu KURULUMDA arıyor ve yoksa sunucuyu hiç kaldırmıyor.
+        //
+        // Kayıt `Bizigo.Api`'nin `AuthenticationSetup`'ındakiyle AYNI ŞEKİLDE:
+        // somut tip tekil, arayüz ona YÖNLENDİRİLİYOR. `AddSingleton<IAccessScopeResolver,
+        // AccessScopeResolver>()` yazmak ikinci bir örnek doğurur ve
+        // `RefreshAsync` yalnızca birini tazeler — eşleme tablosu
+        // güncellendiğinde iki yüzeyin farklı kapsam vermesi, üstelik sessizce.
+        //
+        // `AddBizigoAuthentication` çağrılamıyor: o `Bizigo.Api`'de ve CLI'ın
+        // ASP.NET'e bağlanması `Bizigo.Mcp` csproj'unda ölçülmüş olarak
+        // reddedilmiş bir şey. Çağrılan tip ise aynı tip.
+        services.AddSingleton<AccessScopeResolver>();
+        services.AddSingleton<Contracts.IAccessScopeResolver>(
+            static sp => sp.GetRequiredService<AccessScopeResolver>());
 
         return services.BuildServiceProvider();
     }

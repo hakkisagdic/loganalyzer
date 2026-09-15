@@ -1800,6 +1800,8 @@ export interface components {
             state: string;
             reason: string;
             counts_against_quota: boolean;
+            model_boundary: string;
+            model_boundary_override_reason: null | string;
             /** Format: date-time */
             requested_at: string;
             /** Format: date-time */

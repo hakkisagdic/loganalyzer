@@ -363,11 +363,11 @@ public sealed class McpQueryCancellationTests(DevStackFixture stack) : IAsyncLif
         // Yan kazanç, kaybettiğimizden büyük: beş aracın bağımlılık grafiği
         // GERÇEK bir kontrol düzlemiyle çözülebiliyor mu — bunu bugüne kadar
         // hiçbir koşum sınamıyordu.
-        services.AddSingleton(controlPlane);
-        services.AddSingleton(new AlertingOptions());
-        services.AddSingleton<AlertRuleService>();
-        services.AddSingleton(new ParserCatalog());
-        services.AddBizigoReadTools();
+        // Kayıtlar ORTAK girişten — ve bu ilk hâlinin düzeltilmesi. Beş kaydı
+        // burada elle yazmıştım; M07 keşfi kaynaklara genişletince aynı kap
+        // yeniden eksik kaldı (`ParserCatalog`, `RcaReportStore`). Dördüncü
+        // ilkelde dördüncü kez aynı yamayı yazmamak için tek yer var.
+        services.AddProductPrimitiveDependencies(controlPlane);
 
         return services.BuildServiceProvider();
     }

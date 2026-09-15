@@ -727,37 +727,53 @@ public sealed class McpReadToolTests
     }
 
     /// <summary>
-    /// <b>Hiçbir ürün aracı yazmıyor — ve bu IL'den ölçülüyor.</b>
+    /// <b>Yazma çağıran ürün araçları SAYILI bir muafiyet listesinde</b> — ve
+    /// liste IL'den ölçülüyor.
     ///
     /// <para>
-    /// M10'un <c>alerts.maintenance</c> kararı şu: <i>bu ürün MCP üzerinden
-    /// YAZMA yapmıyor</i>. Karar bir yorum olarak yazıldı; burada
-    /// <b>mekanik</b> hâli. Bir gün biri bakım penceresi açan bir araç yazarsa
-    /// (ya da mevcut bir aracın gövdesine bir <c>SaveChangesAsync</c> girerse)
-    /// bu satır kırmızı yanıyor ve karar bilinçli olarak geri alınmak zorunda
-    /// kalıyor.
+    /// M10'un kararı <i>"bu ürün MCP üzerinden yazma yapmıyor"</i>ydı ve bu test
+    /// onu mutlak bir iddia olarak tutuyordu. <b>M14 sınırı daralttı</b>: yasak
+    /// yazmanın kendisi değil, <b>hatası sessiz olan</b> yazma. Ölçüt dört kalem
+    /// (<see cref="ProductWriteTool"/>) ve <c>rca.trigger</c> dördünü de
+    /// karşılıyor.
     /// </para>
     ///
     /// <para>
-    /// <b>Neden <see cref="ProductReadTool.IsReadOnly"/>'a bakmak yetmiyor:</b>
-    /// o özellik <c>sealed</c> ve <c>true</c>, yani <b>her zaman</b> doğru
-    /// cevabı veriyor — gövdesi yazan bir araç için de. Yani ona bakan bir test
-    /// hiçbir şey ölçmez; ölçülmesi gereken şey <c>ReadOnlyHint</c>'in
-    /// <b>doğru</b> olduğu.
+    /// <b>Bekçi bu yüzden kaldırılmadı, MUAFİYETE çevrildi.</b> Kaldırmak
+    /// <c>alerts.maintenance</c> kararını tutan her şeyi kaldırmak olurdu.
+    /// Kalıp <c>ProducesContractTests.ExpectedExemptCount</c>'tan: muafiyet
+    /// eklemek <b>iki bilinçli hareket</b> gerektiriyor — listeye gerekçesiyle
+    /// girmek <i>ve</i> sabiti güncellemek (§8).
     /// </para>
     ///
     /// <para>
-    /// <b>Kapsam beyanı</b> (<c>IlCallReader</c>'ın kendi sınırları):
-    /// yansımayla yapılan çağrı görünmüyor, ölü kod "var" sayılıyor, ve
-    /// çözülemeyen tokenlar sayılıp <b>bildiriliyor</b> — çözülemeyen her token
-    /// görülemeyen bir çağrı. Tarama araç gövdelerinin <b>bir</b> seviyesine
-    /// bakıyor: bir aracın çağırdığı yardımcı metodun içindeki yazma bu
-    /// bekçiye görünmez.
+    /// <b>Kapsam beyanı</b> (<c>IlCallReader</c>'ın sınırları): yansımayla
+    /// yapılan çağrı görünmüyor, ölü kod "var" sayılıyor, çözülemeyen tokenlar
+    /// sayılıp bildiriliyor. Tarama <b>iki</b> seviye geziyor — tipin metotları
+    /// ve derleyicinin ürettiği iç içe durum makineleri (<c>async</c> gövdeler
+    /// orada yaşıyor; M10'da bu bekçi tam bu yüzden bir kez YEŞİL KALDI). Bir
+    /// aracın çağırdığı <b>yardımcı metodun içindeki</b> yazma yine görünmez —
+    /// ve <c>rca.trigger</c> zaten öyle yazıyor (<c>RcaAdmission.AdmitAsync</c>),
+    /// yani muafiyeti bu taramanın <i>bulduğu</i> için değil,
+    /// <b>bulamayacağı</b> için de yazılı: liste aracın yazma yaptığının beyanı.
     /// </para>
     /// </summary>
     [Fact]
-    public void Hicbir_urun_araci_yazma_cagirmiyor()
+    public void Yazma_cagiran_urun_araclari_sayili_muafiyette()
     {
+        // MUAFİYET LİSTESİ — gerekçe DÖRT KALEMLE, "çünkü RCA" değil.
+        var exempt = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [nameof(RcaTriggerTool)] =
+                "idempotans (`McpIdempotency.KeyFor`, anahtar sunucudan) · her sonucun bir kaydı "
+                + "(`rca_runs`, T46) · maliyet görünürlüğü (`counts_against_quota`) · aktörün "
+                + "kimliği (`Source=Agent` + `RequestedBy`). Dördü birden olduğu için M10'un "
+                + "yasakladığı 'hatası sessiz yazma' sınıfında DEĞİL.",
+        };
+
+        // Sabitin tek işlevi listenin sessizce büyümesini engellemek.
+        const int expectedExemptCount = 1;
+
         string[] forbidden = ["SaveChanges", "SaveChangesAsync", "ExecuteDelete", "ExecuteUpdate"];
 
         var unresolved = 0;
@@ -766,6 +782,11 @@ public sealed class McpReadToolTests
 
         foreach (var type in McpToolDiscovery.ToolTypes([typeof(LogsSearchTool).Assembly]))
         {
+            if (exempt.ContainsKey(type.Name))
+            {
+                continue;
+            }
+
             foreach (var method in WithStateMachines(type))
             {
                 scanned++;
@@ -782,17 +803,46 @@ public sealed class McpReadToolTests
             }
         }
 
-        // ÖLÇÜM ARACININ KENDİSİ: sıfır metot gezilirse yukarıdaki döngü hiçbir
-        // şey ölçmez ve test her zaman yeşil kalır (§6).
+        // ÖLÇÜM ARACININ KENDİSİ: sıfır metot gezilirse döngü hiçbir şey ölçmez
+        // ve test her zaman yeşil kalır (§6).
         Assert.True(scanned > 0, "Hiçbir araç metodu gezilmedi — bekçi kör.");
 
         Assert.True(
             offenders.Count == 0,
-            "MCP ürün yüzeyi YAZMA çağırıyor:\n  " + string.Join("\n  ", offenders)
-            + "\n\nM10'un kararı: bu ürün MCP üzerinden yazma yapmıyor. Gerekçesi "
-            + "`AlertsMaintenanceTool` belgesinde ve dördüncü maddesi asıl olan — bakım "
-            + "penceresinin hatası SESSİZ. Kararı geri almak bir tartışma gerektiriyor: "
-            + "aktör kaydı, `ReadOnlyHint` ve ikinci bir kapsam kapısı.");
+            "Muaf OLMAYAN bir MCP ürün aracı YAZMA çağırıyor:\n  " + string.Join("\n  ", offenders)
+            + "\n\nM14'ün ölçütü dört kalem: idempotans · her sonucun bir kaydı · maliyet "
+            + "görünürlüğü · aktörün kimliği. Dördü birden yoksa MCP'den yazma yapılmıyor — "
+            + "gerekçe `ProductWriteTool` belgesinde, ve M10'un `alerts.maintenance` kararı "
+            + "dördünü de karşılamadığı için duruyor.");
+
+        // MUAFİYET SAYILI: liste büyürse burası kırmızı yanıyor ve karar
+        // bilinçli olmak zorunda kalıyor.
+        Assert.True(
+            exempt.Count == expectedExemptCount,
+            $"Muafiyet listesi {expectedExemptCount} yerine {exempt.Count} satır taşıyor. "
+            + "Değişiklik bilinçliyse sabiti de güncelleyin — kalıp "
+            + "`ProducesContractTests.ExpectedExemptCount`'tan (§8).");
+
+        foreach (var (name, reason) in exempt)
+        {
+            Assert.False(
+                string.IsNullOrWhiteSpace(reason),
+                $"`{name}` muafiyeti gerekçesiz. Gerekçesiz muafiyet, muafiyetin olmadığı yerde "
+                + "muafiyet varmış gibi okunur.");
+
+            // Muaf araç GERÇEKTEN yazma tabanından türüyor. Olmadan liste, hiç
+            // yazmayan bir aracı da "muaf" diye taşıyabilirdi ve o hâlde sayı
+            // bir şey ifade etmezdi.
+            var type = McpToolDiscovery
+                .ToolTypes([typeof(LogsSearchTool).Assembly])
+                .SingleOrDefault(candidate => string.Equals(candidate.Name, name, StringComparison.Ordinal));
+
+            Assert.NotNull(type);
+            Assert.True(
+                typeof(ProductWriteTool).IsAssignableFrom(type),
+                $"`{name}` muafiyette ama `{nameof(ProductWriteTool)}`'dan türemiyor — yani yazma "
+                + "yaptığını beyan etmiyor. Muafiyet o beyana bağlı.");
+        }
     }
 
     /// <summary>

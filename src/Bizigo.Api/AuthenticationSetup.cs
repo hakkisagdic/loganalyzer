@@ -319,6 +319,40 @@ public static class AuthenticationSetup
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
 
+            // SAAT KAYMASI TOLERANSI — AÇIKÇA SEÇİLDİ (M19).
+            //
+            // Buraya kadar ayarsızdı, yani kütüphanenin varsayılanı olan BEŞ
+            // DAKİKA geçerliydi ve `ValidateLifetime = true` yazmak bunu
+            // görmüyordu. Kusur sayının büyüklüğü değil, kimsenin SEÇMEMİŞ
+            // olmasıydı.
+            //
+            // ÖLÇÜLDÜ: realm'in `accessTokenLifespan` değeri 900 s
+            // (`deploy/keycloak/realm-bizigo.json`). Yani beş dakikalık tolerans
+            // belirtecin ömrünün ÜÇTE BİRİ kadar — etkin ömrü 900 s'den 1200
+            // s'ye çıkarıyor, %33 fazlası. Bu ürün müşterinin log'unu okuyor;
+            // süresi dolmuş bir oturumun fazladan beş dakika yaşaması,
+            // kimsenin seçmediği bir güvenlik penceresi.
+            //
+            // NEDEN SIFIR DEĞİL — ve burası stdio'dan AYRILIYOR. Kaymayı kim
+            // düzeltiyor sorusunun cevabı: doğrulama `exp`'i (Keycloak yazıyor)
+            // API'nin saatiyle karşılaştırıyor, yani ilgili çift
+            // Keycloak↔API — istemcinin saati bu hesaba HİÇ girmiyor, o yalnızca
+            // belirteci taşıyor. Compose'da ikisi aynı Docker host'unun saatini
+            // paylaşıyor; ayrı host'larda NTP saniyenin altında tutuyor.
+            //
+            // Ama sıfır tolerans yalnızca `exp`'i değil `nbf`'i de sıkıyor ve
+            // TEHLİKELİ YÖN ORASI: saati API'den ileri olan bir Keycloak'ın
+            // bastığı belirteç "henüz geçerli değil" diye reddedilir, ve
+            // yenileme BUNU ÇÖZMEZ — yeni belirteç de aynı sorunu taşır.
+            // `exp` tarafında yenileme bir kurtarma yolu (BFF'in `refresh()`'i
+            // var, `ui/src/lib/auth/oidc.ts`), `nbf` tarafında yok.
+            //
+            // 30 s: NTP sınıfı kaymanın yüzlerce katı, ama ömrün otuzda biri.
+            // stdio'nun SIFIR'ı ise zorunlu ve gerekçesi ayrı: orada yenileme
+            // yok, süreç yeni belirteçle yeniden başlatılıyor, ve bir lütuf
+            // penceresi süre sonu ânını gözlemlenemez kılıyor.
+            ClockSkew = TimeSpan.FromSeconds(30),
+
             // Claim sözleşmesi (F1 §10.1.1): rol ve ad claim'leri düz adlarıyla
             // okunuyor, Microsoft'un uzun URI şemasıyla değil.
             RoleClaimType = BizigoClaims.Roles,

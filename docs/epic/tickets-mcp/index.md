@@ -63,13 +63,39 @@ flowchart TB
 | M02 | [Komut çekirdeği ve CLI paritesi](komut-cekirdegi/index.md) | Ortak çekirdek, iki sunum katmanı, gerekçeli muafiyet + sabit sayı | M01 |
 | M03 | [`bizigo-sim` araçları](sim-araclari/index.md) | Yedi araç; **yüzey hatası** yüzeyi söylüyor, profili değil | M01, FS-a |
 | M04 | [`bizigo` okuma araçları](okuma-araclari/index.md) | `logs.*`, `alerts.*`, `inventory.*`, `catalog.*`; kapsam **tek kapıdan** | M01, M02 |
-| M05 | [`bizigo` RCA araçları](rca-araclari/index.md) | `rca.trigger` (`Idempotency-Key`), `rca.runs` (üç yönlü ayrım), `evidence.bundle` | M04, T46 |
+| M05 | [`bizigo` RCA araçları](rca-araclari/index.md) | `rca.trigger` (**yazıyor** — dört kalemli ölçüt), `rca.runs` (üç yönlü ayrım); `evidence.bundle` **kaynak olarak** karşılandı | M04, T46 |
 | M06 | [Redaksiyon ve K6 kapısı](redaksiyon-kapisi/index.md) | `RedactedPrompt` zorunluluğu **derleyicide**; sunucu ağ sınırını beyan ediyor | M04, T41, T42 |
 | M07 | [Kaynaklar ve abonelik](kaynaklar-ve-abonelik/index.md) | Belge kaynakları, `rca.runs` durum bildirimi | M05 |
 | M08 | [Kimlik taşıma](kimlik-tasima/index.md) | Keycloak kimliği MCP oturumundan uca; servis hesabı **yasak** | M04 |
 | M09 | [Kimliğin bulunması ve kaynağa bağlanması](kimlik-kesfi/index.md) | RFC 9728 keşif + RFC 8707 kaynak kimliği; **adlandırılmış şema**, 45 uç etkilenmiyor | M01 |
 | M10 | [Üç ertelenmiş ürün aracı](yeni-urun-araclari/index.md) | `logs.get` · `rca.quality` · `alerts.maintenance`; **MCP'de yazma yok** ve IL'de tutuluyor | M04, M06, T47 |
 | M11 | [Kestrel'in kör noktası: beyanın topolojisi](kestrel-kor-noktasi/index.md) | Dinleyici adresi kapının görüşüne alınıyor; joker bağlama **kanıt değil**, gerekçeli muafiyet | M06, T42 |
+| M15 | [Kota rezervi `Agent`'ı kapsamıyor](kota-rezerv-ekseni/index.md) | Rezerv yalnızca `Schedule`'a uygulanıyor; model insanın kotasını yiyebilir | M14, T46 |
+| M20 | [Abonelik kimliği ve kapsam süzgeci](abonelik-kimligi-ve-kapsam/index.md) | Bildirim **etiketsiz** ve kapsam süzgeci **yok**; ikisi de `SubscriptionsListenHandler`'ı devralmaya bakıyor | M07 |
+
+### Tüketilmiş kimlikler — **M16–M19 ticket değil**
+
+M20'nin numarası ilk yazıldığında **M16** seçildi ve M16 aslında **alınmıştı**.
+Sebep bu tabloydu: en son satır M15'ti, dolayısıyla *"sıradaki M16"* çıkarımı
+tablodan bakınca doğru görünüyordu.
+
+Dört kimlik **yalnızca commit mesajlarında** yaşıyordu. Hiçbiri bir ticket değil
+— iş olarak verildiler, ürünleri belgelere dağıldı, ve numaraları hiçbir yerde
+kayıtlı olmadı. Tabloya ticket satırı olarak yazmak ikinci bir yanlış olurdu;
+kimlik uzayının **görünür** olması yeterli:
+
+| Kimlik | Ne yapıldı | Commit | Ürünü nerede |
+| --- | --- | --- | --- |
+| M16 | Kota gözlemi CLI'ya çıkarıldı; üç adaydan ikisinin okuyucusu yok | `936de1e` | `README.md` — *RCA kotası* |
+| M17 | CLI'nın kapsam sınırı olmadığı yazıldı, muafiyet belgelendi | `c004737` | [F1 kapsam kriteri düzeltmesi](../f1-kapsam-kriteri-duzeltmesi/index.md) |
+| M18 | `IScopedQuery` tüketici listesi türetildi; elle liste üç yönde yanlıştı | `7d3a016` | [T10 kararlar](../t10-kararlar/index.md) |
+| M19 | HTTP süre-sonu toleransı **açıkça** 30 s seçildi; F1 tablosunda üç boşluk | `3321d1c` | [M08](kimlik-tasima/index.md) · [F1-D1](../tickets/dayaniklilik-olcumu/index.md) |
+
+**Ders, numaralandırmadan büyük:** bir kimlik uzayının kaydı, o uzaydan numara
+**dağıtan** yerde olmak zorunda. Burada dağıtım sohbette oluyordu ve kayıt
+tabloydu — ikisi ayrı olduğu için tablo *"M15 son"* diyebiliyordu ve doğruyu
+söylüyordu, yalnızca sorulan soruya değil **başka bir soruya** cevap veriyordu.
+
 
 **M10 ticket'ı iş bittikten SONRA yazıldı** ve bunu T61'in bekçisi zorladı:
 merge edilmiş bir kimlik hiçbir tabloda anılmıyordu, kapı kırmızı yandı. Kaydın

@@ -1,5 +1,4 @@
 using System.Reflection;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Bizigo.Mcp;
 
@@ -29,16 +28,8 @@ public static class McpToolDiscovery
     /// <paramref name="assemblies"/> içindeki somut <see cref="BizigoMcpTool"/>
     /// türleri, ada göre sıralı.
     /// </summary>
-    public static IReadOnlyList<Type> ToolTypes(IEnumerable<Assembly> assemblies)
-    {
-        ArgumentNullException.ThrowIfNull(assemblies);
-
-        return [.. assemblies
-            .SelectMany(static assembly => assembly.GetTypes())
-            .Where(static type => type is { IsAbstract: false, IsGenericTypeDefinition: false }
-                && typeof(BizigoMcpTool).IsAssignableFrom(type))
-            .OrderBy(static type => type.FullName, StringComparer.Ordinal)];
-    }
+    public static IReadOnlyList<Type> ToolTypes(IEnumerable<Assembly> assemblies) =>
+        McpPrimitiveDiscovery.Types<BizigoMcpTool>(assemblies);
 
     // KÖKTEN REFERANS İZLEME KALDIRILDI — ve sebebi ölçüldü.
     //
@@ -78,80 +69,41 @@ public static class McpToolDiscovery
         McpSurface surface,
         IServiceProvider services)
     {
-        ArgumentNullException.ThrowIfNull(toolTypes);
-        ArgumentNullException.ThrowIfNull(services);
-
-        var tools = new List<BizigoMcpTool>();
-
-        foreach (var type in toolTypes)
-        {
-            BizigoMcpTool tool;
-
-            try
-            {
-                // `surface` YALNIZCA onu isteyen yapıcıya veriliyor — ve bu
-                // koşul ÖLÇÜLEREK eklendi.
-                //
-                // İlk hâli argümanı koşulsuz veriyordu. Ölçüm:
-                // `ActivatorUtilities` fazladan argümanı olan bir çağrıyı
-                // eşleştirmiyor ve "A suitable constructor ... could not be
-                // located. ... Also ensure no extraneous arguments are
-                // provided." diyerek düşüyor. Yani YÜZEYİNİ YAPICIDAN ALMAYAN
-                // HİÇBİR ARAÇ KURULAMIYORDU — parametresiz bir yapıcı da,
-                // yalnızca `IScopedQuery` isteyen bir M04 aracı da.
-                //
-                // Kusurun bedeli yalnızca "çalışmıyor" değildi: aşağıdaki
-                // `catch` bunu "Bağımlılığı DI'ya kaydedilmemiş olabilir" diye
-                // raporluyor, yani mesaj sebebi OLMAYAN bir yere işaret ediyor
-                // ve arayan kişi DI kayıtlarında saatlerce dolaşıyor. Bu
-                // deponun §7'de tarif ettiği sınıf: hata var ama söylediği şey
-                // yanlış.
-                //
-                // Yüzeyini yapıcıdan alan araçlar (bkz. `ServerInfoTool`) iki
-                // yüzeyde de tek sınıfla durmaya devam ediyor; yüzeyi sabit
-                // olanlar argümanı hiç görmüyor ve aşağıdaki filtre onları
-                // eliyor.
-                //
-                // M01'DE NEDEN GÖRÜNMEDİĞİ (M04'te bağımsız olarak da ölçüldü):
-                // o gün ilan edilen tek araç yüzeyi yapıcıdan ALIYORDU, ve
-                // yüzeyi sabit olan iki örnek (`TestOnlyTool`,
-                // `NeverEndingTool`) yalnızca `ToolTypes` ile keşfedilip HİÇ
-                // ÖRNEKLENMİYORDU. Yani kusur bir testin kapsamı dışındaydı,
-                // dikkatinin değil — ve ilk ürün aracı gelene kadar öyle kaldı.
-                tool = (BizigoMcpTool)(WantsSurface(type)
-                    ? ActivatorUtilities.CreateInstance(services, type, surface)
-                    : ActivatorUtilities.CreateInstance(services, type));
-            }
-            catch (Exception error)
-            {
-                throw new InvalidOperationException(
-                    $"MCP aracı `{type.FullName}` kurulamadı: {error.Message}. "
-                    + "Bağımlılığı DI'ya kaydedilmemiş olabilir. ATLANMIYOR — atlanan bir araç "
-                    + "uyum kapısına hiç görünmez ve kapı yanlış sebeple yeşil yanar.",
-                    error);
-            }
-
-            if (tool.Surface == surface)
-            {
-                tools.Add(tool);
-            }
-        }
-
-        return tools;
+        // MEKANİZMA `McpPrimitiveDiscovery`'DE, ve M07'de oraya taşındı: kaynak
+        // kanalı aynı keşfe ihtiyaç duyunca ikinci bir kopya yazmak, ayrışması
+        // SESSİZ olacak iki gösterim demekti (§9). Aşağıdaki gerekçeler burada
+        // kalıyor çünkü ölçüm burada yapıldı.
+        //
+        // `surface` YALNIZCA onu isteyen yapıcıya veriliyor — ve bu koşul
+        // ÖLÇÜLEREK eklendi.
+        //
+        // İlk hâli argümanı koşulsuz veriyordu. Ölçüm: `ActivatorUtilities`
+        // fazladan argümanı olan bir çağrıyı eşleştirmiyor ve "A suitable
+        // constructor ... could not be located. ... Also ensure no extraneous
+        // arguments are provided." diyerek düşüyor. Yani YÜZEYİNİ YAPICIDAN
+        // ALMAYAN HİÇBİR ARAÇ KURULAMIYORDU — parametresiz bir yapıcı da,
+        // yalnızca `IScopedQuery` isteyen bir M04 aracı da.
+        //
+        // Kusurun bedeli yalnızca "çalışmıyor" değildi: örnekleme hatası
+        // "Bağımlılığı DI'ya kaydedilmemiş olabilir" diye raporlanıyor, yani
+        // mesaj sebebi OLMAYAN bir yere işaret ediyor ve arayan kişi DI
+        // kayıtlarında saatlerce dolaşıyor. Bu deponun §7'de tarif ettiği
+        // sınıf: hata var ama söylediği şey yanlış.
+        //
+        // Yüzeyini yapıcıdan alan araçlar (bkz. `ServerInfoTool`) iki yüzeyde de
+        // tek sınıfla durmaya devam ediyor; yüzeyi sabit olanlar argümanı hiç
+        // görmüyor ve yüzey filtresi onları eliyor.
+        //
+        // M01'DE NEDEN GÖRÜNMEDİĞİ (M04'te bağımsız olarak da ölçüldü): o gün
+        // ilan edilen tek araç yüzeyi yapıcıdan ALIYORDU, ve yüzeyi sabit olan
+        // iki örnek (`TestOnlyTool`, `NeverEndingTool`) yalnızca `ToolTypes` ile
+        // keşfedilip HİÇ ÖRNEKLENMİYORDU. Yani kusur bir testin kapsamı
+        // dışındaydı, dikkatinin değil — ve ilk ürün aracı gelene kadar öyle
+        // kaldı.
+        return McpPrimitiveDiscovery.Instantiate<BizigoMcpTool>(
+            toolTypes,
+            surface,
+            static tool => tool.Surface,
+            services);
     }
-
-    /// <summary>
-    /// Aracın <b>herhangi bir</b> genel yapıcısı yüzeyi istiyor mu.
-    ///
-    /// <para>
-    /// Bütün yapıcılara bakılıyor, yalnızca birine değil: hangi yapıcının
-    /// seçileceğine <c>ActivatorUtilities</c> karar veriyor ve karar DI'da
-    /// kayıtlı servislere bağlı. Tek bir yapıcıya bakmak, kararı burada ikinci
-    /// kez ve <b>farklı bilgiyle</b> vermek olurdu.
-    /// </para>
-    /// </summary>
-    private static bool WantsSurface(Type type) =>
-        type.GetConstructors()
-            .Any(static constructor => constructor.GetParameters()
-                .Any(static parameter => parameter.ParameterType == typeof(McpSurface)));
 }

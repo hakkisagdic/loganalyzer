@@ -5,13 +5,90 @@ namespace Bizigo.Query;
 /// <summary>
 /// <b>Kapsam zorlamasının tek kapısı</b> (K17, F1 §10.2).
 ///
-/// REST uçları, CLI, replay okuma, F3'ün kanıt toplayıcısı ve F4'ün MCP sunucusu —
-/// hepsi buradan geçer. ClickHouse row policy tercih edilmedi çünkü tek kapı
-/// olması gereken yer bu: agent'lar ve MCP de aynı API'yi kullanacak.
+/// <para>
+/// <b>Kural, liste değil:</b> kapsamlı veri okuyan her <b>ürün yüzeyi</b>
+/// buradan geçer. ClickHouse row policy tercih edilmedi çünkü tek kapı olması
+/// gereken yer bu: agent'lar ve MCP de aynı yolu kullanıyor.
+/// </para>
+///
+/// <para>
+/// <b>Burada bir zamanlar tüketici LİSTESİ vardı ve M18'de ölçülünce üç yönde
+/// birden yanlış çıktı</b> — <c>Bizigo.Cli</c> ile <c>Bizigo.Replay</c>'i
+/// sayıyordu (ikisi bu arayüzü <b>hiç anmıyor</b>), <c>Bizigo.Alerting</c>'i
+/// saymıyordu (tüketiyor), ve <i>"MCP sunucusu"</i> dediği şey aslında
+/// <c>Bizigo.Mcp.Product</c> (araçlar) — <b>çekirdek değil</b>. Liste silindi,
+/// yerine türetilen bir bekçi kondu: <c>ScopedQueryConsumerTests</c> tüketici
+/// kümesini <b>meta veriden</b> çıkarıyor ve beyan edilenle karşılaştırıyor.
+/// Bir katmanın bu kapıyı <b>kullanmayı bırakması</b> — yani atlamaya
+/// başlaması — o bekçide kırmızı yanıyor; elle tutulan listede hiçbir şey
+/// yanmıyordu.
+/// </para>
 ///
 /// Her metot <see cref="AccessScope"/> istiyor; kapsamsız çağrı yazılamıyor.
-/// Mimari test (T02) ayrıca bu derlemenin dışından <c>ClickHouse.Driver</c>'a
-/// referans verilmesini yasaklıyor, yani kimse kapıyı atlayamıyor.
+/// Kapıyı atlamayı engelleyen şey bu imzalar <b>değil</b> — o iş
+/// <c>ArchitectureTests</c>'te: ham sürücüye erişim yalnızca
+/// <c>Bizigo.Storage.ClickHouse</c>'ta olabiliyor, ve <c>Bizigo.Api</c>
+/// okuyucuları (<c>EventReader</c> vb.) <b>doğrudan</b> kullanamıyor.
+///
+/// <h3>CLI bir kapsam SINIRI değil — ve kapıdan da GEÇMİYOR</h3>
+///
+/// <para>
+/// <b>Ölçüldü (M18):</b> <c>Bizigo.Cli</c> bu arayüzü hiç anmıyor. Veri
+/// erişimini doğrudan kuruyor — <c>new ClickHouseContext(...)</c>,
+/// <c>new EventWriter(context)</c> — ve <c>ArchitectureTests</c>'in
+/// "sürücüye dokunamaz" listesinde de <b>yok</b>, yani bu bilinçli olarak
+/// serbest bırakılmış bir katman.
+/// </para>
+///
+/// <para>
+/// M17 bu muafiyeti yazarken <i>"komutlar da bu kapıdan geçiyor, yani kapsamsız
+/// sorgu yazamıyorlar"</i> demişti; <b>o cümle yanlıştı</b> ve M18'de düzeltildi.
+/// Muafiyetin <b>gerekçesi</b> değişmedi, yalnızca mekanizması farklı: CLI
+/// kapsamı seçmiyor, kapsam kavramına hiç girmiyor.
+/// </para>
+///
+/// <para>
+/// <b>Gerekçe iki kalem:</b>
+/// </para>
+///
+/// <list type="number">
+/// <item>
+/// <b>CLI'da kimlik yok ve olamaz.</b> Bir komutun koşması için kontrol düzlemi
+/// ya da ClickHouse bağlantı dizgesi gerekiyor — yani çağıran <b>zaten</b>
+/// veritabanı erişimine sahip. Oraya bir kapsam kontrolü koymak, elinde
+/// <c>psql</c> olan birini bir bayrakla durdurmaya çalışmak olurdu: kapının
+/// önünde duvar yokken kapı takmak.
+/// </item>
+/// <item>
+/// <b>K17 ürün yüzeylerinin sözü.</b> Kapsam sınırı REST, MCP ve arayüz için
+/// var; üçünde de çağıran bir <b>kullanıcı</b> ve kimliği IdP'den geliyor
+/// (<c>IAccessScopeResolver</c> → <c>idp_group_mapping</c>). CLI'da o zincirin
+/// ilk halkası yok, dolayısıyla geri kalanı da yok.
+/// </item>
+/// </list>
+///
+/// <para>
+/// <b>Muafiyetin yazılı olması şart</b> ve sebebi bu depoda ölçüldü: yazılı
+/// olmayan bir muafiyet, bir gün <i>"CLI'da neden kapsam yok"</i> diye
+/// sorulduğunda <b>cevabı olmayan</b> bir muafiyet olur — ve o an ya gereksiz
+/// bir kontrol eklenir ya da gerçek bir kaçak muafiyet sanılır.
+/// </para>
+///
+/// <para>
+/// ⚠️ <b>Bugün kapsam sormayan komutlar SAYILMIYOR</b>, ve bu bir eksiklik
+/// değil bir karar: böyle bir liste bayatlar — nitekim yukarıdaki tüketici
+/// listesi tam olarak öyle yaptı. Kural <b>yüzey düzeyinde</b> okunuyor:
+/// <i>CLI bir kapsam sınırı değil.</i>
+/// </para>
+///
+/// <para>
+/// <b>Bunun tersi de yazılı olsun:</b> bir CLI komutu bir gün <b>ürün</b>
+/// yüzeyi hâline gelirse (bir uca ya da MCP aracına sarılırsa) kapsamı artık
+/// operatör seçmiyor — o an kimlikten türemesi gerekiyor. M14'ün
+/// <c>rca.trigger</c>'ı tam bu geçişin örneği: aynı iş, ama MCP yüzeyinde
+/// kapsam <c>AccessScope</c>'tan geliyor ve grubun kapsamda olduğu <b>açıkça</b>
+/// soruluyor.
+/// </para>
 /// </summary>
 public interface IScopedQuery
 {

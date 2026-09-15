@@ -306,7 +306,16 @@ public sealed class RcaScheduleWorker(
 
     private async Task<bool> ExecuteAsync(RcaRunEntity run, CancellationToken cancellationToken)
     {
-        if (!await admission.TryStartAsync(run.Id, cancellationToken).ConfigureAwait(false))
+        // `NotEngaged`, ve bu bir yer tutucu DEĞİL: bu işçi kanıt topluyor ve
+        // akıl yürütmeyi hiç çağırmıyor, dolayısıyla bu koşum hakkında model
+        // sınırı konusunda söylenecek bir şey yok. `Verified` yazmak, modele hiç
+        // konuşmamış bir koşum hakkında güvence beyan etmek olurdu (T54).
+        //
+        // Model yolu bağlandığı gün derleyici bu satırı okumaya zorluyor:
+        // `TryStartAsync`'in damga parametresi zorunlu ve varsayılanı yok, yani
+        // `RcaModelBoundaryStamp.From(endpoint)`'e geçmek unutulamıyor.
+        if (!await admission.TryStartAsync(run.Id, RcaModelBoundaryStamp.NotEngaged(), cancellationToken)
+            .ConfigureAwait(false))
         {
             // Başkası devraldı ya da durum değişti. Sessiz geçmek doğru: bu bir
             // hata değil, yarışın kaybedilmesi.

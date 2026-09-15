@@ -261,6 +261,113 @@ yerine iki koşumu da kaydet.
 **Release/Debug farkı ölçümü tek yönde yanıltabilir.** K35'te Debug tabanı
 şişirip değişikliği hak etmediği kadar ucuz gösteriyordu. Benchmark `-c Release`.
 
+### Bir kapının varlığı, neye baktığını söylemiyor
+
+Bu, aşağıdaki altı kaydın ortak çatısı ve **bir turda beş kez** ölçüldü: bekçi
+yerinde, yeşil, ve koruduğunu iddia ettiği şeyi görmüyor. Hiçbiri dikkat
+eksikliği değil — hepsi *"kapı var"* ile *"kapı doğru şeye bakıyor"* arasındaki
+mesafe.
+
+Ölçülen beş örnek: `McpBoundaryGate.Require` **silinse** K6 testi yeşil kalıyordu
+(kap boştu, her hâlde aynı istisna geliyordu) · `IlCallReader` bütün `async`
+gövdelerini kaçırıyordu (derleyici onları durum makinesine taşıyor) · kota rezerv
+kusuru **dört yerde** birbirini doğruluyordu, o yüzden hiçbiri yanmadı ·
+`RcaQuotaUsage.BySource` hesaplanıp **atılıyordu** · `pre-push` kancası CI'nın
+değil **bekçi işinin** sonucunu okuyordu.
+
+**Öldürülmüş bir ölçüm geri alınmış bir ölçüm değildir — ve çalışmış bir geri
+alma durmuş bir koşum değildir.** Kusur enjekte eden bir betik sinyalle
+kesilirse ağaçta kusur bırakıyor. Ve `trap` akışı **durdurmuyor**: sinyali
+işleyip bulunduğu yere dönüyor, döngü devam ediyor ve **bir sonraki kusuru
+uyguluyor**. Geri alma `finally` içinde ve döngüden **çıkarken** koşmalı; o zaman
+bu sıra ifade edilemez hâle geliyor. Bu turda iki worktree'de yaşandı.
+
+**Bir davranışı ölçüp yazmak, onu doğrulamak değil.** Ölçüm *"bugün böyle
+çalışıyor"* der; testin çivilediği şey *"böyle çalışması gerekiyor"*. Aradaki
+adım bir **karar** ve atlanırsa kusur bekçiye dönüşür. Ölçülen hâli: M05 kota
+rezervinin ajanı kapsamadığını ölçtü, doğru yaptı, ve testi o kusuru bir
+**özellik** olarak çiviledi.
+
+**Bir alanın okunduğunu ölçmek, okunanın kullanıldığını ölçmek değil.** IL'de bir
+`MemberRef` satırı, arızi bir `.Count` çağrısıyla da yazılır. Ve bir raporun
+*şeklini* sınayan test (adlar enum'dan, sınırlar hesaptan) taşıdığı **veriyi**
+sınamıyor olabilir.
+
+**Bir adı metinde bulmak, o tipe dokunmak değil.** `grep` yorumları da sayıyor:
+`IScopedQuery` tüketicisi ararken yedi derleme çıktı, doğru cevap dörttü — üçü
+tipi yalnızca belge yorumunda anıyordu. Küme **meta veriden** çıkarılmalı.
+
+**Bir iddiayı tek yerde düzeltmek, düzeltildiği anlamına gelmiyor.** Kaynağı
+düzeltilmemiş bir kopya sadakatle yanlış kalır. Ölçülen hâli: *"realm'de yalnızca
+`bizigo-claims` var"* **üç** yerde duruyordu — `CLAUDE.md` ve onu kaynak gösteren
+iki vault sayfası. Bir kopya düzeltildi ve düzeltme *"yanlış iddia yakalandı"*
+diye raporlandı; yakalanan şey bir **kopyaydı**. Refleks: bir iddiayı
+düzeltmeden önce **kaç yerin söylediğini say**.
+
+**Damgası düşmemiş bir vault sayfası "doğru" demek değil** — yalnızca kaynağının
+değişmediği demek. Damga bir **inceleme** değil; §11'in okuma adımı tam bu yüzden
+var.
+
+### Varsayılanla aynı olan bir değer, ölçümün bağını görünmez kılıyor
+
+**Bir testin üretimi okuduğunu, üretimle aynı cevabı vermesi kanıtlamıyor.**
+
+Ölçüldü: bir bekçi üretimin doğrulama parametrelerini okuyordu; testi üretimden
+**kopardık** (elle kurulmuş bir nesneyle değiştirdik) ve **hiçbir şey yanmadı**.
+Sebep, kütüphanenin varsayılan toleransının da seçilmiş değere **eşit** olması —
+kopuk test, bağlı testle aynı sonucu üretiyordu. Test *"üretimin kararını
+ölçüyorum"* derken aslında *"bir kararı ölçüyorum"* diyordu.
+
+Refleks: bir bekçinin üretime bağlı olduğunu ölçmek için, ölçtüğü değerin
+üretime **özgü** olması gerekiyor.
+
+**Ve bunun en sinsi hâli: bekçiyi körleştiren şey onu AÇIKLAYAN metin olabiliyor.**
+Ölçüldü — bir compose bekçisi `ui` bloğunun tamamını okuyordu, ve sağlık
+kontrolünün **üstündeki gerekçe yorumu** aranan uç adresini zaten içeriyordu.
+Bekçi *"uç yoklanıyor mu"* değil *"ucun adı dosyada geçiyor mu"* diye soruyordu;
+kusur konulduğunda **yeşil kaldı**. Yorumlar elenince kırmızı yandı.
+
+Aynı turda ikinci ölçüt aynı kusurda kırmızı yanmıştı ve bu **tesadüf**: kusur
+aranan dizgeyi *ekliyordu*, o yüzden `DoesNotContain` düşüyordu. Yani iki
+ölçütten biri kör biri sağlamdı, ve **tek bir "yeşil" ikisini temsil ediyordu**. Çözüm bir **parmak izi** iddiası: ürüne ait,
+kütüphanenin varsayılanında bulunmayan bir alan (bizde `RoleClaimType`, claim
+sözleşmesinden). Elle kurulmuş bir nesnede o alan yok, yani kopma yanıyor.
+
+Ve ikinci yarısı: o turda seçilmiş değeri değiştirmek boşluğu **tesadüfen**
+kapatıyordu — yeni değer varsayılandan farklı olduğu için. Ona bırakılmadı.
+**Bir boşluğun tesadüfen kapanması, kapatılması değil**: sayı bir gün varsayılana
+dönerse bağ yine görünmez olur, parmak izi ise ölçmeye devam eder.
+
+Aynı turun ironisi kuralın kendisini anlatıyor: kapanmayan kriterin kusuru
+*"tolerans seçilmemiş"*, bekçinin kusuru *"seçilmemiş varsayılana yapışık"* —
+tek kök, iki kılık.
+
+### Doğrulama çıktısını `tail`'den geçirmek, aradığın arızayı yutuyor
+
+İki kez oldu ve ikisinde de kaybedilen şey **arızanın kimliği**:
+
+- `npm run api:check | tail -3` → komut **17 hata** verdi, rapora *"koşmadı"*
+  diye geçti. Hataların kimliği kayıp; tekrarlanamadı çünkü o koşumda disk
+  kapısı da kırmızıydı ve `ENOSPC` sıradan bir test hatası gibi okunuyor.
+- `dotnet test | tail -N` → **düşen testin adı** kesildi, yalnızca özet kaldı.
+
+Sebep basit ve o yüzden tekrarlıyor: özet satırı **sonda**, arızanın kimliği
+**ortada**. `tail` özeti getiriyor, yani çıkış kodu doğru okunuyor ve *"neyin
+düştüğü"* sessizce gidiyor — komut kırmızı, rapor eksik.
+
+Refleks: doğrulama çıktısı **tam loga** yazılıyor; kısaltma yalnızca `grep` ile
+ve **hata desenini de kapsayarak** yapılıyor (`grep -E "\[FAIL\]|error|Başarısız"`).
+Bir arızanın *var olduğunu* bilmek, *ne olduğunu* bilmek değil.
+
+### Paylaşılan ASP.NET çatısı `Bizigo.Cli`'ye inemez
+
+Üç ayrı yerden aynı duvara çarpıldı: `AddJwtBearer` kullanmak, test derlemesine
+`InternalsVisibleTo` vermek, ve namespace seçimi. Sebep üretilen `Program` tipi —
+`Bizigo.Api` ile `Bizigo.Cli` ikisi de üretiyor ve çatı paylaşılınca `CS0433`
+geliyor. Kimlik doğrulama gibi ortak ihtiyaçlar `Microsoft.IdentityModel`
+düzeyinde çözülmeli, ve **sürüm ölçülerek** seçilmeli (API'nin zaten çözdüğü
+sürüm): ayrı sürüm, aynı belirteç hakkında farklı karar demek.
+
 ---
 
 ## 7 · Bu depoda "hata" ne demek
@@ -432,9 +539,16 @@ Sorun ajanların dikkatinde değil, kuralın yazılı olmamasındaydı.
 - `Bizigo.Api`'yi elle koşturmak: CWD **depo kökü** (katalog/maske yolları
 oradan çözülüyor), içerik kökü **bin dizini** (appsettings oradan okunuyor),
 `ASPNETCORE_ENVIRONMENT=Development` (WAL dizini aksi hâlde `/var/lib/bizigo`).
-- Keycloak realm'inde **yalnızca `bizigo-claims` client scope var**; yerleşik
-`profile`/`email` hiç oluşmuyor. `scope=openid` geçer,
+- Keycloak realm'inde **iki** client scope var: `bizigo-claims` (varsayılan) ve
+`bizigo-mcp` (**isteğe bağlı**, M09 ekledi — RFC 8707 kaynak kimliği için).
+Yerleşik `profile`/`email` hiç oluşmuyor: `scope=openid` geçer,
 `openid profile email` canlıda `invalid_scope` alır. Ölçüldü.
+  - ⚠️ Bu satır bir zamanlar *"**yalnızca** `bizigo-claims` var"* diyordu ve M09'dan
+  sonra yanlış oldu. **Üç yerde** tekrarlanmıştı — burada ve iki vault sayfasında —
+  çünkü ikisi bu satırı kaynak gösteriyordu. M17 vault'un birini düzeltti, ikincisi
+  damgası düşene kadar görünmedi, ve **kök buydu**. Ders: bir iddiayı tek yerde
+  düzeltmek, düzeltildiği anlamına gelmiyor; kaynağı düzeltilmemiş bir kopya
+  sadakatle yanlış kalır.
 - Commit mesajları **İngilizce**, kullanıcıyla iletişim **Türkçe**.
 
 ## graphify

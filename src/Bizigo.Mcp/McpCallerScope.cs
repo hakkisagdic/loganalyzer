@@ -57,7 +57,20 @@ public static class McpCallerScope
     /// <i>"eşleşme yok"</i> diye okur ve kimliğin kaybolduğunu hiç görmez.
     /// §7'nin en pahalı sınıfı tam olarak bu.
     /// </para>
+    ///
+    /// <para>
+    /// <b>Jenerik, ve bu M07'de ölçülerek oldu.</b> İmza
+    /// <c>RequestContext&lt;CallToolRequestParams&gt;</c> ile yazılmıştı, yani
+    /// yalnızca araç kanalına uyuyordu. Kaynak kanalı
+    /// (<c>ReadResourceRequestParams</c>) <b>ikinci bir model kanalı</b> ve
+    /// kimliği aynı yerden almak zorunda; imzayı jenerikleştirmek yerine orada
+    /// ikinci bir çözüm yazmak, bu deponun §9'da adı konmuş hatası olurdu —
+    /// ayrışan iki kimlik kapısı, aynı kişinin iki kanaldan <b>farklı veri
+    /// görmesi</b> demek. Gövde değişmedi; yalnızca hangi isteklere
+    /// uygulanabildiği genişledi.
+    /// </para>
     /// </summary>
+    /// <typeparam name="TParams">İsteğin parametre tipi — araç çağrısı, kaynak okuması, …</typeparam>
     /// <param name="request">SDK'nın istek bağlamı.</param>
     /// <param name="scope">Çözülen kapsam; ret hâlinde <see cref="AccessScope.Denied"/>.</param>
     /// <returns>Ret sebebi, ya da kapsam çözüldüyse <see langword="null"/>.</returns>
@@ -68,8 +81,8 @@ public static class McpCallerScope
     /// Kurulum sırasında da ayrıca yakalanıyor (<c>BizigoMcpServer.Apply</c>);
     /// burası son savunma.
     /// </exception>
-    public static McpToolError? Resolve(
-        RequestContext<CallToolRequestParams> request,
+    public static McpToolError? Resolve<TParams>(
+        RequestContext<TParams> request,
         out AccessScope scope)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -78,7 +91,23 @@ public static class McpCallerScope
 
         if (request.User?.Identity?.IsAuthenticated is not true)
         {
-            return new McpToolError(McpToolError.Unauthenticated, NoIdentityMessage);
+            // SEBEP SORULUYOR — ve bu M13'ün eklediği tek satırlık ayrım.
+            //
+            // HTTP'de kimlik yokluğunun tek sebebi var: istemci belirteç
+            // göndermedi. stdio'da İKİ sebep var ve ikisi zıt iş gerektiriyor —
+            // ortamda belirteç hiç yok (yapılandırma) ya da vardı ve süresi
+            // doldu (yeni belirteç). İkisi aynı cümleye düşerse okuyan kişi
+            // yanlış yere bakar.
+            //
+            // `GetService`, `GetRequiredService` DEĞİL: HTTP tarafında bu servis
+            // kayıtlı değil ve olmaması doğru. Bulunmazsa eski cümlede kalıyor.
+            var refusal = (request.Services ?? request.Server?.Services)
+                ?.GetService<IMcpIdentityRefusal>()
+                ?.Reason;
+
+            return new McpToolError(
+                McpToolError.Unauthenticated,
+                string.IsNullOrWhiteSpace(refusal) ? NoIdentityMessage : refusal);
         }
 
         var resolver = (request.Services ?? request.Server?.Services)

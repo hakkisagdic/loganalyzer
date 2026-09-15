@@ -196,5 +196,8 @@ public sealed partial class CommandCatalogTests
     /// Muaf komutların sayısı. <b>M01'den bağımsız</b> — bu ticket'ın kendi
     /// kararı, dolayısıyla dal birleşmeleri bu sayıyı kaydırmıyor.
     /// </summary>
-    private const int ExpectedExemptCount = 5;
+    // M16: `rca quota` eklendi. Muafiyetin gerekçesi kataloğun kendisinde ve
+    // ölçülmüş: modelin cevabı `rca.trigger`'ın reddiyle ZATEN geliyor, yani
+    // araç eklemek yeni bir yetenek değil yalnızca bağlam bütçesi olurdu (§9).
+    private const int ExpectedExemptCount = 6;
 }

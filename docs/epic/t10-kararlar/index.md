@@ -23,10 +23,24 @@ başlatma. Hepsinin ortak koşulu tek kapı — `IScopedQuery`.
 
 ### 2.1 Tek kapı, ve kapının kendisinin bekçileri
 
-`IScopedQuery`'nin sınıf yorumu gerekçeyi yazıyor: REST uçları, CLI, replay
-okuma, F3'ün kanıt toplayıcısı ve F4'ün MCP sunucusu **hepsi buradan geçiyor**.
-ClickHouse row policy bilinçli olarak tercih edilmemiş — tek kapı olması gereken
-yer sorgu API'si, çünkü agent'lar ve MCP de aynı API'yi kullanacak.
+`IScopedQuery`'nin sınıf yorumu gerekçeyi yazıyor: kapsamlı veri okuyan her
+**ürün yüzeyi** buradan geçiyor. ClickHouse row policy bilinçli olarak tercih
+edilmemiş — tek kapı olması gereken yer sorgu API'si, çünkü agent'lar ve MCP de
+aynı API'yi kullanacak.
+
+> ⚠️ **Bu paragraf bir zamanlar sınıf yorumundaki tüketici listesini
+> alıntılıyordu** (*"REST uçları, CLI, replay okuma, F3'ün kanıt toplayıcısı ve
+> F4'ün MCP sunucusu"*) ve **M18'de ölçülünce liste üç yönde birden yanlış
+> çıktı**: `Bizigo.Cli` ile `Bizigo.Replay` bu arayüzü **hiç anmıyor** (veri
+> erişimini `ClickHouseContext`/`EventWriter` ile doğrudan kuruyorlar),
+> `Bizigo.Alerting` tüketiyor ama sayılmamış, ve *"MCP sunucusu"* dediği şey
+> aslında `Bizigo.Mcp.Product` — **çekirdek değil**.
+>
+> Liste sınıf yorumundan **silindi** ve yerine türetilen bir bekçi kondu
+> (`ScopedQueryConsumerTests`): tüketici kümesi **meta veriden** çıkarılıyor,
+> beyanla karşılaştırılıyor, ve bir katmanın kapıyı **kullanmayı bırakması**
+> kırmızı yanıyor. Bu belge o listeyi bir daha alıntılamıyor — kopyası olan bir
+> liste, bayatlayan iki liste demek (§9).
 
 Kapının delinmemesi üç ayrı bekçiye bağlanmış:
 

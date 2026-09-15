@@ -1,7 +1,7 @@
 ---
 title: "M05 — bizigo RCA araçları"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # M05 — RCA'yı dışarıdan tetiklemek ve okumak
@@ -60,9 +60,79 @@ Ayrıca bu hafta girdi: `Bizigo.Rca/Reasoning/` altında `RcaReportStore` ·
    [T53](../../tickets-f3/ticket-statusu-bekcisi/index.md)'ün ölçtüğü sınıf
    tekrar eder: aynı şeyin iki gösterimi sessizce ayrışır.
 4. `evidence.bundle`'ın çıktısı **paketin kendisi**; bir özet değil.
+   **KARŞILANDI — ama araçla değil, KAYNAKLA** (M14 kararı, aşağıda §3.2).
 5. Kapsam [M04](../okuma-araclari/index.md)'ün kapısından geçiyor —
    `AccessScope.System` çağrısı yok.
 6. Kırmızı yanabildiği ölçüldü (`CLAUDE.md` §6).
+
+## 3.1 · Bir tur `1` kaldı — ve bu bölüm artık GEÇMİŞ
+
+> ⚠️ Aşağıdaki bölüm `983bb95`'ten **önceki** hâli anlatıyor ve bilerek duruyor:
+> bir ticket'ın neden bir tur açık kaldığını silmek, kararın maliyetini silmek
+> olur. Üç aracın ikisi (`rca.trigger`, `rca.runs`) o turda yazıldı, üçüncüsü
+> (`evidence.bundle`) **kaynak olarak** karşılandı (§3.2). Ticket `2`.
+
+### Bölümün yazıldığı andaki hâl
+
+T61'in bekçisi bu ticket'ı `0`'dan çıkardı ve **`2` değil `1`** yazdı; ölçüm o
+temkinliliği doğruladı.
+
+**İlan edilen üç araçtan hiçbiri main'de yok.** `src/Bizigo.Mcp.Product/Tools/`
+altında sekiz araç var ve `rca.*` olan tek şey `rca.quality` — o da M10'un işi,
+bu ticket'ın değil. Aranan üç ad (`rca.trigger`, `rca.runs`, `evidence.bundle`)
+depoda hiç geçmiyor.
+
+M05'in dalından main'e giren şey **altyapı**:
+
+| Giren | Nerede |
+| --- | --- |
+| Araç derlemesi beyan modeli (`ToolAssemblies`, kök tarama yerine) | `BizigoMcpServer`, `McpEndpoints`, `McpCommandHandlers` |
+| **Sunucudan türeyen** idempotency anahtarı | `McpIdempotency.KeyFor` + `McpIdempotencyTests` |
+| Ajan tetikli RCA'nın kendi kaynağı | `RcaTriggerSource` |
+
+Yani kriter 2 karşılandı (anahtar modelin uydurabileceği bir yerden gelmiyor) ama
+1, 3, 4 ve 5 **araçlar yazılmadığı için** karşılanamaz.
+
+Bu bir gerileme değil bir **sıra**: beyan modeli üç aracın önkoşuluydu ve M05
+onu getirdi. Kalan iş üç aracın kendisi.
+
+## 3.2 · `evidence.bundle` aracı YAZILMADI — kaynak olarak karşılandı (M14)
+
+Kriter 4'ün istediği şey (*"çıktı paketin kendisi, özeti değil"*) **karşılandı**;
+karşılayan şey bir araç değil [M07](../kaynaklar-ve-abonelik/index.md)'nin
+kaynağı: `src/Bizigo.Mcp.Product/Resources/EvidenceBundleResource.cs`,
+adres `bizigo://evidence-bundle/{id}`.
+
+Araç yazmak **koruma seviyesini düşürürdü**, ve ölçüt tek satır:
+
+| | Kaynak kanalı (bugün) | Araç kanalı (yazılsaydı) |
+| --- | --- | --- |
+| Belgeyi üreten | `DeterministicReport` — `GET /v1/rca/{id}/export` ile **aynı** | aynı olabilirdi |
+| Kapsam | `BundleScope.IsReadableBy`, okuyamayana *"bulunamadı"* | aynı olabilirdi |
+| **Redaksiyon kapısı** | **derleyicide** — `McpResourceBody`'nin tek fabrikası `RedactedPrompt` istiyor | **yalnızca testte** |
+
+Üçüncü satır kararı veriyor. [M10](../yeni-urun-araclari/index.md) `logs.get`'te
+yapısal kanalın kapı dışında kaldığını **ölçtü**: alanı `string` yazıp ham metni
+vermek 0 hata 0 uyarı derleniyor. Yani bu paketi araç kanalına taşımak, bugün
+derleyicinin tuttuğu bir şartı bir teste indirmek olurdu — bir özelliği
+genişletmek değil, korumayı zayıflatmak.
+
+İkinci gerekçe kaynağın kendi belgesinde ve bir tercih değil bir yasak:
+
+> *"İkinci bir gösterim yazılmadı — yazılsaydı ekranda/export'ta görünen belge
+> ile modelin okuduğu belge bir gün ayrışır, ve ayrışmayı gösterecek hiçbir şey
+> olmazdı (§9)."*
+
+### Açık sınır — ticket değil, tetikleyici koşul
+
+Bir **araç** bu kanalın yapamadığı bir şeyi yapabilir: **arama**. Kaynak adres
+istiyor, yani paket kimliğini bilmek gerekiyor; bir araç *"şu pencerede hangi
+paketler var"* sorusunu cevaplayabilir.
+
+Bugün bunu isteyen bir tüketici **yok** ve §8 tüketicisi olmayan yüzeyi yazmayı
+yasaklıyor. Tetikleyici koşul yazılı olsun: **gerçek bir tüketici paketi kimliği
+olmadan bulmak istediğinde `evidence.search` doğar** — ve o zaman adı da çıktısı
+da farklı olur (liste, paketin kendisi değil), yani kriter 4'ün konusu olmaz.
 
 ## 4 · Bitti tanımından karşıladıkları
 

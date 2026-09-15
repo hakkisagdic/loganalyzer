@@ -1,7 +1,7 @@
 ---
 title: "M08 — Kimlik taşıma"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # M08 — Kimlik MCP oturumundan uca
@@ -124,6 +124,67 @@ yoksa ortam değişkeni canlı mı okunuyor? **Karar M08'in.**
 4. Token'ın süresi dolduğunda davranış **yazılı ve sınanmış**.
 5. Kırmızı yanabildiği ölçüldü: servis hesabıyla koşan bir kurulumun
    reddedildiği görüldü.
+
+## 4.1 · Neden UZUN SÜRE `1` kaldı — tek kriter, ölçüldü
+
+Beş kriterin dördü karşılanmış; **kriter 4 karşılanmamış**: *"Token'ın süresi
+dolduğunda davranış yazılı ve sınanmış."*
+
+Arandı ve **yok**: `tests/Bizigo.UnitTests/Mcp*.cs` altında süre sonuna dair tek
+bir iddia geçmiyor (`expired`, `exp`, `NotBefore`, `ValidateLifetime` — hiçbiri).
+Yani davranış bugün SDK'nın varsayılanı ne yapıyorsa o, ve ne yaptığı **yazılı
+değil**.
+
+Bu M13'ün (stdio kimliği) kapsamıyla kesişiyor ve orada aynı soru bir kez daha
+soruluyor: süre sonu hatası, kimliğin **yokluğundan** ayırt edilebiliyor mu? İkisi
+aynı `unauthenticated`'e düşüyorsa okuyan kişi yanlış yere bakar. Cevap M13'te
+ölçülecek ve buraya da yazılacak.
+
+## 4.2 · Kriter 4 KAPANDI (M19) — ve kusur beklenen yerde değildi
+
+**Karşılandı.** Ama arıza *"davranış yazılı değil"*den daha somut çıktı: iki
+yüzeyde birden **tolerans seçilmemişti**.
+
+`ClockSkew` hiçbir yerde ayarlı değildi, yani kütüphanenin varsayılanı olan
+**beş dakika** geçerliydi — ve `ValidateLifetime = true` yazmak bunu görmüyordu.
+Canlı Keycloak'la ölçüldüğünde (`McpStdioIdentityKeycloakTests`, bu depoda **ilk
+kez** koştu) `exp + 1 saniye`de belirteç hâlâ **kabul ediliyordu**.
+
+> **Kusur yanlış bir sayı değil, seçilmemiş bir sayıydı.** *Bir kapının varlığı,
+> neye baktığını söylemiyor* kuralının bir örneği daha.
+
+Ölçülen gerekçe: realm'in `accessTokenLifespan` değeri **900 s**
+(`deploy/keycloak/realm-bizigo.json`). Beş dakikalık tolerans belirtecin ömrünün
+**üçte biri** — etkin ömrü %33 uzatıyor.
+
+İki yüzey **farklı** cevap verdi ve fark bilinçli:
+
+| Yüzey | Tolerans | Bekçi | Gerekçe |
+| --- | --- | --- | --- |
+| stdio | **0** | `McpStdioIdentityTests.Sure_toleransi_acik_ve_sifir` | Yenileme **yok**; lütuf penceresi belgedeki *"süresi doldu → araçlar `unauthenticated` döner"* cümlesini beş dakika boyunca yanlış yapardı — hem de metni buluta gönderen bir masaüstü istemcisinde |
+| HTTP | **30 s** | `HttpTokenExpiryTests` (4 test) | Doğrulama `exp`'i **API'nin** saatiyle karşılaştırıyor, yani kayma Keycloak↔API ve NTP onu saniye altında tutuyor. Sıfır olmaması `nbf` yüzünden: saati ileri olan bir Keycloak'ın belirteci *"henüz geçerli değil"* alır ve **yenileme bunu çözmez** |
+
+Ayırt edilebilirlik iki yüzeyde de sağlanıyor, **farklı kanaldan**: stdio'da kod
+aynı (`unauthenticated`) ama cümle farklı (`IMcpIdentityRefusal`); HTTP'de durum
+aynı (401) ama `WWW-Authenticate` başlığı `error_description` taşıyor
+(`IncludeErrorDetails` açık, ölçüldü).
+
+## 4.3 · KALEM (iş değil) — MCP scope'u kitleyi daraltmıyor, EKLİYOR
+
+Canlı ölçümde çıktı ve **kararı verilmedi**:
+
+| Belirteç | `aud` |
+| --- | --- |
+| `bizigo-mcp` scope'u **istenmeden** | `bizigo-api` |
+| `bizigo-mcp` scope'u **istenerek** | `['http://localhost:5080/mcp', 'bizigo-api']` |
+
+Yani bir MCP belirteci **aynı zamanda geçerli bir API belirteci**: masaüstü
+istemcisinden sızan bir belirteç REST API'yi de açar. Sebebi Keycloak'ta
+scope'ların **çıkarma yapmaması**; çözümü büyük olasılıkla ayrı bir client.
+
+Kalemin **yarısı kapalı**: ters yön ölçüldü ve **doğru çalışıyor** — API için
+basılmış bir belirteç stdio'da `aud` sebebiyle **reddedildi** (RFC 8707). Yani
+M09'un kurduğu kapı tek yönde tutuyor, iki yönde değil.
 
 ## 5 · Bitti tanımından karşıladıkları
 

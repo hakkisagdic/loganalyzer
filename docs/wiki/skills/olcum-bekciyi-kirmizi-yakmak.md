@@ -24,7 +24,7 @@ sources:
   - docs/epic/t09-kararlar/index.md
   - docs/epic/t10-kararlar/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=a06e12975995 docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t09-kararlar/index.md=b21d65bda95a docs/epic/t10-kararlar/index.md=98995baaaacf docs/epic/t27-ad-govde-kesfi/index.md=e14d05d8d833 docs/epic/t27-kapanis-taramasi/index.md=fc23cd892d11 docs/epic/t28-denetim-bulgulari/index.md=7f6ce6b9f3f7 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t39-alan-kapsami/index.md=7d06bfcf6e0c"
+source_digest: "sha256-12/v1 CLAUDE.md=ed0e0490c47f docs/epic/t01-kararlar/index.md=d4ef9138571f docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t09-kararlar/index.md=b21d65bda95a docs/epic/t10-kararlar/index.md=5ce7d4203b61 docs/epic/t27-ad-govde-kesfi/index.md=e14d05d8d833 docs/epic/t27-kapanis-taramasi/index.md=fc23cd892d11 docs/epic/t28-denetim-bulgulari/index.md=7f6ce6b9f3f7 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t39-alan-kapsami/index.md=7d06bfcf6e0c"
 summary: Geçen bir test geçtiğini kanıtlar, kırılabildiğini değil. Bu depoda bekçiler koruduğu hata geri konularak sınanıyor; yanlış pozitif vermediği de ayrıca ölçülüyor.
 provenance:
   extracted: 0.85
@@ -204,6 +204,35 @@ bile konmadı:
 > Koşulabilir bir şey, er ya da geç CI'a girer; CI'a giren bir şey yeşil/kırmızı
 > olmak zorunda kalır; ve bu ölçüm %7 isabetle kırmızı yanamaz. Her zaman yeşil
 > yanan bir "bekçi" ise bu deponun adını koyduğu hata sınıfı.
+
+## Adım 7 — ölçtüğün davranışı **onaylamadan** çivileme
+
+Bir davranışı ölçüp yazmak, onu **doğrulamak değil**. Ölçüm *"bugün böyle
+çalışıyor"* der; testin çivilediği şey *"böyle çalışması gerekiyor"*. Aradaki adım
+bir **karar** ve atlanırsa kusur bekçiye dönüşür.
+
+Ölçülen hâli: M05 kota rezervinin ajan kaynağını kapsamadığını **ölçtü** ve doğru
+yaptı — varsaymadı. Şunu da yazdı: *"'Neden ajan rezervden yemiyor' sorusu bir gün
+sorulacak ve cevabı bir varsayım değil bu satır olmalı."* Niyet doğruydu. Ama
+ölçtüğü şey bir **kusurdu** ve testi onu bir **özellik** olarak kaydetti; kusur
+düzeltilince o test kırmızı yandı ve düzeltmeyi **engelledi**.
+
+Refleks: bir ölçümü teste çevirmeden önce sor — *bu davranışın böyle olması
+gerektiğine karar verdim mi, yoksa yalnızca böyle olduğunu gördüm mü?*
+
+## Adım 8 — geri almanın **koşumu durdurduğunu** da gör
+
+Adım 1.6 geri almanın derlemeye ulaştığını istiyor. Bir katman daha var ve
+ölçülerek bulundu: **çalışmış bir geri alma, durmuş bir koşum değildir.**
+
+`trap` bir kabukta akışı **durdurmuyor** — sinyali işleyip bulunduğu yere dönüyor,
+döngü devam ediyor ve **bir sonraki kusuru uyguluyor**. Yani öldürülen bir ölçüm
+aracı, geri alması çalışmış olsa bile ağaçta kusur bırakıyor. Bu turda iki
+worktree'de yaşandı ve ilk teşhis (*"`trap` yazılıydı ama sinyalle boru hattı
+düştü"*) **yanlıştı**; log gerçek sırayı gösterdi.
+
+Python hâlinde geri alma `finally` içinde ve döngüden **çıkarken** koşuyor — o
+zaman bu sıra ifade edilemez hâle geliyor. Mekanizma, hatırlama değil.
 
 ## Ölçmediğini yaz
 
