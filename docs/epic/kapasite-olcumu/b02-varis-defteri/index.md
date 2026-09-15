@@ -1,6 +1,7 @@
 ---
-kind: spec
+kind: ticket
 title: "B02 — Üç katmanlı varış defteri: kaybı bir katmana yerleştirmek"
+status: 2
 ---
 
 # B02 — Üç katmanlı varış defteri
@@ -11,15 +12,18 @@ title: "B02 — Üç katmanlı varış defteri: kaybı bir katmana yerleştirmek
 > sayaçlardan biri güvenilmezse rapor **`LEDGER-LIMITED`** diyor, kayıp
 > demiyor."*
 
-**Neden `kind: spec`, `ticket` değil.** `EpicStatusTests` her `ticket`
-belgesinin bir yol haritası tablosunda görünmesini istiyor, ve o kapının kimlik
-deseni `[TSM]\d+` — yani **`B` ile başlayan bir kimlik hiçbir tabloda
-bulunamıyor**, üstelik B serisinin tablosu (`kapasite-olcumu/index.md` §5)
-`tickets*` dizini altında da değil. İki bağımsız sebep, ikisi de yapısal. Bir
-`ticket` yazmak bekçiyi kırmızıya çevirir, kimliği `KnownDivergence`'a yazmak
-ise *"bir gün düzelecek"* listesine bu turda ölçülmemiş bir şey eklemek olurdu.
-Kayıt olarak `spec` doğru kap; kapının B serisini görmemesi ayrı bir bulgu
-(§8).
+**Evi `tickets-kapasite`** ([story](../../tickets-kapasite/index.md)). İlk
+yazıldığında `kind: spec`'ti ve gerekçesi ölçülmüş bir bulguydu:
+`EpicStatusTests` bir `ticket`'ı **iki kez birden** bulamıyordu — kimlik deseni
+`[TSM]\d+` ve dizin globu `tickets*`, B tablosu ise `kapasite-olcumu/` altında.
+`ticket` yazmak bekçiyi gerekçesiz kırmızıya çevirirdi, `KnownDivergence`'a
+yazmak *"bir gün düzelecek"* listesine ölçülmemiş bir kalem eklemek olurdu.
+
+Karar (koordinatör, 2026-09-15): **seriye ev verildi ve kimlik deseni
+`[TSMB]` yapıldı** — dizin globu genişletilmedi, çünkü bir dizini özel durum
+yapmak *"ticket'lar `tickets-*` altında yaşar"* kuralını zayıflatırdı.
+Genişletmenin **kırmızı yanabildiği** ve *"her şeyi kabul et"* hâline
+kaymadığı ölçüldü (§9).
 
 ---
 

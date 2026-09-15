@@ -148,10 +148,17 @@ graph LR
   B02 --> B04
 ```
 
+> **Ticket'ların evi [`tickets-kapasite`](../tickets-kapasite/index.md)** —
+> tablo, sahiplik ve **durum** orada. Aşağıdaki satırlar bitti ölçütlerini
+> taşıyor ve planın parçası; durum taşımıyorlar ki iki temsil sessizce
+> ayrışmasın. Ev ayrı olmasının gerekçesi story belgesinde: bekçi bir `B`
+> kimliğini iki bağımsız sebeple bulamıyordu ve düzeltmesi bir dizini özel
+> durum yapmak DEĞİLDİ.
+
 | Ticket | Ne | Bitti ölçütü |
 | --- | --- | --- |
 | **B01** | Gerçek hız kontrolü (token kovası, toplu yazma, çok bağlantı); `fixed`/`ramp`/`burst`/`soak`/`max`; `raw` + `tagged` replay; koşum başına sha256 manifest | İstenen ↔ **ölçülen** EPS sapması yazılı bir tavanın altında, ve **`GENERATOR-LIMITED`** hükmü bir bekçiyle kırmızı yanabiliyor: üretecin ulaşamadığı bir hız *hedefin kaybı* diye raporlanamıyor |
-| **B02** | [Üç katmanlı varış defteri](b02-varis-defteri/index.md) — **yazıldı** (OS sayaçları · collector metrikleri · manifest ↔ ham arşiv ↔ `events`), Linux + Windows; `uncertain` ayrı bir sınıf | Üç sayı tek raporda; **ayrıştıklarında** hangi katmanın suçlandığı yazılı; ve sayaçlardan biri güvenilmezse rapor **`LEDGER-LIMITED`** diyor, *kayıp* demiyor |
+| **B02** | [Üç katmanlı varış defteri](b02-varis-defteri/index.md) (OS sayaçları · collector metrikleri · manifest ↔ ham arşiv ↔ `events`), Linux + Windows; `uncertain` ayrı bir sınıf | Üç sayı tek raporda; **ayrıştıklarında** hangi katmanın suçlandığı yazılı; ve sayaçlardan biri güvenilmezse rapor **`LEDGER-LIMITED`** diyor, *kayıp* demiyor |
 | **B03** | `auto`: hızlı büyütme + ikili arama, **deneme başına ayrı `RUN-ID`** | Bulunan sayı **tekrarlanabilir**: aynı fixture'la iki koşum aynı aralığı veriyor. Gecikmiş olayların bir sonraki kademeyi kirletmediği ölçülüyor |
 | **B04** | SLO hükmü (`PASS`/`FAIL`), boşluk deseni sınıflandırması, raporun kaydı | `tail-loss` **enjekte edilerek** ölçülüyor — soketi erken kapatmak bu depoda gerçekten olmuş bir arıza ve sınıflandırma onu adıyla bulmalı. Koşumu olmayan bir kapasite iddiası kırmızı yanıyor (T39'un kalıbı) |
 | **B05** | Güvenlik devre kesici: yeni drop / sürekli CPU / sürekli `Recv-Q` görülünce üreteci durdur, `--safety-consecutive` ile | Kesicinin **gerçekten kestiği** ölçülüyor; ve kesilmiş bir koşum *"kapasite bulundu"* diye raporlanamıyor |
