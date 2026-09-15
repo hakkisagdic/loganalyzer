@@ -60,12 +60,14 @@ class Kusur:
     yesil_kalmali: list[str] = field(default_factory=list)
 
 
-def kos(argv: list[str], **kwargs) -> subprocess.CompletedProcess:
+def kos(argv: list[str], cwd_alt: str | None = None, **kwargs) -> subprocess.CompletedProcess:
     ortam = dict(os.environ)
     ortam.update(ORTAM)
     ortam["PATH"] = f"{Path.home() / '.dotnet'}:{ortam['PATH']}"
 
-    return subprocess.run(argv, cwd=KOK, env=ortam, capture_output=True, text=True, **kwargs)
+    calisma = KOK / cwd_alt if cwd_alt else KOK
+
+    return subprocess.run(argv, cwd=calisma, env=ortam, capture_output=True, text=True, **kwargs)
 
 
 def yedekle(yollar: set[str], yedek: Path) -> None:
@@ -121,18 +123,64 @@ def iddia_et(kusur: Kusur) -> None:
     print(f"    iddia: kusur `{kusur.dosya}` içinde DOĞRULANDI")
 
 
-def derle() -> tuple[bool, str]:
+@dataclass
+class Kosum:
+    """Hangi paketin nasıl derlenip koşturulacağı.
+
+    T62'de eklendi ve sebebi §9: `ui/` tarafındaki bekçilerin kırmızı ölçümü
+    aynı YORDAMI istiyor (kusur → iddia → koştur → yedekten geri al → tam paket)
+    ama farklı KOMUTU. İkinci bir betik yazmak yordamın ikinci kopyası olurdu;
+    değişen tek şey iki komut, o yüzden yalnızca onlar parametre.
+    """
+
+    #: Derleme adımı. `None` ise atlanıyor — `ui/` tarafında ayrı bir derleme yok
+    #: ve olmayan bir adımı "başarılı" diye raporlamak yanlış olurdu.
+    derle: object
+    #: `(test adı | "") -> (çıkış kodu, çıktı)`. Boş ad TAM PAKET demek ve
+    #: filtreyi koşumun kendisi kuruyor: filtre söz dizimi pakete ait bir
+    #: ayrıntı, çağıranın bilmesi gereken bir şey değil.
+    test: object
+
+
+def dotnet_kosumu() -> Kosum:
+    return Kosum(derle=dotnet_derle, test=dotnet_test)
+
+
+def vitest_kosumu(paket: str) -> Kosum:
+    """`ui/` paketi. Derleme adımı YOK: TypeScript'i vitest kendi çeviriyor.
+
+    Tip denetimi ayrı bir kapı (`npm run typecheck`) ve bu ölçümün konusu değil
+    — kusurlar bilerek tip hatası üretebiliyor.
+    """
+
+    def test(filtre: str) -> tuple[int, str]:
+        argv = ["npx", "vitest", "run", "--silent"]
+
+        if filtre:
+            argv += ["-t", filtre]
+
+        sonuc = kos(argv, cwd_alt=paket)
+        return sonuc.returncode, sonuc.stdout + sonuc.stderr
+
+    return Kosum(derle=None, test=test)
+
+
+def dotnet_derle() -> tuple[bool, str]:
     sonuc = kos(["dotnet", "build", "--nologo"])
     return sonuc.returncode == 0, sonuc.stdout + sonuc.stderr
 
 
-def test_kos(filtre: str) -> tuple[int, str]:
+def dotnet_test(ad: str) -> tuple[int, str]:
     """Filtreli koşum. Ölçüt ÇIKIŞ KODU: 0 yeşil, değilse kırmızı.
 
     Sayıları çıktı metninden ayıklamak yerel dile bağlı olurdu (bu makinede
     `Başarısız:`, CI'da `Failed:`) ve ayıklama düştüğünde sessizce sıfır
     üretirdi — yani ölçüm aracının kendisi §7'nin sınıfına girerdi.
     """
+    # Boş ad tam paket demek; `SidecarLive` dışlanıyor çünkü dış bir sunucu
+    # istiyor ve atlanan test kanıt değil (§2).
+    filtre = f"FullyQualifiedName~{ad}" if ad else "FullyQualifiedName!~SidecarLive"
+
     sonuc = kos([
         "dotnet", "test", "tests/Bizigo.UnitTests", "--nologo",
         "--filter", filtre,
@@ -141,8 +189,9 @@ def test_kos(filtre: str) -> tuple[int, str]:
     return sonuc.returncode, sonuc.stdout + sonuc.stderr
 
 
-def olc(kusurlar: list[Kusur], yedek_adi: str) -> int:
+def olc(kusurlar: list[Kusur], yedek_adi: str, kosum: Kosum | None = None) -> int:
     """Kusur listesini ölçer. Çağıran YALNIZCA listeyi ve yedek dizinini veriyor."""
+    kosum = kosum or dotnet_kosumu()
     yedek = KOK / yedek_adi
     dosyalar = {k.dosya for k in kusurlar}
     yedekle(dosyalar, yedek)
@@ -159,7 +208,7 @@ def olc(kusurlar: list[Kusur], yedek_adi: str) -> int:
             iddia_et(kusur)
 
             if kusur.derleme_kirilmali:
-                basarili, cikti = derle()
+                basarili, cikti = kosum.derle()  # type: ignore[operator,misc]
 
                 if basarili:
                     rapor.append((kusur.ad, "BEKLENEN KIRMIZI GELMEDİ (derleme geçti)"))
@@ -173,7 +222,7 @@ def olc(kusurlar: list[Kusur], yedek_adi: str) -> int:
                     print(f"    derleme KIRILDI ✓  {hata[:100]}\n")
             else:
                 # Derleme geçmeli, testler kırmızı yanmalı.
-                basarili, cikti = derle()
+                basarili, cikti = kosum.derle() if kosum.derle else (True, "")  # type: ignore[operator]
 
                 if not basarili:
                     rapor.append((kusur.ad, "derleme kırıldı — bu kusur TEST kırmızısı ölçüyordu"))
@@ -182,13 +231,13 @@ def olc(kusurlar: list[Kusur], yedek_adi: str) -> int:
                     continue
 
                 for test in kusur.kirmizi_bekleniyor:
-                    kod, _ = test_kos(f"FullyQualifiedName~{test}")
+                    kod, _ = kosum.test(test)  # type: ignore[operator]
                     durum = "KIRMIZI ✓" if kod != 0 else "YEŞİL KALDI ✗"
                     rapor.append((f"{kusur.ad} → {test}", durum))
                     print(f"    {test}: {durum}")
 
                 for test in kusur.yesil_kalmali:
-                    kod, _ = test_kos(f"FullyQualifiedName~{test}")
+                    kod, _ = kosum.test(test)  # type: ignore[operator]
                     durum = "yeşil kaldı ✓ (bekçiler ayrı şey ölçüyor)" if kod == 0 else "KIRILDI ✗"
                     rapor.append((f"{kusur.ad} → {test} [yeşil kalmalı]", durum))
                     print(f"    {test}: {durum}")
@@ -206,8 +255,19 @@ def olc(kusurlar: list[Kusur], yedek_adi: str) -> int:
     print("\n=== geri alındı; TAM PAKET yeniden koşuyor ===")
     print("(bu adım isteğe bağlı değil: T44'te kusuru yakalayan şey bir bekçi değil bu koşumdu)\n")
 
-    kod, cikti = test_kos("FullyQualifiedName!~SidecarLive")
-    son = next((s for s in cikti.splitlines() if "Başarısız:" in s or "Failed:" in s), "(özet okunamadı)")
+    kod, cikti = kosum.test("")  # type: ignore[operator]
+    # Üç desen: dotnet'in yerelleştirilmiş özeti, İngilizce hâli, ve vitest'in
+    # "Tests  N passed" satırı. Üçüncüsü T62'de eklendi — araç `ui/` paketini
+    # koşturuyordu ve özet satırını bulamayıp "(özet okunamadı)" basıyordu, yani
+    # ÇIKIŞ KODU doğruyken raporun okunur yarısı kördü.
+    son = next(
+        (
+            satir
+            for satir in cikti.splitlines()
+            if "Başarısız:" in satir or "Failed:" in satir or "Tests " in satir
+        ),
+        "(özet okunamadı)",
+    )
     print(son)
 
     print("\n=== ÖZET ===")

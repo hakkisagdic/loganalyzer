@@ -420,19 +420,25 @@ services:
     healthcheck:
       # node imajında curl yok; sunucuyu kendi node'uyla yokluyoruz.
       #
-      # `/api/health` DEĞİL, kök: BFF'in sağlık ucu yok ve bu ticket'ta bir tane
-      # açmak, container'ın cevaplamadığı bir soruya yüzey eklemek olurdu.
+      # T62 · HAZIRLIK UCU. Bu satır eskiden kök sayfayı yokluyordu ve ölçütü
+      # `< 500`'dü. Sonda çerez taşımadığı için istek oturum deposuna HİÇ
+      # UĞRAMIYORDU: `resolveSession` kimlik yoksa depoya gitmeden dönüyor, kök
+      # sayfa 307 ile girişe yönlendiriyor, 307 < 500 ve kontrol YEŞİL yanıyordu.
+      # Yani `redis-session` tamamen kırıkken de `up -d --wait` yeşil dönüyor,
+      # yığın "kalktı" diyor ve arıza ilk giriş denemesinde çıkıyordu.
       #
-      # Ölçüt `< 500`, `ok` DEĞİL. Oturumsuz bir istek kök sayfadan giriş akışına
-      # yönleniyor (3xx) ve bu SAĞLIKLI hâlin ta kendisi; `r.ok` istenseydi
-      # sağlık kontrolü hiç yeşile dönmez, `--wait` zaman aşımına düşer ve
-      # sebebi "ekran açılmıyor" gibi okunurdu. 5xx ise sunucunun kendi
-      # arızası — yapılandırma eksikse Next tam olarak orada patlıyor.
+      # `/api/health/ready` üç bağımlılığı da yokluyor (yapılandırılmış oturum
+      # deposu, API, kimlik sağlayıcısının keşif belgesi) ve hazır değilse 503
+      # dönüyor. Ölçüt bu yüzden artık `r.ok`: `< 500` olsaydı 503'ü de geçer ve
+      # uç yazılmış ama okunmamış olurdu.
+      #
+      # Yük TOPOLOJİ TAŞIMIYOR (adres, ana makine adı, hata metni yok) — uç
+      # kimlik doğrulaması istemiyor ve 3000 dışarıya veriliyor.
       test:
         - CMD
         - node
         - -e
-        - "fetch('http://127.0.0.1:3000/', { redirect: 'manual' }).then(r => process.exit(r.status < 500 ? 0 : 1)).catch(() => process.exit(1))"
+        - "fetch('http://127.0.0.1:3000/api/health/ready').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
       interval: 10s
       timeout: 5s
       retries: 30
