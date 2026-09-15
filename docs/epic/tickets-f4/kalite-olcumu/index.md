@@ -239,4 +239,48 @@ anlamına gelmiyor — fixture'ın kusuru **ifade edebilmesi** gerekiyor.*
    yapan ama ilgisiz bir cümle bağlanmış sayılıyor — tiyatronun yaşadığı yer.
    Bu ticket'ın insan tarafı kuruldu (`Trivial` kararı); **makine tarafı yok**.
 3. Cümle bölme **noktalama tabanlı**; kısaltma ve ondalık yanlış bölünebiliyor.
-   **Ölçülmedi.**
+   **→ ÖLÇÜLDÜ, §6'ya bakın — iddianın yarısı yanlıştı.**
+
+## 6 · Neden hâlâ `status: 1` — denetim (2026-09-15)
+
+§4'ün tablosundaki **altı parçanın altısı** ✅. Ticket'ta *"şu kriter
+koşturulmadı, o yüzden 1"* diye okunabilir bir satır yoktu; kalan iş §5'in üç
+tereddüdü ve **üçü aynı sınıfta değil**. Denetimin ilk çıktısı o ayrım:
+
+| Tereddüt | Sınıf | Neden |
+| --- | --- | --- |
+| 1 · Atıfsız cümle bağlam devralmıyor → oran yükselebilir | **canlı model** | Sorulan şey mekanizma değil **pratikteki oran**: insan gibi yazan bir modelin ürettiği metinde kaç cümle atıfsız kalıyor. Mekanizma zaten yazılı ve bilinçli bir karar; ölçülecek olan davranış |
+| 2 · Kapı atfın yerindeliğini değil varlığını ölçüyor | **karar** | Makine tarafı bir **anlam** yargısı istiyor. Ucuz bir vekil (atıf ile cümle arasında sözcük örtüşmesi) yazılabilir ama o bir sezgi — ve bu depoda yanlış pozitifin bedeli yazılı. Yazılıp yazılmayacağı ürün kararı |
+| 3 · Cümle bölme noktalama tabanlı | **şimdi yapılabilir → yapıldı** | Konteyner yok, model yok: bölme kuralına bilinen zor girdiler verildi |
+
+### 3. tereddüdün ölçümü — ondalık GÜVENLİ, numaralı liste DEĞİL
+
+Kural `(?<=[.!?])\s+|\r?\n+`, yani **noktalama + boşluk**. Bir nokta ancak
+**ardından boşluk gelirse** sınır sayılıyor, ve buradan çıkan ayrım ticket'ın
+cümlesinden keskin:
+
+| Girdi | Bölünüyor mu | Not |
+| --- | --- | --- |
+| `3.14`, `10.0.0.1`, `net10.0`, `api.kurum.local` | **hayır** | noktadan sonra boşluk yok — *"ondalık yanlış bölünebiliyor"* iddiası **bugünkü kural için yanlış** |
+| `vb.` · `örn.` · `bkz.` | **evet** | iddianın doğru çıkan yarısı |
+| `1. Kök neden …` | **evet** | **ticket bunu saymıyordu** ve en sık karşılaşılacak hâl bu: modeller gerekçeyi numaralı liste hâlinde yazıyor |
+
+**Bedeli de ölçüldü ve ücretsiz değil:** atıf parçalardan yalnızca birinde
+kalıyorsa diğer parça **atıfsız** sayılıyor ve atılan cümle oranının **payına**
+yazılıyor. Ölçüm yan yana yapıldı — kısaltmalı cümle `Dropped = 1`, aynı
+cümlenin kısaltmasız hâli `Dropped = 0` — çünkü tek başına ölçülen bir sayı
+*"model kötü yazdı"* diye de okunabilirdi.
+
+Bekçi: `SentenceSplitMeasurementTests` (10 test, 0 düştü). **Bugünkü davranışı
+çiviliyor, düzeltmiyor:** bölme kuralını değiştirmek atılan cümle oranının
+**tanımını** değiştirir, yani ölçünün kendi tabanını — bu bir ajan kararı değil.
+
+**Öneri (karar koordinatörde):** kural, noktadan sonra gelen sözcük **küçük
+harfle** başlıyorsa bölmeyi reddedecek şekilde daraltılabilir; bu hem `vb. bileşenler`
+hem `1. Kök` hâllerini kapatmaz (ikincisinde sözcük büyük harfli). Numaralı liste
+için ayrı bir kural gerekiyor: satır başındaki `\d+\.` bir cümle sonu değil.
+İkisi ayrı ayrı ölçülmeli, çünkü ikisi paydayı **farklı yönlerde** oynatıyor.
+
+**Bu denetimin aramadığı:** bölme kuralının Türkçe dışındaki dillerde davranışı,
+ve modelin gerçekten hangi biçimde yazdığı (numaralı liste ne sıklıkta çıkıyor —
+o sayı 1. tereddütle aynı koşumdan gelir).

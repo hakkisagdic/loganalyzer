@@ -381,10 +381,21 @@ public static class McpCommandHandlers
     /// </para>
     ///
     /// <para>
-    /// ⚠ <b>GEÇİCİ.</b> M05 <c>AddBizigoMcpCore</c>'a araç derlemelerini
-    /// <b>açıkça</b> aldıracak; o gün doğru cevap bir çağrı yan etkisi değil
-    /// <c>SimulatorMcpSetup.ToolAssembly</c>'nin o listeye verilmesi olacak ve
-    /// bu paragraf silinecek.
+    /// <b>M05 GELDİ ve geçici hâl kapandı.</b> Bir tur boyunca burada
+    /// <i>"⚠ GEÇİCİ: M05 <c>AddBizigoMcpCore</c>'a araç derlemelerini açıkça
+    /// aldıracak; o gün doğru cevap bir çağrı yan etkisi değil
+    /// <c>SimulatorMcpSetup.ToolAssembly</c>'nin o listeye verilmesi olacak"</i>
+    /// yazıyordu. O gün geldi: <see cref="ToolAssembliesFor"/> simülatör
+    /// derlemesini <c>typeof(SimulatorTool).Assembly</c> ile <b>açıkça</b>
+    /// taşıyor, yani ilan artık bu çağrının yan etkisine bağlı değil ve
+    /// derleyicinin budaması imkânsız.
+    /// </para>
+    ///
+    /// <para>
+    /// Çağrı yine de duruyor ve <b>işi değişti</b>: ilan etmiyor, araçların
+    /// <b>kurulabilir</b> olmasını sağlıyor (bir alttaki blok bunu ölçümle
+    /// anlatıyor). İkisi ayrı sorular — birini diğerinin kanıtı saymak bu
+    /// dosyanın bir kez düştüğü yer.
     /// </para>
     /// </summary>
     public static ServiceProvider BuildServices(

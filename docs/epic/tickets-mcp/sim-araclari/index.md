@@ -97,8 +97,9 @@ görünür kılıyor.
 ## 5 · Bağımlılık ve sıra
 
 **M01** (araç sözleşmesi ve keşif) **ve FS-a** (filo, senaryo motoru, profil
-deposu). İkisi de bugün var: FS-a tarafı ölçüldü (§1), M01 tarafı birleşmemiş
-dalda duruyor.
+deposu). İkisi de bugün var: FS-a tarafı ölçüldü (§1), M01 **birleşti**
+(`3ac1a8d` ve sonrası main'de) — bu satır bir tur boyunca *"birleşmemiş dalda
+duruyor"* diyordu ve bayattı.
 
 ## 6 · Bilinen sınırlar ve açık sorular
 
@@ -195,6 +196,63 @@ sayısı da bu yüzden düşük — yalnız simülatör kolu neredeyse o kadar.
   `AddBizigoSimulatorTools`'u **MCP yolundan** çağırıyor; bağ tesadüften çıktı.
   ⚠ **Geçici**: M05'in açık derleme listesi geldiğinde doğru cevap bir çağrı yan
   etkisi değil, `SimulatorMcpSetup.ToolAssembly`'nin o listeye verilmesi olacak.
+  **→ GELDİ, §7'ye bakın.**
+
+## 7 · Neden hâlâ `status: 1` — denetim (2026-09-15)
+
+**Sebep bir kalem değil, yazılmamışlık.** Dört kabul kriterinin dördü de bugün
+karşılanıyor ve dördünün de bekçisi var; ticket'ta *"şu kriter koşturulmadı, o
+yüzden 1"* diye okunabilir bir satır **yoktu**. Denetimin çıktısı bu tablo:
+
+| Kriter | Bekçi | Ne ölçüyor |
+| --- | --- | --- |
+| 1 · Yedi araç, hepsi `Simulator` beyan ediyor | `Butun_sim_araclari_simulator_yuzeyi_ve_kimliksiz` | `Assert.Equal(7, sim.Length)` + her araç için yüzey **ve** kimliksizlik |
+| 2 · Yanlış yüzey hatası **yüzeyi** söylüyor, `isError` olarak | `Yanlis_yuzeye_uygulanan_senaryo_yuzeyi_soyluyor` · `Yanlis_yuzey_mesaji_motorun_cumlesinin_ta_kendisi` · `Var_olmayan_senaryo_wrong_surface_degil_not_found` · `Altyapi_senaryosu_wrong_surface_ve_koordinatoru_isaret_ediyor` | dört test; A/B çifti *"her şeye `wrong_surface` de"* diyen bir uygulamayı düşürüyor |
+| 3 · Redaksiyon kapısının neye baktığı yazılı | `Hicbir_sim_araci_cihaz_metni_dondurmuyor` | bu yüzeyde kapının **öznesi yok**; yazının eskimesine karşı bekçi |
+| 4 · Kapının kırmızı yanabildiği ölçüldü | `tools/m03-kirmizi-olcumu.py` | A/B çifti, iddia adımı, yedekten geri alma |
+
+Koşum (2026-09-15, `857ad4f` üstü): `SimulatorMcpToolTests` + `McpSchemaBudgetTests`
+→ **15 test, 0 düştü**.
+
+### Bağlam maliyeti sorusu: tavan araç başına, sim yüzeyinin AYRI bir toplamı var
+
+`bizigo-sim`'in **2977 belirteci** 700'lük tavanı ihlal etmiyor ve sebebi
+*"muafiyet"* **değil**:
+
+| Ölçüt | Değer | Nasıl kurulmuş |
+| --- | --- | --- |
+| Araç başına tavan | **700** | Her iki yüzeyde de geçerli. Sim'in en pahalısı `sim.webhook.emit` **537** — tavanın altında |
+| `bizigo` toplam tavanı | araç sayısı × 700 | **Türetiliyor**: araç eklemek o satırı düzenlemeyi gerektirmiyor (§9) |
+| `bizigo-sim` toplam tavanı | **3600** | **Ölçülmüş** sayı (2977 + ~%20 pay) |
+
+Gerekçesi `McpSchemaBudgetTests` içinde yazılı ve iki cümlesi taşıyıcı: iki yüzey
+**aynı bütçeyi paylaşmıyor** (bir istemci tek bir yüzeye bağlanıyor; ortak tavan
+hiçbir istemcinin ödemediği bir toplamı ölçerdi), ve türetilen tavan araç
+eklendikçe kendiliğinden büyürken **ölçülmüş tavan büyümeyi bir karara
+zorluyor**.
+
+Yani sim yüzeyi muaf değil, **kendi ölçülmüş zarfını** taşıyor.
+
+### Kapanan iki bayat cümle
+
+- **§5'in *"M01 birleşmemiş dalda"*** satırı: M01 birleşti; düzeltildi.
+- **`McpCommandHandlers`'ın *"⚠ GEÇİCİ"* paragrafı**: koşulu *"M05 araç
+derlemelerini açıkça aldıracak"* idi ve **gerçekleşti** —
+`ToolAssembliesFor(McpSurface.Simulator)` simülatör derlemesini
+`typeof(SimulatorTool).Assembly` ile taşıyor, yani ilan artık
+`AddBizigoSimulatorTools()` çağrısının **yan etkisine bağlı değil** ve
+derleyicinin budaması imkânsız. Çağrı duruyor ama **işi değişti**: ilan etmiyor,
+araçların *kurulabilir* olmasını sağlıyor. Paragraf o ayrımı yazacak şekilde
+değiştirildi — silinmedi, çünkü hangi sorunun kapandığı da bilgi.
+
+**Kalan tek kalem bir karar:** `status`'ün `1 → 2` geçişi. T61'in kendi sınırı
+bunu bir **insan kararı** olarak bırakıyor (*"merge edilmiş bir dal işin
+başladığını kanıtlıyor, bittiğini değil"*), o yüzden bu denetim statüye
+dokunmuyor.
+
+**Bu denetimin aramadığı:** `sim.*` araçlarının **gerçek bir MCP istemcisiyle**
+(masaüstü istemci, gerçek stdio boruları) koşumu. Birim paketi süreç içi bir
+istemci kullanıyor; gerçek bir istemciyle el sıkışma bu ticket'ta hiç ölçülmedi.
 
 ## 8 · Kapanış — koordinatör
 

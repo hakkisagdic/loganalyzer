@@ -292,8 +292,10 @@ jobs:
       # KAPI: üretilen SQL ve manifest depodakiyle birebir aynı değilse düşer.
       # Aksi hâlde bir kural değişir ve kimse fark etmez (ticket'ın kendi cümlesi).
       #
-      # Bugün sıfır kural derleniyor — kural seti ve pipeline T31'i bekliyor —
-      # ve kapı yine de KOŞUYOR. Bilerek: bu turda tam bu sınıftan bir hata
+      # KAPI SIFIR KURALDA DA KOŞUYORDU ve bu bilinçliydi. (T31 kapandı: bugün
+      # 24 kural derleniyor, 21 SQL depoda — bu satır bir tur boyunca "bugün
+      # sıfır kural derleniyor" diyordu ve bayattı. Gerekçe duruyor, iddia
+      # düzeltildi.) Bilerek: o turda tam bu sınıftan bir hata
       # bulundu (`UNMAPPED_FIELDS` tanımlanmış ama hiçbir dönüşüme verilmemiş,
       # `unmapped_expression()` yazılmış ama hiç çağrılmamış — hazırlanmış ama
       # bağlanmamış, ve bağlanmamış olması hiçbir yerde belirti üretmiyor).
@@ -358,8 +360,10 @@ jobs:
         with:
           python-version: '3.13'
 
-      # KAPININ KENDİ SINAVI. Bugün `detections/sigma/` boş — kural seti T31'i
-      # bekliyor — yani aşağıdaki adım sıfır sorgu sorup sessizce yeşil kalırdı.
+      # KAPININ KENDİ SINAVI. Yazıldığı gün `detections/sigma/` boştu (kural seti
+      # T31'i bekliyordu), yani aşağıdaki adım sıfır sorgu sorup sessizce yeşil
+      # kalırdı. T31 kapandı ve bugün 21 SQL dosyası var; sınav yine duruyor,
+      # çünkü ölçtüğü şey kural sayısı değil KAPININ AYIRT EDEBİLDİĞİ.
       # "Sessizce yeşil bekçi" bu deponun adını koyduğu hata sınıfı, o yüzden
       # kapı önce sonucu BİLİNEN üç sorguyla sınanıyor: ikisi reddedilmeli
       # (tip uyuşmazlığı), biri kabul edilmeli. Kırmızı yanabildiği her koşumda
@@ -392,9 +396,9 @@ jobs:
       # `at_least_one` beyanlarından oluşan bir liste, her şeyi eşleştiren bozuk
       # bir kapı tarafından da geçilirdi.
       #
-      # Bugün sıfır kural üretiliyor (kural seti çivisi boş), o yüzden sıfır
-      # beyan isteniyor ve adım yeşil. İlk kural üretildiği anda kapı
-      # kendiliğinden diş kazanıyor — koşul "üretilen her kural beyanlı olmalı".
+      # Yazıldığı gün sıfır kural üretiliyordu (kural seti çivisi boştu), o yüzden
+      # sıfır beyan isteniyordu. T31 kapandı: bugün 24 kural derleniyor ve kapı
+      # dişini kazandı — koşul "üretilen her kural beyanlı olmalı".
       - name: Kapı 3 beyan listesi ayırt edebiliyor mu
         working-directory: tools/sigma-build
         run: python -m sigma_build.golden_gate --shape-only
