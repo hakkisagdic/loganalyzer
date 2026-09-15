@@ -63,7 +63,40 @@ bugünün gerçeğini anlatmıyor. Dört kriterin **ölçülen** hâli:
 | 1 · Tek komut, tekrarlanabilir çıktı | ✅ **ölçüldü** | `python -m sigma_build.compile --check` → *"detections/sigma üretilenle birebir aynı"*. Konteyner yok |
 | 2 · CI kapısı sürüklenmeyi yakalıyor, kırmızı ölçüldü | ✅ | Kapı `compile --check`; Kapı 2'nin kendi sınavı CI'da **her koşumda** (`explain_gate --self-test`, sonucu bilinen üç sorgu). `sigma-build` paketi: **201 test geçti** |
 | 3 · Derlenemeyen kural sayısı görünür | ✅ | `detections/sigma/manifest.json` → `total 24 · written 21 · gated 3 · failed 0`. Sayı sıfır değil ve **manifestte** duruyor |
-| 4 · Üretilen SQL canlı ClickHouse'ta koşup **doğru sonucu** veriyor | 🔄 **yarısı** | CI'nın Kapı 2'si SQL'in **kabul edildiğini** kanıtlıyor (gerçek ClickHouse servisi + ürünün kendi migrator'ı). *"Doğru sonuç"* Kapı 3'ün işi ve **yüklü altın örnek** istiyor — canlı yarısı koordinatörde (§2) |
+| 4 · Üretilen SQL canlı ClickHouse'ta koşup **doğru sonucu** veriyor | 🔄 **cümle iki iddia taşıyor** | Aşağıdaki düzeltmeye bakın: canlı koşum **yapılmış** ve gerçek bir kusur bulmuş; **kapı hâline gelmemiş** |
+
+### DÜZELTME · Kapı 3 canlıda koştu — bu denetimin ilk hâli yanlıştı
+
+Bu bölümün ilk yazımı *"Kapı 3'ün canlı yarısı koordinatörde, ölçülmedi"*
+diyordu. **Yanlış.** Vault sayfası (`skills/f3-sigma-derleme-kapilari`) canlı bir
+koşumu kaydediyor ve kaynağı `t32-derleme-tasarimi` §*Ölçüldü · Kapı 3 ilk
+koşumda gerçek bir eşleme kusuru buldu*: `routeros_forward_new` beyanı **canlı
+ClickHouse'ta düştü** ve düşmesi doğruydu — `activity_name` boş, çünkü RouterOS
+parser'ı `action`'ı bilerek boş bırakıyor ve zincir adı `fw_chain`'e gidiyor.
+Kayıp boru hattında, ve *"bunu ancak bu kapı gösterebilirdi"*.
+
+Yani kriter 4'ün cümlesi **iki iddia** taşıyor ve ikisi ayrı hâlde:
+
+| İddia | Hâli |
+| --- | --- |
+| *"Üretilen SQL canlı ClickHouse'ta koşup doğru sonucu veriyor"* | **ölçüldü** — bir kez, ve gerçek bir eşleme kusuru buldu |
+| *"…ve her koşumda ölçülüyor"* | **hayır** — CI yalnızca `golden_gate --shape-only` (çevrimdışı yarı) koşuyor; canlı yarı bir **kayıt**, bir **kapı** değil |
+
+Bu, koordinatörün bugün üçüncü kez adını koyduğu sınıfın dördüncü örneği: **bir
+kriter cümlesi iki arıza kipini taşıdığında ölçüm birini görüyor ve yeşil ikisini
+temsil ediyor.** Burada tersi oldu — biri ölçülmüştü, ve tek satır olduğu için
+ölçülmemiş sayıldı.
+
+**Kalan iş bu yüzden bir koşum değil bir karar:** canlı yarı CI'ya girecek mi
+(altın örnek yükleyen bir iş, `sigma-explain`'e ek adım), yoksa faz kapanışında
+elle koşturulan bir ölçüm olarak mı kalacak? Bugünkü hâl ikincisi ve **yazılı
+değildi**.
+
+Beyan dosyası bugün 19 kalem taşıyor (`catalog/sigma/expectations.json`):
+**7 `at_least_one` · 12 `none`** (10'u `corpus_gap`, 2'si `invariant`). Vault
+sayfası *"sekiz beyanın sekizi"* diyor — sayı o koşumdan bu yana **oynadı**, ve
+bu ayrı bir bulgu: canlı yarı bir kapı olmadığı için sayının oynaması hiçbir
+yerde kırmızı yanmıyor.
 
 Yerelde koşan üç çevrimdışı kapı (hepsi bu makinede, konteyner yok):
 `ruleset --verify` → *24 kural çiviyle birebir aynı* · `view_columns --check` →
@@ -73,14 +106,40 @@ Yerelde koşan üç çevrimdışı kapı (hepsi bu makinede, konteyner yok):
 
 | Kalem | Sınıf | Not |
 | --- | --- | --- |
-| Kapı 3'ün canlı yarısı (yüklü altın örnek + sonuç doğruluğu) | **konteyner** | Koordinatörde. Kriter 4'ün ölçülmeyen yarısı bu |
+| Kapı 3'ün canlı yarısının **kapı olması** | **karar** | Koşum yapılmış (yukarıdaki düzeltme); açık olan CI'ya girip girmeyeceği |
 | Kural başına **duvar saati** maliyeti | **sessiz makine** | Bir **kayıt**, kapı değil: `t32-derleme-tasarimi` §6 ölçekleme sorusunu saatsiz cevaplamış (karesel deyim, 24 kuralda görünmüyor). Bu makinede bugün ölçülemez |
-| Korpus: `ruleset_commit` = `t30-ornekleminden-terfi` | **karar** | Kapsam *"SigmaHQ kurallarını çeken hat"* diyor; bugün çivilenen küme **T30'un terfi ettirilmiş örneklemi**, yukarı akıştan sabit SHA ile çekilen set değil. Korpusun ne olacağı ürün kararı — ölçüm değil |
+| Korpus: `ruleset_commit` = `t30-ornekleminden-terfi` | **karar → VERİLDİ** | Aşağıdaki bölüme bakın: çivili örneklem **kalıyor**, ama kapsamın iki iddiası ayrıldı |
 
-Üçüncüsü bu denetimin **beklemediği** bulgusu: T32'nin açık kalmasının sebebi
+Üçüncüsü bu denetimin **beklemediği** bulgusuydu: T32'nin açık kalmasının sebebi
 yalnızca duvar saati değil. Duvar saati bir kayıt; korpus bir **karar**; Kapı
 3'ün canlı yarısı bir **koşum**. Üçü tek satıra *"ölçüm bekliyor"* diye
 yazıldığında ikisi görünmez oluyordu.
+
+### Korpus kararı ve kapsamın İKİ iddiası (2026-09-15)
+
+**Karar: determinizm kapısının korpusu terfi ettirilmiş örneklem olarak
+kalıyor.** Gerekçe kapının kendi işi — yukarı akışa bağlı bir korpus, upstream
+her hareket ettiğinde kapıyı **oynatır**, ve oynayan bir kapı determinizm
+ölçmüyor, **upstream'in hareketini** ölçüyor. Çivili korpus doğru korpustur.
+
+**Ama kapsam tek satırda iki ayrı iddia taşıyordu** ve ikisi bugün farklı
+hâlde:
+
+| İddia | Hâli | Nasıl |
+| --- | --- | --- |
+| *"Derleme deterministik ve tekrarlanabilir"* | **ölçüldü** | Çivili korpusta `compile --check` → birebir aynı |
+| *"SigmaHQ'nun yayımlanmış kural setini derleyebiliyoruz"* | **ölçülmedi** | Hiçbir koşum bunu sınamıyor. Bugün derlenen küme T30'un terfi ettirilmiş örneklemi |
+
+İkincisi bu ticket'ın kabul kriterlerine **eklenmiyor** — T32 derleme hattını
+kuruyor ve kurdu; yayımlanmış setin derlenebilirliği hattın değil **korpusun**
+sorusu. F3'ün ölçülmemiş kalemleri arasında duracak.
+
+**Bu ayrımın kendisi bir desendir ve bugün üçüncü kez görüldü:** bir kriter
+cümlesi iki iddia taşıdığında ölçüm birini görüyor ve **yeşil ikisini temsil
+ediyor**. Diğer iki örnek: T62'nin sağlık kontrolü (*"süreç ayakta"* ↔
+*"bağımlılıklar hazır"*) ve T63'ün dayanıklılık kriteri (`kill -9` yazılan
+baytları sayfa önbelleğinden silmiyor, yani `FlushToDisk` açık ve kapalı koşumlar
+aynı sonucu veriyor — süreç ölümü fsync'i **ölçemiyor**).
 
 ### Kapanan üç bayat CI yorumu
 

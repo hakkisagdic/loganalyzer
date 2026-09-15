@@ -74,9 +74,12 @@ public sealed record SentenceBinding(string Text, IReadOnlyList<BoundSentence> S
 /// <item>Doğru kimliğe atıf yapan ama <b>o kimlikle ilgisiz</b> bir cümle
 /// bağlanmış sayılıyor. Bu kapı atfın <i>varlığını</i> ölçüyor,
 /// <i>yerindeliğini</i> değil; yerindelik altın kümenin işi (T47).</item>
-/// <item>Cümle bölme noktalama tabanlı. Kısaltma ve ondalık sayı yanlış
-/// bölünebiliyor; bedeli bir cümlenin ikiye ayrılması, sessiz bir geçiş
-/// değil — iki parça da aynı atıfı taşıyorsa ikisi de bağlanıyor.</item>
+/// <item>Cümle bölme <b>noktalama tabanlı</b> ve iki koruması var (T47'de
+/// ölçüldü): kapalı bir <b>kısaltma listesi</b> ve satır başındaki
+/// <c>\d+\.</c>. Ondalık sayı hiç sorun değildi — noktadan sonra boşluk
+/// yok — ve o iddia ölçülüp <b>yanlışlandı</b>. Listede olmayan bir kısaltma
+/// hâlâ cümleyi ikiye ayırıyor; bedeli iki parçanın da aynı atıfı taşıması
+/// hâlinde yok, taşımıyorsa atıfsız parça <b>atılmış</b> sayılıyor.</item>
 /// <item>Atıfsız bir cümlenin <b>bir önceki cümleden</b> bağlamı devralması
 /// tanınmıyor: her cümle kendi atfını taşımak zorunda. Bilerek — devralma
 /// kabul edilseydi tek atıflı bir paragrafın tamamı bağlanmış sayılırdı ve
@@ -90,10 +93,93 @@ public static partial class SentenceBinder
     private static partial Regex BracketCitation();
 
     /// <summary>
-    /// Cümle sonu: <c>.</c> <c>!</c> <c>?</c> ve ardından boşluk ya da metin
-    /// sonu. Satır sonu da bir sınır — modeller madde işaretli liste üretiyor.
+    /// <b>Kısaltma listesi — elle yazılmış ve KAPALI</b> (T47).
+    ///
+    /// <para>
+    /// Türetmeye çalışmak bu üründe başka yerlerde kaybedilmiş bir bahis: tam
+    /// olması gereken bir liste, tam olmadığı gün bekçiyi körleştiriyor. Elle
+    /// yazılmış bir liste ise <b>eksik olduğunu itiraf ediyor</b> ve eksikliği
+    /// ölçülebilir: listede olmayan bir kısaltma cümleyi ikiye ayırır, ve o
+    /// ayrılma <see cref="SentenceBinding.Dropped"/> içinde <b>görünür</b>.
+    /// </para>
+    ///
+    /// <para>
+    /// <b><see cref="RegexOptions.CultureInvariant"/> zorunlu</b>, süs değil:
+    /// <see cref="RegexOptions.IgnoreCase"/> tek başına <b>o anki kültürle</b>
+    /// katlama yapıyor ve <c>tr-TR</c>'de <c>I</c>/<c>ı</c> eşlemesi
+    /// bambaşka — bu depoda aynı tuzak <c>.editorconfig</c>'de altı analizör
+    /// kuralıyla hata seviyesine çekilmiş durumda.
+    /// </para>
+    ///
+    /// <para>
+    /// Listenin kaynağı ölçüm: <c>vb.</c> · <c>örn.</c> · <c>bkz.</c> üçü
+    /// T47'de <b>ölçülerek</b> bulundu (cümleyi ikiye ayırdıkları görüldü);
+    /// gerisi aynı sınıfın gündelik üyeleri. <b>Genişletmek bir satırlık iş</b>
+    /// ve bilinçli olarak öyle: bir sonraki kişi yeni bir kısaltma ölçtüğünde
+    /// buraya yazacak, bir sezgi kurmaya çalışmayacak.
+    /// </para>
     /// </summary>
-    [GeneratedRegex(@"(?<=[.!?])\s+|\r?\n+", RegexOptions.ExplicitCapture)]
+    private const string Abbreviations =
+        @"vb|vs|örn|ör|bkz|age|sy|yy|çev|haz|Dr|Doç|Prof|Sn|Nu|no|etc|e\.g|i\.e|Fig|vol";
+
+    /// <summary>
+    /// Cümle sonu: <c>.</c> <c>!</c> <c>?</c> ve ardından boşluk. Satır sonu da
+    /// bir sınır — modeller madde işaretli liste üretiyor.
+    ///
+    /// <h3>İki koruma, ve ikisi ÖLÇÜLEREK eklendi (T47)</h3>
+    ///
+    /// <para>
+    /// İlk hâli <c>(?&lt;=[.!?])\s+|\r?\n+</c> idi. T47 §5 onu *"kısaltma ve
+    /// ondalık yanlış bölünebiliyor"* diye şüpheli işaretlemişti; ölçüm
+    /// iddianın <b>yarısını çürüttü</b> ve anılmayan bir hâl buldu:
+    /// </para>
+    ///
+    /// <list type="bullet">
+    /// <item><b>Ondalık zaten güvenliydi</b> — <c>3.14</c>'te noktadan sonra
+    /// boşluk yok, yani kural onu hiç bölmüyordu. Aynı sebeple IP adresi,
+    /// sürüm numarası ve alan adı da güvenli. Bu satır <b>bir koruma
+    /// eklemedi</b>, çünkü eklenecek bir şey yoktu.</item>
+    /// <item><b>Kısaltma gerçekten bölüyordu</b> → <see cref="Abbreviations"/>
+    /// lookbehind'ı.</item>
+    /// <item><b>Numaralı liste de bölüyordu ve ticket bunu SAYMIYORDU</b> —
+    /// <c>1. Kök neden …</c>. Modeller gerekçeyi numaralı liste hâlinde
+    /// yazıyor, yani kural <b>en sık karşılaştığı biçimi</b> bölüyordu →
+    /// satır başındaki <c>\d+\.</c> lookbehind'ı.</item>
+    /// </list>
+    ///
+    /// <para>
+    /// <b>Neden iki ayrı kural:</b> *"noktadan sonra küçük harf geliyorsa
+    /// bölme"* sezgisi ikisini birden kapatmıyor — <c>1. Kök</c> büyük harfle
+    /// devam ediyor. Tek sezgiyle çözmeye çalışmak, ölçülen iki hâlden birini
+    /// sessizce açık bırakırdı.
+    /// </para>
+    ///
+    /// <h3>Düzeltmenin ZAMANI da bir karar</h3>
+    ///
+    /// <para>
+    /// Yanlış bölme <b>ücretsiz değildi</b>: atıf parçalardan yalnızca birinde
+    /// kalıyorsa diğer parça atıfsız sayılıyor ve <i>atılan cümle oranının</i>
+    /// <b>payına</b> yazılıyor — yani metrik, model kötü yazmadığı hâlde
+    /// *"kötü yazdı"* diyor. Ölçü hâlâ tek bir bağlayıcı sayı üretmediği için
+    /// (T47 açık, canlı model koşumu yapılmadı) bu bir <b>tanım değişikliği
+    /// değil</b>, tanımın ilk kullanımdan önce doğru kurulması. Yarın aynı
+    /// değişiklik korunacak bir geçmişi bozardı.
+    /// </para>
+    ///
+    /// <h3>Bu kuralın TUTAMADIĞI</h3>
+    ///
+    /// <list type="bullet">
+    /// <item><b>Listede olmayan kısaltma</b> hâlâ bölüyor. Liste kapalı ve
+    /// bunu itiraf ediyor.</item>
+    /// <item><b>Ondalık ayırıcısı boşluklu yazılırsa</b> (<c>3. 14</c>) bölünür
+    /// — ölçülmedi, ve gerçek bir metinde beklenmiyor.</item>
+    /// <item><b>Türkçe dışı diller ölçülmedi.</b> İngilizce kısaltmalar listede
+    /// var ama davranışları sınanmadı.</item>
+    /// </list>
+    /// </summary>
+    [GeneratedRegex(
+        @"(?<=[.!?])(?<!\b(?:" + Abbreviations + @")\.)(?<!(?m:^)[ \t]*\d{1,3}\.)\s+|\r?\n+",
+        RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex SentenceBreak();
 
     /// <param name="text">Modelin ürettiği serbest metin.</param>
