@@ -292,10 +292,16 @@ public sealed class McpResourceSubscriptionTests
         Assert.False(kabul.Existing);
         Assert.Equal(1, sayac.Sayi);
 
-        // `TryStartAsync` BAĞLI DEĞİL (T54 imzasını değiştiriyor) — bu çağrı
-        // bilerek buradadır: bağlandığı gün sayı 3'ten 4'e çıkıyor ve aşağıdaki
-        // iddia kırmızı yanarak sayıyı güncellemeye zorluyor.
-        Assert.True(await admission.TryStartAsync(kabul.Run.Id, ct));
+        // `TryStartAsync` BAĞLI DEĞİL — yayın noktası T54 girdikten sonra
+        // eklenecek (M20). Çağrı bilerek buradadır: bağlandığı gün sayı 3'e
+        // çıkıyor ve aşağıdaki iddia kırmızı yanarak sayıyı güncellemeye zorluyor.
+        //
+        // T54 GİRDİ ve imzayı değiştirdi: damga artık ZORUNLU. Ölçülen şey de
+        // burada görünüyor — merge metinsel olarak temizdi, derlemeyi **derleyici**
+        // kırdı (§5). `NotEngaged()` geçiliyor, çünkü bu koşum modele hiç
+        // konuşmuyor; yer tutucu değil, ölçülen hâlin kendisi.
+        Assert.True(await admission.TryStartAsync(
+            kabul.Run.Id, RcaModelBoundaryStamp.NotEngaged(), ct));
         Assert.Equal(1, sayac.Sayi);
 
         await admission.StopAsync(kabul.Run.Id, RcaStopReason.OperatorCancelled, "ölçüm", ct);

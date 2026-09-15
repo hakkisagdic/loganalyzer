@@ -120,3 +120,34 @@ sayfa durumunu okuyor; 8 GiB'lık bir VM ayarı bir sayfa durumu değil, bir
 **gelecek talep**. Kapı ona bakamaz, ama bakabileceği bir şey var ve yazılı
 olması yeterli: **Docker'ın ayrılmış belleği + masaüstü tabanı, RAM'i aşıyorsa
 container işi yapılmaz.**
+
+### Dördüncü ölçüm: Docker ÇÖKMÜYOR, **kibarca kapanıyor** — ve bu teşhisi iki kez yanlışlattı
+
+Üç ölüm, üç yanlış ilk teşhis:
+
+| Sıra | İlk teşhisim | Ölçülen |
+| --- | --- | --- |
+| 1 | *"Beş ajan belleği yiyor"* | Ajanların bütün süreçleri **0.84 GiB** |
+| 2 | *"VM 8 GiB ayrılmış, sığmıyor"* | Doğru ama **yetersiz** — 4 GiB'a inince de öldü |
+| 3 | *"Testcontainers yanlış sokete bakıyor"* | `/var/run/docker.sock` **zaten** doğru bağı taşıyor; soket yoktu çünkü Docker yoktu |
+
+Doğru cevap Docker'ın **kendi log'unda** yazılıydı:
+
+```
+sending desktop state:ExitHealthyState
+monitor exited: com.docker.backend services: exit 0
+```
+
+**`exit 0`.** Çökme yok, sinyal yok, panik yok — **düzgün kapanış**. macOS aşırı
+bellek baskısında uygulamalara kibarca kapanma isteği gönderiyor ve Docker Desktop
+onu uyguluyor. Yani aranan kanıt bir çökme izi değildi, ve çökme izi aramak üç
+turda üç yanlış yere baktırdı.
+
+**Bunun ölçüm dersi:** bir sürecin *"öldüğü"nü* görmek, *"öldürüldüğünü"* göstermiyor.
+Temiz bir çıkış kodu bir arıza olmadığını da göstermiyor — burada `exit 0`, sistemin
+uygulamaya *"lütfen kapan"* dediği ve uygulamanın uyduğu hâl. Sebep hâlâ bellek, ama
+mekanizma **çökme değil işbirliği**, ve ikisi farklı yere baktırıyor.
+
+**Sayılarla sınır:** taban ~11 GiB · VM 4 GiB · toplam 15/16 GiB. Sıçramaya yer yok,
+ve `dotnet build` tam olarak bir sıçrama. Container ölçümü ile paralel derleme aynı
+anda **yapılamıyor** — bu kez ajan sayısı değil, **toplam taahhüt** yüzünden.
