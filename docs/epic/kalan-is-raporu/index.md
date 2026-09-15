@@ -27,7 +27,7 @@ kapısı bu turda **koşmadı** — Docker daemon bu makinede ölü (bkz. §3).
 | **F1** — boru hattı | Ingest, depolama, parser motoru, kimlik, API | **14/14 kapandı** |
 | **F2** — arayüz | Ekranlar, BFF, alarm, change | 16/17 · **T49 sürüyor** (canlı doğrulaması koordinatörde) |
 | **F3** — detection ve kanıt | Sigma, korelasyonlar, kanıt paketi, **üç kapı ticket'ı** | 13/14 · **T32 sürüyor** |
-| **F4** — agentic RCA | Prompt tabanı, plugin, tetikleyici, kota, LLM, rapor | 7/9 · **T47 sürüyor, T54 açık** |
+| **F4** — agentic RCA | Prompt tabanı, plugin, tetikleyici, kota, LLM, rapor | 8/9 · **T47 sürüyor** |
 | **F5** — gözlemlenebilirlik | Metrik · trace · topoloji sağlayıcıları | **kapsam kararı verildi (S1)**: topoloji karşılandı, metrik ve trace **kalıcı muaf** |
 | **FS** — simülatörler | Cihazsız uçtan uca koşum | **8/8 kapandı** |
 | **MCP** — protokol | İki yüzey, sekiz ticket | **M01 koşuyor**, M02–M08 açık |
@@ -53,12 +53,22 @@ altıncı bekçiydi (altın kümede kapsam, gerçek SQL'e karşı). T48 kapını
 (keşfedilen uzantı ↔ kompozisyon kökü) ve T53 (bu belgenin bekçisi), ikisi de
 kapandı.
 
-### F4 — iki kalem
+### F4 — bir kalem
 
 | # | Ticket | Neden açık |
 | --- | --- | --- |
 | **T47** | Kalite ölçümü | F4'ün **kabul sınavı**, cilalama değil. Tiyatro yarısı bitti (`ContradictingEvidenceVerdict` artık okunuyor, payda görünür); **atılan cümle oranı başlamadı** |
-| **T54** | Model muafiyetinin kaydı | Rapor tarafı yazıldı; **koşum kaydına** (`rca_runs`) yazılıp yazılmayacağına bakılmadı. Ayrı bir kalem olabilir |
+
+**T54 kapandı** ve kapanışı bir öncülü yanlışladı. Muafiyet artık `rca_runs`'ta:
+`model_boundary` (dört değerli kapalı küme) + `model_boundary_override_reason`,
+damgası `RcaAdmission.TryStartAsync`'te ve **zorunlu bir parametre** — yani
+unutulması derlenmiyor. Ticket'ın *"kayıt zaten `RcaReportEntity`'de belge
+olarak duruyor"* gerekçesi ölçümle düştü: belgeyi hiçbir üretim kodu yazmıyor,
+dolayısıyla kolon bir kopya değil **tek gerçek kayıt**.
+
+Bıraktığı sınır yazılı: üretimdeki tek değer `NotEngaged`, çünkü modeli çağıran
+üretim yolu yok. `Overridden`'ın gerekçesiz var olamayacağı **tip düzeyinde**
+ölçüldü; bir üretim koşumunun `Overridden` damgalandığı **ölçülmedi**.
 
 **T44 ve T51 kapandı.** T44 iki kapıyı da kurdu; T51 raporu kalıcı yaptı ve
 sayacı ekrana çıkardı. T51'in bıraktığı sınır kayıtta: **`SaveAsync`'i hiçbir

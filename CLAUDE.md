@@ -308,6 +308,57 @@ düzeltmeden önce **kaç yerin söylediğini say**.
 değişmediği demek. Damga bir **inceleme** değil; §11'in okuma adımı tam bu yüzden
 var.
 
+### Varsayılanla aynı olan bir değer, ölçümün bağını görünmez kılıyor
+
+**Bir testin üretimi okuduğunu, üretimle aynı cevabı vermesi kanıtlamıyor.**
+
+Ölçüldü: bir bekçi üretimin doğrulama parametrelerini okuyordu; testi üretimden
+**kopardık** (elle kurulmuş bir nesneyle değiştirdik) ve **hiçbir şey yanmadı**.
+Sebep, kütüphanenin varsayılan toleransının da seçilmiş değere **eşit** olması —
+kopuk test, bağlı testle aynı sonucu üretiyordu. Test *"üretimin kararını
+ölçüyorum"* derken aslında *"bir kararı ölçüyorum"* diyordu.
+
+Refleks: bir bekçinin üretime bağlı olduğunu ölçmek için, ölçtüğü değerin
+üretime **özgü** olması gerekiyor.
+
+**Ve bunun en sinsi hâli: bekçiyi körleştiren şey onu AÇIKLAYAN metin olabiliyor.**
+Ölçüldü — bir compose bekçisi `ui` bloğunun tamamını okuyordu, ve sağlık
+kontrolünün **üstündeki gerekçe yorumu** aranan uç adresini zaten içeriyordu.
+Bekçi *"uç yoklanıyor mu"* değil *"ucun adı dosyada geçiyor mu"* diye soruyordu;
+kusur konulduğunda **yeşil kaldı**. Yorumlar elenince kırmızı yandı.
+
+Aynı turda ikinci ölçüt aynı kusurda kırmızı yanmıştı ve bu **tesadüf**: kusur
+aranan dizgeyi *ekliyordu*, o yüzden `DoesNotContain` düşüyordu. Yani iki
+ölçütten biri kör biri sağlamdı, ve **tek bir "yeşil" ikisini temsil ediyordu**. Çözüm bir **parmak izi** iddiası: ürüne ait,
+kütüphanenin varsayılanında bulunmayan bir alan (bizde `RoleClaimType`, claim
+sözleşmesinden). Elle kurulmuş bir nesnede o alan yok, yani kopma yanıyor.
+
+Ve ikinci yarısı: o turda seçilmiş değeri değiştirmek boşluğu **tesadüfen**
+kapatıyordu — yeni değer varsayılandan farklı olduğu için. Ona bırakılmadı.
+**Bir boşluğun tesadüfen kapanması, kapatılması değil**: sayı bir gün varsayılana
+dönerse bağ yine görünmez olur, parmak izi ise ölçmeye devam eder.
+
+Aynı turun ironisi kuralın kendisini anlatıyor: kapanmayan kriterin kusuru
+*"tolerans seçilmemiş"*, bekçinin kusuru *"seçilmemiş varsayılana yapışık"* —
+tek kök, iki kılık.
+
+### Doğrulama çıktısını `tail`'den geçirmek, aradığın arızayı yutuyor
+
+İki kez oldu ve ikisinde de kaybedilen şey **arızanın kimliği**:
+
+- `npm run api:check | tail -3` → komut **17 hata** verdi, rapora *"koşmadı"*
+  diye geçti. Hataların kimliği kayıp; tekrarlanamadı çünkü o koşumda disk
+  kapısı da kırmızıydı ve `ENOSPC` sıradan bir test hatası gibi okunuyor.
+- `dotnet test | tail -N` → **düşen testin adı** kesildi, yalnızca özet kaldı.
+
+Sebep basit ve o yüzden tekrarlıyor: özet satırı **sonda**, arızanın kimliği
+**ortada**. `tail` özeti getiriyor, yani çıkış kodu doğru okunuyor ve *"neyin
+düştüğü"* sessizce gidiyor — komut kırmızı, rapor eksik.
+
+Refleks: doğrulama çıktısı **tam loga** yazılıyor; kısaltma yalnızca `grep` ile
+ve **hata desenini de kapsayarak** yapılıyor (`grep -E "\[FAIL\]|error|Başarısız"`).
+Bir arızanın *var olduğunu* bilmek, *ne olduğunu* bilmek değil.
+
 ### Paylaşılan ASP.NET çatısı `Bizigo.Cli`'ye inemez
 
 Üç ayrı yerden aynı duvara çarpıldı: `AddJwtBearer` kullanmak, test derlemesine

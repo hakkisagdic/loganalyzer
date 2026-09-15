@@ -74,7 +74,20 @@ public static class McpStdioHost
         ArgumentNullException.ThrowIfNull(toolAssemblies);
         ArgumentNullException.ThrowIfNull(services);
 
-        var options = BizigoMcpServer.CreateOptions(surface, boundary, toolAssemblies, services);
+        // ABONELİK YETENEĞİ YAYINCININ VARLIĞINA BAĞLI — ve ilk hâli öyle
+        // değildi.
+        //
+        // İlk yazdığımda `subscriptionsDeliverable: true` sabitti ve gerekçesi
+        // "stdio'da tek, uzun ömürlü bir sunucu var" idi. Doğru ama YETMİYOR:
+        // defter DI'da kayıtlı değilse yayınlayacak kimse yok ve sunucu
+        // `subscribe` ilan etmeye devam ederdi. Yani tam olarak kaçındığımız
+        // şey — gönderilemeyecek bir bildirimin ilanı — bu satırın kendisinde
+        // duruyordu. Şart artık iki parçalı: kanal var (stdio) VE yayıncı var.
+        var updates = services.GetService(typeof(McpResourceUpdates)) as McpResourceUpdates;
+
+        var options = BizigoMcpServer.CreateOptions(
+            surface, boundary, toolAssemblies, services, subscriptionsDeliverable: updates is not null);
+
         var factory = loggerFactory ?? NullLoggerFactory.Instance;
 
         await using ITransport transport = user is null
@@ -82,6 +95,12 @@ public static class McpStdioHost
             : new McpIdentityTransport(new StdioServerTransport(options, factory), user);
 
         await using var server = McpServer.Create(transport, options, factory, services);
+
+        // DEFTERE YAZ, VE `using` İLE ÇIKAR. Kabul kriteri 4'ün bu katmandaki
+        // hâli: süreç kapandığında defterde kalan bir sunucu örneği, kapanmış
+        // bir kanala yazmayı denemek demek — ve o deneme her koşum değişiminde
+        // tekrarlanırdı. `using` bunu bir hatırlama işi olmaktan çıkarıyor.
+        using var kayit = updates?.Register(server);
 
         await server.RunAsync(cancellationToken).ConfigureAwait(false);
     }

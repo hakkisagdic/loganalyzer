@@ -1,7 +1,7 @@
 ---
 title: "F1 — Boru Hattı: Implementasyon Ticket'ları"
 kind: story
-status: 2
+status: 1
 ---
 
 # F1 Implementasyon Ticket'ları
@@ -62,6 +62,21 @@ flowchart TB
 | T10 | [API uçları](api-uclari/index.md) | `/v1/events`, `/raw`, `/sources`, `/changes`, `/health` | T03, T09 |
 | T11 | [Replay](replay/index.md) | Bölüm değiştirmeli replay, `--dry-run` fark raporu | T04, T06 |
 | T12 | [Python sidecar](sidecar/index.md) | Drain3 + pySigma imajı, HTTP sözleşmesi, devre kesici | T03, T05 |
+
+### F1 sonrası — ölçülmemiş kalemler
+
+F1 **kapandı**; kapanış belgesi [f1-kapanis](../f1-kapanis/index.md) ve bu satır
+onu geri almıyor. Statünün 2'den 1'e dönmesi fazın değil **bu kümenin** hâlini
+anlatıyor: küme bir açık kalem taşıyor. Emsali F2, aynı sebeple `status: 1`.
+
+Kalemin nasıl bulunduğu kendi dersini taşıyor — kabul kriteri *"karşılandı"* diye
+duruyordu ve karşılandığı **hiç ölçülmemişti**; bekçinin kendi yorumu
+*"`kill -9` taklidi"* diyordu, yani iddia ile ölçüm arasındaki fark **yazılıydı**
+ve kimse okumuyordu.
+
+| # | Ticket | Özü | Bağımlılık |
+| --- | --- | --- | --- |
+| T63 | [Dayanıklılık kriterinin ölçümü](dayaniklilik-olcumu/index.md) | `kill -9` taklit ediliyor, *"RustFS durdurulur, ingest devam eder"* yarısını ölçen hiçbir şey yok | — |
 
 ## Dilimleme mantığı
 

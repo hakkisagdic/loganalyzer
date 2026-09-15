@@ -318,4 +318,40 @@ public sealed class RcaRunEntity
     /// </summary>
     [MaxLength(512)]
     public string StateDetail { get; set; } = string.Empty;
+
+    /// <summary>
+    /// <b>Bu koşum hakkında model sınırı konusunda söylenen şey</b> (T54).
+    ///
+    /// <para>
+    /// Damga <see cref="RcaAdmission.TryStartAsync"/>'te basılıyor — yani koşum
+    /// gerçekten başladığında — ve <b>yapılandırmadan okunmuyor</b>. Ayrım bu
+    /// kolonun tek varlık sebebi: gerekçe yapılandırmada da duruyor
+    /// (<c>Rca:Model:BoundaryOverrideReason</c>), ama onu okuyan bir ekran
+    /// <b>bugünkü</b> gerekçeyi dünkü koşumun yanına yazardı. Muafiyetin
+    /// <i>ne zaman</i> uygulandığı kaydın kendisinde durmak zorunda.
+    /// </para>
+    ///
+    /// <para>
+    /// <see cref="RcaRunState"/> ile çelişmiyor, <b>başka bir soruyu</b>
+    /// cevaplıyor: durum koşumun başına ne geldiğini, bu ise koşumun kurumun
+    /// en büyük sözünü (K6) hangi güvenceyle taşıdığını söylüyor.
+    /// </para>
+    /// </summary>
+    public RcaModelBoundary ModelBoundary { get; set; }
+
+    /// <summary>
+    /// Muafiyetin gerekçesi — yalnızca
+    /// <see cref="RcaModelBoundary.Overridden"/> hâlinde dolu.
+    ///
+    /// <para>
+    /// <b><see langword="null"/> ile boş dize bilerek ayrı:</b> biri "muafiyet
+    /// yok", diğeri "muafiyet var ama gerekçesi yazılmamış". İkincisi
+    /// <c>ModelBoundaryGate</c> tarafından reddediliyor ve
+    /// <c>RcaModelBoundaryStamp</c> onu üretemiyor, ama kolonun ikisini
+    /// ayırabilmesi ayrı bir şey: bir gün başka bir yazan doğarsa ayrım
+    /// <b>kayıtta</b> duruyor, yazanın nezaketinde değil.
+    /// </para>
+    /// </summary>
+    [MaxLength(512)]
+    public string? ModelBoundaryOverrideReason { get; set; }
 }

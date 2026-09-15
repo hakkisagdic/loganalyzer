@@ -19,7 +19,7 @@ sources:
   - docs/epic/tickets-f2/ui-ux-denetimi/index.md
   - docs/ekran-goruntuleri/BENIOKU.md
   - docs/epic/f2-kapanis/index.md
-source_digest: "sha256-12/v1 docs/ekran-goruntuleri/BENIOKU.md=cf326ea2a6f4 docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/f2-teknik-plan/index.md=70c97eb131ab docs/epic/tickets-f2/index.md=5e6346095323 docs/epic/tickets-f2/nextjs-iskelet-bff/index.md=c49270b469fb docs/epic/tickets-f2/ui-ux-denetimi/index.md=0901dadc890e"
+source_digest: "sha256-12/v1 docs/ekran-goruntuleri/BENIOKU.md=cf326ea2a6f4 docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/f2-teknik-plan/index.md=70c97eb131ab docs/epic/tickets-f2/index.md=b06a963ee9ad docs/epic/tickets-f2/nextjs-iskelet-bff/index.md=c49270b469fb docs/epic/tickets-f2/ui-ux-denetimi/index.md=0901dadc890e"
 summary: Görsel tutarlılık F2'de kasten iki yere bölündü — jetonlar T13'te kuruluyor, denetim T28'de yapılıyor. Denetim toparlama işine dönüşüyorsa temel eksik yapılmış demektir.
 provenance:
   extracted: 0.85

@@ -49,12 +49,46 @@ export interface SessionRecord {
   readonly expiresAt: number;
 }
 
+/**
+ * <b>Yapılandırılmış</b> deponun erişilebilirliği — T62.
+ *
+ * <p>
+ * Alan adı <c>kind</c> ve okunması gereken şey <b>hangi depo</b>: sağlık ucu
+ * <i>"Redis kırık"</i> diyemez, çünkü varsayılan <c>memory</c> ve orada Redis
+ * <b>yok</b>. Söylenebilecek tek doğru cümle <i>"yapılandırılmış depoya
+ * erişiliyor mu"</i> — ayrımı kaçıran bir uç yerel geliştirmede sürekli kırmızı
+ * yanar ve ilk gün kapatılır.
+ * </p>
+ */
+export interface SessionStoreReadiness {
+  readonly kind: "memory" | "redis";
+  readonly reachable: boolean;
+}
+
 export interface SessionStore {
   get(id: string): Promise<SessionRecord | undefined>;
   set(id: string, record: SessionRecord): Promise<void>;
   delete(id: string): Promise<void>;
   /** Yalnızca testler ve tanılama için. */
   size(): number;
+  /**
+   * Depoya <b>oturum kimliği olmadan</b> erişilebiliyor mu (T62).
+   *
+   * <p>
+   * Arayüzde <b>zorunlu</b>, isteğe bağlı değil — kalıp <c>RedisClient.close</c>
+   * ile aynı: isteğe bağlı olsaydı yeni bir depo uygulaması onu yazmayı
+   * unutabilir ve sağlık ucu o depo için <b>sessizce yeşil</b> kalırdı. Tam
+   * olarak bu ucun kapattığı hatanın kendisi.
+   * </p>
+   *
+   * <p>
+   * <b>Neden <c>get()</c> yetmiyor:</b> sağlık sondasının elinde geçerli bir
+   * oturum kimliği yok ve <c>get(rastgele)</c> ulaşılabilir bir depoda da
+   * <c>undefined</c> dönüyor — yani "bulunamadı" ile "ulaşılamadı" ayrımı
+   * (bu dosyanın taşıyıcı ayrımı) sonda tarafında kaybolurdu.
+   * </p>
+   */
+  probe(): Promise<SessionStoreReadiness>;
 }
 
 class InMemorySessionStore implements SessionStore {
@@ -87,6 +121,16 @@ class InMemorySessionStore implements SessionStore {
 
   size(): number {
     return this.#records.size;
+  }
+
+  /**
+   * Bellek içi depo <b>yapısı gereği</b> erişilebilir: harita sürecin içinde ve
+   * ağ yok. Yine de bir <c>probe()</c> yazıyor, çünkü sağlık ucunun raporunda
+   * <b>hangi depo</b> yazılı olmak zorunda — <i>"erişiliyor"</i> tek başına
+   * okuyanı yanlış depoyu düşünmeye bırakır.
+   */
+  async probe(): Promise<SessionStoreReadiness> {
+    return { kind: "memory", reachable: true };
   }
 }
 

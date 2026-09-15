@@ -1,10 +1,10 @@
 ---
-title: "F1-D1 — Dayanıklılık kriterinin ÖLÇÜMÜ"
+title: "T63 — Dayanıklılık kriterinin ÖLÇÜMÜ"
 kind: ticket
 status: 0
 ---
 
-# F1-D1 — "kill -9" taklit ediliyor, "RustFS durdurulur" hiç ölçülmüyor
+# T63 — "kill -9" taklit ediliyor, "RustFS durdurulur" hiç ölçülmüyor
 
 F1'in dayanıklılık kabul kriteri şu:
 
@@ -104,14 +104,47 @@ kez gerçekleşmiş olması.
    bağlantı reddi ve yeniden deneme üretiyor, diğeri anında cevap veriyor.
 2. **Depo dururken batch gönderilecek ve ack BEKLENECEK.** Kriter *"ingest devam
    eder"* diyor; devam etmenin gözlemlenebilir hâli ack'in gelmesi.
-3. **Devam ettiği HANGİ sayaçtan okunacak:** `IngestStats`'in ack sayacı ve WAL'a
-   yazılan segment sayısı. *"Hata log'u yok"* bir kanıt değil — sessizce
-   duran bir boru hattı da hata basmaz.
-4. **Depo geri kaldırılacak ve arşivin YETİŞTİĞİ ölçülecek.** Bu yarı olmadan
+
+### 4.1 · HANGİ sayaç, HANGİ değer — rakamla
+
+Bu, ölçümün kalbi. Kendi cümlemiz şunu gerektiriyor: *"hata log'u yok"* kanıt
+değil, sessizce duran bir boru hattı da hata basmaz. O yüzden okunacak şey bir
+**sayaç**, ve hangisi olduğu keyfî değil.
+
+`IngestStats` (`src/Bizigo.Ingest/Pipeline/IngestStats.cs`):
+
+| Sayaç | Depo DURURKEN beklenen | Neden bu değer |
+| --- | --- | --- |
+| **`AcceptedBatches`** | **artmaya devam eder** — gönderilen her batch için +1 | `Accepted()` **WAL yolunda** çağrılıyor, arşiv yüklemesinden **önce**. Depo, WAL'ı değil **yükleyiciyi** (`RawArchiveUploader`) etkiliyor |
+| **`AcceptedRecords`** | gönderilen kayıt sayısı kadar artar | Batch başına değil kayıt başına; batch sayısı eşitken kayıt kaybını görünür kılıyor |
+| **`RejectedFull`** | **0** — WAL kapasitesi dolana kadar | Doldu demek ack'in **durduğu** an demek; bu sayaç 0'dan çıktığı anda *"ingest devam ediyor"* artık doğru değil |
+| `RejectedInvalid` | 0 | Değişirse ölçüm depo kesintisini değil bozuk girdiyi ölçüyor |
+| `ProcessedRecords` | **BU SAYAÇ OKUNMAYACAK** | Ayrı eksen: parse + ClickHouse yazımı. ClickHouse da düşükse burası durur ama `AcceptedBatches` artmaya devam eder — yani **yanlış sayacı okumak yanlış hüküm verir** |
+
+**Somut kabul:** N batch × M kayıt gönderildiğinde,
+`AcceptedBatches` **+N**, `AcceptedRecords` **+(N×M)**, `RejectedFull` **0**.
+
+### 4.2 · İddianın bir SON TARİHİ var ve kriterde yazılı değil
+
+*"Ingest devam eder"* **süresiz değil**. WAL sınırlı:
+`WalOptions.MaxTotalBytes` varsayılanı **8 GiB**
+(`MaxSegmentBytes` **128 MiB**). Depo dururken segmentler **birikiyor**, çünkü
+yükleyici onları boşaltamıyor. Kapasite dolduğunda `WalFullException` atılıyor,
+`RejectedFull` artıyor ve **ack durmaya başlıyor**.
+
+Yani kriterin doğru hâli: **ingest, WAL kapasitesi dolana kadar devam eder.**
+Süre = `8 GiB ÷ (ingest hızı)`. Ölçüm bunu da raporlayacak — çünkü *"devam
+eder"* diye yazılmış bir iddia, operatörün elinde **kaç saatlik** bir kesintiye
+dayanabileceği sorusuna dönüşüyor ve bugün o sayı hiçbir yerde yazılı değil.
+
+`RetryAfterSeconds` **5**: yani doluyken istemciye geri çekilme süresi
+söyleniyor, sessiz bir hata değil.
+
+3. **Depo geri kaldırılacak ve arşivin YETİŞTİĞİ ölçülecek.** Bu yarı olmadan
    ölçüm eksik: ingest'in devam etmesi, biriken segmentlerin sonunda arşive
    inmesi anlamına gelmiyor. `raw_manifest` satırlarının `verified_at`'i
    dolmalı.
-5. **Doğrulanmamış segmentin silinmediği ölçülecek.** Ürünün sözü bu
+4. **Doğrulanmamış segmentin silinmediği ölçülecek.** Ürünün sözü bu
    (*"doğrulanmamış segment asla silinmez"*) ve depo kesintisi o sözün en
    olası kırılma anı.
 

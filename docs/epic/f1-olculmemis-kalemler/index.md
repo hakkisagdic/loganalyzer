@@ -108,6 +108,8 @@ bellek tavanı, ve replay'in bölüm başına ne kadar tuttuğu. Ve bir karar:
 
 ## 4 · Dayanıklılık — `kill -9` **taklit** ediliyor, depo kesintisi hiç ölçülmüyor
 
+> Ticket: **T63** (`docs/epic/tickets/dayaniklilik-olcumu/`).
+
 | | |
 | --- | --- |
 | **Kriter** | *"Süreç `kill -9` ile öldürülür; ack'lenen hiçbir olay kaybolmaz. RustFS durdurulur; ingest devam eder."* |
@@ -119,7 +121,7 @@ gelir**) tam üstünde: dayanıklılık sınırının bilinçli olarak WAL'da ol
 depo düştüğünde ingest'in **durmadığını** varsayıyor. Varsayım ölçülmemiş.
 
 **Ölçmek neyi gerektiriyor.** Protokolü yazıldı:
-[F1-D1 — Dayanıklılık kriterinin ölçümü](../tickets-f1/dayaniklilik-olcumu/index.md).
+[T63 — Dayanıklılık kriterinin ölçümü](../tickets/dayaniklilik-olcumu/index.md).
 Taşıdığı kararlar: `SIGKILL` (`SIGTERM` değil — o düzgün kapanışı tetikler ve
 zaten fsync ediyor), öldürme anının ack'ten hemen sonra olması, olayın **sorguyla**
 aranması (WAL dosyasına bakılarak değil) ve **sayının** karşılaştırılması, depo

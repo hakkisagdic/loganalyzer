@@ -55,8 +55,15 @@ public sealed class McpStdioIdentityKeycloakTests
     /// </summary>
     private static string? ApiOnlyToken => Environment.GetEnvironmentVariable("BIZIGO_MCP_API_TOKEN");
 
-    private static string Resource =>
-        Environment.GetEnvironmentVariable("BIZIGO_MCP_RESOURCE") ?? "bizigo-mcp";
+    /// <summary>
+    /// Beklenen <c>aud</c>. <b>Varsayılanı yok ve olmayacak:</b> bir varsayılan
+    /// yazmak, realm'in bastığı kitleyi ikinci kez temsil etmek olurdu — ve
+    /// ölçülerek bulundu ki iki temsil ayrışmıştı (bekçisi
+    /// <c>KeycloakRealmTests.Mcp_kitlesi_realmde_ve_belgede_ayni</c>). Değeri
+    /// operatör veriyor; eksikse ölçüm <b>atlanıyor</b>, yanlış bir dizgeyle
+    /// koşup <c>unauthenticated</c> ölçmüyor.
+    /// </summary>
+    private static string? Resource => Environment.GetEnvironmentVariable("BIZIGO_MCP_RESOURCE");
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -83,8 +90,10 @@ public sealed class McpStdioIdentityKeycloakTests
     public async Task Gecerli_belirtec_kabul_ediliyor()
     {
         Assert.SkipUnless(
-            !string.IsNullOrWhiteSpace(Authority) && !string.IsNullOrWhiteSpace(McpToken),
-            "BIZIGO_MCP_KEYCLOAK ve BIZIGO_MCP_ACCESS_TOKEN gerekiyor — `bizigo-mcp` "
+            !string.IsNullOrWhiteSpace(Authority)
+            && !string.IsNullOrWhiteSpace(McpToken)
+            && !string.IsNullOrWhiteSpace(Resource),
+            "BIZIGO_MCP_KEYCLOAK, BIZIGO_MCP_ACCESS_TOKEN ve BIZIGO_MCP_RESOURCE gerekiyor — `bizigo-mcp` "
             + "kitlesiyle basılmış geçerli bir belirteç. Canlı Keycloak koordinatörde (§2).");
 
         var (identity, failure) = await McpStdioIdentity.ValidateAsync(Settings(McpToken), cancellationToken: Ct);
@@ -122,8 +131,10 @@ public sealed class McpStdioIdentityKeycloakTests
     public async Task Api_icin_basilmis_belirtec_reddediliyor()
     {
         Assert.SkipUnless(
-            !string.IsNullOrWhiteSpace(Authority) && !string.IsNullOrWhiteSpace(ApiOnlyToken),
-            "BIZIGO_MCP_KEYCLOAK ve BIZIGO_MCP_API_TOKEN gerekiyor — `bizigo-mcp` scope'u "
+            !string.IsNullOrWhiteSpace(Authority)
+            && !string.IsNullOrWhiteSpace(ApiOnlyToken)
+            && !string.IsNullOrWhiteSpace(Resource),
+            "BIZIGO_MCP_KEYCLOAK, BIZIGO_MCP_API_TOKEN ve BIZIGO_MCP_RESOURCE gerekiyor — `bizigo-mcp` scope'u "
             + "İSTENMEDEN alınmış bir belirteç. Canlı Keycloak koordinatörde (§2).");
 
         Assert.NotEqual(McpToken, ApiOnlyToken);
@@ -163,8 +174,10 @@ public sealed class McpStdioIdentityKeycloakTests
     public async Task Suresi_dolan_belirtec_ayri_sebep_donduruyor()
     {
         Assert.SkipUnless(
-            !string.IsNullOrWhiteSpace(Authority) && !string.IsNullOrWhiteSpace(McpToken),
-            "BIZIGO_MCP_KEYCLOAK ve BIZIGO_MCP_ACCESS_TOKEN gerekiyor. Canlı Keycloak "
+            !string.IsNullOrWhiteSpace(Authority)
+            && !string.IsNullOrWhiteSpace(McpToken)
+            && !string.IsNullOrWhiteSpace(Resource),
+            "BIZIGO_MCP_KEYCLOAK, BIZIGO_MCP_ACCESS_TOKEN ve BIZIGO_MCP_RESOURCE gerekiyor. Canlı Keycloak "
             + "koordinatörde (§2).");
 
         var (identity, failure) = await McpStdioIdentity.ValidateAsync(Settings(McpToken), cancellationToken: Ct);

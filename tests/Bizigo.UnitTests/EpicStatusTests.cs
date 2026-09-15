@@ -161,20 +161,16 @@ public sealed class EpicStatusTests
         //     `tickets-f3/index.md`'ye "Kapı ticket'ları" alt başlığı altında
         //     eklendiler ve `references/f3-detection-ve-rca-kaniti` vault
         //     sayfası okunup güncellendi, damgalandı (§11).
-        ["yol-haritasi:tickets-f2/ui-container"] = "T49 — yeni, F2 tablosuna eklenmedi.",
+        //
+        //     T49 da ÇIKTI (T62): `tickets-f2/index.md`'ye "F2 sonrası —
+        //     dağıtım ve sağlık" alt başlığı altında T62 ile birlikte eklendi.
+        //     Aynı kalıp, aynı gerekçe — tablo fazın ÜRÜNÜNÜ anlatıyor, bu iki
+        //     satır o ürünün KALKIŞINI.
         ["yol-haritasi:tickets-f3/specificity-olcutu"] = "F3 tablosunda yok; kimliği de belirsiz.",
         ["yol-haritasi:tickets-f4/model-saglayicisi"] = "T42 — F4 tablosunda ticket satırı yok.",
         ["yol-haritasi:tickets-f4/senaryo-plugin-cekirdegi"] = "T43 — F4 tablosunda ticket satırı yok.",
         ["yol-haritasi:tickets/ham-arsiv-kurtarma"] = "F1 tablosunda yok.",
 
-        // M19'da açıldı ve tablosu DA yazıldı (`tickets-f1/index.md`), ama satır
-        // bekçiye görünmüyor: kimlik deseni `[TSM]\d+` istiyor, satırın kimliği
-        // `F1-D1`. Numara BİLEREK alınmadı — `T62` koordinatörün konuştuğu bir
-        // ticket ve tablolarda geçmiyor, yani serbest sanılan bir numarayı almak
-        // çakışma üretebilirdi. Kimlik koordinatörden gelince bu satır düşecek
-        // ve `Listeler_bayat_giris_tasimiyor` onu kırmızıyla hatırlatacak.
-        ["yol-haritasi:tickets-f1/dayaniklilik-olcumu"] =
-            "F1-D1 — tablosu var, kimlik deseni tutmuyor; numara koordinatörde.",
 
         // 2 · `tickets-fs` tablosunun Durum sütunu ile ticket dosyaları
         //     çelişiyor. `kalan-is-raporu` §6 bu dördü bir kez düzeltmişti;
@@ -205,7 +201,13 @@ public sealed class EpicStatusTests
         // eşleme boşluğu kapatılana kadar altındaki çelişki hiç görünmüyordu.
         // İki örnek bir desen: bir ayrışmanın kapanması, aynı satırın
         // kapandığı anlamına gelmiyor.
-        ["rapor:T49"] = "Raporda açık; ticket dosyası var ama yol haritası tablosunda olmadığı için eşlenemiyor.",
+        //
+        // ÜÇÜNCÜ örnek T49 ve maskenin ALTINDA çelişki YOKTU: yol haritası
+        // satırı eklenince kimlik çözüldü, dosya `status: 1` çıktı ve raporun
+        // "açık" demesi ÇELİŞMİYOR. Yani bu kez maske gerçek bir hizasızlığı
+        // değil, sonradan doğru çıkan bir kaydı saklıyordu. Giriş bu yüzden
+        // güncellenmedi, SİLİNDİ — ve iki hâlin ayrı ayrı görülmesi listeyi
+        // dürüst tutan şey (T62 ölçtü, `Listeler_bayat_giris_tasimiyor` söyledi).
     };
 
     /// <summary>

@@ -34,11 +34,21 @@ public sealed class McpResourceBudgetTests
     /// Kaynak başına tavan.
     ///
     /// <para>
-    /// <b>ÖLÇÜLEN (SDK'nın kendi serileştiricisiyle, üç kaynak):</b> toplam
-    /// <b>461</b> belirteç — <c>evidence-bundle</c> 170, <c>rca-report</c> 148,
-    /// <c>parser</c> 143. Tavan 200, yani bugünkü en pahalı kalemin (170)
-    /// üstünde ama <b>dar</b>: bir açıklamayı iki katına çıkarmak kırmızı
-    /// yakıyor.
+    /// <b>ÖLÇÜLEN (SDK'nın kendi serileştiricisiyle, dört kaynak):</b> toplam
+    /// <b>594</b> belirteç — <c>evidence-bundle</c> 170, <c>rca-report</c> 148,
+    /// <c>parser</c> 143, <c>rca-runs</c> 133. Tavan 200, yani bugünkü en pahalı
+    /// kalemin (170) üstünde ama <b>dar</b>: bir açıklamayı iki katına çıkarmak
+    /// kırmızı yakıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Abonelik ŞEMA EKLEMEDİ.</b> Dördüncü kaynak listeye <b>133</b> belirteç
+    /// ekledi (461 → 594) ve bunun tamamı ilanın kendisi: abonelik yeteneği
+    /// yetenek nesnesinde tek bir <c>subscribe</c> bayrağı, ve bildirimler
+    /// <c>tools/list</c> ya da kaynak listesine <b>hiç girmiyor</b> — onlar
+    /// oturum sırasında akıyor. Yani abonelik ilan maliyeti <b>sıfır</b>;
+    /// maliyeti akış tarafında ve ölçüsü <i>koşum başına bildirim</i>
+    /// (<c>McpResourceSubscriptionTests.Kosum_basina_uc_bildirim</c>).
     /// </para>
     ///
     /// <para>
@@ -106,9 +116,9 @@ public sealed class McpResourceBudgetTests
             + "Açıklamayı kısaltın ya da tavanı BİLİNÇLİ olarak yükseltin.");
 
         // Sayı raporlanıyor: bir sonraki kişi kaynak eklerken marjinal maliyeti
-        // görebilsin. Ölçülen hâl (üç kaynak): toplam 461, en pahalı kalem
-        // `evidence-bundle` (170), ve her üçünde de en büyük tek kalem AÇIKLAMA
-        // (59-62) — yani kaynak eklemenin marjinal maliyeti ~150 belirteç ve
+        // görebilsin. Ölçülen hâl (dört kaynak): toplam 594, en pahalı kalem
+        // `evidence-bundle` (170), ve dördünde de en büyük tek kalem AÇIKLAMA
+        // (51-62) — yani kaynak eklemenin marjinal maliyeti ~150 belirteç ve
         // onun ~%40'ı yazdığımız cümle.
         Assert.True(
             total > 0,

@@ -634,12 +634,16 @@ public sealed class McpComplianceTests
         {
             Assert.NotNull(capabilities.Resources);
 
-            // `Subscribe` de gerçeğe bağlı: abonelik ilan edip bildirim
-            // göndermemek, istemciyi HİÇ SORMAMAYA ikna eder ve sonuç sessizce
-            // bayat veridir.
-            Assert.Equal(
-                declared.Any(static resource => resource.SupportsSubscription),
-                capabilities.Resources.Subscribe ?? false);
+            // ABONELİK BURADA DAİMA KAPALI OLMALI — ve bu bir gevşetme değil,
+            // ölçümün kendisi.
+            //
+            // `ProductionOptions` `subscriptionsDeliverable` VERMİYOR, yani bu
+            // oturum bildirimi gönderemeyen bir taşımayı temsil ediyor.
+            // Abonelik yeteneğinin o hâlde ilan edilmemesi M07'nin kararı:
+            // gönderilemeyecek bir bildirimi ilan etmek istemciyi belgeyi bir
+            // daha sormamaya ikna eder. Yeteneğin AÇIK hâli
+            // `McpResourceSubscriptionTests`'te iki yönlü ölçülüyor.
+            Assert.False(capabilities.Resources.Subscribe ?? false);
 
             // İlan edilen küme tel üzerinde de görünüyor mu — yeteneğin
             // varlığı ile kanalın çalışması aynı şey değil.

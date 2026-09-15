@@ -765,7 +765,7 @@ taşımıyor. Kimlik **ortamdan** geliyor:
 ```bash
 export BIZIGO_MCP_TOKEN=<Keycloak erişim belirteci>     # zorunlu (kimlik için)
 export BIZIGO_MCP_AUTHORITY=http://localhost:8180/realms/bizigo
-export BIZIGO_MCP_RESOURCE=bizigo-mcp                  # beklenen `aud`
+export BIZIGO_MCP_RESOURCE=http://localhost:5080/mcp   # beklenen `aud`
 export BIZIGO_MCP_METADATA=...                          # opsiyonel; container'da issuer≠erişilebilir adres
 ```
 

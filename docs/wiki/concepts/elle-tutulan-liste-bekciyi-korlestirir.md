@@ -9,7 +9,7 @@ relationships:
   - target: "[[references/f2-kapanis]]"
     type: derived_from
 sources: [docs/epic/f2-kapanis/index.md, docs/epic/tickets-f3/produces-kapisi-bagi/index.md, docs/epic/tickets-f3/kompozisyon-koku-bagi/index.md, CLAUDE.md]
-source_digest: "sha256-12/v1 CLAUDE.md=3875822e3ccc docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/tickets-f3/kompozisyon-koku-bagi/index.md=4f32c80bd6b5 docs/epic/tickets-f3/produces-kapisi-bagi/index.md=67247a04a205"
+source_digest: "sha256-12/v1 CLAUDE.md=ed0e0490c47f docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/tickets-f3/kompozisyon-koku-bagi/index.md=4f32c80bd6b5 docs/epic/tickets-f3/produces-kapisi-bagi/index.md=67247a04a205"
 summary: Denetlenen kümeyi elle tutulan bir listeden toplayan bekçi, listede olmayanı hiç görmez ve yine de yeşil yanar. Çözüm kümeyi yansımayla bulmak — ama bir kapıdaki elle listeyi kaldırmak, o kapıda başka elle liste kalmadığını göstermiyor.
 provenance:
   extracted: 0.8
