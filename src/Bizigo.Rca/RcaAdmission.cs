@@ -415,9 +415,23 @@ public sealed class RcaAdmission(
     /// bir durumda <see langword="false"/> dönüyor: koşumu ikinci kez başlatmak,
     /// aynı kotayı iki kez yemek ve aynı raporu iki kez üretmek olurdu.
     /// </para>
+    /// <para>
+    /// <b><paramref name="stamp"/> zorunlu ve varsayılanı yok</b> (T54): koşumun
+    /// model sınırı hakkında ne söylendiği <b>burada</b>, yani koşum gerçekten
+    /// başladığında yazılıyor. Yapılandırmadan okunmasının kabul edilmemesinin
+    /// sebebi <c>RcaRunEntity.ModelBoundary</c>'de yazılı — raporu okuyan kişi o
+    /// koşum sırasında geçerli olan gerekçeyi görmek zorunda, bugünküyü değil.
+    /// İsteğe bağlı bir parametre damgayı yeniden unutulabilir yapardı; model
+    /// yolu doğduğu gün derleyici bu satırı okumaya zorluyor.
+    /// </para>
     /// </summary>
-    public async Task<bool> TryStartAsync(Guid runId, CancellationToken cancellationToken = default)
+    public async Task<bool> TryStartAsync(
+        Guid runId,
+        RcaModelBoundaryStamp stamp,
+        CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(stamp);
+
         await using var db = await factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
 
         var run = await db.RcaRuns.FirstOrDefaultAsync(r => r.Id == runId, cancellationToken).ConfigureAwait(false);
@@ -429,6 +443,8 @@ public sealed class RcaAdmission(
 
         run.State = RcaRunState.Running;
         run.StartedAt = _time.GetUtcNow();
+        run.ModelBoundary = stamp.Boundary;
+        run.ModelBoundaryOverrideReason = stamp.Reason;
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 

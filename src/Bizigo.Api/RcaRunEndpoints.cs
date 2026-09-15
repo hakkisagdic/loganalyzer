@@ -41,6 +41,8 @@ public sealed record RcaRunResponse(
     [property: JsonPropertyName("state")] string State,
     [property: JsonPropertyName("reason")] string Reason,
     [property: JsonPropertyName("counts_against_quota")] bool CountsAgainstQuota,
+    [property: JsonPropertyName("model_boundary")] string ModelBoundary,
+    [property: JsonPropertyName("model_boundary_override_reason")] string? ModelBoundaryOverrideReason,
     [property: JsonPropertyName("requested_at")] DateTimeOffset RequestedAt,
     [property: JsonPropertyName("finished_at")] DateTimeOffset? FinishedAt)
 {
@@ -51,6 +53,15 @@ public sealed record RcaRunResponse(
     /// <c>ToString()</c> yerine burada durmasının sebebi <c>RcaReviewResponse</c>
     /// ile aynı: dizgiler tel sözleşmesi ve bir <c>enum</c> adının değişmesi
     /// sessizce sözleşmeyi kırmamalı.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Gerekçe <c>null</c> iken <c>null</c> kalıyor</b> (T54), boş dizeye
+    /// çevrilmiyor: <c>null</c> "muafiyet yok", boş dize "muafiyet var ama
+    /// gerekçesi yazılmamış". <c>ModelEndpoint.AuditFields()</c> tam tersini
+    /// yapıyor (<c>?? string.Empty</c>) ve <b>orada doğru</b> — sözlüğün
+    /// değerleri <c>object</c> ve <c>null</c> anahtarı düşürürdü; burada aynı
+    /// dönüşüm iki farklı iddiayı aynı bayta indirirdi.
     /// </para>
     /// </summary>
     public static RcaRunResponse Of(RcaRunEntity run)
@@ -65,6 +76,8 @@ public sealed record RcaRunResponse(
             run.State.ToString().ToLowerInvariant(),
             RcaRunLifecycle.Describe(run.State, run.Rejection),
             run.CountsAgainstQuota,
+            run.ModelBoundary.ToString().ToLowerInvariant(),
+            run.ModelBoundaryOverrideReason,
             run.RequestedAt,
             run.FinishedAt);
     }

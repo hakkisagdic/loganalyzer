@@ -1,12 +1,12 @@
 ---
 title: "T54 — Sessiz muafiyet: model sınırı muafiyeti koşum kaydına bağlı değil"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # T54 — Muafiyet yapılandırmada var, raporda yok
 
-**Bağımlılık:** T42 (alan), **T44 (kaydın kendisi — açık)** · **Sonraki:** —
+**Bağımlılık:** T42 (alan), T44 (rapor yarısı — **kapandı**, `d718ca7`) · **Sonraki:** —
 
 ## Sorun
 
@@ -124,13 +124,159 @@ sorulmamış"* hâline sokardı — T38'in "gizlenen sıfır" kararıyla aynı g
 | `Muafiyet_gerekcesi_kayitta_birebir` | Gerekçe kısaltılmıyor/boşaltılmıyor | ❌ |
 | `Rapor_alan_adlari_AuditFields_ile_ayni` | İki gösterim ayrışmıyor | ❌ |
 
+### Ölçülen hâl — `RcaModelBoundaryRecordTests`, 12 kapı
+
+Beş kusur, beş kırmızı, beşinde de kontrol yeşil
+(`tools/t54-kirmizi-olcumu.py`). Üçü yazma/tel tarafında, ikisi tip tarafında.
+
+| Kusur | Kırmızı yanan | Yeşil kalan |
+| --- | --- | --- |
+| Tel gerekçeyi `string.Empty`'ye çeviriyor | `Null_ile_bos_dize_…`, `Muafiyetsiz_kosum_da_bunu_soyluyor` | `Damga_gerekceyi_ucun_kendisinden_aliyor` |
+| Sınır hâli telden düşüyor (sabit dizge) | `Muaf_kosum_muafiyetsizinden_…`, `Dort_hal_telde_ayri_gorunuyor` | `Damga_…` |
+| Damga satıra hiç yazılmıyor | `TryStart_damgayi_satira_yaziyor` | `Muafiyet_gerekcesi_telde_birebir` |
+| Damga tipine `public` yapıcı açılıyor | `Damganin_gecersiz_hali_tip_duzeyinde_ulasilamaz` | `Damga_…` |
+| Damga parametresi isteğe bağlı oluyor | `Damganin_gecersiz_hali_…` | `TryStart_damgayi_satira_yaziyor` |
+
+### Ölçüm iki bekçiyi ve bir beklentiyi düzeltti — üçü de bu ajanın hatası
+
+**1 · İki tip kusuru derlemeyi kırmıyor.** İlk tasarımda ikisi de
+`derleme_kirilmali=True` yazılıydı. Ölçüldü: damga parametresini isteğe bağlı
+yapmak bugünkü tek çağıranı hiçbir şey değiştirmeye zorlamıyor, yani her şey
+derleniyor ve **bütün davranış testleri yeşil kalıyor**. O hâlde ölçüm hiçbir şey
+ölçmeyecek ve yeşil sonuç *"kapı sağlam"* diye okunacaktı. Tipin şekli
+hakkındaki bir iddia tipin şekline bakarak sınanmalı — kapı bir **yansıma**
+iddiasına çevrildi.
+
+**2 · Bir "kontrol" kontrol değildi.** `Muafiyet_gerekcesi_telde_birebir`
+sınır anahtarını da okuyor, dolayısıyla tel kusurundan etkilenmesi **doğru**.
+Kontrol, tele hiç bakmayan tip düzeyi kapısına taşındı.
+
+**3 · Ve asıl olan: bir bekçi hiçbir şey ölçmüyordu.**
+`Muaf_kosum_muafiyetsizinden_ayirt_edilebiliyor` kusur altında **iki kez** yeşil
+kaldı. İlk teşhis *"iki koşum gerekçe alanından da ayrılıyor"* idi ve yalnızca
+sınırda ayrılan bir çift eklendi — **yetmedi**. Asıl sebep fixture'daydı:
+
+| Alan | Varsayılan | Sonuç |
+| --- | --- | --- |
+| `RcaRunEntity.Id` | `Guid.NewGuid()` | her çağrıda farklı |
+| `RcaRunEntity.RequestedAt` | `DateTimeOffset.UtcNow` | her çağrıda farklı |
+
+Yani karşılaştırma sınırları değil **kimlikleri** karşılaştırıyordu ve
+`Assert.NotEqual` **her zaman** geçiyordu. Fixture sabitlendi, ve testin başına
+*iddianın boş olmadığını* gösteren bir taban karşılaştırması eklendi (sınır
+dışında iki koşum birebir aynı).
+
+Ders T44'ün `copy2` tuzağıyla aynı aile — yeşil bir sonuç *"kusur etkisiz"*
+değil *"ölçüm hiç yapılmadı"* anlamına da geliyor. Farkı: orada ölçüm aracı
+yalancıydı, burada **bekçinin fixture'ı**. Ve yakalayan şey bir bekçi değil,
+kusuru enjekte edip kırmızı **beklemek** oldu.
+
+### T61'in bekçisi bu turda kendi işini yaptı
+
+`status: 0 → 2` yazıldığı an `EpicStatusTests.Rapor_acik_dedigi_her_kalem_gercekten_acik`
+kırmızı yandı: `kalan-is-raporu` T54'ü hâlâ açık sayıyordu. Rapor düzeltildi
+(F4 *"iki kalem"* → *"bir kalem"*, tablo `7/9 · T47 sürüyor, T54 açık` →
+`8/9 · T47 sürüyor`). Dün kurulan kapının bugün tuttuğu ilk gerçek ayrışma.
+
 ## Kapsam dışında
 
 - **Muafiyet politikasını değiştirmek.** Muafiyetin *ne zaman* verilebileceği
 ayrı bir karar; bu ticket yalnızca *"verildiyse görünüyor mu"*.
-- `RcaRunEntity`'ye kolon eklemek. Kayıt zaten `RcaReportEntity`'de belge
-olarak duruyor; ikinci bir yer §9'un yasakladığı kopya olurdu — ve ayrı bir
-göç, T44'ün birleşmemiş `AddRcaReports`'uyla **göç zincirini** bozardı.
+- **`ModelBoundaryGate.VerifyAsync`'i üretimde çağırır hâle getirmek.** Modeli
+çağıran bir üretim yolu yokken doğrulanan uç, tüketicisi olmayan bir karar
+olurdu (§8); ve verdict'in reddinin bir koşumu durdurup durdurmayacağı T47'nin
+kolunda. Kalem olarak bildirildi ve koordinatör kaydetti.
+
+### ~~`RcaRunEntity`'ye kolon eklemek~~ — **öncül ölçümle düştü (2026-09-15)**
+
+Bu bölüm şöyle yazılıydı:
+
+> `RcaRunEntity`'ye kolon eklemek. **Kayıt zaten `RcaReportEntity`'de belge
+> olarak duruyor**; ikinci bir yer §9'un yasakladığı kopya olurdu — ve ayrı bir
+> göç, T44'ün birleşmemiş `AddRcaReports`'uyla göç zincirini bozardı.
+
+İkinci gerekçe zamanla çözüldü (`AddRcaReports` birleşti). **Birinci gerekçe
+ise ölçüldüğünde düştü: belgeyi hiçbir üretim kodu yazmıyor.**
+
+| Öncül | Bugün | Ölçen komut |
+| --- | --- | --- |
+| "Kayıt zaten belge olarak duruyor" | `RcaReportStore.SaveAsync`'in **üretimde çağıranı yok** | `grep -rn 'RcaReportStore' --include=*.cs src/` → yalnızca kayıt, okuma ve yorumlar |
+| Belgeyi üreten koşucu bağlı | `ScenarioStepRunner` hiçbir yerde `new`'lenmiyor | `grep -rn 'ScenarioStepRunner' --include=*.cs src/` → tanım + yapıcı |
+| Sınır kararı üretimde veriliyor | `ModelBoundaryGate.VerifyAsync`'in 14 çağrısı, **hepsi `tests/`** | `grep -rn 'VerifyAsync' --include=*.cs src/ tests/` |
+
+Koordinatör üç iddiayı bağımsız olarak doğruladı. `src/` içinde görünen tek
+`VerifyAsync` isabeti bir `<see cref="…">` **belge yorumu** — çağrı değil.
+
+Yani "zaten duruyor" dediği yer **boş**, ve `rca_runs`'a kolon eklemek bir
+kopya değil **tek gerçek kayıt**. Kapsam buna göre düzeltildi ve uygulandı;
+ayrıntısı aşağıda.
+
+## Uygulanan — koşum kaydı (2026-09-15)
+
+Rapor yarısı `d718ca7`'de kapandı (`RcaReportModelInfo`'nun iki alanı, tel,
+ekran, Markdown). Bu tur **koşum kaydını** bağladı.
+
+### Kapalı küme, dört değer
+
+```csharp
+public enum RcaModelBoundary
+{
+    Unspecified = 0,   // koşum başlamadı ya da hiç başlamayacak (reddedildi)
+    NotEngaged  = 1,   // koştu, modele hiç konuşmadı  ← bugün üretimdeki TEK değer
+    Verified    = 2,   // uç adres sınıfına karşı doğrulandı, muafiyet yok
+    Overridden  = 3,   // muafiyet uygulandı — gerekçe DOLU
+}
+```
+
+`bool` yerine kapalı küme, çünkü bir `bool` *"muafiyet yok"* ile *"kimse
+bakmadı"*yı aynı bayta indirirdi ve ikisi taban tabana zıt: biri güvence, öteki
+ölçümsüzlük.
+
+**`Unspecified` ile `NotEngaged` ayrı** ve gerekçesi mekanik: satır
+`AdmitAsync` ile doğuyor, damga `TryStartAsync`'te basılıyor, reddedilen koşum
+hiç başlamıyor. Birleştirilseydi reddedilen bir koşum *"modele konuşmadı"* diye
+okunurdu — doğru bir cümle, ölçülmemiş bir yerden söylenmiş.
+
+**`Unspecified = 0` bilinçli:** göç mevcut satırlara `0` yazıyor ve bu doğru —
+geçmiş koşumların sınırı hakkında kimse bir şey söylemedi. Varsayılan
+`Verified` olsaydı veritabanının kendisi, hiç doğrulanmamış bir uç hakkında
+güvence beyan ederdi.
+
+### Damga: geçersiz hâl var olamıyor
+
+`RcaModelBoundaryStamp` — yapıcı `private`, iki fabrika: `NotEngaged()` ve
+`From(ModelEndpoint)`. Gerekçe **ucun kendisinden** okunuyor, çağırandan
+alınmıyor: alınsaydı çağıran `Overridden` deyip başka bir metin geçirebilirdi ve
+kayıt, ucun gerçekten hangi gerekçeyle açıldığından ayrışabilirdi.
+
+`TryStartAsync(runId, stamp, ct)` — **parametre zorunlu, varsayılanı yok.**
+`= null` verilseydi model yolu bağlandığı gün çağıran hiçbir şey değiştirmeden
+derlenir ve kayıt sessizce `Unspecified` kalırdı. Kalıp T41'in
+`RedactedPrompt`'u ve M06'nın `McpBoundaryDeclaration.Basis`'i.
+
+### Ölçümün kapsamı — bu paragraf olmadan kapı varmış gibi okunur
+
+`Overridden`'ın **gerekçesiz var olamayacağı tip düzeyinde ölçüldü** ve koşum
+gerektirmiyor. Bir **üretim** koşumunun `Overridden` ya da `Verified`
+damgalandığı **ölçülmedi**: modeli çağıran üretim yolu yok, dolayısıyla
+üretimdeki tek değer `NotEngaged`. İkisi ayrı iddia ve ikincisi bu ticket'ın
+kapsamı dışında.
+
+### Yanında bulunan boşluk
+
+`TryStartAsync`'in bu değişiklikten önce **hiçbir testte çağıranı yoktu** —
+birim ve entegrasyon paketlerinin tamamında sıfır isabet. Yani `Queued →
+Running` geçişi ve `StartedAt` damgası da sınanmamıştı.
+`TryStart_damgayi_satira_yaziyor` artık yazma yolunu da tutuyor.
+
+### Göç — okundu
+
+`20260915082750_AddRcaModelBoundary`: `rca_runs`'a **iki kolon ekliyor**,
+başka hiçbir tabloya ve hiçbir mevcut kolona **dokunmuyor**, veri taşımıyor,
+yeniden adlandırma yapmıyor. `Down` ikisini düşürüyor. Bu, bu depodaki en pahalı
+**önlenmiş** hatanın (`enabled → status`, pasif kuralları sessizce açan göç)
+tam karşıtı: eklenen varsayılan bir güvence beyan etmiyor, **yokluğu** beyan
+ediyor. **Uygulanmadı** — faz sonu koşumunda koordinatör uygulayacak.
 
 ## Sahiplik — koordinatörün kararı bekleniyor
 
