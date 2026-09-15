@@ -29,6 +29,12 @@ F1 şu cümle doğru olduğunda biter:
 | Arşiv bütünlüğü | Manifest'ten silinen nesne replay'de **sessizce atlanmaz**, hata olur |
 | Çok dillilik | Türkçe/Arapça/Çince gövdeli log doğru kodlamayla saklanır ve aranır |
 
+> ⚠️ **Bu tablonun hangi iddiaları ÖLÇÜLMEMİŞ olduğu ayrı bir belgede:**
+> [F1'in ölçülmemiş kalemleri](../f1-olculmemis-kalemler/index.md). Altı kalem —
+> ve hepsi *"karşılandı"* diye duran kriterlerden çıktı. Tablo çalıştırılabilir
+> değil, yani ayrışması hiçbir yerde alarm üretmiyor; o belge alarmın yerini
+> tutuyor.
+
 ## 1. Bileşen haritası
 
 ```mermaid

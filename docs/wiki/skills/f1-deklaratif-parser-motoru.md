@@ -20,7 +20,7 @@ sources:
   - docs/epic/tickets/vendor-katalogu/index.md
   - docs/epic/t08-motor-geri-beslemesi/index.md
   - docs/epic/f1-kapanis/index.md
-source_digest: "sha256-12/v1 docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=1c733a465f06 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/t08-motor-geri-beslemesi/index.md=5ce87e36f831 docs/epic/tickets/dispatcher-ve-envanter/index.md=5b0c998c5ca7 docs/epic/tickets/parser-motoru/index.md=aeac91406893 docs/epic/tickets/vendor-katalogu/index.md=6603c664a634"
+source_digest: "sha256-12/v1 docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=85c9e2a69f47 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/t08-motor-geri-beslemesi/index.md=5ce87e36f831 docs/epic/tickets/dispatcher-ve-envanter/index.md=5b0c998c5ca7 docs/epic/tickets/parser-motoru/index.md=aeac91406893 docs/epic/tickets/vendor-katalogu/index.md=6603c664a634"
 summary: Kod yazmadan log formatı eklenebilmesi için alınan kararlar — kendi grok derleyicisi, dört kademeli dispatcher, zorunlu testler — ve gerçek vendor logunun bu kararlarda açtığı on yer.
 provenance:
   extracted: 0.88

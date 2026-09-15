@@ -6,12 +6,40 @@ using Microsoft.Extensions.Options;
 namespace Bizigo.UnitTests;
 
 /// <summary>
-/// T03 kabul kriteri: <c>kill -9</c> altında ack'lenmiş hiçbir olay kaybolmuyor.
+/// <b>WAL'ın yarım yazma davranışı</b>: budama, sıra, kapasite, segment
+/// döngüsü.
+///
+/// <h3>⚠️ Bu testler `kill -9`'u ÖLÇMÜYOR — başlığı M20'de daraltıldı</h3>
 ///
 /// <para>
-/// Süreci gerçekten öldürmek yerine <b>sonucunu</b> üretiyoruz: yarım yazılmış
-/// çerçeve. Aradaki fark, testin saniyeler yerine milisaniyeler sürmesi ve
-/// yarım yazmanın tam olarak istenen baytta olmasını sağlayabilmek.
+/// Buradaki başlık şöyle diyordu: <i>"T03 kabul kriteri: <c>kill -9</c> altında
+/// ack'lenmiş hiçbir olay kaybolmuyor."</i> <b>Ölçtüğü şey o değil.</b> Ölçtüğü
+/// şey yarım yazılmış bir çerçevenin okuyucu tarafından budanması ve önceki
+/// çerçevelerin durması — yani <b>dosyanın şekli</b>. Süreç öldürülmüyor.
+/// </para>
+///
+/// <para>
+/// Aradaki fark tam olarak <b>fsync'in tuttuğu yer</b>: yarım çerçeve, yazma
+/// çağrısının kesilmesini taklit ediyor; gerçek <c>kill -9</c> ise işletim
+/// sistemi tamponunda bekleyen ve diske hiç inmemiş veriyi sınıyor — yani
+/// <i>"ack verdik ama veri diskte değil"</i> hâli. Bu testler o hâle hiç
+/// girmiyor.
+/// </para>
+///
+/// <para>
+/// <b>İddia sessizce düşürülmüyor</b> (T27'nin emsali: adı daraltmak tek başına
+/// iddiayı düşürmek olurdu, o gün zincir gerçekten yazılmıştı). Gerçek
+/// <c>kill -9</c> ölçümü <b>T63</b>'ün işi —
+/// <c>docs/epic/tickets/dayaniklilik-olcumu/</c> — ve protokolü orada yazılı:
+/// ayrı süreç, ack'ten hemen sonra <c>SIGKILL</c>, olayın <b>sorguyla</b>
+/// aranması, <b>sayı</b> karşılaştırması.
+/// </para>
+///
+/// <para>
+/// Buradaki testlerin <b>kendi</b> değeri duruyor ve silinmiyorlar: yarım yazma
+/// budaması gerçek bir davranış, milisaniyelerde ölçülüyor, ve kesilme noktasını
+/// <b>istenen bayta</b> koyabilmek yalnızca burada mümkün — gerçek bir öldürme
+/// hangi baytta kesileceğini seçemez.
 /// </para>
 /// </summary>
 public sealed class WriteAheadLogTests : IDisposable
