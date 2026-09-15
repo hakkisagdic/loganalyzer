@@ -301,6 +301,24 @@ public static class BizigoMcpServer
             // Ezilen bir değeri yazmaya devam etmek, kodda duran ama gerçekle
             // ilgisi olmayan bir iddia bırakmak olurdu.
         };
+
+        // ABONELİK FİLTRESİ (M20). `subscriptions/listen` isteğinin kimliğini,
+        // istediği adresleri ve çağıranın KAPSAMINI deftere yazıyor; istek
+        // SDK'nın kendi işleyicisine gidiyor.
+        //
+        // NEDEN FİLTRE, NEDEN İŞLEYİCİ DEĞİL: `Handlers.SubscriptionsListenHandler`'ı
+        // sahiplenmek aynı akıştaki `*/list_changed` yayılımını da devralmak
+        // demekti ve o yüzeyler `internal` — yani katalog bildirimlerinin
+        // yayılımını İKİNCİ KEZ yazmak (§9), ve o kopya sessizce ayrışırdı.
+        // Ayrıntı `McpSubscriptionRegistry` belgesinde.
+        //
+        // Defter DI'da yoksa filtre hiç kurulmuyor: abonelik yeteneği de
+        // (`subscriptionsDeliverable`) o hâlde kapalı, yani ikisi aynı şarta
+        // bakıyor ve ayrışamıyorlar.
+        if (services.GetService(typeof(McpSubscriptionRegistry)) is McpSubscriptionRegistry registry)
+        {
+            options.Filters.Message.IncomingFilters.Add(registry.Filter());
+        }
     }
 
     /// <summary>

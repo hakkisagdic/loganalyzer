@@ -179,16 +179,16 @@ olmayan bir tip yazmaktır."* `rca.runs` M14 ile main'e girdi, önkoşul oluştu
 `Take`'ten **önce** uygulanıyor ve o kararı ikinci kez doğru yazmak zorunda
 kalmak, bir gün yanlış yazmak demektir.
 
-### 7.2 · ⚠ Dört geçişten üçü bağlı
+### 7.2 · Dört geçişin dördü de bağlı
 
-`TryStartAsync` (→ `Running`) **bağlı değil**: T54 aynı turda o metodun imzasını
-değiştiriyor ve derleyicinin zorladığı değişiklik önce gelmeli — tersi sırada
-eklenen çağrı metinsel olarak temiz merge olur ve **derlenmeyen** bir ağaç kalır
-(§5). Sonucu ölçülebilir: bir abone koşumun *başladığını* öğrenmiyor, yalnızca
-kuyruğa girdiğini ve bittiğini.
+`TryStartAsync` (→ `Running`) bir tur **bekletildi**: T54 aynı turda o metodun
+imzasını değiştiriyordu (`RcaModelBoundaryStamp`) ve derleyicinin zorladığı
+değişiklik önce gelmeli — tersi sırada eklenen çağrı metinsel olarak temiz merge
+olur ve **derlenmeyen** bir ağaç kalırdı (§5). T54 indi, satır bağlandı.
 
-`Kosum_basina_uc_bildirim` testi `TryStartAsync`'i **bilerek çağırıyor**;
-bağlandığı gün sayı 2'den 3'e çıkıp test kırmızı yanıyor.
+`Kosum_basina_uc_bildirim` testi `TryStartAsync`'i o turda **bilerek**
+çağırıyordu ve bağlandığı gün sayı 2'den 3'e çıkıp kırmızı yandı — sayıyı
+güncellemek bilinçli bir hareket oldu.
 
 ### 7.3 · Revizyon: `resources/subscribe` KALDIRILMIŞ
 
@@ -271,7 +271,8 @@ varsayılmış oluyor — ve varsayım tam olarak kapının olmadığı yer.
 
 ### 6.4 · Bildirim sıklığı bir bütçe kalemi mi — dolaylı olarak
 
-Ölçülen: **koşum başına 2 bildirim** (bugün), `TryStartAsync` bağlanınca **3**.
+Ölçülen: **koşum başına 3 bildirim** — kabul (`Queued`), başlangıç (`Running`),
+terminal.
 
 Bildirim **içerik taşımıyor**, yalnızca adres (~10 belirteç). Yani bağlamı şişiren
 şey bildirimin kendisi **değil**, abonenin her bildirimde belgeyi **yeniden

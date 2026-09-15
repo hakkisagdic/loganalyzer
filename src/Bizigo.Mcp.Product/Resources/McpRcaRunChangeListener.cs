@@ -14,23 +14,20 @@ namespace Bizigo.Mcp.Product.Resources;
 /// ediyor.
 /// </para>
 ///
-/// <h3><c>OwnerGroup</c> okunuyor ama BİLDİRİME girmiyor — ölçülmüş bir sınır</h3>
+/// <h3><c>OwnerGroup</c> artık BİLDİRİMİN SÜZGECİ — ve o alan bunun için taşınıyordu</h3>
 ///
 /// <para>
-/// <see cref="RcaRunChange.OwnerGroup"/> haberde <b>var</b> ve burada
-/// kullanılmıyor. Sebebi bir eksiklik değil, yayın kanalının bugünkü şekli:
-/// bildirim <b>oturum geneline</b> gidiyor ve abone başına kimlik bu katmanda
-/// bilinmiyor (gerekçe ve doğru çözüm <see cref="McpResourceUpdates"/>
-/// belgesinde). Alan haberde <b>bilerek duruyor</b>: süzgeç kurulduğu gün
-/// eklenecek bir alan değil, <b>zaten taşınan</b> bir alan olacak — ve o gün
-/// haberin şeklini değiştirmek gerekmeyecek.
+/// M07'de bu alan haberde <b>vardı ve kullanılmıyordu</b>; gerekçesi yazılıydı:
+/// <i>"süzgeç kurulduğu gün eklenecek bir alan değil, zaten taşınan bir alan
+/// olacak."</i> M20 süzgeci kurdu ve haberin şekli <b>değişmedi</b> — alan
+/// yerinde duruyordu.
 /// </para>
 ///
 /// <para>
-/// Bunun ölçülebilir sonucu şu: bir abone <b>göremeyeceği</b> bir grubun koşumu
-/// değiştiğinde de bildirim alıyor. Belgeyi okuyunca hiçbir şey görmüyor (kapsam
-/// kapısı <c>BizigoMcpResource.ReadAsync</c>'te), yani <b>veri sızmıyor</b>; ama
-/// bildirimin zamanlaması <i>"bir yerde bir şey oldu"</i> sinyali veriyor.
+/// Süzgecin gerekliliği <b>ölçüldü</b>, varsayılmadı: süzgeçsiz hâlde abone,
+/// bildirimleri sayıp üçe bölerek <b>göremediği gruptaki koşum sayısını tam
+/// olarak</b> buluyordu (<c>McpSubscriptionSideChannelTests</c>). Yani kanal
+/// ihmal edilebilir değildi — kesirli bir bit değil, <b>tam kardinalite</b>.
 /// </para>
 /// </summary>
 public sealed class McpRcaRunChangeListener(McpResourceUpdates updates) : IRcaRunChangeListener
@@ -43,6 +40,9 @@ public sealed class McpRcaRunChangeListener(McpResourceUpdates updates) : IRcaRu
         // Adres SABİT ve bu doğru: değişen şey belgenin İÇERİĞİ, adresi değil.
         // Koşum kimliğini adrese koymak, her koşum için ayrı bir abonelik
         // gerektirirdi ve kimlik tetiklenmeden önce bilinmiyor.
-        return updates.PublishAsync(RcaRunsResource.Uri, cancellationToken);
+        //
+        // GRUP GEÇİYOR: yayın kanalı bildirimi yalnızca o grubu görebilen
+        // aboneliklere gönderiyor.
+        return updates.PublishAsync(RcaRunsResource.Uri, change.OwnerGroup, cancellationToken);
     }
 }

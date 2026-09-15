@@ -1,112 +1,123 @@
 ---
 title: "Abonelik kimliği ve kapsam süzgeci"
 kind: ticket
-status: 0
+status: 2
 ---
 
 # Abonelik bildiriminin kimliği ve kapsamı
 
-M07 abonelik kanalını kurdu ve **iki sınırını ölçtü**. İkisi de bir özellik
-eksiği değil bir **mekanizma** sorusu, ve ikisinin de çözümü aynı yerde:
-`SubscriptionsListenHandler`'ı SDK'dan devralmak.
+M07 abonelik kanalını kurdu ve **iki sınırını ölçtü**. M20 ikisini de kapattı —
+ve kapatma biçimi ticket'ın asıl bulgusu: **SDK'nın işleyicisi devralınmadı.**
 
-Bu ticket o devralmayı **değerlendiriyor** — kararı vermiyor. Ölçüm yapılmadan
-verilecek karar, M07'nin kaçındığı şeyin aynısı olurdu.
+## 0 · Cevaplar — ölçülen hâlleriyle
 
-## 1 · Bugünkü hâl — ÖLÇÜLDÜ
-
-Ölçümler `McpResourceSubscriptionTests` içinde ve **ham JSON-RPC** ile yapıldı
-(sebebi §4).
-
-| Ne | Ölçülen |
+| Soru | Cevap |
 | --- | --- |
-| Abonelik kurulumu | `subscriptions/listen` + `resourceSubscriptions` · **çalışıyor** |
-| Sunucunun onayı | `subscriptions/acknowledged`, **etiketli** (`_meta` subscriptionId taşıyor) |
-| Bizim bildirimimiz | `notifications/resources/updated`, **etiketsiz** |
-| Kapsam süzgeci | **yok** — bildirim bütün abonelere gidiyor |
-| Bayrağın etkisi | `SupportsSubscription` kapalıyken sunucu aboneliği **onaylamıyor** |
+| Yan kanal ne kadar? | **İhmal edilebilir değil**: yabancı koşumların **tam sayısı** sızıyordu (koşum başına 3 bildirim) |
+| Etiketleme mümkün mü? | **Evet, devralmadan** — `NotificationParams.Meta` + `MetaKeys.SubscriptionId` |
+| Süzgeç kimliği nereden alır? | `subscriptions/listen` isteğinin `MessageContext.User`'ından, REST'in geçtiği **aynı** çözücüyle |
+| `*/list_changed` devralmanın bedeli? | **Ödenmedi** — işleyici yerinde kaldı, filtre yoluyla girildi |
+| Bağlam bütçesi? | **Sıfır ekledi** (594 → 594); `_meta` bildirimde, ilanda değil |
 
-`resources/subscribe` ve `resources/unsubscribe` çivilediğimiz revizyonda
-(`2026-07-28`, SEP-2575) **kaldırılmış**; sunucu eski metodu göç ipucuyla
-reddediyor.
+## 1 · Yan kanalın büyüklüğü — ÖLÇÜLDÜ, ve süzgeci gerekli kıldı
 
-## 2 · Birinci sınır — bildirim etiketlenmiyor
+M07 *"zamanlaması bir sinyal"* demişti ve **ne kadar** sinyal olduğunu
+ölçmemişti. Ölçüldü (`McpSubscriptionSideChannelTests`):
 
-Spesifikasyon her abonelik bildiriminin
-`_meta/io.modelcontextprotocol/subscriptionId` taşımasını istiyor: istemci aynı
-kanalı paylaşan abonelikleri **ancak öyle** ayırabiliyor (özellikle stdio'da, tek
-kanal).
+Kapsamı yalnızca `network/core`'u gören bir aboneye, `network/edge`'de koşan üç
+RCA koşumu boyunca **dokuz** bildirim gidiyordu — yani **koşum başına üç**. Abone
+bildirimleri sayıp üçe bölerek **göremediği gruptaki koşum sayısını tam olarak**
+buluyor.
 
-Erişebildiğimiz tek yayın ilkeli oturum geneline yazan
-`McpServer.SendNotificationAsync`. SDK'nın kendi yönlendirmesi
-(`SendSubscriptionNotificationAsync`, `ActiveSubscription`) **`internal`**.
+**Bu kesirli bir bit değil, tam kardinalite.** Bir pencerede yabancı koşum sayısı
+`0..N` arasındaysa abone o sayıyı **kesin** öğreniyor (~log₂(N+1) bit), artı her
+geçişin **anı**. Sayısı ve zamanlaması bir olay grafiği çiziyor: hangi ekip ne
+sıklıkta alarm alıyor, bir olay ne zaman başladı, ne kadar sürdü.
 
-**Bugünkü sonuç:** tek aboneliği olan istemci için fark yok; aynı kanalda iki
-abonelik açan istemci bildirimleri ayırt edemez.
+K17 kapsamı **satırları** korumak için var; bu grafik satır okumadan çıkıyordu.
+Yani süzgeç **yazılmalıydı**, ve gerekçesi bu sayı — *"muhtemelen küçük"* değil.
 
-## 3 · İkinci sınır — kapsam süzgeci yok
+## 2 · İşleyici DEVRALINMADI — filtre yoluyla girildi
 
-Bildirim **içerik taşımıyor**, yalnızca adres — ve o adresi okumak kapsam
-kapısından geçiyor (`BizigoMcpResource.ReadAsync`). Yani **veri sızmıyor**.
+İlk plan `Handlers.SubscriptionsListenHandler`'ı sahiplenmekti (`McpRequestHandler
+<SubscriptionsListenRequestParams, EmptyResult>` — imzası ölçüldü). **Elendi:**
+SDK'nın kendi işleyicisi aynı akışta `*/list_changed` yayılımını da taşıyor
+(`ActiveSubscription`, `GrantsListChanged`, `SendListChangedNotificationAsync`) ve
+o yüzeyler `internal`. Devralmak katalog bildirimlerinin yayılımını **ikinci kez
+yazmak** demekti (§9) — ve o kopya sessizce ayrışırdı: abonelik kazanılırken
+`tools/list_changed` kaybolurdu.
 
-Sızan şey **zamanlama**: abone, kapsamı dışındaki bir grupta bir RCA koşumunun
-durum değiştirdiğini bildirimin **geldiği andan** öğreniyor.
+Yerine kullanılan şey bir **mesaj filtresi** (`Filters.Message.IncomingFilters`):
+istek SDK'nın işleyicisine gidiyor, biz yalnızca yanından okuyoruz — isteğin
+**kimliğini**, istediği adresleri ve çağıranın **kapsamını**. Mekanizma bir tane
+kaldı.
 
-### Bu bir yan kanal, ve büyüklüğü ÖLÇÜLMEDİ
+**Bedeli yazılı:** `subscriptions/listen` için SDK **istek filtresi** sunmuyor
+(`McpRequestFilters`'ta karşılığı yok), dolayısıyla filtre **mesaj** düzeyinde ve
+JSON-RPC şeklini kendisi okumak zorunda. Tip güvenliği bir basamak düşüyor;
+karşılığında ikinci bir mekanizma yazılmıyor. Ayrıştırma yine SDK'nın kendi
+tipine yapılıyor (`SubscriptionsListenRequestParams`), yani istenen adreslerin
+okunuşu SDK'nınkinden ayrışamıyor.
 
-Bir RCA koşumunun **varlığını** öğrenmek ile **içeriğini** okumak arasındaki fark
-gerçek bir fark, ama *"küçük"* demek ölçmek değil. Cevaplanması gereken:
+**Devralmanın bedeli ödenmediği ölçülüyor:** `Katalog_bildirimi_yayilimi_korunuyor`
+istemcinin `toolsListChanged` isteğini sunucunun onayında geri verdiğini
+gösteriyor.
 
-- Bir abone, gözlemlediği bildirim zamanlamalarından **hangi bilgiyi** çıkarabilir?
-  (Kaç grup var, hangi gruplarda alarm yoğunluğu var, bir olay ne zaman başladı.)
-- Bu bilgi K6/K17'nin koruduğu şeyin **neresine** düşüyor?
-- Süzgeç kurulunca **kaybedilen** bir şey var mı? (Örn. sistem kapsamıyla koşan
-  bir operatör aboneliği.)
+## 3 · Etiketleme — ve iki aboneliğin ayırt edilebildiğinin ölçümü
 
-## 4 · SDK'nın istemci tarafı sunucu tarafını izlemiyor — kalıcı ölçüm notu
+Her bildirim artık `_meta/io.modelcontextprotocol/subscriptionId` taşıyor; anahtar
+SDK'nın kendi sabitinden (`MetaKeys.SubscriptionId`), dizge elle yazılmadı.
+
+Etiketin **var olması** ile **işe yaraması** ayrı iki şey, ikisi ayrı ölçülüyor:
+aynı kanalda iki `subscriptions/listen` açılıyor (biri `rca-runs`'a, biri başka
+adrese), yayın `rca-runs`'a yapılıyor ve gelen **tek** bildirimin etiketi
+**birinci** aboneliğin kimliğini taşıyor. Aynı ölçüm ikinci bir şeyi de söylüyor:
+**istenmeyen adres için bildirim gitmiyor** — spesifikasyonun kuralı.
+
+## 4 · Ölçüm bir test kusurunu değil bir KARARI görünür yaptı
+
+Bekçiler ilk koşumda hiç bildirim almadı. Sebep: filtre kapsamı çözmek için
+**kimlik** istiyor ve bellek içi taşımada `User` yoktu, dolayısıyla abonelik
+deftere **hiç girmiyordu**.
+
+Bu bir test kusuru değil ölçümün kendisi: **kimliksiz bir abonelik kapalı
+sayılıyor.** `AccessScope.Denied` verip deftere yazmak da "kapalı" olurdu ama bir
+kayıt bırakırdı; hiç yazmamak süzgecin varsayılanını kapalı tutmanın en dar hâli.
+İstek yine SDK'ya gidiyor — reddetmek filtrenin işi değil, ve reddetseydi
+`*/list_changed` aboneliği de ölürdü.
+
+## 5 · SDK'nın istemci tarafı sunucu tarafını izlemiyor — kalıcı not
 
 `McpClient.SubscribeToResourceAsync` hâlâ **kaldırılmış** `resources/subscribe`
 RPC'sini çağırıyor ve `subscriptions/listen` için **hiçbir istemci API'si yok**.
 Aynı paket, aynı sürüm.
 
-Bunun iki sonucu var ve ikincisi bu ticket'ın kendisini etkiliyor:
+İki sonucu var: zincir SDK'nın kendi istemcisiyle **ölçülemiyor** (bekçiler ham
+JSON-RPC yazıyor — zahmet değil, kanıtın kendisi), ve devralma kararı verilirken
+*"SDK zaten yapıyor"* varsayımı **yapılamaz**.
 
-1. **Zincir SDK'nın kendi istemcisiyle ölçülemiyor** — bekçiler ham JSON-RPC
-   yazmak zorunda. Bu bir zahmet değil, **kanıtın kendisi**.
-2. Devralma kararı verilirken *"SDK zaten yapıyor"* varsayımı **yapılamaz**:
-   sunucu tarafının bir revizyona geçmesi, istemci tarafının geçtiğini
-   göstermiyor.
+## 6 · Kapatılmayan tek şey: HTTP taşıması
 
-## 5 · Cevaplanacak sorular
+Abonelik yeteneği hâlâ yalnızca stdio'da ilan ediliyor
+(`subscriptionsDeliverable`). Sebep SEP-2567: aynı revizyon `Mcp-Session-Id`'yi
+kaldırdı, yani akışlanabilir HTTP'de **oturum yok**. Bildirimin gideceği yer
+`subscriptions/listen` isteğinin **kendi yanıt akışı** ve o akışa yazmanın yolu
+SDK'da `internal` (`ActiveSubscription.RelatedTransport`).
 
-1. **Etiketleme için hangi yüzey gerekiyor?** SDK bir gün genel bir yönlendirme
-   yüzeyi açar mı, yoksa `SubscriptionsListenHandler`'ı devralmak tek yol mu?
-2. **Devralmanın bedeli ne?** SDK'nın kendi işleyicisi aynı akışta
-   `*/list_changed` yayılımını da taşıyor (`ActiveSubscription`, `GrantsListChanged`).
-   Devralınca o yayılımı **biz** yazmak zorunda mıyız, ve o zaman `listChanged`
-   iddiası ne olur?
-3. **Kapsam süzgeci abonelik başına kimliği nereden alır?** `subscriptions/listen`
-   bir istek, yani `RequestContext` taşıyor — kimlik oradan `McpCallerScope` ile
-   çözülebilir mi, ve çözülen kapsam aboneliğin ömrü boyunca **saklanabilir** mi
-   (saklanan bir kapsam, bir kullanıcının grupları değiştiğinde bayatlar)?
-4. **Yan kanalın büyüklüğü** (§3) — ölçülmeden süzgecin gerekliliği bir varsayım.
+**Ölçülmedi:** HTTP'de bildirimin gerçekten hiçbir yere gitmediği ölçülmedi;
+SDK'nın kendi belgesine dayanıldı (*"a stateless HTTP server has no session-wide
+channel"*). Bu bir açık kalem ve ayrı bir ticket'a değer.
 
-## 6 · Bekçiler bu ticket'ın kırmızı dedektörü
+## 7 · Bekçiler
 
-M07 iki sınırı **kilitledi**:
-`McpResourceSubscriptionTests.Bildirim_abonelik_kimligiyle_etiketlenmiyor`
-bildirimin etiketsiz olduğunu ve onayın etiketli olduğunu **ikisini birden**
-iddia ediyor.
-
-Bu, bir sınırı savunmak değil **haber vermek** için: SDK bir gün yönlendirmeyi
-genel yaparsa ya da davranışı değişirse burası kırmızı yanıyor ve bu ticket'ın
-birinci sorusu kendiliğinden cevaplanıyor.
-
-## 7 · Bağımlılık ve sıra
-
-**M07** (kaynak kanalı ve abonelik altyapısı) — main'de olması şart, çünkü bu
-ticket onun ölçtüğü sınırları çözüyor.
-
-**T54'ten sonra**: `RcaAdmission.TryStartAsync`'in yayın noktası bağlandığında
-koşum başına bildirim 2'den 3'e çıkıyor, yani yan kanalın ölçümü de o hâlde
-yapılmalı.
+| Bekçi | Ne tutuyor |
+| --- | --- |
+| `Yabanci_grubun_kosum_sayisi_bildirimlerden_cikarilabiliyor` | Yan kanalın büyüklüğü (süzgeçsiz hâl) |
+| `Suzgec_yabanci_grubu_elemekle_kanali_kapatiyor` | Süzgecin kararı, saf fonksiyon olarak |
+| `Grubu_bilinmeyen_degisiklik_gonderilmiyor` | Bilinmeyen grup = kapalı |
+| `Bildirim_abonelik_kimligiyle_etiketli` | Etiket var |
+| `Iki_abonelik_etiketle_ayirt_edilebiliyor` | Etiket işe yarıyor + istenmeyen adrese gitmiyor |
+| `Kapsam_disi_grubun_degisikligi_aboneye_gitmiyor` | Süzgeç akışa bağlı |
+| `Kopru_degisikligin_grubunu_tasiyor` | Köprü grubu geçiriyor |
+| `Katalog_bildirimi_yayilimi_korunuyor` | Devralma bedeli ödenmedi |
+| `Akis_kapaninca_abonelik_defterden_dusuyor` | Sızıntı yok |

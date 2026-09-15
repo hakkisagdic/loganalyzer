@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -79,47 +80,35 @@ namespace Bizigo.Mcp;
 /// yukarıdaki işleyicide — aynı açık kalemin ikinci yüzü.
 /// </para>
 /// </summary>
-public sealed class McpResourceUpdates(ILogger<McpResourceUpdates>? logger = null)
+public sealed class McpResourceUpdates(
+    McpSubscriptionRegistry subscriptions,
+    ILogger<McpResourceUpdates>? logger = null)
 {
-    private readonly List<McpServer> _servers = [];
-    private readonly object _lock = new();
-
     /// <summary>
-    /// Canlı bir sunucuyu deftere yazar ve <b>çıkarmayı çağırana bırakır</b>.
+    /// Bir kaynağın değiştiğini <b>onu görmesi gereken</b> abonelere duyurur.
     ///
     /// <para>
-    /// Dönen <see cref="IDisposable"/> kaydı siliyor. Kabul kriteri 4'ün
-    /// (<i>"abonelik sızdırmıyor"</i>) bu katmandaki hâli: sunucu kapandığında
-    /// defterde kalan bir örnek, kapanmış bir kanala yazmayı denemek demek —
-    /// ve o deneme her koşum değişiminde tekrarlanırdı.
+    /// <b>Üç şey birden yapılıyor ve üçü de M20'nin ölçümünden doğdu:</b>
     /// </para>
-    /// </summary>
-    public IDisposable Register(McpServer server)
-    {
-        ArgumentNullException.ThrowIfNull(server);
-
-        lock (_lock)
-        {
-            _servers.Add(server);
-        }
-
-        return new Kayit(this, server);
-    }
-
-    /// <summary>Deftere yazılı sunucu sayısı — bekçiler bunu ölçüyor.</summary>
-    public int RegisteredCount
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _servers.Count;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Bir kaynağın değiştiğini abonelere duyurur.
+    /// <list type="number">
+    /// <item>
+    /// <b>Kapsam süzgeci.</b> Bildirim yalnızca <paramref name="ownerGroup"/>'u
+    /// görebilen aboneliklere gidiyor. Süzgeçsiz hâlin kapasitesi ölçüldü ve
+    /// ihmal edilebilir <b>değildi</b>: abone bildirimleri sayıp üçe bölerek
+    /// göremediği gruptaki koşum sayısını <b>tam olarak</b> buluyordu
+    /// (<c>McpSubscriptionSideChannelTests</c>).
+    /// </item>
+    /// <item>
+    /// <b>Etiketleme.</b> Her bildirim <c>_meta/io.modelcontextprotocol/subscriptionId</c>
+    /// taşıyor, yani aynı kanalı paylaşan abonelikler ayrılabiliyor —
+    /// spesifikasyonun (SEP-2575) istediği şey ve M07'nin yazılı bıraktığı
+    /// eksik.
+    /// </item>
+    /// <item>
+    /// <b>Abonelik başına tek kopya.</b> Oturum geneline bir kez yazmak yerine
+    /// eşleşen her aboneliğe kendi etiketiyle gidiyor.
+    /// </item>
+    /// </list>
     ///
     /// <para>
     /// <b>Hiçbir istisna yukarı çıkmıyor.</b> Yayın noktası koşumun durumu
@@ -128,25 +117,37 @@ public sealed class McpResourceUpdates(ILogger<McpResourceUpdates>? logger = nul
     /// <c>RcaAdmission.StopAsync</c>'i bir bildirim arızası yüzünden düşürürdü —
     /// yani koşumun terminal duruma geçtiği kaydı <b>kaybettirirdi</b>.
     /// </para>
+    ///
+    /// <para>
+    /// <b>Eşleşen abonelik yoksa hiçbir şey gönderilmiyor</b> ve bu bir gerileme
+    /// değil: ilk hâl oturum geneline yazıyordu, yani <i>abone olmamış</i> bir
+    /// istemci de bildirim alıyordu. Spesifikasyon bunu açıkça yasaklıyor —
+    /// <i>"the server MUST NOT send notification types the client has not
+    /// explicitly requested"</i>.
+    /// </para>
     /// </summary>
-    public async ValueTask PublishAsync(string uri, CancellationToken cancellationToken)
+    public async ValueTask PublishAsync(string uri, string? ownerGroup, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(uri);
 
-        McpServer[] hedefler;
-
-        lock (_lock)
-        {
-            hedefler = [.. _servers];
-        }
-
-        foreach (var server in hedefler)
+        foreach (var (server, subscriptionId) in subscriptions.Matches(uri, ownerGroup))
         {
             try
             {
                 await server.SendNotificationAsync(
                     NotificationMethods.ResourceUpdatedNotification,
-                    new ResourceUpdatedNotificationParams { Uri = uri },
+                    new ResourceUpdatedNotificationParams
+                    {
+                        Uri = uri,
+
+                        // ETİKET. Anahtar SDK'nın kendi sabitinden
+                        // (`MetaKeys.SubscriptionId`) — dizgiyi elle yazmak,
+                        // spesifikasyonun anahtarını ikinci kez yazmak olurdu.
+                        Meta = new JsonObject
+                        {
+                            [MetaKeys.SubscriptionId] = subscriptionId,
+                        },
+                    },
                     cancellationToken: cancellationToken).ConfigureAwait(false);
             }
             catch (Exception error) when (error is not OperationCanceledException)
@@ -155,28 +156,9 @@ public sealed class McpResourceUpdates(ILogger<McpResourceUpdates>? logger = nul
                 // görünür olmalı, koşumu düşürmemeli.
                 logger?.LogWarning(
                     error,
-                    "MCP kaynak bildirimi gönderilemedi: {Uri}. Koşum kaydı etkilenmedi.",
-                    uri);
-            }
-        }
-    }
-
-    private sealed class Kayit(McpResourceUpdates owner, McpServer server) : IDisposable
-    {
-        private bool _disposed;
-
-        public void Dispose()
-        {
-            if (_disposed)
-            {
-                return;
-            }
-
-            _disposed = true;
-
-            lock (owner._lock)
-            {
-                owner._servers.Remove(server);
+                    "MCP kaynak bildirimi gönderilemedi: {Uri} (abonelik {SubscriptionId}). Koşum kaydı etkilenmedi.",
+                    uri,
+                    subscriptionId);
             }
         }
     }

@@ -82,7 +82,7 @@ public static class McpStdioHost
         // defter DI'da kayıtlı değilse yayınlayacak kimse yok ve sunucu
         // `subscribe` ilan etmeye devam ederdi. Yani tam olarak kaçındığımız
         // şey — gönderilemeyecek bir bildirimin ilanı — bu satırın kendisinde
-        // duruyordu. Şart artık iki parçalı: kanal var (stdio) VE yayıncı var.
+        // duruyordu. Şart iki parçalı: kanal var (stdio) VE yayıncı var.
         var updates = services.GetService(typeof(McpResourceUpdates)) as McpResourceUpdates;
 
         var options = BizigoMcpServer.CreateOptions(
@@ -96,12 +96,14 @@ public static class McpStdioHost
 
         await using var server = McpServer.Create(transport, options, factory, services);
 
-        // DEFTERE YAZ, VE `using` İLE ÇIKAR. Kabul kriteri 4'ün bu katmandaki
-        // hâli: süreç kapandığında defterde kalan bir sunucu örneği, kapanmış
-        // bir kanala yazmayı denemek demek — ve o deneme her koşum değişiminde
-        // tekrarlanırdı. `using` bunu bir hatırlama işi olmaktan çıkarıyor.
-        using var kayit = updates?.Register(server);
-
+        // SUNUCU KAYDI ARTIK YOK — ve kaldırılması M20'nin ölçümünden doğdu.
+        //
+        // İlk hâlde canlı sunucular bir deftere yazılıyordu ve yayın oturum
+        // geneline gidiyordu: abone olmamış bir istemci de bildirim alıyordu ve
+        // hiçbir bildirim abonelik kimliğiyle etiketlenmiyordu. Şimdi defter
+        // ABONELİKLERİ tutuyor (`McpSubscriptionRegistry`) ve sunucuyu oradan
+        // öğreniyor — kayıt işini `subscriptions/listen` filtresi yapıyor, yani
+        // burada hatırlanacak bir şey kalmıyor.
         await server.RunAsync(cancellationToken).ConfigureAwait(false);
     }
 }

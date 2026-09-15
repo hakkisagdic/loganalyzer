@@ -186,7 +186,26 @@ def dotnet_test(ad: str) -> tuple[int, str]:
         "--filter", filtre,
     ])
 
-    return sonuc.returncode, sonuc.stdout + sonuc.stderr
+    cikti = sonuc.stdout + sonuc.stderr
+
+    # POZİTİF KONTROL — VE BU ÖLÇÜLEREK EKLENDİ (M20).
+    #
+    # Bir filtre hiçbir teste uymadığında `dotnet test` ÇIKIŞ KODU 0 veriyor ve
+    # yalnızca "eşleşen test yok" diye yazıyor. Yani yukarıdaki ölçüt — çıkış
+    # kodu — o hâli YEŞİL sayıyordu.
+    #
+    # M20'de bir bekçi bir düzenlemede sessizce silindi ve ölçüm onu
+    # "yeşil kaldı ✗" diye raporladı; doğrusu "böyle bir test yok"tu. İki cümle
+    # farklı iki iş gerektiriyor: birincisi bekçiyi güçlendirmek, ikincisi
+    # bekçiyi GERİ KOYMAK. Aynı çıktıya inmeleri §7'nin sınıfı, ve bu kez
+    # ölçüm aracının kendisindeydi.
+    #
+    # Dile bağlı ayıklama yapılmıyor: aranan şey filtrenin adı ve iki dildeki
+    # sabit ifade — ikisi de `dotnet test`'in kendi çıktısından.
+    if ad and ("eşleşen test yok" in cikti or "does not match any test" in cikti):
+        return -1, cikti + "\n\nÖLÇÜM YAPILMADI: filtre hiçbir teste uymadı.\n"
+
+    return sonuc.returncode, cikti
 
 
 def olc(kusurlar: list[Kusur], yedek_adi: str, kosum: Kosum | None = None) -> int:
@@ -231,13 +250,31 @@ def olc(kusurlar: list[Kusur], yedek_adi: str, kosum: Kosum | None = None) -> in
                     continue
 
                 for test in kusur.kirmizi_bekleniyor:
-                    kod, _ = kosum.test(test)  # type: ignore[operator]
-                    durum = "KIRMIZI ✓" if kod != 0 else "YEŞİL KALDI ✗"
+                    kod, cikti_t = kosum.test(test)  # type: ignore[operator]
+
+                    # ÜÇ HÂL, İKİ DEĞİL — ve üçüncüsü M20'de ölçülerek eklendi.
+                    # "Ölçüm yapılmadı" ile "yeşil kaldı" aynı satıra inerse
+                    # okuyan kişi bekçiyi GÜÇLENDİRMEYE çalışır; oysa yapılacak
+                    # iş bekçiyi GERİ KOYMAK olabilir. M20'de bir bekçi bir
+                    # düzenlemede sessizce silindi ve ölçüm onu "yeşil kaldı"
+                    # diye raporladı.
+                    durum = (
+                        "ÖLÇÜM YOK ✗ (böyle bir test yok)"
+                        if "ÖLÇÜM YAPILMADI" in cikti_t
+                        else "KIRMIZI ✓" if kod != 0 else "YEŞİL KALDI ✗"
+                    )
                     rapor.append((f"{kusur.ad} → {test}", durum))
                     print(f"    {test}: {durum}")
 
                 for test in kusur.yesil_kalmali:
-                    kod, _ = kosum.test(test)  # type: ignore[operator]
+                    kod, cikti_t = kosum.test(test)  # type: ignore[operator]
+
+                    if "ÖLÇÜM YAPILMADI" in cikti_t:
+                        rapor.append((f"{kusur.ad} → {test} [yeşil kalmalı]", "ÖLÇÜM YOK ✗"))
+                        print(f"    {test}: ÖLÇÜM YOK ✗ (böyle bir test yok)")
+
+                        continue
+
                     durum = "yeşil kaldı ✓ (bekçiler ayrı şey ölçüyor)" if kod == 0 else "KIRILDI ✗"
                     rapor.append((f"{kusur.ad} → {test} [yeşil kalmalı]", durum))
                     print(f"    {test}: {durum}")

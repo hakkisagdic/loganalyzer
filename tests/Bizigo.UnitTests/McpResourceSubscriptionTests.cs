@@ -1,5 +1,6 @@
 using System.IO.Pipelines;
 using System.Text;
+using System.Security.Claims;
 using System.Text.Json;
 using Bizigo.Contracts;
 using Bizigo.Contracts.Security;
@@ -8,6 +9,7 @@ using Bizigo.Mcp;
 using Bizigo.Mcp.Product.Resources;
 using Bizigo.Rca;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -39,6 +41,14 @@ public sealed class McpResourceSubscriptionTests
     private const string ListenIstegi = """
         {"jsonrpc":"2.0","id":1,"method":"subscriptions/listen","params":{"notifications":{"resourceSubscriptions":["bizigo://rca-runs"]},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"olcum","version":"1"},"io.modelcontextprotocol/clientCapabilities":{}}}}
         """;
+
+    /// <summary>
+    /// Abonelik filtresinin kapsamı çözebilmesi için gereken kimlik. İçeriği
+    /// önemsiz: uyum kapısının çözücüsü sabit (<c>network/core</c>); ölçülen şey
+    /// kimliğin <b>var olması</b>.
+    /// </summary>
+    private static readonly ClaimsPrincipal Kimlik = new(
+        new ClaimsIdentity([new Claim("sub", "abonelik-olcumu")], authenticationType: "olcum"));
 
     private static readonly McpBoundaryDeclaration Boundary =
         McpBoundaryDeclaration.Declare(DataBoundary.Internal, "abonelik ölçümü: bellek içi");
@@ -164,217 +174,223 @@ public sealed class McpResourceSubscriptionTests
     }
 
     /// <summary>
-    /// <b>ÖLÇÜLEN SINIR: bildirim abonelik kimliğiyle ETİKETLENMİYOR.</b>
+    /// <b>Akış kapanınca abonelik defterden düşüyor</b> (kabul kriteri 4).
     ///
     /// <para>
-    /// Spesifikasyon her abonelik bildiriminin
-    /// <c>_meta/io.modelcontextprotocol/subscriptionId</c> taşımasını istiyor —
-    /// aynı kanalı paylaşan abonelikler ancak öyle ayrılabiliyor. Onay
-    /// bildirimi <b>etiketli</b> geliyor (SDK'nın kendi yolu), bizim yayınımız
-    /// <b>etiketsiz</b>: erişebildiğimiz tek yayın ilkeli oturum geneline yazan
-    /// <c>SendNotificationAsync</c> ve SDK'nın yönlendirmesi <c>internal</c>.
+    /// Sızıntının bu katmandaki hâli: kapanmış bir akış defterde kalırsa her
+    /// koşum değişiminde kapanmış bir kanala yazmayı deniyor. Ölçüt defterin
+    /// <b>sayısı</b> — <i>"bildirim gitmedi"</i> ölçütü, hiç abone olmayan bir
+    /// kurulumda da geçerdi.
     /// </para>
     ///
     /// <para>
-    /// <b>Bu test sınırı KİLİTLİYOR, savunmuyor.</b> SDK bir gün genel bir
-    /// yönlendirme yüzeyi açarsa ya da davranış değişirse burası kırmızı yanıyor
-    /// ve o gün <c>McpResourceUpdates</c>'in açık kalemi kapanabiliyor. Sınırı
-    /// yazıp ölçmemek, onu bir varsayıma çevirirdi.
+    /// Kayıt <c>using</c> ile silindiği için iptal ve istisna yollarında da
+    /// kapanıyor; <c>ZincirAsync</c> akışı iptalle bitiriyor, yani ölçülen yol
+    /// tam olarak o.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Bu bekçi bir kez SİLİNDİ ve kırmızı ölçümü onu yakaladı</b> — ama
+    /// doğrudan değil: ölçüm <i>"yeşil kaldı"</i> dedi, oysa doğrusu
+    /// <i>"böyle bir test yok"</i>ydu. Ortak yordamın <c>test_kos</c>'una pozitif
+    /// kontrol o yüzden eklendi: eşleşen test bulunamayan bir filtre artık
+    /// <b>ölçüm yapılmadı</b> sayılıyor.
     /// </para>
     /// </summary>
     [Fact]
-    public async Task Bildirim_abonelik_kimligiyle_etiketlenmiyor()
+    public async Task Akis_kapaninca_abonelik_defterden_dusuyor()
+    {
+        var (_, registry) = await ZincirAsync(deliverable: true, yayinla: true);
+
+        Assert.Equal(0, registry.Count);
+    }
+
+    /// <summary>
+    /// <b>M20 · Bildirim artık abonelik kimliğiyle ETİKETLİ.</b>
+    ///
+    /// <para>
+    /// M07 bu sınırı ölçüp kilitlemişti: onay bildirimi etiketli geliyordu, bizim
+    /// yayınımız değil. Sebebi erişilebilen tek yayın ilkelinin oturum geneline
+    /// yazması ve SDK'nın yönlendirmesinin <c>internal</c> olmasıydı.
+    /// </para>
+    ///
+    /// <para>
+    /// M20 yönlendirmeyi devralmadan çözdü: defter aboneliğin <b>kimliğini</b>
+    /// biliyor (<c>subscriptions/listen</c> isteğinin id'si), yayın da her
+    /// aboneliğe kendi etiketiyle gidiyor. SDK'nın işleyicisi yerinde kaldı —
+    /// yani <c>*/list_changed</c> yayılımı hiç dokunulmadı.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Bildirim_abonelik_kimligiyle_etiketli()
     {
         var (satirlar, _) = await ZincirAsync(deliverable: true, yayinla: true);
 
-        var ack = satirlar.Single(s => s.Contains("subscriptions/acknowledged", StringComparison.Ordinal));
         var bildirim = satirlar.Single(s =>
             s.Contains("notifications/resources/updated", StringComparison.Ordinal));
 
-        // Onay ETİKETLİ — yani etiketleme mekanizması var ve çalışıyor.
-        Assert.Contains("subscriptionId", ack, StringComparison.Ordinal);
-
-        // Bizim yayınımız DEĞİL. Açık kalem `McpResourceUpdates` belgesinde.
-        Assert.DoesNotContain("subscriptionId", bildirim, StringComparison.Ordinal);
+        Assert.Contains("io.modelcontextprotocol/subscriptionId", bildirim, StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// <b>Kayıt çıkarılınca yayın gitmiyor</b> (kabul kriteri 4).
+    /// <b>M20 · İki abonelik ayırt edilebiliyor</b> — etiketlemenin asıl sınavı.
     ///
     /// <para>
-    /// Sızıntının bu katmandaki hâli: kapanmış bir sunucu defterde kalırsa her
-    /// koşum değişiminde kapanmış bir kanala yazmayı deniyor. Ölçüt defterin
-    /// <b>sayısı</b> — "bildirim gitmedi" ölçütü, hiç abone olmayan bir
-    /// kurulumda da geçerdi.
+    /// Etiketin <b>var olması</b> ile <b>işe yaraması</b> ayrı iki şey. Ölçüm:
+    /// aynı kanalda iki <c>subscriptions/listen</c> açılıyor, biri
+    /// <c>rca-runs</c>'a biri başka bir adrese abone; yayın <c>rca-runs</c>'a
+    /// yapılıyor ve gelen <b>tek</b> bildirimin etiketi <b>birinci</b>
+    /// aboneliğin kimliğini taşıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// İkinci abonelik farklı bir adrese bakıyor, yani ölçüm aynı anda ikinci
+    /// bir şeyi de söylüyor: <b>istenmeyen adres için bildirim gitmiyor</b>.
+    /// Spesifikasyonun kuralı bu — <i>"the server MUST NOT send notification
+    /// types the client has not explicitly requested"</i>.
     /// </para>
     /// </summary>
     [Fact]
-    public async Task Kayit_cikarilinca_defter_bosaliyor()
+    public async Task Iki_abonelik_etiketle_ayirt_edilebiliyor()
     {
-        var updates = new McpResourceUpdates();
+        var (satirlar, _) = await ZincirAsync(
+            deliverable: true,
+            yayinla: true,
+            ikinciAdres: "bizigo://parser/ornek");
 
-        Assert.Equal(0, updates.RegisteredCount);
+        var bildirimler = satirlar
+            .Where(s => s.Contains("notifications/resources/updated", StringComparison.Ordinal))
+            .ToArray();
 
-        await using var services = McpTestServices.ForDiscoveredTools();
+        // TEK bildirim: ikinci abonelik başka bir adrese bakıyor.
+        Assert.Single(bildirimler);
 
-        var options = BizigoMcpServer.CreateOptions(
-            McpSurface.Product,
-            Boundary,
-            McpComplianceTests.DeclaredAssemblies(McpSurface.Product),
-            services,
-            subscriptionsDeliverable: true);
-
-        var toServer = new Pipe();
-        var toClient = new Pipe();
-
-        await using var transport = new StreamServerTransport(
-            toServer.Reader.AsStream(), toClient.Writer.AsStream(), "olcum", NullLoggerFactory.Instance);
-
-        await using var server = McpServer.Create(transport, options, NullLoggerFactory.Instance, services);
-
-        using (updates.Register(server))
-        {
-            Assert.Equal(1, updates.RegisteredCount);
-        }
-
-        Assert.Equal(0, updates.RegisteredCount);
-
-        // Defter boşken yayın SESSİZ ve hatasız: gönderilecek kimse yok.
-        await updates.PublishAsync(RcaRunsResource.Uri, TestContext.Current.CancellationToken);
+        // Etiket BİRİNCİ aboneliğin kimliği (`"id":1`), ikincisinin değil.
+        Assert.Contains("\"io.modelcontextprotocol/subscriptionId\":\"1\"", bildirimler[0], StringComparison.Ordinal);
+        Assert.DoesNotContain("\"io.modelcontextprotocol/subscriptionId\":\"2\"", bildirimler[0], StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// <b>KOŞUM BAŞINA KAÇ BİLDİRİM — ölçülen sayı.</b>
+    /// <b>M20 · Kapsam dışı bir grubun değişikliği aboneye GİTMİYOR.</b>
     ///
     /// <para>
-    /// Koordinatörün açık sorusu: <i>"bildirim sıklığı bir bütçe kalemi mi?"</i>
-    /// Cevap bir tahmin değil bu sayı: bir koşumun tam yaşam döngüsü
-    /// <b>üç</b> bildirim üretiyor (kabul → terminal), ve <c>TryStartAsync</c>
-    /// bağlandığında <b>dört</b> olacak.
+    /// Yan kanalın kapandığının uçtan uca ölçümü. Abonenin kapsamı
+    /// <c>network/core</c> (uyum kapısının sabit çözücüsü); yayın
+    /// <c>network/edge</c> grubundan yapılıyor ve tele <b>hiçbir bildirim</b>
+    /// çıkmıyor.
     /// </para>
     ///
     /// <para>
-    /// Bütçe açısından okunuşu: bildirim <b>içerik taşımıyor</b>, yalnızca adres
-    /// (~10 belirteç). Bağlamı şişiren şey bildirimin kendisi değil, abonenin
-    /// her bildirimde belgeyi <b>yeniden okuması</b>. Yani sıklık bir bütçe
-    /// kalemi <b>dolaylı olarak</b>: koşum başına üç okuma.
-    /// </para>
-    ///
-    /// <para>
-    /// Sayının <b>kilitli</b> olması kasıtlı: dördüncü nokta bağlandığında burası
-    /// kırmızı yanıyor ve sayıyı güncellemek bilinçli bir hareket oluyor.
+    /// Süzgecin kararı ayrıca saf fonksiyon olarak ölçülüyor
+    /// (<c>McpSubscriptionSideChannelTests</c>); bu test <b>akışın</b> o kararı
+    /// gerçekten uyguladığını söylüyor. İkisi ayrı soru: biri kararın
+    /// doğruluğu, diğeri kararın <i>bağlanmış</i> olması.
     /// </para>
     /// </summary>
     [Fact]
-    public async Task Kosum_basina_uc_bildirim()
+    public async Task Kapsam_disi_grubun_degisikligi_aboneye_gitmiyor()
     {
-        var ct = TestContext.Current.CancellationToken;
-        var sayac = new SayanDinleyici();
+        var (satirlar, _) = await ZincirAsync(
+            deliverable: true,
+            yayinla: true,
+            yayinGrubu: "network/edge");
 
-        var admission = new RcaAdmission(
-            new InMemoryControlPlaneFactory(),
-            new AlwaysAllowQuotaGate(),
-            NullLogger<RcaAdmission>.Instance,
-            TimeProvider.System,
-            [sayac]);
-
-        var kabul = await admission.AdmitAsync(
-            new RcaTriggerRequest
-            {
-                Source = RcaTriggerSource.Manual,
-                Identity = "olcum",
-                OwnerGroup = "network/core",
-                WindowFrom = DateTimeOffset.UnixEpoch,
-                WindowTo = DateTimeOffset.UnixEpoch.AddMinutes(45),
-            },
-            ct);
-
-        Assert.False(kabul.Existing);
-        Assert.Equal(1, sayac.Sayi);
-
-        // `TryStartAsync` BAĞLI DEĞİL (T54 imzasını değiştiriyor) — bu çağrı
-        // bilerek buradadır: bağlandığı gün sayı 3'ten 4'e çıkıyor ve aşağıdaki
-        // iddia kırmızı yanarak sayıyı güncellemeye zorluyor.
-        Assert.True(await admission.TryStartAsync(kabul.Run.Id, ct));
-        Assert.Equal(1, sayac.Sayi);
-
-        await admission.StopAsync(kabul.Run.Id, RcaStopReason.OperatorCancelled, "ölçüm", ct);
-        Assert.Equal(2, sayac.Sayi);
-
-        var ikinci = await admission.AdmitAsync(
-            new RcaTriggerRequest
-            {
-                Source = RcaTriggerSource.Manual,
-                Identity = "olcum-2",
-                OwnerGroup = "network/core",
-                WindowFrom = DateTimeOffset.UnixEpoch,
-                WindowTo = DateTimeOffset.UnixEpoch.AddMinutes(45),
-            },
-            ct);
-
-        await admission.AttachBundleAsync(ikinci.Run.Id, Guid.NewGuid(), cancellationToken: ct);
-
-        // 2 kabul + 1 stop + 1 attach = 4; koşum başına 2 (bugün), 3 (T54 sonrası).
-        Assert.Equal(4, sayac.Sayi);
+        Assert.DoesNotContain(
+            satirlar,
+            s => s.Contains("notifications/resources/updated", StringComparison.Ordinal));
     }
 
     /// <summary>
-    /// <b>Dinleyicinin hatası koşumu düşürmüyor.</b>
+    /// <b>M20 · Köprü değişikliğin GRUBUNU taşıyor.</b>
     ///
     /// <para>
-    /// Yayın noktası kaydın <b>sonrasında</b>: bir bildirim kanalının kırılması
-    /// veritabanına yazılmış bir gerçeği geri almaz. İstisna yukarı çıksaydı
-    /// <c>StopAsync</c> düşer ve koşumun terminal duruma geçtiği kayıt
-    /// <b>kaybolurdu</b> — bir bildirim arızasının bedeli bir veri kaybı olurdu.
+    /// Doğrudan yayın (<c>PublishAsync</c>) köprünün grubu geçirdiğini
+    /// ölçmüyor — köprü sabit bir grup yazsa da o testler geçerdi. Bu ölçüm
+    /// zinciri <c>IRcaRunChangeListener</c>'dan başlatıyor: kapsam dışı bir
+    /// grupta değişiklik <b>hiç bildirim üretmiyor</b>, aynı grupta üretiyor.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData("network/core", true)]
+    [InlineData("network/edge", false)]
+    public async Task Kopru_degisikligin_grubunu_tasiyor(string grup, bool bildirimBekleniyor)
+    {
+        var (satirlar, _) = await ZincirAsync(
+            deliverable: true,
+            yayinla: true,
+            yayinGrubu: grup,
+            koprudenYayinla: true);
+
+        var geldi = satirlar.Any(s =>
+            s.Contains("notifications/resources/updated", StringComparison.Ordinal));
+
+        Assert.Equal(bildirimBekleniyor, geldi);
+    }
+
+    /// <summary>
+    /// <b>M20 · <c>*/list_changed</c> yayılımı DOKUNULMADAN duruyor.</b>
+    ///
+    /// <para>
+    /// Devralmanın bedeli buydu: SDK'nın <c>subscriptions/listen</c> işleyicisi
+    /// aynı akışta katalog bildirimlerini de taşıyor. Filtre yoluyla girmenin
+    /// bütün gerekçesi o yayılıma dokunmamaktı, ve <b>dokunulmadığı ölçülüyor</b>:
+    /// istemci <c>toolsListChanged</c> isteyerek abone oluyor ve sunucu onu
+    /// onayında <b>geri veriyor</b>.
+    /// </para>
+    ///
+    /// <para>
+    /// Bu bekçi olmadan abonelik kazanılırken katalog bildirimleri <b>sessizce</b>
+    /// kaybolabilirdi — kaybın belirtisi olmayan bir kayıp.
     /// </para>
     /// </summary>
     [Fact]
-    public async Task Dinleyicinin_hatasi_kosumu_dusurmuyor()
+    public async Task Katalog_bildirimi_yayilimi_korunuyor()
     {
-        var ct = TestContext.Current.CancellationToken;
-        var factory = new InMemoryControlPlaneFactory();
+        var (satirlar, _) = await ZincirAsync(
+            deliverable: true,
+            yayinla: false,
+            ekIstek: """
+                {"jsonrpc":"2.0","id":9,"method":"subscriptions/listen","params":{"notifications":{"toolsListChanged":true},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"olcum","version":"1"},"io.modelcontextprotocol/clientCapabilities":{}}}}
+                """);
 
-        var admission = new RcaAdmission(
-            factory,
-            new AlwaysAllowQuotaGate(),
-            NullLogger<RcaAdmission>.Instance,
-            TimeProvider.System,
-            [new PatlayanDinleyici()]);
+        var ack = satirlar.Last(s =>
+            s.Contains("subscriptions/acknowledged", StringComparison.Ordinal));
 
-        var kabul = await admission.AdmitAsync(
-            new RcaTriggerRequest
-            {
-                Source = RcaTriggerSource.Manual,
-                Identity = "olcum",
-                OwnerGroup = "network/core",
-                WindowFrom = DateTimeOffset.UnixEpoch,
-                WindowTo = DateTimeOffset.UnixEpoch.AddMinutes(45),
-            },
-            ct);
-
-        await admission.StopAsync(kabul.Run.Id, RcaStopReason.OperatorCancelled, "ölçüm", ct);
-
-        // KAYIT YERİNDE: dinleyici patladı ama koşumun durumu yazıldı.
-        await using var db = factory.CreateDbContext();
-
-        var run = await db.RcaRuns.AsNoTracking().FirstAsync(r => r.Id == kabul.Run.Id, ct);
-
-        Assert.Equal(RcaRunState.Cancelled, run.State);
+        Assert.Contains("toolsListChanged", ack, StringComparison.Ordinal);
     }
+
+    private static string IkinciListen(string uri) =>
+        "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"subscriptions/listen\",\"params\":{\"notifications\":"
+        + "{\"resourceSubscriptions\":[\"" + uri + "\"]},\"_meta\":{"
+        + "\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\","
+        + "\"io.modelcontextprotocol/clientInfo\":{\"name\":\"olcum\",\"version\":\"1\"},"
+        + "\"io.modelcontextprotocol/clientCapabilities\":{}}}}";
 
     /// <summary>
     /// Ham JSON-RPC ile zinciri koşturur: <c>subscriptions/listen</c> aç,
     /// istenirse yayın yap, gelen satırları döndür.
     /// </summary>
-    private static async Task<(List<string> Satirlar, McpResourceUpdates Updates)> ZincirAsync(
+    private static async Task<(List<string> Satirlar, McpSubscriptionRegistry Registry)> ZincirAsync(
         bool deliverable,
         bool yayinla,
-        string? ekIstek = null)
+        string? ekIstek = null,
+        string yayinGrubu = "network/core",
+        string? ikinciAdres = null,
+        bool koprudenYayinla = false)
     {
         var ct = TestContext.Current.CancellationToken;
-        var updates = new McpResourceUpdates();
+        var registry = new McpSubscriptionRegistry();
+        var updates = new McpResourceUpdates(registry);
 
-        await using var services = McpTestServices.ForDiscoveredTools();
+        // Sağlayıcı ÜRETİMİN kayıt uzantılarından kuruluyor; eklenen tek şey
+        // defterin AYNI örneği — testin yayın yaptığı defter ile sunucunun
+        // filtresinin yazdığı defter aynı olmak zorunda, yoksa eşleşme hiç
+        // olmaz ve test "bildirim gitmedi" diye okunur.
+        await using var services = new ServiceCollection()
+            .AddDiscoveredToolDependencies()
+            .AddComplianceScopeResolver()
+            .AddSingleton(registry)
+            .BuildServiceProvider();
 
         var options = BizigoMcpServer.CreateOptions(
             McpSurface.Product,
@@ -386,15 +402,24 @@ public sealed class McpResourceSubscriptionTests
         var toServer = new Pipe();
         var toClient = new Pipe();
 
-        await using var transport = new StreamServerTransport(
-            toServer.Reader.AsStream(), toClient.Writer.AsStream(), "olcum", NullLoggerFactory.Instance);
+        // KİMLİK DAMGALANIYOR — ve bu ölçülerek eklendi.
+        //
+        // İlk hâlde düz `StreamServerTransport` kullanılıyordu ve hiçbir bildirim
+        // ulaşmıyordu. Sebep: abonelik filtresi kapsamı çözmek için kimlik
+        // istiyor, bellek içi taşımada `User` yok, dolayısıyla abonelik deftere
+        // HİÇ girmiyordu. Bu bir test kusuru değil ölçümün kendisi: kapsam
+        // süzgeci kimliksiz bir aboneliği KAPALI sayıyor ve o karar burada
+        // görünür oldu. Üretimde kimliği HTTP taşıması veriyor
+        // (`McpCallerScope` belgesinde ölçülmüş).
+        await using ITransport transport = new McpIdentityTransport(
+            new StreamServerTransport(
+                toServer.Reader.AsStream(), toClient.Writer.AsStream(), "olcum", NullLoggerFactory.Instance),
+            static () => Kimlik);
 
         await using var server = McpServer.Create(transport, options, NullLoggerFactory.Instance, services);
 
         using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var loop = server.RunAsync(lifetime.Token);
-
-        using var kayit = updates.Register(server);
 
         var yaz = toServer.Writer.AsStream();
         using var oku = new StreamReader(toClient.Reader.AsStream(), Encoding.UTF8);
@@ -402,6 +427,12 @@ public sealed class McpResourceSubscriptionTests
         await GonderAsync(yaz, ListenIstegi, ct);
 
         var satirlar = new List<string> { await OkuAsync(oku, ct) };
+
+        if (ikinciAdres is not null)
+        {
+            await GonderAsync(yaz, IkinciListen(ikinciAdres), ct);
+            satirlar.Add(await OkuAsync(oku, ct));
+        }
 
         if (ekIstek is not null)
         {
@@ -411,8 +442,28 @@ public sealed class McpResourceSubscriptionTests
 
         if (yayinla)
         {
-            await updates.PublishAsync(RcaRunsResource.Uri, ct);
-            satirlar.Add(await OkuAsync(oku, ct));
+            if (koprudenYayinla)
+            {
+                // KÖPRÜDEN: `IRcaRunChangeListener` → adres + grup. Doğrudan
+                // yayın köprünün grubu TAŞIDIĞINI ölçmüyor; bu yol ölçüyor.
+                await new McpRcaRunChangeListener(updates).RunChangedAsync(
+                    new RcaRunChange(Guid.NewGuid(), yayinGrubu, "Running"),
+                    ct);
+            }
+            else
+            {
+                await updates.PublishAsync(RcaRunsResource.Uri, yayinGrubu, ct);
+            }
+
+            // BÜTÜN satırlar okunuyor, SABİT SAYIDA DEĞİL — ve bu ölçülerek
+            // düzeltildi.
+            //
+            // İlk hâl yayından sonra TEK satır okuyordu. Kırmızı ölçümü kusuru
+            // yakaladı: adres süzgecini kaldırınca İKİ bildirim gidiyor ama test
+            // yalnızca birini okuyor, dolayısıyla `Assert.Single` yeşil kalıyordu.
+            // Yani bekçi "fazla bildirim gitti" hâlini GÖREMİYORDU — ölçülmesi
+            // gereken şeyin tam tersi.
+            satirlar.AddRange(await BosaltAsync(oku, ct));
         }
 
         await lifetime.CancelAsync();
@@ -426,7 +477,7 @@ public sealed class McpResourceSubscriptionTests
             // Beklenen: sunucu döngüsü iptalle kapanıyor.
         }
 
-        return (satirlar, updates);
+        return (satirlar, registry);
     }
 
     private static async Task GonderAsync(Stream yaz, string satir, CancellationToken ct)
@@ -443,6 +494,36 @@ public sealed class McpResourceSubscriptionTests
     /// bir ölçüm CI'da ürün hakkında hiçbir şey söylemeyen bir iş zaman aşımına
     /// dönüşüyor — M01'de ölçülmüş bir kusur.
     /// </summary>
+    /// <summary>
+    /// Akışta bekleyen <b>bütün</b> satırları boşaltır. Sessizlik ölçütü kısa bir
+    /// zaman aşımı: <i>"bir satır daha var mı"</i> sorusunun tel üzerinde başka
+    /// cevabı yok.
+    /// </summary>
+    private static async Task<List<string>> BosaltAsync(StreamReader oku, CancellationToken ct)
+    {
+        var satirlar = new List<string>();
+
+        while (true)
+        {
+            var read = oku.ReadLineAsync(ct).AsTask();
+            var done = await Task.WhenAny(read, Task.Delay(TimeSpan.FromSeconds(2), ct));
+
+            if (done != read)
+            {
+                return satirlar;
+            }
+
+            var satir = await read;
+
+            if (satir is null)
+            {
+                return satirlar;
+            }
+
+            satirlar.Add(satir);
+        }
+    }
+
     private static async Task<string> OkuAsync(StreamReader oku, CancellationToken ct)
     {
         var read = oku.ReadLineAsync(ct).AsTask();
