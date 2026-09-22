@@ -362,6 +362,26 @@ tutulacak — ve **karşı yön de**: hem reddeden hem kabul sayan bir hata, oku
 *"devam ediyor"* dedirtir. İki iddia, tek testte: `RejectedFull = 1` **ve**
 `AcceptedBatches = 0`.
 
+### *"Ölçüm yapılmadı"* ile *"yeşil kaldı"* aynı satıra inemez
+
+Ölçüldü, ve kusur **ölçüm aracının kendisindeydi**: bir sızıntı bekçisi bir
+düzenlemede **sessizce silinmişti**, kırmızı ölçümü onu koşturmaya çalıştı,
+filtre hiçbir teste uymadı — ve `dotnet test` bu hâlde **çıkış kodu 0** veriyor.
+Ölçüt çıkış kodu olduğu için sonuç *"YEŞİL KALDI"* diye raporlandı. Doğru cümle
+*"böyle bir test yok"*tu.
+
+Bedeli, raporu okuyan kişinin **yanlış işi** yapması: *"yeşil kaldı"* okuyan biri
+bekçiyi **güçlendirmeye** çalışıyor, oysa yapılacak iş bekçiyi **geri koymak**.
+İki hâl aynı satıra indiğinde teşhis değil, teşhisin yönü kayboluyor.
+
+Refleks: ölçüm aracının **üç** hâli olacak — `KIRMIZI`, `YEŞİL KALDI`, ve
+**`ÖLÇÜM YOK`**. Üçüncüsü bir pozitif kontrolle kuruluyor: filtre en az bir teste
+uyuyor mu? Uymuyorsa ortada bir ölçüm yok ve hiçbir renk basılmıyor.
+
+Genel hâli bugünün listesinde iki kez daha var: **bir kapının yeşil olması, neye
+baktığını söylemiyor** — burada kapı ölçüm aracının kendisi, ve baktığı şey **hiç
+yoktu**.
+
 ### `git diff A..B` içindeki silmeler, B'nin sildiğini söylemiyor
 
 Ölçüldü ve bu kez yanılan koordinatördü. `git diff --stat main..dal` çıktısı

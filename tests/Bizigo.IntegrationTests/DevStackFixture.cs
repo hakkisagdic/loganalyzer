@@ -10,12 +10,13 @@ using Testcontainers.PostgreSql;
 namespace Bizigo.IntegrationTests;
 
 /// <summary>
-/// F1 geliştirme yığınının test karşılığı: ClickHouse + PostgreSQL + RustFS.
+/// F1 geliştirme yığınının test karşılığı: ClickHouse + PostgreSQL + RustFS +
+/// OpenTelemetry Collector.
 /// Sürümler <c>deploy/docker-compose.yml</c> ile aynı — test ile geliştirme ortamı
 /// ayrışırsa testin değeri düşer.
 ///
 /// <para>
-/// <b>Üçü tek yığın olarak kalkıyor</b> (bkz. <see cref="Project"/>): ortak bir
+/// <b>Dördü tek yığın olarak kalkıyor</b> (bkz. <see cref="Project"/>): ortak bir
 /// ağ ve ortak bir proje etiketi taşıyorlar. Testcontainers container'ları
 /// birbirinden bağımsız açtığı için Docker Desktop ve Portainer onları rastgele
 /// adlı, dağınık kutular olarak gösteriyordu; hangisinin bu koşuma ait olduğu ve
@@ -27,6 +28,7 @@ public sealed class DevStackFixture : IAsyncLifetime
     public const string ClickHouseImage = "clickhouse/clickhouse-server:26.7";
     public const string PostgresImage = "postgres:18-alpine";
     public const string RustFsImage = "rustfs/rustfs:1.0.0-rc.1";
+    public const string CollectorImage = "otel/opentelemetry-collector-contrib:0.159.0";
 
     /// <summary>
     /// Yığının görünen adı.
@@ -51,6 +53,7 @@ public sealed class DevStackFixture : IAsyncLifetime
     private readonly IContainer _clickHouse;
     private readonly PostgreSqlContainer _postgres;
     private readonly IContainer _rustFs;
+    private readonly IContainer _collector;
 
     public DevStackFixture()
     {
@@ -113,6 +116,40 @@ public sealed class DevStackFixture : IAsyncLifetime
             .WithWaitStrategy(Wait.ForUnixContainer()
                 .UntilHttpRequestIsSucceeded(r => r.ForPort(9000).ForPath("/health")))
             .Build();
+
+        // B02 gerçek collector davranışını ölçüyor; ikinci, sadeleştirilmiş bir
+        // test yapılandırması kullanmak üretim dosyasının sessizce ayrışmasına
+        // izin verirdi. Bu yüzden compose ile AYNI dosya bağlanıyor. Exporter'ın
+        // hedefleri kasıtlı olarak kapalı: test receiver ve collector'ın kendi
+        // metrik ucunu ölçüyor, API/Keycloak zincirini değil. Kalıcı kuyruk
+        // dizinini oluşturabilmek için container testte root çalışıyor; compose
+        // bunun yerine otel-init ile aynı izni veriyor.
+        var collectorConfig = Path.Combine(
+            CommonDirectoryPath.GetSolutionDirectory().DirectoryPath,
+            "deploy",
+            "otel",
+            "collector.yaml");
+
+        _collector = new ContainerBuilder(CollectorImage)
+            .WithName($"{Project}-otel-collector-{run}")
+            .WithCommand("--config=/etc/otel/collector.yaml")
+            .WithCreateParameterModifier(parameters => parameters.User = "0")
+            .WithEnvironment("BIZIGO_ENDPOINT", "http://127.0.0.1:9")
+            .WithEnvironment("COLLECTOR_CLIENT_SECRET", "integration-test")
+            .WithEnvironment("KEYCLOAK_TOKEN_URL", "http://127.0.0.1:9/token")
+            .WithBindMount(
+                collectorConfig,
+                "/etc/otel/collector.yaml",
+                DotNet.Testcontainers.Configurations.AccessMode.ReadOnly)
+            .WithPortBinding(4318, true)
+            .WithPortBinding(8888, true)
+            .WithNetwork(_network)
+            .WithNetworkAliases("otel-collector")
+            .WithLabel(ComposeProjectLabel, Project)
+            .WithLabel("com.docker.compose.service", "otel-collector")
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilHttpRequestIsSucceeded(r => r.ForPort(8888).ForPath("/metrics")))
+            .Build();
     }
 
     public string ClickHouseConnectionString { get; private set; } = string.Empty;
@@ -123,16 +160,21 @@ public sealed class DevStackFixture : IAsyncLifetime
 
     public string S3ServiceUrl { get; private set; } = string.Empty;
 
+    public string CollectorMetricsUrl { get; private set; } = string.Empty;
+
+    public string CollectorOtlpHttpUrl { get; private set; } = string.Empty;
+
     public async ValueTask InitializeAsync()
     {
-        // Ağ ÖNCE ve tek seferde kuruluyor. Üç container paralel kalkıyor; her
-        // biri kendi başlangıcında ağı yaratmayı deneseydi üçü yarışırdı.
+        // Ağ ÖNCE ve tek seferde kuruluyor. Dört container paralel kalkıyor; her
+        // biri kendi başlangıcında ağı yaratmayı deneseydi dördü yarışırdı.
         await _network.CreateAsync();
 
         await Task.WhenAll(
             _clickHouse.StartAsync(),
             _postgres.StartAsync(),
-            _rustFs.StartAsync());
+            _rustFs.StartAsync(),
+            _collector.StartAsync());
 
         ClickHouseHttpUrl = string.Create(
             CultureInfo.InvariantCulture,
@@ -143,6 +185,14 @@ public sealed class DevStackFixture : IAsyncLifetime
         S3ServiceUrl = string.Create(
             CultureInfo.InvariantCulture,
             $"http://{_rustFs.Hostname}:{_rustFs.GetMappedPublicPort(9000)}");
+
+        CollectorMetricsUrl = string.Create(
+            CultureInfo.InvariantCulture,
+            $"http://{_collector.Hostname}:{_collector.GetMappedPublicPort(8888)}/metrics");
+
+        CollectorOtlpHttpUrl = string.Create(
+            CultureInfo.InvariantCulture,
+            $"http://{_collector.Hostname}:{_collector.GetMappedPublicPort(4318)}");
     }
 
     /// <summary>
@@ -261,7 +311,8 @@ public sealed class DevStackFixture : IAsyncLifetime
             await Task.WhenAll(
                 _clickHouse.DisposeAsync().AsTask(),
                 _postgres.DisposeAsync().AsTask(),
-                _rustFs.DisposeAsync().AsTask());
+                _rustFs.DisposeAsync().AsTask(),
+                _collector.DisposeAsync().AsTask());
         }
         finally
         {

@@ -284,7 +284,7 @@ public static class SyslogEmitter
         return new EmitResult(count, bytes, clock.Elapsed);
     }
 
-    private static List<string> ReadSamples(SimulatorProfile profile, string repositoryRoot)
+    internal static List<string> ReadSamples(SimulatorProfile profile, string repositoryRoot)
     {
         var lines = new List<string>();
 
@@ -308,7 +308,7 @@ public static class SyslogEmitter
         return lines;
     }
 
-    private static Encoding ResolveEncoding(string name)
+    internal static Encoding ResolveEncoding(string name)
     {
         if (string.IsNullOrWhiteSpace(name)
             || string.Equals(name, "auto", StringComparison.OrdinalIgnoreCase))

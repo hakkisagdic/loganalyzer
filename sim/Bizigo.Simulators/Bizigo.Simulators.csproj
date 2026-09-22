@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bizigo.Devices\Bizigo.Devices.csproj" />
+    <ProjectReference Include="..\Bizigo.Capacity\Bizigo.Capacity.csproj" />
 
     <!--
       `SampleTimeRewriter` için. Basıcı örnek satırın zaman damgasını şimdiye

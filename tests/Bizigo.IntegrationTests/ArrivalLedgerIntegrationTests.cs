@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using Bizigo.Capacity;
 using Bizigo.Contracts;
 using Bizigo.Query;
@@ -28,10 +29,10 @@ namespace Bizigo.IntegrationTests;
 /// <b>Collector'ın metrik ucu GERÇEKTEN erişilebilir.</b> Bu, bu ticket'ın en
 /// somut ölçüm kalemi: uç bu dalda yapılandırıldı
 /// (<c>deploy/otel/collector.yaml</c> · <c>readers:</c>) ve
-/// <c>docker-compose.yml</c> 8888'i yayınlıyor. İkisi birlikte anlamlı; biri
-/// eksikse <b>sessizce</b> çalışmıyor. Yalnızca ayakta bir yığın bunu
-/// gösterebilir — ve gösterene kadar defterin ikinci katmanı
-/// <c>LEDGER-LIMITED</c>.
+/// <c>docker-compose.yml</c> 8888'i yayınlıyor. Entegrasyon yığını aynı
+/// collector dosyasını dinamik bir host portuna bağlar; compose port bağı da
+/// birim bekçisinde ayrıca sabittir. Yalnızca ayakta bir collector uç ile dosya
+/// arasındaki bağı gösterebilir.
 /// </item>
 /// <item>
 /// <b>Metrik ADI beklenen ad.</b> Uç elle yapılandırıldığı için sayaç
@@ -52,12 +53,11 @@ namespace Bizigo.IntegrationTests;
 public sealed class ArrivalLedgerIntegrationTests(DevStackFixture stack)
 {
     /// <summary>
-    /// Collector'ın metrik ucu — <c>deploy/docker-compose.yml</c>'de yayınlanan
-    /// port. Sabit <b>burada</b> duruyor ve testin adı onu söylüyor: uç
-    /// taşınırsa kırmızı yanan şey bir bekçi olmalı, sessiz bir
-    /// <c>LEDGER-LIMITED</c> değil.
+    /// Collector'ın metrik ucu Testcontainers'ın çakışmasız host portundan
+    /// okunur. Container'ın içinde yine 8888 kullanılır; compose'un 8888
+    /// yayınlama bağı <c>ArrivalLedgerTests</c>'te ayrı bekçidedir.
     /// </summary>
-    private const string MetricsEndpoint = "http://localhost:8888/metrics";
+    private string MetricsEndpoint => stack.CollectorMetricsUrl;
 
     /// <summary>
     /// Ürün katmanının sondası: <c>events</c> sayımı, koşum penceresi ve
@@ -95,7 +95,7 @@ public sealed class ArrivalLedgerIntegrationTests(DevStackFixture stack)
         }
     }
 
-    private static async Task<LedgerReading> ScrapeAsync(
+    private async Task<LedgerReading> ScrapeAsync(
         string metric,
         CancellationToken cancellationToken)
     {
@@ -116,6 +116,41 @@ public sealed class ArrivalLedgerIntegrationTests(DevStackFixture stack)
     }
 
     /// <summary>
+    /// Receiver sayaçlarının etiketli serisini oluşturur. Boş bir collector'da
+    /// sayaç ailesinin henüz hiç örneği olmayabilir; bunu "uç bozuk" diye
+    /// yorumlamak yerine gerçek OTLP yolundan tek kayıt geçiriyoruz.
+    /// </summary>
+    private async Task SeedCollectorAsync(CancellationToken cancellationToken)
+    {
+        const string payload = """
+            {
+              "resourceLogs": [{
+                "resource": {"attributes": [{
+                  "key": "service.name",
+                  "value": {"stringValue": "b02-arrival-ledger-probe"}
+                }]},
+                "scopeLogs": [{
+                  "scope": {"name": "b02.integration"},
+                  "logRecords": [{
+                    "timeUnixNano": "1789963200000000000",
+                    "body": {"stringValue": "arrival-ledger-probe"}
+                  }]
+                }]
+              }]
+            }
+            """;
+
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        using var content = new StringContent(payload, Encoding.UTF8, "application/json");
+        using var response = await client.PostAsync(
+            new Uri($"{stack.CollectorOtlpHttpUrl}/v1/logs"),
+            content,
+            cancellationToken);
+
+        response.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>
     /// <b>Koşturulduğunda kanıtlayacağı:</b> collector'ın metrik ucu ayakta ve
     /// <c>otelcol_receiver_accepted_log_records</c> ailesi <b>okunabiliyor</b>.
     ///
@@ -130,6 +165,8 @@ public sealed class ArrivalLedgerIntegrationTests(DevStackFixture stack)
     [Fact]
     public async Task Collector_metrik_ucu_okunabiliyor()
     {
+        await SeedCollectorAsync(TestContext.Current.CancellationToken);
+
         var accepted = await ScrapeAsync(
             CollectorMetricsReader.AcceptedMetric, TestContext.Current.CancellationToken);
 
@@ -169,10 +206,15 @@ public sealed class ArrivalLedgerIntegrationTests(DevStackFixture stack)
     public async Task Defter_bes_okumayi_gercek_kaynaklardan_topluyor()
     {
         var token = TestContext.Current.CancellationToken;
+        await SeedCollectorAsync(token);
+
         var to = DateTimeOffset.UtcNow;
         var from = to.AddMinutes(-15);
 
-        using var context = stack.CreateClickHouseContext();
+        // Şema başka bir testin yan etkisinden gelmemeli. Bu test tek başına
+        // seçildiğinde de aynı şeyi ölçsün diye kendi veritabanını açıp
+        // göçlerini uygular.
+        using var context = await DevStackSetup.ClickHouseAsync(stack, token);
         var reader = new EventReader(context);
 
         var ledger = new ArrivalLedger(
@@ -232,6 +274,7 @@ public sealed class ArrivalLedgerIntegrationTests(DevStackFixture stack)
     public async Task Kumulatif_sayac_farki_bos_pencerede_sifir()
     {
         var token = TestContext.Current.CancellationToken;
+        await SeedCollectorAsync(token);
 
         var before = await ScrapeAsync(CollectorMetricsReader.AcceptedMetric, token);
         await Task.Delay(TimeSpan.FromSeconds(1), token);

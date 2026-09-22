@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Text.Json;
+using Bizigo.Capacity;
 using Bizigo.Simulators;
 
 // ---------------------------------------------------------------------------
@@ -21,10 +24,18 @@ using Bizigo.Simulators;
 
 var profileId = Arg("--profile");
 var host = Arg("--host") ?? "127.0.0.1";
-var countText = Arg("--count") ?? "100";
+var countText = Arg("--count");
 var repositoryRoot = Arg("--repo") ?? FindRepositoryRoot();
+var paceName = Arg("--pace");
 
-if (profileId is null || !int.TryParse(countText, out var count) || count <= 0)
+var count = 100;
+if (countText is not null
+    && (!int.TryParse(countText, NumberStyles.None, CultureInfo.InvariantCulture, out count) || count <= 0))
+{
+    count = 0;
+}
+
+if (profileId is null || count <= 0)
 {
     Console.Error.WriteLine("""
         Kullanım:
@@ -35,6 +46,16 @@ if (profileId is null || !int.TryParse(countText, out var count) || count <= 0)
 
         Taşıma ve hız PROFİLDEN geliyor; komut satırından ezilmiyor. Bir cihazın
         hangi hızda ve hangi taşımayla bastığı o cihazın özelliği, koşumun değil.
+
+        Kapasite modu:
+          --pace fixed|ramp|burst|soak|max
+          --duration <saniye> --run-id <kimlik> --manifest <json-yolu>
+          --eps <n>                         fixed/soak
+          --from-eps <n> --to-eps <n>       ramp
+          --base-eps <n> --peak-eps <n>     burst
+          --peak-at <s> --peak-duration <s> burst
+          --connections <n> --batch <n> --payload raw|tagged
+          --generator-location same|separate|unknown
         """);
 
     return 2;
@@ -141,6 +162,65 @@ if (Arg("--webhook") is { } provider)
 
 // -------------------------------------------------------- syslog modu (S02)
 
+if (paceName is not null)
+{
+    var runId = Arg("--run-id");
+    var manifestPath = Arg("--manifest");
+    var duration = PositiveDouble("--duration");
+    var pace = BuildPace(paceName, duration);
+    var connections = PositiveInt("--connections", 1);
+    var batch = PositiveInt("--batch", 1);
+    var payload = Arg("--payload") switch
+    {
+        null or "tagged" => CapacityPayloadMode.Tagged,
+        "raw" => CapacityPayloadMode.Raw,
+        var value => throw new ArgumentException($"Bilinmeyen --payload değeri: '{value}'."),
+    };
+    bool? sameHost = Arg("--generator-location") switch
+    {
+        "same" => true,
+        "separate" => false,
+        "unknown" => null,
+        var value => throw new ArgumentException(
+            $"--generator-location same|separate|unknown olmalı; gelen: '{value ?? "—"}'."),
+    };
+
+    if (string.IsNullOrWhiteSpace(runId) || string.IsNullOrWhiteSpace(manifestPath))
+    {
+        Console.Error.WriteLine(
+            "Kapasite modu --run-id ve --manifest ister; sayı hükümsüz ve kayıtsız üretilemez.");
+        return 7;
+    }
+
+    var options = new CapacityEmitOptions
+    {
+        RunId = runId,
+        Pace = pace,
+        MaxLines = countText is null ? null : count,
+        Connections = connections,
+        BatchSize = batch,
+        PayloadMode = payload,
+        GeneratorOnSameHost = sameHost,
+    };
+
+    Console.WriteLine(
+        $"· kapasite {pace.Name}: run={runId}, {connections} bağlantı, batch={batch}, {payload}");
+
+    var result = await CapacityEmitter.EmitAsync(
+        profile, repositoryRoot, host, options, CancellationToken.None);
+
+    var fullManifestPath = Path.GetFullPath(manifestPath);
+    Directory.CreateDirectory(Path.GetDirectoryName(fullManifestPath)!);
+    await File.WriteAllTextAsync(
+        fullManifestPath,
+        JsonSerializer.Serialize(result.Manifest, new JsonSerializerOptions { WriteIndented = true }));
+
+    Console.WriteLine("· " + result.Manifest.Describe());
+    Console.WriteLine($"· manifest: {fullManifestPath} ({result.Manifest.Digests.Count} sha256)");
+
+    return result.Manifest.Attainment.Verdict == GeneratorVerdict.GeneratorLimited ? 8 : 0;
+}
+
 Console.WriteLine(
     $"· {profile.Id} ({profile.Vendor}/{profile.Product}) → {host}, " +
     $"{profile.Syslog?.Transport}, kodlama {profile.Encoding}, {count} satır");
@@ -163,6 +243,51 @@ static string? Arg(string name)
     var index = Array.IndexOf(args, name);
 
     return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
+}
+
+static int PositiveInt(string name, int fallback)
+{
+    var value = Arg(name);
+    if (value is null)
+    {
+        return fallback;
+    }
+
+    return int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed)
+        && parsed > 0
+            ? parsed
+            : throw new ArgumentOutOfRangeException(name, value, "Pozitif tamsayı bekleniyor.");
+}
+
+static double PositiveDouble(string name)
+{
+    var value = Arg(name);
+    return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+        && double.IsFinite(parsed)
+        && parsed > 0.0
+            ? parsed
+            : throw new ArgumentOutOfRangeException(name, value, "Pozitif sonlu sayı bekleniyor.");
+}
+
+static PaceProfile BuildPace(string name, double durationSeconds)
+{
+    var duration = TimeSpan.FromSeconds(durationSeconds);
+
+    return name switch
+    {
+        "fixed" => new PaceProfile.Fixed(PositiveDouble("--eps"), duration),
+        "soak" => new PaceProfile.Soak(PositiveDouble("--eps"), duration),
+        "ramp" => new PaceProfile.Ramp(
+            PositiveDouble("--from-eps"), PositiveDouble("--to-eps"), duration),
+        "burst" => new PaceProfile.Burst(
+            PositiveDouble("--base-eps"),
+            PositiveDouble("--peak-eps"),
+            TimeSpan.FromSeconds(PositiveDouble("--peak-at")),
+            TimeSpan.FromSeconds(PositiveDouble("--peak-duration")),
+            duration),
+        "max" => new PaceProfile.Max(duration),
+        _ => throw new ArgumentException($"Bilinmeyen --pace değeri: '{name}'.", nameof(name)),
+    };
 }
 
 static string FindRepositoryRoot()
