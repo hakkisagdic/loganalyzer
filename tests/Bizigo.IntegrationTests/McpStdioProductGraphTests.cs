@@ -76,6 +76,14 @@ public sealed class McpStdioProductGraphTests(DevStackFixture stack)
     [Trait("Category", "Integration")]
     public async Task Urun_grafiginden_cozulen_sorgu_kosuyor()
     {
+        // Sorgunun iddiası satır sayısı değil ama `events` tablosunun varlığı
+        // yine de bir ön koşul. Paylaşılan, göçsüz `bizigo` veritabanını
+        // kullanmak testi koşum sırasına bağlıyordu: başka bir sınıf önce
+        // göç ettiyse geçiyor, tek başına koşturulunca UNKNOWN_TABLE ile
+        // düşüyordu. Ortak kurulum yüzeyi hem izole veritabanını açıyor hem
+        // üretim göçlerini uyguluyor.
+        using var clickHouse = await DevStackSetup.ClickHouseAsync(stack, Token);
+
         IDbContextFactory<ControlPlaneDbContext> factory =
             new ControlPlaneFactory(stack.PostgresConnectionString);
 
@@ -86,7 +94,7 @@ public sealed class McpStdioProductGraphTests(DevStackFixture stack)
 
         await using var services = McpCommandHandlers.BuildServices(
             McpSurface.Product,
-            stack.ClickHouseConnectionString,
+            clickHouse.Options.ConnectionString,
             stack.PostgresConnectionString);
 
         // KAPSAM AÇILIYOR — araçların üretimde yaptığı şeyin aynısı.

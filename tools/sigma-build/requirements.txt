@@ -15,3 +15,8 @@
 pySigma==1.5.0
 pysigma-backend-clickhouse==1.1.1
 PyYAML==6.0.3
+
+# pySigma'nın `<4` sınırı yeterli değil: pyparsing 3.3.3 parantezli ek koşulu
+# bozuk bir ağaç olarak bırakıyor ve derleme çalışma zamanında düşüyor.
+# Sidecar'ın gerçek SQL testleriyle ölçülen son çalışan sürüm.
+pyparsing==3.2.5

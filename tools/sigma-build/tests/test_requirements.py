@@ -20,7 +20,7 @@ from sigma_build.view_columns import repo_root
 
 #: İki tarafta da aynı olması gereken paketler. Sidecar'ın geri kalanı
 #: (drain3, fastapi, redis) derleme hattını ilgilendirmiyor.
-SHARED = ("pySigma", "pysigma-backend-clickhouse", "PyYAML")
+SHARED = ("pySigma", "pysigma-backend-clickhouse", "PyYAML", "pyparsing")
 
 
 def pins(path: Path) -> dict[str, str]:

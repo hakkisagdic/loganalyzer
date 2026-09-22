@@ -22,7 +22,10 @@ public sealed class SidecarClientTests
         Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler,
         SidecarOptions? options = null)
     {
-        options ??= new SidecarOptions { Timeout = TimeSpan.FromSeconds(2) };
+        // Bu testlerin varsayılanı ayrıştırma ve sözleşme davranışını ölçer,
+        // duvar saatini değil. Sonlu bütçe CPU baskısında ilgisiz bir timeout
+        // üretir; zaman aşımı testi aşağıda kendi bütçesini açıkça kurar.
+        options ??= new SidecarOptions { Timeout = Timeout.InfiniteTimeSpan };
         var http = new HttpClient(new StubHandler(handler))
         {
             BaseAddress = new Uri("http://sidecar.test/"),
@@ -74,7 +77,7 @@ public sealed class SidecarClientTests
     public async Task Maske_surumu_uyusmazligi_isaretleniyor()
     {
         // Farklı maske sürümü = farklı imza = yanlış `template_id`.
-        var options = new SidecarOptions { MasksVersion = 1, Timeout = TimeSpan.FromSeconds(2) };
+        var options = new SidecarOptions { MasksVersion = 1, Timeout = Timeout.InfiniteTimeSpan };
         using var client = Client(
             (_, _) => Task.FromResult(Json(
                 """{"api_version":"v1","masks_version":9,"cluster_count":0,"results":[]}""")),
@@ -127,6 +130,30 @@ public sealed class SidecarClientTests
 
         Assert.True(outcome.TimedOut);
         Assert.Null(outcome.Response);
+    }
+
+    /// <summary>
+    /// Sonlu duvar saati bütçesi yalnızca zamanı gerçekten ölçen testte kalır.
+    /// Bu sınıfta başka bir sonlu bütçe, CPU çekişmesini ayrıştırma veya sürüm
+    /// hatası gibi raporlayan eski kararsızlığı geri getirir.
+    /// </summary>
+    [Fact]
+    public void Duvar_saati_yalnizca_zaman_asimini_olcen_testte()
+    {
+        var source = File.ReadAllLines(
+            Path.Combine(
+                RepositoryLayout.Root, "tests", "Bizigo.UnitTests", "SidecarClientTests.cs"));
+        var needle = "Timeout = TimeSpan" + ".From";
+
+        var budgets = source
+            .Select(static line => line.Trim())
+            .Where(static line => !line.StartsWith("//", StringComparison.Ordinal)
+                && !line.StartsWith("///", StringComparison.Ordinal))
+            .Where(line => line.Contains(needle, StringComparison.Ordinal))
+            .ToArray();
+
+        var budget = Assert.Single(budgets);
+        Assert.Contains("FromMilliseconds(100)", budget, StringComparison.Ordinal);
     }
 
     private sealed class StubHandler(

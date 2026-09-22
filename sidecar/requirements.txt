@@ -36,3 +36,11 @@ PyYAML==6.0.3
 #    /v1/sigma/compile 503 döner, mining etkilenmez (sigma_compile.py).
 pySigma==1.5.0
 pysigma-backend-clickhouse==1.1.1
+
+# pySigma 1.5.0 kendi bağımlılığını `pyparsing>=3.2.5,<4` diye bırakıyor, ama
+# 3.3.3 parantezli `AddConditionTransformation` ağacında `ParseResults` nesnesini
+# açmıyor. Sonuç üretimde SQL derlenmeden `TypeError: 'str' object is not
+# callable`: sidecar testlerinin 47'si geçip beş gerçek dönüşümün beşi düşüyor.
+# 3.2.5 ile aynı beş dönüşüm geçti. Build-time hat ile aynı sürümü
+# `tools/sigma-build/tests/test_requirements.py` tutuyor.
+pyparsing==3.2.5

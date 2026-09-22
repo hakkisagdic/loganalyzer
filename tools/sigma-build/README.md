@@ -23,7 +23,7 @@ Tasarımın tamamı ve kararların gerekçeleri:
 | Gerçek derleme — T31'in pipeline'ına bağlı | ✅ 21 written · 3 gated · 0 failed |
 | `duplicates.py` — tekrar aramanın tek yeri, doğrusal | ✅ üç karesel kopyanın yerine |
 | `tests/test_cost.py` — kural başına iş korpusla büyümüyor | ✅ **kapı**, duvar saati istemiyor |
-| `cost.py` — derleme süresi ölçümü, deftere ekler | ✅ yazıldı · ⏳ bağlayıcı koşum koordinatörde (sessiz makine) |
+| `cost.py` — derleme süresi ölçümü, deftere ekler | ✅ iki bağlayıcı koşum: 0,37–0,40 ms/kural; ölçekleme 1,067× / 1,013× |
 | Kural setinin **yükseltme** yolu (ağ, SigmaHQ) | ⏳ T30 kapsam kararını bekliyor |
 
 ## Kural seti depoda duruyor, indirilmiyor

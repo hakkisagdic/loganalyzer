@@ -278,14 +278,24 @@ public sealed class McpStdioIdentity : IMcpIdentityRefusal
             // yeniden başlatır ve **aynı hatayı** alır. `exp` tarafında kurtarma yolu
             // var (yeni belirteç), `nbf` tarafında yok. Risk stdio'da en yüksek:
             // doğrulayan taraf operatörün masaüstü ve masaüstü saatleri sunuculardan
-            // daha çok kayıyor. Keycloak'ın `nbf` basıp basmadığı ölçülmedi; karar
-            // buna dayanmıyor, çünkü belgelenen geçiş hedefi Entra ID **basıyor**.
+            // daha çok kayıyor.
+            //
+            // ⚠️ Ve bu gerekçenin sınırı ÖLÇÜLDÜ: **Keycloak `nbf` BASMIYOR.** Canlı
+            // realm'den alınan belirtecin claim kümesi `azp, exp, iat, iss, jti, scope,
+            // sid, typ` — `nbf` yok, yani sıfır tolerans **bugünün IdP'siyle zararsız
+            // olurdu**. Otuz saniye bugünün bir arızasını düzeltmiyor; belgelenen geçiş
+            // hedefi **Entra ID** `nbf` bastığı için duruyor. Bunu yazmanın sebebi:
+            // Keycloak'ı ölçüp `nbf` bulamayan biri gerekçeyi uydurma sanmasın.
             //
             // Otuz saniyenin bedeli yazılı: belgede duran *"süresi doldu → araçlar
             // `unauthenticated` döner"* cümlesi otuz saniye boyunca yanlış. Beş dakika
             // yerine otuz saniye olmasının sebebi süre değil, sınırın **seçilmiş**
-            // olması. HTTP yüzeyi de otuz saniyede (`AuthenticationSetup`), ama oraya
-            // kopyalanarak değil kendi ölçümünden varıldı ve gerekçesi ayrı.
+            // olması — ve devralınan beş dakikanın ölçeğini iki sayı gösteriyor:
+            // `bizigo` realm'inin belirteç ömrü **900 s** (tolerans ömrün %33'ü),
+            // Keycloak'ın kendi `master` realm'i ise **60 s** basıyor, yani orada beş
+            // dakikalık tolerans belirtecin **bütün ömrünün beş katı**. HTTP yüzeyi de
+            // otuz saniyede (`AuthenticationSetup`), ama oraya kopyalanarak değil kendi
+            // ölçümünden varıldı ve gerekçesi ayrı.
             ClockSkew = TimeSpan.FromSeconds(30),
 
             ValidateIssuerSigningKey = true,
