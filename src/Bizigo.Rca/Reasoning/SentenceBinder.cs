@@ -74,9 +74,11 @@ public sealed record SentenceBinding(string Text, IReadOnlyList<BoundSentence> S
 /// <item>Doğru kimliğe atıf yapan ama <b>o kimlikle ilgisiz</b> bir cümle
 /// bağlanmış sayılıyor. Bu kapı atfın <i>varlığını</i> ölçüyor,
 /// <i>yerindeliğini</i> değil; yerindelik altın kümenin işi (T47).</item>
-/// <item>Cümle bölme noktalama tabanlı. Kısaltma ve ondalık sayı yanlış
-/// bölünebiliyor; bedeli bir cümlenin ikiye ayrılması, sessiz bir geçiş
-/// değil — iki parça da aynı atıfı taşıyorsa ikisi de bağlanıyor.</item>
+/// <item>Cümle bölme noktalama tabanlıdır; ölçülen iki koruması vardır: kapalı
+/// bir kısaltma listesi ve satır başındaki <c>\d+\.</c>. Ondalık sayı noktadan
+/// sonra boşluk taşımadığı için zaten güvenlidir. Listede olmayan kısaltmalar
+/// hâlâ bölünebilir ve bu durum <see cref="SentenceBinding.Dropped"/> içinde
+/// görünür.</item>
 /// <item>Atıfsız bir cümlenin <b>bir önceki cümleden</b> bağlamı devralması
 /// tanınmıyor: her cümle kendi atfını taşımak zorunda. Bilerek — devralma
 /// kabul edilseydi tek atıflı bir paragrafın tamamı bağlanmış sayılırdı ve
@@ -90,10 +92,33 @@ public static partial class SentenceBinder
     private static partial Regex BracketCitation();
 
     /// <summary>
-    /// Cümle sonu: <c>.</c> <c>!</c> <c>?</c> ve ardından boşluk ya da metin
-    /// sonu. Satır sonu da bir sınır — modeller madde işaretli liste üretiyor.
+    /// Elle yazılmış ve bilerek kapalı kısaltma listesi. Listeyi türetmek,
+    /// eksik olduğu gün bekçiyi sessizce körleştirirdi; eksik üyeler bugün
+    /// ölçülebilir biçimde bölünmeye devam eder.
     /// </summary>
-    [GeneratedRegex(@"(?<=[.!?])\s+|\r?\n+", RegexOptions.ExplicitCapture)]
+    private const string PrefixAbbreviations = @"Dr|Doç|Prof|Sn";
+
+    private const string ContinuationAbbreviations =
+        @"vb|vs|örn|ör|bkz|age|sy|yy|çev|haz|Nu|no|etc|e\.g|i\.e|Fig|vol";
+
+    private const string Abbreviations =
+        ContinuationAbbreviations + "|" + PrefixAbbreviations;
+
+    /// <summary>
+    /// Cümle sonu: <c>.</c> <c>!</c> <c>?</c> ve ardından boşluk. Satır sonu
+    /// ayrıca sınırdır. Devam kısaltması (<c>vb.</c>, <c>vs.</c>) küçük harfle
+    /// sürüyorsa korunur; büyük harfle yeni bir cümle başlıyorsa sınır geri
+    /// açılır. Unvanlar (<c>Dr.</c>, <c>Prof.</c>) özel addan önce büyük harfle
+    /// sürebildiği için ayrı sınıftır ve korunur. Bu ayrım yapılmazsa atıfsız
+    /// ilk cümle sonraki cümlenin atfını devralır.
+    ///
+    /// Satır başı numarası koruması bunlardan bağımsızdır.
+    /// </summary>
+    [GeneratedRegex(
+        @"(?:(?<=[.!?])(?<!\b(?:" + Abbreviations + @")\.)|" +
+        @"(?<=\b(?:" + ContinuationAbbreviations + @")\.)(?=\s+(?-i:\p{Lu})))" +
+        @"(?<!(?m:^)[ \t]*\d{1,3}\.)\s+|\r?\n+",
+        RegexOptions.ExplicitCapture | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex SentenceBreak();
 
     /// <param name="text">Modelin ürettiği serbest metin.</param>

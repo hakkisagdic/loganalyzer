@@ -143,6 +143,13 @@ jobs:
           yamllint -d '{rules: {key-duplicates: enable}}'
           deploy/docker-compose.yml .github/workflows/ catalog/sigma/rules/
 
+      # T63 gibi canlı ölçüm araçlarının dış sistemleri CI'da kaldırılmaz;
+      # ancak hangi WAL/manifest'in bu koşuma ait olduğunu ayıran saf kapı
+      # Docker olmadan kırmızı yanabilmelidir. Özellikle ilgisiz eski bir
+      # segmentin toparlanması yeni kayıtların kanıtı sayılamaz.
+      - name: Ölçüm araçları — saf regresyon testleri
+        run: python -m unittest discover -s tools/tests -p 'test_*.py'
+
   ui:
     name: Arayüz — tip kapısı, testler, derleme
     runs-on: ubuntu-latest

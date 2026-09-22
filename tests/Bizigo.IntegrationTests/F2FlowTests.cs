@@ -687,7 +687,11 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
 
         lossy!.Hide();
 
-        var report = await engine.DryRunAsync(
+        // `Applied` kuru koşuda tanım gereği false'dur; devam bayrağını o
+        // alanla ölçmek, çalışan yolu "durdu" diye raporluyordu. Burada gerçek
+        // uygulama yolu çağrılır: bayrak erken dönüşü aşıyorsa Applied=true,
+        // aşmıyorsa yukarıdaki testteki gibi false döner.
+        var report = await engine.ApplyAsync(
             new ReplayPlan
             {
                 From = Day.AddDays(-1),
