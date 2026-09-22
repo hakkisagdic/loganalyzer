@@ -1,15 +1,17 @@
 ---
 title: "T62 — BFF hazırlık ucu: `--wait`'in yeşili neyi vaat ediyor?"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # T62 — BFF hazırlık ucu
 
-**Bulgu T49'un içinden çıktı ve ticket'ın iddia etmediği bir şeydi:** container
-sağlık kontrolü `ui` servisini **healthy** ilan ediyor, `docker compose up -d
---wait` **yeşil** dönüyor — yani yığın *"kalktı"* diyor — ve oturum deposu
-tamamen kırık olabiliyor. Arıza **ilk giriş denemesinde** çıkıyor.
+**Bulgu T49'un içinden çıktı ve ticket'ın iddia etmediği bir şeydi:**
+eski container sağlık kontrolü, oturum deposu tamamen kırıkken `ui`
+servisini **healthy** ilan edebiliyordu. Arıza **ilk giriş denemesinde**
+çıkıyordu. İlk taslak bunu bütün `docker compose --wait` sonucuna
+genişletmişti; canlı ölçüm bu kısmı düzeltti: compose ayrı
+`redis-session` servisinin kendi sağlığını da görür (§6.1).
 
 Bu, deponun beş kez ölçtüğü sınıfın yeni bir örneği: *bir kapının varlığı, neye
 baktığını söylemiyor.*
@@ -125,10 +127,8 @@ istisna metinlerine kasten adres/port/hata kodu koyarak.
 3. Yük topoloji taşımıyor — ✅ ölçüldü.
 4. Container sağlık kontrolü bu ucu yokluyor ve ölçütü `r.ok` — ✅ yazıldı,
 `docker compose config --quiet` temiz. **Koşturulmadı.**
-5. `redis-session` durdurulduğunda `--wait` bugün **yeşil** dönüyor, aynı
-koşulda yeni uç **kırmızı** yanıyor — ⬜ **koşturulmadı**, Docker gerektiriyor
-(§2). Kontrol çiftinin iki yarısı da o koşumda ölçülmeli: eski davranışın yeşil
-olduğu **ve** yeni davranışın kırmızı olduğu.
+5. `redis-session` durdurulduğunda eski kök-sayfa UI sondası **yeşil**
+   kalıyor, yeni uç **kırmızı** yanıyor — ✅ canlı ölçüldü (§6.1).
 
 ## 6 · Ne ölçüldü, ne ölçülmedi
 
@@ -163,9 +163,8 @@ duruyordu — tek bir "yeşil" ikisini birden temsil ediyordu.
 
 **Ölçülmedi:**
 
-- **Kriter 5'in koşumu.** `redis-session` durdurup `--wait`'i izlemek Docker
-istiyor; koordinatörün tarafı. Bu ticket'ın taşıyıcı iddiası (*"eski sonda
-yeşil kalıyor"*) bugün **kod okumasıyla** duruyor, koşumla değil.
+- **Kriter 5'in koşumu tamamlandı**; sonuç ve ticket'ın ilk cümlesindeki
+  fazla geniş `--wait` iddiasının düzeltmesi §6.1'de.
 - **Zaman aşımı bütçesi gerçek gecikmeyle sınanmadı.** Yoklamalar paralel ve her
 biri 2 sn ile sınırlı, sağlık kontrolünün `timeout`'u 5 sn. Yavaş ama yaşayan
 bir bağımlılığın hangi tarafta göründüğü ölçülmedi.
@@ -173,8 +172,30 @@ bir bağımlılığın hangi tarafta göründüğü ölçülmedi.
 yoklama soğuk açılışta 2 sn'ye kadar bekleyebiliyor. Değer değiştirilmedi,
 çünkü değiştirmek için ölçüm gerekiyor.
 - **Aramadım:** `ui` dışındaki servislerin sağlık kontrolleri aynı sınıftan bir
-körlük taşıyor mu. `api`'nin kontrolü kök sayfayı yokluyor ve ClickHouse'a
-erişimi sınamıyor — bakmadım, ölçmedim.
+  körlük taşıyor mu. `api`'nin kontrolü kök sayfayı yokluyor ve ClickHouse'a
+  erişimi sınamıyor — bakmadım, ölçmedim.
+
+## 6.1 · Canlı arıza enjeksiyonu — ve bir iddia düzeltmesi
+
+Gerçek compose yığınında `redis-session` durduruldu:
+
+| Yoklama | Sonuç |
+| --- | --- |
+| Eski kontrol yolu, oturumsuz `GET /` | **307** — yani eski `< 500` ölçütü yeşil kalıyor |
+| `GET /api/health/ready` | **503** |
+| `session_store` | `unreachable` |
+| `api` / `identity_provider` | ikisi de `ready` |
+| Compose'daki gerçek healthcheck komutu | sıfır olmayan çıkış |
+
+Ardından Redis geri kaldırıldı; aynı uç 200 döndü ve UI yeniden
+`healthy` oldu.
+
+Ticket'ın ilk iddiasındaki *"compose `--wait` yeşil kalır"* cümlesi ise
+**genel yığın için fazla genişti**: `redis-session` ayrı bir servis ve kendi
+healthcheck'i var; tamamen durdurulduğunda compose onu da görür. Kör olan
+şey compose'un bütünü değil, **UI servisinin eski sağlık iddiasıydı**. Uç
+yine de gereklidir: UI sağlığını tek başına tüketen yük dengeleyici ya da
+orkestratör, bağımlılığın ayrı compose satırını okumaz.
 
 ## Bağımlılıklar
 

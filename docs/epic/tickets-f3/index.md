@@ -1,13 +1,17 @@
 ---
 title: "F3 — Detection ve RCA kanıtı: Implementasyon Ticket'ları"
 kind: story
-status: 1
+status: 2
 ---
 
 # F3 Implementasyon Ticket'ları
 
 [F3 teknik plan](../f3-teknik-plan/index.md) on ticket'a bölündü.
 Yöneten kararlar: K35–K36 (F3 planı) · K19–K22 (RCA) · [mimari kararlar §3.1](../mimari-kararlar/index.md).
+
+**Kapanış (2026-09-21):** bütün ürün ve kapı ticket'ları kapandı. T32'nin iki
+gerçek Python 3.13 koşumunda 24→269 kural ölçekleme katsayısı `1,067×` ve
+`1,013×`; tam korpusun kural başı maliyeti `0,3962 ms` ve `0,3818 ms` ölçüldü.
 
 ## Dilimleme mantığı
 
@@ -70,6 +74,7 @@ kapsamını yitirmesi** (`CLAUDE.md` §7) — ve birbirinin devamı.
 | T53 | [Ticket statüsü bekçisi](ticket-statusu-bekcisi/index.md) | `status` alanları bayatlıyordu; statünün dört gösterimi artık birbirini yalanlayamıyor | — |
 | T56 | Vault iddia denetimi | Damıtılmış sayfaların kaynaklarına karşı denetimi (`docs/wiki/`, sekiz sayfa). **Ticket dosyası yazılmadı** ve satır bu yüzden bağsız — işin kaydı burada, kabul kriterleri hiçbir yerde | — |
 | T61 | [Statünün gerçeğe bağlanması](statu-olgusu-bekcisi/index.md) | T53'ün beyan ettiği sınır gerçekleşti: dört gösterim **birden** yanlıştı. Beşinci gösterim merge geçmişi | T53 |
+| T39 | [`specificity` seçim ölçütü](specificity-olcutu/index.md) | Katalog seçimi için ölçülmüş özgüllük ölçütü | T30 |
 
 ## Bitti tanımı
 

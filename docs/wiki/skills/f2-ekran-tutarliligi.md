@@ -19,7 +19,7 @@ sources:
   - docs/epic/tickets-f2/ui-ux-denetimi/index.md
   - docs/ekran-goruntuleri/BENIOKU.md
   - docs/epic/f2-kapanis/index.md
-source_digest: "sha256-12/v1 docs/ekran-goruntuleri/BENIOKU.md=cf326ea2a6f4 docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/f2-teknik-plan/index.md=70c97eb131ab docs/epic/tickets-f2/index.md=b06a963ee9ad docs/epic/tickets-f2/nextjs-iskelet-bff/index.md=c49270b469fb docs/epic/tickets-f2/ui-ux-denetimi/index.md=0901dadc890e"
+source_digest: "sha256-12/v1 docs/ekran-goruntuleri/BENIOKU.md=cf326ea2a6f4 docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/f2-teknik-plan/index.md=70c97eb131ab docs/epic/tickets-f2/index.md=4b99e246cb95 docs/epic/tickets-f2/nextjs-iskelet-bff/index.md=c49270b469fb docs/epic/tickets-f2/ui-ux-denetimi/index.md=0901dadc890e"
 summary: Görsel tutarlılık F2'de kasten iki yere bölündü — jetonlar T13'te kuruluyor, denetim T28'de yapılıyor. Denetim toparlama işine dönüşüyorsa temel eksik yapılmış demektir.
 provenance:
   extracted: 0.85
@@ -126,8 +126,10 @@ gerçek bileşen CSS'iyle.
 - **Kanıtlıyor:** çok dilli gövdelerin kırpılması ve hizalanması, rozet
   kontrastı, 500 satırlık tablonun düzeni bozup bozmadığı.
 - **Kanıtlamıyor:** Next yönlendirmesi, kimlik akışı, düzen birleşimi. Onlar
-  için sunucu + sahte Keycloak + sahte API gerekiyordu; bunlar T27'nin uçtan uca
-  akışlarına bırakıldı.
+  için çalışan sunucu + Keycloak + API gerekir. Bu bileşen kanıtının sınırı
+  değişmedi; ayrı T49 koşumu 2026-09-21'de gerçek compose, gerçek Keycloak OIDC
+  ve tohumlanmış veriyle açık/koyu iki turu da geçti. Yani iki kanıt birbirinin
+  yerine geçmiyor: biri yerleşimi, diğeri çalışan ürün zincirini tutuyor.
 
 Sınırın **yazılı** olması yordamın kendisi kadar önemli: kapsamı yazılmayan bir
 kanıt, kanıtlamadığı şey için de kanıt sanılıyor. ^[inferred] Uzun ömürlü

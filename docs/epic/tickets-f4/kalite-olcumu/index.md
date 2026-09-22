@@ -1,7 +1,7 @@
 ---
 title: "T47 — Kalite ölçümü"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # T47 — Kalite ölçümü
@@ -228,20 +228,21 @@ anlamına gelmiyor — fixture'ın kusuru **ifade edebilmesi** gerekiyor.*
 
 ---
 
-## 5 · Kalan iş
+## 5 · Denetimde kalan sorular
 
-### T44'ün bıraktığı üç tereddüt — hâlâ ölçülmedi
+### T44'ün bıraktığı üç tereddüt
 
 1. Atıfsız cümle bir öncekinden **bağlam devralmıyor** (bilerek). İnsan gibi
    yazan bir modelde atılan cümle oranını yukarı çekebilir; çözüm eşik değil
-   **prompt** ayarı olabilir. Ölç, sonra karar ver.
+   **prompt** ayarı olabilir. **→ ÖLÇÜLDÜ, §7'ye bakın.**
 2. Kapı atfın **yerindeliğini değil varlığını** ölçüyor. Doğru kimliğe atıf
    yapan ama ilgisiz bir cümle bağlanmış sayılıyor — tiyatronun yaşadığı yer.
-   Bu ticket'ın insan tarafı kuruldu (`Trivial` kararı); **makine tarafı yok**.
+   Bu ticket'ın insan tarafı kuruldu (`Trivial` kararı); **ucuz makine vekili
+   eklenmeyecek, §7'ye bakın.**
 3. Cümle bölme **noktalama tabanlı**; kısaltma ve ondalık yanlış bölünebiliyor.
    **→ ÖLÇÜLDÜ, §6'ya bakın — iddianın yarısı yanlıştı.**
 
-## 6 · Neden hâlâ `status: 1` — denetim (2026-09-15)
+## 6 · Denetim (2026-09-15)
 
 §4'ün tablosundaki **altı parçanın altısı** ✅. Ticket'ta *"şu kriter
 koşturulmadı, o yüzden 1"* diye okunabilir bir satır yoktu; kalan iş §5'in üç
@@ -251,7 +252,7 @@ tereddüdü ve **üçü aynı sınıfta değil**. Denetimin ilk çıktısı o ay
 | --- | --- | --- |
 | 1 · Atıfsız cümle bağlam devralmıyor → oran yükselebilir | **canlı model** | Sorulan şey mekanizma değil **pratikteki oran**: insan gibi yazan bir modelin ürettiği metinde kaç cümle atıfsız kalıyor. Mekanizma zaten yazılı ve bilinçli bir karar; ölçülecek olan davranış |
 | 2 · Kapı atfın yerindeliğini değil varlığını ölçüyor | **karar** | Makine tarafı bir **anlam** yargısı istiyor. Ucuz bir vekil (atıf ile cümle arasında sözcük örtüşmesi) yazılabilir ama o bir sezgi — ve bu depoda yanlış pozitifin bedeli yazılı. Yazılıp yazılmayacağı ürün kararı |
-| 3 · Cümle bölme noktalama tabanlı | **şimdi yapılabilir → yapıldı** | Konteyner yok, model yok: bölme kuralına bilinen zor girdiler verildi |
+| 3 · Cümle bölme noktalama tabanlı | **yapıldı ve düzeltildi** | Konteyner/model yok: zor girdiler ölçüldü; ilk bağlayıcı sayıdan önce kural düzeltildi |
 
 ### 3. tereddüdün ölçümü — ondalık GÜVENLİ, numaralı liste DEĞİL
 
@@ -262,25 +263,79 @@ cümlesinden keskin:
 | Girdi | Bölünüyor mu | Not |
 | --- | --- | --- |
 | `3.14`, `10.0.0.1`, `net10.0`, `api.kurum.local` | **hayır** | noktadan sonra boşluk yok — *"ondalık yanlış bölünebiliyor"* iddiası **bugünkü kural için yanlış** |
-| `vb.` · `örn.` · `bkz.` | **evet** | iddianın doğru çıkan yarısı |
-| `1. Kök neden …` | **evet** | **ticket bunu saymıyordu** ve en sık karşılaşılacak hâl bu: modeller gerekçeyi numaralı liste hâlinde yazıyor |
+| `vb.` · `örn.` · `bkz.` | **artık hayır** | kapalı kısaltma listesi; listede olmayan kısaltma hâlâ ölçülebilir biçimde bölünür |
+| `1. Kök neden …` | **artık hayır** | satır başındaki `\d{1,3}\.` ayrı bir koruma; maddeler arasındaki satır sonu sınır kalır |
 
-**Bedeli de ölçüldü ve ücretsiz değil:** atıf parçalardan yalnızca birinde
-kalıyorsa diğer parça **atıfsız** sayılıyor ve atılan cümle oranının **payına**
-yazılıyor. Ölçüm yan yana yapıldı — kısaltmalı cümle `Dropped = 1`, aynı
-cümlenin kısaltmasız hâli `Dropped = 0` — çünkü tek başına ölçülen bir sayı
-*"model kötü yazdı"* diye de okunabilirdi.
+**Düzeltme kararı:** ölçü henüz bağlayıcı bir sayı üretmediği için bugün yapılan
+değişiklik geçmişi yeniden tanımlamıyor; tanımı ilk kullanımdan önce doğru
+kuruyor. Yarın aynı değişiklik geçmiş seriyi kırardı.
 
-Bekçi: `SentenceSplitMeasurementTests` (10 test, 0 düştü). **Bugünkü davranışı
-çiviliyor, düzeltmiyor:** bölme kuralını değiştirmek atılan cümle oranının
-**tanımını** değiştirir, yani ölçünün kendi tabanını — bu bir ajan kararı değil.
+Tek sezgi kullanılmadı. Küçük-harf yaklaşımı `1. Kök`ü koruyamaz; bu yüzden
+kısaltma listesi ve numaralı madde koruması bağımsız. `IgnoreCase` yanında
+`CultureInvariant` zorunlu; aksi hâlde Türkçe kültürde `I/ı` katlaması davranışı
+değiştirir.
 
-**Öneri (karar koordinatörde):** kural, noktadan sonra gelen sözcük **küçük
-harfle** başlıyorsa bölmeyi reddedecek şekilde daraltılabilir; bu hem `vb. bileşenler`
-hem `1. Kök` hâllerini kapatmaz (ikincisinde sözcük büyük harfli). Numaralı liste
-için ayrı bir kural gerekiyor: satır başındaki `\d+\.` bir cümle sonu değil.
-İkisi ayrı ayrı ölçülmeli, çünkü ikisi paydayı **farklı yönlerde** oynatıyor.
+Yan yana ölçüm artık kısaltmalı, kısaltmasız ve numaralı biçimlerin üçünde de
+`Dropped = 0` veriyor. Ters yön ayrıca tutuluyor: koruma satır sonunu yutarsa
+atıfsız maddeler atıflı bir maddenin arkasına saklanır. Dört yapay kusurun
+tamamı `tools/t47-kirmizi-olcumu.py` ile kırmızı ölçülür.
 
 **Bu denetimin aramadığı:** bölme kuralının Türkçe dışındaki dillerde davranışı,
 ve modelin gerçekten hangi biçimde yazdığı (numaralı liste ne sıklıkta çıkıyor —
 o sayı 1. tereddütle aynı koşumdan gelir).
+
+---
+
+## 7 · Kapanış ölçümü ve karar (2026-09-21)
+
+### Canlı model tabanı
+
+`LiveModelQualityMeasurement`, taklit HTTP işleyicisi kullanmıyor: K6
+`ModelBoundaryGate`'inden geçen gerçek bir loopback uç, gerçek
+`OpenAiCompatibleModelProvider` ve ürünün gerçek `SentenceBinder`'ı aynı
+koşumda çalışıyor. Varsayılan test koşumunda ağ yok; ölçüm yalnız
+`BIZIGO_RCA_LIVE_MODEL=1` ile açılıyor.
+
+Koşumda Mozilla AI'nin `TinyLlama-1.1B-Chat-v1.0.Q5_K_M.llamafile` modeli
+kullanıldı:
+
+- model SHA-256:
+  `6b58cd9ad698cc3072b53dc7e98597e2618805a4658f0eba7660520d05f65d1e`
+- uç: `llamafile v0.9.0`, `http://127.0.0.1:8091/v1/`
+- korpus: kaynak kodunda sabit üç sentetik kanıt paketi; gerçek müşteri/log
+  verisi yok
+- istem: iki kısa Türkçe cümle, her cümlede görünür bir kanıt kimliği
+
+| Paket | Üretilen | Tutulan | Atılan | Uydurma atıflı atılan |
+| --- | ---: | ---: | ---: | ---: |
+| `bgp-reset` | 6 | 1 | 5 | 0 |
+| `database-pool` | 5 | 1 | 4 | 0 |
+| `dns-timeout` | 5 | 2 | 3 | 0 |
+| **Toplam** | **16** | **4** | **12** | **0** |
+
+**İlk canlı taban:** atılan cümle oranı `12 / 16 = 0,750`; atılan cümleler
+içindeki uydurma atıf oranı `0 / 12 = 0,000`.
+
+Bu sonuç TinyLlama'nın bu isteme biçimsel uyumunun zayıf olduğunu gösteriyor:
+model istenen iki atıflı cümle yerine daha uzun açıklamalar yazdı. **Bir ürün
+eşiği, anlamsal doğruluk skoru veya başka model ailesine aktarılabilir kalite
+iddiası değildir.** Aday üretim modeli aynı sabit korpusla yeniden ölçülür;
+eşik ancak etiketli gerçek koşum tabanı oluştuğunda konuşulur.
+
+### Atfın anlamsal yerindeliği — makine sezgisi eklenmiyor
+
+Sözcük örtüşmesi gibi ucuz bir vekil, doğru kanıtı eş anlamlılarla açıklayan
+bir cümleyi reddedebilir; kanıt metnini kopyalayıp yanlış sonuç çıkaran bir
+cümleyi ise kabul edebilir. Etiketli bir veri kümesi olmadan bunun duyarlılık
+ve seçiciliği ölçülemez. Ölçülmemiş bir sezgiyi bekçi yapmak sahte güven
+üretirdi.
+
+Bu yüzden bugünkü sınır bilinçli:
+
+- makine kapısı **atıf varlığını** ve görünür kapsama çözülmesini ölçer;
+- anlamsal yerindeliğin yetkili ölçüsü insanın `Trivial` / `Sound` incelemesidir;
+- yeterli etiketli veri biriktiğinde makine vekili ayrı bir deney olarak
+  ölçülür; doğrulanmadan ürün kapısına girmez.
+
+Ticket bu canlı sayı ve karar kaydedildiği için kapanır. Gelecekteki model
+yeniden ölçümü bakım işidir; bu ticket'ın eksik kabul kriteri değildir.

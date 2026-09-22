@@ -151,64 +151,7 @@ public sealed class EpicStatusTests
     /// <c>durum:</c> · <c>rapor:</c>.
     /// </para>
     /// </summary>
-    private static readonly Dictionary<string, string> KnownDivergence = new(StringComparer.Ordinal)
-    {
-        // 1 · Yol haritası tablosunda hiç görünmeyen ticket dosyaları. Yazıldılar,
-        //     tablolarına eklenmediler — ticket dosyası ile yol haritası
-        //     birbirinden ayrıştı ve ayrışmayı kimse görmüyordu.
-        //
-        //     T48/T50/T53 buradan ÇIKTI: koordinatörün kararıyla
-        //     `tickets-f3/index.md`'ye "Kapı ticket'ları" alt başlığı altında
-        //     eklendiler ve `references/f3-detection-ve-rca-kaniti` vault
-        //     sayfası okunup güncellendi, damgalandı (§11).
-        //
-        //     T49 da ÇIKTI (T62): `tickets-f2/index.md`'ye "F2 sonrası —
-        //     dağıtım ve sağlık" alt başlığı altında T62 ile birlikte eklendi.
-        //     Aynı kalıp, aynı gerekçe — tablo fazın ÜRÜNÜNÜ anlatıyor, bu iki
-        //     satır o ürünün KALKIŞINI.
-        ["yol-haritasi:tickets-f3/specificity-olcutu"] = "F3 tablosunda yok; kimliği de belirsiz.",
-        ["yol-haritasi:tickets-f4/model-saglayicisi"] = "T42 — F4 tablosunda ticket satırı yok.",
-        ["yol-haritasi:tickets-f4/senaryo-plugin-cekirdegi"] = "T43 — F4 tablosunda ticket satırı yok.",
-        ["yol-haritasi:tickets/ham-arsiv-kurtarma"] = "F1 tablosunda yok.",
-
-
-        // 2 · `tickets-fs` tablosunun Durum sütunu ile ticket dosyaları
-        //     çelişiyor. `kalan-is-raporu` §6 bu dördü bir kez düzeltmişti;
-        //     mekanizma olmadığı için yeniden ayrıştılar — raporun kendi
-        //     öngörüsü gerçekleşti.
-        ["durum:S02"] = "Tablo 🔄 diyor, ticket dosyası `status: 2`.",
-        ["durum:S03"] = "Tablo 🔄 diyor, ticket dosyası `status: 2`.",
-        ["durum:S04"] = "Tablo ⬜ diyor, ticket dosyası `status: 2`.",
-        ["durum:S05"] = "Tablo ⬜ diyor, ticket dosyası `status: 2`.",
-
-        // 3 · `kalan-is-raporu`'nun "açık" dediği kalemler.
-        //
-        // T38, T44 ve T47/T48 girişleri 2026-09-05'te SİLİNDİ, çünkü rapor o
-        // gün bugünkü hâline getirildi ve üçü artık ayrışmıyor. Silinmeleri bu
-        // kapının ikinci yarısının istediği şey: küçülmeyen bir ayrışma listesi
-        // bir süre sonra hiçbir şey ifade etmiyor, ve birinci yarıyı dürüst
-        // tutan da bu.
-        //
-        // Silinmeden önce T44'ün gerekçesi bir kez GÜNCELLENDİ ve o da kayda
-        // değer: ayrışma sürüyordu ama sebebi değişmişti — eskisi "belge yok",
-        // yenisi "belge var ve çelişiyor". Metin güncellenmeseydi liste doğru
-        // kalemi tutup yanındaki cümle yalan söyleyecekti.
-        //
-        // T48'de aynı şey İKİNCİ kez görüldü ve mekanizması T44'ünkinden
-        // farklıydı: yol haritası satırı eklenince kimlik çözülebilir hâle
-        // geldi ve bulgu "eşlenemiyor"dan "rapor açık diyor, dosya `status: 2`"
-        // hâline döndü. Yani BİRİNCİ ayrışma ikincisini maskeliyormuş —
-        // eşleme boşluğu kapatılana kadar altındaki çelişki hiç görünmüyordu.
-        // İki örnek bir desen: bir ayrışmanın kapanması, aynı satırın
-        // kapandığı anlamına gelmiyor.
-        //
-        // ÜÇÜNCÜ örnek T49 ve maskenin ALTINDA çelişki YOKTU: yol haritası
-        // satırı eklenince kimlik çözüldü, dosya `status: 1` çıktı ve raporun
-        // "açık" demesi ÇELİŞMİYOR. Yani bu kez maske gerçek bir hizasızlığı
-        // değil, sonradan doğru çıkan bir kaydı saklıyordu. Giriş bu yüzden
-        // güncellenmedi, SİLİNDİ — ve iki hâlin ayrı ayrı görülmesi listeyi
-        // dürüst tutan şey (T62 ölçtü, `Listeler_bayat_giris_tasimiyor` söyledi).
-    };
+    private static readonly Dictionary<string, string> KnownDivergence = new(StringComparer.Ordinal);
 
     /// <summary>
     /// <b>Hiçbir zaman hizalanmayacak olanlar.</b> Gerekçesiyle, ve sayısı
@@ -303,7 +246,7 @@ public sealed class EpicStatusTests
 
             foreach (Match row in Regex.Matches(
                 text,
-                @"^\|\s*\*{0,2}([TSM]\d+)\*{0,2}\s*\|\s*\[[^\]]*\]\(([^)]+)\)\s*\|(.*)$",
+                @"^\|\s*\*{0,2}([TSMB]\d+)\*{0,2}\s*\|\s*\[[^\]]*\]\(([^)]+)\)\s*\|(.*)$",
                 RegexOptions.Multiline))
             {
                 var target = Path.GetFullPath(
@@ -422,13 +365,15 @@ public sealed class EpicStatusTests
     /// <summary>
     /// <c>kalan-is-raporu</c>'nun "açık ticket'lar" bölümündeki kimlikler.
     /// </summary>
-    private static IReadOnlyList<string> ReportedOpen()
+    private const string NoOpenTicketsMarker = "**Açık ticket yok.**";
+
+    private static string? ReportedOpenSection()
     {
         var path = Path.Combine(EpicRoot, "kalan-is-raporu", "index.md");
 
         if (!File.Exists(path))
         {
-            return [];
+            return null;
         }
 
         var text = File.ReadAllText(path);
@@ -436,19 +381,67 @@ public sealed class EpicStatusTests
 
         if (!heading.Success)
         {
-            return [];
+            return null;
         }
 
         var body = text[(heading.Index + heading.Length)..];
         var next = Regex.Match(body, @"^## ", RegexOptions.Multiline);
-        var section = next.Success ? body[..next.Index] : body;
+        return next.Success ? body[..next.Index] : body;
+    }
+
+    private static IReadOnlyList<string> ReportedOpen()
+    {
+        var section = ReportedOpenSection();
+
+        if (section is null)
+        {
+            return [];
+        }
 
         return
         [
-            .. Regex.Matches(section, @"^\|\s*\*{0,2}([TSM]\d+)\*{0,2}\s*\|", RegexOptions.Multiline)
+            .. Regex.Matches(section, @"^\|\s*\*{0,2}([TSMB]\d+)\*{0,2}\s*\|", RegexOptions.Multiline)
                 .Select(static m => m.Groups[1].Value)
                 .Distinct(StringComparer.Ordinal),
         ];
+    }
+
+    private static IReadOnlyList<string> OpenReportProblems(
+        IEnumerable<string> actualOpen,
+        IEnumerable<string> reportedOpen,
+        bool hasNoOpenMarker)
+    {
+        var actual = actualOpen.ToHashSet(StringComparer.Ordinal);
+        var reported = reportedOpen.ToHashSet(StringComparer.Ordinal);
+        var problems = new List<string>();
+
+        if (hasNoOpenMarker && reported.Count > 0)
+        {
+            problems.Add("`Açık ticket yok` işareti ile açık ticket satırları birlikte bulunuyor.");
+        }
+
+        if (hasNoOpenMarker && actual.Count > 0)
+        {
+            problems.Add(
+                "`Açık ticket yok` işareti gerçek açık kümeyi gizliyor: " +
+                string.Join(", ", actual.Order(StringComparer.Ordinal)));
+        }
+
+        if (!hasNoOpenMarker && actual.Count == 0 && reported.Count == 0)
+        {
+            problems.Add("Gerçek açık küme boş ama raporda açık boş-küme işareti yok.");
+        }
+
+        problems.AddRange(actual
+            .Except(reported, StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .Select(static id => $"{id}: ticket açık ama raporda yok."));
+        problems.AddRange(reported
+            .Except(actual, StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .Select(static id => $"{id}: raporda açık ama ticket kapalı ya da yok."));
+
+        return problems;
     }
 
     private static bool Excused(string key) =>
@@ -569,6 +562,46 @@ public sealed class EpicStatusTests
             "`kalan-is-raporu` ile ticket dosyaları çelişiyor:\n  " +
             string.Join("\n  ", problems.Order(StringComparer.Ordinal)) +
             "\n\nBir brief bu rapordan türediğinde yanlış öncülle başlıyor.");
+    }
+
+    /// <summary>
+    /// Rapor yalnızca yanlış açık satırı taşımamalı değil; gerçek açık kümeyi
+    /// de eksiksiz göstermeli. Özellikle boş-küme işareti bir OR kaçış yolu
+    /// değildir: ancak gerçek açık ticket sayısı sıfırken doğrudur.
+    /// </summary>
+    [Fact]
+    public void Rapor_gercek_acik_kumeyle_iki_yonde_eslesiyor()
+    {
+        var statusByKey = Tickets()
+            .ToDictionary(static ticket => ticket.Key, static ticket => ticket.Status, StringComparer.Ordinal);
+        var actualOpen = Roadmap.Value
+            .Where(row => statusByKey.TryGetValue(row.Key, out var status) && status != Done)
+            .Select(static row => row.Id)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var section = ReportedOpenSection();
+
+        Assert.NotNull(section);
+        var problems = OpenReportProblems(
+            actualOpen,
+            ReportedOpen(),
+            section.Contains(NoOpenTicketsMarker, StringComparison.Ordinal));
+
+        Assert.True(
+            problems.Count == 0,
+            "`kalan-is-raporu` gerçek açık ticket kümesiyle eşleşmiyor:\n  " +
+            string.Join("\n  ", problems));
+    }
+
+    /// <summary>Bekçinin kendi kırmızı örneği: T99 açıkken boşluk işareti geçemez.</summary>
+    [Fact]
+    public void Bos_kume_isareti_acik_ticketi_gizleyemiyor()
+    {
+        var problems = OpenReportProblems(["T99"], [], hasNoOpenMarker: true);
+
+        Assert.Contains(problems, static problem => problem.Contains("T99", StringComparison.Ordinal));
+        Assert.Empty(OpenReportProblems([], [], hasNoOpenMarker: true));
+        Assert.Empty(OpenReportProblems(["T99"], ["T99"], hasNoOpenMarker: false));
     }
 
     /// <summary>
@@ -759,8 +792,15 @@ public sealed class EpicStatusTests
         Assert.NotEmpty(Tickets());
         Assert.NotEmpty(Stories());
         Assert.NotEmpty(Roadmap.Value);
-        Assert.NotEmpty(ReportedOpen());
         Assert.NotEmpty(Declared.Value);
+
+        var openSection = ReportedOpenSection();
+        Assert.NotNull(openSection);
+        Assert.True(
+            ReportedOpen().Count > 0
+            || openSection.Contains(NoOpenTicketsMarker, StringComparison.Ordinal),
+            "`Açık ticket` bölümü ne ticket satırı ne de açık boş-küme işareti taşıyor. " +
+            "Başlık/tablolar değiştiyse bekçi sessizce kapsamını yitirmiş olabilir.");
 
         Assert.True(
             Merged.Value.Count > 0,

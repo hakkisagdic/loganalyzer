@@ -1,16 +1,21 @@
 ---
 title: "F2 — Görünürlük: Implementasyon Ticket'ları"
 kind: story
-status: 1
+status: 2
 ---
 
 # F2 Implementasyon Ticket'ları
 
-[F2 teknik plan](../f2-teknik-plan/index.md) on beş ticket'a bölündü.
+[F2 teknik plan](../f2-teknik-plan/index.md) on altı ürün ticket'ına bölündü;
+dağıtım/sağlık için T49 ve T62 sonradan eklendi.
 Yöneten kararlar: K31–K34 (F2 planı) ve [mimari kararlar](../mimari-kararlar/index.md) K1–K30.
 
 **Giriş noktası:** [F1 kapanışı](../f1-kapanis/index.md). Özellikle iki ölçüm F2'nin
 arayüzünü doğrudan bağlıyor — kısa sorgu eşiği ve keyset'in kaynak filtresi kısıtı.
+
+**Kapanış (2026-09-21):** bütün ürün ticket'ları ile T49/T62 dağıtım-sağlık
+ekleri kapandı. Gerçek container E2E iki temada geçti; BFF hazırlık ucu Redis
+kesintisinde `503`, bağımlılıklar geri geldiğinde `200` verdi.
 
 ## Dilimleme mantığı
 

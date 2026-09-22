@@ -1,7 +1,7 @@
 ---
 title: "M07 — Kaynaklar ve abonelik"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # M07 — Araç değil veri: kaynaklar ve durum bildirimi
@@ -120,12 +120,11 @@ verir — oysa bu belgeler yalnızca kimliğin çözüldüğü MCP oturumundan o
    yeteneği kendisi ilan ediyor — boş olsa bile. Yani `bizigo-sim` el
    sıkışmasında `ResourcesCapability { ListChanged = True }` çıkıyordu. İlan
    edilmemesi için koleksiyonun **hiç kurulmaması** gerekiyor.
-2. **Bildirim sıklığı bir bütçe kalemi mi?** Bugün cevap yok, çünkü abonelik
-   **yazılmadı** (§7).
-3. **Değişiklik bildirimi kaynaklar için de var mı?** `listChanged` bugün
-   SDK'nın türettiği değer ve `true`; kaynak kümesi süreç ömrü boyunca sabit
-   olduğu için bildirim hiç gönderilmiyor. **Yazılı bir açık kalem** —
-   ilan edilen ama kullanılmayan bir yetenek.
+2. **Bildirim sıklığı bir bütçe kalemi mi?** Cevap §6.4'te: koşum
+   başına üç küçük bildirim; asıl maliyet abonenin belgeyi yeniden okuması.
+3. **Değişiklik bildirimi kaynaklar için de var mı?** SDK'nın
+   `listChanged` yayılımı korunuyor. Özel abonelik işleyicisinin bunu yutmadığı
+   `Katalog_bildirimi_yayilimi_korunuyor` ile ölçüldü.
 
 ### 6.3 · Bağlam maliyeti — **ölçüldü, ve ticket'ın iddiası eksikti**
 
@@ -217,23 +216,22 @@ tutulacak bir sunucu örneği de yok. stdio veriyor, HTTP vermiyor.
 **onaylamıyor** (`notifications:{}`). Yani bayrak aboneliğin kabul edilmesinin
 şartı, bir süsleme değil.
 
-### 7.5 · İki ölçülen sınır — açık kalem
+### 7.5 · İki ölçülen sınır — kapatıldı
 
-1. **Bildirim abonelik kimliğiyle etiketlenmiyor.** Spesifikasyon
-   `_meta/io.modelcontextprotocol/subscriptionId` istiyor; onay bildirimi
-   etiketli geliyor (SDK'nın kendi yolu), bizim yayınımız değil — erişilebilen
-   tek yayın ilkeli oturum geneline yazan `SendNotificationAsync`, SDK'nın
-   yönlendirmesi `internal`.
-2. **Bildirim kapsam süzgecinden geçmiyor.** İçerik taşımadığı için veri
-   sızmıyor (adresi okumak kapsam kapısından geçiyor), ama *zamanlaması* bir
-   sinyal: abone kapsamı dışındaki bir grupta bir şey olduğunu öğreniyor.
+M20 turu `SubscriptionsListenHandler` akışını sahiplenip
+`McpSubscriptionRegistry` ekledi. Kayıt sunucu + abonelik kimliği + URI'ler +
+`AccessScope` taşıyor.
 
-İkisinin de çözümü aynı: `SubscriptionsListenHandler`'ı **sahiplenmek**
-(`McpRequestHandler<SubscriptionsListenRequestParams, EmptyResult>`). Bugün
-yapılmadı çünkü SDK'nın kendi işleyicisi aynı akışta `*/list_changed` yayılımını
-da taşıyor. Sınırın ikisi de **bekçiyle kilitli**
-(`Bildirim_abonelik_kimligiyle_etiketlenmiyor`) — SDK bir gün yüzey açarsa
-kırmızı yanıp haber veriyor.
+- Her bildirim `_meta/io.modelcontextprotocol/subscriptionId` ile etiketli;
+  iki eşzamanlı abonelik kendi kimliğiyle ayrılıyor.
+- `owner_group` kapsam dışındaysa bildirim gönderilmiyor; bilinmeyen grup
+  fail-closed davranıyor, sistem kapsamı tüm grupları görüyor.
+- Akış kapandığında kayıt `IDisposable` ile defterden düşüyor; sonraki
+  yayın ölü istemciye gitmiyor.
+- SDK'nın `*/list_changed` yayılımı korunuyor.
+
+Yan kanal ölçümü önce gerçek sızıntıyı gösterdi, sonra aynı fixture
+süzgecin yabancı grubu elediğini kanıtladı.
 
 ### 7.7 · Neden ham JSON-RPC — SDK'nın istemcisi sunucusunu izlemiyor
 
@@ -283,7 +281,8 @@ bir bayrak, bildirimler listeye hiç girmiyor.
 
 ## 8 · Ölçülen ve M07'nin dışında kalan iki kalem
 
-**1 · stdio ürün yüzeyi bugün ayağa kalkmıyor.** Ölçüldü:
+**1 · stdio ürün yüzeyinin ilk ölçümü ayağa kalkmıyordu; düzeltildi.**
+Tarihsel arıza:
 
 ```
 $ bizigo mcp serve --surface bizigo --data-boundary internal
@@ -291,14 +290,10 @@ Unhandled exception: MCP ilkeli `Bizigo.Mcp.Product.Tools.AlertRulesTool`
 kurulamadı: Unable to resolve service for type 'Bizigo.Alerting.AlertRuleService'
 ```
 
-Kusur **M07'den önce** var: `McpCommandHandlers.BuildServices()` simülatör ve
-komut araçlarının bağımlılıklarını kaydediyor, **ürün okuma araçlarının**
-bağımlılıklarını (`AlertRuleService`, `ParserCatalog`, `IScopedQuery`)
-kaydetmiyor. M01'in *"iki taşıma, aynı araç kümesi"* iddiası ürün yüzeyi için
-**ölçülmemiş**; mevcut stdio testleri yalnızca ret yollarını sınıyor.
-
-M07 bu kusuru **büyütmüyor ama gizlemiyor** da: kaynaklar da aynı grafikten
-kuruluyor. Düzeltme M02/M04'ün alanı (CLI kompozisyonu).
+Kusur M12'de üretim servis uzantıları aynı grafa bağlanarak kapatıldı. Bu
+turda canlı ClickHouse/Postgres fixture'ına karşı yeniden ölçüldü:
+grafikten çözülen `IScopedQuery` gerçek sorguyu, grafikten kurulan araç da
+gerçek kontrol düzlemi çağrısını tamamladı.
 
 **2 · `Bizigo.Mcp.Product` iki referans daha aldı.** `Bizigo.Evidence` ve
 `Bizigo.Rca`. Ölçülen maliyet: Evidence → Contracts + Query (Cli'de ikisi de
@@ -306,3 +301,13 @@ var), Rca → Contracts + ControlPlane + ScenarioPlugin + `Extensions.Http`. Yen
 çatı yok. Alternatif (ayrı derleme, yalnızca `Bizigo.Api`'den referans) elendi:
 o zaman stdio bu kaynakları hiç göremezdi, yani aynı yüzey iki taşımada farklı
 şey sunardı.
+
+## 9 · Kapanış doğrulaması
+
+- Abonelik, kapsam, taşıma ve kaynak sözleşmesi hedefli birim paketi:
+  **78/78**.
+- Gerçek yığında kaynak kapsamı + stdio ürün grafiği: **5/5**.
+- Entegrasyon testi tek başına ilk koşumda göçsüz paylaşılan
+  ClickHouse'a bağlandığı için `UNKNOWN_TABLE` verdi; test izole veritabanı +
+  üretim göçleri ortak kurulumuna alındı ve yeniden yeşil koştu. Bu ürün
+  kusuru değil, koşum sırasına bağlı bir fixture kusuruydu.

@@ -1,15 +1,20 @@
 ---
 title: "FS — Cihaz simülatörleri: Implementasyon Ticket'ları"
 kind: story
-status: 1
+status: 2
 ---
 
 # FS Implementasyon Ticket'ları
 
-[FS teknik plan](../fs-simulatorler/index.md) yedi ticket'a bölündü.
+[FS teknik plan](../fs-simulatorler/index.md) başlangıçta yedi ticket'a bölündü;
+ölçüm bulguları S08, T55 ve T57'yi doğurdu ve kapanış kümesi ona çıktı.
 Fazın gerekçesi ölçülmüş bir boşluk: ekip gerçek cihazlara erişmiyor, ve
 `SshDeviceTransport` F1'den beri **hiç koşmamıştı** — yani "çalışıyor" diyen
 tek şey kodun kendisiydi.
+
+**Kapanış (2026-09-21):** on ticket'ın tamamı kapandı; gerçek SSH taşıması,
+syslog üretimi, senaryo motoru, filo kapsamı, CLI sayfalama düzeltmesi ve dört
+webhook biçimi aynı simülatör sözleşmesi altında doğrulandı.
 
 **Faz numarasız** çünkü F1–F5 sırasına girmiyor; diğer fazlara **paralel**
 koşuyor ve onların beklediği kapıyı açıyor.
@@ -59,10 +64,10 @@ flowchart TB
 | # | Ticket | Özü | Bağımlılık | Durum |
 | --- | --- | --- | --- | --- |
 | S01 | [Cihaz profili şeması ve N1](cihaz-profili/index.md) | Profil YAML + doğrulayıcı + sahte `IDeviceTransport` | — | ✅ dört profil, `SimulatedDeviceTransport` |
-| S02 | [Syslog basıcı](syslog-basici/index.md) | Profilden örnek okuyup TCP/UDP basıyor | S01 | 🔄 çapa `SampleClock`'a taşındı; TTL artık **kapı** |
-| S03 | [N2: gerçek SSH sunucusu](ssh-sunucusu/index.md) | Container, komuta göre profil çıktısı | S01 | 🔄 **`SshDeviceTransport` F1'den beri ilk kez koştu ve geçti** |
-| S04 | [Senaryo motoru](senaryo-motoru/index.md) | Adlandırılmış geçişler, SSH + syslog tarafında | S02, S03 | ⬜ |
-| S05 | [Filo ve kapsam yayılımı](filo-kapsam/index.md) | Beş cihaz, iki `owner_group`, otomatik envanter | S04 | ⬜ FS-a'nın kapanış ticket'ı |
+| S02 | [Syslog basıcı](syslog-basici/index.md) | Profilden örnek okuyup TCP/UDP basıyor | S01 | ✅ çapa `SampleClock`'a taşındı; TTL artık **kapı** |
+| S03 | [N2: gerçek SSH sunucusu](ssh-sunucusu/index.md) | Container, komuta göre profil çıktısı | S01 | ✅ **`SshDeviceTransport` F1'den beri ilk kez koştu ve geçti** |
+| S04 | [Senaryo motoru](senaryo-motoru/index.md) | Adlandırılmış geçişler, SSH + syslog tarafında | S02, S03 | ✅ |
+| S05 | [Filo ve kapsam yayılımı](filo-kapsam/index.md) | Beş cihaz, iki `owner_group`, otomatik envanter | S04 | ✅ FS-a'nın kapanış ticket'ı |
 | S06 | [N3: CLI öykünmesi](cli-oykunmesi/index.md) | Etkileşimli kabuk, prompt, sayfalama | S03 | ✅ **bulgu: toplayıcı sayfalama açıkken yarım config'i hatasız alıyor** |
 | S07 | [İmzalı webhook üreteci](webhook-ureteci/index.md) | GitHub/GitLab/Jenkins/generic | S01 | ✅ dört biçim; idempotans S08'de tek testte buluştu |
 | S08 | [Çekim modeli ve teşhis](cekim-modeli/index.md) | S06'nın bulgusunun düzeltmesi | S06 | ✅ komut kendi kendine yetiyor; `ConfigCapture` türü taşıyor |

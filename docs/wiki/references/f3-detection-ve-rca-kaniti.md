@@ -23,7 +23,7 @@ sources:
   - docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md
   - docs/epic/tickets-f4/entropi-terfi-karari/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=3927d9fc6d4a docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=1da27ea79668 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=950604929fb8 docs/epic/tickets-f4/entropi-terfi-karari/index.md=16d40c7f9036 docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=575e48c5afe3"
+source_digest: "sha256-12/v1 CLAUDE.md=3927d9fc6d4a docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=1da27ea79668 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=24d493dc4d88 docs/epic/tickets-f4/entropi-terfi-karari/index.md=16d40c7f9036 docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=575e48c5afe3"
 summary: F3'ün iki kolu (Sigma detection ve RCA kanıtı), planı yarı yarıya değiştiren template_id bulgusu, on ürün ticket'ının durumu, sonradan eklenen üç kapı ticket'ı, ve fazın sayılarının neden bağlayıcı olmadığı.
 provenance:
   extracted: 0.85
@@ -87,35 +87,26 @@ risk, derleme-zamanı kararını **üçüncü kez** gerekçelendirdi: üretilen 
 repoda versiyonlandığı için proje terk edilse bile mevcut kurallar çalışmaya
 devam eder.
 
-## On ticket, iki kol, tek buluşma
+## On ürün ticket'ı, iki kol, tek buluşma
 
 `docs/epic/tickets-f3/index.md` fazı ikiye bölüyor ve dilimleme mantığını da
 yazıyor: **T29 ve T30 kod değil sayı teslim ediyor**, çünkü F1'in dersi
 doğrulanmamış her katmanın kırık çıktığıydı.
 
-| Kol | Ticket'lar | Durum (`docs/epic/f3-yol-haritasi/index.md`, **2026-08-25**) |
+| Kol | Ticket'lar | Durum (**2026-09-21**) |
 | --- | --- | --- |
-| **Detection** | T30 prototip → T31 pipeline → T32 derleme → T33 kural yönetimi | T30/T31/T33 **kapandı**; **T32 açık** |
+| **Detection** | T30 prototip → T31 pipeline → T32 derleme → T33 kural yönetimi | **Dördü de kapandı**; T32 canlı maliyet tabanını da kaydetti |
 | **Kanıt** | T29 → T34 sözleşme → T35 korelasyonlar → T36 paket → T37 ekran | **beşi de kapandı** |
-| **Buluşma** | T38 altın küme | **tek açık kol** — ekran yarısı indi; T31'den devredilen nginx örneği burada |
+| **Buluşma** | T38 altın küme | **Kapandı** — inceleme ve kapsam kapıları bağlı |
 
 Yol haritası ayrıca üçüncü bir bağımsız kol sayıyor: F2'nin kapanış
 doğrulaması (T27).
 
-> [!warning] Yukarıdaki `Durum` sütunu **tarihli bir görüntü** (2026-08-25) ve
-> ticket dosyalarının kendi `status` alanıyla aynı şey değil. Bugünkü canlı
-> örnek T38: bu tablo onu *"tek açık kol"* diye gösteriyor, ticket dosyası
-> `status: 2` taşıyor, ve `kalan-is-raporu` 2026-09-05'te güncellenip T38'i
-> açık listesinden **çıkardı**. Yani bugün ayrışan taraf bu sayfa.
->
-> **Bu sayfa T53'ün bekçisinin kapsamı dışında.** `EpicStatusTests` yalnızca
-> `docs/epic` altındaki dört gösterimi karşılaştırıyor; `docs/wiki` sayfalarının
-> statü iddialarını hiçbir kapı sınamıyor ve `WikiSourceDigestTests` de
-> yakalayamıyor — bu sayfa `kalan-is-raporu`'nu kaynak göstermediği için o
-> belge değiştiğinde damga bayatlamıyor. Yukarıdaki cümlenin bir önceki hâli
-> tam olarak böyle yanlışlandı: T38'i *"raporda da açık"* diye örnek veriyordu
-> ve rapor düzeltilince iddia sessizce yanlış oldu, hiçbir test kırmızı
-> yanmadan. Tarihli görüntüyü tarihiyle okuyun.
+> [!warning] Bu sayfa T53'ün statü bekçisinin kapsamı dışında; `EpicStatusTests`
+> yalnızca `docs/epic` gösterimlerini karşılaştırıyor. Nitekim bu tablo
+> 2026-09-21'e kadar T32/T38'i açık gösterirken iki ticket da kapalıydı.
+> Kaynak-damga kapısı değişikliği görünür kıldı, ama hangi cümlenin değişmesi
+> gerektiğine yine insan karar verdi. Tarihli durumu tarihiyle okuyun.
 
 ### Sonradan eklenen beş kapı ticket'ı
 
@@ -142,11 +133,11 @@ tehlikelidir"* maddesi. ^[extracted]
 > iken işin **yok** olduğunu yakalamıyor, çünkü *"iş yok"* gözlenebilir bir
 > olgu değil. ^[extracted]
 
-## Fazın açık kalan tek kararı
+## Fazın kapanışta bıraktığı ölçüm sınırı
 
-**T30'un kapsam kararı**, ve onu bloke eden şey bir kod değil bir ölçüm: 24
-kuralın kaçının eşleşmediği biliniyor, **neden** eşleşmediği bilinmiyor. Ölçüm
-üç kutulu:
+T30'un kapsam oranı fazı bloke etmiyor, ama müşteri verisi olmadan ürün eşiğine
+dönüşmüyor: 24 kuralın kaçının eşleşmediği biliniyor; eşleşmemenin nedeni üç
+ayrı kutuda tutuluyor.
 
 1. **eşleme eksik** — alan var, biz bağlamamışız
 2. **örneklemde desen yok** — bağlasak da eşleşmez

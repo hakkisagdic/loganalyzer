@@ -1,7 +1,7 @@
 ---
 title: "F4 — Agentic RCA: Implementasyon Ticket'ları"
 kind: story
-status: 1
+status: 2
 ---
 
 # F4 Implementasyon Ticket'ları
@@ -11,6 +11,10 @@ bırakıyordu. Dilimlemeyi tutan **üç açık soru 2026-08-25'te cevaplandı** 
 faz artık ticket'a bölünebiliyor.
 Yöneten kararlar: K19–K22 (RCA) · K6/K15 (veri kurumdan çıkmaz, yerel model
 kısıtı) · K20 (tetikleyiciler).
+
+**Kapanış (2026-09-21):** bütün F4 ticket'ları kapandı. Gerçek OpenAI-uyumlu
+yerel model tabanında 16 cümlenin 12'si atıldı (`0,750`); bu sayı eşik değil,
+aday modelleri aynı sabit korpusla karşılaştıracak ilk canlı tabandır.
 
 ## Dilimleme mantığı
 
@@ -87,8 +91,8 @@ flowchart TB
 | # | Ticket | Özü | Bağımlılık |
 | --- | --- | --- | --- |
 | T41 | [Prompt redaksiyon tabanı](prompt-redaksiyon-tabani/index.md) | Log metninde sır tanıma; `SecretRedactor` genişletilir, kopyalanmaz. Ölçüm korpusu FS·S01'den | — |
-| T42 | Model sağlayıcısı soyutlaması | Yerel/uzak seçimi; K6'nın kapısı — log verisi kurumdan çıkmaz. `masked`/`raw` düzeylerini T41 açıyor | T41 |
-| T43 | Senaryo plugin çekirdeği | Format, **yükleme anında zarf doğrulaması**, `constraints` listesi + `constraints_waived` gerekçesi + sabit muaf sayısı | — |
+| T42 | [Model sağlayıcısı soyutlaması](model-saglayicisi/index.md) | Yerel/uzak seçimi; K6'nın kapısı — log verisi kurumdan çıkmaz. `masked`/`raw` düzeylerini T41 açıyor | T41 |
+| T43 | [Senaryo plugin çekirdeği](senaryo-plugin-cekirdegi/index.md) | Format, **yükleme anında zarf doğrulaması**, `constraints` listesi + `constraints_waived` gerekçesi + sabit muaf sayısı | — |
 | T44 | [LLM adımları ve iki kapı](llm-adimlari-ve-iki-kapi/index.md) | Kısıt doğrulama (adım reddi, 1 tekrar) ve cümle bağlama (atma, sayaç) ayrı; doğrulama **adımın gördüğü** kanıta karşı | T42, T43, T46 |
 | T45 | Tetikleyiciler | Dört kaynak (alarm · UI · dış API · `schedule`) + devam kuralı; soyağacı (`root_run_id`, `depth`, ata tekrarı); debounce | — |
 | T46 | Kuyruk ve kota | Dört kısıt dört ayrı riske; koşum durumu **kapalı küme** (`Empty` ≠ `QuotaExceeded` ≠ `Cancelled`); ret sayacı grup bazında görünür | T45 |

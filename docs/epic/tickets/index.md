@@ -1,7 +1,7 @@
 ---
 title: "F1 — Boru Hattı: Implementasyon Ticket'ları"
 kind: story
-status: 1
+status: 2
 ---
 
 # F1 Implementasyon Ticket'ları
@@ -63,11 +63,10 @@ flowchart TB
 | T11 | [Replay](replay/index.md) | Bölüm değiştirmeli replay, `--dry-run` fark raporu | T04, T06 |
 | T12 | [Python sidecar](sidecar/index.md) | Drain3 + pySigma imajı, HTTP sözleşmesi, devre kesici | T03, T05 |
 
-### F1 sonrası — ölçülmemiş kalemler
+### F1 sonrası — sonradan ölçülen dayanıklılık kalemleri
 
-F1 **kapandı**; kapanış belgesi [f1-kapanis](../f1-kapanis/index.md) ve bu satır
-onu geri almıyor. Statünün 2'den 1'e dönmesi fazın değil **bu kümenin** hâlini
-anlatıyor: küme bir açık kalem taşıyor. Emsali F2, aynı sebeple `status: 1`.
+F1 **kapandı**; kapanış belgesi [f1-kapanis](../f1-kapanis/index.md). Sonradan
+bulunan iki dayanıklılık boşluğu da ölçülüp kapandı; bu kümede açık kalem yok.
 
 Kalemin nasıl bulunduğu kendi dersini taşıyor — kabul kriteri *"karşılandı"* diye
 duruyordu ve karşılandığı **hiç ölçülmemişti**; bekçinin kendi yorumu
@@ -76,7 +75,8 @@ ve kimse okumuyordu.
 
 | # | Ticket | Özü | Bağımlılık |
 | --- | --- | --- | --- |
-| T63 | [Dayanıklılık kriterinin ölçümü](dayaniklilik-olcumu/index.md) | `kill -9` taklit ediliyor, *"RustFS durdurulur, ingest devam eder"* yarısını ölçen hiçbir şey yok | — |
+| T40 | [Ham arşiv kurtarma](ham-arsiv-kurtarma/index.md) | Eksik RustFS nesnesini WAL segmentinden geri yükleme | T04 |
+| T63 | [Dayanıklılık kriterinin ölçümü](dayaniklilik-olcumu/index.md) | Gerçek `SIGKILL` sıralaması ve gerçek RustFS kesintisi/toparlanması ölçüldü; fsync'in host arızası sınırı ayrı yazıldı | — |
 
 ## Dilimleme mantığı
 

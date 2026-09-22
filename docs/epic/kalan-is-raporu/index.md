@@ -1,210 +1,120 @@
 ---
 kind: spec
-title: "Kalan iş — uygulamanın tamamı için ne var (2026-09-05)"
+title: "Kalan iş — kapanış durumu (2026-09-22)"
 ---
 
 # Kalan iş raporu
 
-Bugünkü ölçülmüş hâl: derleme **0 uyarı 0 hata** · birim **1247 geçti /
-4 atlandı / 0 düştü** · UI **499 geçti / 33 dosya** · `api:check` **birebir**.
+Bu rapor 2026-09-05 tarihli ara durumun yerine geçer. O belgede açık görünen
+T32, T47, T49, T63 ve M07 dâhil bütün ticket'lar ölçülüp kapandı. Ticket
+dosyaları, yol haritası satırları ve story statüleri aynı durumu söylüyor.
 
-`main` = `65ad1df`, **uzağa push edilmedi**. Entegrasyon testleri ve compose
-kapısı bu turda **koşmadı** — Docker daemon bu makinede ölü (bkz. §3).
-
-> **Bu belgenin bir bekçisi var artık.** `EpicStatusTests` aşağıdaki "açık"
-> listesini ticket dosyalarının `status` alanıyla karşılaştırıyor ve
-> çeliştiğinde birim paketi kırmızı yanıyor. Kendi merge turunda **dört kez**
-> konuştu. Sebebi §6'da yazılıydı ve buraya bir bekçi bağlanana kadar aynı
-> ayrışma üç turda üç kez döndü — sonuncusunda T38'in brief'i yanlış öncülle
-> başladı.
+Bu bir sürüm etiketi ya da yayın onayı değildir. Çalışma ağacı hâlâ commit
+edilmemiş değişiklikler taşıyor; kullanıcı onayı olmadan commit veya push
+yapılmadı.
 
 ---
 
 ## 1 · Faz faz durum
 
-| Faz | Ne | Durum |
+| Faz | Kapsam | Durum |
 | --- | --- | --- |
-| **F1** — boru hattı | Ingest, depolama, parser motoru, kimlik, API | **14/14 kapandı** |
-| **F2** — arayüz | Ekranlar, BFF, alarm, change | 16/17 · **T49 sürüyor** (canlı doğrulaması koordinatörde) |
-| **F3** — detection ve kanıt | Sigma, korelasyonlar, kanıt paketi, **üç kapı ticket'ı** | 13/14 · **T32 sürüyor** |
-| **F4** — agentic RCA | Prompt tabanı, plugin, tetikleyici, kota, LLM, rapor | 8/9 · **T47 sürüyor** |
-| **F5** — gözlemlenebilirlik | Metrik · trace · topoloji sağlayıcıları | **kapsam kararı verildi (S1)**: topoloji karşılandı, metrik ve trace **kalıcı muaf** |
-| **FS** — simülatörler | Cihazsız uçtan uca koşum | **8/8 kapandı** |
-| **MCP** — protokol | İki yüzey, sekiz ticket | **M01 koşuyor**, M02–M08 açık |
-
-Bu turda kapananlar: **T38 · T44 · T48 · T50 · T51 · T53 · S06 · S07 · S08**.
-`status: 1` bırakılanlar bilerek öyle — T32 ve T47 kendi ticket'larının canlı
-yarısını koşturamadı, T49'un kabul kriterlerinden üçü Docker istiyor. Hiçbiri
-"ölçülmedi ama kapandı" sayılmadı.
+| **F1** | Ingest, WAL, arşiv, parser, kimlik, API | **Kapandı** — T40 kurtarma ve T63 gerçek kesinti ölçümü dâhil |
+| **F2** | BFF, ekranlar, alarm, change, container | **Kapandı** — gerçek OIDC/container E2E iki temada geçti; hazırlık ucu canlı ölçüldü |
+| **F3** | Sigma, detection, kanıt, altın küme | **Kapandı** — T32 gerçek Python 3.13 maliyet koşumları kaydedildi |
+| **F4** | Redaksiyon, model kapısı, plugin, kota, kalite | **Kapandı** — T47 gerçek yerel model tabanı kaydedildi |
+| **F5** | Metrik, trace, topoloji | **Kapsam kararı kapandı** — topology-lite karşılandı; metric/trace gerekçeli muaf |
+| **FS** | Cihaz simülatörleri ve cihazsız E2E | **Kapandı** — on ticket tamamlandı |
+| **Kapasite** | Üreteç hızı ve varış defteri | **Bugünkü dilim kapandı** — B01/B02 tamamlandı |
+| **MCP** | İki yüzey, iki taşıma, kimlik, araçlar, kaynaklar | **Kapandı** — M07 dâhil bütün ticket'lar tamamlandı |
 
 ---
 
-## 2 · Açık ticket'lar — on beş kalem
+## 2 · Açık ticket'lar
 
-### F3 — bir kalem
+**Açık ticket yok.**
 
-| # | Ticket | Neden açık |
+Bu cümle makinece okunur bir boş-küme işaretidir. Önceki bekçi en az bir açık
+satır bekliyordu; bütün işler kapandığında doğru durumun kendisini hata
+sayacaktı. Bekçi artık raporlanan açık kimliklerle gerçek `status != 2`
+kümesini **iki yönde** karşılaştırıyor: açık ticket varken bu işaret geçemiyor,
+işaret ile açık satırlar birlikte bulunamıyor ve başlık yanlışlıkla değişirse
+kapı sessizce yeşil olmuyor.
+
+---
+
+## 3 · Son canlı ölçümler
+
+| Alan | Koşum | Sonuç |
 | --- | --- | --- |
-| **T32** | Derleme hattı ve SQL versiyonlama | Kod ve kapılar bitti; açık olan **duvar saati ölçümü** — kural başına derleme maliyeti sessiz makine istiyor ve o koşum koordinatörde. Ölçekleme sorusu saatsiz cevaplandı ve karesel bir kusur buldu |
+| F2 UI container | Gerçek compose + Keycloak OIDC + tohumlanmış veri, light/dark | **2/2 geçti** |
+| T62 BFF hazırlık | Bağımlılıklar sağlıklı / `redis-session` kapalı | `200` / **`503`**; eski kök uç kesintide `307` kaldığı için kör olduğu doğrulandı |
+| T32 Sigma maliyeti | Python 3.13, 24/100/269 kural, iki koşum | Tam korpus `0,3962` ve `0,3818 ms/kural`; ölçekleme `1,067×` ve `1,013×` |
+| T63 RustFS kesintisi | RustFS durdur, 12 gerçek OTLP kayıt, API/WAL yeniden başlat | 12 kabul; koşum segmentinde 12 WAL kaydı; aynı segmentte 1 doğrulanmış manifest ve `event_count=12/12`; reddedilen 0 |
+| T47 canlı model | TinyLlama 1.1B, gerçek OpenAI-uyumlu sağlayıcı + cümle bağlayıcı | 16 üretildi, 4 tutuldu, 12 atıldı; `drop_ratio=0,750`; uydurma atıf `0/12` |
+| MCP M07 | Birim sözleşmeleri + gerçek stdio ürün grafiği | **78 birim + 5 entegrasyon geçti**; fixture sıra bağımsız hâle getirildi |
 
-**T38 ve T48 bu turda kapandı.** T38'in kodu zaten yazılmıştı; eksik olan
-altıncı bekçiydi (altın kümede kapsam, gerçek SQL'e karşı). T48 kapının
-**ikinci** elle listesini kaldırdı ve yanında iki kalem daha doğdu: T50
-(keşfedilen uzantı ↔ kompozisyon kökü) ve T53 (bu belgenin bekçisi), ikisi de
-kapandı.
+T47 sayısı bir ürün eşiği veya model ailesi karşılaştırması değildir. Küçük
+yerel modelin sabit sentetik korpustaki ilk canlı tabanıdır. Üretim adayı aynı
+korpusla yeniden ölçülür; anlamsal yerindelik bugün insanın `Trivial` / `Sound`
+incelemesindedir.
 
-### F4 — bir kalem
+---
 
-| # | Ticket | Neden açık |
-| --- | --- | --- |
-| **T47** | Kalite ölçümü | F4'ün **kabul sınavı**, cilalama değil. Tiyatro yarısı bitti (`ContradictingEvidenceVerdict` artık okunuyor, payda görünür); **atılan cümle oranı başlamadı** |
+## 4 · Açık ticket olmayan kayıtlı sınırlar
 
-**T54 kapandı** ve kapanışı bir öncülü yanlışladı. Muafiyet artık `rca_runs`'ta:
-`model_boundary` (dört değerli kapalı küme) + `model_boundary_override_reason`,
-damgası `RcaAdmission.TryStartAsync`'te ve **zorunlu bir parametre** — yani
-unutulması derlenmiyor. Ticket'ın *"kayıt zaten `RcaReportEntity`'de belge
-olarak duruyor"* gerekçesi ölçümle düştü: belgeyi hiçbir üretim kodu yazmıyor,
-dolayısıyla kolon bir kopya değil **tek gerçek kayıt**.
+Kapanmış bir faz, bütün dünya koşullarının kanıtlandığı anlamına gelmez. Aşağıdakiler
+bilinçli sınır veya gelecekte yeni karar gerektiren genişlemelerdir:
 
-Bıraktığı sınır yazılı: üretimdeki tek değer `NotEngaged`, çünkü modeli çağıran
-üretim yolu yok. `Overridden`'ın gerekçesiz var olamayacağı **tip düzeyinde**
-ölçüldü; bir üretim koşumunun `Overridden` damgalandığı **ölçülmedi**.
+- T63 süreç ve gerçek RustFS kesintisini ölçtü; **host/power kaybı** için
+  dosya sistemi ve donanım dayanıklılığı ayrıca sınanmalıdır.
+- B01/B02 yük üretme ve varış muhasebesini kurdu. B03–B05 ancak hedef donanım,
+  `auto` sürdürülebilirlik ölçütü ve üreteç yerleşimi seçildiğinde yeni ticket
+  olarak açılır; bugün verilmemiş bir ürün kararını tamamlanmış saymıyoruz.
+- F5'te metric ve trace sağlayıcıları gerekçeli, kalıcı muaf; topoloji-lite
+  envanter öznitelikleriyle sınırlı, genel ilişki grafiği değil.
+- MCP/model sınır kapıları süreç içinden ters vekilin gerçek dış erişimini
+  kanıtlayamaz; `127.0.0.1` dinleyen bir süreç dış vekille yayımlanabilir.
+- Gerçek RouterOS `/export terse` örneği yok; simülatör bilmediği sayfalama
+  davranışını gerçek cihaz olgusu diye taklit etmiyor.
+- Canlı T47 korpusu sentetik ve üç paket; eşik koymak için etiketli gerçek
+  koşum tabanı gerekir.
 
-**T44 ve T51 kapandı.** T44 iki kapıyı da kurdu; T51 raporu kalıcı yaptı ve
-sayacı ekrana çıkardı. T51'in bıraktığı sınır kayıtta: **`SaveAsync`'i hiçbir
-üretim kodu çağırmıyor** — tablo var, yol var, yazan yok.
+Bu maddeler mevcut ticket'ların eksik kabul kriterleri değil. Birinin kapsamı
+ürün gereksinimine dönüşürse yeni ticket açılır ve bu rapor yeniden değişir.
 
-### FS — kapandı
+---
 
-S06, S07 ve **S08** bu turda kapandı. S06'nın cevabı ikinci şıkla geldi ve
-ürünün gerçek bir kusuruydu: toplayıcı sayfalama açıkken **hatasız** yarım
-config alıyordu, ve fark motoru kaybı *"silinmiş yüzlerce satır"* diye
-okuyordu — yani kusur sessiz kalmıyor, **başka bir şey hakkında yalan
-söylüyordu**. S08 çekim modelini düzeltti.
+## 5 · Kapanış kalite kapıları
 
-Kalan açık kalem ticket değil **veri**: gerçek bir RouterOS cihazından tek bir
-`/export terse` çıktısı. MikroTik'in sayfalayıp sayfalamadığı bilinmiyor ve
-öykünme bilmediği bir olguyu taklit etmiyor.
-
-### F2 — bir kalem
-
-| # | Ticket | Neden açık |
-| --- | --- | --- |
-| **T49** | Dashboard container'ı | Compose'a `ui` girdi, Keycloak'ın ön/arka kanal ayrımı çözüldü. Kabul kriterlerinden **üçü** Docker istiyor ve koşulmadı: yığın kalkıyor mu · container'daki ekrandan giriş yapılabiliyor mu · e2e container'a karşı koşuyor mu. Ticket'ın öngördüğü dört sorundan **üçü çıkmadı** |
-
-### MCP — bir kalem açık, biri kısmî
-
-M01 (protokol çekirdeği + uyum kapısı), M02 (komut çekirdeği + CLI paritesi),
-M06 (redaksiyon + K6 kapısı) ve M09 (kimliğin bulunması) **kapandı**. M03
-(`bizigo-sim`), M04 (okuma araçları), M05 (RCA araçları) ve M08 (kimlik taşıma)
-main'de ve `status: 1` — dalları girdi, kabul kriterlerinin tamamının kapandığı
-ayrıca ölçülmedi. **M07** (kaynaklar ve abonelik) başlamadı.
-
-> ⚠️ Bu bölüm **düzyazı**, tablo değil — ve `EpicStatusTests`'in raporu okuyan
-> kapısı yalnızca tablo satırı görüyor. Yani buradaki bir bayatlama bekçiye
-> **görünmez**; bölüm bir kez tam olarak bu yüzden bayatladı (T61 §4.2).
-
-### F5 — kapsam kararı verildi (2026-09-05)
-
-RCA belgesinin uyarısı — *"F1–F4 bittiğinde yeniden kapsam kararı verilmeli"* —
-karşılandı. Karar: **S1 · Topoloji-lite**.
-
-| Tür | Kader |
+| Kapı | Sonuç |
 | --- | --- |
-| **Topology** | **Karşılandı, sınırıyla:** `TopologyProvider` envanter öznitelikleri (upstream · vlan · firmware) üzerinden çalışıyor. **İlişki grafiği yok** |
-| **Metric** | **Kalıcı muaf** — `EvidenceKinds.Exempt` |
-| **Trace** | **Kalıcı muaf** — K2 (ağ cihazları trace üretmiyor) |
+| Release derleme | **0 uyarı · 0 hata** |
+| .NET birim | **1711 geçti · 5 atlandı · 0 düştü** |
+| .NET entegrasyon / Testcontainers | **211 geçti · 12 atlandı · 0 düştü** |
+| Parser kataloğu | lint temiz · **62/62** örnek geçti |
+| UI | OpenAPI birebir · typecheck temiz · **520/520** test · üretim derlemesi geçti |
+| Sidecar | **52/52** pytest |
+| Sigma build | **205/205** pytest · kolon/çivi/SQL sürüklenme kapıları geçti |
+| YAML / compose | tekrarlanan anahtar yok · `docker compose config --quiet` geçti |
+| Gerçek UI container E2E | **2/2** tema koşumu geçti |
+| T47 canlı model ölçümü | açık bayrakla **1/1** geçti; varsayılan pakette bilinçli atlanıyor |
+| T63 ölçüm aracı | koşum-segment-manifest bağı için **5/5** saf Python 3.13 testi geçti |
 
-Kararı ölçüm belirledi ve ölçüm beklenmedik çıktı: RCA §3.1'in *"lift topolojiyi
-telafi ediyor"* gerekçesi **yazılmamıştı** — ne olay tablosunda ne envanterde
-VLAN/upstream/firmware vardı. Yani F5'i ertelemenin gerekçelerinden biri var
-olmayan bir telafiye dayanıyordu.
+Bağımsız kapanış incelemesi beş P2 bulgu üretti ve beşi de giderildi:
+cümle sonu kısaltmasının sonraki atfı devralması, profil süresi aşınca hedef
+EPS'in sulanması, kısa burst penceresinin uyunarak atlanması, T63'ün ilgisiz
+manifestle yeşil yanabilmesi ve boş-küme işaretinin gerçek açık ticket
+kümelerine bağlanmaması. İlk üç kusur ürün sınıflarına karşı kırmızı testle
+yeniden üretildi; düzeltmelerden sonra ilgili paket **34/34** geçti. Statü
+kapısı **13/13**, Wiki + statü hedefi **18/18** geçti; T63 ise yukarıdaki saf
+kapının ardından gerçek RustFS ile yeniden ölçüldü.
 
-**Kapanmayan boşluk kayıtta:** §4'ün ilk maddesi (*korelasyonlar çekme
-modelinde*) **S1 ile kapanmadı** ve F5'in hiçbir seçeneği onu kapatmıyordu —
-sağlayıcı sözleşmesi çekme şeklinde. Ayrıntı ve seçenekler:
-[F5 kapsam kararı](../f5-kapsam-karari/index.md).
+Sidecar koşumu ayrıca gerçek bir bağımlılık kusuru buldu: `pySigma 1.5.0`ın
+izin verdiği `pyparsing 3.3.3`, parantezli ek koşulları bozuk parse ağacında
+bırakıp beş SQL dönüşümünü düşürüyordu (`47 geçti / 5 düştü`). Aynı beş test
+`pyparsing 3.2.5` ile geçti; sürüm sidecar ve build-time hatta birlikte
+sabitlendi ve sürüm-paritesi bekçisine eklendi. Son koşumlar yukarıdaki
+`52/52` ve `205/205` sonuçlarıdır.
 
----
-
-## 3 · Koordinatörde biriken canlı doğrulamalar
-
-Bunlar ticket değil, **koşum** — ve hiçbiri bir ajana verilemez (§2):
-
-| Ne | Durum |
-| --- | --- |
-| `POST /v1/rca` ve `GET /v1/rca/quality` canlı yığına karşı | Koşulmadı |
-| Uçtan uca arşiv kurtarma, **gerçek RustFS** ile | Koşulmadı |
-| Canlı model koşumu (Ollama/vLLM) — T42 sahte `HttpMessageHandler` ile sınandı | Koşulmadı |
-| Benchmark'lar `-c Release`, **sessiz makinede** | Koşulmadı |
-
-Dördü de aynı sınıfa giriyor: bugün **çalıştığı varsayılıyor**, ölçülmedi.
-
----
-
-## 4 · Yazılı duran bilinen boşluklar
-
-Bunlar ticket değil, **kayda geçmiş sınırlar**. Kapatılmaları ayrı karar
-gerektiriyor:
-
-- **Korelasyonlar çekme modelinde.** Beş korelasyon *"sorarsan görüyorum"*
-diyor, *"bir şey oldu"* diyemiyor. Ürünün **push modda anomali tespiti yok**
-ve F4 bittiğinde de olmayacak.
-- **Eşzamanlı uç slot muhasebesine girmiyor** (T46). `MaxConcurrentGlobal`
-bugün yalnızca takvim işçisinin tavanı.
-- **Kuyruktan devralma tek örnek varsayıyor** (T46). İki API örneği aynı satırı
-devralabilir; çözümü koşullu güncelleme ama ölçmeden yazmak sınanmamış bir
-kilit eklemek olurdu.
-- **`model_boundary_override_reason` koşum kaydına bağlanmadı** (T42). Muafiyet
-yapılandırmada görünüyor, **raporda görünmüyor** — muafiyetin sessiz olduğu
-hâle yakın.
-- **Entropi terfisi** (T41). Gölge katman ölçüldü: 96 belirtecin 59'u aday, ve
-listenin başında **FortiGate imza adları** var. Terfi ayrı bir ticket ve
-**bu iki sayıyla açılmalı**.
-- **Kalan beş plugin sabiti** (§8.1). `lead: 30m`, `max_items: 400`,
-`max_duration: 60s`, hipotez `3`, aksiyon `2` — işaretli, ölçülmedi.
-- **"Konteyner gerekmiyor" ayrımı bir bekçiye çevrilebilir mi?** Bugün yalnızca
-okuma disiplinine bağlı, ve bu depoda okuma disiplinine bağlanan kurallar
-tekrar tekrar kaybetti.
-
----
-
-## 5 · Sıra önerisi
-
-**Kritik yol MCP'nin M01'i** — M02–M08 ona bağlı ve MCP en geniş yeni yüzey.
-
-Paralel gidebilecekler (kesişmeleri yok):
-
-```
-M01 ──► M02 ──► M04 ──► M05 ──► M06 ──► M07/M08
-  └───► M03
-
-T44 ──► T47
-T38 ──► T47
-T32 (bağımsız)
-T48 (bağımsız)
-T49 (bağımsız)
-S06 ──► S07
-```
-
-**T47 iki koldan besleniyor** (T44 ve T38) ve F4'ün kabul sınavı — yani
-F4'ün kapanışı en geç o.
-
-**F5'in kapsam kararı** F1–F4 kapandığında verilecek; bugün karar vermek
-için erken ve belgenin kendi uyarısı bu.
-
----
-
-## 6 · Bu raporun bilmediği şey
-
-**Ticket `status` alanları bayatlıyor.** Bu raporu yazarken FS'in beş
-ticket'ının durumu gerçekle uyuşmuyordu — S04 ve S05 kapanmıştı, `0`
-görünüyorlardı. Düzelttim, ama **mekanizma yok**: alanları güncel tutan bir
-bekçi olmadığı sürece bir sonraki rapor da aynı düzeltmeyi yapacak.
-
-Bu, `WikiSourceDigestTests`'in vault için çözdüğü sorunun ticket
-katmanındaki karşılığı ve **çözülmedi**.
-
-**T45 ve T46'nın ticket dosyası hiç yazılmadı** — kapsamları
-`tickets-f4/index.md`'nin tablosunda ve brief'lerde yaşadı. İkisi de kapandı,
-ama kararları ticket dosyası yerine ajan raporlarında duruyor.
+Commit/push yapılmadı; ikisi de ayrıca kullanıcı onayı gerektirir.

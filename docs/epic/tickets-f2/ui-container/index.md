@@ -1,7 +1,7 @@
 ---
 title: "T49 — Dashboard container'ı: yığının tamamı tek komutla kalkıyor mu?"
 kind: ticket
-status: 1
+status: 2
 ---
 
 # T49 — Dashboard compose'a giriyor
@@ -160,10 +160,9 @@ imaj gerçekten derlendiğinde görünürdü.
 
 ### Bu turda ölçülmeyenler
 
-Kabul kriterleri **1, 2 ve 3** koşturulmadı: yığını kaldırmak, container'daki
-ekrandan giriş yapmak ve uçtan uca harness'ı container'a karşı koşturmak
-Docker istiyor ve §2 onu koordinatöre veriyor. Yeşil gösterilmiyor; `status`
-bu yüzden **1**.
+Bu paragraf uygulama ajanının teslim anındaki durumu kaydeder. Koordinatör
+koşumu daha sonra yapıldı; sonuç §6.2'de. Bu tarihsel not artık ticket'ı açık
+tutmuyor.
 
 `ui` servisinin sağlık kontrolü ölçütü `< 500` ve dayandığı varsayım —
 oturumsuz isteğin kök sayfadan giriş akışına yönlenmesi (3xx) — **doğrulanmadı**.
@@ -190,5 +189,28 @@ belirti ilk giriş denemesinde çıkar. Sondaya çerez koymak bunu çözmüyor
 o bu ticket'ın kapsamı dışında bırakıldı — kapsam gerekçesi yukarıda, sağlık
 kontrolü yorumunda.
 
-Yani üç kabul kriterinin koşturulması hâlâ eksik; bu bölüm yalnızca *"yeşile
-dönmezse nereye bakılacak"* sorusunu bir tahminden bir kod yoluna çeviriyor.
+Bu kod okumasından sonra gerçek yığın da koşturuldu; aşağıdaki sonuçlar
+bu paragrafın ölçüm boşluğunu kapatıyor.
+
+## 6.2 · Koordinatörün canlı container koşumu — tamamlandı
+
+Makinede ilgisiz bir Next geliştirme süreci 3000 portunu kullanıyordu; o
+süreç durdurulmadı. Compose'un desteklediği `UI_PORT=3001` /
+`BFF_PUBLIC_URL=http://localhost:3001` ayarı kullanıldı ve Playwright'a
+`E2E_UI_PORT=3001` geçildi. Varsayılan hâlâ 3000'dir; geçersiz port değeri
+başlangıçta reddedilir.
+
+Koşum sonuçları:
+
+| Kabul | Canlı sonuç |
+| --- | --- |
+| `docker compose --profile api up -d --wait` | UI dahil bütün yığın sağlıklı |
+| Container ekranından giriş | Gerçek Keycloak authorization-code akışıyla `analyst.core` girişi başarılı |
+| Container E2E | `npm run e2e:container` → **2/2** tema turu geçti; olaylar, kaynaklar, yetki kartı, katalog, alarmlar, değişiklikler, RCA, ana sayfa ve olay detayı gerçek API/veriyle gezildi |
+| Compose söz dizimi | `docker compose config --quiet` temiz |
+| Yerel varsayılan | `E2E_UI_PORT` verilmezse 3000; mevcut `e2e`/`dev` sözleşmesi değişmedi, tip kontrolü geçti |
+
+Canlı koşum bir başka gerçek kusuru yakaladı: middleware
+`/api/health/ready` isteğini girişe 307 ile yönlendiriyordu. Rota matcher'dan
+`api/health` çıkarıldı ve bunun için yapısal bekçi eklendi; hedefli UI paketi
+**15/15** geçti.

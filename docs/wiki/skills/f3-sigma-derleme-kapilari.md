@@ -21,7 +21,7 @@ sources:
   - docs/epic/tickets-f3/sigma-pipeline/index.md
   - docs/epic/sigma-clickhouse-arastirmasi/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=3927d9fc6d4a docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=ca8f23c25262 docs/epic/tickets-f3/sigma-derleme/index.md=3ab7c1bd87a4 docs/epic/tickets-f3/sigma-pipeline/index.md=6d7c85d5a5f1"
+source_digest: "sha256-12/v1 CLAUDE.md=3927d9fc6d4a docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/t30-sigma-olcumu/index.md=c3b32df8f602 docs/epic/t32-derleme-tasarimi/index.md=42c3d1bc19a8 docs/epic/tickets-f3/sigma-derleme/index.md=086e7819f062 docs/epic/tickets-f3/sigma-pipeline/index.md=6d7c85d5a5f1"
 summary: Derlendi ile koşuyor ve doğru şeyi buluyor üç ayrı iddia; her biri farklı bir yerde sınanıyor çünkü tek yere koymak yakalayamadığı sınıfı sessizce geçiriyor.
 provenance:
   extracted: 0.85
@@ -283,8 +283,10 @@ duruyor.
 | 7 | Kriter D (canlı ClickHouse + altın örnek) | koordinatör |
 
 **Korpus değişir, hat değişmez.** Ve değişti: korpus T30 prototipinden terfi
-ettirildi, hat dokunulmadan kaldı — 21 kural derleniyor, 3'ü `gated`, Kapı 3
-canlıda sekiz beyanın sekizini geçirdi.
+ettirildi, hat dokunulmadan kaldı — 21 kural derleniyor, 3'ü `gated`. Kapı 3
+canlıda o günkü sekiz beyanın sekizini geçirdi. Beklenti kümesi bugün 19
+kalemdir (7 `at_least_one`, 12 `none`) ve bu yeni küme canlıda yeniden
+doğrulanmış değildir; sayılar çevrimdışı bir bekçiyle çivilidir.
 
 ## Dördüncü eksen: kapının kendi maliyeti
 
@@ -327,6 +329,13 @@ kapısı **aynı makinede** ölçüldü ve karesel terimi buldu. Ölçülemeyen 
 Süre ölçümü (`sigma_build.cost`) tek sayı üretmiyor, deftere **ekliyor** — K35'te
 aynı ölçüm ajanda 1,46×, koordinatörde 1,62× çıkmıştı ve üstüne yazan bir defter
 ayrışmanın kendisini, yani makinenin sessiz olmadığının kanıtını silerdi.
+
+Sessiz kaynak kapısından geçen ilk iki gerçek Python 3.13 koşumu artık var
+(2026-09-21). 24→269 kural için kural başına maliyet oranı sırasıyla `1,067×`
+ve `1,013×`; 269 kuralın maliyeti `0,3962 ms/kural` ve `0,3818 ms/kural`.
+Kurulum ilk koşumda `873,257 ms`, ikinci koşumda önbellekle `95,214 ms` idi ve
+bilerek paydaya girmedi. Bu sayılar süreyi CI kapısına dönüştürmüyor; yalnızca
+T32'nin canlı maliyet tabanını kapatıyor.
 
 ## Kaynaklar
 

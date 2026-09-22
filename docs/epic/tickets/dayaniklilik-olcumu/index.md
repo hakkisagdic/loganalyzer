@@ -1,23 +1,23 @@
 ---
 title: "T63 — Dayanıklılık kriterinin ÖLÇÜMÜ"
 kind: ticket
-status: 0
+status: 2
 ---
 
-# T63 — "kill -9" taklit ediliyor, "RustFS durdurulur" hiç ölçülmüyor
+# T63 — süreç ölümü ve RustFS kesintisi gerçek bileşenlerle ölçüldü
 
 F1'in dayanıklılık kabul kriteri şu:
 
 > Süreç `kill -9` ile öldürülür; ack'lenen hiçbir olay kaybolmaz. RustFS
 > durdurulur; ingest devam eder.
 
-M19'un F1 taramasında ölçüldü: **iki yarısı da karşılandığı gösterilmemiş.** Bu
-ticket ölçümü değil **ölçümün protokolünü** yazıyor — koşumu koordinatör yapacak
-(§2: container gerektiren her şey onun tarafında).
+M19'un F1 taramasında **iki yarının da karşılandığının gösterilmediği** bulundu.
+Ticket önce ölçüm protokolünü yazdı; iki gerçek koşum da koordinatör tarafından
+tamamlandı (§2: container gerektiren her şey onun tarafında).
 
 ## 1 · Bugünkü hâl — ölçüldü
 
-### Birinci yarı: `kill -9` **taklit** ediliyor
+### Birinci yarı: `kill -9` önce yalnız **taklit** ediliyordu
 
 `tests/Bizigo.UnitTests/WriteAheadLogTests.cs` bu kriteri kendi başlığında
 sahipleniyor (satır 9: *"T03 kabul kriteri: `kill -9` altında ack'lenmiş hiçbir
@@ -38,7 +38,7 @@ olarak işletim sistemi tamponunda bekleyen ve diske hiç inmemiş veri — yani
 *"ack verdik ama veri diskte değil"* hâli. Ürünün en merkezî iddiası
 (**ham veri her şeyden önce gelir**) tam orada duruyor.
 
-### İkinci yarı: hiç ölçülmüyor
+### İkinci yarı: önce hiç ölçülmüyordu
 
 *"RustFS durdurulur; ingest devam eder"* — bunu ölçen **hiçbir test yok**.
 Arandı: `tests/` altında object storage'ı durdurup ingest'in devam ettiğini
@@ -218,6 +218,29 @@ biriktiği.
    (*"doğrulanmamış segment asla silinmez"*) ve depo kesintisi o sözün en
    olası kırılma anı.
 
+### 4.4 · ÖLÇÜLDÜ — gerçek compose kesintisi
+
+`tools/t63-rustfs-outage-olcumu.py` çalışan compose yığını kullandı;
+taklit depo ya da doğrudan sınıf çağrısı yoktu. Bağımsız incelemede ilk
+sürümün küresel manifest artışını bu koşumun kanıtı sayabildiği bulundu. Araç
+bunun üzerine koşumda büyüyen WAL segmentini seçip segmentin gerçek kayıt
+sayısını aynı segmentin manifest toplamına bağlayacak biçimde sertleştirildi ve
+canlı ölçüm yeniden yapıldı.
+
+| Adım | Sonuç |
+| --- | --- |
+| `rustfs` gerçekten durduruldu | container durdu, API çalışmayı sürdürdü |
+| 3 batch × 4 kayıt | **12 ack** |
+| Sayaç farkı | `AcceptedBatches +3`, `AcceptedRecords +12`, `RejectedFull +0` |
+| API durdurulup açık segment mühürlendiğinde | bu koşumda büyüyen `wal-0000000002.log`; gerçek WAL gövdelerinde **12 kayıt**; bu segmente ait manifest `0` |
+| RustFS + API geri geldiğinde | aynı segment için `segment=1`, `manifest=1`, `verified_at=1`, doğrulanmamış `0` |
+| Kayıt birebirliği | manifest `event_count=12`, WAL kayıt sayısı `12` |
+| İlgisiz eski segment olumsuz kapısı | **5/5 saf araç testi geçti**; küresel `manifest +1` tek başına başarı değil |
+
+Koşum sonunda API, RustFS ve yığının diğer servisleri yeniden
+`healthy` durumundaydı. Araç hata alsa bile iki container'ı geri kaldıran
+`finally` yolu taşıyor; volume silmiyor ve yığını yeniden yaratmıyor.
+
 ## 5 · Kabul kriterleri
 
 1. ✅ **KARŞILANDI (ölçüldü).** Gerçek bir süreç `SIGKILL` ile öldürülüyor ve
@@ -228,17 +251,18 @@ biriktiği.
    süreci öldürmek baytları sayfa önbelleğinden silmiyor. fsync'in koruduğu şey
    makinenin ölümü, sürecin değil. Bu kriter host düzeyi arıza enjeksiyonu
    istiyor ve **kapsam dışına** alındı.
-3. Object storage durdurulmuşken ack alınıyor ve devam bir **sayaçtan** okunuyor.
-4. Depo geri geldiğinde arşiv yetişiyor ve `verified_at` doluyor.
+3. ✅ Object storage durdurulmuşken ack alındı ve devam
+   **sayaçtan** okundu: +3 batch / +12 kayıt / `RejectedFull +0`.
+4. ✅ Depo geri geldiğinde bu koşumda büyüyen segment arşive yetişti:
+   `verified_at` doldu, doğrulanmamış manifest kalmadı ve manifestteki
+   `event_count` gerçek WAL kayıt sayısıyla **12/12** eşleşti.
 5. ✅ **YAPILDI.** `WriteAheadLogTests`'in başlığındaki iddia **daraltıldı**: o
    test yarım çerçeve okumasını ölçüyor, `kill -9`'u değil. Test kaldı, iddia
    küçüldü, ve gerçek `kill -9`'un T63'te olduğu yazıldı.
 
-6. **F1 kriterinin metni de düzeltilecek** (koordinatörde): *"süreç `kill -9` ile
-   öldürülür; ack'lenen hiçbir olay kaybolmaz"* **fsync olmadan da** karşılanıyor,
-   yani kriter ürünün dayanıklılık iddiasını ölçmüyor. Kriter iki cümleye
-   ayrılmalı: sıralama (ölçüldü, geçiyor) ve dayanıklılık (ölçülmedi, host
-   düzeyi arıza gerektiriyor).
+6. ✅ F1 kriteri sıralama / fsync / depo kesintisi olarak ayrıldı.
+   Depo kesintisi satırı da bu gerçek koşumun sonucu ve WAL kapasitesi
+   sınırıyla güncellendi.
 
 ## 6 · Bilinen sınırlar
 

@@ -25,7 +25,7 @@ F1 şu cümle doğru olduğunda biter:
 | Kapsam | Kapsam dışı sorgu **ürün yüzeylerinin hiçbirinden** (REST, MCP, arayüz) veri döndürmez. Replay okuma ve CLI **kapsam dışı**, gerekçeleri [F1 kapsam kriteri düzeltmesi](../f1-kapsam-kriteri-duzeltmesi/index.md)'nde |
 | Dayanıklılık — **sıralama** | Süreç `kill -9` ile öldürülür; ack'lenen hiçbir olay kaybolmaz. **ÖLÇÜLDÜ, geçiyor** (T63) |
 | Dayanıklılık — **fsync** | Baytların gerçekten diskte olması. **ÖLÇÜLMEDİ** ve `kill -9` ile ölçülemez — gerekçe aşağıda |
-| Dayanıklılık — **depo kesintisi** | RustFS durdurulur; ingest devam eder. **ÖLÇÜLMEDİ**, ve *"devam eder"*in bir son tarihi var (aşağıda) |
+| Dayanıklılık — **depo kesintisi** | RustFS durdurulur; ingest WAL kapasitesi dolana kadar devam eder. **ÖLÇÜLDÜ, geçiyor**: 3 batch/12 kayıt ack, depo dönüşünde manifest doğrulandı (T63) |
 | Arşiv bütünlüğü | Manifest'ten silinen nesne replay'de **sessizce atlanmaz**, hata olur |
 | Çok dillilik | Türkçe/Arapça/Çince gövdeli log doğru kodlamayla saklanır ve aranır |
 

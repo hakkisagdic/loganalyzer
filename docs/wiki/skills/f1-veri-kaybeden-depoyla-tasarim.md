@@ -20,7 +20,7 @@ sources:
   - docs/epic/tickets/replay/index.md
   - docs/epic/f1-kapanis/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=3927d9fc6d4a docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=85c9e2a69f47 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/tickets/ham-arsiv-kurtarma/index.md=791799eef7a1 docs/epic/tickets/ham-arsiv/index.md=f7b6e1d7e3a0 docs/epic/tickets/replay/index.md=a6e378b9614b"
+source_digest: "sha256-12/v1 CLAUDE.md=3927d9fc6d4a docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=543a0c1a9b24 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/tickets/ham-arsiv-kurtarma/index.md=791799eef7a1 docs/epic/tickets/ham-arsiv/index.md=f7b6e1d7e3a0 docs/epic/tickets/replay/index.md=a6e378b9614b"
 summary: Olgunlaşmamış bir nesne deposu (RustFS 1.0-beta) replay'in tek kaynağıyken tasarımın veri kaybını varsayması gerekiyor. Beş koruma, en değerlisi manifest — ve T40'ın gösterdiği şey belgelenmiş bir korumanın mekanizmasız kalabildiği.
 provenance:
   extracted: 0.87
@@ -157,6 +157,9 @@ bekçi düştü, sonra düzeltme kondu (`CLAUDE.md` §6).
 
 ## Açık kalan
 
+- Gerçek RustFS **kesinti ve geri geliş** sırası T63'te ölçüldü: 12 kayıt WAL'a
+  alındı, depo dönünce tek doğrulanmış manifest üretildi. Bu, T40'ın farklı
+  sorusu olan **kaybolmuş nesneyi WAL'dan yeniden kurma** koşumu değildir.
 - Scrub örnekleme oranı ve saklama süresi hâlâ **ölçülmedi**; T40 yalnızca
   ilişkiyi görünür kıldı, doğru sayıları gerçek arşiv boyutuyla seçmek ayrı iş.
 - Uçtan uca kurtarma gerçek RustFS'e karşı koşturulmadı.

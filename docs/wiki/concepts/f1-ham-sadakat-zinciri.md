@@ -22,7 +22,7 @@ sources:
   - docs/epic/tickets/replay/index.md
   - docs/epic/tickets/iskelet-ve-ci/index.md
   - docs/epic/tickets/depolama-ve-kapsam-kapisi/index.md
-source_digest: "sha256-12/v1 docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=85c9e2a69f47 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/tickets/depolama-ve-kapsam-kapisi/index.md=7a1070c1c1da docs/epic/tickets/ham-arsiv/index.md=f7b6e1d7e3a0 docs/epic/tickets/ingest-boru-hatti/index.md=bc2d3270ace8 docs/epic/tickets/iskelet-ve-ci/index.md=b0acf06b322b docs/epic/tickets/normalizasyon/index.md=74d881911e1b docs/epic/tickets/replay/index.md=a6e378b9614b"
+source_digest: "sha256-12/v1 docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=543a0c1a9b24 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/tickets/depolama-ve-kapsam-kapisi/index.md=7a1070c1c1da docs/epic/tickets/ham-arsiv/index.md=f7b6e1d7e3a0 docs/epic/tickets/ingest-boru-hatti/index.md=bc2d3270ace8 docs/epic/tickets/iskelet-ve-ci/index.md=b0acf06b322b docs/epic/tickets/normalizasyon/index.md=74d881911e1b docs/epic/tickets/replay/index.md=a6e378b9614b"
 summary: Cihazdan replay'e uzanan bayt zincirinin her halkası ayrı bir kararla tutuluyor; bir halka koparsa zincirin tamamı değersiz oluyor ve kopuş hiçbir belirti üretmiyor.
 provenance:
   extracted: 0.88
@@ -125,6 +125,14 @@ kendi kuyruğumuz yazılmıyor.
 > İkinci sınır: *"RustFS kesintisi ingest'i durdurmaz"* iddiasının bir **son
 > tarihi** var. WAL `MaxTotalBytes` **8 GiB**; dolunca `WalFullException` ve ack
 > **duruyor**. Dayanma süresi = 8 GiB ÷ ingest hızı, ve o hız ölçülmemiş.
+>
+> Depo kesintisinin bugünkü sınırı gerçek RustFS ile ölçüldü (2026-09-21):
+> RustFS dururken 12 OTLP kaydı ack aldı, `AcceptedBatches +3` ve
+> `AcceptedRecords +12` oldu, `RejectedFull` artmadı; üç WAL çerçevesi API
+> yeniden başlatmasından sonra da kaldı. Depo geri geldiğinde tek manifest
+> üretildi ve doğrulandı, doğrulanmamış manifest kalmadı. Bu sonuç **kapasite
+> sınırını kaldırmıyor**; yalnızca sınır dolmadan önceki kesinti/toparlanma
+> davranışını kanıtlıyor.
 
 K28 bu halkayı bir sonrakine dikiyor: **WAL yükü = arşiv satırı.** Tek NDJSON
 formatı, tek codec. Böylece yükleyici bir dönüştürücü değil **kopyalayıcı**

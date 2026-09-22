@@ -1,15 +1,22 @@
 ---
 title: "MCP — İki yüzey, tek protokol: Implementasyon Ticket'ları"
 kind: story
-status: 1
+status: 2
 ---
 
 # MCP Implementasyon Ticket'ları
 
-[MCP teknik plan](../mcp-teknik-plan/index.md) sekiz ticket'a bölündü.
+[MCP teknik plan](../mcp-teknik-plan/index.md) başlangıçta sekiz ticket'a
+bölündü; kimlik, topoloji/kota ve abonelik bulguları M09–M20 aralığında yeni
+ticket'lar doğurdu.
 Yöneten kararlar: **K6** (log verisi kurumdan çıkmaz) · **K15** (yerel model
 kısıtı) · **K20** (dış API tetikleyicisi) · T41 (redaksiyon tabanı) · T42
 (model sınırı kapısı).
+
+**Kapanış (2026-09-21):** bütün MCP ticket'ları kapandı. Kaynak/abonelik,
+kimlik, kapsam, iki taşıma ve ürün grafiği dâhil hedefli son koşum 78 birim ve
+5 entegrasyon testiyle geçti; ürün grafiği fixture'ı artık kendi ClickHouse
+şemasını kuruyor ve test sırasına bağlı değil.
 
 ## Dilimleme mantığı
 
@@ -205,11 +212,12 @@ metni**. On beş araç bugünkü ortalamayla **≈2900 belirteç** eder ve bu **
 bağlamda** taşınıyor — yani açıklama uzunluğu bir üslup tercihi değil bir
 bütçe kalemi. Sayı M03/M04/M05/M07 belgelerine tasarım kısıtı olarak girdi.
 
-> Bu iki satır M01'in **birleşmemiş** dalından geliyor; sabitler değişirse
-> buradaki sayılar da değişir.
+Bu iki satır bugünkü ağaçta uyum kapılarıyla korunuyor; artık birleşmemiş dal
+iddiası değiller.
 
-## Bu belgenin hâlâ bilmediği şey
+## Kapanan son belirsizlik
 
-**`notifications/cancelled` bugün var mı.** Bitti tanımı §3 ona bağlı. M01'in
-`BizigoMcpServer.cs`'inde arandı ve **bulunamadı** — ama *"yok"* ile *"başka
-dosyada"* ayırt **edilmedi**. M01'e soruldu, cevap bekleniyor.
+`notifications/cancelled` desteği taşıma yüzeyinde ve uzun sorgu iptalinde
+ölçüldü; §3 bu nedenle karşılandı. M07'nin abonelik akışı ayrıca bildirimleri
+abonelik kimliğiyle etiketliyor, kapsam dışı durumları süzüyor ve akış
+kapanınca kaydı kaldırıyor; `list_changed` davranışı korunuyor.

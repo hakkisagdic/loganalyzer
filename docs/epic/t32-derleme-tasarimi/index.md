@@ -1032,12 +1032,13 @@ yolunu** ölçerdi. İki yol farklı maliyet, ve fark hiçbir yerde görünmezdi
 
 ### Aracın kendisi koşuyor — süre iddiası olmadan
 
-`cost.py` bu turda **bağlayıcı olarak koşturulmadı** (makine). Ama hiç
-koşturulmamış bir araç, bu deponun *"hazırlanmış ama bağlanmamış"* sınıfına
-girerdi — `unmapped_expression()` yazılmış, hiç çağrılmamış, ve 24 kuralın 8'i
-sessizce koşmuyordu.
+`cost.py` ilk uygulama turunda makine baskısı nedeniyle bağlayıcı olarak
+koşturulmamıştı. Koordinatör compose yığını durdurup kaynak kapısı geçtikten
+sonra aracı iki kez koşturdu: 24/100/269 kuralda 0,37–0,40 ms/kural,
+ölçekleme 1,067× ve 1,013×. Tüm sentetik kurallar derlendi, ret sıfırdı.
 
 Ayrım şöyle çözüldü: aracın **kod yolları** sahte bir derleyiciyle sınanıyor
 (`tests/test_cost_tool.py`) — ısınma turu atılıyor mu, payda doğru mu, defter
-ekliyor mu, tek ölçümde oran uyduruluyor mu. Koşmayan tek şey duvar saati
-ölçümü, ve o bilinçli.
+ekliyor mu, tek ölçümde oran uyduruluyor mu. Duvar saati artık ayrı bir
+timeout kapısı değil, iki kayıtlı gözlem olarak duruyor; bağlayıcı kapı saatsiz
+ölçekleme ilişkisi olmaya devam ediyor.
