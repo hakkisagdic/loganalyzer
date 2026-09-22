@@ -40,12 +40,13 @@ const UI_DIR = fileURLToPath(new URL(".", import.meta.url));
 const REPO_DIR = fileURLToPath(new URL("..", import.meta.url));
 
 /**
- * Üç port da SABİT ve üçü de bir yerden zorunlu:
+ * Üç portun varsayılanı sabit; UI portu yalnızca aynı compose
+ * yığının başka bir host portunda doğrulanabilmesi için geçersiz kılınabilir:
  *
  * <ul>
- *   <li><b>3000</b> — realm dosyasındaki <c>redirectUris</c> birebir
- *       <c>http://localhost:3000/signin-oidc</c>. Port değişirse Keycloak
- *       dönüşü <c>invalid_redirect_uri</c> ile reddediyor.</li>
+ *   <li><b>3000</b> — varsayılan UI portu. <c>E2E_UI_PORT</c> verilirse
+ *       Playwright o host portunu kullanır; Keycloak istemcisinin aynı
+ *       redirect URI/origin için hazırlanmış olması gerekir.</li>
  *   <li><b>5080</b> — <c>deploy/.env.example</c>'daki <c>BIZIGO_ENDPOINT</c> ve
  *       <c>ui/.env.example</c>'daki <c>BIZIGO_API_URL</c> bu portu yazıyor.
  *       (Projenin <c>launchSettings.json</c>'ı 5058 diyor; o profil IDE içindir
@@ -55,7 +56,18 @@ const REPO_DIR = fileURLToPath(new URL("..", import.meta.url));
  *       zorunda, yoksa her token issuer uyuşmazlığından 401 alıyor.</li>
  * </ul>
  */
-export const UI_PORT = 3000;
+function readUiPort(): number {
+  const raw = process.env.E2E_UI_PORT?.trim() || "3000";
+  const port = Number(raw);
+
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+    throw new Error(`E2E_UI_PORT geçerli bir TCP portu olmalı; alınan: ${JSON.stringify(raw)}`);
+  }
+
+  return port;
+}
+
+export const UI_PORT = readUiPort();
 export const API_PORT = 5080;
 export const KEYCLOAK_ORIGIN = "http://localhost:8180";
 
@@ -65,8 +77,9 @@ export const KEYCLOAK_ORIGIN = "http://localhost:8180";
  * <h3>Neden aynı testler, iki hedef</h3>
  *
  * <p>
- * Testler ikisinde de <b>birebir aynı</b> ve portlar da aynı — container'lar
- * 3000 ve 5080'i dışarı veriyor. Değişen tek şey <b>kimin başlattığı</b>:
+ * Testler ikisinde de <b>birebir aynı</b>. Varsayılan portlar da aynı;
+ * container UI host portu doluysa <c>E2E_UI_PORT</c> ile yalnızca o eşleme
+ * değiştirilebilir. Esas fark <b>kimin başlattığı</b>:
  * yerelde Playwright iki sunucu açıyor, container kipinde ikisi zaten ayakta.
  * İkinci bir test paketi yazmak, aynı iddiaların iki kopyasını doğururdu ve
  * ayrıştıkları gün hangisinin doğru olduğu bilinemezdi (§9).

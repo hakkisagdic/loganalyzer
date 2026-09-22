@@ -133,7 +133,10 @@ async function signIn(page: Page): Promise<void> {
   await page.locator("#username").fill(USER);
   await page.locator("#password").fill(PASSWORD);
   await page.locator("#kc-login").click();
-  await page.waitForURL(/localhost:3000\/olaylar/, { timeout: 60_000 });
+  await page.waitForURL(
+    (url) => url.hostname === "localhost" && url.pathname === "/olaylar",
+    { timeout: 60_000 },
+  );
 }
 
 /**

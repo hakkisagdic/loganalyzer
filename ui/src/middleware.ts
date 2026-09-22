@@ -33,9 +33,12 @@ export const config = {
    * Muaf tutulanlar:
    *   /api/auth/*  — giriş ve çıkış akışının kendisi
    *   /api/bff/*   — vekil; oturumsuz isteğe 401 JSON dönüyor, yönlendirme değil
+   *   /api/health/* — kimliksiz container hazırlık sondası
    *   /signin-oidc — OIDC dönüş ucu; çerez tam burada yazılıyor
    *   /giris       — giriş sayfası
    *   /_next/*     — derleme çıktısı
    */
-  matcher: ["/((?!api/auth|api/bff|signin-oidc|giris|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!api/auth|api/bff|api/health|signin-oidc|giris|_next/static|_next/image|favicon.ico).*)",
+  ],
 };
