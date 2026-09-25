@@ -10,7 +10,7 @@
 # So the total lives here, and heavy work is announced before it starts.
 #
 #   machine-resources.sh report            what the machine is doing, and whose
-#   machine-resources.sh check [gb]        exit 1 if there is not enough room
+#   machine-resources.sh check [free-memory-percent]        exit 1 if there is not enough room
 #   machine-resources.sh claim <label> <description>
 #   machine-resources.sh release <label>
 #   machine-resources.sh mine              what this session has claimed
@@ -19,6 +19,8 @@
 # tell who to talk to instead of killing something it does not understand.
 
 set -u
+set -o pipefail
+OS=$(uname -s)
 REG="$HOME/.claude/machine-resources.d"
 MIN_FREE_PCT=${MIN_FREE_PCT:-15}
 # Free disk, in GiB. Absolute, not a percentage: this volume is 228 GiB, so 95%
@@ -47,7 +49,28 @@ mkdir -p "$REG"
 # check read 1.1 GB free while the system reported 47%, and nearly killed a
 # healthy batch on the strength of it.
 free_pct () {
-  memory_pressure 2>/dev/null | awk '/free percentage/{gsub(/%/,"",$NF); print $NF; found=1} END{if(!found) print 100}'
+  case "$OS" in
+    Darwin)
+      memory_pressure 2>/dev/null | awk '/free percentage/{gsub(/%/,"",$NF); print $NF}'
+      ;;
+    Linux)
+      # MemAvailable includes reclaimable cache; MemFree alone understates room.
+      cat /proc/meminfo | awk '
+        $1=="MemTotal:" && $2 ~ /^[0-9]+$/ && $3=="kB" {total=$2}
+        $1=="MemAvailable:" && $2 ~ /^[0-9]+$/ && $3=="kB" {available=$2; found=1}
+        END {if (total>0 && found && available<=total) printf "%.0f\n", int(100*available/total); else exit 1}'
+      ;;
+    *) return 1 ;;
+  esac
+}
+# Missing commands, failed reads and malformed samples must close the gate.
+metric () {
+  local value
+  if ! value=$("$@") || ! [[ "$value" =~ ^[0-9]+$ ]]; then
+    echo "cannot measure $1 on $OS; resource check refused" >&2
+    return 1
+  fi
+  printf '%s\n' "$value"
 }
 # $HOME, $TMPDIR and /private/tmp all live on the same data volume here, so one
 # reading covers every place an agent writes.
@@ -57,7 +80,8 @@ free_pct () {
 # 2026-09-05 outage reported "100%" on a machine that had 15 GiB free. $HOME
 # resolves to /System/Volumes/Data, which is the volume that actually fills.
 free_gb () {
-  df -g "$HOME" 2>/dev/null | awk 'NR==2{print $4+0}'
+  # POSIX output keeps one filesystem per line and uses KiB on both platforms.
+  df -Pk "$HOME" 2>/dev/null | awk 'NR==2 && $4 ~ /^[0-9]+$/ {printf "%.0f\n", int($4/1048576)}'
 }
 swap_used_pct () {
   sysctl -n vm.swapusage 2>/dev/null | awk '{gsub(/M/,"",$3); gsub(/M/,"",$6);
@@ -81,17 +105,26 @@ swap_used_pct () {
 # It closed it on two batches at once, and neither had done anything wrong.
 # A median ignores one burst and still catches sustained thrash, which is the
 # only kind worth refusing work over.
+swapins () {
+  case "$OS" in
+    Darwin) vm_stat 2>/dev/null | awk '/Swapins/{gsub(/\./,"",$NF); print $NF}' ;;
+    Linux) cat /proc/vmstat | awk '$1=="pswpin" {print $2}' ;;
+    *) return 1 ;;
+  esac
+}
 swapin_rate () {
   local prev cur s
-  prev=$(vm_stat 2>/dev/null | awk '/Swapins/{gsub(/\./,"",$NF); print $NF}')
+  prev=$(metric swapins) || return 1
   s=""
   for _ in 1 2 3 4; do
     sleep 1
-    cur=$(vm_stat 2>/dev/null | awk '/Swapins/{gsub(/\./,"",$NF); print $NF}')
-    s="$s$(( ${cur:-0} - ${prev:-0} ))\n"
+    cur=$(metric swapins) || return 1
+    # A counter reset is not evidence of zero paging pressure.
+    [ "$cur" -ge "$prev" ] || return 1
+    s="$s$(( cur - prev ))\n"
     prev=$cur
   done
-  printf "$s" | sort -n | sed -n '2p'
+  printf '%b' "$s" | sort -n | sed -n '2p'
 }
 
 # A claim whose process is gone is stale; nobody is coming back to release it.
@@ -138,7 +171,7 @@ case "${1:-report}" in
     prune
     # Disk first: a machine short on memory runs slowly, a machine out of disk
     # cannot run at all, and its failures do not name their cause.
-    d=$(free_gb)
+    d=$(metric free_gb) || exit 1
     if [ "${d:-0}" -lt "$MIN_FREE_GB" ]; then
       echo "machine has ${d} GiB free disk, wanted ${MIN_FREE_GB} GiB" >&2
       echo "This is not a slowdown. At zero the harness cannot write its own" >&2
@@ -153,7 +186,7 @@ case "${1:-report}" in
       exit 1
     fi
     want=${2:-$MIN_FREE_PCT}
-    f=$(free_pct)
+    f=$(metric free_pct) || exit 1
     if [ "$f" -lt "$want" ]; then
       echo "machine has ${f}% memory free, wanted ${want}%" >&2
       echo "claims currently held:" >&2
@@ -165,7 +198,7 @@ case "${1:-report}" in
       echo "Talk to whoever holds these before killing anything." >&2
       exit 1
     fi
-    r=$(swapin_rate)
+    r=$(metric swapin_rate) || exit 1
     if [ "$r" -gt "$MAX_SWAPIN_RATE" ]; then
       echo "machine is paging at ${r} swap-ins/sec, ceiling ${MAX_SWAPIN_RATE}" >&2
       echo "Memory reads free, but the machine is fetching it back off disk faster" >&2
