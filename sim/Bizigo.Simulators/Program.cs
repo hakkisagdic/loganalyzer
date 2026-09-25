@@ -201,7 +201,14 @@ if (paceName is not null)
         BatchSize = batch,
         PayloadMode = payload,
         GeneratorOnSameHost = sameHost,
+        Port = Arg("--port") is null ? null : PositiveInt("--port", 5140),
     };
+
+    if (Arg("--transport") is { } transport)
+    {
+        if (transport is not ("tcp" or "udp")) throw new ArgumentException("--transport must be tcp or udp.");
+        profile.Syslog!.Transport = transport;
+    }
 
     Console.WriteLine(
         $"· kapasite {pace.Name}: run={runId}, {connections} bağlantı, batch={batch}, {payload}");

@@ -58,12 +58,13 @@ public static class WireDropReader
     public static LedgerReading Read(
         int udpPort,
         Func<string?> linuxProcNetUdp,
-        Func<string?> windowsNetstat)
+        Func<string?> windowsNetstat,
+        OSPlatform? platform = null)
     {
         ArgumentNullException.ThrowIfNull(linuxProcNetUdp);
         ArgumentNullException.ThrowIfNull(windowsNetstat);
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        if (platform is null ? RuntimeInformation.IsOSPlatform(OSPlatform.Linux) : platform == OSPlatform.Linux)
         {
             var text = linuxProcNetUdp();
 
@@ -72,7 +73,7 @@ public static class WireDropReader
                 : ParseProcNetUdp(text, udpPort);
         }
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        if (platform is null ? RuntimeInformation.IsOSPlatform(OSPlatform.Windows) : platform == OSPlatform.Windows)
         {
             var text = windowsNetstat();
 

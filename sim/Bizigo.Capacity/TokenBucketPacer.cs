@@ -150,7 +150,8 @@ public sealed class TokenBucketPacer
     {
         Refill();
 
-        if (_tokens >= 1.0)
+        // Integral arithmetic at a rate boundary may leave a sub-ulp deficit.
+        if (_tokens >= 1.0 - 1e-12)
         {
             _tokens -= 1.0;
             Granted++;
@@ -187,7 +188,9 @@ public sealed class TokenBucketPacer
             wait = Min(wait, untilFinished);
         }
 
-        return wait;
+        // A sub-tick delay can round to zero without granting a token. Zero
+        // means permission to emit, so preserve a positive wait in that case.
+        return wait > TimeSpan.Zero ? wait : TimeSpan.FromTicks(1);
     }
 
     private static TimeSpan Min(TimeSpan left, TimeSpan right) =>

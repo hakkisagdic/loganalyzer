@@ -25,7 +25,8 @@
   -->
 
   <PropertyGroup>
-    <OutputType>Library</OutputType>
+    <!-- Also hosts the private process-session supervisor; remains referenceable. -->
+    <OutputType>Exe</OutputType>
   </PropertyGroup>
 
 </Project>

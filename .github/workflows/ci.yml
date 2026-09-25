@@ -205,6 +205,32 @@ jobs:
         working-directory: ui
         run: npm run build
 
+  capacity:
+    name: Capacity — process boundaries and mutation gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: .NET SDK kur
+        run: |
+          curl -fsSL --retry 5 --retry-all-errors https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"
+          echo "$HOME/.dotnet" >> "$GITHUB_PATH"
+      - name: Release build
+        run: dotnet build Bizigo.sln --configuration Release -m:1
+      - name: Capacity process smoke
+        run: python3 tools/capacity-process-smoke.py
+      - name: Capacity descendant lifecycle regressions
+        run: python3 tools/capacity-descendant-smoke.py
+      - name: Capacity parent-only cleanup mutation
+        run: python3 tools/capacity-mutation-gate.py --descendants
+      - name: Capacity mutation gates
+        run: python3 tools/capacity-mutation-gate.py
+      - name: B01 and B02 mutation catalogs
+        run: python3 tools/capacity-mutation-gate.py --legacy
+
   sidecar:
     name: Sidecar — pytest
     runs-on: ubuntu-latest

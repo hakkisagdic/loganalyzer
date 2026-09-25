@@ -160,13 +160,8 @@ public sealed class ArrivalLedgerTests
     [Fact]
     public void Desteklenmeyen_platformda_uydurma_sayi_yok()
     {
-        var reading = WireDropReader.Read(5141, () => ProcNetUdpFixture, () => NetstatFixture);
-
-        if (WireDropReader.Supported)
-        {
-            Assert.True(reading.IsMeasured, reading.LimitReason);
-            return;
-        }
+        var reading = WireDropReader.Read(5141, () => ProcNetUdpFixture, () => NetstatFixture,
+            OSPlatform.Create("capacity-fixture-unsupported"));
 
         Assert.False(reading.IsMeasured);
         Assert.Contains("okuyucusu YOK", reading.LimitReason, StringComparison.Ordinal);
@@ -553,6 +548,8 @@ public sealed class ArrivalLedgerTests
     [Fact]
     public void Platform_beyani_okuyucunun_davranisiyla_ortusuyor()
     {
+        Assert.False(WireDropReader.Read(5141, () => ProcNetUdpFixture, () => NetstatFixture,
+            OSPlatform.Create("capacity-fixture-unsupported")).IsMeasured);
         Assert.Equal(
             WireDropReader.Supported,
             RuntimeInformation.IsOSPlatform(OSPlatform.Linux)

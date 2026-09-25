@@ -1,0 +1,10 @@
+{
+  "Discovery": {
+    "Target": "operator-target",
+    "MinimumEps": 100,
+    "MaximumEps": 1000,
+    "DurationSeconds": 10,
+    "GeneratorLocation": "unknown"
+  },
+  "Probe": { "FileName": "operator-capacity-probe", "Arguments": [] }
+}

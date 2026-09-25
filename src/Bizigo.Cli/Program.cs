@@ -505,6 +505,7 @@ root.Subcommands.Add(fieldsCommand);
 root.Subcommands.Add(sigmaCommand);
 root.Subcommands.Add(rcaCommand);
 root.Subcommands.Add(mcpCommand);
+root.Subcommands.Add(CapacityCommandHandlers.Create());
 
 return await root.Parse(args).InvokeAsync().ConfigureAwait(false);
 

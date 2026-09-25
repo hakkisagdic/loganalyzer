@@ -57,7 +57,7 @@ KUSURLAR = [
         # kalmış görünür.
         ad="ramp hükmü integral yerine son hedefi kullanıyor",
         dosya=HUKUM,
-        bul="            ? pacer.Issued / elapsed.TotalSeconds",
+        bul="            ? pacer.Issued / targetWindow.TotalSeconds",
         koy="            ? pacer.Profile.TargetAt(elapsed)",
         kirmizi_bekleniyor=["Kusursuz_ramp_son_hedefe_degil_integrale_gore_yargilaniyor"],
         yesil_kalmali=["Hedefe_ulasan_kosum_attained"],
@@ -68,7 +68,7 @@ KUSURLAR = [
         # kova her zaman "hemen bas" diyor ve ayar hiçbir şey ifade etmiyor.
         ad="hız kontrolü devre dışı — kova hiç bekletmiyor",
         dosya=PACER,
-        bul="        return TimeSpan.FromSeconds((1.0 - _tokens) / rate.Value);",
+        bul="        return wait > TimeSpan.Zero ? wait : TimeSpan.FromTicks(1);",
         koy="        return TimeSpan.Zero;",
         kirmizi_bekleniyor=["Jeton_tukendiginde_bekleme_suresi_donuyor"],
         # Hüküm kovanın bekletip bekletmediğini değil ÜRETİLEN SAYIYI okuyor,

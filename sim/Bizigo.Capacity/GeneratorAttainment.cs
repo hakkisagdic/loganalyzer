@@ -81,7 +81,8 @@ public enum GeneratorVerdict
 /// </summary>
 public sealed record GeneratorAttainment
 {
-    private GeneratorAttainment(
+    [System.Text.Json.Serialization.JsonConstructor]
+    public GeneratorAttainment(
         GeneratorVerdict verdict,
         double? requestedEventsPerSecond,
         double? achievedEventsPerSecond,
