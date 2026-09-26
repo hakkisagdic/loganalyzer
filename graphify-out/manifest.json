@@ -12,9 +12,9 @@
     "semantic_hash": ""
   },
   "Bizigo.sln": {
-    "mtime": 1789473120.5876367,
-    "seen": 1789473321.806207,
-    "ast_hash": "75c6510bbb784d7a34172e0b9ae9ff59",
+    "mtime": 1790342575.4353187,
+    "seen": 1790425787.493115,
+    "ast_hash": "c4bb795aedc36e4b0980aae24484d29f",
     "semantic_hash": ""
   },
   "catalog/sigma/expectations.json": {
@@ -306,9 +306,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Api/Bizigo.Api.csproj": {
-    "mtime": 1789392544.341372,
-    "seen": 1789394890.8177862,
-    "ast_hash": "8218fe949d8d79f153ad2930c2219b7c",
+    "mtime": 1790341230.5881913,
+    "seen": 1790425787.495465,
+    "ast_hash": "2c09cad629e9b4d2afc1e3e3a61f5451",
     "semantic_hash": ""
   },
   "src/Bizigo.Api/ChangesEndpoints.cs": {
@@ -402,9 +402,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Api/LogsEndpoint.cs": {
-    "mtime": 1786979524.4494798,
-    "seen": 1789394890.817795,
-    "ast_hash": "fe083a86c97d53b3da8939878ef6247f",
+    "mtime": 1790426792.574093,
+    "seen": 1790433224.017091,
+    "ast_hash": "0f5fe947b9c91ae1dbe945cb0c10fca8",
     "semantic_hash": ""
   },
   "src/Bizigo.Api/NotificationChannelEndpoints.cs": {
@@ -450,9 +450,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Api/Program.cs": {
-    "mtime": 1789392526.784189,
-    "seen": 1789394890.8177989,
-    "ast_hash": "9f046a6fc06c3e5d51183da96cd06fd1",
+    "mtime": 1790343209.676667,
+    "seen": 1790425787.4960902,
+    "ast_hash": "9c539e64a560ff324f2821e5de2cc97d",
     "semantic_hash": ""
   },
   "src/Bizigo.Api/Properties/launchSettings.json": {
@@ -588,9 +588,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Cli/Program.cs": {
-    "mtime": 1789412020.1836355,
-    "seen": 1789414202.581643,
-    "ast_hash": "80ac5b9099821d2127816bf2f9eaad01",
+    "mtime": 1790332075.97324,
+    "seen": 1790425787.496824,
+    "ast_hash": "a57a9e85b18e4679b4ef489433b87ba8",
     "semantic_hash": ""
   },
   "src/Bizigo.Cli/SeedCommandHandlers.cs": {
@@ -870,9 +870,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/SourceDirectory.cs": {
-    "mtime": 1786902752.9031336,
-    "seen": 1789394890.817864,
-    "ast_hash": "82f48b55d65d8bf361b8ab86393fd30c",
+    "mtime": 1790339650.3128338,
+    "seen": 1790425787.499478,
+    "ast_hash": "5cce100993c0bd25118d12eb9215d609",
     "semantic_hash": ""
   },
   "src/Bizigo.Devices/Bizigo.Devices.csproj": {
@@ -1014,9 +1014,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Ingest/Bizigo.Ingest.csproj": {
-    "mtime": 1786910995.1139133,
-    "seen": 1789394890.817877,
-    "ast_hash": "72065afdc82f7dc6ce6ec404877010af",
+    "mtime": 1790338956.482856,
+    "seen": 1790425787.500097,
+    "ast_hash": "3755f6ad4f34d25c93d0afe8651c3acd",
     "semantic_hash": ""
   },
   "src/Bizigo.Ingest/Discovery/DiscoveryQueue.cs": {
@@ -1074,9 +1074,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Ingest/IngestServiceCollectionExtensions.cs": {
-    "mtime": 1787238842.086265,
-    "seen": 1789394890.817881,
-    "ast_hash": "72767e3a4bdaa9cd6a958814e67010c4",
+    "mtime": 1790339939.7429066,
+    "seen": 1790425787.500339,
+    "ast_hash": "0438b98322aa8f49785128c2015e27f6",
     "semantic_hash": ""
   },
   "src/Bizigo.Ingest/Otlp/OtlpLogsDecoder.cs": {
@@ -1152,9 +1152,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Ingest/Wal/WalOptions.cs": {
-    "mtime": 1786896397.868074,
-    "seen": 1789394890.817888,
-    "ast_hash": "384b37000c0c969ce85975edfd6fb698",
+    "mtime": 1790339560.200315,
+    "seen": 1790425787.500683,
+    "ast_hash": "533750228cfe5d99c3d67c0be1be6709",
     "semantic_hash": ""
   },
   "src/Bizigo.Ingest/Wal/WalSegmentSource.cs": {
@@ -1164,9 +1164,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Ingest/Wal/WriteAheadLog.cs": {
-    "mtime": 1786896471.3106384,
-    "seen": 1789394890.817889,
-    "ast_hash": "8e828be17bc96e6cf8faf95909253864",
+    "mtime": 1790342667.686912,
+    "seen": 1790425787.500712,
+    "ast_hash": "a6fd4d9758ba8ece4a89c9d264eebfaa",
     "semantic_hash": ""
   },
   "src/Bizigo.Normalization/Bizigo.Normalization.csproj": {
@@ -1884,9 +1884,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/Bizigo.UnitTests.csproj": {
-    "mtime": 1789473120.6004202,
-    "seen": 1789473321.807853,
-    "ast_hash": "c1ceb28333c680a63d7e09f519f224b0",
+    "mtime": 1790341360.5781057,
+    "seen": 1790425787.507756,
+    "ast_hash": "40aa9f7ab6082951ecd1376eaa844b77",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/BizigoV1PatternTests.cs": {
@@ -2202,9 +2202,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/OtlpBodyReadTests.cs": {
-    "mtime": 1786979554.3114944,
-    "seen": 1789394890.818031,
-    "ast_hash": "4fef482022e82db873eeeb132d6da86a",
+    "mtime": 1790427486.1460178,
+    "seen": 1790433224.025333,
+    "ast_hash": "2b53a2678843130f1a14e4b64cceb8aa",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/OtlpLogsDecoderTests.cs": {
@@ -2256,9 +2256,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/ProducesContractTests.cs": {
-    "mtime": 1788625717.9242055,
-    "seen": 1789394890.818036,
-    "ast_hash": "77b4eec04d4bfa65c26413329b15b5eb",
+    "mtime": 1790343051.7784846,
+    "seen": 1790425787.510709,
+    "ast_hash": "687c1502f5de328ad57123247ac8b9df",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/RawArchiveDoubles.cs": {
@@ -2544,9 +2544,9 @@
     "semantic_hash": ""
   },
   "ui/openapi/bizigo-api.json": {
-    "mtime": 1789468728.8183458,
-    "seen": 1789468742.945138,
-    "ast_hash": "a6173e5d06818810e875530b7e6044a8",
+    "mtime": 1790425142.9982646,
+    "seen": 1790425787.513868,
+    "ast_hash": "da5a88ffd9237b3a718a7e0eb91b4d28",
     "semantic_hash": ""
   },
   "ui/package.json": {
@@ -2988,9 +2988,9 @@
     "semantic_hash": ""
   },
   "ui/src/lib/api/paths.ts": {
-    "mtime": 1787139504.906382,
-    "seen": 1789394890.818125,
-    "ast_hash": "8fa0296ea79029aa30cb137d7115ba74",
+    "mtime": 1790343072.1024358,
+    "seen": 1790425787.516366,
+    "ast_hash": "b5138b4376a063cc81782266ce2634a9",
     "semantic_hash": ""
   },
   "ui/src/lib/api/proxy.ts": {
@@ -3000,9 +3000,9 @@
     "semantic_hash": ""
   },
   "ui/src/lib/api/schema.d.ts": {
-    "mtime": 1789468728.82024,
-    "seen": 1789468742.94519,
-    "ast_hash": "7fc6e19feafd8e18e6a94af021e69b1d",
+    "mtime": 1790425146.8135185,
+    "seen": 1790425787.516396,
+    "ast_hash": "d3016ce86625e64ffa6aed5da7f8c725",
     "semantic_hash": ""
   },
   "ui/src/lib/api/server.ts": {
@@ -3366,9 +3366,9 @@
     "semantic_hash": ""
   },
   ".github/workflows/ci.yml": {
-    "mtime": 1790063502.9586089,
-    "seen": 1790063987.4182441,
-    "ast_hash": "86ac24657cce13757ab233b439c6c011",
+    "mtime": 1790427004.1078274,
+    "seen": 1790433224.030949,
+    "ast_hash": "0295c4379b2382006f698b8def914be7",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
@@ -3378,9 +3378,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1789460662.9756973,
-    "seen": 1789467721.9441721,
-    "ast_hash": "47b7db2ec29971e4e969553b22242fee",
+    "mtime": 1790343329.7139668,
+    "seen": 1790425787.519038,
+    "ast_hash": "7ce734dc3c9ddf8d43ecb5d63115ce3b",
     "semantic_hash": ""
   },
   "THIRD-PARTY-NOTICES.md": {
@@ -3696,9 +3696,9 @@
     "semantic_hash": ""
   },
   "deploy/otel/collector.yaml": {
-    "mtime": 1789473120.5908742,
-    "seen": 1789473321.809145,
-    "ast_hash": "50dfa9a7d41ab82b16042053011e841f",
+    "mtime": 1790339907.9558868,
+    "seen": 1790425787.520715,
+    "ast_hash": "27ab637d1ff6d47ebaee5948e61d68ff",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/BENIOKU.md": {
@@ -4752,9 +4752,9 @@
     "semantic_hash": ""
   },
   "sim/Bizigo.Simulators/Program.cs": {
-    "mtime": 1790004036.725132,
-    "seen": 1790008053.499288,
-    "ast_hash": "6eb213cf4ba0ce571c16aef64384e20d",
+    "mtime": 1790332075.9742584,
+    "seen": 1790425787.494602,
+    "ast_hash": "c76f550d1811a397eb45f057edbb853d",
     "semantic_hash": ""
   },
   "sim/Bizigo.Simulators/SimulatedDeviceTransport.cs": {
@@ -6936,9 +6936,9 @@
     "semantic_hash": ""
   },
   "tools/machine-resources.sh": {
-    "mtime": 1789401206.2413533,
-    "seen": 1789401414.585741,
-    "ast_hash": "2d9b34634174c53270316ed108b1b757",
+    "mtime": 1790339924.4697099,
+    "seen": 1790425787.512782,
+    "ast_hash": "49ef79bf22b1fc45566a1afc7140a055",
     "semantic_hash": ""
   },
   "tools/t61-kirmizi-olcumu.py": {
@@ -7428,9 +7428,9 @@
     "semantic_hash": ""
   },
   "sim/Bizigo.Capacity/Bizigo.Capacity.csproj": {
-    "mtime": 1789473120.59549,
-    "seen": 1789476567.315729,
-    "ast_hash": "122d6bdee094ce052e43df55e33eb695",
+    "mtime": 1790335257.1219392,
+    "seen": 1790425787.493959,
+    "ast_hash": "9cd18f12e5b48bea152d8468cef5998e",
     "semantic_hash": ""
   },
   "sim/Bizigo.Capacity/CollectorMetricsReader.cs": {
@@ -7446,9 +7446,9 @@
     "semantic_hash": ""
   },
   "sim/Bizigo.Capacity/WireDropReader.cs": {
-    "mtime": 1789473120.5973809,
-    "seen": 1789476567.315735,
-    "ast_hash": "5b1e98c8d45a9579abfa7439b99ecdad",
+    "mtime": 1790333148.3695424,
+    "seen": 1790425787.4940832,
+    "ast_hash": "ffa9375cf7b161b72295945da4f448af",
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/ArrivalLedgerIntegrationTests.cs": {
@@ -7458,9 +7458,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/ArrivalLedgerTests.cs": {
-    "mtime": 1789473120.5995812,
-    "seen": 1789476567.316601,
-    "ast_hash": "d06dfbb6ede85184c9c8025d4dffe5ca",
+    "mtime": 1790333148.3703723,
+    "seen": 1790425787.507755,
+    "ast_hash": "4307e05ac99ce6563df2e760ac50b5a8",
     "semantic_hash": ""
   },
   "tools/b02-kirmizi-olcumu.py": {
@@ -7548,9 +7548,9 @@
     "semantic_hash": ""
   },
   "sim/Bizigo.Capacity/GeneratorAttainment.cs": {
-    "mtime": 1790056688.1184156,
-    "seen": 1790063987.3958259,
-    "ast_hash": "57b2406b7635ba28ee9bd099334fc58b",
+    "mtime": 1790331937.9526663,
+    "seen": 1790425787.494029,
+    "ast_hash": "fabaf58185e634c71a46332caba5f812",
     "semantic_hash": ""
   },
   "sim/Bizigo.Capacity/PaceProfile.cs": {
@@ -7560,9 +7560,9 @@
     "semantic_hash": ""
   },
   "sim/Bizigo.Capacity/TokenBucketPacer.cs": {
-    "mtime": 1790056688.1193893,
-    "seen": 1790063987.395844,
-    "ast_hash": "8b8ed4f743858093f9dc8c039732b7a1",
+    "mtime": 1790332872.3749514,
+    "seen": 1790425787.494082,
+    "ast_hash": "31d5dd08291ecae599250062d94a57f8",
     "semantic_hash": ""
   },
   "sim/Bizigo.Simulators/CapacityEmitter.cs": {
@@ -7596,9 +7596,9 @@
     "semantic_hash": ""
   },
   "tools/b01-kirmizi-olcumu.py": {
-    "mtime": 1790004236.6446588,
-    "seen": 1790008053.508214,
-    "ast_hash": "611c71383f6a0813386b48c71d12ec46",
+    "mtime": 1790332907.7973154,
+    "seen": 1790425787.512348,
+    "ast_hash": "8862a90e54c00de6851046108752e03f",
     "semantic_hash": ""
   },
   "tools/sigma-build/tests/test_expectation_count.py": {
@@ -7641,6 +7641,312 @@
     "mtime": 1790063520.4946926,
     "seen": 1790063987.4143841,
     "ast_hash": "dd7ce5bd6f99b4c9f447a7d8a43fd0df",
+    "semantic_hash": ""
+  },
+  "sim/Bizigo.Capacity/CapacityChild.cs": {
+    "mtime": 1790336505.4527068,
+    "seen": 1790425787.493962,
+    "ast_hash": "5f54feaf06573497b540f1ec6b4091bf",
+    "semantic_hash": ""
+  },
+  "sim/Bizigo.Capacity/CapacityDiscovery.cs": {
+    "mtime": 1790331937.9511626,
+    "seen": 1790425787.493964,
+    "ast_hash": "23e002269939d4e8075ad37d37f8811e",
+    "semantic_hash": ""
+  },
+  "sim/Bizigo.Capacity/CapacityEvaluation.cs": {
+    "mtime": 1790333031.5840507,
+    "seen": 1790425787.493966,
+    "ast_hash": "b55722dba72363828c27c3d28f287a9f",
+    "semantic_hash": ""
+  },
+  "sim/Bizigo.Capacity/CapacityOptions.cs": {
+    "mtime": 1790331937.9500604,
+    "seen": 1790425787.493967,
+    "ast_hash": "bb4eecd1580f59b83d1a127c2e8f9d30",
+    "semantic_hash": ""
+  },
+  "sim/Bizigo.Capacity/CapacityProcessOwnership.cs": {
+    "mtime": 1790335257.123329,
+    "seen": 1790425787.4939678,
+    "ast_hash": "174fbb0f5e79fe19329b8d3982e7cf38",
+    "semantic_hash": ""
+  },
+  "sim/Bizigo.Capacity/CapacityProcessRunner.cs": {
+    "mtime": 1790335257.122771,
+    "seen": 1790425787.49397,
+    "ast_hash": "695d514a01709f65aad1d13e82525619",
+    "semantic_hash": ""
+  },
+  "sim/Bizigo.Capacity/CapacityRunStore.cs": {
+    "mtime": 1790331937.951443,
+    "seen": 1790425787.493999,
+    "ast_hash": "72c5f2b5ea66c218626259e22029a5b6",
+    "semantic_hash": ""
+  },
+  "sim/Bizigo.Capacity/CapacitySafety.cs": {
+    "mtime": 1790331937.9504895,
+    "seen": 1790425787.4940002,
+    "ast_hash": "f7d4cdd928890451eb9d2543f8e57a3b",
+    "semantic_hash": ""
+  },
+  "sim/Bizigo.Capacity/CapacitySupervisor.cs": {
+    "mtime": 1790335257.1231997,
+    "seen": 1790425787.494001,
+    "ast_hash": "7607308c835294bb6e9e364ffac39a4a",
+    "semantic_hash": ""
+  },
+  "sim/Bizigo.OtlpFixture/Bizigo.OtlpFixture.csproj": {
+    "mtime": 1790341360.5767975,
+    "seen": 1790425787.4940841,
+    "ast_hash": "04dce39d3d8adc4ac3ff84c5352706e1",
+    "semantic_hash": ""
+  },
+  "sim/Bizigo.OtlpFixture/Program.cs": {
+    "mtime": 1790342017.7480063,
+    "seen": 1790425787.494085,
+    "ast_hash": "b6a8d13537f7cecccc0969b9abbfb1e8",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Api/TelemetryEndpoints.cs": {
+    "mtime": 1790343012.1832662,
+    "seen": 1790425787.496296,
+    "ast_hash": "413e7fb7d7c94d9fdfc18f20f36d2ee7",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Cli/CapacityCommandHandlers.cs": {
+    "mtime": 1790332075.9724176,
+    "seen": 1790425787.496675,
+    "ast_hash": "fec67b1fd1feb6695b188b531e3fadfc",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Contracts/RawSignalEnvelope.cs": {
+    "mtime": 1790342539.036887,
+    "seen": 1790425787.497699,
+    "ast_hash": "3e40a31a39d9951938b0fe044852c966",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Ingest/Otlp/OtlpJsonCodec.cs": {
+    "mtime": 1790426895.4579363,
+    "seen": 1790433224.0199418,
+    "ast_hash": "8d123b37a0b190b933bed17a1c745fa5",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Ingest/Otlp/OtlpTelemetryDecoder.cs": {
+    "mtime": 1790341689.825804,
+    "seen": 1790425787.500372,
+    "ast_hash": "8aafc8f821ccd891802b21354b0145ff",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Ingest/Otlp/SignalIngest.cs": {
+    "mtime": 1790427080.8446543,
+    "seen": 1790433224.01998,
+    "ast_hash": "89e16d1a2114f4e3943f84b91d4a9e6d",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Ingest/Otlp/SignalIngestService.cs": {
+    "mtime": 1790426792.575889,
+    "seen": 1790433224.0199811,
+    "ast_hash": "2a2ff6cff4320b3fe5b8f1a9032419c1",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Ingest/Otlp/SignalOptions.cs": {
+    "mtime": 1790339833.9042165,
+    "seen": 1790425787.5003772,
+    "ast_hash": "bf390cad824f0c547e6e106000b3ce84",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Ingest/Wal/IWalDurability.cs": {
+    "mtime": 1790339560.2006166,
+    "seen": 1790425787.500652,
+    "ast_hash": "f4c9430d4ea38c28739cc5ff9d6447dd",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Storage.Raw/DurableFile.cs": {
+    "mtime": 1790339650.3120742,
+    "seen": 1790425787.5057878,
+    "ast_hash": "7c80d247d866de8eefa8fc57797d8cc6",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Storage.Raw/SignalArchive.cs": {
+    "mtime": 1790339833.9032683,
+    "seen": 1790425787.5061061,
+    "ast_hash": "e3db4198e2afba08aba4faf91e41255c",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/OtlpTelemetryIntegrationTests.cs": {
+    "mtime": 1790341757.7377474,
+    "seen": 1790425787.507068,
+    "ast_hash": "7d680800a1ee2aeb2e0f840cbc6fe6f1",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/CapacityDiscoveryTests.cs": {
+    "mtime": 1790332272.957691,
+    "seen": 1790425787.507782,
+    "ast_hash": "82637cb66faf32c3f27dc85fab17cbc4",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/CapacityEvaluationTests.cs": {
+    "mtime": 1790333031.584734,
+    "seen": 1790425787.507784,
+    "ast_hash": "0491a914f29eeb63a6a5c8831fe2445c",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/CapacityPersistenceTests.cs": {
+    "mtime": 1790332272.958587,
+    "seen": 1790425787.507811,
+    "ast_hash": "40406fef708f9991afb8909d2cdbda89",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/CapacitySafetyTests.cs": {
+    "mtime": 1790332272.9583168,
+    "seen": 1790425787.507812,
+    "ast_hash": "2b3c0856627468a1c08dfcc8e8b3bf13",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/OtlpCollectorConfigurationTests.cs": {
+    "mtime": 1790342539.0718348,
+    "seen": 1790425787.51047,
+    "ast_hash": "3a64547ff216449f86d48c6bf8fce1a3",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/OtlpTelemetryDecoderTests.cs": {
+    "mtime": 1790342925.0745323,
+    "seen": 1790425787.510499,
+    "ast_hash": "b1cf49215f70661bb39f4624214e6c60",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/OtlpTelemetryHttpTests.cs": {
+    "mtime": 1790427394.925389,
+    "seen": 1790433224.025383,
+    "ast_hash": "661a332ca8cbac06da5b547324f22fda",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/SignalArchiveBoundaryTests.cs": {
+    "mtime": 1790342667.7163997,
+    "seen": 1790425787.511853,
+    "ast_hash": "d462006ff79d82550f4acd87f7c4e6af",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/SignalDurabilityTests.cs": {
+    "mtime": 1790427004.1059556,
+    "seen": 1790433224.0262132,
+    "ast_hash": "cc360ac8a8a994f377bc553b3aab27b8",
+    "semantic_hash": ""
+  },
+  "tools/capacity-descendant-smoke.py": {
+    "mtime": 1790336329.719513,
+    "seen": 1790425787.5123782,
+    "ast_hash": "04b9dd3873c76bdcee56fae8ff50a3a6",
+    "semantic_hash": ""
+  },
+  "tools/capacity-mutation-gate.py": {
+    "mtime": 1790336547.9105477,
+    "seen": 1790425787.512379,
+    "ast_hash": "2c0b071c646003a76502d7dcf9574c5e",
+    "semantic_hash": ""
+  },
+  "tools/capacity-process-smoke.py": {
+    "mtime": 1790333326.3375998,
+    "seen": 1790425787.51238,
+    "ast_hash": "34d98e97e302177e6c37e34418965a1d",
+    "semantic_hash": ""
+  },
+  "tools/capacity/dry-run.json": {
+    "mtime": 1790332504.7918334,
+    "seen": 1790425787.512382,
+    "ast_hash": "2ffcb39ce88d8b0110b26d771bb838d6",
+    "semantic_hash": ""
+  },
+  "tools/capacity/fixture-generator.py": {
+    "mtime": 1790333326.3366382,
+    "seen": 1790425787.512383,
+    "ast_hash": "797668edcefefd412745cc2fb599c054",
+    "semantic_hash": ""
+  },
+  "tools/capacity/fixture-host/CapacityFixtureHost.csproj": {
+    "mtime": 1790332504.7916315,
+    "seen": 1790425787.5123851,
+    "ast_hash": "dbdb8f0364935db33e4fe213a0fb675a",
+    "semantic_hash": ""
+  },
+  "tools/capacity/fixture-host/Program.cs": {
+    "mtime": 1790332504.7917247,
+    "seen": 1790425787.5123851,
+    "ast_hash": "fb61ae151f529125c1e35a93a19245e7",
+    "semantic_hash": ""
+  },
+  "tools/capacity/fixture-probe.py": {
+    "mtime": 1790333285.4700873,
+    "seen": 1790425787.512386,
+    "ast_hash": "bd998a06652e0559aa2689c7c753824c",
+    "semantic_hash": ""
+  },
+  "tools/otlp-collector-probe.py": {
+    "mtime": 1790342305.231862,
+    "seen": 1790425787.512783,
+    "ast_hash": "248f5e49d1322d17b2dce1491c32fa13",
+    "semantic_hash": ""
+  },
+  "tools/otlp-collector-smoke.py": {
+    "mtime": 1790342756.94929,
+    "seen": 1790425787.512785,
+    "ast_hash": "fb7dd320dd14ae5336f86ea1055f710f",
+    "semantic_hash": ""
+  },
+  "tools/otlp-durability-smoke.py": {
+    "mtime": 1790341525.4783285,
+    "seen": 1790425787.512786,
+    "ast_hash": "726d8e22cb58d6195d5a1f390032a4a6",
+    "semantic_hash": ""
+  },
+  "tools/otlp-mutation-gate.py": {
+    "mtime": 1790427004.1066446,
+    "seen": 1790433224.027191,
+    "ast_hash": "124c38dbcf0b621d358952b349519c90",
+    "semantic_hash": ""
+  },
+  "tools/otlp-verify-trx.py": {
+    "mtime": 1790341757.7381997,
+    "seen": 1790425787.512789,
+    "ast_hash": "6119667f9de8e782fd939e90f0dcc92a",
+    "semantic_hash": ""
+  },
+  "tools/tests/test_machine_resources.py": {
+    "mtime": 1790339924.4709952,
+    "seen": 1790425787.5138109,
+    "ast_hash": "c0fc4f56c81ed35eae713d19acfaea2a",
+    "semantic_hash": ""
+  },
+  "tools/tests/test_otlp_collector_harness.py": {
+    "mtime": 1790342617.9730496,
+    "seen": 1790425787.513812,
+    "ast_hash": "a59f2f31f91ec726950437406382b65c",
+    "semantic_hash": ""
+  },
+  "docs/otlp-durability.md": {
+    "mtime": 1790426951.9611037,
+    "seen": 1790433224.034614,
+    "ast_hash": "e5b00fa748b869c3619556c6e8483dd1",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Ingest/Otlp/proto/UPSTREAM.md": {
+    "mtime": 1790338956.4692557,
+    "seen": 1790425787.533201,
+    "ast_hash": "0d7dfdf7c2172e257e655c6b460a1152",
+    "semantic_hash": ""
+  },
+  "tools/capacity/README.md": {
+    "mtime": 1790336693.3384123,
+    "seen": 1790425787.533231,
+    "ast_hash": "0d0716dfd5c5940b0466ab55b6c268d9",
+    "semantic_hash": ""
+  },
+  "graphify-out/memory/query_20260926_131219_ne_i\u015f_kald\u0131__liste_ver__bir_an_\u00f6nce_buran\u0131n_bitmes.md": {
+    "mtime": 1790428339.6886683,
+    "seen": 1790433224.035429,
+    "ast_hash": "8baa8398bcee42103f0311cced464642",
     "semantic_hash": ""
   }
 }
