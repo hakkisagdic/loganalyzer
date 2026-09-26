@@ -231,6 +231,55 @@ jobs:
       - name: B01 and B02 mutation catalogs
         run: python3 tools/capacity-mutation-gate.py --legacy
 
+  otlp-durability:
+    name: OTLP — durability, mutations and real Collector
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: .NET SDK kur
+        run: |
+          curl -fsSL --retry 5 --retry-all-errors https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"
+          echo "$HOME/.dotnet" >> "$GITHUB_PATH"
+      - name: Release build
+        run: dotnet build Bizigo.sln --configuration Release -m:1
+      - name: OTLP unit evidence
+        run: |
+          dotnet test tests/Bizigo.UnitTests --no-build -c Release --filter 'FullyQualifiedName~Otlp|FullyQualifiedName~Signal' --logger 'trx;LogFileName=otlp.trx' --results-directory TestResults -m:1
+          python3 tools/otlp-verify-trx.py TestResults/otlp.trx
+      - name: Actual process durability
+        run: python3 tools/otlp-durability-smoke.py --evidence-dir /tmp/otlp-crash-evidence
+      - name: Isolated OTLP mutations and evaluator regressions
+        run: python3 tools/otlp-mutation-gate.py --evidence-dir /tmp/otlp-mutation-evidence
+      - name: Production API and Collector HTTP probe
+        run: |
+          python3 tools/otlp-collector-smoke.py --serve --session-dir /tmp/otlp-collector > /tmp/otlp-collector.log 2>&1 &
+          fixture_pid=$!
+          trap 'kill -TERM "$fixture_pid" 2>/dev/null || true; wait "$fixture_pid" || true' EXIT
+          for attempt in $(seq 1 180); do
+            test -f /tmp/otlp-collector/session.json && break
+            kill -0 "$fixture_pid" || { cat /tmp/otlp-collector.log; exit 1; }
+            sleep 5
+          done
+          test -f /tmp/otlp-collector/session.json
+          python3 tools/otlp-collector-probe.py --session /tmp/otlp-collector/session.json --evidence-dir /tmp/otlp-independent
+          python3 tools/otlp-collector-smoke.py --stop --session-dir /tmp/otlp-collector
+          wait "$fixture_pid"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: otlp-durability-evidence
+          path: |
+            TestResults/
+            /tmp/otlp-crash-evidence/
+            /tmp/otlp-mutation-evidence/
+            /tmp/otlp-independent/
+            /tmp/otlp-collector/*.log
+            /tmp/otlp-collector/cleanup.json
+
   sidecar:
     name: Sidecar — pytest
     runs-on: ubuntu-latest

@@ -14,13 +14,13 @@ import type { paths } from "./schema";
  */
 
 /**
- * `/v1/logs` istemcilerden **dışarıda**.
+ * OTLP `/v1/logs`, `/v1/metrics`, `/v1/traces` istemcilerden **dışarıda**.
  *
  * <p>Şemada var ama UI'ın işi değil — collector'ın ingest ucu. Tip düzeyinde
  * dışlamak, bir ekranın yanlışlıkla oraya yazmasını derleme zamanında
  * engelliyor.</p>
  */
-export type ExcludedPath = "/v1/logs";
+export type ExcludedPath = "/v1/logs" | "/v1/metrics" | "/v1/traces";
 
 export type HttpMethod = "get" | "post" | "put" | "delete" | "patch";
 

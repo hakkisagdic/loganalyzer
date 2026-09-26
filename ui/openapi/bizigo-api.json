@@ -58,6 +58,85 @@
         }
       }
     },
+    "/v1/metrics": {
+      "post": {
+        "tags": [
+          "Bizigo.Api"
+        ],
+        "operationId": "OtlpMetrics",
+        "requestBody": {
+          "content": {
+            "application/x-protobuf": {
+              "schema": {
+                "type": "string",
+                "format": "byte"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "string",
+                "format": "byte"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/traces": {
+      "post": {
+        "tags": [
+          "Bizigo.Api"
+        ],
+        "operationId": "OtlpTraces",
+        "requestBody": {
+          "content": {
+            "application/x-protobuf": {
+              "schema": {
+                "type": "string",
+                "format": "byte"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "string",
+                "format": "byte"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/internal/ingest/signals": {
+      "get": {
+        "tags": [
+          "Bizigo.Api"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignalIngestStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/changes/webhooks/{endpointId}": {
       "post": {
         "tags": [
@@ -6532,6 +6611,78 @@
           },
           "applied": {
             "type": "boolean"
+          }
+        }
+      },
+      "SignalIngestStatus": {
+        "required": [
+          "ready",
+          "failure",
+          "accepted_batches",
+          "accepted_leaves",
+          "rejected_full",
+          "rejected_invalid",
+          "wal_bytes",
+          "corrupt_segments"
+        ],
+        "type": "object",
+        "properties": {
+          "ready": {
+            "type": "boolean"
+          },
+          "failure": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "accepted_batches": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "accepted_leaves": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "rejected_full": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "rejected_invalid": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "wal_bytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "corrupt_segments": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },

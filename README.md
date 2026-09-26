@@ -5,6 +5,9 @@
 Plugin tabanlı, çok formatlı ve çok dilli log analiz platformu. Ağ/altyapı cihazı
 logları birincil alan; agentic katmanla proaktif araştırma ve kök neden analizi.
 
+OTLP metric/trace kabulü, semantic validation kuralları, fsync WAL, ham arşiv ve
+operasyonel replay komutu: [OTLP dayanıklılık rehberi](docs/otlp-durability.md).
+
 > İnceleme akışı **PR üzerinden**: `main`'e doğrudan push yerine dal + pull
 > request. CodeRabbit yalnızca PR'ları inceliyor, ve CI de (`ci.yml`)
 > `push: branches: [main]` ile `pull_request` olaylarında koşuyor. Yani

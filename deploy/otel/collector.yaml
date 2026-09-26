@@ -114,6 +114,14 @@ service:
       receivers: [syslog/tcp, syslog/udp, otlp]
       processors: [memory_limiter, batch]
       exporters: [otlp_http/bizigo]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_http/bizigo]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp_http/bizigo]
   telemetry:
     logs:
       level: warn
