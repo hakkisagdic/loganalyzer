@@ -60,6 +60,17 @@ public static class IngestServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Metric/trace composition; requires inventory and raw object-store services.</summary>
+    public static IServiceCollection AddBizigoTelemetry(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<SignalOptions>(configuration.GetSection(SignalOptions.SectionName));
+        services.AddSingleton<OtlpTelemetryDecoder>();
+        services.TryAddSingleton<ISignalCheckpoints, SignalCheckpoints>();
+        services.AddSingleton<SignalIngest>();
+        services.AddHostedService<SignalIngestService>();
+        return services;
+    }
+
     /// <summary>
     /// Python sidecar keşif yolu (T12 / K14).
     ///

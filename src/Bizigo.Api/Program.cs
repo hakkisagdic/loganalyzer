@@ -26,7 +26,7 @@ using Microsoft.AspNetCore.RateLimiting;
 
 // OpenAPI belge üretimi (T14) bu giriş noktasını gerçekten çalıştırıyor;
 // gerekçesi ve üç ayarı `DocumentGeneration` içinde.
-var builder = DocumentGeneration.CreateBuilder(args);
+var builder = DocumentGeneration.CreateBuilder(args.Where(a => a != "--replay-signals").ToArray());
 
 var postgres = builder.Configuration.GetConnectionString("ControlPlane")
     ?? throw new InvalidOperationException("ConnectionStrings:ControlPlane tanımlı değil.");
@@ -50,6 +50,7 @@ builder.Services.AddBizigoIngest(builder.Configuration);
 
 // Ham arşiv: yükleyici, manifest, scrub (T04).
 builder.Services.AddBizigoRawArchive(builder.Configuration);
+builder.Services.AddBizigoTelemetry(builder.Configuration);
 
 // Replay: gölge tablo + bölüm değiştirme (T11).
 builder.Services.AddBizigoReplay();
@@ -132,6 +133,36 @@ builder.Services.AddRateLimiter(limiter =>
 
 var app = builder.Build();
 
+// Offline operator command. The same production DI graph and exclusive writer
+// lease apply; stop this API instance before replaying its telemetry directory.
+if (args.Contains("--replay-signals", StringComparer.Ordinal))
+{
+    using var replayCancellation = new CancellationTokenSource();
+    ConsoleCancelEventHandler cancelReplay = (_, e) => { e.Cancel = true; replayCancellation.Cancel(); };
+    Console.CancelKeyPress += cancelReplay;
+    try
+    {
+        var telemetry = app.Services.GetRequiredService<Bizigo.Ingest.Otlp.SignalIngest>();
+        await telemetry.RecoverAsync(replayCancellation.Token);
+        await telemetry.ReplayArchiveAsync(replayCancellation.Token);
+        Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(new
+        { status = "Completed", manifests = telemetry.Archive.Manifests().Count(), directory = telemetry.Root }));
+    }
+    catch (OperationCanceledException)
+    {
+        Console.Error.WriteLine("{\"status\":\"Cancelled\"}");
+        Environment.ExitCode = 130;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine(System.Text.Json.JsonSerializer.Serialize(new
+        { status = "Failed", error = ex.GetType().Name, message = ex.Message }));
+        Environment.ExitCode = 1;
+    }
+    finally { Console.CancelKeyPress -= cancelReplay; await app.DisposeAsync(); }
+    return;
+}
+
 // Belge üretimi sırasında ortada Postgres de ClickHouse da yok; göç adımı
 // bağlantı hatasıyla düşer ve belge hiç üretilemez.
 if (!DocumentGeneration.IsActive)
@@ -165,6 +196,7 @@ if (app.Environment.IsDevelopment())
 app.MapHealthChecks("/healthz");
 app.MapAuth();
 app.MapOtlpLogs();
+app.MapOtlpTelemetry();
 
 // Sorgu ve yazma yüzeyi (T10). Hepsi IScopedQuery'den geçiyor; mimari test
 // API'nin somut okuyuculara erişmesini zaten yasaklıyor.

@@ -25,4 +25,7 @@ public sealed class WalOptions
     /// kıyaslama içindir; üretimde <b>asla</b> kapatılmaz.
     /// </summary>
     public bool FlushToDisk { get; set; } = true;
+
+    /// <summary>Signal envelopes quarantine integrity failures instead of discarding a suffix.</summary>
+    public bool StrictRecovery { get; set; }
 }

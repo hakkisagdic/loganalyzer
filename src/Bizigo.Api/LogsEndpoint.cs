@@ -1,5 +1,6 @@
 using System.Globalization;
-using System.IO.Compression;
+using ICSharpCode.SharpZipLib;
+using ICSharpCode.SharpZipLib.GZip;
 using Bizigo.Ingest.Pipeline;
 using Microsoft.Extensions.Options;
 
@@ -41,6 +42,7 @@ public static class LogsEndpoint
                 return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
 
             case BodyStatus.UnsupportedEncoding:
+            case BodyStatus.Invalid:
                 return Results.BadRequest(new
                 {
                     error = $"Desteklenmeyen Content-Encoding: '{body.Encoding}'.",
@@ -66,6 +68,7 @@ public static class LogsEndpoint
         Ok,
         TooLarge,
         UnsupportedEncoding,
+        Invalid,
     }
 
     /// <param name="Bytes">Açılmış gövde. <see cref="BodyStatus.Ok"/> dışında anlamsız.</param>
@@ -103,13 +106,6 @@ public static class LogsEndpoint
 
         var encoding = request.Headers.ContentEncoding.ToString().Trim();
 
-        // Content-Length yalan söyleyebilir; okuma sınırı asıl koruma. Yine de
-        // apaçık büyük bir istekte gövdeyi hiç okumamak ucuz.
-        if (request.ContentLength > limit)
-        {
-            return new BodyRead(BodyStatus.TooLarge, default, encoding);
-        }
-
         var identity = encoding.Length == 0
             || encoding.Equals("identity", StringComparison.OrdinalIgnoreCase);
 
@@ -118,16 +114,39 @@ public static class LogsEndpoint
             return new BodyRead(BodyStatus.UnsupportedEncoding, default, encoding);
         }
 
+        ArgumentOutOfRangeException.ThrowIfNegative(limit);
+        // Wire protection is separate from the expanded limit: stored deflate
+        // blocks and gzip headers/trailers can make valid wire bytes larger.
+        var overhead = Math.Max(65536L, limit / 8);
+        var wireLimit = identity ? limit : limit > long.MaxValue - overhead ? long.MaxValue : limit + overhead;
+        if (request.ContentLength > wireLimit)
+            return new BodyRead(BodyStatus.TooLarge, default, encoding);
+
         using var buffer = new MemoryStream();
 
-        if (identity)
+        try
         {
-            await CopyBoundedAsync(request.Body, buffer, limit, cancellationToken);
+            if (identity)
+            {
+                await CopyBoundedAsync(request.Body, buffer, limit, cancellationToken);
+            }
+            else
+            {
+                // Bound both wire and expanded sizes. This reader requires a
+                // complete gzip footer (including CRC/ISIZE) for every member;
+                // BCL GZipStream can return successful EOF for truncated input.
+                using var wire = new MemoryStream();
+                await CopyBoundedAsync(request.Body, wire, wireLimit, cancellationToken);
+                if (wire.Length > wireLimit) return new BodyRead(BodyStatus.TooLarge, default, encoding);
+                if (wire.Length < 20) return new BodyRead(BodyStatus.Invalid, default, encoding);
+                wire.Position = 0;
+                using var gzip = new GZipInputStream(wire) { IsStreamOwner = false };
+                await CopyBoundedAsync(gzip, buffer, limit, cancellationToken);
+            }
         }
-        else
+        catch (Exception ex) when (ex is InvalidDataException or SharpZipBaseException or EndOfStreamException)
         {
-            await using var gzip = new GZipStream(request.Body, CompressionMode.Decompress);
-            await CopyBoundedAsync(gzip, buffer, limit, cancellationToken);
+            return new BodyRead(BodyStatus.Invalid, default, encoding);
         }
 
         return buffer.Length > limit

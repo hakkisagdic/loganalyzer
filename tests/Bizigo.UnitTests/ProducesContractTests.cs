@@ -92,6 +92,10 @@ public sealed class ProducesContractTests
     {
         ["POST /v1/logs"] =
             "Collector'ın ingest ucu; UI istemcisinde tip düzeyinde dışlanmış (`ExcludedPath`).",
+        ["POST /v1/metrics"] =
+            "OTLP protobuf/JSON response; OtlpTelemetryHttpTests verifies its protocol. Excluded from UI client paths.",
+        ["POST /v1/traces"] =
+            "OTLP protobuf/JSON response; OtlpTelemetryHttpTests verifies its protocol. Excluded from UI client paths.",
         ["POST /v1/changes/webhooks/{endpointId}"] =
             "CI sistemlerinin çağırdığı alıcı; UI tüketicisi yok.",
 
@@ -133,7 +137,7 @@ public sealed class ProducesContractTests
     /// düşmeli.
     /// </para>
     /// </summary>
-    private const int ExpectedExemptCount = 7;
+    private const int ExpectedExemptCount = 9;
 
     /// <summary>
     /// Kapının <b>hiç göremediği</b> uçlar — ve neden.
@@ -532,7 +536,7 @@ public sealed class ProducesContractTests
 
                 "MapChangeConnectors", "MapChangeWebhooks", "MapChanges",
                 "MapEvents",
-                "MapNotificationChannels", "MapOtlpLogs", "MapParserAuthoring", "MapParsers",
+                "MapNotificationChannels", "MapOtlpLogs", "MapOtlpTelemetry", "MapParserAuthoring", "MapParsers",
                 "MapPipelineHealth", "MapRca", "MapRcaRuns", "MapReplay", "MapSources",
             ],
             names);

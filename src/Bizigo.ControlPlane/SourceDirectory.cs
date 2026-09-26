@@ -37,6 +37,8 @@ public sealed class SourceDirectory(IDbContextFactory<ControlPlaneDbContext> fac
 {
     private readonly IDbContextFactory<ControlPlaneDbContext> _factory = factory;
     private Dictionary<string, ResolvedSource> _snapshot = new(StringComparer.OrdinalIgnoreCase);
+    private sealed record TelemetrySnapshot(Dictionary<string, ResolvedSource> Sources, HashSet<string> Ambiguous);
+    private TelemetrySnapshot _telemetry = new(new(StringComparer.OrdinalIgnoreCase), new(StringComparer.OrdinalIgnoreCase));
 
     /// <summary>
     /// Envanteri belleğe alır. Sıcak yolda veritabanına gitmemek için: envanter
@@ -53,6 +55,12 @@ public sealed class SourceDirectory(IDbContextFactory<ControlPlaneDbContext> fac
 
         // Aynı kaynak hem IP hem hostname ile eşleşebilsin diye iki anahtar yazılıyor.
         var map = new Dictionary<string, ResolvedSource>(StringComparer.OrdinalIgnoreCase);
+        var ambiguous = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void Add(string key, ResolvedSource value)
+        {
+            if (map.TryGetValue(key, out var prior) && prior.SourceId != value.SourceId) ambiguous.Add(key);
+            map[key] = value;
+        }
 
         foreach (var source in sources)
         {
@@ -66,18 +74,33 @@ public sealed class SourceDirectory(IDbContextFactory<ControlPlaneDbContext> fac
 
             if (!string.IsNullOrWhiteSpace(source.PeerAddress))
             {
-                map[source.PeerAddress] = resolved;
+                Add(source.PeerAddress, resolved);
             }
 
             if (!string.IsNullOrWhiteSpace(source.Hostname))
             {
-                map[source.Hostname] = resolved;
+                Add(source.Hostname, resolved);
             }
 
-            map[source.SourceId] = resolved;
+            Add(source.SourceId, resolved);
         }
 
         Interlocked.Exchange(ref _snapshot, map);
+        Interlocked.Exchange(ref _telemetry, new TelemetrySnapshot(map, ambiguous));
+    }
+
+    /// <summary>Ordered server-side candidates; ambiguous aliases never pick a winner.</summary>
+    public ResolvedSource ResolveTelemetry(IEnumerable<string> candidates)
+    {
+        var snapshot = Volatile.Read(ref _telemetry);
+        string? first = null;
+        foreach (var key in candidates.Where(x => !string.IsNullOrWhiteSpace(x)))
+        {
+            first ??= key;
+            if (snapshot.Ambiguous.Contains(key)) break;
+            if (snapshot.Sources.TryGetValue(key, out var source)) return source;
+        }
+        return new(first ?? "_unknown", OwnerGroups.Unassigned, "default", "auto", null, false);
     }
 
     public ResolvedSource Resolve(string? sourceKey)

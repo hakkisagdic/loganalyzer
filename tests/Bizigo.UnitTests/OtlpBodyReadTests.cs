@@ -119,4 +119,84 @@ public sealed class OtlpBodyReadTests
 
         Assert.Equal(LogsEndpoint.BodyStatus.TooLarge, result.Status);
     }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(4)]
+    [InlineData(8)]
+    public async Task Truncated_gzip_footer_is_not_success(int missing)
+    {
+        var compressed = Gzip(Encoding.UTF8.GetBytes("complete payload that must not be accepted without its footer"));
+        var result = await LogsEndpoint.ReadBodyAsync(Request(compressed[..^missing], "gzip"), Limit,
+            TestContext.Current.CancellationToken);
+        Assert.Equal(LogsEndpoint.BodyStatus.Invalid, result.Status);
+    }
+
+    [Fact]
+    public async Task Concatenated_gzip_members_are_complete_and_crc_checked()
+    {
+        var first = Gzip("first"u8.ToArray());
+        var second = Gzip("second"u8.ToArray());
+        var result = await LogsEndpoint.ReadBodyAsync(Request([.. first, .. second], "gzip"), Limit,
+            TestContext.Current.CancellationToken);
+        Assert.Equal(LogsEndpoint.BodyStatus.Ok, result.Status);
+        Assert.Equal("firstsecond", Encoding.UTF8.GetString(result.Bytes.Span));
+        second[^8] ^= 1;
+        result = await LogsEndpoint.ReadBodyAsync(Request([.. first, .. second], "gzip"), Limit,
+            TestContext.Current.CancellationToken);
+        Assert.Equal(LogsEndpoint.BodyStatus.Invalid, result.Status);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(1L)]
+    [InlineData(65L)]
+    public async Task Stream_limit_does_not_trust_content_length(long? declared)
+    {
+        var request = Request(new byte[65]);
+        request.ContentLength = declared;
+        if (declared is null) request.Headers.TransferEncoding = "chunked";
+        var result = await LogsEndpoint.ReadBodyAsync(request, 64, TestContext.Current.CancellationToken);
+        Assert.Equal(LogsEndpoint.BodyStatus.TooLarge, result.Status);
+        result = await LogsEndpoint.ReadBodyAsync(Request(new byte[64]), 64, TestContext.Current.CancellationToken);
+        Assert.Equal(LogsEndpoint.BodyStatus.Ok, result.Status);
+        Assert.Equal(64, result.Bytes.Length);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(1L)]
+    [InlineData(1048679L)]
+    public async Task Stored_gzip_overhead_does_not_reduce_expanded_limit(long? declared)
+    {
+        var payload = new byte[(int)Limit];
+        new Random(42).NextBytes(payload);
+        using var output = new MemoryStream();
+        using (var zip = new GZipStream(output, CompressionLevel.NoCompression, true)) zip.Write(payload);
+        var wire = output.ToArray();
+        Assert.True(wire.Length > Limit);
+        var request = Request(wire, "gzip");
+        request.ContentLength = declared;
+        if (declared is null) request.Headers.TransferEncoding = "chunked";
+        var result = await LogsEndpoint.ReadBodyAsync(request, Limit, TestContext.Current.CancellationToken);
+        Assert.Equal(LogsEndpoint.BodyStatus.Ok, result.Status);
+        Assert.Equal(payload, result.Bytes.ToArray());
+    }
+
+    [Fact]
+    public async Task Excessive_gzip_metadata_is_bounded_separately_from_expanded_bytes()
+    {
+        // An untouched BCL GZipStream may emit no member at all. This is an
+        // actual empty member with a deflate block, CRC and ISIZE trailer.
+        var empty = Convert.FromHexString("1f8b080000000000000303000000000000000000");
+        var valid = await LogsEndpoint.ReadBodyAsync(Request(empty, "gzip"), 64, TestContext.Current.CancellationToken);
+        Assert.Equal(LogsEndpoint.BodyStatus.Ok, valid.Status);
+        Assert.Empty(valid.Bytes.ToArray());
+        var wire = Enumerable.Repeat(empty, 10000).SelectMany(x => x).ToArray();
+        Assert.True(wire.Length > 65536 + 64);
+        var request = Request(wire, "gzip");
+        request.ContentLength = null;
+        var result = await LogsEndpoint.ReadBodyAsync(request, 64, TestContext.Current.CancellationToken);
+        Assert.Equal(LogsEndpoint.BodyStatus.TooLarge, result.Status);
+    }
 }

@@ -16,7 +16,10 @@ public sealed class WalFullException(long totalBytes, long limitBytes)
 
 public sealed record WalSegmentInfo(long Sequence, string Path, long Length, bool IsOpen);
 
-public sealed record WalRecoveryReport(int SegmentCount, int FrameCount, long TruncatedBytes);
+public sealed record WalRecoveryReport(int SegmentCount, int FrameCount, long TruncatedBytes)
+{
+    public IReadOnlyList<string> CorruptSegments { get; init; } = [];
+}
 
 /// <summary>
 /// Ürünün <b>dayanıklılık sınırı</b> (F1 §2.3).
@@ -42,22 +45,26 @@ public sealed class WriteAheadLog : IDisposable
     private readonly WalOptions _options;
     private readonly ILogger<WriteAheadLog> _logger;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
+    private readonly IWalDurability _durability;
 
     private FileStream? _current;
     private long _currentSequence;
     private long _totalBytes;
     private bool _disposed;
+    private string? _failure;
 
-    public WriteAheadLog(IOptions<WalOptions> options, ILogger<WriteAheadLog> logger)
+    public WriteAheadLog(IOptions<WalOptions> options, ILogger<WriteAheadLog> logger, IWalDurability? durability = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(logger);
 
         _options = options.Value;
         _logger = logger;
+        _durability = durability ?? new FileWalDurability();
 
         System.IO.Directory.CreateDirectory(_options.Directory);
         Recovery = Recover();
+        if (Recovery.CorruptSegments.Count > 0) _failure = "WAL corruption quarantined; operator recovery required.";
     }
 
     /// <summary>Açılışta yapılan kurtarmanın raporu — sağlık ekranında görünür.</summary>
@@ -66,6 +73,7 @@ public sealed class WriteAheadLog : IDisposable
     public long TotalBytes => Interlocked.Read(ref _totalBytes);
 
     public bool IsFull => TotalBytes >= _options.MaxTotalBytes;
+    public string? Failure => Volatile.Read(ref _failure);
 
     /// <summary>
     /// Ham batch'i yazar ve diske indirir. Dönüş, çağıranın ack verebileceği andır.
@@ -87,6 +95,7 @@ public sealed class WriteAheadLog : IDisposable
         await _writeLock.WaitAsync(cancellationToken);
         try
         {
+            if (_failure is not null) throw new IOException(_failure);
             // Sınır kontrolü kilidin İÇİNDE: dışarıda yapılırsa eşzamanlı istekler
             // sınırı birlikte aşar ve disk dolar.
             if (_totalBytes + frame.Length > _options.MaxTotalBytes)
@@ -94,26 +103,41 @@ public sealed class WriteAheadLog : IDisposable
                 throw new WalFullException(_totalBytes, _options.MaxTotalBytes);
             }
 
-            var stream = EnsureSegment(frame.Length);
-            await stream.WriteAsync(frame, cancellationToken);
-
-            if (_options.FlushToDisk)
+            try
             {
-                // flushToDisk: true — işletim sistemi önbelleği yetmez, ack veriyoruz.
-                stream.Flush(flushToDisk: true);
+                var stream = EnsureSegment(frame.Length);
+                await stream.WriteAsync(frame, cancellationToken);
+                if (_options.FlushToDisk)
+                    await _durability.FlushAsync(stream, cancellationToken);
+                else
+                    await stream.FlushAsync(cancellationToken);
+                Interlocked.Add(ref _totalBytes, frame.Length);
+                return new WalSegmentInfo(_currentSequence, stream.Name, stream.Length, IsOpen: true);
             }
-            else
+            catch (Exception ex) when (ex is IOException or OperationCanceledException)
             {
-                await stream.FlushAsync(cancellationToken);
+                _failure = "WAL append did not complete durably; reopen and recover before further writes.";
+                throw;
             }
-
-            Interlocked.Add(ref _totalBytes, frame.Length);
-            return new WalSegmentInfo(_currentSequence, stream.Name, stream.Length, IsOpen: true);
         }
         finally
         {
             _writeLock.Release();
         }
+    }
+
+    public async Task SealAsync(CancellationToken cancellationToken = default)
+    {
+        await _writeLock.WaitAsync(cancellationToken);
+        try
+        {
+            if (_failure is not null) throw new IOException(_failure);
+            if (_current is null) return;
+            _current.Flush(flushToDisk: true);
+            _current.Dispose();
+            _current = null;
+        }
+        finally { _writeLock.Release(); }
     }
 
     /// <summary>
@@ -131,7 +155,9 @@ public sealed class WriteAheadLog : IDisposable
     }
 
     /// <summary>Segmentteki çerçeveleri sırayla okur. Bozuk çerçevede durur.</summary>
-    public static IEnumerable<ReadOnlyMemory<byte>> ReadFrames(string path)
+    public static IEnumerable<ReadOnlyMemory<byte>> ReadFrames(string path) => ReadFrames(path, strict: false);
+
+    public static IEnumerable<ReadOnlyMemory<byte>> ReadFrames(string path, bool strict)
     {
         var bytes = File.ReadAllBytes(path);
         var offset = 0;
@@ -141,6 +167,7 @@ public sealed class WriteAheadLog : IDisposable
             var read = WalFrame.TryDecode(bytes.AsSpan(offset), out var payload);
             if (read == 0)
             {
+                if (strict) throw new InvalidDataException("WAL frame integrity failure: " + path);
                 yield break;
             }
 
@@ -211,6 +238,7 @@ public sealed class WriteAheadLog : IDisposable
         var frames = 0;
         long truncated = 0;
         long total = 0;
+        var corrupt = new List<string>();
 
         foreach (var (sequence, path) in segments)
         {
@@ -231,6 +259,16 @@ public sealed class WriteAheadLog : IDisposable
 
             if (offset < bytes.Length)
             {
+                if (_options.StrictRecovery && !IncompleteTail(bytes.AsSpan(offset)))
+                {
+                    // Preserve the entire file, including every acknowledged suffix.
+                    // Reopening reports the same fault; no fresh append can hide it.
+                    corrupt.Add(path);
+                    total += bytes.Length;
+                    _currentSequence = Math.Max(_currentSequence, sequence);
+                    _logger.LogError("WAL segment {Segment} quarantined in place at offset {Offset}.", path, offset);
+                    continue;
+                }
                 truncated += bytes.Length - offset;
                 using var stream = new FileStream(path, FileMode.Open, FileAccess.Write, FileShare.None);
                 stream.SetLength(offset);
@@ -257,7 +295,20 @@ public sealed class WriteAheadLog : IDisposable
                 truncated);
         }
 
-        return new WalRecoveryReport(segments.Count, frames, truncated);
+        return new WalRecoveryReport(segments.Count, frames, truncated) { CorruptSegments = corrupt };
+    }
+
+    private static bool IncompleteTail(ReadOnlySpan<byte> bytes)
+    {
+        // A valid later frame proves this is not merely an incomplete EOF.
+        // In particular a damaged length header must not erase an ACKed suffix.
+        for (var offset = WalFrame.HeaderBytes; offset <= bytes.Length - WalFrame.HeaderBytes; offset++)
+            if (WalFrame.TryDecode(bytes[offset..], out _) > 0) return false;
+        if (bytes.Length < 4) return true;
+        if (System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(bytes[..4]) != WalFrame.Magic) return false;
+        if (bytes.Length < WalFrame.HeaderBytes) return true;
+        var length = System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(bytes.Slice(4, 4));
+        return length <= int.MaxValue - WalFrame.HeaderBytes && length > bytes.Length - WalFrame.HeaderBytes;
     }
 
     private IReadOnlyList<(long Sequence, string Path)> EnumerateSegmentFiles() =>

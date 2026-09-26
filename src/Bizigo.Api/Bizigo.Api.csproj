@@ -43,6 +43,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="SharpZipLib" />
 
     <!--
       MCP'nin akışlanabilir HTTP taşıması. `Bizigo.Mcp`'de DEĞİL: orada
