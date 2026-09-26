@@ -31,7 +31,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bizigo.Contracts\Bizigo.Contracts.csproj" />
-    <ProjectReference Include="../../sim/Bizigo.OtlpFixture/Bizigo.OtlpFixture.csproj" ReferenceOutputAssembly="false" />
+    <!-- Fixture derlemesi ürün keşfi tarafından yüklenir; alias global Program çakışmasını önler. -->
+    <ProjectReference Include="../../sim/Bizigo.OtlpFixture/Bizigo.OtlpFixture.csproj" Aliases="OtlpFixture" />
     <ProjectReference Include="..\..\src\Bizigo.Parsing\Bizigo.Parsing.csproj" />
     <ProjectReference Include="..\..\src\Bizigo.Normalization\Bizigo.Normalization.csproj" />
     <ProjectReference Include="..\..\src\Bizigo.ControlPlane\Bizigo.ControlPlane.csproj" />

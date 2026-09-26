@@ -9,7 +9,7 @@ relationships:
   - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
     type: related_to
 sources: [docs/graphify.md, CLAUDE.md, README.md]
-source_digest: "sha256-12/v1 CLAUDE.md=3927d9fc6d4a README.md=662f19b4c25f docs/graphify.md=5cc01d2e969c"
+source_digest: "sha256-12/v1 CLAUDE.md=3927d9fc6d4a README.md=8c53a176a7e5 docs/graphify.md=5cc01d2e969c"
 summary: docs/graphify.md özeti — kod grafını tree-sitter AST'siyle LLM'siz üreten yerel araç; 8.280 düğüm, 18.892 kenar, sıfır token maliyeti.
 provenance:
   extracted: 0.9

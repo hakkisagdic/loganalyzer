@@ -244,6 +244,10 @@ public sealed class ArchitectureTests
                 // okuyan bu satırı bağlanmışlık kanıtı sanardı.
                 "AddBizigoScenarioPlugins",
 
+                // OTLP metric/trace worker ve decoder kayıtları da gerçek
+                // üretim kompozisyonunda kapsam doğrulamasına girer.
+                "AddBizigoTelemetry",
+
                 "AddChangeConnectors", "AddChangeWebhooks",
                 "AddControlPlane",
 
