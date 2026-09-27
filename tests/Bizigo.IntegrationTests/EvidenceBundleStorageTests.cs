@@ -66,6 +66,8 @@ public sealed class EvidenceBundleStorageTests(DevStackFixture stack) : IAsyncLi
         Window = Window(),
         Scope = new BundleScope(["network/core"], IsSystem: false),
         Trust = new WindowTrust(1_204, 142),
+        // Schema 2 toplamı sağlayıcı tanı sayılarından değil, ayrı ölçümden gelir.
+        ExcludedInputs = new([new(EvidenceKind.Metric, 342, null), new(EvidenceKind.Trace, 0, null)]),
         Slices =
         [
             new EvidenceSlice
@@ -95,7 +97,7 @@ public sealed class EvidenceBundleStorageTests(DevStackFixture stack) : IAsyncLi
                 Kind = EvidenceKind.Change,
                 Status = EvidenceStatus.NeverFed,
                 Detail = "Değişiklik akışında hiç kayıt yok — besleme bağlı olmayabilir.",
-                OutOfScopeCount = 342,
+                OutOfScopeCount = 999,
             },
         ],
     };
@@ -169,6 +171,40 @@ public sealed class EvidenceBundleStorageTests(DevStackFixture stack) : IAsyncLi
         Assert.Equal(bundle.ContentHash, found.ContentHash);
         Assert.Equal(342, found.OutOfScopeCount);
         Assert.Equal(EvidenceBundle.CurrentSchemaVersion, found.SchemaVersion);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0L)]
+    [InlineData(342L)]
+    [Trait("Category", "Integration")]
+    public async Task Olculmemis_sifir_ve_pozitif_sayilar_jsonb_ve_ust_veride_korunuyor(long? measuredCount)
+    {
+        var bundle = Bundle() with
+        {
+            ExcludedInputs = measuredCount is null
+                ? ExcludedInputRecords.Unmeasured
+                : new([new(EvidenceKind.Metric, measuredCount, null), new(EvidenceKind.Trace, 0, null)]),
+        };
+        var token = TestContext.Current.CancellationToken;
+        var store = Store();
+        await store.SaveAsync(bundle, token);
+        var loaded = await store.GetAsync(bundle.Id, token);
+
+        Assert.NotNull(loaded);
+        Assert.Equal(bundle.ContentHash, loaded.ContentHash);
+        Assert.Equal(measuredCount, loaded.OutOfScopeCount);
+        Assert.Equal(measuredCount.HasValue, loaded.ExcludedInputs.Measured);
+        Assert.Equal(bundle.ExcludedInputs.Reason, loaded.ExcludedInputs.Reason);
+        Assert.Equal(bundle.ExcludedInputs.Kinds.ToArray(), loaded.ExcludedInputs.Kinds.ToArray());
+        // 999 tanı değeri korunur, fakat ölçülmemiş sayıyı veya gerçek toplamı dolduramaz.
+        Assert.Equal(999, loaded.Slices.Single(s => s.ProviderId == "change.feed").OutOfScopeCount);
+
+        await using var db = await _factory.CreateDbContextAsync(token);
+        var metadata = await db.EvidenceBundles.Where(b => b.Id == bundle.Id)
+            .Select(b => new { b.ContentHash, b.OutOfScopeCount }).SingleAsync(token);
+        Assert.Equal(bundle.ContentHash, metadata.ContentHash);
+        Assert.Equal(measuredCount, metadata.OutOfScopeCount);
     }
 
     /// <summary>
