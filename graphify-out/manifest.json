@@ -7770,9 +7770,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Storage.Raw/SignalArchive.cs": {
-    "mtime": 1790454144.6414883,
-    "seen": 1790459039.4170072,
-    "ast_hash": "cf5b1752ed7a5c57dd7dfc0dfce22f96",
+    "mtime": 1790533266.087342,
+    "seen": 1790533361.938167,
+    "ast_hash": "9b70bac7a9c10b16b0e8efb48d403686",
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/OtlpTelemetryIntegrationTests.cs": {
@@ -7824,9 +7824,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/SignalArchiveBoundaryTests.cs": {
-    "mtime": 1790342667.7163997,
-    "seen": 1790425787.511853,
-    "ast_hash": "d462006ff79d82550f4acd87f7c4e6af",
+    "mtime": 1790533237.2773619,
+    "seen": 1790533361.9382799,
+    "ast_hash": "048a4a49105b9675c5f9996a1ab669f6",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/SignalDurabilityTests.cs": {
