@@ -142,8 +142,13 @@ public sealed class SourceOwnershipHistoryIntegrationTests(DevStackFixture stack
                 """, Ct);
             var before = (decimal)(DateTimeOffset.UtcNow.UtcTicks - DateTimeOffset.UnixEpoch.UtcTicks) * 100;
             await migrator.MigrateAsync(cancellationToken: Ct);
+            var after = (decimal)(DateTimeOffset.UtcNow.UtcTicks - DateTimeOffset.UnixEpoch.UtcTicks) * 100;
             var row = Assert.Single(await db.SourceOwnershipHistory.ToArrayAsync(Ct));
-            Assert.True(row.EffectiveFromNano >= before - 1000);
+            // The migration uses PostgreSQL transaction_timestamp(), which can
+            // precede the client-side sample (and another machine's clock).
+            // This checks migration-time ownership without assuming 1 µs sync.
+            var clockTolerance = (decimal)TimeSpan.FromMinutes(5).Ticks * 100;
+            Assert.InRange(row.EffectiveFromNano, before - clockTolerance, after + clockTolerance);
             var resolved = await new HistoricalTelemetryOwners(factory).ResolveAsync([new("leaf", 100, ["old"])], Ct);
             Assert.Equal("_unassigned", Assert.Single(resolved).OwnerGroup);
         }
@@ -159,14 +164,23 @@ public sealed class SourceOwnershipHistoryIntegrationTests(DevStackFixture stack
     public async Task Alias_disable_cache_restart_use_committed_history()
     {
         var factory = await DevStackSetup.ControlPlaneAsync(stack, Ct);
-        var clock = new FakeTimeProvider(DateTimeOffset.UtcNow.AddMinutes(-1));
+        var start = DateTimeOffset.UtcNow.AddMinutes(-1);
+        var clock = new FakeTimeProvider(start.AddTicks(-(start.UtcTicks % 10) + 7));
         await using (var db = await factory.CreateDbContextAsync(Ct))
         { db.HistoryClock = clock; await Upsert(db, new() { SourceId = "device", OwnerGroup = "A", Hostname = "old" }); }
         var directory = new SourceDirectory(factory); await directory.RefreshAsync(Ct);
         clock.Advance(TimeSpan.FromSeconds(1));
         await using (var db = await factory.CreateDbContextAsync(Ct))
         { db.HistoryClock = clock; await Upsert(db, new() { SourceId = "device", OwnerGroup = "B", Hostname = "new" }); }
-        var transfer = checked((ulong)(clock.GetUtcNow().UtcTicks - DateTimeOffset.UnixEpoch.UtcTicks) * 100);
+        // History boundaries are persisted at microsecond precision. The fake
+        // clock can still carry sub-microsecond ticks, so clockNano - 1 is not
+        // necessarily before the committed transfer on every runner.
+        await using var committed = await factory.CreateDbContextAsync(Ct);
+        var versions = await committed.SourceOwnershipHistory.AsNoTracking()
+            .Where(h => h.SourceId == "device").OrderBy(h => h.Revision).ToArrayAsync(Ct);
+        Assert.Equal(2, versions.Length);
+        Assert.Equal(versions[0].EffectiveToNano, versions[1].EffectiveFromNano);
+        var transfer = checked((ulong)versions[1].EffectiveFromNano);
         // The historical resolver reads committed revisions, even while the
         // dispatcher's unrelated current-source cache has not been refreshed.
         var result = await directory.HistoricalOwners.ResolveAsync([new("old", transfer - 1, ["old"]), new("new", transfer, ["new"])], Ct);
@@ -174,7 +188,11 @@ public sealed class SourceOwnershipHistoryIntegrationTests(DevStackFixture stack
         clock.Advance(TimeSpan.FromSeconds(1));
         await using (var db = await factory.CreateDbContextAsync(Ct))
         { db.HistoryClock = clock; await Upsert(db, new() { SourceId = "device", OwnerGroup = "B", Hostname = "new", Enabled = false }); }
-        var disabled = transfer + 1000000000;
+        await using var disabledCheck = await factory.CreateDbContextAsync(Ct);
+        var disabledRow = await disabledCheck.SourceOwnershipHistory.AsNoTracking()
+            .Where(h => h.SourceId == "device").OrderByDescending(h => h.Revision).FirstAsync(Ct);
+        Assert.False(disabledRow.Enabled);
+        var disabled = checked((ulong)disabledRow.EffectiveFromNano);
         var restarted = new SourceDirectory(new ControlPlaneFactory(stack.PostgresConnectionString));
         var after = await restarted.HistoricalOwners.ResolveAsync([new("leaf", disabled, ["new"])], Ct);
         Assert.Equal("disabled", Assert.Single(after).Reason);
