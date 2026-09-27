@@ -1,3 +1,4 @@
+using System.Text;
 using Bizigo.Contracts;
 using Bizigo.Ingest.Otlp;
 using Bizigo.Ingest.Wal;
@@ -31,6 +32,36 @@ public sealed class SignalArchiveBoundaryTests : IDisposable
         else
             await Assert.ThrowsAsync<InvalidDataException>(() => archive.ArchiveAsync(Envelope(), "wal-segment", Ct));
         Assert.Empty(archive.Manifests());
+    }
+
+    [Fact]
+    public async Task Identical_v2_envelope_reuses_verified_object_after_compression_change()
+    {
+        var store = new InMemoryObjectStore();
+        var padding = string.Join('|', Enumerable.Range(0, 5000).Select(i => $"node-{i % 137:D3}-field-{i % 997:D3}"));
+        var payload = Encoding.UTF8.GetBytes("{\"resourceMetrics\":[],\"padding\":\"" + padding + "\"}");
+        var envelope = new RawSignalEnvelope(2, Guid.NewGuid(), TelemetrySignal.Metrics, "application/json",
+            DateTimeOffset.UtcNow, RawSignalEnvelope.Hash(payload), payload, 1, ["m/0/0/0/0"], 0)
+        {
+            OwnerBindings = [new("m/0/0/0/0", "device", "A", 1, 123, "known")],
+        };
+        envelope = envelope with { OwnerBindingsSha256 = envelope.ComputeOwnerBindingsHash() };
+        var bytes = RawSignalCodec.Encode(envelope);
+        var builder = new RawObjectBuilder();
+        builder.Add(envelope.EnvelopeId, envelope.ReceivedAt, bytes);
+        Assert.NotEqual(builder.Build(1).Sha256, builder.Build(18).Sha256);
+
+        var firstArchive = new SignalArchive(store, root, compressionLevel: 1);
+        var first = await firstArchive.ArchiveAsync(envelope, "wal-original", Ct);
+        var original = await store.GetAsync(first.ObjectKey, Ct);
+        var secondArchive = new SignalArchive(store, root, compressionLevel: 18);
+        var second = await secondArchive.ArchiveAsync(envelope, "wal-replay", Ct);
+
+        Assert.Equal(first.ObjectKey, second.ObjectKey);
+        Assert.Equal(first.ObjectSha256, second.ObjectSha256);
+        Assert.Equal(original, await store.GetAsync(first.ObjectKey, Ct));
+        Assert.Single(store.Written);
+        Assert.Equal(bytes, RawSignalCodec.Encode(await secondArchive.ReadAsync(second, Ct)));
     }
 
     [Fact]

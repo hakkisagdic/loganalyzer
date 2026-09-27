@@ -31,6 +31,11 @@ public sealed class SignalArchive(IRawObjectStore store, string directory, int c
             if (old.ObjectSha256 != built.Sha256)
             {
                 var previous = await ReadAsync(old, token);
+                // The object hash covers compressed bytes. A changed zstd level
+                // or encoder version can change that hash without changing the
+                // admitted envelope. Keep the already verified restore set.
+                if (RawSignalCodec.Encode(previous).AsSpan().SequenceEqual(bytes))
+                    return old;
                 var legacy = envelope with { Version = 1, OwnerBindings = null, OwnerBindingsSha256 = null };
                 if (previous.Version != 1 || envelope.Version != RawSignalEnvelope.CurrentVersion
                     || !RawSignalCodec.Encode(previous).AsSpan().SequenceEqual(RawSignalCodec.Encode(legacy)))
