@@ -606,6 +606,9 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Conflict"
           }
         }
       }
@@ -670,6 +673,9 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Conflict"
           }
         }
       }

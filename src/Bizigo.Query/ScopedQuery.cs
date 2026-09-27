@@ -11,13 +11,14 @@ namespace Bizigo.Query;
 /// <see cref="IScopedQuery"/> uygulaması. İki iş yapıyor:
 /// kapsamı SQL'e çeviriyor ve her çağrıyı denetim günlüğüne yazıyor.
 /// </summary>
-public sealed class ScopedQuery(
+public sealed partial class ScopedQuery(
     EventReader events,
     ChangeEventReader changes,
     CorrelationReader correlations,
     EventWriter writer,
     ControlPlaneDbContext controlPlane,
-    IAuditSink audit) : IScopedQuery
+    IAuditSink audit,
+    TelemetryReader? telemetry = null) : IScopedQuery
 {
     public async Task<IReadOnlyList<SourceSummary>> SearchSourcesAsync(
         AccessScope scope,

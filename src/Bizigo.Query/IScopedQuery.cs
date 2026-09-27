@@ -90,7 +90,7 @@ namespace Bizigo.Query;
 /// soruluyor.
 /// </para>
 /// </summary>
-public interface IScopedQuery
+public partial interface IScopedQuery
 {
     Task<EventPage> SearchEventsAsync(EventQuery query, AccessScope scope, CancellationToken cancellationToken = default);
 

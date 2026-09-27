@@ -1,3 +1,4 @@
+using Bizigo.Contracts;
 using Bizigo.Normalization;
 using Bizigo.Storage.ClickHouse;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +34,9 @@ public static class QueryServiceCollectionExtensions
         services.AddSingleton<EventReader>();
         services.AddSingleton<ChangeEventReader>();
         services.AddSingleton<CorrelationReader>();
+        services.AddSingleton<TelemetryReader>();
+        services.AddSingleton(new TelemetryRetentionPolicy(options.TelemetryRetentionDays));
+        services.AddSingleton<ITelemetrySink, TelemetryWriter>();
 
         // Yazma yolu (T07): normalizasyon + toplu yazım. Ingest katmanı bunları
         // görmüyor, yalnızca IParsedEventSink sözleşmesini biliyor.

@@ -94,7 +94,8 @@ public sealed class ArchitectureTests
             .That()
             .HaveDependencyOnAny(
                 typeof(EventReader).FullName!,
-                typeof(ChangeEventReader).FullName!)
+                typeof(ChangeEventReader).FullName!,
+                typeof(TelemetryReader).FullName!)
             .GetTypes()
             .Select(t => t.FullName)
             .ToArray();

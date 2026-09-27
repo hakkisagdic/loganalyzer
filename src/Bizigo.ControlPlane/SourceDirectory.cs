@@ -35,6 +35,9 @@ public sealed record ResolvedSource(
 /// </summary>
 public sealed class SourceDirectory(IDbContextFactory<ControlPlaneDbContext> factory)
 {
+    public static IReadOnlyList<string> TelemetryCandidateOrder { get; } =
+        Array.AsReadOnly(new[] { "bizigo.source_key", "service.instance.id", "host.id", "host.name", "service.name" });
+    public HistoricalTelemetryOwners HistoricalOwners { get; } = new(factory);
     private readonly IDbContextFactory<ControlPlaneDbContext> _factory = factory;
     private Dictionary<string, ResolvedSource> _snapshot = new(StringComparer.OrdinalIgnoreCase);
     private sealed record TelemetrySnapshot(Dictionary<string, ResolvedSource> Sources, HashSet<string> Ambiguous);
@@ -93,14 +96,22 @@ public sealed class SourceDirectory(IDbContextFactory<ControlPlaneDbContext> fac
     public ResolvedSource ResolveTelemetry(IEnumerable<string> candidates)
     {
         var snapshot = Volatile.Read(ref _telemetry);
-        string? first = null;
+        var keys = candidates.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
+        var (source, _) = SelectTelemetry(keys, key => snapshot.Sources.TryGetValue(key, out var value)
+            ? snapshot.Ambiguous.Contains(key) ? new[] { value, value } : [value] : [], _ => true);
+        return source ?? new(keys.FirstOrDefault() ?? "_unknown", OwnerGroups.Unassigned, "default", "auto", null, false);
+    }
+
+    internal static (T? Source, string Reason) SelectTelemetry<T>(IEnumerable<string> candidates,
+        Func<string, T[]> matches, Func<T, bool> enabled) where T : class
+    {
         foreach (var key in candidates.Where(x => !string.IsNullOrWhiteSpace(x)))
         {
-            first ??= key;
-            if (snapshot.Ambiguous.Contains(key)) break;
-            if (snapshot.Sources.TryGetValue(key, out var source)) return source;
+            var found = matches(key);
+            if (found.Length > 1) return (null, "ambiguous");
+            if (found.Length == 1) return enabled(found[0]) ? (found[0], "known") : (null, "disabled");
         }
-        return new(first ?? "_unknown", OwnerGroups.Unassigned, "default", "auto", null, false);
+        return (null, "unknown");
     }
 
     public ResolvedSource Resolve(string? sourceKey)

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Bizigo.Contracts;
 
 namespace Bizigo.ControlPlane;
 
@@ -25,6 +26,9 @@ public static class ControlPlaneServiceCollectionExtensions
             lifetime: ServiceLifetime.Singleton);
 
         services.AddSingleton<SourceDirectory>();
+        services.AddSingleton<HistoricalTelemetryOwners>();
+        services.AddSingleton<ITelemetryOwnerResolver>(sp => sp.GetRequiredService<HistoricalTelemetryOwners>());
+        services.AddSingleton<ITelemetryBindingRegistry>(sp => sp.GetRequiredService<HistoricalTelemetryOwners>());
 
         return services;
     }

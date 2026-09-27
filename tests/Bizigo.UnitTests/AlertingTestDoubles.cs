@@ -42,6 +42,13 @@ internal sealed record FakeEvent(
 /// </summary>
 internal sealed class FakeScopedQuery : IScopedQuery, IAlertQuerySource
 {
+    public Task<TelemetryPage> SearchTelemetryAsync(TelemetryQuery query, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<TelemetryPage> GetMetricPointAsync(string logicalId, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<TelemetryPage> GetTraceAsync(TelemetryQuery query, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<TelemetryCount> CountTelemetryAsync(TelemetryQuery query, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<TelemetryCount> CountOutOfScopeTelemetryAsync(TelemetryQuery query, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<TelemetrySummaryPage> SummarizeTelemetryAsync(TelemetryQuery query, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<TelemetryCount> GetTelemetryFeedAsync(TelemetrySignal signal, string? resourceId, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     private int _countCalls;
     private int _activityCalls;
     private int _inventoryCalls;

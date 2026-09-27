@@ -63,13 +63,15 @@ public static class SourcesEndpoints
             .RequireAuthorization(BizigoAuthPolicies.Admin)
             .WithName("UpsertSource")
             .Produces<SourceResponse>()
-            .Produces<SourceResponse>(StatusCodes.Status201Created);
+            .Produces<SourceResponse>(StatusCodes.Status201Created)
+            .Produces(StatusCodes.Status409Conflict);
 
         group.MapPost("/csv", ImportCsvAsync)
             .RequireAuthorization(BizigoAuthPolicies.Admin)
             .WithName("ImportSourcesCsv")
             .Produces<SourceCsvImportResponse>()
-            .Produces<SourceCsvErrorResponse>(StatusCodes.Status400BadRequest);
+            .Produces<SourceCsvErrorResponse>(StatusCodes.Status400BadRequest)
+            .Produces(StatusCodes.Status409Conflict);
 
         return routes;
     }
@@ -207,7 +209,8 @@ public static class SourcesEndpoints
 
         existing.UpdatedAt = DateTimeOffset.UtcNow;
 
-        await db.SaveChangesAsync(cancellationToken);
+        try { await db.SaveChangesAsync(cancellationToken); }
+        catch (DbUpdateConcurrencyException) { return Results.Conflict(new { error = "Inventory changed concurrently; reload and retry." }); }
 
         // EF varlığı değil, sözleşme tipi dönüyor: varlık şeması bir gün
         // değiştiğinde API gövdesinin sessizce değişmesi, T14'ün ürettiği
@@ -281,7 +284,8 @@ public static class SourcesEndpoints
             entity.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
-        await db.SaveChangesAsync(cancellationToken);
+        try { await db.SaveChangesAsync(cancellationToken); }
+        catch (DbUpdateConcurrencyException) { return Results.Conflict(new { error = "Inventory changed concurrently; reload and retry the CSV batch." }); }
 
         return Results.Ok(new SourceCsvImportResponse(created, updated, parsed.Count));
     }

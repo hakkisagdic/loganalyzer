@@ -22,8 +22,25 @@ public sealed class SignalArchive(IRawObjectStore store, string directory, int c
         var key = $"otlp/v1/{envelope.Signal.ToString().ToLowerInvariant()}/{envelope.EnvelopeId:N}.json.zst";
         var path = ManifestPath(envelope.EnvelopeId);
         SignalArchiveManifest? old = File.Exists(path) ? ReadManifest(path) : null;
-        if (old is not null && (old.PayloadSha256 != envelope.PayloadSha256 || old.ObjectKey != key))
+        if (old is not null && (old.EnvelopeId != envelope.EnvelopeId || old.Signal != envelope.Signal
+            || old.PayloadSha256 != envelope.PayloadSha256))
             throw new InvalidDataException("Envelope identity conflicts with archive manifest.");
+        if (old is not null)
+        {
+            key = old.ObjectKey;
+            if (old.ObjectSha256 != built.Sha256)
+            {
+                var previous = await ReadAsync(old, token);
+                var legacy = envelope with { Version = 1, OwnerBindings = null, OwnerBindingsSha256 = null };
+                if (previous.Version != 1 || envelope.Version != RawSignalEnvelope.CurrentVersion
+                    || !RawSignalCodec.Encode(previous).AsSpan().SequenceEqual(RawSignalCodec.Encode(legacy)))
+                    throw new InvalidDataException("Archived admission decision cannot be replaced.");
+                // Copy-on-write: the old manifest always retains its verified
+                // object until the replacement manifest is atomically renamed.
+                key = $"otlp/v1/{envelope.Signal.ToString().ToLowerInvariant()}/{envelope.EnvelopeId:N}.{built.Sha256}.json.zst";
+                old = null;
+            }
+        }
 
         var existing = old is null ? null : await store.GetAsync(key, token);
         if (existing is null || RawSignalEnvelope.Hash(existing) != built.Sha256)
@@ -37,7 +54,8 @@ public sealed class SignalArchive(IRawObjectStore store, string directory, int c
         if (checkpoint is not null) await checkpoint("archive-before-manifest", token);
         var manifest = new SignalArchiveManifest(1, envelope.EnvelopeId, envelope.Signal, envelope.PayloadSha256,
             key, built.Sha256, segment, old?.VerifiedAt ?? DateTimeOffset.UtcNow, bytes.Length);
-        await DurableFile.WriteAsync(path, JsonSerializer.SerializeToUtf8Bytes(manifest, RawSignalCodec.Json), token);
+        await DurableFile.WriteAsync(path, JsonSerializer.SerializeToUtf8Bytes(manifest, RawSignalCodec.Json), token,
+            checkpoint is null ? null : (stage, ct) => checkpoint("archive-manifest-" + stage, ct));
         return manifest;
     }
 

@@ -49,7 +49,7 @@ def wait_for(probe, timeout=180):
     raise RuntimeError(f"readiness timeout: {last}")
 
 
-def main():
+def main(extension=None):
     parser = argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--serve", action="store_true")
@@ -185,6 +185,7 @@ def main():
                 return
             self.rfile.read(int(self.headers.get("Content-Length", "0")))
             try:
+                result_body = {"ok": True}
                 with lock:
                     if self.path == "/stop":
                         stopped.set()
@@ -199,10 +200,13 @@ def main():
                         (folder / f"replay-{time.time_ns()}.log").write_bytes(result.stdout + result.stderr)
                         assert result.returncode == 0, "offline replay failed"
                         start_api(False)
+                    elif extension is not None and (extra := extension.control(self.path)):
+                        if isinstance(extra, dict):
+                            result_body.update(extra)
                     else:
                         self.send_error(404)
                         return
-                self.send_response(200); self.end_headers(); self.wfile.write(b'{"ok":true}')
+                self.send_response(200); self.end_headers(); self.wfile.write(json.dumps(result_body).encode())
             except Exception as error:
                 self.send_error(500, str(error))
     # Proxy is reachable from the owned Collector container. Control stays local.
@@ -221,6 +225,8 @@ def main():
         run(compose + ["up", "-d", "--wait", "--wait-timeout", "600", "postgres", "clickhouse", "rustfs", "keycloak"])
         wait_for(token)
         start_api()
+        if extension is not None:
+            extension.start(api_env, folder, port)
         name = project + "-collector"
         containers.append(name)
         run(["docker", "run", "-d", "--name", name, "--network", project + "_default", "--user", "0:0",
@@ -241,12 +247,16 @@ def main():
                    "access": "fixture-access", "secret": "fixture-secret-key"},
             "clickhouse": f"http://127.0.0.1:{ports['CH_HTTP_PORT']}", "ch_user": "bizigo", "ch_password": "fixture-password"}
         path = folder / "session.json"
+        if extension is not None:
+            session.update(extension.session())
         path.write_text(json.dumps(session, indent=2)); path.chmod(0o600)
         print(f"READY production API + {IMAGE}: {path}", flush=True)
         while not stopped.wait(1):
             if state["api"] is not None and state["api"].poll() is not None:
                 raise RuntimeError("production API exited unexpectedly")
     finally:
+        if extension is not None:
+            extension.close()
         stop_api()
         for name in containers:
             subprocess.run(["docker", "logs", name], stdout=logs, stderr=subprocess.STDOUT, timeout=30)

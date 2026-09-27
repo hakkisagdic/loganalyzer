@@ -24,7 +24,7 @@ MUTANTS = [
      "null, new OpenTelemetry.Proto.Trace.V1.Span { Name = span.Name, TraceId = span.TraceId, SpanId = span.SpanId }",
      "Trace_parent_events_links_and_context_survive_typed_decode"),
     ("payload-owner-trust", "src/Bizigo.Ingest/Otlp/SignalIngest.cs", '["owner_group"] = source.OwnerGroup',
-     '["owner_group"] = attributes.FirstOrDefault(a => a.Key == "owner_group")?.Value.StringValue ?? source.OwnerGroup',
+     '["owner_group"] = leaf.Resource.Attributes.FirstOrDefault(a => a.Key == "owner_group")?.Value.StringValue ?? source.OwnerGroup',
      "Inventory_candidates_and_ambiguous_alias_never_trust_payload_owner"),
     ("duplicate-replay-identity", "src/Bizigo.Ingest/Otlp/SignalIngest.cs", '["logical_id"] = envelope.EnvelopeId.ToString("N")',
      '["logical_id"] = Guid.NewGuid().ToString("N")', "Restart_and_concurrent_replay_keep_identity_raw_decision_and_owner"),
@@ -53,7 +53,17 @@ MUTANTS = [
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--evidence-dir", type=Path)
+    parser.add_argument("--legacy-upgrade", action="store_true", help="Check legacy copy-on-write and blank candidate regressions")
     args = parser.parse_args()
+    mutants = MUTANTS if not args.legacy_upgrade else [
+        ("legacy-overwrite-before-manifest", "src/Bizigo.Storage.Raw/SignalArchive.cs",
+         'key = $"otlp/v1/{envelope.Signal.ToString().ToLowerInvariant()}/{envelope.EnvelopeId:N}.{built.Sha256}.json.zst";',
+         'key = old.ObjectKey;', "Interrupted_legacy_upgrade_preserves_original_restore_set_and_retries"),
+        ("legacy-first-empty-candidate", "src/Bizigo.Ingest/Otlp/SignalIngest.cs",
+         '.Candidates.FirstOrDefault(candidate => !string.IsNullOrWhiteSpace(candidate))',
+         '.Candidates.FirstOrDefault()', "Legacy_blank_candidates_use_next_nonblank_or_deterministic_unknown"),
+    ]
+    control = "Normal_legacy_upgrade_remains_idempotent" if args.legacy_upgrade else CONTROL
     evidence = args.evidence_dir or Path(tempfile.mkdtemp(prefix="otlp-mutation-evidence-"))
     evidence.mkdir(parents=True, exist_ok=True)
     helper.resources()
@@ -74,10 +84,10 @@ def main():
             (evidence / (label + "-build.log")).write_text(result.stdout + result.stderr)
             assert result.returncode == 0, f"compiler failure is not a kill: {label}"
         compile_stage("baseline")
-        all_tests = [CONTROL] + [m[4] for m in MUTANTS]
+        all_tests = [control] + [m[4] for m in mutants]
         code, outcomes = helper.tests(copy, all_tests, evidence / "baseline", env)
         assert code == 0 and all(outcome == "Passed" for _, outcome in outcomes)
-        for label, name, before, after, red in MUTANTS:
+        for label, name, before, after, red in mutants:
             path = copy / name
             original = path.read_text()
             assert original.count(before) == 1, f"stale mutation anchor: {label}"
@@ -85,19 +95,19 @@ def main():
                 path.write_text(original.replace(before, after, 1))
                 assert after in path.read_text()
                 compile_stage(label)
-                code, outcomes = helper.tests(copy, [red, CONTROL], evidence / label, env)
+                code, outcomes = helper.tests(copy, [red, control], evidence / label, env)
                 assert code != 0 and any(red in test and outcome == "Failed" for test, outcome in outcomes), label
-                controls = [outcome for test, outcome in outcomes if CONTROL in test]
+                controls = [outcome for test, outcome in outcomes if control in test]
                 assert controls and all(outcome == "Passed" for outcome in controls), label
                 assert all(outcome in ("Failed", "Passed") for _, outcome in outcomes), "runner error/skip is not a kill"
                 print(f"KILLED {label}: named TRX failure and positive controls passed", flush=True)
             finally:
                 path.write_text(original)
         compile_stage("restored")
-        code, outcomes = helper.tests(copy, ["Signal", "OtlpTelemetry", "OtlpBodyRead"], evidence / "restored", env)
+        code, outcomes = helper.tests(copy, ["Signal", "OtlpTelemetry", "OtlpBodyRead", "LegacySignalReplayTests"], evidence / "restored", env)
         assert code == 0 and outcomes and all(outcome == "Passed" for _, outcome in outcomes)
-    (evidence / "result.json").write_text(json.dumps({"mutants_killed": len(MUTANTS), "restored": "PASS"}, indent=2))
-    print(f"PASS {len(MUTANTS)} OTLP mutants; restored suite green; common tree untouched; evidence {evidence}")
+    (evidence / "result.json").write_text(json.dumps({"mutants_killed": len(mutants), "restored": "PASS"}, indent=2))
+    print(f"PASS {len(mutants)} OTLP mutants; restored suite green; common tree untouched; evidence {evidence}")
 
 
 if __name__ == "__main__":

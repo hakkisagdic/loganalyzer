@@ -13,6 +13,9 @@ public sealed class ClickHouseOptions
 
     public string ChangeEventsTable { get; set; } = "change_events";
 
+    /// <summary>Event-time retention, matching the default 90-day log policy.</summary>
+    public int TelemetryRetentionDays { get; set; } = 90;
+
     /// <summary>Toplu yazım eşiği (F1 §6: 10k satır / 2 sn, hangisi önce).</summary>
     public int BulkBatchSize { get; set; } = 100_000;
 

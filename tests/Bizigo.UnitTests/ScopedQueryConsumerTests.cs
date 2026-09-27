@@ -127,6 +127,10 @@ public sealed class ScopedQueryConsumerTests
         // araçlar yapıyor. Çekirdeğin bu tipi tanıması, taşıma katmanının
         // veri okuyabildiği anlamına gelirdi.
         "Bizigo.Mcp.Product",
+
+        // Sprint03 test executable: loopback HTTP adapter delegates to the
+        // production query/audit boundary. It is not a new product API surface.
+        "Bizigo.OtlpFixture",
     ];
 
     /// <summary>

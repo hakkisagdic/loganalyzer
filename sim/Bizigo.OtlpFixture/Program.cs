@@ -12,6 +12,16 @@ using Microsoft.Extensions.Options;
 
 // Explicit test executable. No fault gates or filesystem object adapters are
 // registered by the production API. All addresses bind only to loopback.
+if (args.Length >= 3 && args[0] == "--legacy-replay")
+{
+    await LegacyReplayHost.RunAsync(args[1..]);
+    return;
+}
+if (args.Length == 2 && args[0] == "--telemetry-query")
+{
+    await TelemetryQueryHost.RunAsync(args[1]);
+    return;
+}
 if (args.Length == 3 && args[0] == "--read-archive")
 {
     var bytes = await File.ReadAllBytesAsync(args[1]);

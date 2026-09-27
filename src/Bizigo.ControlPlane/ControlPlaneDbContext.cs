@@ -14,6 +14,69 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
     public const string Schema = "bizigo";
 
     public DbSet<SourceEntity> Sources => Set<SourceEntity>();
+    public DbSet<SourceOwnershipHistoryEntity> SourceOwnershipHistory => Set<SourceOwnershipHistoryEntity>();
+    public DbSet<TelemetryOwnerClaimEntity> TelemetryOwnerClaims => Set<TelemetryOwnerClaimEntity>();
+    public TimeProvider HistoryClock { get; set; } = TimeProvider.System;
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess) =>
+        SaveChangesAsync(acceptAllChangesOnSuccess).GetAwaiter().GetResult();
+
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        ChangeTracker.DetectChanges();
+        var changed = ChangeTracker.Entries<SourceEntity>().Where(e => e.State == EntityState.Added
+            || e.State == EntityState.Deleted || (e.State == EntityState.Modified && new[]
+                { nameof(SourceEntity.OwnerGroup), nameof(SourceEntity.Hostname), nameof(SourceEntity.PeerAddress), nameof(SourceEntity.Enabled) }
+                .Any(p => e.Property(p).IsModified))).ToArray();
+        if (changed.Length == 0) return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        var ownTransaction = Database.IsRelational() && Database.CurrentTransaction is null;
+        await using var transaction = ownTransaction ? await Database.BeginTransactionAsync(cancellationToken) : null;
+        try
+        {
+            if (Database.IsNpgsql())
+                await Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(735031)", cancellationToken);
+            var sourceIds = changed.Select(e => e.Entity.SourceId).ToArray();
+            var current = await SourceOwnershipHistory.Where(h => sourceIds.Contains(h.SourceId) && h.EffectiveToNano == null)
+                .ToArrayAsync(cancellationToken);
+            var now = (decimal)(HistoryClock.GetUtcNow().UtcTicks - DateTimeOffset.UnixEpoch.UtcTicks) * 100;
+            // PostgreSQL timestamps have microsecond granularity; stored nanos
+            // retain an exact half-open boundary even for two immediate writes.
+            now = decimal.Floor(now / 1000) * 1000;
+            if (current.Length != 0) now = Math.Max(now, current.Max(h => h.EffectiveFromNano) + 1000);
+            // Close the old rows before inserting their successors. EF's entity
+            // ordering does not encode a filtered unique index dependency.
+            // Both commands remain under the source transaction and advisory lock.
+            if (Database.IsNpgsql())
+            {
+                foreach (var prior in current)
+                {
+                    await Database.ExecuteSqlInterpolatedAsync($"UPDATE bizigo.source_ownership_history SET effective_to_nano = {now} WHERE revision = {prior.Revision}", cancellationToken);
+                    Entry(prior).State = EntityState.Detached;
+                }
+            }
+            foreach (var entry in changed)
+            {
+                if (!Database.IsNpgsql())
+                    foreach (var prior in current.Where(h => h.SourceId == entry.Entity.SourceId)) prior.EffectiveToNano = now;
+                var source = entry.Entity;
+                source.UpdatedAt = new DateTimeOffset(checked((long)(now / 100)) + DateTimeOffset.UnixEpoch.UtcTicks, TimeSpan.Zero);
+                SourceOwnershipHistory.Add(new()
+                {
+                    SourceId = source.SourceId, OwnerGroup = source.OwnerGroup,
+                    PeerAddress = source.PeerAddress, Hostname = source.Hostname,
+                    Enabled = entry.State != EntityState.Deleted && source.Enabled, EffectiveFromNano = now,
+                });
+            }
+            var count = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+            return count;
+        }
+        catch
+        {
+            if (transaction is not null) await transaction.RollbackAsync(CancellationToken.None);
+            throw;
+        }
+    }
     public DbSet<IdpGroupMappingEntity> IdpGroupMappings => Set<IdpGroupMappingEntity>();
     public DbSet<ParserEntity> Parsers => Set<ParserEntity>();
     public DbSet<RawManifestEntity> RawManifest => Set<RawManifestEntity>();
@@ -61,6 +124,15 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
             e.HasIndex(x => x.PeerAddress).IsUnique().HasFilter("peer_address IS NOT NULL");
             e.HasIndex(x => x.Hostname);
             e.HasIndex(x => x.OwnerGroup);
+            e.Property(x => x.UpdatedAt).IsConcurrencyToken();
+        });
+
+        modelBuilder.Entity<SourceOwnershipHistoryEntity>(e =>
+        {
+            e.Property(x => x.EffectiveFromNano).HasPrecision(20, 0);
+            e.Property(x => x.EffectiveToNano).HasPrecision(20, 0);
+            e.HasIndex(x => new { x.SourceId, x.EffectiveFromNano }).IsUnique();
+            e.HasIndex(x => x.SourceId).IsUnique().HasFilter("effective_to_nano IS NULL");
         });
 
         modelBuilder.Entity<ParserEntity>(e =>

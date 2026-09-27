@@ -38,7 +38,18 @@ public sealed class OtlpTelemetryIntegrationTests(DevStackFixture stack)
             """ : """
             {"resourceMetrics":[{"resource":{"attributes":[{"key":"bizigo.source_key","value":{"stringValue":"telemetry-known"}},{"key":"owner_group","value":{"stringValue":"attacker"}}]},"scopeMetrics":[{"metrics":[{"name":"histogram","histogram":{"dataPoints":[{"count":"3","sum":8,"bucketCounts":["1","2"],"explicitBounds":[4]}]}}]}]}]}
             """;
-        var bytes = Encoding.UTF8.GetBytes(body);
+        // This fixture verifies known inventory ownership. Event-time history
+        // requires a current event after the source was committed, not epoch 1ns.
+        var timestamp = checked((ulong)(DateTimeOffset.UtcNow.UtcTicks - DateTimeOffset.UnixEpoch.UtcTicks) * 100);
+        var document = JsonNode.Parse(body)!;
+        if (traces)
+        {
+            var span = document["resourceSpans"]![0]!["scopeSpans"]![0]!["spans"]![0]!;
+            span["startTimeUnixNano"] = timestamp.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            span["endTimeUnixNano"] = (timestamp + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+        else document["resourceMetrics"]![0]!["scopeMetrics"]![0]!["metrics"]![0]!["histogram"]!["dataPoints"]![0]!["timeUnixNano"] = timestamp.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var bytes = Encoding.UTF8.GetBytes(document.ToJsonString());
         SignalIngest Open() => new(new(), new SourceDirectory(factory), store,
             Options.Create(new SignalOptions { Directory = root }), Options.Create(new WalOptions { Directory = root }),
             Options.Create(options), NullLogger<WriteAheadLog>.Instance);

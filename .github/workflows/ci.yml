@@ -254,6 +254,12 @@ jobs:
         run: python3 tools/otlp-durability-smoke.py --evidence-dir /tmp/otlp-crash-evidence
       - name: Isolated OTLP mutations and evaluator regressions
         run: python3 tools/otlp-mutation-gate.py --evidence-dir /tmp/otlp-mutation-evidence
+      - name: Legacy archive process boundaries and rollback mutants
+        run: |
+          bash tools/machine-resources.sh check
+          python3 tools/telemetry-legacy-replay-smoke.py --evidence-dir /tmp/otlp-legacy-process
+          bash tools/machine-resources.sh check
+          python3 tools/otlp-mutation-gate.py --legacy-upgrade --evidence-dir /tmp/otlp-legacy-mutants
       - name: Production API and Collector HTTP probe
         run: |
           python3 tools/otlp-collector-smoke.py --serve --session-dir /tmp/otlp-collector > /tmp/otlp-collector.log 2>&1 &
@@ -276,9 +282,73 @@ jobs:
             TestResults/
             /tmp/otlp-crash-evidence/
             /tmp/otlp-mutation-evidence/
+            /tmp/otlp-legacy-process/
+            /tmp/otlp-legacy-mutants/
             /tmp/otlp-independent/
             /tmp/otlp-collector/*.log
             /tmp/otlp-collector/cleanup.json
+
+  telemetry-storage:
+    name: Telemetry — historical scope, real databases and replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: .NET SDK kur
+        run: |
+          curl -fsSL --retry 5 --retry-all-errors https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"
+          echo "$HOME/.dotnet" >> "$GITHUB_PATH"
+      - name: Serial Release build
+        run: |
+          bash tools/machine-resources.sh check
+          dotnet build Bizigo.sln --configuration Release -m:1
+      - name: Ownership query and boundary units
+        run: |
+          bash tools/machine-resources.sh check
+          dotnet test tests/Bizigo.UnitTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~TelemetryStorage|FullyQualifiedName~TelemetryQuery|FullyQualifiedName~TelemetryScope|FullyQualifiedName~TelemetryOwnership|FullyQualifiedName~SourceCsvImport|FullyQualifiedName~ScopedQuery|FullyQualifiedName~ArchitectureTests' --logger 'trx;LogFileName=telemetry-unit.trx' --results-directory TestResults
+          python3 tools/otlp-verify-trx.py TestResults/telemetry-unit.trx --require-class TelemetryStorageTests TelemetryQueryTests TelemetryScopeTests TelemetryOwnershipAdmissionTests ArchitectureTests ScopedQueryConsumerTests
+          python3 -m unittest discover -s tools/tests -p 'test_telemetry_storage_harness.py'
+      - name: Actual PostgreSQL and ClickHouse gates
+        env:
+          BIZIGO_TELEMETRY_EVIDENCE: /tmp/telemetry-db-artifacts
+        run: |
+          bash tools/machine-resources.sh check
+          dotnet test tests/Bizigo.IntegrationTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~Telemetry|FullyQualifiedName~SourceOwnershipHistoryIntegrationTests' --logger 'trx;LogFileName=telemetry-db.trx' --results-directory TestResults
+          python3 tools/otlp-verify-trx.py TestResults/telemetry-db.trx --require-class TelemetryStorageIntegrationTests TelemetryScopeIntegrationTests TelemetryReplayIntegrationTests TelemetryQueryIntegrationTests SourceOwnershipHistoryIntegrationTests TelemetryMutationControlsIntegrationTests TelemetryBoundaryIntegrationTests TelemetryArchiveProcessIntegrationTests TelemetryTypedEdgeIntegrationTests OtlpTelemetryIntegrationTests
+      - name: Eleven mutation families including both production history writers
+        run: python3 tools/telemetry-storage-mutation-gate.py --evidence-dir /tmp/telemetry-db-mutants
+      - name: Real Collector API WAL query audit and child crash chain
+        run: |
+          bash tools/machine-resources.sh check
+          python3 tools/telemetry-storage-smoke.py --serve --session-dir /tmp/telemetry-session > /tmp/telemetry-session.log 2>&1 &
+          fixture_pid=$!
+          trap 'kill -TERM "$fixture_pid" 2>/dev/null || true; wait "$fixture_pid" || true' EXIT
+          for attempt in $(seq 1 180); do
+            test -f /tmp/telemetry-session/session.json && break
+            kill -0 "$fixture_pid" || { cat /tmp/telemetry-session.log; exit 1; }
+            sleep 5
+          done
+          test -f /tmp/telemetry-session/session.json
+          python3 tools/telemetry-storage-probe.py --session /tmp/telemetry-session/session.json --evidence-dir /tmp/telemetry-independent
+          python3 tools/telemetry-storage-smoke.py --stop --session-dir /tmp/telemetry-session
+          wait "$fixture_pid"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: telemetry-storage-evidence
+          path: |
+            TestResults/
+            /tmp/telemetry-db-artifacts/
+            /tmp/telemetry-db-mutants/
+            /tmp/telemetry-independent/
+            /tmp/telemetry-session/*.log
+            /tmp/telemetry-session/cleanup.json
+            /tmp/telemetry-session/query-cleanup.json
+            /tmp/telemetry-session/db-crash.json
+            /tmp/telemetry-session/restore.json
 
   sidecar:
     name: Sidecar — pytest

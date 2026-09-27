@@ -66,7 +66,8 @@ public static class IngestServiceCollectionExtensions
         services.Configure<SignalOptions>(configuration.GetSection(SignalOptions.SectionName));
         services.AddSingleton<OtlpTelemetryDecoder>();
         services.TryAddSingleton<ISignalCheckpoints, SignalCheckpoints>();
-        services.AddSingleton<SignalIngest>();
+        services.AddSingleton(sp => ActivatorUtilities.CreateInstance<SignalIngest>(sp,
+            sp.GetRequiredService<Bizigo.Contracts.ITelemetrySink>()));
         services.AddHostedService<SignalIngestService>();
         return services;
     }

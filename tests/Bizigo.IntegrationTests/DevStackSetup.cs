@@ -89,6 +89,8 @@ public static class DevStackSetup
 
         await db.RawManifest.ExecuteDeleteAsync(cancellationToken);
         await db.Sources.ExecuteDeleteAsync(cancellationToken);
+        await db.SourceOwnershipHistory.ExecuteDeleteAsync(cancellationToken);
+        await db.TelemetryOwnerClaims.ExecuteDeleteAsync(cancellationToken);
 
         return factory;
     }

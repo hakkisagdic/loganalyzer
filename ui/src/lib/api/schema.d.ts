@@ -2500,6 +2500,13 @@ export interface operations {
                     "application/json": components["schemas"]["SourceResponse"];
                 };
             };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     SourceActivity: {
@@ -2550,6 +2557,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SourceCsvErrorResponse"];
                 };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

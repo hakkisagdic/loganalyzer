@@ -267,7 +267,15 @@ public sealed class SignalDurabilityTests : IDisposable
         await ingest.AcceptAsync(TelemetrySignal.Metrics, Payload("one"), "application/json", Ct);
         await ingest.ProcessAsync(await ingest.Reader.ReadAsync(Ct), Ct);
         var output = JsonNode.Parse(File.ReadAllBytes(Assert.Single(Directory.GetFiles(Path.Combine(root, "processed")))))!;
-        Assert.Equal("finance", output["leaves"]![0]!["owner_group"]!.GetValue<string>());
+        // Sprint03 user decision supersedes Sprint02 current-inventory replay:
+        // timeUnixNano=123 predates this inventory creation, so it grants no owner.
+        Assert.Equal("_unassigned", output["leaves"]![0]!["owner_group"]!.GetValue<string>());
+        var now = checked((ulong)(DateTimeOffset.UtcNow.UtcTicks - DateTimeOffset.UnixEpoch.UtcTicks) * 100);
+        var current = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(Payload("one"))
+            .Replace("\"123\"", "\"" + now.ToString(System.Globalization.CultureInfo.InvariantCulture) + "\"", StringComparison.Ordinal));
+        Assert.Equal(200, (await ingest.AcceptAsync(TelemetrySignal.Metrics, current, "application/json", Ct)).Status);
+        var admitted = await ingest.Reader.ReadAsync(Ct);
+        Assert.Equal("finance", Assert.Single(admitted.Envelope.OwnerBindings!).OwnerGroup);
     }
 
     [Fact]

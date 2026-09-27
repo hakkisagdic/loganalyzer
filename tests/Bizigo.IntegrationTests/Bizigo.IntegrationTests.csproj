@@ -14,6 +14,8 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <!-- Actual archive restore child; build it without importing its Program type. -->
+    <ProjectReference Include="..\..\sim\Bizigo.OtlpFixture\Bizigo.OtlpFixture.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>

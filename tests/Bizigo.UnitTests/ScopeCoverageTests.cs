@@ -108,7 +108,8 @@ public sealed partial class ScopeCoverageTests
             .OrderBy(static name => name, StringComparer.Ordinal)];
 
     /// <summary>
-    /// <c>ScopeNegativeTests.cs</c>'teki kapsama işaretleri.
+    /// Entegrasyon test dosyalarındaki kapsama işaretleri; yeni sinyal testleri
+    /// ayrı dosyada olduğunda da bekçi onları keşfeder.
     ///
     /// <para>
     /// Dosyadan okunuyor, derlemeden değil: birim testi paketi entegrasyon
@@ -131,8 +132,8 @@ public sealed partial class ScopeCoverageTests
                 "güncellenmeli — yoksa bekçi sessizce hiçbir şey denetlemez.", path);
         }
 
-        return CoverageMarker()
-            .Matches(File.ReadAllText(path))
+        return Directory.EnumerateFiles(Path.GetDirectoryName(path)!, "*Tests.cs", SearchOption.AllDirectories)
+            .SelectMany(file => CoverageMarker().Matches(File.ReadAllText(file)))
             .Select(m => m.Groups["method"].Value)
             .ToHashSet(StringComparer.Ordinal);
     }
@@ -158,7 +159,7 @@ public sealed partial class ScopeCoverageTests
             uncovered.Length == 0,
             "Bu kapsam kararlarının negatif testi yok ve listelerde de değiller:\n  " +
             string.Join("\n  ", uncovered) +
-            "\n\n`ScopeNegativeTests`'e bir test ekleyip `// kapsam: <MetotAdı>` işareti bırakın, " +
+            "\n\nEntegrasyon negatif testinin yanına `// kapsam: <MetotAdı>` işareti bırakın, " +
             "ya da gerekçesiyle `Pending`e yazın. Kapsam sızıntısının testi eksikse sızıntı " +
             "hiçbir yerde görünmez.");
     }

@@ -19,21 +19,35 @@ public sealed record RawSignalEnvelope(
     string[] AcceptedKeys,
     int RejectedCount)
 {
-    public const int CurrentVersion = 1;
+    public const int CurrentVersion = 2;
     public int PayloadLength { get; init; } = Payload?.Length ?? 0;
+    public int RetentionDays { get; init; } = 90;
+    public TelemetryOwnerBinding[]? OwnerBindings { get; init; }
+    public string? OwnerBindingsSha256 { get; init; }
+
+    public string ComputeOwnerBindingsHash() => Hash(JsonSerializer.SerializeToUtf8Bytes(
+        new { EnvelopeId, PayloadSha256, OwnerBindings, RetentionDays }, RawSignalCodec.Json));
 
     public void Validate()
     {
-        if (Version != CurrentVersion || ValidationVersion != 1)
+        if (Version is not (1 or CurrentVersion) || ValidationVersion != 1)
             throw new InvalidDataException("Unsupported telemetry envelope/validation version.");
         if (EnvelopeId == Guid.Empty || !Enum.IsDefined(Signal)
             || ContentType is not ("application/json" or "application/x-protobuf")
             || ReceivedAt.Offset != TimeSpan.Zero || Payload is null || PayloadLength != Payload.Length || AcceptedKeys is null
-            || RejectedCount < 0 || AcceptedKeys.Any(string.IsNullOrWhiteSpace)
+            || RejectedCount < 0 || RetentionDays is < 1 or > 36500 || AcceptedKeys.Any(string.IsNullOrWhiteSpace)
             || AcceptedKeys.Distinct(StringComparer.Ordinal).Count() != AcceptedKeys.Length)
             throw new InvalidDataException("Invalid telemetry envelope.");
         if (!string.Equals(Hash(Payload), PayloadSha256, StringComparison.Ordinal))
             throw new InvalidDataException("Telemetry payload checksum mismatch.");
+        if (Version == 1 && (OwnerBindings is not null || OwnerBindingsSha256 is not null))
+            throw new InvalidDataException("Legacy envelope cannot carry an unversioned owner decision.");
+        if (Version == CurrentVersion && (OwnerBindings is null
+            || !OwnerBindings.Select(b => b.LeafKey).SequenceEqual(AcceptedKeys, StringComparer.Ordinal)
+            || OwnerBindings.Any(b => string.IsNullOrWhiteSpace(b.SourceId) || string.IsNullOrWhiteSpace(b.OwnerGroup)
+                || b.HistoryRevision < 0 || b.Reason is not ("known" or "unknown" or "ambiguous" or "disabled" or "legacy-owner-unknown"))
+            || !string.Equals(ComputeOwnerBindingsHash(), OwnerBindingsSha256, StringComparison.Ordinal)))
+            throw new InvalidDataException("Missing or corrupt telemetry ownership binding.");
     }
 
     public static string Hash(ReadOnlySpan<byte> bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));

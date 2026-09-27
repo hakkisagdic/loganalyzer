@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Data.Common;
 using System.Threading.Channels;
 using Bizigo.Contracts;
 using Bizigo.ControlPlane;
@@ -7,7 +8,6 @@ using Bizigo.Ingest.Wal;
 using Bizigo.Storage.Raw;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using OpenTelemetry.Proto.Common.V1;
 
 namespace Bizigo.Ingest.Otlp;
 
@@ -18,14 +18,16 @@ public sealed record SignalWork(RawSignalEnvelope Envelope, string Segment);
 /// <summary>Admission, archive and replay share one envelope and one decoder.</summary>
 public sealed class SignalIngest : IDisposable
 {
-    private static readonly string[] SourceCandidates =
-        ["bizigo.source_key", "service.instance.id", "host.id", "host.name", "service.name"];
     private readonly OtlpTelemetryDecoder decoder;
     private readonly SourceDirectory sources;
     private readonly IRawObjectStore objects;
     private readonly ISignalCheckpoints checkpoints;
     private readonly RawStoreOptions rawOptions;
     private readonly WalOptions walOptions;
+    private readonly ITelemetryOwnerResolver owners;
+    private readonly ITelemetryBindingRegistry bindings;
+    private readonly ITelemetrySink? sink;
+    private readonly TelemetryRetentionPolicy retention;
     private readonly SemaphoreSlim slots;
     private readonly SemaphoreSlim processing = new(1, 1);
     private readonly Channel<SignalWork> queue;
@@ -36,11 +38,18 @@ public sealed class SignalIngest : IDisposable
 
     public SignalIngest(OtlpTelemetryDecoder decoder, SourceDirectory sources, IRawObjectStore objects,
         IOptions<SignalOptions> options, IOptions<WalOptions> walOptions, IOptions<RawStoreOptions> rawOptions,
-        ILogger<WriteAheadLog> logger, ISignalCheckpoints? checkpoints = null, IWalDurability? durability = null)
+        ILogger<WriteAheadLog> logger, ISignalCheckpoints? checkpoints = null, IWalDurability? durability = null,
+        ITelemetryOwnerResolver? owners = null, ITelemetryBindingRegistry? bindings = null, ITelemetrySink? sink = null,
+        TelemetryRetentionPolicy? retention = null)
     {
         this.decoder = decoder; this.sources = sources; this.objects = objects;
         this.rawOptions = rawOptions.Value; this.walOptions = walOptions.Value;
         this.checkpoints = checkpoints ?? new SignalCheckpoints();
+        this.owners = owners ?? sources.HistoricalOwners;
+        this.bindings = bindings ?? sources.HistoricalOwners;
+        this.sink = sink;
+        this.retention = retention ?? new();
+        if (this.retention.Days is < 1 or > 36500) throw new ArgumentException("Telemetry retention must be between 1 and 36500 days.", nameof(retention));
         if (options.Value.ChannelCapacity <= 0 || options.Value.RetryInterval <= TimeSpan.Zero)
             throw new ArgumentException("Signal queue capacity and retry interval must be positive.");
         Root = Path.GetFullPath(string.IsNullOrWhiteSpace(options.Value.Directory)
@@ -92,9 +101,17 @@ public sealed class SignalIngest : IDisposable
         try
         {
             token.ThrowIfCancellationRequested();
-            var envelope = new RawSignalEnvelope(1, Guid.CreateVersion7(), signal, contentType, DateTimeOffset.UtcNow,
+            TelemetryOwnerBinding[] resolved;
+            try { resolved = await owners.ResolveAsync(decoded.Accepted.Select(TelemetryMaterializer.Ownership).ToArray(), token); }
+            catch (Exception ex) when (ex is DbException or TimeoutException or InvalidOperationException or IOException)
+            { SetFailure(ex); return Full("Authoritative ownership history is unavailable."); }
+            var envelope = new RawSignalEnvelope(RawSignalEnvelope.CurrentVersion, Guid.CreateVersion7(), signal, contentType, DateTimeOffset.UtcNow,
                 RawSignalEnvelope.Hash(payload.Span), payload.ToArray(), 1,
-                decoded.Accepted.Select(x => x.Key).ToArray(), decoded.RejectedCount);
+                decoded.Accepted.Select(x => x.Key).ToArray(), decoded.RejectedCount) { OwnerBindings = resolved, RetentionDays = retention.Days };
+            envelope = envelope with { OwnerBindingsSha256 = envelope.ComputeOwnerBindingsHash() };
+            try { await bindings.ClaimAsync(envelope.EnvelopeId, envelope.OwnerBindingsSha256, token); }
+            catch (Exception ex) when (ex is DbException or TimeoutException or InvalidOperationException)
+            { SetFailure(ex); return Full("Authoritative ownership registry is unavailable."); }
             var segment = await Wal.AppendAsync(RawSignalCodec.Encode(envelope), token);
             await checkpoints.ReachAsync("after-wal-before-ack", token);
             if (!queue.Writer.TryWrite(new(envelope, segment.Path)))
@@ -145,8 +162,10 @@ public sealed class SignalIngest : IDisposable
         try
         {
             var decoded = decoder.Replay(work.Envelope);
-            await Archive.ArchiveAsync(work.Envelope, work.Segment, token, checkpoints.ReachAsync);
-            await WriteResultAsync(work.Envelope, decoded, token);
+            var bound = BindLegacy(work.Envelope, decoded);
+            await bindings.ClaimAsync(bound.EnvelopeId, bound.OwnerBindingsSha256!, token);
+            await Archive.ArchiveAsync(bound, work.Segment, token, checkpoints.ReachAsync);
+            await WriteResultAsync(bound, decoded, token);
             Volatile.Write(ref lastFailure, null);
         }
         catch (Exception ex) { SetFailure(ex); throw; }
@@ -164,10 +183,14 @@ public sealed class SignalIngest : IDisposable
             await sources.RefreshAsync(token);
             await processing.WaitAsync(token);
             acquired = true;
-            foreach (var manifest in Archive.Manifests())
+            foreach (var manifest in Archive.Manifests().ToArray())
             {
                 var envelope = await Archive.ReadAsync(manifest, token);
-                await WriteResultAsync(envelope, decoder.Replay(envelope), token);
+                var decoded = decoder.Replay(envelope);
+                var bound = BindLegacy(envelope, decoded);
+                await bindings.ClaimAsync(bound.EnvelopeId, bound.OwnerBindingsSha256!, token);
+                if (envelope.Version == 1) await Archive.ArchiveAsync(bound, manifest.WalSegment, token, checkpoints.ReachAsync);
+                await WriteResultAsync(bound, decoded, token);
             }
             Volatile.Write(ref lastFailure, null);
         }
@@ -178,17 +201,17 @@ public sealed class SignalIngest : IDisposable
     private async Task WriteResultAsync(RawSignalEnvelope envelope, TelemetryDecode decoded, CancellationToken token)
     {
         var leaves = new JsonArray();
+        var records = new List<TelemetryRecord>();
         foreach (var leaf in decoded.Accepted)
         {
-            var attributes = leaf.Resource.Attributes;
-            var candidates = SourceCandidates.Select(name => attributes.FirstOrDefault(a => a.Key == name)?.Value)
-                .Where(v => v?.ValueCase == AnyValue.ValueOneofCase.StringValue).Select(v => v!.StringValue);
-            var source = sources.ResolveTelemetry(candidates);
+            var source = envelope.OwnerBindings!.Single(b => b.LeafKey == leaf.Key);
+            records.Add(TelemetryMaterializer.Materialize(envelope, leaf, source));
             leaves.Add(new JsonObject
             {
                 ["logical_id"] = envelope.EnvelopeId.ToString("N") + "/" + leaf.Key,
                 ["key"] = leaf.Key, ["owner_group"] = source.OwnerGroup, ["source_id"] = source.SourceId,
-                ["known_source"] = source.IsKnown,
+                ["known_source"] = source.Reason == "known",
+                ["owner_reason"] = source.Reason, ["owner_history_revision"] = source.HistoryRevision,
                 ["resource"] = OtlpJsonCodec.Format(leaf.Resource), ["scope"] = OtlpJsonCodec.Format(leaf.Scope),
                 ["resource_schema_url"] = leaf.ResourceSchemaUrl, ["scope_schema_url"] = leaf.ScopeSchemaUrl,
                 ["metric"] = leaf.Metric is null ? null : OtlpJsonCodec.Format(leaf.Metric),
@@ -197,14 +220,33 @@ public sealed class SignalIngest : IDisposable
         }
         var result = new JsonObject
         {
-            ["version"] = 1, ["envelope_id"] = envelope.EnvelopeId.ToString("N"),
+            ["version"] = 2, ["envelope_id"] = envelope.EnvelopeId.ToString("N"),
+            ["delivery"] = sink is null ? "fixture-file-only" : "clickhouse",
+            ["owner_binding_sha256"] = envelope.OwnerBindingsSha256,
             ["signal"] = envelope.Signal.ToString(), ["payload_sha256"] = envelope.PayloadSha256,
             ["received_at"] = envelope.ReceivedAt, ["rejected_count"] = envelope.RejectedCount, ["leaves"] = leaves,
         };
         // Stable filename is the idempotency key. Result and checkpoint commit
         // together; there is no marker that can advance ahead of durable data.
         var path = Path.Combine(Root, "processed", envelope.EnvelopeId.ToString("N") + ".json");
+        if (sink is not null) await sink.WriteAsync(records, token);
+        await checkpoints.ReachAsync("after-telemetry-db-before-checkpoint", token);
         await DurableFile.WriteAsync(path, JsonSerializer.SerializeToUtf8Bytes(result), token, checkpoints.ReachAsync);
+    }
+
+    private static RawSignalEnvelope BindLegacy(RawSignalEnvelope envelope, TelemetryDecode decoded)
+    {
+        if (envelope.Version != 1) return envelope;
+        // Legacy exports have no trustworthy historical owner. Do not infer
+        // one from today's mutable inventory or an overwritten processed file.
+        var bound = envelope with
+        {
+            Version = RawSignalEnvelope.CurrentVersion,
+            OwnerBindings = decoded.Accepted.Select(leaf => new TelemetryOwnerBinding(leaf.Key,
+                TelemetryMaterializer.Ownership(leaf).Candidates.FirstOrDefault(candidate => !string.IsNullOrWhiteSpace(candidate)) ?? "_unknown",
+                OwnerGroups.Unassigned, 0, TelemetryMaterializer.Time(leaf), "legacy-owner-unknown")).ToArray(),
+        };
+        return bound with { OwnerBindingsSha256 = bound.ComputeOwnerBindingsHash() };
     }
 
     public async Task SweepAsync(CancellationToken token)
@@ -219,12 +261,25 @@ public sealed class SignalIngest : IDisposable
             {
                 var envelopes = WriteAheadLog.ReadFrames(segment.Path, strict: true).Select(b => RawSignalCodec.Decode(b.Span)).ToArray();
                 if (envelopes.Length == 0 || envelopes.Any(e => !manifests.TryGetValue(e.EnvelopeId, out var m)
-                    || m.VerifiedAt > cutoff || !File.Exists(Path.Combine(Root, "processed", e.EnvelopeId.ToString("N") + ".json")))) continue;
+                    || m.VerifiedAt > cutoff || !IsDelivered(e))) continue;
                 foreach (var envelope in envelopes) await Archive.ReadAsync(manifests[envelope.EnvelopeId], token);
                 Wal.Delete(segment);
             }
         }
         finally { processing.Release(); }
+    }
+
+    private bool IsDelivered(RawSignalEnvelope envelope)
+    {
+        var path = Path.Combine(Root, "processed", envelope.EnvelopeId.ToString("N") + ".json");
+        if (!File.Exists(path)) return false;
+        using var document = JsonDocument.Parse(File.ReadAllBytes(path));
+        var result = document.RootElement;
+        return result.TryGetProperty("version", out var version) && version.GetInt32() == 2
+            && result.GetProperty("payload_sha256").GetString() == envelope.PayloadSha256
+            && result.TryGetProperty("owner_binding_sha256", out var binding) && binding.GetString() is { Length: 64 }
+            && (envelope.Version == 1 || binding.GetString() == envelope.OwnerBindingsSha256)
+            && result.GetProperty("delivery").GetString() == (sink is null ? "fixture-file-only" : "clickhouse");
     }
 
     public void Dispose()

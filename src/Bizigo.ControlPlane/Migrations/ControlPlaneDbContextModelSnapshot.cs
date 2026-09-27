@@ -1321,6 +1321,7 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasColumnName("source_class");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
+                        .IsConcurrencyToken()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
@@ -1357,6 +1358,44 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasFilter("peer_address IS NOT NULL");
 
                     b.ToTable("sources", "bizigo");
+                });
+
+            modelBuilder.Entity("Bizigo.ControlPlane.SourceOwnershipHistoryEntity", b =>
+                {
+                    b.Property<long>("Revision")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("revision");
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Revision"));
+                    b.Property<string>("SourceId").IsRequired().HasMaxLength(128)
+                        .HasColumnType("character varying(128)").HasColumnName("source_id");
+                    b.Property<string>("OwnerGroup").IsRequired().HasMaxLength(64)
+                        .HasColumnType("character varying(64)").HasColumnName("owner_group");
+                    b.Property<string>("PeerAddress").HasMaxLength(256)
+                        .HasColumnType("character varying(256)").HasColumnName("peer_address");
+                    b.Property<string>("Hostname").HasMaxLength(256)
+                        .HasColumnType("character varying(256)").HasColumnName("hostname");
+                    b.Property<bool>("Enabled").HasColumnType("boolean").HasColumnName("enabled");
+                    b.Property<decimal>("EffectiveFromNano").HasPrecision(20, 0)
+                        .HasColumnType("numeric(20,0)").HasColumnName("effective_from_nano");
+                    b.Property<decimal?>("EffectiveToNano").HasPrecision(20, 0)
+                        .HasColumnType("numeric(20,0)").HasColumnName("effective_to_nano");
+                    b.HasKey("Revision").HasName("pk_source_ownership_history");
+                    b.HasIndex("SourceId").IsUnique()
+                        .HasDatabaseName("ix_source_ownership_history_source_id").HasFilter("effective_to_nano IS NULL");
+                    b.HasIndex("SourceId", "EffectiveFromNano").IsUnique()
+                        .HasDatabaseName("ix_source_ownership_history_source_id_effective_from_nano");
+                    b.ToTable("source_ownership_history", "bizigo");
+                });
+
+            modelBuilder.Entity("Bizigo.ControlPlane.TelemetryOwnerClaimEntity", b =>
+                {
+                    b.Property<Guid>("EnvelopeId").ValueGeneratedOnAdd()
+                        .HasColumnType("uuid").HasColumnName("envelope_id");
+                    b.Property<string>("BindingHash").IsRequired().HasMaxLength(64)
+                        .HasColumnType("character varying(64)").HasColumnName("binding_hash");
+                    b.HasKey("EnvelopeId").HasName("pk_telemetry_owner_claims");
+                    b.ToTable("telemetry_owner_claims", "bizigo");
                 });
 #pragma warning restore 612, 618
         }
