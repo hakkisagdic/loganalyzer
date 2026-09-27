@@ -21,6 +21,24 @@ public sealed class EvidenceRankingTests
 {
     private static readonly DateTimeOffset Now = new(2026, 8, 20, 14, 0, 0, TimeSpan.Zero);
 
+    [Fact]
+    public void Telemetry_uses_existing_signal_classes_without_weight_crossing()
+    {
+        var ranked = EvidenceRanking.RankAll([
+            Slice("traces.service-dependency", 1_000_000),
+            Slice("metrics.baseline", 1_000),
+            Slice("metrics.threshold", 10),
+            Slice("traces.error-propagation", 1),
+            Slice("change.feed", 1),
+        ]);
+        Assert.Equal(["change.feed", "traces.error-propagation", "metrics.threshold", "metrics.baseline", "traces.service-dependency"],
+            ranked.Select(r => r.Item.ProviderId));
+        Assert.Equal(EvidenceRanking.ClassRank("logs.propagation"), EvidenceRanking.ClassRank("traces.error-propagation"));
+        Assert.Equal(EvidenceRanking.ClassRank("logs.silence"), EvidenceRanking.ClassRank("metrics.threshold"));
+        Assert.Equal(EvidenceRanking.ClassRank("logs.volume"), EvidenceRanking.ClassRank("metrics.baseline"));
+        Assert.Equal(EvidenceRanking.ClassRank("topology.shared-attribute"), EvidenceRanking.ClassRank("traces.service-dependency"));
+    }
+
     private static EvidenceSlice Slice(string providerId, params double[] weights) => new()
     {
         ProviderId = providerId,

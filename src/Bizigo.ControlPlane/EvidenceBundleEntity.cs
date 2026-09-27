@@ -74,7 +74,7 @@ public sealed class EvidenceBundleEntity
     public DateTimeOffset BaselineTo { get; set; }
 
     /// <summary>Kapsam dışı toplam (RCA §3.2) — yalnızca sayı, içerik değil.</summary>
-    public long OutOfScopeCount { get; set; }
+    public long? OutOfScopeCount { get; set; }
 
     /// <summary>Kanıt eksik mi toplandı — liste ekranında rozet.</summary>
     public bool IsPartial { get; set; }

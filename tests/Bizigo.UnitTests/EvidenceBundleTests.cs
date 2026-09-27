@@ -15,6 +15,39 @@ namespace Bizigo.UnitTests;
 /// </summary>
 public sealed class EvidenceBundleTests
 {
+    [Fact]
+    public void Telemetry_hash_is_stable_after_dictionary_reordering_and_roundtrip()
+    {
+        var first = TelemetryBundle(new Dictionary<string, string?> { ["event_from"] = "start", ["unit"] = "ms", ["ratio"] = null });
+        var reordered = TelemetryBundle(new Dictionary<string, string?> { ["ratio"] = null, ["unit"] = "ms", ["event_from"] = "start" });
+        Assert.Equal(first.ContentHash, reordered.ContentHash);
+        Assert.Equal(first.ContentHash, BundleSerializer.Deserialize(BundleSerializer.Serialize(reordered)).ContentHash);
+    }
+
+    [Fact]
+    public void Telemetry_hash_preserves_value_null_and_decision_order_changes()
+    {
+        var first = TelemetryBundle(new Dictionary<string, string?> { ["unit"] = "ms", ["ratio"] = null });
+        Assert.NotEqual(first.ContentHash, TelemetryBundle(new Dictionary<string, string?> { ["unit"] = "bytes", ["ratio"] = null }).ContentHash);
+        Assert.NotEqual(first.ContentHash, TelemetryBundle(new Dictionary<string, string?> { ["unit"] = "ms", ["ratio"] = "" }).ContentHash);
+        var slice = first.Slices[0];
+        var decisions = slice.Telemetry!.Decisions;
+        var forward = first with { Slices = [slice with { Telemetry = slice.Telemetry with { Decisions = [decisions[0], decisions[0] with { Key = "other" }] } }] };
+        var reverse = first with { Slices = [slice with { Telemetry = slice.Telemetry with { Decisions = [decisions[0] with { Key = "other" }, decisions[0]] } }] };
+        Assert.NotEqual(forward.ContentHash, reverse.ContentHash);
+    }
+
+    [Fact]
+    public void Schema_one_hash_still_excludes_telemetry_extension()
+    {
+        var legacy = TelemetryBundle(new Dictionary<string, string?> { ["unit"] = "ms" }) with { SchemaVersion = 1 };
+        Assert.Equal(legacy.ContentHash, (legacy with { Slices = [legacy.Slices[0] with { Telemetry = null }] }).ContentHash);
+    }
+
+    private static EvidenceBundle TelemetryBundle(IReadOnlyDictionary<string, string?> values) => Bundle(
+        Slice("metrics.baseline") with { Kind = EvidenceKind.Metric,
+            Telemetry = new(Bizigo.Contracts.TelemetryResultStatus.Data, "Evaluated", [new("series", "Changed", "", values)]) });
+
     private static readonly DateTimeOffset Now = new(2026, 8, 20, 14, 0, 0, TimeSpan.Zero);
 
     internal static RcaWindow Window() => new()
@@ -155,7 +188,8 @@ public sealed class EvidenceBundleTests
     {
         var original = Bundle(
             Slice("logs.first-seen", items: [("a", 1.5)]),
-            Slice("change.feed", EvidenceStatus.NeverFed, outOfScope: 342));
+            Slice("change.feed", EvidenceStatus.NeverFed, outOfScope: 999)) with
+        { ExcludedInputs = new([new(EvidenceKind.Metric, 340, null), new(EvidenceKind.Trace, 2, null)]) };
 
         var round = BundleSerializer.Deserialize(BundleSerializer.Serialize(original));
 
@@ -254,7 +288,8 @@ public sealed class EvidenceBundleTests
     [Fact]
     public void Kapsam_disi_sayim_icerik_sizdirmiyor()
     {
-        var bundle = Bundle(Slice("change.feed", outOfScope: 342, items: [("c", 1)]));
+        var bundle = Bundle(Slice("change.feed", outOfScope: 999, items: [("c", 1)])) with
+        { ExcludedInputs = new([new(EvidenceKind.Metric, 340, null), new(EvidenceKind.Trace, 2, null)]) };
         var json = BundleSerializer.Serialize(bundle);
 
         Assert.Equal(342, bundle.OutOfScopeCount);

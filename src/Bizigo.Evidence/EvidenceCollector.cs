@@ -32,7 +32,8 @@ namespace Bizigo.Evidence;
 /// </summary>
 public sealed class EvidenceCollector(
     IEnumerable<IEvidenceProvider> providers,
-    ILogger<EvidenceCollector> logger)
+    ILogger<EvidenceCollector> logger,
+    EvidenceProviderRequirements? requirements = null)
 {
     private readonly IEvidenceProvider[] _providers = [.. providers];
 
@@ -84,7 +85,13 @@ public sealed class EvidenceCollector(
         // toplansalardı ekran verilmiş bir karardan sonra da bekletmeye devam
         // ederdi — §8'in "bir gün kapanacak ile hiç kapanmayacak aynı listede
         // duramaz" kuralı.
-        var missing = UnregisteredKinds.Select(kind => EvidenceKinds.IsExempt(kind)
+        var missingProviders = (requirements?.Providers ?? []).Where(expected => !_providers.Any(p => p.Id == expected.Id))
+            .Select(expected => new EvidenceSlice
+            {
+                ProviderId = expected.Id, Kind = expected.Kind, Status = EvidenceStatus.NotRegistered,
+                Detail = "Expected provider is not registered.",
+            }).ToArray();
+        var missing = UnregisteredKinds.Where(kind => !missingProviders.Any(p => p.Kind == kind)).Select(kind => EvidenceKinds.IsExempt(kind)
             ? new EvidenceSlice
             {
                 ProviderId = $"({kind.ToString().ToLowerInvariant()})",
@@ -103,7 +110,7 @@ public sealed class EvidenceCollector(
         return new EvidenceReport
         {
             Window = window,
-            Slices = [.. slices, .. missing],
+            Slices = [.. slices, .. missingProviders, .. missing],
             Duration = watch.Elapsed,
         };
     }
@@ -197,6 +204,8 @@ public sealed record EvidenceReport
 
     public IEnumerable<EvidenceItem> Items => Slices.SelectMany(s => s.Items);
 
+    public IReadOnlyList<EvidenceKindCoverage> Coverage => EvidenceKindCoverage.From(Slices);
+
     /// <summary>Kapsam dışı toplam — rapordaki tek satırın kaynağı (RCA §3.2).</summary>
     public long OutOfScopeCount => Slices.Sum(s => s.OutOfScopeCount);
 
@@ -205,7 +214,7 @@ public sealed record EvidenceReport
     /// bir sağlayıcı patlamış, bütçeye takılmış ya da kırpılmış olabilir.
     /// </summary>
     public bool IsPartial =>
-        Slices.Any(s => s.Status is EvidenceStatus.Failed or EvidenceStatus.Unavailable || s.Truncated);
+        Coverage.Any(c => c.Partial);
 
     /// <summary>
     /// Bakılamayan türler — raporun "kapalı sağlayıcılar" bölümü. Boş liste

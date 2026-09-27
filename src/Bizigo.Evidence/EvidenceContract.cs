@@ -6,8 +6,7 @@ namespace Bizigo.Evidence;
 public static class EvidenceMarker;
 
 /// <summary>
-/// Kanıt türleri (K21). <b>Beşi de tanımlı, üçü karşılanıyor, ikisi kalıcı
-/// olarak kapsam dışı.</b>
+/// Kanıt türleri (K21). Sprint04 itibarıyla beş tür de karşılanıyor.
 ///
 /// <para>
 /// Sözleşmenin beşini birden tanımasının sebebi motorun yeniden yazılmaması:
@@ -30,18 +29,10 @@ public enum EvidenceKind
     /// <summary><c>change_events</c> — F3. RCA'nın en güçlü sinyali.</summary>
     Change = 2,
 
-    /// <summary>
-    /// <b>Kapsam dışı</b> (F5 · S1). Metrik ingest+depolama gerektiriyordu ve
-    /// K1'i aşıyordu; karar "bu ürün metriğe bakmıyor" oldu.
-    /// <see cref="EvidenceKinds.Exempt"/>.
-    /// </summary>
+    /// <summary>Typed OTLP noktaları: baseline karşılaştırması ve açık eşik kuralları.</summary>
     Metric = 3,
 
-    /// <summary>
-    /// <b>Kapsam dışı</b> (F5 · S1). Ağ cihazları trace üretmiyor (K2); türün
-    /// değerli olması ürünün uygulama gözlemlenebilirliğine girmesine bağlıydı
-    /// ve girilmedi. <see cref="EvidenceKinds.Exempt"/>.
-    /// </summary>
+    /// <summary>Typed OTLP spanları: hata yolları ve gözlenen servis ilişkileri.</summary>
     Trace = 4,
 
     /// <summary>
@@ -82,13 +73,13 @@ public static class EvidenceKinds
     /// <see cref="EvidenceStatus.OutOfScope"/> üretiyorlar.
     /// </summary>
     public static readonly IReadOnlySet<EvidenceKind> Exempt =
-        new HashSet<EvidenceKind> { EvidenceKind.Metric, EvidenceKind.Trace };
+        new HashSet<EvidenceKind>();
 
     /// <summary>
     /// Muafiyet sayısının <b>çivisi</b>. Değiştirmek bilinçli bir hareket
     /// olmak zorunda; bir test ikisini eşitliyor.
     /// </summary>
-    public const int ExpectedExemptCount = 2;
+    public const int ExpectedExemptCount = 0;
 
     public static bool IsExempt(EvidenceKind kind) => Exempt.Contains(kind);
 }
@@ -276,6 +267,9 @@ public sealed record EvidenceSlice
     public string Detail { get; init; } = string.Empty;
 
     public IReadOnlyList<EvidenceItem> Items { get; init; } = [];
+
+    /// <summary>Feed state and evaluation are separate; no rule does not mean no data.</summary>
+    public TelemetryEvidence? Telemetry { get; init; }
 
     /// <summary>
     /// Kapsam dışında kalan eşleşme <b>sayısı</b> — içeriği değil (K17, RCA §3.2).

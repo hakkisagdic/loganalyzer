@@ -55,7 +55,10 @@ public sealed record DeterministicReport
 
     public required WindowTrust Trust { get; init; }
 
-    public long OutOfScopeCount { get; init; }
+    public long? OutOfScopeCount { get; init; }
+    public ExcludedInputRecords ExcludedInputRecords { get; init; } = ExcludedInputRecords.Unmeasured;
+    public IReadOnlyList<EvidenceKindCoverage> Coverage { get; init; } = [];
+    public IReadOnlyList<EvidenceSlice> Providers { get; init; } = [];
 
     public bool IsPartial { get; init; }
 
@@ -87,6 +90,9 @@ public sealed record DeterministicReport
             Silent = [.. bundle.Slices.Where(s => s.Status == EvidenceStatus.Empty)],
             Trust = bundle.Trust,
             OutOfScopeCount = bundle.OutOfScopeCount,
+            ExcludedInputRecords = bundle.ExcludedInputRecords,
+            Coverage = bundle.Coverage,
+            Providers = bundle.Slices,
             IsPartial = bundle.IsPartial,
         };
     }
@@ -135,6 +141,8 @@ public sealed record DeterministicReport
     {
         var lines = new List<string>();
 
+        if (!ExcludedInputRecords.Measured)
+            text.AppendLine("Kapsam dışı kayıt sayısı bilinmiyor (" + (ExcludedInputRecords.Reason ?? "CountUnavailable") + "); bilinen alt toplam: " + ExcludedInputRecords.KnownSubtotal.ToString(CultureInfo.InvariantCulture) + ".");
         if (OutOfScopeCount > 0)
         {
             // RCA §3.2 — sayı veriliyor, içerik verilmiyor. Kök neden başka

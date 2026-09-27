@@ -409,15 +409,19 @@ public interface IAuditSink
 }
 
 /// <summary>Denetim kaydını kontrol düzlemine yazar.</summary>
-public sealed class ControlPlaneAuditSink(ControlPlaneDbContext db) : IAuditSink
+public sealed class ControlPlaneAuditSink(IDbContextFactory<ControlPlaneDbContext> factory) : IAuditSink
 {
-    private readonly ControlPlaneDbContext _db = db ?? throw new ArgumentNullException(nameof(db));
+    private readonly IDbContextFactory<ControlPlaneDbContext> _factory = factory ?? throw new ArgumentNullException(nameof(factory));
 
     public async Task RecordAsync(AuditRecord record, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(record);
 
-        _db.AuditLog.Add(new AuditLogEntity
+        // Providers gather concurrently within a single request scope. Each
+        // audit commit owns a context so it cannot save another provider's
+        // pending record or leave the shared request context in a failed state.
+        await using var db = await _factory.CreateDbContextAsync(cancellationToken);
+        db.AuditLog.Add(new AuditLogEntity
         {
             Subject = Truncate(record.Subject, 256),
             Action = Truncate(record.Action, 64),
@@ -429,7 +433,7 @@ public sealed class ControlPlaneAuditSink(ControlPlaneDbContext db) : IAuditSink
             Succeeded = record.Succeeded,
         });
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     private static string Truncate(string value, int max) =>

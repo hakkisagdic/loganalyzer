@@ -36,7 +36,7 @@ public sealed record EvidenceBundle
     /// yapıp bunu kimseye söylememek olurdu.
     /// </para>
     /// </summary>
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public required Guid Id { get; init; }
 
@@ -72,7 +72,10 @@ public sealed record EvidenceBundle
     /// <summary>
     /// Kapsam dışı toplam (RCA §3.2) — <b>yalnızca sayı</b>, içerik değil.
     /// </summary>
-    public long OutOfScopeCount => Slices.Sum(s => s.OutOfScopeCount);
+    public ExcludedInputRecords ExcludedInputs { get; init; } = ExcludedInputRecords.Unmeasured;
+    public ExcludedInputRecords ExcludedInputRecords => SchemaVersion < 2
+        ? new([], "LegacySemantics", Slices.Sum(s => s.OutOfScopeCount)) : ExcludedInputs;
+    public long? OutOfScopeCount => ExcludedInputRecords.Total;
 
     /// <summary>
     /// Aynı pencere + kapsam + kanıt için aynı değer.
@@ -89,9 +92,11 @@ public sealed record EvidenceBundle
 
     public IEnumerable<EvidenceItem> Items => Slices.SelectMany(s => s.Items);
 
+    public IReadOnlyList<EvidenceKindCoverage> Coverage => EvidenceKindCoverage.From(Slices);
+
     /// <summary>Rapor eksik kanıtla mı kuruluyor — okuyanın görmesi gereken.</summary>
     public bool IsPartial =>
-        Slices.Any(s => s.Status is EvidenceStatus.Failed or EvidenceStatus.Unavailable || s.Truncated);
+        Coverage.Any(c => c.Partial) || !ExcludedInputRecords.Measured;
 
     /// <summary>Bakılamayan türler: kapalı, patlamış ya da hiç kayıtlı olmayan.</summary>
     public IReadOnlyList<EvidenceSlice> NotConsulted => [.. Slices.Where(s => !s.IsEvidence)];
@@ -251,6 +256,8 @@ public static class BundleSerializer
         canonical.Append(
             CultureInfo.InvariantCulture,
             $"trust:{bundle.Trust.Measured}|{bundle.Trust.TotalEvents}|{bundle.Trust.UnreliableTimeEvents}\n");
+        if (bundle.SchemaVersion >= 2)
+            canonical.AppendLine(JsonSerializer.Serialize(bundle.ExcludedInputs, Options));
 
         foreach (var slice in bundle.Slices.OrderBy(s => s.ProviderId, StringComparer.Ordinal))
         {
@@ -258,6 +265,21 @@ public static class BundleSerializer
                 CultureInfo.InvariantCulture,
                 $"# {slice.ProviderId}|{slice.Kind}|{slice.Status}|{slice.OutOfScopeCount}|" +
                 $"{slice.Truncated}|{slice.Detail}\n");
+            if (bundle.SchemaVersion >= 2)
+            {
+                // jsonb may reorder object keys on persistence. Only dictionary
+                // order is incidental: decision order and null/value semantics
+                // remain evidence and must still affect the content identity.
+                var telemetry = slice.Telemetry is null ? null : slice.Telemetry with
+                {
+                    Decisions = slice.Telemetry.Decisions.Select(decision => decision with
+                    {
+                        Values = new SortedDictionary<string, string?>(
+                            decision.Values.ToDictionary(p => p.Key, p => p.Value), StringComparer.Ordinal),
+                    }).ToArray(),
+                };
+                canonical.AppendLine(JsonSerializer.Serialize(telemetry, Options));
+            }
 
             foreach (var item in slice.Items)
             {

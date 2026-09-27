@@ -23,7 +23,8 @@ public sealed class EvidenceBundleStoreTests : IDisposable
 
     private static EvidenceBundle Bundle() => EvidenceBundleTests.Bundle(
         EvidenceBundleTests.Slice("logs.first-seen", items: [("a", 3.0), ("b", 1.0)]),
-        EvidenceBundleTests.Slice("change.feed", EvidenceStatus.NeverFed, outOfScope: 342));
+        EvidenceBundleTests.Slice("change.feed", EvidenceStatus.NeverFed, outOfScope: 999)) with
+        { ExcludedInputs = new([new(EvidenceKind.Metric, 342, null), new(EvidenceKind.Trace, 0, null)]) };
 
     [Fact]
     public async Task Gidis_donus_ayni_paketi_veriyor()

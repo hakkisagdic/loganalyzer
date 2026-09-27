@@ -20,7 +20,8 @@
     "api:generate": "./scripts/generate-api-types.sh",
     "api:check": "./scripts/generate-api-types.sh --check",
     "e2e:prepare": "node --experimental-strip-types tests/e2e/prepare.ts",
-    "telemetry:echo": "node scripts/telemetry-echo.mjs"
+    "telemetry:echo": "node scripts/telemetry-echo.mjs",
+    "telemetry:wire": "node --experimental-strip-types scripts/telemetry-wire-check.ts"
   },
   "dependencies": {
     "jose": "^6.0.12",

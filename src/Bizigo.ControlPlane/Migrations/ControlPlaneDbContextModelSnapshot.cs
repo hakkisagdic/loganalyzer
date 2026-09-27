@@ -587,7 +587,7 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_partial");
 
-                    b.Property<long>("OutOfScopeCount")
+                    b.Property<long?>("OutOfScopeCount")
                         .HasColumnType("bigint")
                         .HasColumnName("out_of_scope_count");
 
@@ -651,6 +651,10 @@ namespace Bizigo.ControlPlane.Migrations
                     b.Property<bool>("CorrectFindingRankAsked")
                         .HasColumnType("boolean")
                         .HasColumnName("correct_finding_rank_asked");
+
+                    b.Property<string[]>("MissingEvidenceKinds")
+                        .HasColumnType("text[]")
+                        .HasColumnName("missing_evidence_kinds");
 
                     b.Property<string>("Note")
                         .IsRequired()

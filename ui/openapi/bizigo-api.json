@@ -86,6 +86,70 @@
             "description": "OK"
           }
         }
+      },
+      "get": {
+        "tags": [
+          "telemetry-read"
+        ],
+        "operationId": "ListMetrics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryPageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
       }
     },
     "/v1/traces": {
@@ -114,6 +178,70 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "telemetry-read"
+        ],
+        "operationId": "ListTraces",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryPageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         }
       }
@@ -450,6 +578,668 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/v1/metrics/count": {
+      "get": {
+        "tags": [
+          "telemetry-read"
+        ],
+        "operationId": "CountMetrics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryCountDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/metrics/summary": {
+      "get": {
+        "tags": [
+          "telemetry-read"
+        ],
+        "operationId": "SummarizeMetrics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetrySummaryPageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/metrics/feed": {
+      "get": {
+        "tags": [
+          "telemetry-read"
+        ],
+        "operationId": "FeedMetrics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryCountDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/metrics/points/{logicalId}": {
+      "get": {
+        "tags": [
+          "telemetry-read"
+        ],
+        "operationId": "GetMetricPoint",
+        "parameters": [
+          {
+            "name": "logicalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryRecordDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/traces/count": {
+      "get": {
+        "tags": [
+          "telemetry-read"
+        ],
+        "operationId": "CountTraces",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryCountDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/traces/summary": {
+      "get": {
+        "tags": [
+          "telemetry-read"
+        ],
+        "operationId": "SummarizeTraces",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetrySummaryPageDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/traces/feed": {
+      "get": {
+        "tags": [
+          "telemetry-read"
+        ],
+        "operationId": "FeedTraces",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryCountDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/traces/{traceId}": {
+      "get": {
+        "tags": [
+          "telemetry-read"
+        ],
+        "operationId": "GetTrace",
+        "parameters": [
+          {
+            "name": "traceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryPageDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/v1/traces/{traceId}/spans/{spanId}": {
+      "get": {
+        "tags": [
+          "telemetry-read"
+        ],
+        "operationId": "GetSpan",
+        "parameters": [
+          {
+            "name": "traceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "spanId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelemetryRecordDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         }
       }
@@ -3222,8 +4012,18 @@
           },
           "rank_asked": {
             "type": "boolean"
+          },
+          "missing_evidence_kinds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
           }
-        }
+        },
+        "additionalProperties": false
       },
       "CloseTriggerResponse": {
         "required": [
@@ -3252,6 +4052,28 @@
           },
           "owner_group": {
             "type": "string"
+          },
+          "schema_version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32",
+            "default": 3
+          },
+          "missing_evidence_kinds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "missing_evidence_asked": {
+            "type": "boolean",
+            "default": false
           }
         }
       },
@@ -3906,6 +4728,115 @@
           }
         }
       },
+      "EvidenceKind": {
+        "type": "integer"
+      },
+      "EvidenceKindCoverage": {
+        "required": [
+          "kind",
+          "status",
+          "partial",
+          "not_consulted"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/EvidenceKind"
+          },
+          "status": {
+            "$ref": "#/components/schemas/EvidenceStatus"
+          },
+          "partial": {
+            "type": "boolean"
+          },
+          "not_consulted": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "EvidenceStatus": {
+        "type": "integer"
+      },
+      "ExcludedInputRecords": {
+        "required": [
+          "kinds"
+        ],
+        "type": "object",
+        "properties": {
+          "kinds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExcludedKindCount"
+            }
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "legacy_reported_count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "measured": {
+            "type": "boolean"
+          },
+          "known_subtotal": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "ExcludedKindCount": {
+        "required": [
+          "kind",
+          "count",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/EvidenceKind"
+          },
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "FieldFilterRequest": {
         "required": [
           "field",
@@ -4196,6 +5127,16 @@
               "string"
             ],
             "format": "double"
+          },
+          "missing_evidence": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MissingEvidenceQualityResponse"
+              }
+            ]
           }
         }
       },
@@ -4286,6 +5227,154 @@
           },
           "created_by": {
             "type": "string"
+          }
+        }
+      },
+      "MissingEvidenceQualityResponse": {
+        "required": [
+          "total",
+          "measured",
+          "unanswered",
+          "missing_any",
+          "missing_any_ratio",
+          "log",
+          "change",
+          "metric",
+          "trace",
+          "topology",
+          "log_ratio",
+          "change_ratio",
+          "metric_ratio",
+          "trace_ratio",
+          "topology_ratio"
+        ],
+        "type": "object",
+        "properties": {
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "measured": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "unanswered": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "missing_any": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "missing_any_ratio": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "log": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "change": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "metric": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "trace": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "topology": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "log_ratio": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "change_ratio": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "metric_ratio": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "trace_ratio": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "topology_ratio": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           }
         }
       },
@@ -5506,6 +6595,44 @@
           }
         }
       },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "PublishVerdictResponse": {
         "required": [
           "ok",
@@ -5645,6 +6772,7 @@
           "out_of_scope_count": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
@@ -6024,6 +7152,7 @@
           "out_of_scope_count": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
+              "null",
               "integer",
               "string"
             ],
@@ -6051,6 +7180,34 @@
                 "$ref": "#/components/schemas/RcaReasoningResponse"
               }
             ]
+          },
+          "excluded_input_records": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ExcludedInputRecords"
+              }
+            ]
+          },
+          "coverage": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/EvidenceKindCoverage"
+            }
+          },
+          "providers": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/RcaSliceResponse"
+            }
           }
         }
       },
@@ -6120,10 +7277,20 @@
           "rank_asked": {
             "type": "boolean"
           },
+          "missing_evidence_kinds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
           "note": {
             "type": "string"
           }
-        }
+        },
+        "additionalProperties": false
       },
       "RcaReviewResponse": {
         "required": [
@@ -6164,6 +7331,28 @@
           },
           "note": {
             "type": "string"
+          },
+          "schema_version": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32",
+            "default": 3
+          },
+          "missing_evidence_kinds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "missing_evidence_asked": {
+            "type": "boolean",
+            "default": false
           }
         }
       },
@@ -6302,6 +7491,16 @@
           },
           "truncated": {
             "type": "boolean"
+          },
+          "telemetry": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TelemetryEvidence"
+              }
+            ]
           }
         }
       },
@@ -6962,6 +8161,850 @@
             "type": "string"
           }
         }
+      },
+      "TelemetryAnyValueDto": {
+        "required": [
+          "kind"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "text": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "number": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TelemetryNumberDto"
+              }
+            ]
+          },
+          "boolean": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "array": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TelemetryAnyValueDto"
+            }
+          },
+          "entries": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TelemetryAttributeDto"
+            }
+          }
+        }
+      },
+      "TelemetryAttributeDto": {
+        "required": [
+          "key",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/components/schemas/TelemetryAnyValueDto"
+          }
+        }
+      },
+      "TelemetryBucketsDto": {
+        "required": [
+          "offset",
+          "bucket_counts"
+        ],
+        "type": "object",
+        "properties": {
+          "offset": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "bucket_counts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "TelemetryCountDto": {
+        "required": [
+          "status",
+          "count",
+          "measured",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "count": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "measured": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "TelemetryEvaluation": {
+        "required": [
+          "key",
+          "state",
+          "reason",
+          "values"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "TelemetryEvidence": {
+        "required": [
+          "feed",
+          "evaluation",
+          "decisions"
+        ],
+        "type": "object",
+        "properties": {
+          "feed": {
+            "$ref": "#/components/schemas/TelemetryResultStatus"
+          },
+          "evaluation": {
+            "type": "string"
+          },
+          "decisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetryEvaluation"
+            }
+          },
+          "policy_hash": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "TelemetryExemplarDto": {
+        "required": [
+          "filtered_attributes",
+          "time_unix_nano",
+          "value",
+          "span_id",
+          "trace_id"
+        ],
+        "type": "object",
+        "properties": {
+          "filtered_attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetryAttributeDto"
+            }
+          },
+          "time_unix_nano": {
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/components/schemas/TelemetryOptionalNumberDto"
+          },
+          "span_id": {
+            "type": "string"
+          },
+          "trace_id": {
+            "type": "string"
+          }
+        }
+      },
+      "TelemetryMetricDto": {
+        "required": [
+          "name",
+          "description",
+          "unit",
+          "kind",
+          "aggregation_temporality",
+          "is_monotonic",
+          "metadata",
+          "data_points"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "aggregation_temporality": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "is_monotonic": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "metadata": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetryAttributeDto"
+            }
+          },
+          "data_points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetryPointDto"
+            }
+          }
+        }
+      },
+      "TelemetryNumberDto": {
+        "required": [
+          "kind"
+        ],
+        "type": "object",
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/TelemetryNumberDtoTelemetryIntegerDto"
+          },
+          {
+            "$ref": "#/components/schemas/TelemetryNumberDtoTelemetryDoubleDto"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "kind",
+          "mapping": {
+            "int": "#/components/schemas/TelemetryNumberDtoTelemetryIntegerDto",
+            "double": "#/components/schemas/TelemetryNumberDtoTelemetryDoubleDto"
+          }
+        }
+      },
+      "TelemetryNumberDtoTelemetryDoubleDto": {
+        "required": [
+          "value",
+          "special"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "double"
+            ],
+            "type": "string"
+          },
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "special": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "TelemetryNumberDtoTelemetryIntegerDto": {
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "int"
+            ],
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "TelemetryOptionalNumberDto": {
+        "required": [
+          "present",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "present": {
+            "type": "boolean"
+          },
+          "value": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TelemetryNumberDto"
+              }
+            ]
+          }
+        }
+      },
+      "TelemetryPageDto": {
+        "required": [
+          "status",
+          "records",
+          "partial",
+          "cursor",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetryRecordDto"
+            }
+          },
+          "partial": {
+            "type": "boolean"
+          },
+          "cursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "TelemetryPointDto": {
+        "required": [
+          "attributes",
+          "start_time_unix_nano",
+          "time_unix_nano",
+          "value",
+          "count",
+          "sum",
+          "min",
+          "max",
+          "bucket_counts",
+          "explicit_bounds",
+          "scale",
+          "zero_count",
+          "zero_threshold",
+          "positive",
+          "negative",
+          "quantile_values",
+          "exemplars",
+          "flags"
+        ],
+        "type": "object",
+        "properties": {
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetryAttributeDto"
+            }
+          },
+          "start_time_unix_nano": {
+            "type": "string"
+          },
+          "time_unix_nano": {
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/components/schemas/TelemetryOptionalNumberDto"
+          },
+          "count": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sum": {
+            "$ref": "#/components/schemas/TelemetryOptionalNumberDto"
+          },
+          "min": {
+            "$ref": "#/components/schemas/TelemetryOptionalNumberDto"
+          },
+          "max": {
+            "$ref": "#/components/schemas/TelemetryOptionalNumberDto"
+          },
+          "bucket_counts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "explicit_bounds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetryNumberDto"
+            }
+          },
+          "scale": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "zero_count": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "zero_threshold": {
+            "$ref": "#/components/schemas/TelemetryOptionalNumberDto"
+          },
+          "positive": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TelemetryBucketsDto"
+              }
+            ]
+          },
+          "negative": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TelemetryBucketsDto"
+              }
+            ]
+          },
+          "quantile_values": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetryQuantileDto"
+            }
+          },
+          "exemplars": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetryExemplarDto"
+            }
+          },
+          "flags": {
+            "type": "string"
+          }
+        }
+      },
+      "TelemetryQuantileDto": {
+        "required": [
+          "quantile",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "quantile": {
+            "$ref": "#/components/schemas/TelemetryNumberDto"
+          },
+          "value": {
+            "$ref": "#/components/schemas/TelemetryNumberDto"
+          }
+        }
+      },
+      "TelemetryRecordDto": {
+        "required": [
+          "logical_id",
+          "signal",
+          "source_id",
+          "owner_group",
+          "time_unix_nano",
+          "resource_schema_url",
+          "scope_schema_url",
+          "resource",
+          "scope",
+          "metric",
+          "span"
+        ],
+        "type": "object",
+        "properties": {
+          "logical_id": {
+            "type": "string"
+          },
+          "signal": {
+            "type": "string"
+          },
+          "source_id": {
+            "type": "string"
+          },
+          "owner_group": {
+            "type": "string"
+          },
+          "time_unix_nano": {
+            "type": "string"
+          },
+          "resource_schema_url": {
+            "type": "string"
+          },
+          "scope_schema_url": {
+            "type": "string"
+          },
+          "resource": {
+            "$ref": "#/components/schemas/TelemetryResourceDto"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/TelemetryScopeDto"
+          },
+          "metric": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TelemetryMetricDto"
+              }
+            ]
+          },
+          "span": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TelemetrySpanDto"
+              }
+            ]
+          }
+        }
+      },
+      "TelemetryResourceDto": {
+        "required": [
+          "attributes",
+          "dropped_attributes_count"
+        ],
+        "type": "object",
+        "properties": {
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetryAttributeDto"
+            }
+          },
+          "dropped_attributes_count": {
+            "type": "string"
+          }
+        }
+      },
+      "TelemetryResultStatus": {
+        "type": "integer"
+      },
+      "TelemetryScopeDto": {
+        "required": [
+          "name",
+          "version",
+          "attributes",
+          "dropped_attributes_count"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetryAttributeDto"
+            }
+          },
+          "dropped_attributes_count": {
+            "type": "string"
+          }
+        }
+      },
+      "TelemetrySpanDto": {
+        "required": [
+          "trace_id",
+          "span_id",
+          "parent_span_id",
+          "trace_state",
+          "flags",
+          "name",
+          "kind",
+          "start_time_unix_nano",
+          "end_time_unix_nano",
+          "attributes",
+          "dropped_attributes_count",
+          "events",
+          "dropped_events_count",
+          "links",
+          "dropped_links_count",
+          "status_code",
+          "status_message"
+        ],
+        "type": "object",
+        "properties": {
+          "trace_id": {
+            "type": "string"
+          },
+          "span_id": {
+            "type": "string"
+          },
+          "parent_span_id": {
+            "type": "string"
+          },
+          "trace_state": {
+            "type": "string"
+          },
+          "flags": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "start_time_unix_nano": {
+            "type": "string"
+          },
+          "end_time_unix_nano": {
+            "type": "string"
+          },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetryAttributeDto"
+            }
+          },
+          "dropped_attributes_count": {
+            "type": "string"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetrySpanEventDto"
+            }
+          },
+          "dropped_events_count": {
+            "type": "string"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetrySpanLinkDto"
+            }
+          },
+          "dropped_links_count": {
+            "type": "string"
+          },
+          "status_code": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "status_message": {
+            "type": "string"
+          }
+        }
+      },
+      "TelemetrySpanEventDto": {
+        "required": [
+          "time_unix_nano",
+          "name",
+          "attributes",
+          "dropped_attributes_count"
+        ],
+        "type": "object",
+        "properties": {
+          "time_unix_nano": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetryAttributeDto"
+            }
+          },
+          "dropped_attributes_count": {
+            "type": "string"
+          }
+        }
+      },
+      "TelemetrySpanLinkDto": {
+        "required": [
+          "trace_id",
+          "span_id",
+          "trace_state",
+          "flags",
+          "attributes",
+          "dropped_attributes_count"
+        ],
+        "type": "object",
+        "properties": {
+          "trace_id": {
+            "type": "string"
+          },
+          "span_id": {
+            "type": "string"
+          },
+          "trace_state": {
+            "type": "string"
+          },
+          "flags": {
+            "type": "string"
+          },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetryAttributeDto"
+            }
+          },
+          "dropped_attributes_count": {
+            "type": "string"
+          }
+        }
+      },
+      "TelemetrySummaryDto": {
+        "required": [
+          "key",
+          "count",
+          "first_nano",
+          "last_nano",
+          "last"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "count": {
+            "type": "string"
+          },
+          "first_nano": {
+            "type": "string"
+          },
+          "last_nano": {
+            "type": "string"
+          },
+          "last": {
+            "$ref": "#/components/schemas/TelemetryRecordDto"
+          }
+        }
+      },
+      "TelemetrySummaryPageDto": {
+        "required": [
+          "status",
+          "groups",
+          "partial",
+          "cursor",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TelemetrySummaryDto"
+            }
+          },
+          "partial": {
+            "type": "boolean"
+          },
+          "cursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
       }
     }
   },
@@ -6971,6 +9014,9 @@
     },
     {
       "name": "LogsEndpoint"
+    },
+    {
+      "name": "telemetry-read"
     },
     {
       "name": "changes"

@@ -37,6 +37,10 @@ public sealed class EvidenceBundleFactory(
             window, scope, budget ?? GatherBudget.Default, cancellationToken);
 
         var trust = await MeasureTrustAsync(window, scope, cancellationToken);
+        using var countBudget = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        countBudget.CancelAfter((budget ?? GatherBudget.Default).MaxDuration);
+        var excluded = await ExcludedInputRecords.MeasureAsync(query, window, scope, countBudget.Token, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
 
         return new EvidenceBundle
         {
@@ -46,6 +50,7 @@ public sealed class EvidenceBundleFactory(
             Scope = new BundleScope([.. scope.OwnerGroups.OrderBy(g => g, StringComparer.Ordinal)], scope.IsUnrestricted),
             Slices = report.Slices,
             Trust = trust,
+            ExcludedInputs = excluded,
         };
     }
 

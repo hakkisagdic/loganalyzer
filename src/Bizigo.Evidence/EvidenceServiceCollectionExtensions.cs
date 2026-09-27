@@ -17,16 +17,19 @@ public static class EvidenceServiceCollectionExtensions
     /// </para>
     ///
     /// <para>
-    /// Metrik ve trace <b>bilerek kayıtlı değil ve olmayacak</b> —
-    /// <see cref="EvidenceKinds.Exempt"/> (F5 · S1). Boş bir sağlayıcı
-    /// kaydetmek onları "var ama sonuç yok" gibi gösterirdi; oysa doğru cümle
-    /// "bu ürün bu türe bakmıyor". Ayrımı <see cref="EvidenceCollector"/> enum
-    /// üzerinden kuruyor.
+    /// Sprint04 dört Metric/Trace sağlayıcısını ve beklenen kimliklerini
+    /// birlikte kaydeder. Eksik bir DI kaydı, diğer sağlayıcı aynı türü
+    /// karşılıyor olsa da raporda NotRegistered olarak görünür.
     /// </para>
     /// </summary>
     public static IServiceCollection AddBizigoEvidence(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
+
+        services.AddSingleton(EvidenceProviderRequirements.Telemetry);
+
+        services.AddOptions<MetricEvidenceOptions>().Validate(options => options.Valid(), "Invalid metric evidence rules or numeric settings.").ValidateOnStart();
+        services.AddOptions<TelemetryEvidenceOptions>().Validate(options => options.Valid(), "Invalid telemetry evidence budget.").ValidateOnStart();
 
         // **Scoped, singleton değil.** `IScopedQuery` scoped (kontrol düzlemi
         // DbContext'ini ve denetim kaydını taşıyor); singleton bir sağlayıcı onu
@@ -36,6 +39,10 @@ public static class EvidenceServiceCollectionExtensions
         // görünmez.
         services.AddScoped<IEvidenceProvider, LogWindowProvider>();
         services.AddScoped<IEvidenceProvider, ChangeFeedProvider>();
+        services.AddScoped<IEvidenceProvider, MetricBaselineProvider>();
+        services.AddScoped<IEvidenceProvider, MetricThresholdProvider>();
+        services.AddScoped<IEvidenceProvider, TraceErrorPropagationProvider>();
+        services.AddScoped<IEvidenceProvider, TraceServiceDependencyProvider>();
 
         // F3'ün beş deterministik korelasyonu (T35). Beşi de ayrı sağlayıcı ve
         // toplayıcı hiçbirini tanımıyor — T34'ün taşıyıcı iddiasının karşılığı:

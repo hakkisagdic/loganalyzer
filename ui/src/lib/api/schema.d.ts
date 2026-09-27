@@ -43,7 +43,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["ListMetrics"];
         put?: never;
         post: operations["OtlpMetrics"];
         delete?: never;
@@ -59,7 +59,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["ListTraces"];
         put?: never;
         post: operations["OtlpTraces"];
         delete?: never;
@@ -322,6 +322,150 @@ export interface paths {
                 };
             };
         };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/metrics/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CountMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/metrics/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SummarizeMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/metrics/feed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FeedMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/metrics/points/{logicalId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetMetricPoint"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/traces/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CountTraces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/traces/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SummarizeTraces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/traces/feed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FeedTraces"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/traces/{traceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetTrace"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/traces/{traceId}/spans/{spanId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetSpan"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1121,6 +1265,7 @@ export interface components {
             /** Format: int32 */
             correct_finding_rank?: null | number | string;
             rank_asked?: boolean;
+            missing_evidence_kinds?: null | string[];
         };
         CloseTriggerResponse: {
             /** Format: uuid */
@@ -1131,6 +1276,14 @@ export interface components {
             /** Format: uuid */
             review_id: string;
             owner_group: string;
+            /**
+             * Format: int32
+             * @default 3
+             */
+            schema_version: number | string;
+            missing_evidence_kinds?: null | string[];
+            /** @default false */
+            missing_evidence_asked: boolean;
         };
         ConnectorListResponse: {
             /** Format: int32 */
@@ -1298,6 +1451,31 @@ export interface components {
             next: null | components["schemas"]["EventCursorResponse"];
             has_more: boolean;
         };
+        EvidenceKind: number;
+        EvidenceKindCoverage: {
+            kind: components["schemas"]["EvidenceKind"];
+            status: components["schemas"]["EvidenceStatus"];
+            partial: boolean;
+            not_consulted: string[];
+        };
+        EvidenceStatus: number;
+        ExcludedInputRecords: {
+            kinds: components["schemas"]["ExcludedKindCount"][];
+            reason?: null | string;
+            /** Format: int64 */
+            legacy_reported_count?: null | number | string;
+            measured?: boolean;
+            /** Format: int64 */
+            known_subtotal?: number | string;
+            /** Format: int64 */
+            total?: null | number | string;
+        };
+        ExcludedKindCount: {
+            kind: components["schemas"]["EvidenceKind"];
+            /** Format: int64 */
+            count: null | number | string;
+            reason: null | string;
+        };
         FieldFilterRequest: {
             field: string;
             op: string;
@@ -1361,6 +1539,7 @@ export interface components {
             fabricated_citation_ratio: null | number | string;
             /** Format: double */
             measured_coverage: null | number | string;
+            missing_evidence?: null | components["schemas"]["MissingEvidenceQualityResponse"];
         };
         JsonElement: unknown;
         MaintenanceWindowListResponse: {
@@ -1388,6 +1567,38 @@ export interface components {
             ends_at: string;
             reason: string;
             created_by: string;
+        };
+        MissingEvidenceQualityResponse: {
+            /** Format: int64 */
+            total: number | string;
+            /** Format: int64 */
+            measured: number | string;
+            /** Format: int64 */
+            unanswered: number | string;
+            /** Format: int64 */
+            missing_any: number | string;
+            /** Format: double */
+            missing_any_ratio: null | number | string;
+            /** Format: int64 */
+            log: number | string;
+            /** Format: int64 */
+            change: number | string;
+            /** Format: int64 */
+            metric: number | string;
+            /** Format: int64 */
+            trace: number | string;
+            /** Format: int64 */
+            topology: number | string;
+            /** Format: double */
+            log_ratio: null | number | string;
+            /** Format: double */
+            change_ratio: null | number | string;
+            /** Format: double */
+            metric_ratio: null | number | string;
+            /** Format: double */
+            trace_ratio: null | number | string;
+            /** Format: double */
+            topology_ratio: null | number | string;
         };
         NotificationChannelListResponse: {
             /** Format: int32 */
@@ -1693,6 +1904,14 @@ export interface components {
             last_seen: null | string;
             gaps_seconds: (number | string)[];
         };
+        ProblemDetails: {
+            type?: null | string;
+            title?: null | string;
+            /** Format: int32 */
+            status?: null | number | string;
+            detail?: null | string;
+            instance?: null | string;
+        };
         PublishVerdictResponse: {
             ok: boolean;
             stage: string;
@@ -1727,7 +1946,7 @@ export interface components {
             window_to: string;
             content_hash: string;
             /** Format: int64 */
-            out_of_scope_count: number | string;
+            out_of_scope_count: null | number | string;
             is_partial: boolean;
         };
         RcaDrilldownFilterResponse: {
@@ -1814,10 +2033,13 @@ export interface components {
             not_consulted: components["schemas"]["RcaSliceResponse"][];
             trust: components["schemas"]["RcaTrustResponse"];
             /** Format: int64 */
-            out_of_scope_count: number | string;
+            out_of_scope_count: null | number | string;
             is_partial: boolean;
             review: null | components["schemas"]["RcaReviewResponse"];
             reasoning: null | components["schemas"]["RcaReasoningResponse"];
+            excluded_input_records?: null | components["schemas"]["ExcludedInputRecords"];
+            coverage?: null | components["schemas"]["EvidenceKindCoverage"][];
+            providers?: null | components["schemas"]["RcaSliceResponse"][];
         };
         RcaRequest: {
             /** Format: date-time */
@@ -1838,6 +2060,7 @@ export interface components {
             /** Format: int32 */
             correct_finding_rank?: null | number | string;
             rank_asked?: boolean;
+            missing_evidence_kinds?: null | string[];
             note?: string;
         };
         RcaReviewResponse: {
@@ -1852,6 +2075,14 @@ export interface components {
             reviewer: string;
             actual_root_cause: string;
             note: string;
+            /**
+             * Format: int32
+             * @default 3
+             */
+            schema_version: number | string;
+            missing_evidence_kinds?: null | string[];
+            /** @default false */
+            missing_evidence_asked: boolean;
         };
         RcaRunListResponse: {
             /** Format: int32 */
@@ -1887,6 +2118,7 @@ export interface components {
             /** Format: int32 */
             item_count: number | string;
             truncated: boolean;
+            telemetry?: null | components["schemas"]["TelemetryEvidence"];
         };
         RcaTrustResponse: {
             measured: boolean;
@@ -2048,6 +2280,183 @@ export interface components {
             vlan?: string;
             firmware?: string;
         };
+        TelemetryAnyValueDto: {
+            kind: string;
+            text?: null | string;
+            number?: null | components["schemas"]["TelemetryNumberDto"];
+            boolean?: null | boolean;
+            array?: null | components["schemas"]["TelemetryAnyValueDto"][];
+            entries?: null | components["schemas"]["TelemetryAttributeDto"][];
+        };
+        TelemetryAttributeDto: {
+            key: string;
+            value: components["schemas"]["TelemetryAnyValueDto"];
+        };
+        TelemetryBucketsDto: {
+            /** Format: int32 */
+            offset: number | string;
+            bucket_counts: string[];
+        };
+        TelemetryCountDto: {
+            status: string;
+            count: null | string;
+            measured: boolean;
+            reason: null | string;
+        };
+        TelemetryEvaluation: {
+            key: string;
+            state: string;
+            reason: string;
+            values: {
+                [key: string]: string;
+            };
+        };
+        TelemetryEvidence: {
+            feed: components["schemas"]["TelemetryResultStatus"];
+            evaluation: string;
+            decisions: components["schemas"]["TelemetryEvaluation"][];
+            policy_hash?: null | string;
+        };
+        TelemetryExemplarDto: {
+            filtered_attributes: components["schemas"]["TelemetryAttributeDto"][];
+            time_unix_nano: string;
+            value: components["schemas"]["TelemetryOptionalNumberDto"];
+            span_id: string;
+            trace_id: string;
+        };
+        TelemetryMetricDto: {
+            name: string;
+            description: string;
+            unit: string;
+            kind: string;
+            /** Format: int32 */
+            aggregation_temporality: null | number | string;
+            is_monotonic: null | boolean;
+            metadata: components["schemas"]["TelemetryAttributeDto"][];
+            data_points: components["schemas"]["TelemetryPointDto"][];
+        };
+        TelemetryNumberDto: components["schemas"]["TelemetryNumberDtoTelemetryIntegerDto"] | components["schemas"]["TelemetryNumberDtoTelemetryDoubleDto"];
+        TelemetryNumberDtoTelemetryDoubleDto: {
+            /** @enum {string} */
+            kind?: "double";
+            /** Format: double */
+            value: null | number | string;
+            special: null | string;
+        };
+        TelemetryNumberDtoTelemetryIntegerDto: {
+            /** @enum {string} */
+            kind?: "int";
+            value: string;
+        };
+        TelemetryOptionalNumberDto: {
+            present: boolean;
+            value: null | components["schemas"]["TelemetryNumberDto"];
+        };
+        TelemetryPageDto: {
+            status: string;
+            records: components["schemas"]["TelemetryRecordDto"][];
+            partial: boolean;
+            cursor: null | string;
+            reason: null | string;
+        };
+        TelemetryPointDto: {
+            attributes: components["schemas"]["TelemetryAttributeDto"][];
+            start_time_unix_nano: string;
+            time_unix_nano: string;
+            value: components["schemas"]["TelemetryOptionalNumberDto"];
+            count: null | string;
+            sum: components["schemas"]["TelemetryOptionalNumberDto"];
+            min: components["schemas"]["TelemetryOptionalNumberDto"];
+            max: components["schemas"]["TelemetryOptionalNumberDto"];
+            bucket_counts: string[];
+            explicit_bounds: components["schemas"]["TelemetryNumberDto"][];
+            /** Format: int32 */
+            scale: null | number | string;
+            zero_count: null | string;
+            zero_threshold: components["schemas"]["TelemetryOptionalNumberDto"];
+            positive: null | components["schemas"]["TelemetryBucketsDto"];
+            negative: null | components["schemas"]["TelemetryBucketsDto"];
+            quantile_values: components["schemas"]["TelemetryQuantileDto"][];
+            exemplars: components["schemas"]["TelemetryExemplarDto"][];
+            flags: string;
+        };
+        TelemetryQuantileDto: {
+            quantile: components["schemas"]["TelemetryNumberDto"];
+            value: components["schemas"]["TelemetryNumberDto"];
+        };
+        TelemetryRecordDto: {
+            logical_id: string;
+            signal: string;
+            source_id: string;
+            owner_group: string;
+            time_unix_nano: string;
+            resource_schema_url: string;
+            scope_schema_url: string;
+            resource: components["schemas"]["TelemetryResourceDto"];
+            scope: components["schemas"]["TelemetryScopeDto"];
+            metric: null | components["schemas"]["TelemetryMetricDto"];
+            span: null | components["schemas"]["TelemetrySpanDto"];
+        };
+        TelemetryResourceDto: {
+            attributes: components["schemas"]["TelemetryAttributeDto"][];
+            dropped_attributes_count: string;
+        };
+        TelemetryResultStatus: number;
+        TelemetryScopeDto: {
+            name: string;
+            version: string;
+            attributes: components["schemas"]["TelemetryAttributeDto"][];
+            dropped_attributes_count: string;
+        };
+        TelemetrySpanDto: {
+            trace_id: string;
+            span_id: string;
+            parent_span_id: string;
+            trace_state: string;
+            flags: string;
+            name: string;
+            /** Format: int32 */
+            kind: number | string;
+            start_time_unix_nano: string;
+            end_time_unix_nano: string;
+            attributes: components["schemas"]["TelemetryAttributeDto"][];
+            dropped_attributes_count: string;
+            events: components["schemas"]["TelemetrySpanEventDto"][];
+            dropped_events_count: string;
+            links: components["schemas"]["TelemetrySpanLinkDto"][];
+            dropped_links_count: string;
+            /** Format: int32 */
+            status_code: number | string;
+            status_message: string;
+        };
+        TelemetrySpanEventDto: {
+            time_unix_nano: string;
+            name: string;
+            attributes: components["schemas"]["TelemetryAttributeDto"][];
+            dropped_attributes_count: string;
+        };
+        TelemetrySpanLinkDto: {
+            trace_id: string;
+            span_id: string;
+            trace_state: string;
+            flags: string;
+            attributes: components["schemas"]["TelemetryAttributeDto"][];
+            dropped_attributes_count: string;
+        };
+        TelemetrySummaryDto: {
+            key: string;
+            count: string;
+            first_nano: string;
+            last_nano: string;
+            last: components["schemas"]["TelemetryRecordDto"];
+        };
+        TelemetrySummaryPageDto: {
+            status: string;
+            groups: components["schemas"]["TelemetrySummaryDto"][];
+            partial: boolean;
+            cursor: null | string;
+            reason: null | string;
+        };
     };
     responses: never;
     parameters: never;
@@ -2107,6 +2516,76 @@ export interface operations {
             };
         };
     };
+    ListMetrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetryPageDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     OtlpMetrics: {
         parameters: {
             query?: never;
@@ -2127,6 +2606,76 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    ListTraces: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetryPageDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
             };
         };
     };
@@ -2363,6 +2912,670 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GoldenSetQualityResponse"];
+                };
+            };
+        };
+    };
+    CountMetrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetryCountDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SummarizeMetrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetrySummaryPageDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    FeedMetrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetryCountDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetMetricPoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                logicalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetryRecordDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CountTraces: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetryCountDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SummarizeTraces: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetrySummaryPageDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    FeedTraces: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetryCountDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetTrace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                traceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetryPageDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetSpan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                traceId: string;
+                spanId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetryRecordDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };

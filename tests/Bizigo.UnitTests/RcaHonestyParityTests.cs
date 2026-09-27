@@ -45,7 +45,15 @@ public sealed class RcaHonestyParityTests
             OutOfScopeCount = outOfScope,
         };
 
-        return EvidenceBundleTests.Bundle(slice) with { Trust = trust };
+        // A no-warning fixture must explicitly complete every kind; an absent
+        // kind is now honestly NotRegistered/partial rather than silently empty.
+        var completed = Enum.GetValues<EvidenceKind>().Where(k => k != EvidenceKind.Log)
+            .Select(k => new EvidenceSlice { ProviderId = "fixture." + k, Kind = k, Status = EvidenceStatus.Empty });
+        return EvidenceBundleTests.Bundle([slice, .. completed]) with
+        {
+            Trust = trust,
+            ExcludedInputs = new([new(EvidenceKind.Metric, outOfScope, null), new(EvidenceKind.Trace, 0, null)]),
+        };
     }
 
     private static string Honesty(EvidenceBundle bundle)

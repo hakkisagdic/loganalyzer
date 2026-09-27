@@ -45,7 +45,7 @@ internal sealed class TelemetryDbFixture : IAsyncDisposable
         this.stack = stack; Storage = storage; Factory = factory; Db = factory.CreateDbContext();
         Owners = new(factory); Writer = new(Storage, Owners);
         Clock = new(DateTimeOffset.UtcNow); Reader = new(Storage, Clock);
-        Query = new ScopedQuery(new(Storage), new(Storage), new(Storage), new(Storage), Db, new ControlPlaneAuditSink(Db), Reader);
+        Query = new ScopedQuery(new(Storage), new(Storage), new(Storage), new(Storage), Db, new ControlPlaneAuditSink(Factory), Reader);
         RawOptions = DevStackSetup.RawOptions(stack); RawOptions.SegmentRetention = TimeSpan.Zero;
         Objects = new(Options.Create(RawOptions));
     }

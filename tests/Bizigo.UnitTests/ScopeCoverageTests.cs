@@ -139,7 +139,8 @@ public sealed partial class ScopeCoverageTests
     }
 
     /// <summary><c>// kapsam: MetotAdı</c> — birden çok ad virgülle.</summary>
-    [GeneratedRegex(@"//\s*kapsam:\s*(?<method>[A-Za-z]+Async)")]
+    // Scope decisions include synchronous cursor creation as well as async reads.
+    [GeneratedRegex(@"//\s*kapsam:\s*(?<method>[A-Za-z][A-Za-z0-9_]*)\b")]
     private static partial Regex CoverageMarker();
 
     /// <summary>

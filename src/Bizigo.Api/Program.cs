@@ -68,6 +68,8 @@ builder.Services.AddChangeConnectors(builder.Configuration);
 // Kanıt sağlayıcı sözleşmesi ve iki sağlayıcı (T34). Uç yok: kanıt paketi
 // deposu ve rapor T36'da, korelasyonlar T35'te.
 builder.Services.AddBizigoEvidence();
+builder.Services.Configure<MetricEvidenceOptions>(builder.Configuration.GetSection("MetricEvidence"));
+builder.Services.Configure<TelemetryEvidenceOptions>(builder.Configuration.GetSection("TelemetryEvidence"));
 
 // Alarm motoru ve bildirim kanalları (T21, T22).
 builder.Services.AddBizigoAlerting(builder.Configuration);
@@ -197,6 +199,7 @@ app.MapHealthChecks("/healthz");
 app.MapAuth();
 app.MapOtlpLogs();
 app.MapOtlpTelemetry();
+app.MapTelemetryReads();
 
 // Sorgu ve yazma yüzeyi (T10). Hepsi IScopedQuery'den geçiyor; mimari test
 // API'nin somut okuyuculara erişmesini zaten yasaklıyor.

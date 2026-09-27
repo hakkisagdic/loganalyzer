@@ -84,14 +84,11 @@ public sealed class EvidenceCollectorTests
             EvidenceStatus.NeverFed,
             Assert.Single(report.Slices, s => s.Kind == EvidenceKind.Change).Status);
 
-        // Sağlayıcısı olmayan türler ayrı bir durumla görünüyor — ve F5 · S1'den
-        // sonra o durum `OutOfScope`: ikisi de **kalıcı muaf**, bekleyen değil.
-        // Topoloji burada yok çünkü bu testin kurduğu toplayıcıda kayıtlı
-        // sağlayıcı olarak da yok; ayrımı ölçen test `EvidenceKindScopeTests`.
+        // Sprint04: hiçbir tür muaf değil; eksik kayıtlar açıkça görünür.
         Assert.Equal(
-            [EvidenceKind.Metric, EvidenceKind.Trace],
+            [EvidenceKind.Metric, EvidenceKind.Trace, EvidenceKind.Topology],
             report.Slices
-                .Where(s => s.Status == EvidenceStatus.OutOfScope)
+                .Where(s => s.Status == EvidenceStatus.NotRegistered)
                 .Select(s => s.Kind)
                 .Order());
 

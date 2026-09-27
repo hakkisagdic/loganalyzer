@@ -9,6 +9,14 @@ public sealed partial class ScopedQuery
 {
     private TelemetryReader Telemetry => telemetry ?? throw new InvalidOperationException("Telemetry data plane is not configured.");
 
+    public string CreateTelemetryCursor(TelemetryQuery query, AccessScope scope, ulong lastTime, string lastKey, bool summary = false) =>
+        TelemetryReader.CreateCursor(query, ScopePredicate.From(scope, query.OwnerGroups), summary, lastTime, lastKey);
+
+    public Task<TelemetryCount> CountExcludedTelemetryInputsAsync(TelemetryInputWindow window, AccessScope scope, CancellationToken cancellationToken = default) =>
+        AuditedTelemetryAsync("excluded-inputs", window.Signal, scope, null,
+            JsonSerializer.Serialize(new { window.EventFrom, window.EventTo, window.BaselineFrom, window.BaselineTo, sourceFilters = window.SourceIds.Count }),
+            p => Telemetry.CountExcludedInputsAsync(window, p, cancellationToken));
+
     public Task<TelemetryPage> SearchTelemetryAsync(TelemetryQuery query, AccessScope scope, CancellationToken cancellationToken = default) =>
         AuditedTelemetryAsync("search", query.Signal, scope, query.OwnerGroups, QuerySummary(query),
             p => Telemetry.SearchAsync(query, p, cancellationToken));

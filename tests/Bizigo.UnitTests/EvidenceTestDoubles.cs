@@ -16,11 +16,16 @@ namespace Bizigo.UnitTests;
 /// </summary>
 internal class RecordingScopedQuery : IScopedQuery
 {
-    public Task<TelemetryPage> SearchTelemetryAsync(TelemetryQuery query, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Func<TelemetryQuery, AccessScope, CancellationToken, Task<TelemetryPage>>? TelemetrySearch { get; set; }
+    public Task<TelemetryPage> SearchTelemetryAsync(TelemetryQuery query, AccessScope scope, CancellationToken cancellationToken = default) =>
+        TelemetrySearch?.Invoke(query, scope, cancellationToken) ?? throw new NotSupportedException();
     public Task<TelemetryPage> GetMetricPointAsync(string logicalId, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<TelemetryPage> GetTraceAsync(TelemetryQuery query, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<TelemetryCount> CountTelemetryAsync(TelemetryQuery query, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<TelemetryCount> CountOutOfScopeTelemetryAsync(TelemetryQuery query, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Func<TelemetryInputWindow, AccessScope, CancellationToken, Task<TelemetryCount>>? ExcludedTelemetryCount { get; init; }
+    public Task<TelemetryCount> CountExcludedTelemetryInputsAsync(TelemetryInputWindow window, AccessScope scope, CancellationToken cancellationToken = default) =>
+        ExcludedTelemetryCount?.Invoke(window, scope, cancellationToken) ?? throw new NotSupportedException();
     public Task<TelemetrySummaryPage> SummarizeTelemetryAsync(TelemetryQuery query, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<TelemetryCount> GetTelemetryFeedAsync(TelemetrySignal signal, string? resourceId, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public List<EventQuery> EventQueries { get; } = [];

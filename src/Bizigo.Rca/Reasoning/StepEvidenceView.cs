@@ -151,6 +151,8 @@ public sealed class StepEvidenceView
                 // değil. Kimlik verilseydi uydurma olurdu ve "kimlik var" ile
                 // "kimlik anlamlı" arasındaki fark hiçbir yerde görünmezdi.
                 summaries.AddRange(bundle.Slices.Select(DescribeSlice));
+                summaries.Add("excluded_input_records=" + System.Text.Json.JsonSerializer.Serialize(bundle.ExcludedInputRecords, BundleSerializer.Options));
+                summaries.Add("coverage=" + System.Text.Json.JsonSerializer.Serialize(bundle.Coverage, BundleSerializer.Options));
             }
             else if (input.StartsWith("steps.", StringComparison.Ordinal))
             {
@@ -194,5 +196,6 @@ public sealed class StepEvidenceView
         $"{slice.ProviderId} ({slice.Kind}): {slice.Status.ToString().ToLowerInvariant()}" +
         $", {slice.Items.Count} satır" +
         (slice.Truncated ? ", KIRPILDI" : string.Empty) +
-        (string.IsNullOrWhiteSpace(slice.Detail) ? string.Empty : $" — {slice.Detail}");
+        (string.IsNullOrWhiteSpace(slice.Detail) ? string.Empty : $" — {slice.Detail}") +
+        (slice.Telemetry is null ? string.Empty : " telemetry=" + System.Text.Json.JsonSerializer.Serialize(slice.Telemetry, BundleSerializer.Options));
 }

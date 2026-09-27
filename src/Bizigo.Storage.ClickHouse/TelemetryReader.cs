@@ -42,6 +42,13 @@ public sealed class TelemetryReader(ClickHouseContext context, TimeProvider? clo
     private static string Cursor(TelemetryQuery query, ScopePredicate scope, bool summary, ulong timestamp, string key) =>
         Convert.ToBase64String(JsonSerializer.SerializeToUtf8Bytes(new Position(Fingerprint(query, scope, summary), timestamp, key), RawSignalCodec.Json));
 
+    public static string CreateCursor(TelemetryQuery query, ScopePredicate scope, bool summary, ulong timestamp, string key)
+    {
+        query.Validate();
+        if (string.IsNullOrEmpty(key) || key.Length > 2048) throw new ArgumentException("Invalid continuation key.", nameof(key));
+        return Cursor(query, scope, summary, timestamp, key);
+    }
+
     private ulong NowNano() => checked((ulong)(time.GetUtcNow().UtcTicks - DateTimeOffset.UnixEpoch.UtcTicks) * 100);
 
     private static (string Table, string Time) Names(TelemetrySignal signal) =>
@@ -201,6 +208,39 @@ public sealed class TelemetryReader(ClickHouseContext context, TimeProvider? clo
             var status = count > 0 ? TelemetryResultStatus.Data : outside ? TelemetryResultStatus.Empty
                 : await EmptyStatusAsync(query.Signal, query.ResourceId, scope, token);
             return new(status, count);
+        }
+        catch (Exception ex) when (ReadFailure(ex, token)) { return new(TelemetryResultStatus.Failed, null, Failure(ex)); }
+    }
+
+    public async Task<TelemetryCount> CountExcludedInputsAsync(TelemetryInputWindow window, ScopePredicate scope, CancellationToken token = default)
+    {
+        window.Validate();
+        var (table, timestamp) = Names(window.Signal);
+        var parameters = new Dictionary<string, object>(StringComparer.Ordinal) { ["as_of"] = NowNano() };
+        if (scope.HasParameter) parameters["scope_groups"] = scope.ParameterValue;
+        string Range(string prefix, decimal from, decimal to)
+        {
+            parameters[prefix + "from"] = (ulong)from;
+            var lower = timestamp + " >= {" + prefix + "from:UInt64}";
+            if (to > ulong.MaxValue) return "(" + lower + ")";
+            parameters[prefix + "to"] = (ulong)to;
+            return "(" + lower + " AND " + timestamp + " < {" + prefix + "to:UInt64})";
+        }
+        var outside = scope.IsUnrestricted || scope.DeniesEverything ? "0" : "NOT (" + scope.ToSqlFragment() + ")";
+        var where = outside + " AND expires_nano > {as_of:UInt64} AND ("
+            + Range("e", window.EventFrom, window.EventTo) + " OR " + Range("b", window.BaselineFrom, window.BaselineTo) + ")";
+        if (window.SourceIds.Count > 0)
+        {
+            where += " AND resource_id IN {sources:Array(String)}";
+            parameters["sources"] = window.SourceIds.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
+        }
+        var plan = new TelemetrySqlPlan("SELECT uniqExact(logical_id) FROM " + table + " FINAL WHERE " + where + Settings(), parameters);
+        try
+        {
+            long count = 0;
+            await ExecuteAsync(plan, async reader =>
+            { if (await reader.ReadAsync(token)) count = checked((long)Convert.ToUInt64(reader.GetValue(0), CultureInfo.InvariantCulture)); }, token);
+            return new(count == 0 ? TelemetryResultStatus.Empty : TelemetryResultStatus.Data, count);
         }
         catch (Exception ex) when (ReadFailure(ex, token)) { return new(TelemetryResultStatus.Failed, null, Failure(ex)); }
     }

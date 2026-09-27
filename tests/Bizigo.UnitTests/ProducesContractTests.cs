@@ -537,7 +537,7 @@ public sealed class ProducesContractTests
                 "MapChangeConnectors", "MapChangeWebhooks", "MapChanges",
                 "MapEvents",
                 "MapNotificationChannels", "MapOtlpLogs", "MapOtlpTelemetry", "MapParserAuthoring", "MapParsers",
-                "MapPipelineHealth", "MapRca", "MapRcaRuns", "MapReplay", "MapSources",
+                "MapPipelineHealth", "MapRca", "MapRcaRuns", "MapReplay", "MapSources", "MapTelemetryReads",
             ],
             names);
 

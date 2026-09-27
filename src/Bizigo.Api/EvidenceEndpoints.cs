@@ -56,6 +56,7 @@ public sealed record RcaRequest
 /// aksi halde herkes başkasının adına oy yazabilirdi ve altın küme kimin ne
 /// dediğini kaybederdi.
 /// </summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record RcaReviewRequest
 {
     /// <summary>
@@ -116,6 +117,9 @@ public sealed record RcaReviewRequest
     /// </summary>
     [JsonPropertyName("rank_asked")]
     public bool RankAsked { get; init; }
+
+    [JsonPropertyName("missing_evidence_kinds")]
+    public IReadOnlyList<string>? MissingEvidenceKinds { get; init; }
 
     [JsonPropertyName("note")]
     public string Note { get; init; } = string.Empty;
@@ -370,6 +374,7 @@ public static class EvidenceEndpoints
         Guid id,
         EvidenceBundleStore store,
         RcaReportStore reports,
+        GoldenReviewStore reviews,
         ICurrentUser user,
         CancellationToken cancellationToken)
     {
@@ -393,6 +398,13 @@ public static class EvidenceEndpoints
         {
             markdown += Environment.NewLine + reasoning.Document.ToMarkdown();
         }
+
+        // Preserve unanswered versus explicitly empty answers in the same export
+        // used outside the UI. DTO JSON keeps the schema and nullable field exact.
+        var review = (await reviews.ForBundleAsync(id, user.Scope, cancellationToken)).FirstOrDefault();
+        if (review is not null)
+            markdown += Environment.NewLine + "## Review" + Environment.NewLine + "```json" + Environment.NewLine
+                + System.Text.Json.JsonSerializer.Serialize(RcaReviewResponse.Of(review)) + Environment.NewLine + "```" + Environment.NewLine;
 
         // İndirilebilir dosya: olay sonrası paylaşılan şey rapor, ekran değil.
         return Results.File(
@@ -457,7 +469,8 @@ public static class EvidenceEndpoints
                     Note: request.Note,
                     ActualRootCause: request.ActualRootCause,
                     CorrectFindingRank: request.CorrectFindingRank,
-                    CorrectFindingRankAsked: request.RankAsked),
+                    CorrectFindingRankAsked: request.RankAsked,
+                    MissingEvidenceKinds: request.MissingEvidenceKinds),
                 // İnceleyen token'dan; gövdeden gelseydi herkes başkasının adına
                 // oy yazabilirdi.
                 user.Scope,

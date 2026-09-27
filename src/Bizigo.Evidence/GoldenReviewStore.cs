@@ -250,7 +250,8 @@ public sealed record ReviewInput(
     string? OwnerGroup = null,
     string? ActualRootCause = null,
     int? CorrectFindingRank = null,
-    bool CorrectFindingRankAsked = false);
+    bool CorrectFindingRankAsked = false,
+    IReadOnlyList<string>? MissingEvidenceKinds = null);
 
 /// <summary>
 /// Altın kümenin deposu ve <b>kapsam kapısı</b> (T38).
@@ -289,6 +290,8 @@ public sealed class GoldenReviewStore(
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(scope);
+
+        var missingEvidenceKinds = MissingEvidenceAnswers.Validate(input.MissingEvidenceKinds);
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
@@ -330,6 +333,7 @@ public sealed class GoldenReviewStore(
             TriggerId = input.TriggerId,
             CorrectFindingRank = input.CorrectFindingRank,
             CorrectFindingRankAsked = input.CorrectFindingRankAsked,
+            MissingEvidenceKinds = missingEvidenceKinds,
             OwnerGroup = await ResolveGroupAsync(db, input, scope, cancellationToken),
             Verdict = input.Verdict,
             ContradictingEvidence = input.ContradictingEvidence,
@@ -407,6 +411,25 @@ public sealed class GoldenReviewStore(
             total, correct, unknown,
             contradictingSound, contradictingTrivial, contradictingUnknown, contradictingUnspecified,
             rankAsked, rankFirst, rankTopThree);
+    }
+
+    public async Task<MissingEvidenceQuality> MissingEvidenceQualityAsync(
+        AccessScope scope, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(scope);
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+        var visible = Visible(db, scope);
+        var total = await visible.LongCountAsync(cancellationToken);
+        var measured = visible.Where(r => r.SchemaVersion >= GoldenReviewEntity.MissingEvidenceSchemaVersion
+            && r.MissingEvidenceKinds != null);
+        return new MissingEvidenceQuality(total,
+            await measured.LongCountAsync(cancellationToken),
+            await measured.LongCountAsync(r => r.MissingEvidenceKinds!.Length > 0, cancellationToken),
+            await measured.LongCountAsync(r => r.MissingEvidenceKinds!.Contains("Log"), cancellationToken),
+            await measured.LongCountAsync(r => r.MissingEvidenceKinds!.Contains("Change"), cancellationToken),
+            await measured.LongCountAsync(r => r.MissingEvidenceKinds!.Contains("Metric"), cancellationToken),
+            await measured.LongCountAsync(r => r.MissingEvidenceKinds!.Contains("Trace"), cancellationToken),
+            await measured.LongCountAsync(r => r.MissingEvidenceKinds!.Contains("Topology"), cancellationToken));
     }
 
     /// <summary>

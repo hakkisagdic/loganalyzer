@@ -73,9 +73,11 @@ public sealed class AlertClosureService(
         CancellationToken cancellationToken = default,
         string? actualRootCause = null,
         int? correctFindingRank = null,
-        bool correctFindingRankAsked = false)
+        bool correctFindingRankAsked = false,
+        IReadOnlyList<string>? missingEvidenceKinds = null)
     {
         ArgumentNullException.ThrowIfNull(scope);
+        var answer = MissingEvidenceAnswers.Validate(missingEvidenceKinds);
 
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
 
@@ -110,7 +112,8 @@ public sealed class AlertClosureService(
                 OwnerGroup: null,
                 ActualRootCause: actualRootCause,
                 CorrectFindingRank: correctFindingRank,
-                CorrectFindingRankAsked: correctFindingRankAsked),
+                CorrectFindingRankAsked: correctFindingRankAsked,
+                MissingEvidenceKinds: answer),
             scope,
             cancellationToken);
 

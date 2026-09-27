@@ -94,7 +94,7 @@ public sealed class EvidenceBundleStore(IDbContextFactory<ControlPlaneDbContext>
                 b.WindowFrom,
                 b.WindowTo,
                 b.ContentHash,
-                b.OutOfScopeCount,
+                b.SchemaVersion < 2 ? null : b.OutOfScopeCount,
                 b.IsPartial,
                 b.SchemaVersion))
             .ToListAsync(cancellationToken);
@@ -125,6 +125,6 @@ public sealed record EvidenceBundleSummary(
     DateTimeOffset WindowFrom,
     DateTimeOffset WindowTo,
     string ContentHash,
-    long OutOfScopeCount,
+    long? OutOfScopeCount,
     bool IsPartial,
     int SchemaVersion);

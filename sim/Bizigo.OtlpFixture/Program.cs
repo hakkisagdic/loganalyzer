@@ -12,6 +12,16 @@ using Microsoft.Extensions.Options;
 
 // Explicit test executable. No fault gates or filesystem object adapters are
 // registered by the production API. All addresses bind only to loopback.
+if (args.Length == 2 && args[0] == "--evidence-summary")
+{
+    var bundle = Bizigo.Evidence.BundleSerializer.Deserialize(await File.ReadAllTextAsync(args[1]));
+    var step = new Bizigo.ScenarioPlugin.ScenarioStep { Id = "live-summary", Task = "Inspect persisted evidence",
+        Input = ["evidence.summary"], Output = new Bizigo.ScenarioPlugin.ScenarioOutput { Schema = "rca.v1" } };
+    var view = Bizigo.Rca.Reasoning.StepEvidenceView.For(step, bundle,
+        new Dictionary<string, Bizigo.Rca.Reasoning.ScenarioOutputDocument>());
+    Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(view.Summaries));
+    return;
+}
 if (args.Length >= 3 && args[0] == "--legacy-replay")
 {
     await LegacyReplayHost.RunAsync(args[1..]);

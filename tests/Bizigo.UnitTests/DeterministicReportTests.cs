@@ -200,7 +200,8 @@ public sealed class DeterministicReportTests
     public void Kapsam_disi_satiri_sayi_veriyor_icerik_vermiyor()
     {
         var bundle = Bundle(null, EvidenceBundleTests.Slice(
-            "change.feed", EvidenceStatus.Gathered, outOfScope: 342, items: [("chg", 1.0)]));
+            "change.feed", EvidenceStatus.Gathered, outOfScope: 999, items: [("chg", 1.0)])) with
+        { ExcludedInputs = new([new(EvidenceKind.Metric, 340, null), new(EvidenceKind.Trace, 2, null)]) };
 
         var markdown = DeterministicReport.From(bundle).ToMarkdown();
 

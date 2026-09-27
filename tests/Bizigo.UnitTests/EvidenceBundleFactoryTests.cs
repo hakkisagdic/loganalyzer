@@ -160,23 +160,13 @@ public sealed class EvidenceBundleFactoryTests
             Enum.GetValues<EvidenceKind>().ToHashSet(),
             bundle.Slices.Select(s => s.Kind).ToHashSet());
 
-        // Bu fabrikaya yalnızca iki sağlayıcı verildi, yani kalan üç tür
-        // bakılmayanlar arasında — ama **aynı sebeple değil**, ve paket bu
-        // ayrımı taşımak zorunda:
-        //   · metrik ve trace  → `OutOfScope`     (verilmiş karar, F5 · S1)
-        //   · topoloji         → `NotRegistered`  (bu fabrikaya kaydedilmedi)
-        // Tek sayıya indirgemek, saklanan pakete "neden bakılmadı" bilgisini
-        // kaybettirirdi — ve paket saklanıyor (T36), yani kayıp kalıcı olurdu.
+        // Bu fabrikaya yalnızca iki sağlayıcı verildi. Diğer üç tür artık
+        // muaf değil: her eksik sağlayıcı NotRegistered olarak görünmeli.
+        Assert.DoesNotContain(bundle.NotConsulted, s => s.Status == EvidenceStatus.OutOfScope);
         Assert.Equal(
-            [EvidenceKind.Metric, EvidenceKind.Trace],
-            bundle.NotConsulted
-                .Where(s => s.Status == EvidenceStatus.OutOfScope)
-                .Select(s => s.Kind)
-                .Order());
-
-        Assert.Equal(
-            EvidenceKind.Topology,
-            Assert.Single(bundle.NotConsulted, s => s.Status == EvidenceStatus.NotRegistered).Kind);
+            [EvidenceKind.Metric, EvidenceKind.Trace, EvidenceKind.Topology],
+            bundle.NotConsulted.Where(s => s.Status == EvidenceStatus.NotRegistered)
+                .Select(s => s.Kind).Distinct().Order());
     }
 
     /// <summary>Sayım patlıyor — depolama erişilemez.</summary>

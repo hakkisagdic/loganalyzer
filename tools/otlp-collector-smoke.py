@@ -85,6 +85,8 @@ def main(extension=None):
     env_file.write_text("\n".join(f"{k}={v}" for k, v in fixture_env.items()) + "\n")
     env_file.chmod(0o600)
     compose = ["docker", "compose", "--env-file", str(env_file), "-p", project, "-f", str(ROOT / "deploy/docker-compose.yml")]
+    if extension is not None and callable(getattr(type(extension), "configure_compose", None)):
+        compose = extension.configure_compose(compose, folder)
     captures = folder / "captures"
     captures.mkdir()
     state = {"api": None, "api_log": None, "blocked": False}
@@ -249,22 +251,29 @@ def main(extension=None):
         path = folder / "session.json"
         if extension is not None:
             session.update(extension.session())
+            if callable(getattr(type(extension), "decorate", None)):
+                extension.decorate(session, compose, state)
         path.write_text(json.dumps(session, indent=2)); path.chmod(0o600)
         print(f"READY production API + {IMAGE}: {path}", flush=True)
         while not stopped.wait(1):
             if state["api"] is not None and state["api"].poll() is not None:
                 raise RuntimeError("production API exited unexpectedly")
     finally:
-        if extension is not None:
-            extension.close()
-        stop_api()
-        for name in containers:
-            subprocess.run(["docker", "logs", name], stdout=logs, stderr=subprocess.STDOUT, timeout=30)
-            subprocess.run(["docker", "rm", "-f", "-v", name], stdout=logs, stderr=subprocess.STDOUT, timeout=60)
-        subprocess.run(compose + ["down", "--volumes", "--remove-orphans"], stdout=logs, stderr=subprocess.STDOUT, timeout=120)
-        proxy.shutdown(); control.shutdown()
-        proxy.server_close(); control.server_close(); logs.close()
-        (folder / "cleanup.json").write_text(json.dumps({"finished": True, "project": project}))
+        try:
+            if extension is not None and callable(getattr(type(extension), "cleanup", None)):
+                extension.cleanup(folder, project, compose, containers, state, logs)
+            else:
+                if extension is not None:
+                    extension.close()
+                stop_api()
+                for name in containers:
+                    subprocess.run(["docker", "logs", name], stdout=logs, stderr=subprocess.STDOUT, timeout=30)
+                    subprocess.run(["docker", "rm", "-f", "-v", name], stdout=logs, stderr=subprocess.STDOUT, timeout=60)
+                subprocess.run(compose + ["down", "--volumes", "--remove-orphans"], stdout=logs, stderr=subprocess.STDOUT, timeout=120)
+                (folder / "cleanup.json").write_text(json.dumps({"finished": True, "project": project}))
+        finally:
+            proxy.shutdown(); control.shutdown()
+            proxy.server_close(); control.server_close(); logs.close()
 
 
 if __name__ == "__main__":

@@ -160,7 +160,8 @@ def main():
                 for name, original in originals.items(): (copy / name).write_text(original)
         for project in sorted({m["project"] for m in selected}):
             build("restored-" + project, project)
-            required = ["Telemetry", "SourceOwnershipHistory"] if project == "IntegrationTests" else ["TelemetryOwnership", "SignalDurability"]
+            required = globals().get("RESTORE_FILTERS", {}).get(project,
+                ["Telemetry", "SourceOwnershipHistory"] if project == "IntegrationTests" else ["TelemetryOwnership", "SignalDurability"])
             code, rows = tests("restored-" + project, project, required)
             assert code == 0 and all(v == "Passed" for _, v in rows)
         assert all(hashlib.sha256((ROOT / n).read_bytes()).hexdigest() == digest for n, digest in source_hashes.items()), "shared source changed during gate"

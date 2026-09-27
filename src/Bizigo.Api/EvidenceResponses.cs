@@ -124,7 +124,8 @@ public sealed record RcaSliceResponse(
     [property: JsonPropertyName("status")] string Status,
     [property: JsonPropertyName("detail")] string Detail,
     [property: JsonPropertyName("item_count")] int ItemCount,
-    [property: JsonPropertyName("truncated")] bool Truncated)
+    [property: JsonPropertyName("truncated")] bool Truncated,
+    [property: JsonPropertyName("telemetry")] TelemetryEvidence? Telemetry = null)
 {
     public static RcaSliceResponse Of(EvidenceSlice slice)
     {
@@ -136,7 +137,7 @@ public sealed record RcaSliceResponse(
             SnakeCase(slice.Status),
             slice.Detail,
             slice.Items.Count,
-            slice.Truncated);
+            slice.Truncated, slice.Telemetry);
     }
 
     /// <summary>
@@ -206,7 +207,10 @@ public sealed record RcaReviewResponse(
     [property: JsonPropertyName("contradicting_evidence")] string ContradictingEvidence,
     [property: JsonPropertyName("reviewer")] string Reviewer,
     [property: JsonPropertyName("actual_root_cause")] string ActualRootCause,
-    [property: JsonPropertyName("note")] string Note)
+    [property: JsonPropertyName("note")] string Note,
+    [property: JsonPropertyName("schema_version")] int SchemaVersion = 3,
+    [property: JsonPropertyName("missing_evidence_kinds")] IReadOnlyList<string>? MissingEvidenceKinds = null,
+    [property: JsonPropertyName("missing_evidence_asked")] bool MissingEvidenceAsked = false)
 {
     public static RcaReviewResponse Of(GoldenReviewEntity review)
     {
@@ -223,7 +227,10 @@ public sealed record RcaReviewResponse(
             WireName(review.ContradictingEvidence.ToString()),
             review.ReviewerSubject,
             review.ActualRootCause,
-            review.Note);
+            review.Note,
+            review.SchemaVersion,
+            review.MissingEvidenceKinds,
+            review.MissingEvidenceAsked);
     }
 
     private static string WireName(string enumName) =>
@@ -268,7 +275,7 @@ public sealed record RcaReportResponse(
     [property: JsonPropertyName("not_consulted")] IReadOnlyList<RcaSliceResponse> NotConsulted,
 
     [property: JsonPropertyName("trust")] RcaTrustResponse Trust,
-    [property: JsonPropertyName("out_of_scope_count")] long OutOfScopeCount,
+    [property: JsonPropertyName("out_of_scope_count")] long? OutOfScopeCount,
     [property: JsonPropertyName("is_partial")] bool IsPartial,
 
     /// <summary>Paketin son incelemesi; hiç incelenmemişse <see langword="null"/>.</summary>
@@ -286,7 +293,10 @@ public sealed record RcaReportResponse(
     /// kaybolur — F4'ün ölçmek istediği tam olarak o.
     /// </para>
     /// </summary>
-    [property: JsonPropertyName("reasoning")] RcaReasoningResponse? Reasoning)
+    [property: JsonPropertyName("reasoning")] RcaReasoningResponse? Reasoning,
+    [property: JsonPropertyName("excluded_input_records")] ExcludedInputRecords? ExcludedInputRecords = null,
+    [property: JsonPropertyName("coverage")] IReadOnlyList<EvidenceKindCoverage>? Coverage = null,
+    [property: JsonPropertyName("providers")] IReadOnlyList<RcaSliceResponse>? Providers = null)
 {
     public static RcaReportResponse Of(
         DeterministicReport report,
@@ -308,7 +318,8 @@ public sealed record RcaReportResponse(
             report.OutOfScopeCount,
             report.IsPartial,
             review is null ? null : RcaReviewResponse.Of(review),
-            reasoning is null ? null : RcaReasoningResponse.Of(reasoning));
+            reasoning is null ? null : RcaReasoningResponse.Of(reasoning), report.ExcludedInputRecords, report.Coverage,
+            report.Providers.Select(RcaSliceResponse.Of).ToArray());
     }
 }
 
@@ -476,7 +487,7 @@ public sealed record RcaBundleSummaryResponse(
     [property: JsonPropertyName("window_from")] DateTimeOffset WindowFrom,
     [property: JsonPropertyName("window_to")] DateTimeOffset WindowTo,
     [property: JsonPropertyName("content_hash")] string ContentHash,
-    [property: JsonPropertyName("out_of_scope_count")] long OutOfScopeCount,
+    [property: JsonPropertyName("out_of_scope_count")] long? OutOfScopeCount,
     [property: JsonPropertyName("is_partial")] bool IsPartial)
 {
     public static RcaBundleSummaryResponse Of(EvidenceBundleSummary summary)

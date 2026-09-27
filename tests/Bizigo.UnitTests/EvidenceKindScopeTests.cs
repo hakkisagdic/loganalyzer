@@ -7,16 +7,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Bizigo.UnitTests;
 
 /// <summary>
-/// <b>F5 · S1 — kanıt türlerinin kapsam kaderi.</b>
-///
-/// <para>
-/// Bu sınıf tek bir ayrımı koruyor ve ayrım §8'in kuralı: <i>"bir gün
-/// kapanacak"</i> ile <i>"hiç kapanmayacak"</i> aynı listede duramaz. Karardan
-/// önce üç tür tek listedeydi ve ekran üçü için de <i>"(F5)"</i> yazıyordu —
-/// yani bir söz. Karar ikisini kalıcı olarak kapsam dışına aldı; söz orada
-/// kalsaydı, verilmiş bir karardan sonra da bekletmeye devam ederdi ve
-/// yanlışlığı <b>hiçbir yerde kırmızı yanmazdı</b>.
-/// </para>
+/// Sprint04: Metric/Trace muafiyeti kaldırıldı; eksik sağlayıcı kayıtları
+/// kapsam dışı diye gizlenmez. Topoloji envanter alanları sınırını korur.
 /// </summary>
 public class EvidenceKindScopeTests
 {
@@ -26,14 +18,15 @@ public class EvidenceKindScopeTests
         // Muafiyet eklemek İKİ bilinçli hareket: listeye ad eklemek ve bu
         // sayıyı artırmak. Tek hareketle büyüyen bir muafiyet listesi,
         // muafiyeti kararsız hâle getirir — emsali `ProducesContractTests`.
-        Assert.Equal(EvidenceKinds.ExpectedExemptCount, EvidenceKinds.Exempt.Count);
+        Assert.Equal(0, EvidenceKinds.ExpectedExemptCount);
+        Assert.Empty(EvidenceKinds.Exempt);
     }
 
     [Fact]
-    public void Metric_ve_trace_muaf_topology_degil()
+    public void Metric_trace_ve_diger_turler_muaf_degil()
     {
-        Assert.True(EvidenceKinds.IsExempt(EvidenceKind.Metric));
-        Assert.True(EvidenceKinds.IsExempt(EvidenceKind.Trace));
+        Assert.False(EvidenceKinds.IsExempt(EvidenceKind.Metric));
+        Assert.False(EvidenceKinds.IsExempt(EvidenceKind.Trace));
 
         // Topoloji **karşılanıyor** — sınırlı ama karşılanıyor. Muaf sayılsaydı
         // üçüncü bir hâl doğardı ve sağlayıcısı olan bir tür "bakmıyoruz" diye
@@ -44,19 +37,18 @@ public class EvidenceKindScopeTests
     }
 
     [Fact]
-    public async Task Muaf_turler_out_of_scope_diyor_not_registered_degil()
+    public async Task Kayitsiz_turler_not_registered_olarak_gorunur()
     {
         var collector = new EvidenceCollector([], NullLogger<EvidenceCollector>.Instance);
 
         var report = await collector.GatherAsync(
             TopologyWindow(), Bizigo.Contracts.AccessScope.System("test"), GatherBudget.Default, TestContext.Current.CancellationToken);
 
-        foreach (var kind in EvidenceKinds.Exempt)
+        foreach (var kind in Enum.GetValues<EvidenceKind>())
         {
             var slice = Assert.Single(report.Slices, s => s.Kind == kind);
 
-            Assert.Equal(EvidenceStatus.OutOfScope, slice.Status);
-            Assert.Contains("bakmıyor", slice.Detail, StringComparison.Ordinal);
+            Assert.Equal(EvidenceStatus.NotRegistered, slice.Status);
         }
 
         // Muaf olmayan ve sağlayıcısı olmayan tür hâlâ `NotRegistered`:
@@ -81,11 +73,9 @@ public class EvidenceKindScopeTests
             .Select(p => p.Kind)
             .ToHashSet();
 
-        // Muaf bir tür için sağlayıcı kaydetmek, kararı koddan sessizce geri
-        // almanın en kolay yolu olurdu: `UnregisteredKinds` onu listeden
-        // düşürür ve ekran hiçbir şey söylemez.
-        Assert.DoesNotContain(EvidenceKind.Metric, kinds);
-        Assert.DoesNotContain(EvidenceKind.Trace, kinds);
+        // Her iki sinyal artık gerçek sağlayıcılara sahip.
+        Assert.Contains(EvidenceKind.Metric, kinds);
+        Assert.Contains(EvidenceKind.Trace, kinds);
 
         // Topolojinin sağlayıcısı VAR — S1'in tek satırlık karşılığı.
         Assert.Contains(EvidenceKind.Topology, kinds);

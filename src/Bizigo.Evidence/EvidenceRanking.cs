@@ -122,6 +122,13 @@ public static class EvidenceRanking
         ["logs.attribute-lift"] = 1,
         ["topology.shared-attribute"] = 1,
         ["logs.window"] = 0,
+        // Telemetry shares existing signal classes: directed error evidence,
+        // explicit symptom, statistical deviation, supporting relationship.
+        // These are display priorities, not measured causal confidence.
+        ["traces.error-propagation"] = 4,
+        ["metrics.threshold"] = 3,
+        ["metrics.baseline"] = 2,
+        ["traces.service-dependency"] = 1,
     };
 
     /// <summary>

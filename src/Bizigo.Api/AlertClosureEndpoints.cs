@@ -13,6 +13,7 @@ namespace Bizigo.Api;
 /// <c>wrong</c> deyip burayı boş bırakan inceleyen, yanlışı görmüş ama doğrusunu
 /// bilmiyor demektir.
 /// </param>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record CloseTriggerRequest
 {
     [JsonPropertyName("verdict")]
@@ -55,6 +56,9 @@ public sealed record CloseTriggerRequest
     /// </summary>
     [JsonPropertyName("rank_asked")]
     public bool RankAsked { get; init; }
+
+    [JsonPropertyName("missing_evidence_kinds")]
+    public IReadOnlyList<string>? MissingEvidenceKinds { get; init; }
 }
 
 /// <param name="BundleGenerated">
@@ -66,7 +70,10 @@ public sealed record CloseTriggerResponse(
     [property: JsonPropertyName("closed_at")] DateTimeOffset ClosedAt,
     [property: JsonPropertyName("bundle_generated")] bool BundleGenerated,
     [property: JsonPropertyName("review_id")] Guid ReviewId,
-    [property: JsonPropertyName("owner_group")] string OwnerGroup);
+    [property: JsonPropertyName("owner_group")] string OwnerGroup,
+    [property: JsonPropertyName("schema_version")] int SchemaVersion = 3,
+    [property: JsonPropertyName("missing_evidence_kinds")] IReadOnlyList<string>? MissingEvidenceKinds = null,
+    [property: JsonPropertyName("missing_evidence_asked")] bool MissingEvidenceAsked = false);
 
 /// <param name="Accuracy">
 /// Doğruluk oranı. <b><see langword="null"/> olabilir</b> ve sıfırdan farklıdır:
@@ -122,7 +129,31 @@ public sealed record GoldenSetQualityResponse(
     [property: JsonPropertyName("fabricated_sentences")] long FabricatedSentences,
     [property: JsonPropertyName("dropped_sentence_ratio")] double? DroppedSentenceRatio,
     [property: JsonPropertyName("fabricated_citation_ratio")] double? FabricatedCitationRatio,
-    [property: JsonPropertyName("measured_coverage")] double? MeasuredCoverage);
+    [property: JsonPropertyName("measured_coverage")] double? MeasuredCoverage,
+    [property: JsonPropertyName("missing_evidence")] MissingEvidenceQualityResponse? MissingEvidence = null);
+
+public sealed record MissingEvidenceQualityResponse(
+    [property: JsonPropertyName("total")] long Total,
+    [property: JsonPropertyName("measured")] long Measured,
+    [property: JsonPropertyName("unanswered")] long Unanswered,
+    [property: JsonPropertyName("missing_any")] long MissingAny,
+    [property: JsonPropertyName("missing_any_ratio")] double? MissingAnyRatio,
+    [property: JsonPropertyName("log")] long Log,
+    [property: JsonPropertyName("change")] long Change,
+    [property: JsonPropertyName("metric")] long Metric,
+    [property: JsonPropertyName("trace")] long Trace,
+    [property: JsonPropertyName("topology")] long Topology,
+    [property: JsonPropertyName("log_ratio")] double? LogRatio,
+    [property: JsonPropertyName("change_ratio")] double? ChangeRatio,
+    [property: JsonPropertyName("metric_ratio")] double? MetricRatio,
+    [property: JsonPropertyName("trace_ratio")] double? TraceRatio,
+    [property: JsonPropertyName("topology_ratio")] double? TopologyRatio)
+{
+    public static MissingEvidenceQualityResponse Of(MissingEvidenceQuality value) => new(
+        value.Total, value.Measured, value.Unanswered, value.MissingAny, value.MissingAnyRatio,
+        value.Log, value.Change, value.Metric, value.Trace, value.Topology,
+        value.LogRatio, value.ChangeRatio, value.MetricRatio, value.TraceRatio, value.TopologyRatio);
+}
 
 /// <summary>
 /// Alarm kapatma ve altın küme göstergesi (T38).
@@ -207,14 +238,18 @@ public static class AlertClosureEndpoints
                 cancellationToken,
                 request.ActualRootCause,
                 request.CorrectFindingRank,
-                request.RankAsked);
+                request.RankAsked,
+                request.MissingEvidenceKinds);
 
             return Results.Ok(new CloseTriggerResponse(
                 closure.Trigger.Id,
                 closure.Trigger.ClosedAt ?? default,
                 closure.BundleGenerated,
                 closure.Review.Id,
-                closure.Review.OwnerGroup));
+                closure.Review.OwnerGroup,
+                closure.Review.SchemaVersion,
+                closure.Review.MissingEvidenceKinds,
+                closure.Review.MissingEvidenceAsked));
         }
         catch (ReviewRejectedException ex)
         {
@@ -229,6 +264,7 @@ public static class AlertClosureEndpoints
     {
         var quality = await reviews.QualityAsync(user.Scope, cancellationToken);
         var reasoning = await reviews.ReasoningQualityAsync(user.Scope, cancellationToken);
+        var missing = await reviews.MissingEvidenceQualityAsync(user.Scope, cancellationToken);
 
         return Results.Ok(new GoldenSetQualityResponse(
             quality.Total,
@@ -256,7 +292,8 @@ public static class AlertClosureEndpoints
             reasoning.FabricatedSentences,
             reasoning.DroppedSentenceRatio,
             reasoning.FabricatedCitationRatio,
-            reasoning.MeasuredCoverage));
+            reasoning.MeasuredCoverage,
+            MissingEvidenceQualityResponse.Of(missing)));
     }
 }
 

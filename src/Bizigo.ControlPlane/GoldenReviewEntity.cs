@@ -196,7 +196,15 @@ public sealed class GoldenReviewEntity
     /// ve bu alan tam olarak bu gün için taşınıyordu.
     /// </para>
     /// </summary>
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
+
+    public const int MissingEvidenceSchemaVersion = 3;
+
+    /// <summary>Null means unanswered, an empty array means explicitly none missing.</summary>
+    public string[]? MissingEvidenceKinds { get; set; }
+
+    [NotMapped]
+    public bool MissingEvidenceAsked => SchemaVersion >= MissingEvidenceSchemaVersion && MissingEvidenceKinds is not null;
 
     /// <summary>
     /// Rank sorusunun sorulmaya <b>başladığı</b> sürüm. <c>accuracy@k</c>'nın

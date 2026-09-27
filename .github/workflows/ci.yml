@@ -350,6 +350,96 @@ jobs:
             /tmp/telemetry-session/db-crash.json
             /tmp/telemetry-session/restore.json
 
+  telemetry-evidence:
+    name: Telemetry — typed REST, scoped RCA and review capture
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: .NET SDK kur
+        run: |
+          curl -fsSL --retry 5 --retry-all-errors https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"
+          echo "$HOME/.dotnet" >> "$GITHUB_PATH"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: Serial Release build and UI dependencies
+        run: |
+          bash tools/machine-resources.sh check
+          dotnet build Bizigo.sln -c Release -m:1
+          bash tools/machine-resources.sh check
+          npm --prefix ui ci
+      - name: Evidence contract units and executable typed wire
+        env:
+          BIZIGO_TELEMETRY_WIRE_EVIDENCE: /tmp/telemetry-wire-json
+        run: |
+          bash tools/machine-resources.sh check
+          dotnet test tests/Bizigo.UnitTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~Telemetry|FullyQualifiedName~Evidence|FullyQualifiedName~Rca|FullyQualifiedName~GoldenReview|FullyQualifiedName~Architecture|FullyQualifiedName~ScopeCoverage|FullyQualifiedName~ConcurrentAudit' --logger 'trx;LogFileName=evidence-unit.trx' --results-directory TestResults
+          python3 tools/otlp-verify-trx.py TestResults/evidence-unit.trx --require-class MetricEvidenceProviderTests MetricEvidenceOracleTests TraceEvidenceProviderTests TraceEvidenceBudgetTests MetricTraceEvidenceContractTests GoldenReviewEvidenceKindsTests TelemetryReadContractTests ConcurrentAuditTests ArchitectureTests ScopeCoverageTests
+          bash tools/machine-resources.sh check
+          npm --prefix ui run typecheck
+          node ui/tools/telemetry-wire-contract.mjs /tmp/telemetry-wire-json
+          python3 -m unittest discover -s tools/tests -p 'test_*harness.py'
+      - name: Actual capture and scope integration
+        env:
+          BIZIGO_TELEMETRY_EVIDENCE: /tmp/evidence-db-artifacts
+        run: |
+          bash tools/machine-resources.sh check
+          dotnet test tests/Bizigo.IntegrationTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~Telemetry|FullyQualifiedName~MetricTraceEvidence|FullyQualifiedName~GoldenReview|FullyQualifiedName~ScopeNegative|FullyQualifiedName~RawArchive|FullyQualifiedName~ReplayStore|FullyQualifiedName~TraceEvidenceBudgetIntegrationTests' --logger 'trx;LogFileName=evidence-db.trx' --results-directory TestResults
+          python3 tools/otlp-verify-trx.py TestResults/evidence-db.trx --require-class TelemetryApiIntegrationTests MetricTraceEvidenceIntegrationTests GoldenReviewEvidenceKindsIntegrationTests TelemetryEvidenceScopeIntegrationTests TelemetryScopeIntegrationTests TelemetryReplayIntegrationTests ScopeNegativeTests RawArchiveTests ReplayStoreTests TelemetryCancellationIntegrationTests GoldenReviewMigrationIntegrationTests TraceEvidenceBudgetIntegrationTests
+      - name: Twenty-four compiled negative variants and positive controls
+        run: |
+          bash tools/machine-resources.sh check
+          python3 tools/telemetry-evidence-mutation-gate.py --evidence-dir /tmp/evidence-mutants
+      - name: Production API Collector and two independent nonce probes
+        env:
+          BIZIGO_TEST_KEYCLOAK_IMAGE: bizigo-test/keycloak-s04:26.7.1-ci
+        run: |
+          bash tools/machine-resources.sh check
+          docker pull quay.io/keycloak/keycloak:26.7.1
+          fixture_base=$(docker image inspect quay.io/keycloak/keycloak:26.7.1 --format '{{index .RepoDigests 0}}')
+          test -n "$fixture_base"
+          docker build --build-arg KEYCLOAK_BASE="$fixture_base" -t "$BIZIGO_TEST_KEYCLOAK_IMAGE" tools/fixtures/keycloak-s04
+          bash tools/machine-resources.sh check
+          python3 tools/telemetry-evidence-smoke.py --serve --session-dir /tmp/evidence-session > /tmp/evidence-session.log 2>&1 &
+          fixture_pid=$!
+          trap 'kill -TERM "$fixture_pid" 2>/dev/null || true; wait "$fixture_pid" || true' EXIT
+          for attempt in $(seq 1 180); do
+            test -f /tmp/evidence-session/session.json && break
+            kill -0 "$fixture_pid" || { cat /tmp/evidence-session.log; exit 1; }
+            sleep 5
+          done
+          test -f /tmp/evidence-session/session.json
+          bash tools/machine-resources.sh check
+          python3 tools/telemetry-evidence-probe.py --session /tmp/evidence-session/session.json --evidence-dir /tmp/evidence-probe-one
+          bash tools/machine-resources.sh check
+          python3 tools/telemetry-evidence-probe.py --session /tmp/evidence-session/session.json --evidence-dir /tmp/evidence-probe-two
+          python3 tools/telemetry-evidence-smoke.py --stop --session /tmp/evidence-session/session.json
+          wait "$fixture_pid"
+          python3 -c 'import json; d=json.load(open("/tmp/evidence-session/cleanup.json")); assert d["finished"] and not d["owned_pid_alive"] and not d["owned_container_alive"] and d["elapsed_seconds"] < 30'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: telemetry-evidence-results
+          path: |
+            TestResults/
+            /tmp/telemetry-wire-json/
+            /tmp/evidence-db-artifacts/
+            /tmp/evidence-mutants/
+            /tmp/evidence-probe-one/
+            /tmp/evidence-probe-two/
+            /tmp/evidence-session.log
+            /tmp/evidence-session/*.log
+            /tmp/evidence-session/cleanup.json
+            /tmp/evidence-session/tested-source-binary.json
+            /tmp/evidence-session/keycloak-image.json
+            /tmp/evidence-session/keycloak-optimized.json
+
   sidecar:
     name: Sidecar — pytest
     runs-on: ubuntu-latest
