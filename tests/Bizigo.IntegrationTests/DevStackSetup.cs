@@ -91,6 +91,10 @@ public static class DevStackSetup
         await db.Sources.ExecuteDeleteAsync(cancellationToken);
         await db.SourceOwnershipHistory.ExecuteDeleteAsync(cancellationToken);
         await db.TelemetryOwnerClaims.ExecuteDeleteAsync(cancellationToken);
+        await db.TopologyBindings.ExecuteDeleteAsync(cancellationToken);
+        await db.TopologyNodeHistory.ExecuteDeleteAsync(cancellationToken);
+        await db.TopologyNodes.ExecuteDeleteAsync(cancellationToken);
+        await db.TopologyReadState.ExecuteDeleteAsync(cancellationToken);
 
         return factory;
     }

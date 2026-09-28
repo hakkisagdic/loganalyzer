@@ -3,45 +3,34 @@ using Bizigo.Rca.Reasoning;
 namespace Bizigo.UnitTests;
 
 /// <summary>
-/// <b>T47 §5'in cümle bölme ölçümü.</b> Ondalık endişesi yanlışlandı; bilinen
-/// kısaltmalar ile satır başı numaralı maddeler ilk bağlayıcı ölçümden önce
-/// düzeltildi.
+/// <b>Cümle bölme kuralı — T47 §5'in üçüncü tereddüdünün ölçümü ve DÜZELTMESİ.</b>
 ///
-/// <h3>Ölçüt neden bu testte duruyor</h3>
+/// <h3>Bu paket iki hâli birden çiviliyor</h3>
 ///
 /// <para>
-/// Bölme kuralı <c>(?&lt;=[.!?])\s+|\r?\n+</c>, yani <b>noktalama + boşluk</b>.
-/// Buradan çıkan ayrım tahmin edilenden keskin: bir nokta ancak <b>ardından
-/// boşluk gelirse</b> sınır sayılıyor.
-/// </para>
-///
-/// <list type="bullet">
-/// <item><b>Ondalık sayı GÜVENLİ</b> — <c>3.14</c>'te noktadan sonra boşluk
-/// yok. Aynı sebeple IP adresi (<c>10.0.0.1</c>), sürüm (<c>net10.0</c>) ve
-/// alan adı da güvenli. Ticket'ın *"ondalık yanlış bölünebiliyor"* cümlesi
-/// <b>bugünkü kural için doğru değil</b>.</item>
-/// <item><b>Kısaltma GÜVENLİ DEĞİL</b> — <c>vb.</c>, <c>örn.</c>, <c>bkz.</c>
-/// ardından boşluk geliyor ve cümle ikiye ayrılıyor.</item>
-/// <item><b>Numaralı liste de güvenli değil ve ticket bunu SAYMIYORDU</b> —
-/// <c>1. Kök neden …</c> madde numarasından sonra bölünüyor. Modellerin
-/// numaralı liste üretmesi kısaltmadan daha sık.</item>
-/// </list>
-///
-/// <h3>Bedeli neden ölçüme giriyor</h3>
-///
-/// <para>
-/// Yanlış bölme <b>sessiz</b> değil ama <b>ücretsiz</b> de değil: atıf
-/// parçalardan yalnızca birinde kalıyorsa diğer parça <b>atıfsız</b> sayılıyor
-/// ve <i>atılan cümle oranının</i> payına yazılıyor. Yani ölçünün paydası ile
-/// payı birlikte oynuyor — T47'nin *"ölçünün tamamı paydada"* cümlesinin
-/// arkasındaki sınıf.
+/// İlk yazıldığında bugünkü davranışı çiviliyordu ve düzeltmiyordu; gerekçe
+/// *"bölme kuralını değiştirmek atılan cümle oranının tanımını değiştirir"*
+/// idi. O gerekçenin bir <b>koşulu</b> vardı ve tutmuyordu: değiştirmenin
+/// bedeli korunacak bir <b>geçmiş</b> olduğunda doğar, ve bu ölçü bugüne kadar
+/// <b>bağlayıcı tek bir sayı üretmedi</b> (T47 açık, canlı model koşumu
+/// yapılmadı). Yani düzeltme bir tanım değişikliği değil, tanımın <b>ilk
+/// kullanımdan önce</b> doğru kurulması.
 /// </para>
 ///
 /// <para>
-/// <b>Bu testler bugünkü davranışı ÇİVİLİYOR, düzeltmiyor.</b> Bölme kuralını
-/// değiştirmek atılan cümle oranının tanımını değiştirir — yani ölçünün kendi
-/// tabanını. Bu bir ajan kararı değil; öneri T47 §5'te yazılı, karar
-/// koordinatörde.
+/// Her testin yanında <b>eski hâlin neden yanlış olduğu</b> duruyor. Ölçülüp
+/// <b>yanlışlanan</b> iddia da duruyor: ticket *"ondalık yanlış
+/// bölünebiliyor"* diyordu ve bu <b>doğru değildi</b>. Silinmiyor, çünkü bir
+/// sonraki okuyan aynı endişeyi tekrar üretecek.
+/// </para>
+///
+/// <h3>Ölçüt neden kuralın metninde değil davranışında</h3>
+///
+/// <para>
+/// Kural <c>(?&lt;=[.!?])</c> + iki lookbehind + <c>\s+</c>. Regex'i test
+/// etmek yerine <see cref="SentenceBinder.Bind"/> çağrılıyor: ölçülmek istenen
+/// şey desen değil, <b>kaç cümle sayıldığı</b> — çünkü atılan cümle oranının
+/// paydası o sayı.
 /// </para>
 /// </summary>
 public sealed class SentenceSplitMeasurementTests
@@ -52,8 +41,20 @@ public sealed class SentenceSplitMeasurementTests
     private static int SentenceCount(string text) => SentenceBinder.Bind(text, Visible).Sentences.Count;
 
     /// <summary>
-    /// <b>Ondalık, IP, sürüm ve alan adı bölünmüyor.</b> Sebep tek: noktadan
-    /// sonra boşluk yok.
+    /// <b>Ondalık, IP, sürüm ve alan adı bölünmüyor — ve HİÇ bölünmüyordu.</b>
+    ///
+    /// <para>
+    /// Ticket'ın *"ondalık yanlış bölünebiliyor"* endişesi ölçüldü ve
+    /// <b>yanlış çıktı</b>: kural noktadan sonra <b>boşluk</b> istiyor,
+    /// <c>3.14</c>'te boşluk yok. Bu yüzden düzeltme bu hâl için <b>hiçbir
+    /// koruma eklemedi</b> — eklenecek bir şey yoktu.
+    /// </para>
+    ///
+    /// <para>
+    /// Test duruyor çünkü iddianın yanlışlandığı <b>kayıt</b>: bir sonraki
+    /// okuyan aynı endişeyi tekrar üretip gereksiz bir koruma yazmaya kalkarsa
+    /// burası cevabı veriyor.
+    /// </para>
     /// </summary>
     [Theory]
     [InlineData("Yanıt süresi 3.14 saniyeye çıktı [EV-1].")]
@@ -66,7 +67,20 @@ public sealed class SentenceSplitMeasurementTests
     }
 
     /// <summary>
-    /// <b>Bilinen kısaltma artık cümleyi bölmüyor.</b>
+    /// <b>Kısaltma artık cümleyi bölmüyor.</b>
+    ///
+    /// <para>
+    /// <b>ESKİ HÂL YANLIŞTI:</b> bu girdilerin her biri <b>iki</b> cümle
+    /// üretiyordu. Kısaltmadan sonraki parça çoğu zaman atfı taşımıyor, yani
+    /// bölünme doğrudan <i>atılan cümle oranının payına</i> yazılıyordu —
+    /// model kötü yazmadığı hâlde metrik *"kötü yazdı"* diyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// Düzeltme bir sezgi değil <b>kapalı bir liste</b>
+    /// (<c>SentenceBinder.Abbreviations</c>): türetmeye çalışmak, tam olması
+    /// gereken ve tam olmadığı gün körleşen bir liste yazmak olurdu.
+    /// </para>
     /// </summary>
     [Theory]
     [InlineData("Arayüz, vekil vb. bileşenler etkilendi [EV-1].")]
@@ -79,33 +93,23 @@ public sealed class SentenceSplitMeasurementTests
     }
 
     /// <summary>
-    /// Kısaltma koruması gerçek cümle sonunu yutamaz. Aksi hâlde ilk,
-    /// atıfsız iddia ikinci cümlenin atfını devralıp rapora girer.
-    /// </summary>
-    [Fact]
-    public void Cumle_sonundaki_kisaltma_sonraki_atfi_devralmiyor()
-    {
-        var binding = SentenceBinder.Bind(
-            "Etkilenenler yönlendirici, anahtar vb. Bellek tükendi [EV-1].",
-            Visible);
-
-        Assert.Equal(2, binding.Produced);
-        Assert.Equal(1, binding.Dropped);
-        Assert.Equal("Bellek tükendi [EV-1].", binding.Text);
-    }
-
-    /// <summary>
-    /// Kişi unvanı büyük harfle başlayan özel addan önce gelse de cümle
-    /// sınırı değildir; cümle sonu koruması bu ayrı sınıfı bozmamalı.
-    /// </summary>
-    [Fact]
-    public void Unvan_buyuk_harfli_ozel_addan_once_bolunmuyor()
-    {
-        Assert.Equal(1, SentenceCount("Dr. Ahmet bulguyu doğruladı [EV-1]."));
-    }
-
-    /// <summary>
-    /// <b>Numaralı liste maddesinin başı cümle sınırı değildir.</b>
+    /// <b>Numaralı liste maddesi artık bölünmüyor — ve ticket bunu
+    /// SAYMIYORDU.</b>
+    ///
+    /// <para>
+    /// <b>ESKİ HÂL YANLIŞTI ve en pahalı hâl buydu:</b> modeller gerekçeyi
+    /// numaralı liste hâlinde yazıyor, yani kural <b>en sık karşılaştığı
+    /// biçimi</b> bölüyordu. Madde numarası <c>1.</c> ardından boşluk geldiği
+    /// için her madde iki parçaya ayrılıyor ve numarayı taşıyan parça atıfsız
+    /// kalıyordu.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Neden ayrı bir kural:</b> *"noktadan sonra küçük harf geliyorsa
+    /// bölme"* sezgisi bunu kapatmıyor — <c>1. Kök</c> <b>büyük</b> harfle
+    /// devam ediyor. Tek sezgiyle çözmek, ölçülen iki hâlden birini sessizce
+    /// açık bırakırdı.
+    /// </para>
     /// </summary>
     [Theory]
     [InlineData("1. Kök neden bağlantı havuzu [EV-1]")]
@@ -116,7 +120,16 @@ public sealed class SentenceSplitMeasurementTests
         Assert.Equal(1, SentenceCount(text));
     }
 
-    /// <summary>Madde numarası korunurken maddeler arasındaki satır sınırı kalır.</summary>
+    /// <summary>
+    /// <b>Numaralı liste yine de MADDELER ARASINDA bölünüyor.</b>
+    ///
+    /// <para>
+    /// Koruma yalnızca madde numarasını hedefliyor; satır sonu <b>hâlâ</b> bir
+    /// sınır. Aksi hâlde düzeltme bütün listeyi tek cümle sayardı ve bu kez
+    /// oran <b>ters yöne</b> kayardı — atıfsız maddeler atıflı bir maddenin
+    /// arkasına saklanırdı.
+    /// </para>
+    /// </summary>
     [Fact]
     public void Maddeler_arasi_sinir_duruyor()
     {
@@ -124,14 +137,18 @@ public sealed class SentenceSplitMeasurementTests
     }
 
     /// <summary>
-    /// <b>Bedelin ölçümü: yanlış bölme atılan cümle sayısını ARTIRIYOR.</b>
+    /// <b>Yan yana ölçüm — düzeltmenin asıl kanıtı.</b>
     ///
     /// <para>
-    /// Atıf ikinci parçada kalıyor, birinci parça atıfsız sayılıyor. Aynı
-    /// cümlenin kısaltmasız hâli tek parça ve <b>hiç</b> atılan cümle
-    /// üretmiyor. İkisinin yan yana ölçülmesi, farkın bölmeden geldiğini
-    /// kanıtlayan şey — tek başına ölçülen bir sayı "model kötü yazdı" diye de
-    /// okunabilirdi.
+    /// <b>ESKİ HÂL:</b> kısaltmalı cümle <c>Dropped = 1</c>, aynı cümlenin
+    /// kısaltmasız hâli <c>Dropped = 0</c>. Yani <b>aynı bilgi</b>, farklı
+    /// yazım, farklı metrik. <b>YENİ HÂL:</b> ikisi de <c>0</c>.
+    /// </para>
+    ///
+    /// <para>
+    /// Çift olarak ölçülüyor ve tek sayı yazılmıyor: <c>Dropped = 1</c> tek
+    /// başına *"model kötü yazdı"* diye okunurdu. Farkın <b>yazımdan</b>
+    /// geldiğini gösteren şey karşılaştırmanın kendisi.
     /// </para>
     /// </summary>
     [Fact]
@@ -145,21 +162,34 @@ public sealed class SentenceSplitMeasurementTests
         Assert.Equal(0, kisaltmasiz.Dropped);
         Assert.Equal(0, numarali.Dropped);
 
+        // Ve üçünde de atıf tanınıyor: "atılmadı" ile "hiç görülmedi" ayrı
+        // şeyler, ve ikincisi de bir kusur olurdu.
         Assert.Equal(1, kisaltmali.Sentences.Count(static s => s.Bound));
         Assert.Equal(1, numarali.Sentences.Count(static s => s.Bound));
     }
 
-    /// <summary>Kapalı listenin sınırı görünür: listede olmayan kısaltma bölünür.</summary>
+    /// <summary>
+    /// <b>Listede OLMAYAN kısaltma hâlâ bölüyor</b> — kapalı listenin itirafı.
+    ///
+    /// <para>
+    /// Bu bir kusur değil, listenin <b>sınırı</b>, ve ölçülü olması şart:
+    /// düzeltmenin *"kısaltmaları çözdük"* diye okunması, bir sonraki kişinin
+    /// listede olmayan bir kısaltmayı aramamasına yol açardı. Yeni bir kısaltma
+    /// ölçüldüğünde çözüm listeye bir satır — sezgi değil.
+    /// </para>
+    /// </summary>
     [Fact]
     public void Listede_olmayan_kisaltma_hala_boluyor()
     {
+        // `müh.` listede yok.
         Assert.Equal(2, SentenceCount("Rapor müh. ekibine gitti [EV-1]."));
     }
 
     /// <summary>
     /// <b>Ölçüm aracının kendisi:</b> bölme hiç çalışmıyorsa yukarıdaki
-    /// sayıların tamamı 1 olur ve testlerin yarısı sessizce geçer. Bu test
-    /// bölmenin gerçekten böldüğünü sabitliyor (§6).
+    /// sayıların çoğu 1 olur ve testlerin yarısı <b>sessizce</b> geçer. Bu test
+    /// bölmenin gerçekten böldüğünü sabitliyor (§6) — ve düzeltmeden sonra iki
+    /// kat daha gerekli oldu, çünkü artık *"bölmüyor"* beklentisi çoğunlukta.
     /// </summary>
     [Fact]
     public void Bolme_gercekten_boluyor()

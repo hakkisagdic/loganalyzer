@@ -205,6 +205,7 @@ app.MapTelemetryReads();
 // API'nin somut okuyuculara erişmesini zaten yasaklıyor.
 app.MapEvents();
 app.MapSources();
+app.MapTopologyWrites();
 app.MapChanges();
 app.MapChangeWebhooks();
 app.MapChangeConnectors();

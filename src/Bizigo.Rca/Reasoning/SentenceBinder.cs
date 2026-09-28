@@ -74,11 +74,12 @@ public sealed record SentenceBinding(string Text, IReadOnlyList<BoundSentence> S
 /// <item>Doğru kimliğe atıf yapan ama <b>o kimlikle ilgisiz</b> bir cümle
 /// bağlanmış sayılıyor. Bu kapı atfın <i>varlığını</i> ölçüyor,
 /// <i>yerindeliğini</i> değil; yerindelik altın kümenin işi (T47).</item>
-/// <item>Cümle bölme noktalama tabanlıdır; ölçülen iki koruması vardır: kapalı
-/// bir kısaltma listesi ve satır başındaki <c>\d+\.</c>. Ondalık sayı noktadan
-/// sonra boşluk taşımadığı için zaten güvenlidir. Listede olmayan kısaltmalar
-/// hâlâ bölünebilir ve bu durum <see cref="SentenceBinding.Dropped"/> içinde
-/// görünür.</item>
+/// <item>Cümle bölme <b>noktalama tabanlı</b> ve iki koruması var (T47'de
+/// ölçüldü): kapalı bir <b>kısaltma listesi</b> ve satır başındaki
+/// <c>\d+\.</c>. Ondalık sayı hiç sorun değildi — noktadan sonra boşluk
+/// yok — ve o iddia ölçülüp <b>yanlışlandı</b>. Listede olmayan bir kısaltma
+/// hâlâ cümleyi ikiye ayırıyor; bedeli iki parçanın da aynı atıfı taşıması
+/// hâlinde yok, taşımıyorsa atıfsız parça <b>atılmış</b> sayılıyor.</item>
 /// <item>Atıfsız bir cümlenin <b>bir önceki cümleden</b> bağlamı devralması
 /// tanınmıyor: her cümle kendi atfını taşımak zorunda. Bilerek — devralma
 /// kabul edilseydi tek atıflı bir paragrafın tamamı bağlanmış sayılırdı ve
@@ -92,9 +93,28 @@ public static partial class SentenceBinder
     private static partial Regex BracketCitation();
 
     /// <summary>
-    /// Elle yazılmış ve bilerek kapalı kısaltma listesi. Listeyi türetmek,
-    /// eksik olduğu gün bekçiyi sessizce körleştirirdi; eksik üyeler bugün
-    /// ölçülebilir biçimde bölünmeye devam eder.
+    /// <b>Kısaltma listesi — elle yazılmış ve KAPALI</b> (T47).
+    ///
+    /// <para>
+    /// Türetmeye çalışmak bu üründe başka yerlerde kaybedilmiş bir bahis: tam
+    /// olması gereken bir liste, tam olmadığı gün bekçiyi körleştiriyor. Elle
+    /// yazılmış bir liste ise <b>eksik olduğunu itiraf ediyor</b> ve eksikliği
+    /// ölçülebilir: listede olmayan bir kısaltma cümleyi ikiye ayırır, ve o
+    /// ayrılma <see cref="SentenceBinding.Dropped"/> içinde <b>görünür</b>.
+    /// </para>
+    ///
+    /// <para>
+    /// <b><see cref="RegexOptions.CultureInvariant"/> zorunlu</b>, süs değil:
+    /// <see cref="RegexOptions.IgnoreCase"/> tek başına <b>o anki kültürle</b>
+    /// katlama yapıyor ve <c>tr-TR</c>'de <c>I</c>/<c>ı</c> eşlemesi
+    /// bambaşka.
+    /// </para>
+    ///
+    /// <para>
+    /// Listenin kaynağı ölçüm: <c>vb.</c> · <c>örn.</c> · <c>bkz.</c> üçü
+    /// T47'de <b>ölçülerek</b> bulundu (cümleyi ikiye ayırdıkları görüldü);
+    /// gerisi aynı sınıfın gündelik üyeleri.
+    /// </para>
     /// </summary>
     private const string PrefixAbbreviations = @"Dr|Doç|Prof|Sn";
 
@@ -109,10 +129,18 @@ public static partial class SentenceBinder
     /// ayrıca sınırdır. Devam kısaltması (<c>vb.</c>, <c>vs.</c>) küçük harfle
     /// sürüyorsa korunur; büyük harfle yeni bir cümle başlıyorsa sınır geri
     /// açılır. Unvanlar (<c>Dr.</c>, <c>Prof.</c>) özel addan önce büyük harfle
-    /// sürebildiği için ayrı sınıftır ve korunur. Bu ayrım yapılmazsa atıfsız
-    /// ilk cümle sonraki cümlenin atfını devralır.
+    /// sürebildiği için ayrı sınıftır ve korunur. Satır başı numarası koruması
+    /// bunlardan bağımsızdır.
     ///
-    /// Satır başı numarası koruması bunlardan bağımsızdır.
+    /// <h3>İki koruma, ve ikisi ÖLÇÜLEREK eklendi (T47)</h3>
+    ///
+    /// <list type="bullet">
+    /// <item><b>Ondalık zaten güvenliydi</b> — <c>3.14</c>'te noktadan sonra
+    /// boşluk yok. IP adresi, sürüm numarası ve alan adı da güvenli.</item>
+    /// <item><b>Kısaltma gerçekten bölüyordu</b> → kısaltma lookbehind'ı.</item>
+    /// <item><b>Numaralı liste de bölüyordu</b> — <c>1. Kök neden …</c> →
+    /// satır başındaki <c>\d+\.</c> lookbehind'ı.</item>
+    /// </list>
     /// </summary>
     [GeneratedRegex(
         @"(?:(?<=[.!?])(?<!\b(?:" + Abbreviations + @")\.)|" +

@@ -7,7 +7,7 @@ namespace Bizigo.ControlPlane;
 /// manifesti, audit. Değişken (mutable) operasyonel durum burada durur — ClickHouse'ta
 /// değil.
 /// </summary>
-public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> options)
+public partial class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> options)
     : DbContext(options)
 {
     public const string MigrationsHistoryTable = "__bizigo_migrations";
@@ -43,6 +43,11 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
             // retain an exact half-open boundary even for two immediate writes.
             now = decimal.Floor(now / 1000) * 1000;
             if (current.Length != 0) now = Math.Max(now, current.Max(h => h.EffectiveFromNano) + 1000);
+            var topologyBoundary = await (from node in TopologyNodes
+                                          join history in TopologyNodeHistory on node.Id equals history.NodeId
+                                          where node.SourceId != null && sourceIds.Contains(node.SourceId) && history.ToNano == null
+                                          select (decimal?)history.FromNano).MaxAsync(cancellationToken);
+            if (topologyBoundary is not null) now = Math.Max(now, topologyBoundary.Value + 1000);
             // Close the old rows before inserting their successors. EF's entity
             // ordering does not encode a filtered unique index dependency.
             // Both commands remain under the source transaction and advisory lock.
@@ -59,7 +64,8 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
                 if (!Database.IsNpgsql())
                     foreach (var prior in current.Where(h => h.SourceId == entry.Entity.SourceId)) prior.EffectiveToNano = now;
                 var source = entry.Entity;
-                source.UpdatedAt = new DateTimeOffset(checked((long)(now / 100)) + DateTimeOffset.UnixEpoch.UtcTicks, TimeSpan.Zero);
+                if (entry.State != EntityState.Deleted)
+                    source.UpdatedAt = new DateTimeOffset(checked((long)(now / 100)) + DateTimeOffset.UnixEpoch.UtcTicks, TimeSpan.Zero);
                 SourceOwnershipHistory.Add(new()
                 {
                     SourceId = source.SourceId, OwnerGroup = source.OwnerGroup,
@@ -68,6 +74,30 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
                 });
             }
             var count = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+            // SaveChanges(false) deliberately leaves the first write pending in
+            // the tracker. Suspend those entries while writing topology so the
+            // second flush cannot insert/update/delete them a second time.
+            var pending = ChangeTracker.Entries().Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
+                .Select(e => (Entry: e, State: e.State, Current: e.CurrentValues.Clone(), Originals: e.OriginalValues.Clone(),
+                    Modified: e.Properties.Where(p => p.IsModified).Select(p => p.Metadata.Name).ToArray())).ToArray();
+            try
+            {
+                foreach (var saved in pending) saved.Entry.State = EntityState.Unchanged;
+                await SynchronizeSourceTopologyAsync(sourceIds, now, cancellationToken);
+                count += await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+            }
+            finally
+            {
+                foreach (var saved in pending)
+                {
+                    saved.Entry.State = saved.State;
+                    saved.Entry.CurrentValues.SetValues(saved.Current);
+                    saved.Entry.OriginalValues.SetValues(saved.Originals);
+                    if (saved.State == EntityState.Modified)
+                        foreach (var property in saved.Entry.Properties)
+                            property.IsModified = saved.Modified.Contains(property.Metadata.Name, StringComparer.Ordinal);
+                }
+            }
             if (transaction is not null) await transaction.CommitAsync(cancellationToken);
             return count;
         }
@@ -117,6 +147,7 @@ public class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContext> optio
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.HasDefaultSchema(Schema);
+        TopologyModel.Configure(modelBuilder);
 
         modelBuilder.Entity<SourceEntity>(e =>
         {

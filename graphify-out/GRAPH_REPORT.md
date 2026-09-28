@@ -1,16 +1,16 @@
 # Graph Report - bizigo-loganalyzer  (2026-09-28)
 
 ## Corpus Check
-- 1296 files · ~1,331,750 words
+- 1296 files · ~1,331,876 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 15653 nodes · 34702 edges · 775 communities (728 shown, 47 thin omitted)
-- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 1290 edges (avg confidence: 0.81)
+- 15849 nodes · 34699 edges · 835 communities (744 shown, 91 thin omitted)
+- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 1299 edges (avg confidence: 0.81)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `b87253c8`
+- Built from commit: `c6d9aad8`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -18,7 +18,7 @@
 - .ZincirAsync
 - test_golden_gate.py
 - test_manifest.py
-- repo_root
+- test_view_columns.py
 - ScenarioTriggerBindingTests
 - olaylar/[id]/page.tsx
 - ParserWorkbench.tsx
@@ -28,7 +28,7 @@
 - BizigoMcpResource
 - ICurrentUser
 - test_sigma_pipeline.py
-- .RunAsync
+- CapacityAttempt
 - olaylar/page.tsx
 - SigmaRuleChainTests
 - WriteAheadLog
@@ -36,36 +36,36 @@
 - test_miners.py
 - sigma_pipeline.py
 - RedactedPrompt
-- .ArchiveOneAsync
-- IScopedQuery
+- .System
+- ScopeNegativeTests
 - GoldenReviewStore
-- TelemetryQuery
+- .HandleAsync
 - RcaWindow
 - RawArchiveUploader
 - AlertPreviewTests
-- ChangeConnectorService
+- .SaveAsync
 - .SearchAsync
 - dependencies
 - DeviceConfigTests
 - ReportView.tsx
-- .GatherAsync
+- RcaAdmission
 - ParserToolbox
-- ScopePredicate
+- TelemetryReader
 - ReplayEngine
 - .Point
 - States.tsx
 - test_ruleset.py
 - RecordingScopedQuery
-- AlertRuleEntity
-- IAlertQuerySource
+- .SendGroupAsync
+- AlertEvaluationContext
 - ParserYamlLoader
-- describeError
-- CatalogRefreshService
+- alerts/types.ts
+- parsers/types.ts
 - main.py
 - F1 — Boru Hattı: Teknik Plan
 - .ReadAsync
 - RawArchiveTests
-- .GatherItemsAsync
+- CorrelationWindow
 - test_gate.py
 - harness.ts
 - ScenarioPluginLoaderTests
@@ -78,12 +78,12 @@
 - ReplayStoreTests
 - IEndpointAddressResolver
 - Bizigo LogAnalyzer Modernizasyon Analizi
-- ParseContext
+- PipelineStep
 - CorrelationQueryTests
-- McpListenerBoundaryCheck
+- ParsedEvent
 - Bizigo.UnitTests
 - ParserCatalogResponses.cs
-- Bizigo.Capacity
+- Bizigo.Simulators
 - OtlpTelemetryHttpTests
 - RcaAdmissionTests
 - GrokCompiler
@@ -103,7 +103,7 @@
 - compilerOptions
 - Bizigo.Parsing.Grok
 - McpListenerBoundaryTests
-- ClaimContractTests
+- GroupMapping
 - SignalIngest
 - AlertEvaluatorTests
 - T28 denetimi
@@ -111,7 +111,7 @@
 - CorrelationMathTests
 - .Normalize
 - .Compare
-- api/client.ts
+- Field.tsx
 - RawRecord
 - RcaRunEntity
 - ParserCompiler
@@ -119,7 +119,7 @@
 - T30 — Sigma eşleme maliyeti
 - load_masks
 - test_explain_misses.py
-- ChangeWebhookEndpoint
+- ChangeWebhookMapper
 - NotificationSecretTests
 - ParserEngineTests
 - ChangeWebhookMappingTests
@@ -134,8 +134,8 @@
 - ParserAuthoringService
 - T08 → T05: gerçek vendor logunun motorda açtığı yerler
 - BaselineFixtureVerdictTests
-- ParsedEvent
-- store.ts
+- SignatureHotPathTests
+- IRawObjectStore
 - SidecarLiveTests
 - NotificationDispatcherTests
 - .ClaimAsync
@@ -157,13 +157,12 @@
 - .CreateDbContext
 - .GatherAsync
 - What You Must Do When Invoked
-- .Materialize
+- HistoricalTelemetryOwners
 - IScenarioProviderRegistry
 - .Parse
-- .GetRawAsync
+- IScopedQuery
 - DeterministicReport
 - DiscoveryWorkerTests
-- IDisposable
 - .GatherAsync
 - .Reject
 - EvidenceProviderTests
@@ -175,7 +174,7 @@
 - .BuildAsync
 - TelemetryMutationOracleTests
 - .Redact
-- .ExecuteAsync
+- SimulatorMcpSetup
 - .PopulatedAsync
 - 2 · Koddan okunan kararlar
 - 3 · "Derlendi ama koşmuyor" nerede yakalanır
@@ -187,10 +186,10 @@
 - ClickHouseEventSink
 - IngestGateway
 - .Load
-- .Published_capacity_links_to_three_existing_pass_records
-- Row
+- .Annotate
+- StepEvidenceView
 - GoldenSeedClickHouseTests
-- AlertSchedulerWorker
+- McpListenerBoundaryCheck
 - FleetTests
 - TimeSpan
 - ChangesEndpoints.cs
@@ -221,12 +220,12 @@
 - .RunAsync
 - AlertingTests
 - Kalan işin haritası
-- .ClickHouseAsync
+- .Decode
 - .ToolTypes
 - CapacityProcessOwnership
 - http
-- LegacySignalReplayTests
-- .CaptureAsync
+- IDisposable
+- DeviceConfigService
 - McpReadToolTests
 - T32 → T33: üç açık soru
 - SignalDurabilityTests
@@ -245,7 +244,7 @@
 - .Golden
 - .Reject
 - ProductDiscovery
-- StepEvidenceView
+- .Check
 - AlertClosureTests
 - Sigma derleme hattının üç kapısı
 - 2 · Teknik borç
@@ -260,32 +259,32 @@
 - T35 — Beş deterministik korelasyon
 - Alan kapsamı ölçümü (T39)
 - .Client
-- RcaRunsTool
+- Row
 - health-ready.test.ts
 - ScenarioEngineFlowTests
 - .Measure
 - Captured
 - oidc.ts
 - CiscoAsaAddressPatternTests
-- NotificationChannelService
+- ChannelSettings
 - ui-consistency.test.ts
 - Kodda görünen kararlar
-- .Decode
+- TelemetryDbFixture
 - T05 — Parser motoru: YAML şema, grok derleyici, CLI
-- EvidenceBundleResource
+- ProductResource
 - GoldenReviewTests
 - CompiledParser
 - McpRedactionGateTests
 - RawObjectKey
 - RcaReportDocument
-- DispatcherTests
+- McpIdentityTransport
 - Eşleşmeyen kuralın teşhisi — üç eksen
 - F2 — Görünürlük
 - Bizigo.ControlPlane
 - T29 — `signature_hash` sözleşmesi ve sıcak yol maliyeti
 - T37 — Rapor ekranı ve export
 - T17 — Envanter ekranı
-- .GetFirstSeenSignaturesAsync
+- api/client.ts
 - bizigo_pipeline.py
 - T30 — Sigma pipeline prototipi
 - OtlpLogsDecoder.cs
@@ -298,13 +297,13 @@
 - 2 · Koddan okunan kararlar
 - 4 · Sınırlar — grafın göremediği şeyler
 - .ForGroups
-- T42 — Model sağlayıcısı soyutlaması
+- .ExecuteAsync
 - OtlpTelemetryDecoderTests
-- errors.ts
+- DispatcherTests
 - SidecarClient
 - .Read
 - PipelineHealthResponses.cs
-- .System
+- .HandleAsync
 - ChangeRetentionWorker
 - ClaimMappingTests
 - telemetry-echo.mjs
@@ -319,10 +318,10 @@
 - T01 — İskelet, geliştirme ortamı ve CI
 - .FindNestedQuantifiers
 - Bizigo.ControlPlane.Migrations
-- .MeasureAsync
+- MetricTraceEvidenceContractTests
 - ChangeConnectorScheduler
-- Task
-- ConnectorManager.tsx
+- ISignalCheckpoints
+- describeError
 - T41 — Prompt redaksiyon tabanı
 - Keşif — "adı ile gövdesi ayrışan bekçi" mekanik olarak aranabilir mi
 - T10 — Sorgu ve yazma API uçları
@@ -330,9 +329,9 @@
 - CLI komut envanteri ve *"ortak çekirdek"* neyi ortaklaştırmalı
 - FS — Cihaz simülatörleri
 - F1'in ölçülmemiş kalemleri
-- IRcaRunChangeListener
+- bizigo_backend
 - EvidenceBundleScopeTests
-- AlertingStats
+- AlertRuleEntity
 - T16 — Olay detayı ve ham görünüm
 - T26 — Change: cihaz config fark tespiti
 - RcaScheduleWorkerTests
@@ -379,7 +378,7 @@
 - test-config.test.ts
 - nginx access log
 - Paralel ajan koordinasyonu
-- SimulatorProfileTests
+- EventQuery
 - telemetry-wire-check.ts
 - bizigo-loganalyzer
 - scope-isolation.test.ts
@@ -393,7 +392,7 @@
 - Veri kaybedebilen bir depoyla tasarım
 - .Gercek_saglayici_atilan_cumle_tabanini_olcer
 - T28 ekran görüntüleri
-- ParserPublishGateTests
+- NotificationChannelService
 - M04 — Ürünün okunması, tek kapsam kapısından
 - Bu korpus taşındı — buradaki kopya **yoktur**
 - T60 — Entropi katmanının terfi kararı
@@ -428,24 +427,24 @@
 - graphify reference: incremental update and cluster-only
 - post-checkout
 - Elle tutulan liste bekçiyi körleştirir
-- TelemetryWire
+- SignalArchiveBoundaryTests
 - graphify reference: GitHub clone and cross-repo merge
 - graphify reference: transcribe video and audio
-- bff/[...path]/route.ts
+- proxy.ts
 - Bekçiyi kırmızı yakmak
 - .claude/CLAUDE.md
 - extraction-spec.md
 - fetch-compose.sh
 - Sessiz yanlış davranış
 - .ControlPlaneAsync
-- ContradictingEvidenceVerdict
+- GoldenReviewEntity
 - S02 — Syslog basıcı
 - Boşluk tek cins değildir
 - Bir oran paydasıyla birlikte bir sayıdır
 - İki bağımsız eksen
 - Nerede kalındı — devir notlarının çizdiği durum
 - measure.py
-- RcaTriggerSource
+- FieldsCoverageTool
 - Sigma kural yazım kılavuzu
 - S01 — Cihaz profili şeması + N1 sahte taşıyıcı
 - S06 — N3: CLI öykünmesi
@@ -466,19 +465,19 @@
 - .Hash
 - Nerede kaldık
 - T21 — Alarm motoru
-- .MigrateAsync
+- VendorValueSpace
 - .ReadBodyAsync
 - .RunStepAsync
-- F4 Implementasyon Ticket'ları
+- LogEvent
 - McpCursorContractTests
 - LogsSearchTool
 - .Senaryo_urunun_zincirinde_beklenen_sonucu_uretiyor
 - .EmitAsync
 - tickets-fs/index.md
 - Dispatcher
-- ClickHouseContext
+- SignatureHashStorageTests
 - ProductDiscoveryTests
-- LogEvent
+- ChangeFeedProvider
 - devDependencies
 - SigmaRuleSyncServiceTests
 - McpResourceContractTests
@@ -493,11 +492,11 @@
 - 5 · BAŞARISIZLIK MODLARI
 - `docs/wiki` — Obsidian vault'u nasıl açılır
 - .TryAcquire
-- .HandleAsync
+- StorageSchemaTests
 - NE ATLANDI — boşluk taraması
 - RTK — token kıyan CLI vekili
 - CliEmulationTests
-- ParserTryTests
+- PublishVerdictResponse
 - Deklaratif parser motoru yazmak
 - Atomik yayın — çalışan motoru bozmadan değiştirmek
 - Ekran tutarlılığı — temel başta, denetim sonda
@@ -540,7 +539,7 @@
 - test_serbest_metin_alanlari_URUNDEN_tureiyor
 - test_tire_sozcugu_bolmuyor
 - AddRcaRuns
-- T43 · Senaryo plugin çekirdeği
+- .Metrics
 - SimulatorStateStore
 - SentenceSplitMeasurementTests
 - EvidenceBundle
@@ -552,27 +551,27 @@
 - Tasarım · Ağ tarafındaki yükseltme yolu (yazılmadı, kararları burada)
 - AlertsMaintenanceTool
 - .Fixture
-- .Split
+- RcaAdmissionStoreTests
 - SshSimulatorCliTests
-- ChangeConnectorEntity
+- ChangeConnectorService
 - .Callees
 - Bizigo.Contracts
 - SimulatorProfile
 - T44 — LLM adımları ve iki kapı
 - .Create
 - McpProductToolChainTests
-- 3 · Kapsam kararı — C → dar B → gölge A
-- IRawObjectStore
+- ClaimContractTests
+- NotificationMessage
 - M07 — Araç değil veri: kaynaklar ve durum bildirimi
 - RcaRunQueryTests
 - .Structured
 - M02 — Tek çekirdek, iki sunum
 - .Instantiate
-- NotificationMessage
+- .SendAsync
 - T47 — Kalite ölçümü
 - T51 — `rca_report` kalıcılığı ve rapor yüzeyi
-- .Parse
-- RcaAdmission
+- InMemoryObjectStore
+- .ClickHouseAsync
 - SshTransportTests
 - kirmizi_olcumu.py
 - Kalan iş raporu
@@ -582,21 +581,21 @@
 - T49 — Dashboard compose'a giriyor
 - tickets-f3/index.md
 - HarnessSeedingTests
-- McpToolAssemblyTests
+- McpRcaToolChainTests
 - M03 — Simülatörü çalışırken yönetmek
-- InventoryListTool
+- SimulatorProfileTests
 - vendor-cli.sh
 - T54 — Muafiyet yapılandırmada var, raporda yok
 - .ExecuteScopedAsync
 - GoldenSeedTests
 - S08 — Çekim modelinin sayfalama kusuru ve teşhisin düzleşmesi
 - `machine-resources.sh` — kaynak kapısı
-- IngestServiceCollectionExtensions
+- .ExecuteScopedAsync
 - .SendAsync
-- .CloseAsync
+- IngestGatewayTests
 - T23 — Alarm yönetim ekranı
 - Statü bekçisinin kör noktası
-- tickets-f2/index.md
+- T22 — Bildirim kanalları
 - Söz ile sınır aynı listede duramaz
 - Feature parity — hedef ve bugünkü karşılığı
 - AddRcaRunState
@@ -604,13 +603,13 @@
 - AddReviewFindingRank
 - .WriteEventsAsync
 - .Endpoints
-- GoldenReviewEvidenceKindsTests
+- ArrivalLedger
 - Tek dosya, tek kaynak değildir
-- sessionStore
+- .CreateAsync
 - 100 Mikroservislik Kurumsal Estate İçin Katmanlı Referans Mimari
 - .KeyFor
 - kosum
-- diff.ts
+- .Format
 - T24 — Change: elle giriş ve webhook
 - cli-oykunmesi.sh
 - Koordinasyon defteri
@@ -627,13 +626,13 @@
 - MachineResourcesTests
 - .CoverageAsync
 - HttpTokenExpiryTests
-- McpRcaToolChainTests
+- .SendAsync
 - .Redact
 - EngineFeedbackFixTests
 - m10-kirmizi-olcumu.py
 - Bizigo.IntegrationTests.csproj
 - .CountAsync
-- .Format
+- RcaTriggerSource
 - .LoadFromDirectory
 - m12-kirmizi-olcumu.py
 - m13-kirmizi-olcumu.py
@@ -646,11 +645,11 @@
 - IngestPipeline
 - McpIdentityDiscoveryTests
 - b02-kirmizi-olcumu.py
-- ChangeOutOfScopeCountTests
-- .ExecuteAsync
+- ClickHouseContext
+- .Failure
 - Kalem 2 · Idempotency araması penceresiz — **ve öyle kalması gerekiyor**
 - .Discover
-- RcaAdmissionStoreTests
+- .RecordAsync
 - ReplayReport
 - EventPaginationTests
 - B02 — Üç katmanlı varış defteri
@@ -661,66 +660,66 @@
 - .ProductEndpoints
 - T62 — BFF hazırlık ucu
 - McpResourceScopeIntegrationTests
-- T30 — Sigma pipeline prototipi
+- .HandleAsync
 - CapacityChild
 - .SplitOpen
 - Bizigo.Rca.csproj
 - DateTime
-- .ReceiveAsync
+- ChangeWebhookEndpoint
 - M15 — Kota rezervi `Agent` kaynağını kapsamıyor
 - T63 — süreç ölümü ve RustFS kesintisi gerçek bileşenlerle ölçüldü
-- McpHttpTransportTests
+- AlwaysAuthenticated
 - TemplateRenderer
 - PrePushHookTests
 - t61-kirmizi-olcumu.py
 - ValueError
-- .MigrateDataPlaneAsync
+- .ReadAsync
 - TelemetryHarnessTests
 - Bizigo.Contracts.csproj
 - FixtureAuth
-- .ReadAsync
-- .ApplyAsync
+- .GatherAsync
+- .Configure
 - VendorCatalogTests
 - FleetListTool
 - T33 — Kural yönetimi ve alarm motoruna bağlama
 - ScopedQueryConsumerTests
-- InMemorySessionStore
+- store.ts
 - T18 — Parser taslak deposu ve yayın akışı
 - m03-kirmizi-olcumu.py
 - EvidenceCompositionTests
 - CancellationToken
 - StateTool
 - Bizigo.Parsing.csproj
-- IngestGatewayTests
+- .JoinRules
 - AddSourceTopologyAttributes
 - AddRcaModelBoundary
-- .PublishAsync
+- .ExecuteAsync
 - FirstWriteGate
 - m21-kirmizi-olcumu.py
-- .HandleAsync
+- .Format
 - Kapı 2 kendini sınıyor
 - Sigma → ClickHouse derlemesi
 - CommandCatalog.cs
 - UiHealthcheckTests
 - .HandleAsync
-- EvidenceKindScopeTests
+- .Json
 - CommandCoreConsoleTests
-- RcaReviewWireTests
+- .Materialize
 - Preflight
 - ServerInfoTool
 - MappingTableCatalog
-- SourceResponses.cs
+- .SearchableAsync
 - T14 — OpenAPI tip üretimi ve API istemcisi
 - T37 — Rapor ekranı ve export
 - quality.ts
 - kosum
 - m18-kirmizi-olcumu.py
 - m19-kirmizi-olcumu.py
-- T31 — Bizigo `ProcessingPipeline`
+- TelemetryBoundaryIntegrationTests
 - McpEndpoints.cs
 - .ServeAsync
 - otlp-durability-smoke.py
-- Auth
+- ParserTryTests
 - T63RustFsOutageTests
 - Abonelik bildiriminin kimliği ve kapsamı
 - QuerySession
@@ -736,136 +735,197 @@
 - SecretPatterns
 - EvidenceSession
 - .BuildCallGraph
-- .RecordAsync
+- T30 — Sigma pipeline prototipi
 - T13 — Next.js iskelet ve BFF
 - McpSchemaBudgetTests
-- GoldenReviewEntity
-- EvidenceHarnessTests
+- ChangeConnectorStoreTests
+- Path
 - Capacity discovery (B03–B05)
 - .CreateOptions
-- RoleHeader
+- .Real_inventory_and_S3_preserve_signal_envelope_after_wal_retention
 - .Historical
-- .AddBizigoCommandTools
+- EvidenceBundleStoreTests
 - Metric and trace storage
 - Q: Which product discovery, architecture and wiki digest guards are affected by OTLP fixture integration?
-- FixtureUser
+- EventFieldKinds
 - capture.test.tsx
-- test_expectation_count.py
-- AnonymousAuthenticationHandler
+- McpTestServices
+- IngestServiceCollectionExtensions
 - capacity-descendant-smoke.py
-- api_version_header
+- RcaReportResource
 - fixture-generator.py
+- tickets-mcp/index.md
 - Bizigo.Mcp
-- ParserResponses.cs
-- MissingEvidenceQuality
+- T42 — Model sağlayıcısı soyutlaması
+- TraceEvidenceBudgetTests
 - AddMissingEvidenceKinds
 - execute
-- EvidenceServiceCollectionExtensions.cs
-- .Run
-- ScenarioTriggers.cs
-- .ReadAsync
-- M10 — Üç ertelenmiş ürün aracı
-- .Yetenek_tasimanin_gonderebilmesine_bagli
-- ProductResource
-- M06 — Planın ilk cümlesi bir yasaktı; burada mekanizma oluyor
+- .One_resource_boundary_leaves_preserve_A_B_B_during_transfer_replay
+- ParserPublishGateTests
+- Bizigo.Replay
+- test_corpus_single_source.py
+- T31 — Bizigo `ProcessingPipeline`
+- T25 — Change: connector yapılandırma
+- RcaRunsTool
+- F4 Implementasyon Ticket'ları
+- ParsersEndpoints
 - AlertCriteriaBridgeTests
 - .Multiple_resources_scopes_and_nonfinite_optional_points_match_sender
+- IAccessScopeResolver
 - Metric and trace reads and evidence
 - AuthEndpoints.cs
 - DocumentGeneration
 - AuthenticationSetup.cs
-- .AddBizigoModelProvider
+- .Four_production_providers_preserve_exact_decisions_and_distinct_outside_counts
 - Q: ne iş kaldı?
-- Bizigo.Devices.csproj
+- T27 — F2 doğrulaması
 - main
+- Bizigo.Capacity
 - telemetry-wire-contract.mjs
-- AlwaysAuthenticated
+- F2 Implementasyon Ticket'ları
+- 3 · Kapsam kararı — C → dar B → gölge A
 - RcaServiceCollectionExtensions.cs
+- .Telemetry_inflight_cancel_is_bounded_and_audited
+- T43 · Senaryo plugin çekirdeği
+- FakeRedis
+- OtlpCollectorConfigurationTests.cs
+- .InjectedBy
+- AuthenticateResult
+- AuthenticationSchemeOptions
+- FileStream
+- ILoggerFactory
+- IOptionsMonitor
+- ReadOnlyMemory
+- UrlEncoder
+- Failure
+- MigrationBuilder
+- ModelBuilder
+- StringBuilder
+- IReadOnlyCollection
+- IServiceCollection
+- DbDataReader
+- Time
+- Path
+- HttpClient
+- HttpResponseMessage
+- SymmetricSecurityKey
+- AnyValue
+- ByteString
+- ExportMetricsServiceRequest
+- ExportTraceServiceRequest
+- FakeTimeProvider
+- IMessage
+- InstrumentationScope
+- KeyValue
+- Resource
+- DbContextEventData
+- InterceptionResult
+- TaskCompletionSource
+- ServiceProvider
+- Key
+- Lazy
+- MethodInfo
+- RouteEndpoint
+- Type
+- GeneratedRegex
+- Regex
+- F1'in kapsam kabul kriteri yanlış yazılmış
+- ip_text_expression
+- McpTestSession
+- McpResourceBudgetTests
+- safeReturnTo
+- SigmaFieldMap
+- DateTimeOffset
+- Fact
+- IDbContextFactory
+- Task
+- Trait
+- ValueTask
 
 ## God Nodes (most connected - your core abstractions)
 1. `Bizigo.Contracts` - 269 edges
-2. `AccessScope` - 248 edges
-3. `Bizigo.ControlPlane` - 194 edges
-4. `Bizigo.UnitTests` - 194 edges
-5. `ControlPlaneDbContext` - 105 edges
-6. `Bizigo.Evidence` - 77 edges
+2. `Bizigo.UnitTests` - 194 edges
+3. `Bizigo.ControlPlane` - 193 edges
+4. `AccessScope` - 154 edges
+5. `ControlPlaneDbContext` - 96 edges
+6. `Bizigo.Evidence` - 76 edges
 7. `Bizigo.Storage.ClickHouse` - 74 edges
-8. `DevStackFixture` - 72 edges
-9. `Bizigo.IntegrationTests` - 71 edges
-10. `Bizigo.Mcp` - 68 edges
+8. `Bizigo.IntegrationTests` - 71 edges
+9. `IScopedQuery` - 67 edges
+10. `Bizigo.Mcp` - 67 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `MemoryStore` --implements--> `ICapacityRunStore`  [EXTRACTED]
-  tests/Bizigo.UnitTests/CapacityDiscoveryTests.cs → sim/Bizigo.Capacity/CapacityRunStore.cs
-- `KillAt` --implements--> `ISignalCheckpoints`  [EXTRACTED]
-  sim/Bizigo.OtlpFixture/LegacyReplayHost.cs → src/Bizigo.Ingest/Otlp/SignalOptions.cs
-- `Objects` --implements--> `IRawObjectStore`  [EXTRACTED]
-  sim/Bizigo.OtlpFixture/LegacyReplayHost.cs → src/Bizigo.Storage.Raw/IRawObjectStore.cs
-- `Gates` --implements--> `ISignalCheckpoints`  [EXTRACTED]
-  sim/Bizigo.OtlpFixture/Program.cs → src/Bizigo.Ingest/Otlp/SignalOptions.cs
-- `Flush` --implements--> `IWalDurability`  [EXTRACTED]
-  sim/Bizigo.OtlpFixture/Program.cs → src/Bizigo.Ingest/Wal/IWalDurability.cs
+- `McpResourceSubscriptionTests` --references--> `McpBoundaryDeclaration`  [EXTRACTED]
+  tests/Bizigo.UnitTests/McpResourceSubscriptionTests.cs → src/Bizigo.Mcp/McpBoundary.cs
+- `InMemoryObjectStore` --implements--> `IRawObjectStore`  [EXTRACTED]
+  tests/Bizigo.UnitTests/RawArchiveDoubles.cs → src/Bizigo.Storage.Raw/IRawObjectStore.cs
+- `InMemorySegmentSource` --implements--> `IRawSegmentSource`  [EXTRACTED]
+  tests/Bizigo.UnitTests/RawArchiveDoubles.cs → src/Bizigo.Storage.Raw/IRawSegmentSource.cs
+- `RawArchiveRecoveryTests` --references--> `RawStoreOptions`  [EXTRACTED]
+  tests/Bizigo.UnitTests/RawArchiveRecoveryTests.cs → src/Bizigo.Storage.Raw/RawStoreOptions.cs
+- `ChangeConnectorTests` --references--> `SecretProtector`  [EXTRACTED]
+  tests/Bizigo.UnitTests/ChangeConnectorTests.cs → src/Bizigo.Contracts/Security/SecretProtector.cs
 
 ## Import Cycles
 - None detected.
 
-## Communities (775 total, 47 thin omitted)
+## Communities (835 total, 91 thin omitted)
 
 ### Community 0 - ".ZincirAsync"
-Cohesion: 0.20
-Nodes (11): Registry, Satirlar, McpResourceSubscriptionTests, CancellationToken, ClaimsPrincipal, Fact, List, Stream (+3 more)
+Cohesion: 0.07
+Nodes (32): McpResourceUpdates, Registry, Satirlar, IRcaRunChangeListener, RcaRunChange, CancellationToken, Guid, ValueTask (+24 more)
 
 ### Community 1 - "test_golden_gate.py"
 Cohesion: 0.05
-Nodes (81): post_sql(), ClickHouse'a tek ifadelik HTTP isteği — Kapı 2 ve Kapı 3'ün ortak yüzeyi. Kapı…, `(kabul_edildi, gövde)`. HTTP hatası gövdeyle döner, bağlantı hatası **atar**.…, check_corpus_shape(), count_rows(), evaluate(), Expectation, expectations_text() (+73 more)
+Nodes (87): check_corpus_shape(), count_rows(), evaluate(), Expectation, expectations_text(), GoldenResult, load_expectations(), load_undeclared() (+79 more)
 
 ### Community 2 - "test_manifest.py"
 Cohesion: 0.06
-Nodes (78): main(), Blocker, Bir kuralın neden koşamadığı — **eyleme çevrilebilecek** kadar somut.…, build_manifest(), check_output(), _materialize(), Path, Üretilen SQL'in yazımı, manifest'i ve sürüklenme kapısı (T32). Var olan bir… (+70 more)
+Nodes (77): Blocker, Bir kuralın neden koşamadığı — **eyleme çevrilebilecek** kadar somut.…, build_manifest(), check_output(), _materialize(), Path, Üretilen SQL'in yazımı, manifest'i ve sürüklenme kapısı (T32). Var olan bir…, Koşumun **girdisini** tanımlayan alanlar. Hepsi girdinin parçası:… (+69 more)
 
-### Community 3 - "repo_root"
-Cohesion: 0.05
-Nodes (86): _main(), Kapı 1 — üretilen SQL var olmayan bir kolona gidiyor mu (T32). Ne yakalıyor, ne…, _column_name(), _find_top_level(), load_view_definitions(), _main(), migration_files(), MigrationParseError (+78 more)
+### Community 3 - "test_view_columns.py"
+Cohesion: 0.06
+Nodes (73): _column_name(), _find_top_level(), load_view_definitions(), _main(), migration_files(), MigrationParseError, Path, RuntimeError (+65 more)
 
 ### Community 5 - "olaylar/[id]/page.tsx"
-Cohesion: 0.07
-Nodes (35): CoreView(), dynamic, EventDetailPage(), RawView(), readTab(), Tab, TABS, ResultsTable() (+27 more)
+Cohesion: 0.08
+Nodes (31): CoreView(), dynamic, EventDetailPage(), RawView(), readTab(), Tab, TABS, ResultsTable() (+23 more)
 
 ### Community 6 - "ParserWorkbench.tsx"
-Cohesion: 0.04
-Nodes (82): GateReport(), GateReportProps, ParserWorkbenchProps, DispatchCard(), Outcome(), TryPanel(), TryPanelProps, CodeEditor() (+74 more)
+Cohesion: 0.07
+Nodes (36): CodeEditor(), CodeEditorProps, CompletionOption, EditorMarker, tokenClass, COMMON_STEP_KEYS, Completion, CORE_FIELDS (+28 more)
 
 ### Community 7 - "McpIdentityTests"
-Cohesion: 0.07
-Nodes (32): ImmutableDictionary, IAccessScopeResolver, ClaimsPrincipal, ClaimsFromHeader, EchoPayload, McpIdentityTests, RecordingScopeResolver, ScopeEchoTool (+24 more)
+Cohesion: 0.14
+Nodes (15): ImmutableDictionary, EchoPayload, McpIdentityTests, Assembly, EchoPayload, Fact, HttpClient, int (+7 more)
 
 ### Community 8 - "compile.py"
 Cohesion: 0.05
-Nodes (56): _assert_environment_matches_pin(), collect_outcomes(), _committed_manifest(), current_header(), _declared_blockers(), _git_head_manifest(), _installed_version(), _pinned_versions() (+48 more)
+Nodes (61): _assert_environment_matches_pin(), collect_outcomes(), _committed_manifest(), current_header(), _declared_blockers(), _git_head_manifest(), _installed_version(), _load_pipeline() (+53 more)
 
 ### Community 9 - "test_explain_gate.py"
-Cohesion: 0.08
-Nodes (45): check_directory(), classify_error(), explain_sql(), ExplainResult, _main(), probe_forms(), Path, Kapı 2 — ClickHouse üretilen SQL'i kabul ediyor mu (T32). Kapı 1 kolon… (+37 more)
+Cohesion: 0.07
+Nodes (48): post_sql(), ClickHouse'a tek ifadelik HTTP isteği — Kapı 2 ve Kapı 3'ün ortak yüzeyi. Kapı…, `(kabul_edildi, gövde)`. HTTP hatası gövdeyle döner, bağlantı hatası **atar**.…, check_directory(), classify_error(), explain_sql(), ExplainResult, _main() (+40 more)
 
 ### Community 10 - "BizigoMcpResource"
-Cohesion: 0.10
-Nodes (17): McpProtocolException, McpServerResource, ReadResourceRequestParams, ReadResourceResult, ResourceTemplate, BizigoMcpResource, McpResourceRead, CancellationToken (+9 more)
+Cohesion: 0.11
+Nodes (15): McpProtocolException, McpServerResource, ReadResourceRequestParams, ReadResourceResult, ResourceTemplate, BizigoMcpResource, McpResourceRead, CancellationToken (+7 more)
 
 ### Community 11 - "ICurrentUser"
 Cohesion: 0.13
 Nodes (21): AlertingSnapshot, AlertEndpoints, AlertRuleRequest, MaintenanceWindowRequest, CancellationToken, DateTimeOffset, Guid, IDbContextFactory (+13 more)
 
 ### Community 12 - "test_sigma_pipeline.py"
-Cohesion: 0.05
-Nodes (53): compile_rule(), CompiledRule, RuntimeError, Sigma → ClickHouse SQL derlemesi (F1 §9, T12 kapsamı yalnızca bu uç). **Sıcak…, Backend kurulu değil / import edilemiyor — 503., İstenen hedef derlenemiyor — 400. pySigma'nın kendi hataları da `ValueError`…, Sigma kuralını ClickHouse SQL'ine çevirir — **Bizigo eşlemesiyle**.…, SigmaBackendUnavailable (+45 more)
+Cohesion: 0.06
+Nodes (38): _corpus(), Path, Sigma eşleme tablolarının bekçileri (T31). **pySigma GEREKTİRMİYOR.** Bu…, **En önemli ayrım.** `dns_query_name` bir prototip boşluğu DEĞİL. Hiçbir parser…, Tablo burada yeniden yazılsaydı ingest'le sessizce ayrışırdı. Ayrışmanın sonucu…, Tanınmayan alan sessizce geçmemeli — T32'nin kapısı buna dayanacak., Kural korpusu — **T32'nin sabitinden**, elle yazılmadan. Bu sabit eskiden…, **Bu hata ancak üretilen SQL okununca görüldü.**… (+30 more)
 
-### Community 13 - ".RunAsync"
-Cohesion: 0.22
-Nodes (10): CancellationToken, Task, CapacitySafety, CapacitySafetySample, DateTimeOffset, int, CapacitySafetyTests, Fact (+2 more)
+### Community 13 - "CapacityAttempt"
+Cohesion: 0.10
+Nodes (23): CapacityAttempt, CapacityIdentity, CapacityObservation, CapacityOptions, CapacitySafetyOptions, MissingProbePolicy, IReadOnlyList, CapacityCommand (+15 more)
 
 ### Community 14 - "olaylar/page.tsx"
-Cohesion: 0.06
-Nodes (51): currentHref(), dynamic, EventSearchPage(), runSearch(), Pager(), RawParams, nextEntries(), read() (+43 more)
+Cohesion: 0.05
+Nodes (63): save(), currentHref(), dynamic, EventSearchPage(), runSearch(), Pager(), RawParams, PARSE_STATUS_LABELS (+55 more)
 
 ### Community 15 - "SigmaRuleChainTests"
 Cohesion: 0.06
@@ -873,7 +933,7 @@ Nodes (40): SigmaExistingRule, SigmaExistingRule, SigmaManifest, SigmaManifestBl
 
 ### Community 16 - "WriteAheadLog"
 Cohesion: 0.06
-Nodes (31): InvalidOperationException, Length, Sequence, ReviewRejectedException, WalFrame, int, ReadOnlySpan, uint (+23 more)
+Nodes (29): InvalidOperationException, Length, Sequence, ReviewRejectedException, WalFrame, int, ReadOnlySpan, uint (+21 more)
 
 ### Community 17 - "F2FlowTests"
 Cohesion: 0.10
@@ -881,35 +941,35 @@ Nodes (22): Engine, Lossy, ParserVersion, Records, Repository, ParsingServiceCol
 
 ### Community 18 - "test_miners.py"
 Cohesion: 0.08
-Nodes (28): PersistenceHandler, SidecarState, MinerHandle, MinerRegistry, MaskCatalog, Redis, Kaynak sınıfı başına Drain3 miner'ı + Redis kalıcılığı (K14). İki ayrı sınır…, Kapanışta çağrılır — son snapshot'tan sonrası kaybolmasın. (+20 more)
+Nodes (29): FastAPI, PersistenceHandler, lifespan(), SidecarState, MinerHandle, MinerRegistry, MaskCatalog, Redis (+21 more)
 
 ### Community 19 - "sigma_pipeline.py"
-Cohesion: 0.05
-Nodes (51): bizigo_pipeline(), describe(), handled_fields(), ip_text_expression(), _ip_text_transformation(), known_field_pattern(), load_proto_table(), _logsource_items() (+43 more)
+Cohesion: 0.06
+Nodes (41): bizigo_pipeline(), describe(), handled_fields(), _ip_text_transformation(), known_field_pattern(), load_proto_table(), _logsource_items(), mapped_field_count() (+33 more)
 
 ### Community 20 - "RedactedPrompt"
 Cohesion: 0.07
 Nodes (23): Evaluated, JsonConverter, RedactedPrompt, ShadowToken, char, double, GeneratedRegex, HashSet (+15 more)
 
-### Community 21 - ".ArchiveOneAsync"
-Cohesion: 0.18
-Nodes (13): CancellationToken, Task, RawEventLocatorTests, DateTimeOffset, Fact, IDbContextFactory, ObjectKey, Record (+5 more)
+### Community 21 - ".System"
+Cohesion: 0.14
+Nodes (18): CancellationToken, Task, RawEventLocatorTests, DateTimeOffset, Fact, IDbContextFactory, ObjectKey, Record (+10 more)
 
-### Community 22 - "IScopedQuery"
-Cohesion: 0.11
-Nodes (17): EventFieldView, EventViewKind, CancellationToken, Guid, IReadOnlyList, Task, IScopedQuery, ScopeNegativeTests (+9 more)
+### Community 22 - "ScopeNegativeTests"
+Cohesion: 0.21
+Nodes (8): ScopeNegativeTests, Fact, IDbContextFactory, InlineData, Task, Theory, Trait, ulong
 
 ### Community 23 - "GoldenReviewStore"
-Cohesion: 0.28
-Nodes (9): IQueryable, GoldenReviewStore, ReviewInput, CancellationToken, Guid, IDbContextFactory, IReadOnlyList, Task (+1 more)
+Cohesion: 0.08
+Nodes (32): IQueryable, AlertClosureEndpoints, CloseTriggerRequest, CloseTriggerResponse, CancellationToken, DateTimeOffset, Guid, ICurrentUser (+24 more)
 
-### Community 24 - "TelemetryQuery"
-Cohesion: 0.10
-Nodes (24): TelemetryReadEndpoints, HttpContext, IEndpointRouteBuilder, IResult, JsonSerializerOptions, Task, TelemetrySignal, TelemetryInputWindow (+16 more)
+### Community 24 - ".HandleAsync"
+Cohesion: 0.09
+Nodes (30): Configuration, Auth, Configuration, AuthenticateResult, AuthenticationSchemeOptions, ClaimsPrincipal, Dictionary, IHttpContextAccessor (+22 more)
 
 ### Community 25 - "RcaWindow"
 Cohesion: 0.07
-Nodes (42): EvidenceCollector, EvidenceReport, CancellationToken, IEnumerable, ILogger, IReadOnlyList, Task, TimeSpan (+34 more)
+Nodes (38): AccessScope, CancellationToken, Task, AccessScope, CancellationToken, Task, EvidenceItem, EvidenceKind (+30 more)
 
 ### Community 26 - "RawArchiveUploader"
 Cohesion: 0.09
@@ -919,121 +979,121 @@ Nodes (23): Built, GroupKey, CancellationToken, Task, IRawSegmentSource, Pending
 Cohesion: 0.12
 Nodes (19): Count, AlertPreview, AlertPreviewResult, PreviewPoint, PreviewSource, At, CancellationToken, DateTimeOffset (+11 more)
 
-### Community 28 - "ChangeConnectorService"
-Cohesion: 0.12
-Nodes (28): ChangeConnectorEndpoints, ConnectorListResponse, ConnectorRequest, ConnectorRunListResponse, ConnectorRunView, ConnectorTestResponse, ConnectorView, CancellationToken (+20 more)
+### Community 28 - ".SaveAsync"
+Cohesion: 0.21
+Nodes (16): ChangeConnectorEndpoints, ConnectorListResponse, ConnectorRequest, ConnectorRunListResponse, ConnectorRunView, ConnectorTestResponse, ConnectorView, CancellationToken (+8 more)
 
 ### Community 29 - ".SearchAsync"
-Cohesion: 0.10
-Nodes (24): ClickHouseCommand, ClickHouseConnection, EventReader, QueryBuilder, CancellationToken, DateTimeOffset, Dictionary, Guid (+16 more)
+Cohesion: 0.13
+Nodes (20): ClickHouseCommand, ClickHouseConnection, EventReader, QueryBuilder, CancellationToken, DateTimeOffset, DbDataReader, Dictionary (+12 more)
 
 ### Community 30 - "dependencies"
 Cohesion: 0.13
-Nodes (15): jose, next, posthog-js, posthog-node, react, react-dom, dependencies, jose (+7 more)
+Nodes (15): jose, next, posthog-js, posthog-node, react, react-dom, redis, dependencies (+7 more)
 
 ### Community 31 - "DeviceConfigTests"
 Cohesion: 0.11
-Nodes (14): IReadOnlyList, ConfigDiff, ConfigDiffResult, SectionChange, Dictionary, IReadOnlyList, ConfigLine, IReadOnlyList (+6 more)
+Nodes (15): CancellationToken, Task, ConfigDiff, ConfigDiffResult, SectionChange, Dictionary, IReadOnlyList, ConfigLine (+7 more)
 
 ### Community 32 - "ReportView.tsx"
 Cohesion: 0.07
-Nodes (50): CloseResult, CloseTriggerPanel(), close(), Deliveries(), TriggerHistory(), TriggerState(), dynamic, PageProps (+42 more)
+Nodes (50): CloseResult, CloseTriggerPanel(), close(), Deliveries(), TriggerHistory(), TriggerState(), FindingRow(), ReportView() (+42 more)
 
-### Community 33 - ".GatherAsync"
-Cohesion: 0.29
-Nodes (11): TraceErrorPropagationProvider, TraceProviderOutput, TraceServiceDependencyProvider, CancellationToken, EvidenceKind, EvidenceSlice, GatherBudget, IOptions (+3 more)
+### Community 33 - "RcaAdmission"
+Cohesion: 0.11
+Nodes (22): Admitted, Rejected, RcaScheduleWorker, CancellationToken, IDbContextFactory, ILogger, IServiceScopeFactory, Task (+14 more)
 
 ### Community 34 - "ParserToolbox"
-Cohesion: 0.12
-Nodes (17): DirectoryInfo, FileInfo, ParserCommandHandlers, IReadOnlyDictionary, IReadOnlyList, JsonSerializerOptions, CommandFailure, CommandFailureKind (+9 more)
+Cohesion: 0.09
+Nodes (22): DirectoryInfo, FileInfo, ParserCommandHandlers, IReadOnlyDictionary, IReadOnlyList, JsonSerializerOptions, CommandFailure, CommandFailureKind (+14 more)
 
-### Community 35 - "ScopePredicate"
-Cohesion: 0.12
-Nodes (22): ScopePredicate, IReadOnlyList, string, Position, ResultTooLargeException, TelemetryReader, TelemetrySqlPlan, Action (+14 more)
+### Community 35 - "TelemetryReader"
+Cohesion: 0.10
+Nodes (30): DbDataReader, TelemetryInputWindow, IReadOnlyList, TelemetrySignal, Position, ResultTooLargeException, TelemetryReader, TelemetrySqlPlan (+22 more)
 
 ### Community 36 - "ReplayEngine"
 Cohesion: 0.19
 Nodes (14): Missing, Objects, ReplayEngine, CancellationToken, Dictionary, Guid, IDbContextFactory, ILogger (+6 more)
 
 ### Community 37 - ".Point"
-Cohesion: 0.14
-Nodes (15): BigInteger, IComparable, ExactMetricNumber, MetricArithmetic, MetricChange, MetricWindowSummary, Point, IReadOnlyList (+7 more)
+Cohesion: 0.13
+Nodes (17): BigInteger, IComparable, ExactMetricNumber, MetricArithmetic, MetricChange, MetricWindowSummary, Point, IReadOnlyList (+9 more)
 
 ### Community 38 - "States.tsx"
-Cohesion: 0.04
-Nodes (59): AlertRuleLoader(), load(), dynamic, MaintenancePage(), dynamic, EditAlertRulePage(), ChannelsPage(), dynamic (+51 more)
+Cohesion: 0.06
+Nodes (43): AlertRuleLoader(), load(), dynamic, MaintenancePage(), dynamic, EditAlertRulePage(), ChannelsPage(), dynamic (+35 more)
 
 ### Community 39 - "test_ruleset.py"
 Cohesion: 0.11
 Nodes (37): hash_tree(), load_pin(), _main(), Pin, pin_text(), Path, Kural setinin sabitlenmesi — girdinin nereden geldiği (T32). `pipeline_sha` ve…, Kopyalanmış ağacın `yol → sha256` haritası. (+29 more)
 
 ### Community 40 - "RecordingScopedQuery"
+Cohesion: 0.11
+Nodes (31): RecordingScopedQuery, StubProvider, AccessScope, CancellationToken, ChangeEvent, ChangeQuery, CorrelationWindow, EventFieldView (+23 more)
+
+### Community 41 - ".SendGroupAsync"
 Cohesion: 0.10
-Nodes (30): ChangeQuery, CorrelationWindow, EventCursor, EventHistogramQuery, EventPage, EventQuery, FieldFilter, FieldValueCount (+22 more)
+Nodes (23): DispatchTurn, NotificationDispatcher, AlertingOptions, AlertingStats, CancellationToken, DateTimeOffset, Dictionary, Guid (+15 more)
 
-### Community 41 - "AlertRuleEntity"
-Cohesion: 0.09
-Nodes (31): AlertSuppression, SuppressionReason, DateTimeOffset, IEnumerable, DispatchTurn, NotificationDispatcher, AlertingOptions, AlertingStats (+23 more)
-
-### Community 42 - "IAlertQuerySource"
-Cohesion: 0.27
-Nodes (5): AlertQueryLease, IAlertQuerySource, ServiceScopeAlertQuerySource, IServiceScopeFactory, SingleQuerySource
+### Community 42 - "AlertEvaluationContext"
+Cohesion: 0.13
+Nodes (14): AlertEvaluationContext, CancellationToken, ConcurrentDictionary, DateTimeOffset, Func, IReadOnlyList, Task, TimeProvider (+6 more)
 
 ### Community 43 - "ParserYamlLoader"
 Cohesion: 0.22
-Nodes (11): PipelineStep, ParserSchemaError, ParserYamlLoader, HashSet, IReadOnlyDictionary, IReadOnlyList, IReadOnlySet, List (+3 more)
+Nodes (10): ParserSchemaError, ParserYamlLoader, HashSet, IReadOnlyDictionary, IReadOnlyList, IReadOnlySet, List, string (+2 more)
 
-### Community 44 - "describeError"
-Cohesion: 0.06
-Nodes (65): AlertRuleEditor(), AlertRuleEditorProps, FormState, initialState(), splitSources(), AlertRuleLoaderProps, AlertsOverview(), remove() (+57 more)
+### Community 44 - "alerts/types.ts"
+Cohesion: 0.09
+Nodes (42): AlertRuleEditor(), AlertRuleEditorProps, FormState, initialState(), splitSources(), AlertRuleLoaderProps, AlertsOverview(), remove() (+34 more)
 
-### Community 45 - "CatalogRefreshService"
-Cohesion: 0.11
-Nodes (19): CatalogRefreshService, CancellationToken, ILogger, IOptions, Task, TimeProvider, DirectoryParserCatalogSource, CancellationToken (+11 more)
+### Community 45 - "parsers/types.ts"
+Cohesion: 0.05
+Nodes (61): CatalogOverview(), remeasure(), rollback(), historyOf(), DiffView(), GateReport(), GateReportProps, TestTable() (+53 more)
 
 ### Community 46 - "main.py"
-Cohesion: 0.13
-Nodes (36): BaseModel, FastAPI, get, post, _check_batch(), clusters(), _connect_redis(), healthz() (+28 more)
+Cohesion: 0.11
+Nodes (38): BaseModel, get, middleware, post, api_version_header(), _check_batch(), clusters(), _connect_redis() (+30 more)
 
 ### Community 47 - "F1 — Boru Hattı: Teknik Plan"
 Cohesion: 0.05
 Nodes (39): 0. Bitti tanımı, 10.1.1 Claim sözleşmesi — IdP'den bağımsız, 10.1.2 UI ve makine kimlikleri, 10.1 Kimlik (K18) — IdP seçimi: Keycloak (K26), 10.2 Tek kapı, 10.3 Uçlar (F1), 10. Sorgu API, OIDC ve kapsam zorlaması, 11. CLI (+31 more)
 
 ### Community 48 - ".ReadAsync"
-Cohesion: 0.10
-Nodes (20): Ref, RawRefEntry, Guid, RawReader, CancellationToken, IReadOnlyList, Task, FakeObjectStore (+12 more)
+Cohesion: 0.11
+Nodes (18): Ref, RawReader, CancellationToken, IReadOnlyList, Task, FakeObjectStore, RawReaderTests, CancellationToken (+10 more)
 
 ### Community 49 - "RawArchiveTests"
-Cohesion: 0.21
-Nodes (13): Segments, RawStoreOptions, string, TimeSpan, RawArchiveTests, DateTimeOffset, Fact, IDbContextFactory (+5 more)
+Cohesion: 0.13
+Nodes (16): Segments, RawStoreOptions, string, TimeSpan, IEnumerable, TimeSpan, RawArchiveTests, DateTimeOffset (+8 more)
 
-### Community 50 - ".GatherItemsAsync"
+### Community 50 - "CorrelationWindow"
 Cohesion: 0.18
-Nodes (18): AttributeLiftProvider, CorrelationFields, FirstSeenSignatureProvider, LogCorrelationProvider, PropagationProvider, VolumeDeviationProvider, CancellationToken, Detail (+10 more)
+Nodes (19): CorrelationWindow, AttributeLiftProvider, CorrelationFields, FirstSeenSignatureProvider, LogCorrelationProvider, PropagationProvider, VolumeDeviationProvider, CancellationToken (+11 more)
 
 ### Community 51 - "test_gate.py"
 Cohesion: 0.10
-Nodes (33): check_columns(), Tek tırnaklı metinleri boşlukla değiştirir; uzunluk korunmuyor, gerek yok. `''`…, SQL'de **kolon olarak** geçen adlar, ilk görülme sırasında, tekrarsız.…, Kapı 1. `allowed` **türetilmiş** küme olmalı, elle yazılmış liste değil. Bkz.…, referenced_columns(), _strip_string_literals(), parametrize, Kapı 1 testleri — kolon varlığı kapısı. Örneklem sentetik değil:… (+25 more)
+Nodes (35): check_columns(), _main(), Kapı 1 — üretilen SQL var olmayan bir kolona gidiyor mu (T32). Ne yakalıyor, ne…, Tek tırnaklı metinleri boşlukla değiştirir; uzunluk korunmuyor, gerek yok. `''`…, SQL'de **kolon olarak** geçen adlar, ilk görülme sırasında, tekrarsız.…, Kapı 1. `allowed` **türetilmiş** küme olmalı, elle yazılmış liste değil. Bkz.…, referenced_columns(), _strip_string_literals() (+27 more)
 
 ### Community 52 - "harness.ts"
-Cohesion: 0.15
-Nodes (25): resetDiscoveryCache(), useLocalJwks(), resetSessionStore(), useSessionStore(), ACCESS_TOKEN, API_URL, CLIENT_ID, CLIENT_SECRET (+17 more)
+Cohesion: 0.13
+Nodes (27): STORAGE_KEY, resetDiscoveryCache(), useLocalJwks(), resetSessionStore(), KNOWN_WRITERS, srcRoot, ACCESS_TOKEN, API_URL (+19 more)
 
 ### Community 53 - "ScenarioPluginLoaderTests"
-Cohesion: 0.14
-Nodes (5): ScenarioPluginLoaderTests, Fact, InlineData, string, Theory
+Cohesion: 0.12
+Nodes (7): ScenarioEvidenceGate, IReadOnlyList, ScenarioPluginLoaderTests, Fact, InlineData, string, Theory
 
 ### Community 54 - "test_measure.py"
 Cohesion: 0.06
 Nodes (35): Ölçüm aracının kendi bekçileri (T30). Neden bir ölçüm aracının testi var…, Tek bir sonda tutarsa o vendor doğrulanmış sayılıyor., Kırık sorgu ile yüklenmemiş veri aynı şey değil; eskiden hata yutuluyordu., **Sondanın damgayla kesişmesi doğru veriyi reddettirir.** Yükleyici örneklerin…, **Bu test, bir öncekinin ölçemediği şeyi ölçüyor.**…, Tek satıra bağlı sonda kırılgan: yükleyici o satırı yüklememiş olabilir. Farklı…, Sorgu hatası ile boş tablo AYRI: birincisi kurulum, ikincisi veri sorunu., Eskiden `here.parent` dönüyordu; yanlış kök = boş sonda = kapalı bekçi. (+27 more)
 
 ### Community 55 - "ConnectorContext"
-Cohesion: 0.12
-Nodes (21): DeviceConfigRunner, CancellationToken, IDbContextFactory, ILogger, IServiceScopeFactory, Task, TimeProvider, ConnectorContext (+13 more)
+Cohesion: 0.09
+Nodes (25): CancellationToken, Task, DeviceConfigRunner, DeviceConnectorConfig, CancellationToken, IDbContextFactory, ILogger, IReadOnlyList (+17 more)
 
 ### Community 56 - "OpenAiCompatibleModelProvider"
-Cohesion: 0.10
-Nodes (21): ChatChoice, ChatMessage, ChatUsage, IModelProvider, ModelCompletion, CancellationToken, TimeSpan, ValueTask (+13 more)
+Cohesion: 0.07
+Nodes (30): ChatChoice, ChatMessage, ChatUsage, IModelProvider, ModelCompletion, CancellationToken, TimeSpan, ValueTask (+22 more)
 
 ### Community 57 - "events.ts"
 Cohesion: 0.05
@@ -1052,40 +1112,40 @@ Cohesion: 0.18
 Nodes (14): ReplayStore, CancellationToken, DateTimeOffset, IReadOnlyList, Task, ReplayStoreTests, DateTimeOffset, Fact (+6 more)
 
 ### Community 61 - "IEndpointAddressResolver"
-Cohesion: 0.10
-Nodes (23): DnsEndpointAddressResolver, IEndpointAddressResolver, ModelBoundaryGate, ModelBoundaryVerdict, CancellationToken, IPAddress, IReadOnlyList, ValueTask (+15 more)
+Cohesion: 0.11
+Nodes (21): DnsEndpointAddressResolver, IEndpointAddressResolver, ModelBoundaryGate, ModelBoundaryVerdict, CancellationToken, IPAddress, IReadOnlyList, ValueTask (+13 more)
 
 ### Community 62 - "Bizigo LogAnalyzer Modernizasyon Analizi"
 Cohesion: 0.05
 Nodes (41): 1.1 Kritik Güncellemeler, 1.2 Önerilen Güncellemeler, 1.3 İsteğe Bağlı Güncellemeler, 1.4 Test Kütüphaneleri, 1. .NET Ekosistemi, 2.1 Kritik Güncellemeler, 2.2 Önerilen Güncellemeler, 2.3 İsteğe Bağlı Güncellemeler (+33 more)
 
-### Community 63 - "ParseContext"
+### Community 63 - "PipelineStep"
 Cohesion: 0.06
-Nodes (39): Dictionary, IReadOnlyDictionary, CompiledConvertStep, CompiledCsvStep, CompiledDateStep, CompiledDropStep, CompiledGrokStep, CompiledJsonStep (+31 more)
+Nodes (41): Dictionary, IReadOnlyDictionary, CompiledConvertStep, CompiledCsvStep, CompiledDateStep, CompiledDropStep, CompiledGrokStep, CompiledJsonStep (+33 more)
 
 ### Community 64 - "CorrelationQueryTests"
-Cohesion: 0.32
-Nodes (7): CorrelationQueryTests, DateTimeOffset, Fact, string, Task, Trait, ValueTask
+Cohesion: 0.18
+Nodes (18): Parameters, FieldValueCount, SignatureVolume, CorrelationReader, CancellationToken, DateTimeOffset, DbDataReader, Dictionary (+10 more)
 
-### Community 65 - "McpListenerBoundaryCheck"
-Cohesion: 0.14
-Nodes (15): IHostedLifecycleService, McpListenerAddress, McpListenerBoundaryCheck, McpListenerBoundaryGate, McpListenerBoundaryOutcome, McpListenerBoundaryVerdict, CancellationToken, IConfiguration (+7 more)
+### Community 65 - "ParsedEvent"
+Cohesion: 0.09
+Nodes (20): EventNormalizer, DateTimeOffset, Dictionary, IPAddress, IReadOnlyDictionary, Source, TimeProvider, Value (+12 more)
 
 ### Community 66 - "Bizigo.UnitTests"
-Cohesion: 0.06
-Nodes (11): Bizigo.UnitTests, Bizigo.Evidence, Bizigo.ScenarioPlugin, Bizigo.Rca.Reasoning, Bizigo.Api, GoldenSetQualityResponse, MissingEvidenceQualityResponse, ScenarioServiceCollectionExtensions (+3 more)
+Cohesion: 0.05
+Nodes (13): Bizigo.UnitTests, Bizigo.Evidence.Providers, Bizigo.Evidence, Bizigo.ScenarioPlugin, Bizigo.Api, IServiceCollection, GoldenSetQualityResponse, MissingEvidenceQualityResponse (+5 more)
 
 ### Community 67 - "ParserCatalogResponses.cs"
 Cohesion: 0.21
 Nodes (15): CatalogCoverageResponse, CatalogReloadResponse, ParserCoverageEntryResponse, ParserDetailResponse, ParserDraftDetailResponse, ParserDraftListResponse, ParserDraftResponse, ParserGrokResponse (+7 more)
 
-### Community 68 - "Bizigo.Capacity"
-Cohesion: 0.05
-Nodes (12): Command, Bizigo.Devices, Bizigo.Api.Connectors, Bizigo.Api.Webhooks, Bizigo.Simulators, Bizigo.Capacity, ChangeConnectorServiceCollectionExtensions, IConfiguration (+4 more)
+### Community 68 - "Bizigo.Simulators"
+Cohesion: 0.07
+Nodes (9): Bizigo.Devices, Bizigo.Api.Connectors, Bizigo.Ingest, Bizigo.Api.Webhooks, Bizigo.Simulators, ChangeConnectorServiceCollectionExtensions, IConfiguration, IServiceCollection (+1 more)
 
 ### Community 69 - "OtlpTelemetryHttpTests"
 Cohesion: 0.10
-Nodes (23): CompressionLevel, Host, FileWalDurability, IWalDurability, CancellationToken, FileStream, ValueTask, BrokenFlush (+15 more)
+Nodes (24): CompressionLevel, Host, BrokenFlush, Gate, Host, OtlpTelemetryHttpTests, RoleHeader, AuthenticateResult (+16 more)
 
 ### Community 70 - "RcaAdmissionTests"
 Cohesion: 0.32
@@ -1096,15 +1156,15 @@ Cohesion: 0.11
 Nodes (16): CompiledGrok, GrokCapture, GrokFieldType, GrokMatchOutcome, GrokMatchResult, GrokValueConverter, IDictionary, IReadOnlyList (+8 more)
 
 ### Community 72 - ".GatherAsync"
-Cohesion: 0.12
-Nodes (22): Bundle, EvidenceEndpoints, RcaRequest, RcaReviewRequest, CancellationToken, DateTimeOffset, Failure, Guid (+14 more)
+Cohesion: 0.11
+Nodes (26): Bundle, Failure, RcaAdmission, RcaReportStore, EvidenceEndpoints, RcaRequest, RcaReviewRequest, CancellationToken (+18 more)
 
 ### Community 73 - "DeviceTarget"
 Cohesion: 0.09
-Nodes (27): ConnectionInfo, SimulatedDeviceTransport, CancellationToken, IReadOnlyList, List, string, Task, DeviceConnectorConfig (+19 more)
+Nodes (26): ConnectionInfo, SimulatedDeviceTransport, CancellationToken, IReadOnlyList, List, string, Task, DeviceAuthMode (+18 more)
 
 ### Community 74 - ".From"
-Cohesion: 0.16
+Cohesion: 0.18
 Nodes (6): DeterministicReportTests, DateTimeOffset, Fact, RcaFourStatesTests, DateTimeOffset, Fact
 
 ### Community 75 - ".Verify"
@@ -1112,16 +1172,16 @@ Cohesion: 0.15
 Nodes (12): SignatureVerdict, WebhookSignature, Func, ReadOnlySpan, string, ChangeWebhookSignatureTests, byte, Fact (+4 more)
 
 ### Community 76 - "AlertLinkTargetTests"
-Cohesion: 0.13
-Nodes (12): AlertSearch, AlertSearchCodec, IReadOnlyList, JsonSerializerOptions, AlertLinkTargetTests, DateTimeOffset, Dictionary, Fact (+4 more)
+Cohesion: 0.17
+Nodes (8): AlertLinkTargetTests, DateTimeOffset, Dictionary, Fact, GeneratedRegex, HashSet, List, Regex
 
 ### Community 77 - "SourceSummary"
 Cohesion: 0.16
 Nodes (15): Field, TopologyProvider, CancellationToken, EvidenceItem, EvidenceKind, EvidenceSlice, GatherBudget, IEnumerable (+7 more)
 
 ### Community 78 - "F2ChainTests"
-Cohesion: 0.14
-Nodes (15): RawEventLocator, IDbContextFactory, F2ChainTests, byte, CancellationToken, DateTimeOffset, Fact, IDbContextFactory (+7 more)
+Cohesion: 0.16
+Nodes (13): F2ChainTests, byte, CancellationToken, DateTimeOffset, Fact, IDbContextFactory, ObjectKey, Record (+5 more)
 
 ### Community 79 - "ShadowPromotionMeasurementTests"
 Cohesion: 0.12
@@ -1136,12 +1196,12 @@ Cohesion: 0.22
 Nodes (6): EncodingDetector, Encoding, ReadOnlySpan, UTF8Encoding, EncodingDetectorTests, Fact
 
 ### Community 82 - "AlertRuleServiceTests"
-Cohesion: 0.22
-Nodes (7): AlertRuleServiceTests, CancellationToken, Fact, FakeTimeProvider, Guid, IReadOnlyList, Task
+Cohesion: 0.16
+Nodes (11): AlertSearch, AlertSearchCodec, IReadOnlyList, JsonSerializerOptions, AlertRuleServiceTests, CancellationToken, Fact, FakeTimeProvider (+3 more)
 
 ### Community 83 - "ProducesContractTests"
-Cohesion: 0.18
-Nodes (8): ProducesContractTests, Registration, Dictionary, Fact, int, IReadOnlyDictionary, IReadOnlyList, Lazy
+Cohesion: 0.19
+Nodes (8): Lazy, ProducesContractTests, Registration, Dictionary, Fact, int, IReadOnlyDictionary, IReadOnlyList
 
 ### Community 84 - "Bizigo.Api.csproj"
 Cohesion: 0.11
@@ -1152,28 +1212,28 @@ Cohesion: 0.07
 Nodes (28): dom, dom.iterable, ES2022, next-env.d.ts, .next/types/**/*.ts, node_modules, **/*.ts, **/*.tsx (+20 more)
 
 ### Community 86 - "Bizigo.Parsing.Grok"
-Cohesion: 0.04
-Nodes (21): Bizigo.Parsing.Testing, Bizigo.Authoring, Bizigo.Parsing.Engine, Bizigo.Parsing, Bizigo.Commands, Bizigo.Commands.Fields, Bizigo.Commands.Seeding, Bizigo.Normalization (+13 more)
+Cohesion: 0.07
+Nodes (17): Bizigo.Parsing.Testing, Bizigo.Authoring, Bizigo.Parsing.Engine, Bizigo.Parsing, Bizigo.Commands, Bizigo.Commands.Fields, Bizigo.Commands.Seeding, Bizigo.Normalization (+9 more)
 
 ### Community 87 - "McpListenerBoundaryTests"
 Cohesion: 0.11
 Nodes (16): AddressProbe, AddressProbe, McpListenerBoundaryTests, SahteCozucu, CancellationToken, Fact, IConfiguration, InlineData (+8 more)
 
-### Community 88 - "ClaimContractTests"
-Cohesion: 0.12
-Nodes (16): IdpGroup, OwnerGroup, AccessScopeResolver, BizigoClaims, BizigoRoles, GroupMapping, CancellationToken, ClaimsPrincipal (+8 more)
+### Community 88 - "GroupMapping"
+Cohesion: 0.15
+Nodes (13): IdpGroup, OwnerGroup, AccessScopeResolver, BizigoClaims, BizigoRoles, GroupMapping, CancellationToken, ClaimsPrincipal (+5 more)
 
 ### Community 89 - "SignalIngest"
-Cohesion: 0.11
-Nodes (20): ReadOnlySpan, SignalIngest, SignalWork, bool, CancellationToken, Channel, ChannelReader, Exception (+12 more)
+Cohesion: 0.10
+Nodes (22): IMessage, RawSignalEnvelope, SignalIngest, SignalWork, bool, CancellationToken, Channel, ChannelReader (+14 more)
 
 ### Community 90 - "AlertEvaluatorTests"
 Cohesion: 0.32
 Nodes (6): AlertEvaluatorTests, CancellationToken, DateTimeOffset, Fact, Task, TimeProvider
 
 ### Community 91 - "T28 denetimi"
-Cohesion: 0.12
-Nodes (17): 1 · Zaman damgası üç ayrı biçimde — biri yerel saat, 2 · Sunucu bileşeni ekranlarının yükleniyor durumu yok, 3 · Kontrast dört çiftte AA altında, 4 · `describeError` iki uygulamada, 5 · Dört durumun sırası kırılgandı, 6 · Tek ham renk, 7 · `toUpperCase` — kural düz yasak olamaz, 8 · Gövde hücresi tablo hücresi olmaktan çıkıyordu (+9 more)
+Cohesion: 0.07
+Nodes (26): 1 · Zaman damgası üç ayrı biçimde — biri yerel saat, 2 · Sunucu bileşeni ekranlarının yükleniyor durumu yok, 3 · Kontrast dört çiftte AA altında, 4 · `describeError` iki uygulamada, 5 · Dört durumun sırası kırılgandı, 6 · Tek ham renk, 7 · `toUpperCase` — kural düz yasak olamaz, 8 · Gövde hücresi tablo hücresi olmaktan çıkıyordu (+18 more)
 
 ### Community 92 - "RaceInjectingFactory"
 Cohesion: 0.14
@@ -1184,32 +1244,32 @@ Cohesion: 0.12
 Nodes (14): Lag, Onset, CorrelationMath, IReadOnlyList, TimeSpan, SilenceProvider, CancellationToken, EvidenceKind (+6 more)
 
 ### Community 94 - ".Normalize"
-Cohesion: 0.12
-Nodes (14): ResolvedSource, EventNormalizer, DateTimeOffset, Dictionary, IPAddress, IReadOnlyDictionary, Source, TimeProvider (+6 more)
+Cohesion: 0.22
+Nodes (6): ResolvedSource, EventNormalizerTests, DateTimeOffset, Fact, IReadOnlyDictionary, IReadOnlyList
 
 ### Community 95 - ".Compare"
 Cohesion: 0.21
 Nodes (10): ComparisonResult, Rebuilt, Guid, ReplayDiffTests, DateTimeOffset, Dictionary, Existing, Fact (+2 more)
 
-### Community 96 - "api/client.ts"
-Cohesion: 0.07
-Nodes (56): InventoryTable(), InventoryTableProps, dynamic, InventoryPage(), load(), UnassignedTable(), formatBytes(), PipelineHealthSummary() (+48 more)
+### Community 96 - "Field.tsx"
+Cohesion: 0.08
+Nodes (41): InventoryTable(), InventoryTableProps, dynamic, InventoryPage(), load(), UnassignedTable(), formatBytes(), PipelineHealthSummary() (+33 more)
 
 ### Community 97 - "RawRecord"
 Cohesion: 0.15
 Nodes (12): IBufferWriter, RawRecord, DateTimeOffset, Guid, IReadOnlyDictionary, ReadOnlyMemory, RawRecordCodec, JsonElement (+4 more)
 
 ### Community 98 - "RcaRunEntity"
-Cohesion: 0.10
+Cohesion: 0.11
 Nodes (25): RcaRejectionReason, RcaRunEntity, DateTimeOffset, Guid, AlwaysAllowQuotaGate, IRcaQuotaGate, RcaAdmissionResult, RcaTriggerRequest (+17 more)
 
 ### Community 99 - "ParserCompiler"
-Cohesion: 0.10
-Nodes (19): CatalogSourceReport, PublishedParserLoader, CancellationToken, IDbContextFactory, IEnumerable, ILogger, IOptions, IReadOnlyList (+11 more)
+Cohesion: 0.05
+Nodes (38): CatalogSourceReport, PublishedParserLoader, CancellationToken, IDbContextFactory, IEnumerable, ILogger, IOptions, IReadOnlyList (+30 more)
 
 ### Community 100 - "RawArchiveRecoveryTests"
-Cohesion: 0.15
-Nodes (14): InMemoryObjectStore, InMemorySegmentSource, CancellationToken, Dictionary, HashSet, IEnumerable, List, ReadOnlyMemory (+6 more)
+Cohesion: 0.37
+Nodes (5): RawArchiveRecoveryTests, DateTimeOffset, Fact, FakeTimeProvider, Task
 
 ### Community 101 - "T30 — Sigma eşleme maliyeti"
 Cohesion: 0.07
@@ -1223,13 +1283,13 @@ Nodes (18): MaskingInstruction, load_masks(), MaskCatalog, MaskDefinition, Path,
 Cohesion: 0.07
 Nodes (27): main(), Üç kutunun bekçileri (T30 · 3. ölçüm). Araç ClickHouse gerektirmiyor, testleri…, `dstport: 443` bir metin araması değil. Örnek satırında `443` dizgesini aramak…, Korpustaki kurallar yoğun yorumlu; yorumu dizge sanmak ölçümü boğar., Örneklem o deseni taşımıyorsa kural eşleşemez — ve bu ürünün kusuru DEĞİL., **Bu kör nokta doğru bir kuralı bozdu ve ölçüldükten sonra geri alındı.**…, Bekçinin ölçüsü: her `absent`'i "çevrilmiştir" saysaydı kutu boşalırdı. `url`…, Desen gerçekten var; kural yine de eşleşmiyorsa suç eşlemede. (+19 more)
 
-### Community 104 - "ChangeWebhookEndpoint"
-Cohesion: 0.21
-Nodes (12): ChangeWebhookMapper, WebhookMapOutcome, WebhookMapResult, DateTimeOffset, Dictionary, Func, JsonElement, ReadOnlySpan (+4 more)
+### Community 104 - "ChangeWebhookMapper"
+Cohesion: 0.26
+Nodes (9): ChangeWebhookMapper, WebhookMapOutcome, WebhookMapResult, DateTimeOffset, Dictionary, Func, JsonElement, ReadOnlySpan (+1 more)
 
 ### Community 105 - "NotificationSecretTests"
-Cohesion: 0.13
-Nodes (14): CancellationToken, Task, ResolvedChannel, SecretProtector, byte, int, NotificationSecretTests, ThrowingSmtpTransport (+6 more)
+Cohesion: 0.20
+Nodes (7): SecretProtector, byte, int, NotificationSecretTests, Fact, string, Task
 
 ### Community 107 - "ChangeWebhookMappingTests"
 Cohesion: 0.21
@@ -1240,19 +1300,19 @@ Cohesion: 0.15
 Nodes (13): ExportLogsServiceRequest, JsonParser, LogRecord, OtlpLogsDecoder, AnyValue, DateTimeOffset, Dictionary, Encoding (+5 more)
 
 ### Community 109 - "T27 — kabul kriterlerinin taraması"
-Cohesion: 0.08
-Nodes (22): 1.1 · "Ham bayt" testi adının söylediğini yapmıyor, 1.2 · Alarm akışı da parça hâlinde, 1 · Dört akış — ikisi akış, ikisi parça, 2.1 · Token sızıntısı: `localStorage` taranmıyor, 2.2 · Kapsam ayrışması ekran katmanında sınanmıyor, 2 · İki çapraz doğrulama — biri yarım, biri eksik, 3.5.1 · `AlertingTests` — altı testin ikisi T27'nin kriteri, 3.5.2 · UI paketi — 324 koşan test, 270 iddia satırı, ve 18'i tek iddia (+14 more)
+Cohesion: 0.13
+Nodes (15): 1.1 · "Ham bayt" testi adının söylediğini yapmıyor, 1.2 · Alarm akışı da parça hâlinde, 1 · Dört akış — ikisi akış, ikisi parça, 2.1 · Token sızıntısı: `localStorage` taranmıyor, 2.2 · Kapsam ayrışması ekran katmanında sınanmıyor, 2 · İki çapraz doğrulama — biri yarım, biri eksik, 3.5.1 · `AlertingTests` — altı testin ikisi T27'nin kriteri, 3.5.2 · UI paketi — 324 koşan test, 270 iddia satırı, ve 18'i tek iddia (+7 more)
 
 ### Community 110 - "T19 — parser editöründe alınan kararlar"
 Cohesion: 0.07
 Nodes (25): 1 · Motorun taşıyıcı kararı: ReDoS savunması üç kademeli, 2 · Bugün duran bekçiler ve ne tuttukları, 3 · Formatın kendisi hakkında alınan kararlar, 4 · Açıkta kalanlar, 5 · Sonraki ticket'lara devredilen ve ne oldu, `GrokPropertyTests` — bu turda düzeltilen bekçi, T05 — parser motorunda alınan kararlar, T08 #10 hakkında iki ölçüm (T05 borcu alınırken) (+17 more)
 
 ### Community 111 - "ArrivalLedgerTests"
-Cohesion: 0.07
-Nodes (27): Attributions, OSPlatform, Rationale, ArrivalLedger, LedgerAttribution, LedgerVerdict, IEnumerable, IReadOnlyList (+19 more)
+Cohesion: 0.11
+Nodes (13): OSPlatform, CollectorMetricsReader, string, LedgerLayer, LedgerReading, WireDropReader, Func, string (+5 more)
 
 ### Community 112 - ".Build"
-Cohesion: 0.15
+Cohesion: 0.14
 Nodes (10): OwnerId, AhoCorasick, Node, Dictionary, HashSet, IEnumerable, List, ReadOnlySpan (+2 more)
 
 ### Community 113 - "WikiSourceDigest"
@@ -1268,8 +1328,8 @@ Cohesion: 0.14
 Nodes (15): Id, McpMessageFilter, MessageContext, object, Server, Abonelik, Kayit, McpSubscriptionRegistry (+7 more)
 
 ### Community 116 - "ParserAuthoringService"
-Cohesion: 0.15
-Nodes (17): ParserAuthoringEndpoints, ParserDraftRequest, CancellationToken, Guid, IConfiguration, IDbContextFactory, IEndpointRouteBuilder, IResult (+9 more)
+Cohesion: 0.13
+Nodes (20): ParserAuthoringEndpoints, ParserDraftRequest, CancellationToken, Guid, IConfiguration, IDbContextFactory, IEndpointRouteBuilder, IResult (+12 more)
 
 ### Community 118 - "T08 → T05: gerçek vendor logunun motorda açtığı yerler"
 Cohesion: 0.08
@@ -1279,13 +1339,13 @@ Nodes (22): 1 · Bugün ölçülen, 2 · Katalogun taşıyıcı kararı: OCSF s�
 Cohesion: 0.20
 Nodes (9): Elbow, Label, BaselineCurve, BaselineFixtureComparison, BaselineFixtureVerdict, IReadOnlyList, TimeSpan, BaselineFixtureVerdictTests (+1 more)
 
-### Community 120 - "ParsedEvent"
-Cohesion: 0.12
-Nodes (19): Events, CountingParsedEventSink, IParsedEventSink, ParsedEvent, CancellationToken, IReadOnlyList, long, ValueTask (+11 more)
+### Community 120 - "SignatureHotPathTests"
+Cohesion: 0.29
+Nodes (7): Events, SignatureHotPathTests, DateTimeOffset, Fact, Sink, string, Task
 
-### Community 121 - "store.ts"
-Cohesion: 0.14
-Nodes (14): createRedisClient(), parse(), RedisSessionStore, ResolvedSession, AttemptHolder, attemptKey, createConfiguredStore(), globalKey (+6 more)
+### Community 121 - "IRawObjectStore"
+Cohesion: 0.12
+Nodes (16): IRawObjectStore, RawObjectInfo, S3RawObjectStore, AmazonS3Client, CancellationToken, ReadOnlyMemory, string, Task (+8 more)
 
 ### Community 122 - "SidecarLiveTests"
 Cohesion: 0.18
@@ -1304,7 +1364,7 @@ Cohesion: 0.22
 Nodes (6): ConfigNormalizer, Dictionary, GeneratedRegex, Regex, string, Stack
 
 ### Community 126 - "GrokCompilerTests"
-Cohesion: 0.24
+Cohesion: 0.23
 Nodes (5): GrokCompilerTests, Dictionary, Fact, InlineData, Theory
 
 ### Community 127 - "ScenarioYamlLoader"
@@ -1312,8 +1372,8 @@ Cohesion: 0.21
 Nodes (10): ScenarioLoadResult, ScenarioSchemaError, IReadOnlyList, ScenarioYamlLoader, IReadOnlyList, IReadOnlySet, List, string (+2 more)
 
 ### Community 128 - ".Add"
-Cohesion: 0.21
-Nodes (10): ArrayBufferWriter, BuiltRawObject, RawObjectBuilder, DateTimeOffset, IReadOnlyList, List, ReadOnlyMemory, ReadOnlySpan (+2 more)
+Cohesion: 0.18
+Nodes (12): ArrayBufferWriter, BuiltRawObject, RawObjectBuilder, RawRefEntry, DateTimeOffset, Guid, IReadOnlyList, List (+4 more)
 
 ### Community 129 - "Mimari Kararlar"
 Cohesion: 0.09
@@ -1328,12 +1388,12 @@ Cohesion: 0.14
 Nodes (14): SimulatorFixture, SimulatorFixture, SimulatorMcpToolTests, CallToolResult, CancellationToken, DateTimeOffset, Dictionary, Fact (+6 more)
 
 ### Community 132 - "ModelBoundaryTests"
-Cohesion: 0.30
-Nodes (5): ModelRequest, ModelRequestResult, ModelBoundaryTests, Fact, Task
+Cohesion: 0.28
+Nodes (5): ModelBoundaryTests, Fact, InlineData, Task, Theory
 
 ### Community 133 - ".Join"
-Cohesion: 0.14
-Nodes (15): LiteralReach, ReachVerdict, RuleEntry, RuleLiteral, RuleReachability, IReadOnlyDictionary, IReadOnlyList, JsonSerializerOptions (+7 more)
+Cohesion: 0.16
+Nodes (13): LiteralReach, ReachVerdict, RuleEntry, RuleLiteral, RuleReachability, IReadOnlyDictionary, IReadOnlyList, JsonSerializerOptions (+5 more)
 
 ### Community 134 - "CompositionRootTests"
 Cohesion: 0.17
@@ -1341,23 +1401,23 @@ Nodes (11): CompositionRootTests, Assembly, BindingFlags, Dictionary, Fact, Hash
 
 ### Community 135 - ".RankAll"
 Cohesion: 0.18
-Nodes (10): EvidenceRanking, RankedEvidence, Dictionary, IEnumerable, int, IReadOnlyCollection, IReadOnlyList, EvidenceRankingTests (+2 more)
+Nodes (10): IReadOnlyCollection, EvidenceRanking, RankedEvidence, Dictionary, IEnumerable, int, IReadOnlyList, EvidenceRankingTests (+2 more)
 
 ### Community 136 - "AccessScope"
-Cohesion: 0.15
-Nodes (14): AccessScope, IReadOnlySet, SabitKapsam, ClaimsPrincipal, FakeEvent, FakeScopedQuery, CancellationToken, DateTimeOffset (+6 more)
+Cohesion: 0.12
+Nodes (24): AccessScope, IReadOnlySet, TelemetrySignal, ITelemetryResult, TelemetryCount, TelemetryPage, TelemetryQuery, TelemetryResultStatus (+16 more)
 
 ### Community 137 - "SidecarCircuitBreaker"
-Cohesion: 0.05
-Nodes (34): DiscoveryItem, DiscoveryQueue, Channel, ChannelReader, DiscoveryStats, long, DiscoveryTurn, DiscoveryWorker (+26 more)
+Cohesion: 0.07
+Nodes (26): DiscoveryTurn, DiscoveryWorker, CancellationToken, ILogger, List, Task, TimeProvider, TimeSpan (+18 more)
 
 ### Community 138 - ".ExecuteAsync"
 Cohesion: 0.08
 Nodes (25): ScenarioPayload, SimulatorSurfaces, IReadOnlyList, ScenarioSurface, SimulatorProfile, Payload, ScenarioListTool, ScenarioPayload (+17 more)
 
 ### Community 139 - "Bizigo.sln"
-Cohesion: 0.14
-Nodes (12): Microsoft.Extensions.Logging.Console, Microsoft.IdentityModel.JsonWebTokens, Microsoft.IdentityModel.Protocols.OpenIdConnect, ModelContextProtocol, ModelContextProtocol.Core, System.CommandLine, YamlDotNet, Microsoft.NET.Sdk (+4 more)
+Cohesion: 0.11
+Nodes (15): Microsoft.Extensions.Logging.Console, Microsoft.IdentityModel.JsonWebTokens, Microsoft.IdentityModel.Protocols.OpenIdConnect, ModelContextProtocol, ModelContextProtocol.Core, SSH.NET, System.CommandLine, YamlDotNet (+7 more)
 
 ### Community 140 - ".CreateDbContext"
 Cohesion: 0.35
@@ -1371,37 +1431,33 @@ Nodes (4): CorrelationProviderTests, DateTimeOffset, Fact, Task
 Cohesion: 0.08
 Nodes (24): For /graphify add and --watch, For /graphify query, For the commit hook and native CLAUDE.md integration, For --update and --cluster-only, /graphify, Honesty Rules, Interpreter guard for subcommands, Part A - Structural extraction for code files (+16 more)
 
-### Community 143 - ".Materialize"
-Cohesion: 0.07
-Nodes (28): Span, ITelemetryBindingRegistry, TelemetryOwnerBinding, TelemetryOwnershipRequest, TelemetryRetentionPolicy, CancellationToken, Guid, IReadOnlyList (+20 more)
+### Community 143 - "HistoricalTelemetryOwners"
+Cohesion: 0.11
+Nodes (19): ITelemetryBindingRegistry, TelemetryOwnerBinding, TelemetryOwnershipRequest, TelemetryRetentionPolicy, CancellationToken, Guid, IReadOnlyList, Task (+11 more)
 
 ### Community 144 - "IScenarioProviderRegistry"
-Cohesion: 0.09
-Nodes (17): EvidenceScenarioProviderRegistry, Dictionary, HashSet, IReadOnlyCollection, IScenarioEvidenceSchema, IScenarioProviderRegistry, ScenarioProviderRegistry, Dictionary (+9 more)
+Cohesion: 0.10
+Nodes (15): EvidenceScenarioProviderRegistry, Dictionary, HashSet, IReadOnlyCollection, IScenarioEvidenceSchema, IScenarioProviderRegistry, ScenarioProviderRegistry, Dictionary (+7 more)
 
 ### Community 145 - ".Parse"
 Cohesion: 0.36
 Nodes (4): Result, SourceCsvImportTests, Fact, string
 
-### Community 146 - ".GetRawAsync"
-Cohesion: 0.19
-Nodes (12): EventSearchRequest, EventsEndpoints, FieldFilterRequest, CancellationToken, DateTimeOffset, Guid, IEndpointRouteBuilder, int (+4 more)
+### Community 146 - "IScopedQuery"
+Cohesion: 0.11
+Nodes (21): EventSearchRequest, EventsEndpoints, FieldFilterRequest, CancellationToken, DateTimeOffset, Guid, IEndpointRouteBuilder, int (+13 more)
 
 ### Community 147 - "DeterministicReport"
 Cohesion: 0.22
-Nodes (8): DeterministicReport, DateTimeOffset, Guid, IReadOnlyList, StringBuilder, ExcludedInputRecords, ExcludedKindCount, IReadOnlyList
+Nodes (8): DeterministicReport, DateTimeOffset, Guid, IReadOnlyList, ExcludedInputRecords, ExcludedKindCount, IReadOnlyList, StringBuilder
 
 ### Community 148 - "DiscoveryWorkerTests"
 Cohesion: 0.25
 Nodes (10): Harness, DiscoveryWorkerTests, StubHandler, CancellationToken, Fact, Func, HttpRequestMessage, HttpResponseMessage (+2 more)
 
-### Community 149 - "IDisposable"
-Cohesion: 0.11
-Nodes (6): IDisposable, InMemoryControlPlaneFactory, DbContextOptions, EvidenceBundleStoreTests, Fact, Task
-
 ### Community 150 - ".GatherAsync"
-Cohesion: 0.16
-Nodes (19): IEvidenceProvider, MetricEvidenceOptions, MetricBaselineProvider, MetricProviderOutput, MetricThresholdProvider, CancellationToken, Dictionary, EvidenceItem (+11 more)
+Cohesion: 0.14
+Nodes (22): IEvidenceProvider, MetricEvidenceOptions, MetricBaselineProvider, MetricProviderOutput, MetricThresholdProvider, AccessScope, CancellationToken, Dictionary (+14 more)
 
 ### Community 151 - ".Reject"
 Cohesion: 0.24
@@ -1420,7 +1476,7 @@ Cohesion: 0.18
 Nodes (12): GoldenSetQuality, GoldenSetReasoningQuality, Payload, RcaQualityTool, CancellationToken, IServiceScopeFactory, JsonElement, McpToolInvocation (+4 more)
 
 ### Community 155 - "CapacityAttemptRecord"
-Cohesion: 0.08
+Cohesion: 0.07
 Nodes (34): CapacityAttemptReference, CapacityDiscovery, CapacityDiscoveryResult, CancellationToken, int, IReadOnlyList, Task, TimeProvider (+26 more)
 
 ### Community 156 - "Kodda görünen kararlar"
@@ -1432,20 +1488,20 @@ Cohesion: 0.10
 Nodes (18): 1 · Kademelerin sırası performans için değil **doğruluk** için, 2 · Sessiz kalabilecek üç yer, üçü de sayaçla açıldı, 3 · Kaynak eşleşmezse olay reddedilmiyor, 4 · Sıcak yeniden yükleme atomik — ve bozuk katkı sistemi bozamıyor, 5 · Literal ön filtre: Aho-Corasick, satır **bir kez** taranıyor, 6 · Açıkta kalanlar, Sayaç yetmedi, eşik de kondu, T06 — dispatcher ve envanterde alınan kararlar (+10 more)
 
 ### Community 158 - ".BuildAsync"
-Cohesion: 0.25
-Nodes (9): EvidenceBundleFactory, CancellationToken, ILogger, Task, TimeProvider, EvidenceBundleFactoryTests, DateTimeOffset, Fact (+1 more)
+Cohesion: 0.21
+Nodes (12): IEvidenceBundleSource, EvidenceBundleFactory, ILogger, TimeProvider, EvidenceBundleFactoryTests, ThrowingCountQuery, AccessScope, CancellationToken (+4 more)
 
 ### Community 159 - "TelemetryMutationOracleTests"
-Cohesion: 0.14
-Nodes (6): EvidenceKinds, int, IReadOnlySet, TelemetryMutationOracleTests, Fact, Task
+Cohesion: 0.10
+Nodes (9): EvidenceKinds, int, IReadOnlySet, EvidenceKindScopeTests, Fact, Task, TelemetryMutationOracleTests, Fact (+1 more)
 
 ### Community 160 - ".Redact"
 Cohesion: 0.13
 Nodes (11): MemberInfo, RedactionGateTests, Beklenen, Fact, IReadOnlyList, MemberData, Payload, string (+3 more)
 
-### Community 161 - ".ExecuteAsync"
-Cohesion: 0.04
-Nodes (49): SendPayload, SimulatorErrors, FleetSnapshot, SimulatorMcpContext, IReadOnlyList, SimulatorProfile, string, SimulatorMcpSetup (+41 more)
+### Community 161 - "SimulatorMcpSetup"
+Cohesion: 0.25
+Nodes (5): SimulatorMcpSetup, Assembly, IServiceCollection, string, TimeProvider
 
 ### Community 162 - ".PopulatedAsync"
 Cohesion: 0.23
@@ -1476,8 +1532,8 @@ Cohesion: 0.13
 Nodes (14): RcaModelBoundary, ModelEndpoint, IPAddress, IReadOnlyList, Uri, RcaModelBoundaryStamp, RcaModelBoundaryRecordTests, DateTimeOffset (+6 more)
 
 ### Community 169 - "EvidenceResponses.cs"
-Cohesion: 0.15
-Nodes (20): RcaAdmissionResponse, RcaBundleListResponse, RcaBundleSummaryResponse, RcaDrilldownFilterResponse, RcaDrilldownResponse, RcaFindingResponse, RcaReasoningActionResponse, RcaReasoningFindingResponse (+12 more)
+Cohesion: 0.13
+Nodes (23): SentenceGateOutcome, RcaAdmissionResponse, RcaBundleListResponse, RcaBundleSummaryResponse, RcaDrilldownFilterResponse, RcaDrilldownResponse, RcaFindingResponse, RcaReasoningActionResponse (+15 more)
 
 ### Community 170 - "ClickHouseEventSink"
 Cohesion: 0.06
@@ -1488,40 +1544,40 @@ Cohesion: 0.13
 Nodes (12): IngestGateway, CancellationToken, ChannelWriter, ILogger, IReadOnlyList, ReadOnlyMemory, Task, TimeProvider (+4 more)
 
 ### Community 172 - ".Load"
-Cohesion: 0.27
+Cohesion: 0.25
 Nodes (3): ParserYamlLoaderTests, Fact, string
 
-### Community 173 - ".Published_capacity_links_to_three_existing_pass_records"
-Cohesion: 0.19
-Nodes (10): CapacityJson, CapacityRunStore, ICapacityRunStore, Action, CancellationToken, JsonSerializerOptions, Task, CapacityPersistenceTests (+2 more)
+### Community 173 - ".Annotate"
+Cohesion: 0.10
+Nodes (8): DiscoveryItem, DiscoveryQueue, Channel, ChannelReader, DiscoveryStats, long, DiscoveryQueueTests, Fact
 
-### Community 174 - "Row"
-Cohesion: 0.06
-Nodes (40): ProductReadTool, Row, AlertRulesTool, Payload, Row, CancellationToken, Guid, int (+32 more)
+### Community 174 - "StepEvidenceView"
+Cohesion: 0.12
+Nodes (15): ScenarioOutputDocument, ScenarioStep, PromptContentLevel, IScenarioOutputSchema, ScenarioPromptBuilder, ScenarioStepPrompt, IReadOnlyList, StepEvidenceView (+7 more)
 
 ### Community 175 - "GoldenSeedClickHouseTests"
 Cohesion: 0.25
 Nodes (8): GoldenSeedClickHouseTests, DateTimeOffset, Dictionary, Fact, string, Task, Trait, ValueTask
 
-### Community 176 - "AlertSchedulerWorker"
-Cohesion: 0.13
-Nodes (16): Outcome, Rule, AlertingOptions, string, TimeSpan, AlertSchedulerWorker, AlertTurn, CancellationToken (+8 more)
+### Community 176 - "McpListenerBoundaryCheck"
+Cohesion: 0.14
+Nodes (15): IHostedLifecycleService, McpListenerAddress, McpListenerBoundaryCheck, McpListenerBoundaryGate, McpListenerBoundaryOutcome, McpListenerBoundaryVerdict, CancellationToken, IConfiguration (+7 more)
 
 ### Community 177 - "FleetTests"
-Cohesion: 0.14
-Nodes (15): FleetDefinition, FleetDevice, FleetDeviceEntry, FleetIdpMapping, FleetIdpMappingEntry, FleetLoadResult, FleetStore, int (+7 more)
+Cohesion: 0.12
+Nodes (19): FleetDefinition, FleetDevice, FleetDeviceEntry, FleetIdpMapping, FleetIdpMappingEntry, FleetLoadResult, FleetStore, int (+11 more)
 
 ### Community 178 - "TimeSpan"
 Cohesion: 0.12
 Nodes (9): From, Burst, Fixed, Max, PaceProfile, Ramp, Soak, TimeSpan (+1 more)
 
 ### Community 179 - "ChangesEndpoints.cs"
-Cohesion: 0.17
+Cohesion: 0.18
 Nodes (13): ChangeResponse, ChangeSearchResponse, ChangesEndpoints, ChangeWriteRequest, ChangeWriteResponse, CancellationToken, DateTimeOffset, Guid (+5 more)
 
 ### Community 180 - "AlertRuleService"
-Cohesion: 0.21
-Nodes (12): AlertRuleInput, AlertRuleResult, AlertRuleService, TriggerScope, CancellationToken, Guid, IDbContextFactory, int (+4 more)
+Cohesion: 0.17
+Nodes (15): AlertingOptions, string, TimeSpan, AlertRuleInput, AlertRuleResult, AlertRuleService, TriggerScope, CancellationToken (+7 more)
 
 ### Community 181 - "F4 · Kota neyi koruyor?"
 Cohesion: 0.10
@@ -1532,7 +1588,7 @@ Cohesion: 0.08
 Nodes (24): 10.1 · Sapma: lift genişlemedi, **ayrı bir tür sağlayıcısı** doğdu, 10.2 · Sapma: `IScopedQuery`'e **hiç metot eklenmedi**, 10.3 · Muafiyet mekanizması — belgedeki tereddüt 2'nin cevabı, 10.4 · Altın kümeye *"hangi tür eksikti"* alanı **eklenmedi** — gerekçe, 10 · S1 uygulandı — ve iki yerde plandan saptı, 11 · Tereddütler, 1 · Ölçülen iddia: "sözleşme beş türü de bugünden tanıyor", 2 · "Yok" olanın bugünkü bedeli: her raporda üç satır (+16 more)
 
 ### Community 183 - "ParserQuarantine"
-Cohesion: 0.21
+Cohesion: 0.19
 Nodes (9): ParserQuarantine, QuarantineEntry, ConcurrentDictionary, DateTimeOffset, IReadOnlyCollection, TimeProvider, TimeSpan, ParserQuarantineTests (+1 more)
 
 ### Community 184 - ".SeedAsync"
@@ -1544,16 +1600,16 @@ Cohesion: 0.24
 Nodes (5): ParserTestRunner, ParserTestRunnerTests, Fact, InlineData, Theory
 
 ### Community 186 - ".StartAsync"
-Cohesion: 0.09
-Nodes (27): GoldenReviewEvidenceKindsIntegrationTests, BundleId, CancellationToken, Fact, Guid, InlineData, Path, Task (+19 more)
+Cohesion: 0.21
+Nodes (12): HttpClient, HttpMethod, HttpResponseMessage, SymmetricSecurityKey, TelemetryApiHost, Action, CancellationToken, IDbContextFactory (+4 more)
 
 ### Community 187 - "WriteAheadLogTests"
-Cohesion: 0.33
-Nodes (6): WriteAheadLogTests, Action, Fact, ReadOnlyMemory, string, Task
+Cohesion: 0.26
+Nodes (8): IEnumerable, ReadOnlyMemory, WriteAheadLogTests, Action, Fact, ReadOnlyMemory, string, Task
 
 ### Community 188 - "Bizigo.Storage.Raw"
-Cohesion: 0.04
-Nodes (17): Bizigo.Ingest.Pipeline, Bizigo.Ingest.Otlp, Bizigo.Storage.Raw, Bizigo.Ingest, Bizigo.Ingest.Text, Bizigo.Ingest.Wal, OtlpContentTypes, string (+9 more)
+Cohesion: 0.06
+Nodes (15): Bizigo.Ingest.Pipeline, Bizigo.Ingest.Otlp, Bizigo.Storage.Raw, Bizigo.Ingest.Text, Bizigo.Ingest.Wal, OtlpContentTypes, string, SignalIngestStatus (+7 more)
 
 ### Community 189 - "Senaryo plugin formatı: çivilenebilir mi, nereye kadar"
 Cohesion: 0.10
@@ -1584,8 +1640,8 @@ Cohesion: 0.12
 Nodes (17): 1 · Ticket ne yaptı, 2.1 Tek gerçek `core`; OCSF ve OTel türetiliyor, 2.2 Görünümlere kapsam filtresi gömülmedi, 2.3 `raw_ref` = arşiv ön eki — reddedilen alternatifler **kayıtta var**, 2.4 Zaman: değer ve kaynağı birlikte dönüyor, 2.5 `attrs` içine ne giriyor, ve neden tek anahtarda, 2.6 Eşleme tabloları veri, kod değil, 2.7 IP normalizasyonu — ve bilinçli bir birleştirme (+9 more)
 
 ### Community 196 - "GrokPatternLibrary"
-Cohesion: 0.15
-Nodes (9): FrozenDictionary, LineNumber, Name, Pattern, IReadOnlyDictionary, GrokPatternLibrary, IEnumerable, KeyValuePair (+1 more)
+Cohesion: 0.17
+Nodes (8): FrozenDictionary, LineNumber, Name, Pattern, IReadOnlyDictionary, GrokPatternLibrary, IEnumerable, KeyValuePair
 
 ### Community 197 - "KeycloakRealmTests"
 Cohesion: 0.17
@@ -1604,20 +1660,20 @@ Cohesion: 0.08
 Nodes (30): DbContext, DbSet, IDbContextFactory, DbContextOptions, Factory, SingleContextFactory, DbContextOptions, ControlPlaneDbContext (+22 more)
 
 ### Community 201 - ".Compile"
-Cohesion: 0.26
+Cohesion: 0.24
 Nodes (6): IReadOnlyList, RedosTests, Fact, MemberData, Theory, TheoryData
 
 ### Community 202 - ".GatherAsync"
-Cohesion: 0.37
-Nodes (5): EvidenceCollectorTests, CancellationToken, DateTimeOffset, Fact, Task
+Cohesion: 0.21
+Nodes (12): EvidenceCollector, EvidenceReport, IEnumerable, ILogger, IReadOnlyList, TimeSpan, EvidenceCollectorTests, AccessScope (+4 more)
 
 ### Community 203 - "TelemetryDtos.cs"
-Cohesion: 0.25
-Nodes (22): TelemetryAnyValueDto, TelemetryAttributeDto, TelemetryBucketsDto, TelemetryCountDto, TelemetryDoubleDto, TelemetryExemplarDto, TelemetryIntegerDto, TelemetryMetricDto (+14 more)
+Cohesion: 0.09
+Nodes (38): TelemetryAnyValueDto, TelemetryAttributeDto, TelemetryBucketsDto, TelemetryCountDto, TelemetryDoubleDto, TelemetryExemplarDto, TelemetryIntegerDto, TelemetryMetricDto (+30 more)
 
 ### Community 204 - ".RunAsync"
-Cohesion: 0.11
-Nodes (19): ConstraintGateTests, FakeModel, LoopbackResolver, PartialTokenModel, ReasoningHarness, ReasoningPreflightTests, ReasoningTokenAccountingTests, SentenceBindingGateTests (+11 more)
+Cohesion: 0.16
+Nodes (12): ConstraintGateTests, FakeModel, ReasoningHarness, ReasoningPreflightTests, ReasoningTokenAccountingTests, SentenceBindingGateTests, DateTimeOffset, Fact (+4 more)
 
 ### Community 205 - "AlertingTests"
 Cohesion: 0.20
@@ -1627,49 +1683,49 @@ Nodes (9): AlertingTests, CancellationToken, DateTimeOffset, Fact, IDbContextFac
 Cohesion: 0.15
 Nodes (13): 1 · Beş faz, neredeyiz, 2 · F3 — dokuzu kapandı, ikisi açık, 3 · Kapanan ticket'ların taşıdığı açıklar, 4 · F1'den devreden borç, 5 · Koordinatörde biriken canlı doğrulamalar, 6 · F4'ün verilmiş tek kararı, 7 · FS — 2/7, 8 · Bugünün ölçülmüş hâli (+5 more)
 
-### Community 207 - ".ClickHouseAsync"
-Cohesion: 0.11
-Nodes (16): CapacityEmitterIntegrationTests, Fact, Task, Trait, DevStackSetup, CancellationToken, Task, McpStdioProductGraphTests (+8 more)
+### Community 207 - ".Decode"
+Cohesion: 0.27
+Nodes (4): IReadOnlyList, OtlpLogsDecoderTests, DateTimeOffset, Fact
 
 ### Community 208 - ".ToolTypes"
-Cohesion: 0.15
-Nodes (11): McpToolDiscovery, Assembly, IEnumerable, IReadOnlyList, IServiceProvider, Type, McpProductScopeGateTests, Assembly (+3 more)
+Cohesion: 0.10
+Nodes (16): Carriers, McpToolDiscovery, Assembly, IEnumerable, IReadOnlyList, IServiceProvider, Type, McpProductScopeGateTests (+8 more)
 
 ### Community 209 - "CapacityProcessOwnership"
 Cohesion: 0.12
-Nodes (17): BasicLimits, DefaultDllImportSearchPaths, DllImport, ExtendedLimits, IntPtr, MarshalAs, nuint, SafeFileHandle (+9 more)
+Nodes (16): BasicLimits, DefaultDllImportSearchPaths, DllImport, ExtendedLimits, IntPtr, MarshalAs, nuint, SafeFileHandle (+8 more)
 
 ### Community 210 - "http"
 Cohesion: 0.13
 Nodes (15): ASPNETCORE_ENVIRONMENT, applicationUrl, commandName, dotnetRunMessages, environmentVariables, launchBrowser, applicationUrl, commandName (+7 more)
 
-### Community 211 - "LegacySignalReplayTests"
-Cohesion: 0.14
-Nodes (15): ISignalCheckpoints, SignalCheckpoints, SignalOptions, CancellationToken, string, Task, TimeSpan, Fault (+7 more)
+### Community 211 - "IDisposable"
+Cohesion: 0.22
+Nodes (11): IDisposable, InMemoryControlPlaneFactory, DbContextOptions, Fault, LegacySignalReplayTests, CancellationToken, Fact, InlineData (+3 more)
 
-### Community 212 - ".CaptureAsync"
-Cohesion: 0.21
-Nodes (13): CiscoAsaCollector, ConfigCapture, DeviceConfigService, FortiGateCollector, IConfigCollector, MikroTikCollector, CancellationToken, Dictionary (+5 more)
+### Community 212 - "DeviceConfigService"
+Cohesion: 0.26
+Nodes (11): CiscoAsaCollector, ConfigCapture, DeviceConfigService, FortiGateCollector, IConfigCollector, MikroTikCollector, Dictionary, IEnumerable (+3 more)
 
 ### Community 213 - "McpReadToolTests"
-Cohesion: 0.14
-Nodes (10): McpReadToolFixtures, IServiceScopeFactory, McpReadToolTests, CancellationToken, EvaluationResults, Fact, Guid, InlineData (+2 more)
+Cohesion: 0.11
+Nodes (14): McpReadToolFixtures, IServiceScopeFactory, McpReadToolTests, CancellationToken, EvaluationResults, Fact, Guid, IEnumerable (+6 more)
 
 ### Community 214 - "T32 → T33: üç açık soru"
 Cohesion: 0.22
 Nodes (5): 1 · `remedy`'nin üç değeri de **birinin yapabileceği bir işi** adlandırıyor, 2 · T33'ün kriteri iki değişiklik olayından yalnızca birini kapsıyor, 3 · `failed` T33 ekranında görünmemeli, ve gated sayısı tek kaynaktan gelmeli, Bir de durum sayısı: T33'te **üç** var, iki değil, T32 → T33: üç açık soru
 
 ### Community 215 - "SignalDurabilityTests"
-Cohesion: 0.17
-Nodes (13): BrokenFlush, FailSecondPut, FlushGate, SignalDurabilityTests, CancellationToken, Fact, FileStream, int (+5 more)
+Cohesion: 0.13
+Nodes (18): FileWalDurability, IWalDurability, CancellationToken, FileStream, ValueTask, BrokenFlush, FailSecondPut, FlushGate (+10 more)
 
 ### Community 216 - "TelemetryRecord"
 Cohesion: 0.08
 Nodes (26): ITelemetryOwnerResolver, ITelemetrySink, TelemetryRecord, CancellationToken, Guid, IReadOnlyList, JsonElement, Task (+18 more)
 
 ### Community 217 - "McpComplianceTests"
-Cohesion: 0.05
-Nodes (40): IMcpServerBuilder, JsonSchema, McpClientOptions, DataBoundary, BizigoMcpSetup, IConfiguration, IServiceCollection, string (+32 more)
+Cohesion: 0.07
+Nodes (29): JsonSchema, McpClientOptions, DataBoundary, McpBoundaryDeclaration, McpBoundaryGate, McpSurface, McpSurfaces, string (+21 more)
 
 ### Community 218 - "BizigoV1PatternTests"
 Cohesion: 0.31
@@ -1677,7 +1733,7 @@ Nodes (4): BizigoV1PatternTests, Fact, InlineData, Theory
 
 ### Community 219 - "ScopeCoverageTests"
 Cohesion: 0.22
-Nodes (8): ScopeCoverageTests, Dictionary, Fact, GeneratedRegex, int, IReadOnlyList, IReadOnlySet, Regex
+Nodes (8): GeneratedRegex, Regex, ScopeCoverageTests, Dictionary, Fact, int, IReadOnlyList, IReadOnlySet
 
 ### Community 220 - "Bizigo Log Analyzer — çalışma protokolü"
 Cohesion: 0.08
@@ -1716,16 +1772,16 @@ Cohesion: 0.12
 Nodes (18): SeedCommandHandlers, SeedGoldenRequest, CancellationToken, IReadOnlyDictionary, IReadOnlyList, Task, GoldenSampleLine, GoldenSampleSeeder (+10 more)
 
 ### Community 229 - ".Reject"
-Cohesion: 0.13
+Cohesion: 0.14
 Nodes (12): ScenarioDefinition, Scenarios, ScenarioSurface, IEnumerable, IReadOnlyList, string, ScenarioEngineTests, Fact (+4 more)
 
 ### Community 230 - "ProductDiscovery"
 Cohesion: 0.23
 Nodes (12): ProductDiscovery, ProductProject, ProductSurface, Assembly, Func, IEnumerable, IReadOnlyList, IReadOnlySet (+4 more)
 
-### Community 231 - "StepEvidenceView"
-Cohesion: 0.07
-Nodes (30): PromptContentLevel, EvidenceIdsMustExistConstraint, IScenarioConstraint, ScenarioConstraintGate, ScenarioConstraintRegistry, Dictionary, IReadOnlyCollection, IReadOnlyList (+22 more)
+### Community 231 - ".Check"
+Cohesion: 0.11
+Nodes (17): EvidenceIdsMustExistConstraint, IScenarioConstraint, ScenarioConstraintGate, ScenarioConstraintRegistry, Dictionary, IReadOnlyCollection, IReadOnlyList, string (+9 more)
 
 ### Community 232 - "AlertClosureTests"
 Cohesion: 0.50
@@ -1748,20 +1804,20 @@ Cohesion: 0.15
 Nodes (10): CapacityRunManifest, IReadOnlyList, ReadOnlySpan, GeneratorAttainment, GeneratorVerdict, double, TimeSpan, CapacityManifestTests (+2 more)
 
 ### Community 237 - "DevStackFixture"
-Cohesion: 0.13
-Nodes (17): ICollectionFixture, INetwork, PostgreSqlContainer, DevStackCollection, DevStackFixture, AmazonS3Client, CancellationToken, IContainer (+9 more)
+Cohesion: 0.09
+Nodes (25): ICollectionFixture, INetwork, PostgreSqlContainer, AppliedMigration, ClickHouseMigrator, MigrationResult, CancellationToken, ClickHouseConnection (+17 more)
 
 ### Community 238 - "McpQueryCancellationTests"
-Cohesion: 0.08
-Nodes (27): IAsyncDisposable, IdentityStampingTransport, IntegrationScopeResolver, McpIntegrationSession, CancellationToken, CancellationTokenSource, Channel, ChannelReader (+19 more)
+Cohesion: 0.18
+Nodes (11): McpQueryCancellationTests, CancellationToken, DateTimeOffset, Dictionary, Fact, int, ServiceProvider, Task (+3 more)
 
 ### Community 239 - ".Build"
-Cohesion: 0.29
+Cohesion: 0.26
 Nodes (6): Breaker, SidecarCircuitBreakerTests, DateTimeOffset, Fact, FakeTimeProvider, Time
 
 ### Community 240 - "CommandTool"
-Cohesion: 0.08
-Nodes (30): CommandDescriptor, DecisionPayload, FailedTestPayload, FilePayload, LinePayload, ParserCoverageOutcome, ParserLintOutcome, ParserTestOutcome (+22 more)
+Cohesion: 0.12
+Nodes (23): CommandDescriptor, FailedTestPayload, FilePayload, LinePayload, ParserCoverageOutcome, ParserLintOutcome, ParserTestOutcome, RedosPayload (+15 more)
 
 ### Community 241 - "T11 — Replay ve kuru koşu fark raporu"
 Cohesion: 0.15
@@ -1783,37 +1839,37 @@ Nodes (19): Alan kapsamı ölçümü (T39), Aracın kendi sessiz yalanı — ve 
 Cohesion: 0.30
 Nodes (9): SidecarClientTests, StubHandler, CancellationToken, Fact, Func, HttpRequestMessage, HttpResponseMessage, HttpStatusCode (+1 more)
 
-### Community 246 - "RcaRunsTool"
-Cohesion: 0.10
-Nodes (23): RcaRunsResource, CancellationToken, IDbContextFactory, McpResourceBody, McpResourceRead, McpToolResult, string, ValueTask (+15 more)
+### Community 246 - "Row"
+Cohesion: 0.06
+Nodes (40): ProductReadTool, Row, AlertRulesTool, Payload, Row, CancellationToken, Guid, int (+32 more)
 
 ### Community 247 - "health-ready.test.ts"
 Cohesion: 0.11
-Nodes (14): dynamic, GET(), SessionStoreReadiness, CONFIGURATION_INVALID, defaultProbes(), reachable(), readiness(), ReadinessCheck (+6 more)
+Nodes (15): dynamic, GET(), SessionStoreReadiness, useSessionStore(), CONFIGURATION_INVALID, defaultProbes(), reachable(), readiness() (+7 more)
 
 ### Community 248 - "ScenarioEngineFlowTests"
 Cohesion: 0.38
 Nodes (5): ScenarioEngineFlowTests, Fact, string, Task, Trait
 
 ### Community 249 - ".Measure"
-Cohesion: 0.16
-Nodes (9): EventFieldKind, EventFieldKinds, Dictionary, IReadOnlyCollection, IReadOnlyList, FieldCoverageTests, Fact, IReadOnlyDictionary (+1 more)
+Cohesion: 0.30
+Nodes (4): FieldCoverageTests, Fact, IReadOnlyDictionary, IReadOnlyList
 
 ### Community 250 - "Captured"
-Cohesion: 0.12
-Nodes (15): EventId, IHttpClientFactory, ILoggerProvider, LogLevel, Captured, CapturingLoggerProvider, StubHandler, StubHttpClientFactory (+7 more)
+Cohesion: 0.10
+Nodes (17): EventId, IHttpClientFactory, ILoggerProvider, LogLevel, Captured, CapturingLoggerProvider, StubHandler, StubHttpClientFactory (+9 more)
 
 ### Community 251 - "oidc.ts"
 Cohesion: 0.13
-Nodes (32): dynamic, GET(), dynamic, failure(), GET(), ApiErrorBody, FORWARDED_REQUEST_HEADERS, FORWARDED_RESPONSE_HEADERS (+24 more)
+Nodes (30): dynamic, GET(), dynamic, POST(), dynamic, failure(), GET(), sessionIdFromHeaders() (+22 more)
 
 ### Community 252 - "CiscoAsaAddressPatternTests"
 Cohesion: 0.23
 Nodes (6): CiscoAsaAddressPatternTests, Fact, IEnumerable, InlineData, KeyValuePair, Theory
 
-### Community 253 - "NotificationChannelService"
-Cohesion: 0.09
-Nodes (27): Ok, ChannelInput, ChannelSaveResult, NotificationChannelService, CancellationToken, Error, Guid, IDbContextFactory (+19 more)
+### Community 253 - "ChannelSettings"
+Cohesion: 0.29
+Nodes (5): ChannelInput, ChannelSettings, IReadOnlyDictionary, IReadOnlyList, JsonSerializerOptions
 
 ### Community 254 - "ui-consistency.test.ts"
 Cohesion: 0.17
@@ -1823,25 +1879,25 @@ Nodes (7): ALL_FILES, APP, CODE, hasLoadingState(), read(), SRC, STYLES
 Cohesion: 0.17
 Nodes (12): Açıkta kalanlar, Bugün duran bekçiler, Dayanıklılık sınırı bilerek WAL'da, Doğrulanmadan segment silinmiyor, F1'de kırılan ve burada düzelen şey, Kodda görünen kararlar, Manifest bu ticket'ın en değerli parçası, Ne yaptı (+4 more)
 
-### Community 256 - ".Decode"
-Cohesion: 0.27
-Nodes (4): IReadOnlyList, OtlpLogsDecoderTests, DateTimeOffset, Fact
+### Community 256 - "TelemetryDbFixture"
+Cohesion: 0.10
+Nodes (18): AnyValue, ByteString, FakeTimeProvider, HistoricalTelemetryOwners, InstrumentationScope, KeyValue, RawStoreOptions, Resource (+10 more)
 
 ### Community 257 - "T05 — Parser motoru: YAML şema, grok derleyici, CLI"
 Cohesion: 0.17
 Nodes (12): Amaç, Doğrulanan kabul kriterleri, Dışında, İçinde, Kabul kriterleri, Kapsam, Karara bağlanan noktalar, Notlar (+4 more)
 
-### Community 258 - "EvidenceBundleResource"
-Cohesion: 0.33
-Nodes (7): EvidenceBundleResource, CancellationToken, IServiceScopeFactory, McpResourceBody, McpResourceRead, string, ValueTask
+### Community 258 - "ProductResource"
+Cohesion: 0.16
+Nodes (14): BizigoMcpResource, EvidenceBundleResource, CancellationToken, IServiceScopeFactory, McpResourceBody, McpResourceRead, string, ValueTask (+6 more)
 
 ### Community 259 - "GoldenReviewTests"
 Cohesion: 0.22
 Nodes (8): GoldenReviewTests, DateTimeOffset, Fact, FakeTimeProvider, Guid, InlineData, Task, Theory
 
 ### Community 260 - "CompiledParser"
-Cohesion: 0.10
-Nodes (21): ParsersEndpoints, IEndpointRouteBuilder, IResult, CatalogCoverage, CatalogCoverageCache, ParserCoverage, DateTimeOffset, IReadOnlyList (+13 more)
+Cohesion: 0.13
+Nodes (18): CatalogCoverage, CatalogCoverageCache, ParserCoverage, DateTimeOffset, IReadOnlyList, Lock, TimeProvider, CatalogLoadReport (+10 more)
 
 ### Community 261 - "McpRedactionGateTests"
 Cohesion: 0.21
@@ -1852,12 +1908,12 @@ Cohesion: 0.16
 Nodes (7): RawObjectKey, DateTimeOffset, int, string, RawObjectKeyTests, InlineData, Theory
 
 ### Community 263 - "RcaReportDocument"
-Cohesion: 0.06
-Nodes (35): RcaReportEntity, DateTimeOffset, Guid, RcaReportResource, CancellationToken, IServiceScopeFactory, McpResourceBody, McpResourceRead (+27 more)
+Cohesion: 0.08
+Nodes (28): RcaReportEntity, DateTimeOffset, Guid, RcaReportAction, RcaReportDocument, RcaReportFinding, RcaReportModelInfo, Guid (+20 more)
 
-### Community 264 - "DispatcherTests"
-Cohesion: 0.26
-Nodes (4): Stats, DispatcherTests, Catalog, Fact
+### Community 264 - "McpIdentityTransport"
+Cohesion: 0.07
+Nodes (26): IAsyncDisposable, ITransport, McpIdentityTransport, CancellationToken, Channel, ChannelReader, ClaimsPrincipal, Func (+18 more)
 
 ### Community 265 - "Eşleşmeyen kuralın teşhisi — üç eksen"
 Cohesion: 0.11
@@ -1869,7 +1925,7 @@ Nodes (11): Alarm motoru (K32), Arayüzü bağlayan iki ölçüm, Change feed (K
 
 ### Community 267 - "Bizigo.ControlPlane"
 Cohesion: 0.06
-Nodes (8): Bizigo.Alerting, Bizigo.ControlPlane, Bizigo.Rca, Bizigo.Api.Rca, Bizigo.Alerting.Notifications, AlertingServiceCollectionExtensions, IConfiguration, IServiceCollection
+Nodes (7): Bizigo.Alerting, Bizigo.ControlPlane, Bizigo.Rca, Bizigo.Alerting.Notifications, AlertingServiceCollectionExtensions, IConfiguration, IServiceCollection
 
 ### Community 268 - "T29 — `signature_hash` sözleşmesi ve sıcak yol maliyeti"
 Cohesion: 0.10
@@ -1883,9 +1939,9 @@ Nodes (10): 1 · Çivili değişmez ve nerede sınandığı, 2 · Kapattığım 
 Cohesion: 0.18
 Nodes (10): Amaç, Dışında, İçinde, Kabul kriterleri, Kabul kriterlerinin karşılığı, Kapsam, Kapsam kontrolü iki yazma ucuna eklendi, Notlar (+2 more)
 
-### Community 271 - ".GetFirstSeenSignaturesAsync"
-Cohesion: 0.29
-Nodes (10): Parameters, CorrelationReader, CancellationToken, DateTimeOffset, DbDataReader, Dictionary, Func, IReadOnlyList (+2 more)
+### Community 271 - "api/client.ts"
+Cohesion: 0.13
+Nodes (26): GET(), dynamic, AuthMe, EventRaw, EventSearchResult, request(), SourceList, SourceUpsertBody (+18 more)
 
 ### Community 272 - "bizigo_pipeline.py"
 Cohesion: 0.18
@@ -1901,15 +1957,15 @@ Nodes (5): Exception, OtlpDecodeException, McpToolArgumentException, GrokCompila
 
 ### Community 275 - "test_cost_tool.py"
 Cohesion: 0.07
-Nodes (52): _load_pipeline(), T31'in pipeline modülü. Yoksa **atıyor**, sessizce boş dönmüyor., _append_record(), _default_compiler(), _format(), _load_average(), main(), _mapped_fields() (+44 more)
+Nodes (48): _append_record(), _format(), _load_average(), main(), _mapped_fields(), measure(), Measurement, Path (+40 more)
 
 ### Community 276 - "Graphify — demo: bu araç bu depoda ne yapıyor"
 Cohesion: 0.09
 Nodes (22): 1 · Grafın içinde ne var, 2.1 · "İkinci kopya yazmadan önce: `SecretProtector`'ı kim kullanıyor?", 2.2 · "`EventWriter.cs`'e dokunuyorum — ne kırılır?", 2.3 · "Grok derleyicisi ile ClickHouse yazıcısı arasında bağ var mı?", 2.4 · "Olay saklama süresi (TTL) nerede uygulanıyor?", 2.5 · "`AccessScope`'u hangi doküman anlatıyor?", 2.6 · "S02'nin syslog yayıcısını kim çağırıyor?", 2 · Altı soru, altı koşum (+14 more)
 
 ### Community 277 - ".From"
-Cohesion: 0.14
-Nodes (14): AuditRecord, ControlPlaneAuditSink, IAuditSink, NullAuditSink, CancellationToken, Guid, IDbContextFactory, IReadOnlyList (+6 more)
+Cohesion: 0.06
+Nodes (49): ChangeEventReader, CorrelationReader, EventReader, EventWriter, AuditRecord, ControlPlaneAuditSink, IAuditSink, NullAuditSink (+41 more)
 
 ### Community 278 - "NginxNumberPatternTests"
 Cohesion: 0.36
@@ -1932,20 +1988,20 @@ Cohesion: 0.09
 Nodes (22): 1 · Önce dürüst soru: graf mı, grep mi?, 2.1 · Depoya yeni gelen ajan: oryantasyon, 2.2 · Bir refactor'un etkisini ölçmek, 2.3 · Bir sözleşme değişikliğinin tüketicilerini bulmak, 2.4 · İki parça arasındaki bağı bulmak, 2.5 · Serbest soru sormak (`query`) ve bütçe tuzağı, 2 · İş akışları, 3 · Tazelik: graf ne zaman bayatlar (+14 more)
 
 ### Community 283 - ".ForGroups"
-Cohesion: 0.05
-Nodes (57): IEnumerable, MetricTraceEvidenceIntegrationTests, CancellationToken, Fact, Task, TelemetryBoundaryIntegrationTests, Fact, InlineData (+49 more)
+Cohesion: 0.11
+Nodes (22): ExportTraceServiceRequest, IEnumerable, TelemetryQueryIntegrationTests, CancellationToken, Fact, Task, Trait, TelemetryStorageIntegrationTests (+14 more)
 
-### Community 284 - "T42 — Model sağlayıcısı soyutlaması"
-Cohesion: 0.22
-Nodes (9): 1 · Sorulan soru ve verilen cevap, 2 · K6 bugüne kadar bir cümleydi, 3 · T41'in şartı nasıl uygulandı, 4 · Ölçüldü, 5 · Kapsam dışı ve sınırlar, 6 · Tereddüt, Kapının tutamadıkları — yazılı olması şart, Kırmızı yanabildiği ölçüldü — sekiz kusur, hepsi geri alındı (+1 more)
+### Community 284 - ".ExecuteAsync"
+Cohesion: 0.08
+Nodes (28): SendPayload, DeviceSilenceTool, Payload, DateTimeOffset, JsonElement, SimulatorMcpContext, string, Payload (+20 more)
 
 ### Community 285 - "OtlpTelemetryDecoderTests"
 Cohesion: 0.10
-Nodes (20): Metric, OtlpTelemetryDecoder, ByteString, Exemplar, ExportMetricsServiceRequest, ExportTraceServiceRequest, IEnumerable, ReadOnlyMemory (+12 more)
+Nodes (21): Metric, OtlpTelemetryDecoder, TelemetryDecode, Exemplar, ExportMetricsServiceRequest, ExportTraceServiceRequest, IEnumerable, IReadOnlyList (+13 more)
 
-### Community 286 - "errors.ts"
-Cohesion: 0.10
-Nodes (31): save(), ParserWorkbench(), save(), submit(), gather(), AlertRuleRequest, ApiError, ApiProblem (+23 more)
+### Community 286 - "DispatcherTests"
+Cohesion: 0.26
+Nodes (4): Stats, DispatcherTests, Catalog, Fact
 
 ### Community 287 - "SidecarClient"
 Cohesion: 0.24
@@ -1959,9 +2015,9 @@ Nodes (5): Range, JsonPathReader, JsonElement, List, ReadOnlySpan
 Cohesion: 0.33
 Nodes (10): PipelineArchiveHealth, PipelineDispatchHealth, PipelineHealthResponse, PipelineIngestHealth, PipelineInventoryHealth, PipelineParseHealth, PipelineSidecarHealth, PipelineWalHealth (+2 more)
 
-### Community 290 - ".System"
-Cohesion: 0.44
-Nodes (5): TopologyProviderTests, DateTimeOffset, Fact, IReadOnlyList, Task
+### Community 290 - ".HandleAsync"
+Cohesion: 0.11
+Nodes (16): BodyStatus, HttpResponse, MemoryStream, BodyRead, BodyStatus, LogsEndpoint, CancellationToken, HttpRequest (+8 more)
 
 ### Community 291 - "ChangeRetentionWorker"
 Cohesion: 0.17
@@ -2000,7 +2056,7 @@ Cohesion: 0.17
 Nodes (15): HttpMessageHandler, SahteHandler, ModelProviderTests, SahteHandler, TekAdresCozucu, CancellationToken, Fact, HttpRequestMessage (+7 more)
 
 ### Community 300 - "T15 — Log arama ekranı"
-Cohesion: 0.20
+Cohesion: 0.22
 Nodes (9): Amaç, Açık kalan: kayıtlı arama sunucuda değil, Dışında, İçinde, Kabul kriterleri, Kapsam, Notlar, Sevk edilen (+1 more)
 
 ### Community 301 - "ScenarioCatalogContractTests"
@@ -2012,28 +2068,28 @@ Cohesion: 0.22
 Nodes (9): Amaç, Dışında, Engel — Docker Desktop disk sınırı, İçinde, Kabul kriterleri, Kapsam, .NET sürümü — çözüldü, Notlar (+1 more)
 
 ### Community 303 - ".FindNestedQuantifiers"
-Cohesion: 0.39
-Nodes (4): Fragment, Position, RedosLinter, IEnumerable
+Cohesion: 0.27
+Nodes (6): Fragment, Position, RedosFinding, RedosLinter, RedosSeverity, IEnumerable
 
 ### Community 304 - "Bizigo.ControlPlane.Migrations"
 Cohesion: 0.28
 Nodes (4): Bizigo.ControlPlane.Migrations, MigrationBuilder, Initial, ModelBuilder
 
-### Community 305 - ".MeasureAsync"
-Cohesion: 0.24
-Nodes (7): CancellationToken, Task, MetricTraceEvidenceContractTests, Fact, InlineData, Task, Theory
+### Community 305 - "MetricTraceEvidenceContractTests"
+Cohesion: 0.31
+Nodes (5): MetricTraceEvidenceContractTests, Fact, InlineData, Task, Theory
 
 ### Community 306 - "ChangeConnectorScheduler"
-Cohesion: 0.27
+Cohesion: 0.24
 Nodes (8): ChangeConnectorScheduler, CancellationToken, Dictionary, IDbContextFactory, IEnumerable, ILogger, Task, TimeProvider
 
-### Community 307 - "Task"
-Cohesion: 0.32
-Nodes (6): CancellationToken, ReadOnlyMemory, Task, KillAt, LegacyReplayHost, Objects
+### Community 307 - "ISignalCheckpoints"
+Cohesion: 0.10
+Nodes (18): CancellationToken, ReadOnlyMemory, Task, KillAt, LegacyReplayHost, Objects, ISignalCheckpoints, SignalCheckpoints (+10 more)
 
-### Community 308 - "ConnectorManager.tsx"
-Cohesion: 0.07
-Nodes (39): CHANGE_KINDS, ChangeFeed(), ChangeFeedProps, ManualChangeForm(), submit(), ManualChangeFormProps, TARGET_KINDS, ChangeRow (+31 more)
+### Community 308 - "describeError"
+Cohesion: 0.04
+Nodes (80): MaintenanceManager(), create(), remove(), toLocalInput(), ChannelManager(), edit(), remove(), save() (+72 more)
 
 ### Community 309 - "T41 — Prompt redaksiyon tabanı"
 Cohesion: 0.10
@@ -2060,16 +2116,20 @@ Cohesion: 0.15
 Nodes (13): 10 · Bekçiler: ne kırmızı yanacak, 11 · Bu belgenin bilmediği şey, 1 · Ölçülen boşluk, 2 · Neden ayrı ve **paralel** bir faz, 3 · Üç yüzey, üçü de kapsamda, 4 · Cihaz profili — **tek kaynak**, 5 · Üç sadakat seviyesi — hepsi, ama farklı işler için, 6 · Kapsam yayılımı — ekranın istediği şey (+5 more)
 
 ### Community 315 - "F1'in ölçülmemiş kalemleri"
-Cohesion: 0.11
-Nodes (16): Bu bir kusur değil — ama kriterin yanlış olması kusur, Bunun açtığı soru — cevaplanmadı, Düzeltilmiş kriter, F1'in kapsam kabul kriteri yanlış yazılmış, Kriterin hâli, Ve kimse ölçmedi, 1 · "**Her** olay ham baytına geri götürülebilir" — evrensel iddia, örneklem kanıtı, 2 · Çok dilliliğin "**aranır**" yarısı — bu turda bulundu (+8 more)
+Cohesion: 0.20
+Nodes (10): 1 · "**Her** olay ham baytına geri götürülebilir" — evrensel iddia, örneklem kanıtı, 2 · Çok dilliliğin "**aranır**" yarısı — bu turda bulundu, 3 · "7 günlük veri" — birim düzeltildi, **hacim** yorumu açık kaldı, 4 · Dayanıklılık — `kill -9` **taklit** ediliyor, depo kesintisi hiç ölçülmüyor, 5 · Arşiv bütünlüğü — M19'da **kapatıldı**, ama koşum bekliyor, 6 · Kapsam — kriter **üç yol** sayıyordu, yalnızca biri kapıdan geçiyor, F1'in ölçülmemiş kalemleri, Kalemlerin ortak şekli (+2 more)
 
-### Community 316 - "IRcaRunChangeListener"
-Cohesion: 0.17
-Nodes (11): IRcaRunChangeListener, RcaRunChange, CancellationToken, Guid, ValueTask, PatlayanDinleyici, SayanDinleyici, ValueTask (+3 more)
+### Community 316 - "bizigo_backend"
+Cohesion: 0.13
+Nodes (19): compile_rule(), CompiledRule, RuntimeError, Sigma → ClickHouse SQL derlemesi (F1 §9, T12 kapsamı yalnızca bu uç). **Sıcak…, Backend kurulu değil / import edilemiyor — 503., İstenen hedef derlenemiyor — 400. pySigma'nın kendi hataları da `ValueError`…, Sigma kuralını ClickHouse SQL'ine çevirir — **Bizigo eşlemesiyle**.…, SigmaBackendUnavailable (+11 more)
 
-### Community 318 - "AlertingStats"
-Cohesion: 0.09
-Nodes (21): AlertEvaluationContext, CancellationToken, ConcurrentDictionary, DateTimeOffset, Func, IReadOnlyList, Task, TimeProvider (+13 more)
+### Community 317 - "EvidenceBundleScopeTests"
+Cohesion: 0.35
+Nodes (3): AccessScope, EvidenceBundleScopeTests, Fact
+
+### Community 318 - "AlertRuleEntity"
+Cohesion: 0.08
+Nodes (29): Outcome, Rule, AlertEvaluator, AlertHit, AlertOutcome, CancellationToken, DateTimeOffset, ILogger (+21 more)
 
 ### Community 319 - "T16 — Olay detayı ve ham görünüm"
 Cohesion: 0.20
@@ -2080,12 +2140,12 @@ Cohesion: 0.25
 Nodes (7): Amaç, Dışında, İçinde, Kabul kriterleri, Kapsam, Notlar, T26 — Change: cihaz config fark tespiti
 
 ### Community 321 - "RcaScheduleWorkerTests"
-Cohesion: 0.16
-Nodes (14): RcaScheduleEntry, RcaScheduleOptions, DateTimeOffset, IList, string, TimeSpan, RcaScheduleWorkerTests, CancellationToken (+6 more)
+Cohesion: 0.14
+Nodes (16): Bizigo.Api.Rca, RcaScheduleEntry, RcaScheduleOptions, RcaScheduleTurn, DateTimeOffset, IList, string, TimeSpan (+8 more)
 
 ### Community 322 - "EvidenceBundleStorageTests"
-Cohesion: 0.25
-Nodes (7): EvidenceBundleStorageTests, DateTimeOffset, Fact, IDbContextFactory, Task, Trait, ValueTask
+Cohesion: 0.17
+Nodes (12): DateTimeOffset, DevStackFixture, EvidenceBundle, EvidenceBundleStore, Fact, InlineData, RcaWindow, Task (+4 more)
 
 ### Community 323 - "Kırmızı yanamayan sayı"
 Cohesion: 0.22
@@ -2236,7 +2296,7 @@ Cohesion: 0.28
 Nodes (9): EchoPayload, McpKeycloakIdentityTests, Fact, IDbContextFactory, IReadOnlyList, ScopeEchoTool, string, Task (+1 more)
 
 ### Community 361 - "GrokPropertyTests"
-Cohesion: 0.38
+Cohesion: 0.32
 Nodes (4): GrokPropertyTests, Fact, Random, string
 
 ### Community 363 - "nginx access log"
@@ -2247,9 +2307,9 @@ Nodes (5): Bilinen sınırlar, JSON parser'da iki adımlı ayrıştırma, Neden 
 Cohesion: 0.22
 Nodes (9): Ajanlar arası kesişim, Açık sorular, Birleştirme sırası, Bölünmenin ekseni "hangi paket" değil "konteyner gerekiyor mu", Kaynaklar, Paralel ajan koordinasyonu, Roller, Test bölünmesi — pazarlığa açık değil (+1 more)
 
-### Community 365 - "SimulatorProfileTests"
-Cohesion: 0.34
-Nodes (4): SimulatorProfileTests, Fact, IReadOnlyList, Task
+### Community 365 - "EventQuery"
+Cohesion: 0.18
+Nodes (19): ChangeQuery, EventCursor, EventHistogramQuery, EventPage, EventQuery, FieldFilter, FilterOperator, HistogramBucket (+11 more)
 
 ### Community 366 - "telemetry-wire-check.ts"
 Cohesion: 0.15
@@ -2281,15 +2341,15 @@ Nodes (4): `bizigo-v1` — lookaround'suz temel pattern seti, Kapsam, Neden, Sı
 
 ### Community 373 - "ControlPlaneDbContextModelSnapshot.cs"
 Cohesion: 0.40
-Nodes (3): ModelSnapshot, ControlPlaneDbContextModelSnapshot, ModelBuilder
+Nodes (3): ModelBuilder, ModelSnapshot, ControlPlaneDbContextModelSnapshot
 
 ### Community 374 - "T36 — Kanıt paketi ve deterministik rapor"
 Cohesion: 0.20
 Nodes (7): Amaç, Dışında, İçinde, Kabul kriterleri, Kapsam, Notlar, T36 — Kanıt paketi ve deterministik rapor
 
 ### Community 375 - "BizigoMcpTool"
-Cohesion: 0.09
-Nodes (22): CallToolRequestParams, McpServerTool, SimulatorTool, BizigoMcpTool, CallToolResult, CancellationToken, IReadOnlyList, JsonElement (+14 more)
+Cohesion: 0.10
+Nodes (18): CallToolRequestParams, McpServerTool, SimulatorTool, BizigoMcpTool, CallToolResult, CancellationToken, IReadOnlyList, JsonElement (+10 more)
 
 ### Community 376 - "Veri kaybedebilen bir depoyla tasarım"
 Cohesion: 0.29
@@ -2303,9 +2363,9 @@ Nodes (7): MeasurementCase, LiveModelQualityMeasurement, MeasurementCase, Fact, 
 Cohesion: 0.50
 Nodes (3): Bu görüntülerin yakaladığı, testlerin yakalayamadığı, Ne kanıtlıyor, ne kanıtlamıyor, T28 ekran görüntüleri
 
-### Community 379 - "ParserPublishGateTests"
-Cohesion: 0.47
-Nodes (3): ParserPublishGateTests, Fact, string
+### Community 379 - "NotificationChannelService"
+Cohesion: 0.12
+Nodes (22): Ok, ChannelSaveResult, NotificationChannelService, CancellationToken, Error, Guid, IDbContextFactory, IEnumerable (+14 more)
 
 ### Community 380 - "M04 — Ürünün okunması, tek kapsam kapısından"
 Cohesion: 0.15
@@ -2403,13 +2463,13 @@ Nodes (3): post-checkout script, GRAPHIFY_REBUILD_LOG, PYTHONHASHSEED
 Cohesion: 0.20
 Nodes (10): Ama bir liste kaldırmak, listenin tek olduğunu göstermiyor, Açık sorular, Dördüncü kılık: bekçisi olmayan liste — **körleşecek bir şey bile yok**, Elle tutulan liste bekçiyi körleştirir, Kardeş kalıp: doğrulama listesinden düşen kapı, Kaynaklar, Çözüm hep aynı yöne gitti, Ölçülen tekrar sayısı: beş (+2 more)
 
-### Community 416 - "TelemetryWire"
-Cohesion: 0.42
-Nodes (3): TelemetryWire, IEnumerable, JsonElement
+### Community 416 - "SignalArchiveBoundaryTests"
+Cohesion: 0.20
+Nodes (9): BrokenObjects, SignalArchiveBoundaryTests, CancellationToken, Fact, InlineData, ReadOnlyMemory, string, Task (+1 more)
 
-### Community 419 - "bff/[...path]/route.ts"
-Cohesion: 0.17
-Nodes (14): DELETE, dynamic, GET, handle(), joinPath(), PATCH, POST, PUT (+6 more)
+### Community 419 - "proxy.ts"
+Cohesion: 0.10
+Nodes (23): DELETE, dynamic, GET, handle(), joinPath(), PATCH, POST, PUT (+15 more)
 
 ### Community 420 - "Bekçiyi kırmızı yakmak"
 Cohesion: 0.12
@@ -2420,12 +2480,12 @@ Cohesion: 0.25
 Nodes (8): Açık sorular, Başka bir kural buna yaslanıyor — ve bunu söylüyor, Bir tasarım belgesinde "zaten" — iki kez ölçüldü, Kayda geçmiş örnekler, Kaynaklar, Ortak şekil, Sessiz yanlış davranış, Uygulanabilir kural
 
 ### Community 425 - ".ControlPlaneAsync"
-Cohesion: 0.10
-Nodes (23): IDbContextFactory, OtlpTelemetryIntegrationTests, InlineData, Task, Theory, Trait, ValueTask, Admin (+15 more)
+Cohesion: 0.17
+Nodes (15): IDbContextFactory, Admin, SourceOwnershipHistoryIntegrationTests, CancellationToken, ClaimsPrincipal, Fact, InlineData, IResult (+7 more)
 
-### Community 426 - "ContradictingEvidenceVerdict"
-Cohesion: 0.26
-Nodes (7): ReviewWire, ContradictingEvidenceVerdict, ReviewWireTests, Dictionary, Fact, InlineData, Theory
+### Community 426 - "GoldenReviewEntity"
+Cohesion: 0.11
+Nodes (15): ReviewWire, ContradictingEvidenceVerdict, GoldenReviewEntity, ReviewVerdict, DateTimeOffset, Guid, int, RcaReviewWireTests (+7 more)
 
 ### Community 427 - "S02 — Syslog basıcı"
 Cohesion: 0.22
@@ -2451,9 +2511,9 @@ Nodes (9): 1 · Faz durumu, 2 · Kesildiği an, 3 · Devreden borç, 4 · Koordi
 Cohesion: 0.12
 Nodes (26): Namespace, _backend(), compile_rules(), _corpus_dir(), load_rules(), main(), measure(), Path (+18 more)
 
-### Community 433 - "RcaTriggerSource"
-Cohesion: 0.22
-Nodes (7): RcaTriggerSource, RcaTriggerVocabulary, IReadOnlySet, RcaTriggerKey, char, DateTimeOffset, TimeSpan
+### Community 433 - "FieldsCoverageTool"
+Cohesion: 0.16
+Nodes (15): ColumnPayload, FieldsCoverageOutcome, FieldsValuesOutcome, ColumnPayload, FieldsCoverageTool, FieldsValuesTool, Payload, VendorPayload (+7 more)
 
 ### Community 434 - "Sigma kural yazım kılavuzu"
 Cohesion: 0.25
@@ -2524,8 +2584,8 @@ Cohesion: 0.24
 Nodes (8): SigmaViewColumnsTests, Fact, InlineData, IReadOnlyDictionary, Task, Theory, Trait, ValueTask
 
 ### Community 451 - ".Hash"
-Cohesion: 0.06
-Nodes (34): RawSignalCodec, RawSignalEnvelope, DateTimeOffset, Guid, int, JsonSerializerOptions, SignalAdmission, Guid (+26 more)
+Cohesion: 0.10
+Nodes (21): RawSignalCodec, RawSignalEnvelope, DateTimeOffset, Guid, int, JsonSerializerOptions, ReadOnlySpan, SignalAdmission (+13 more)
 
 ### Community 453 - "Nerede kaldık"
 Cohesion: 0.11
@@ -2535,9 +2595,9 @@ Nodes (17): 1 · İyi haber: main yeşil ve push edilmiş, 2 · Faz durumu, 2'ye
 Cohesion: 0.25
 Nodes (7): Amaç, Dışında, İçinde, Kabul kriterleri, Kapsam, Notlar, T21 — Alarm motoru
 
-### Community 455 - ".MigrateAsync"
-Cohesion: 0.26
-Nodes (9): AppliedMigration, ClickHouseMigrator, MigrationResult, CancellationToken, ClickHouseConnection, Dictionary, IReadOnlyList, string (+1 more)
+### Community 455 - "VendorValueSpace"
+Cohesion: 0.21
+Nodes (7): ColumnValueSpace, ValueSpaceKind, VendorValueSpace, IReadOnlyCollection, IReadOnlyList, ColumnValueSpaceTests, Fact
 
 ### Community 456 - ".ReadBodyAsync"
 Cohesion: 0.24
@@ -2547,16 +2607,16 @@ Nodes (8): BodyRead, OtlpBodyReadTests, Fact, HttpRequest, InlineData, long, Tas
 Cohesion: 0.17
 Nodes (17): Binding, Gate, ScenarioRunOutcome, ScenarioStepAttempt, ScenarioStepOutcome, ScenarioStepRunner, SentenceGateOutcome, SentenceGateStatus (+9 more)
 
-### Community 458 - "F4 Implementasyon Ticket'ları"
-Cohesion: 0.25
-Nodes (8): Bitti tanımı, Bu belgenin bilmediği şey, Dilimleme mantığı, F4 Implementasyon Ticket'ları, Sıra ve bağımlılıklar, Ticket listesi, Verilmiş kararlar, Üç sorunun cevabı — F4'ün kapsamını bunlar belirledi
+### Community 458 - "LogEvent"
+Cohesion: 0.07
+Nodes (24): GenericMappingConfig, WebhookConnectorConfig, IReadOnlyDictionary, ChangeEvent, ChangeTargetKind, LogEvent, OwnerGroups, ParseStatus (+16 more)
 
 ### Community 459 - "McpCursorContractTests"
 Cohesion: 0.18
 Nodes (10): McpCursor, byte, int, string, McpCursorContractTests, CancellationToken, Fact, InlineData (+2 more)
 
 ### Community 460 - "LogsSearchTool"
-Cohesion: 0.11
+Cohesion: 0.12
 Nodes (19): LogsSearchTool, Payload, Request, Row, CancellationToken, DateTimeOffset, Guid, int (+11 more)
 
 ### Community 461 - ".Senaryo_urunun_zincirinde_beklenen_sonucu_uretiyor"
@@ -2572,16 +2632,16 @@ Cohesion: 0.24
 Nodes (6): Bitti tanımı, Bu fazın ilk gününde ölçtüğü şey, Dilimleme mantığı, FS Implementasyon Ticket'ları, Sıra ve bağımlılıklar, Ticket listesi
 
 ### Community 464 - "Dispatcher"
-Cohesion: 0.10
-Nodes (24): Lines, Sample, DiscoveryAnnotator, Dispatcher, DispatchResult, DispatchTier, TimedOutParser, IReadOnlyList (+16 more)
+Cohesion: 0.07
+Nodes (32): Lines, Sample, ParseIssueResponse, ParseOutcomeResponse, ParserDispatchResponse, DateTimeOffset, IReadOnlyDictionary, ParserTryRequest (+24 more)
 
-### Community 465 - "ClickHouseContext"
-Cohesion: 0.09
-Nodes (16): ClickHouseClient, ClickHouseContext, CancellationToken, Task, SignatureHashStorageTests, DateTimeOffset, Fact, Task (+8 more)
+### Community 465 - "SignatureHashStorageTests"
+Cohesion: 0.27
+Nodes (6): SignatureHashStorageTests, DateTimeOffset, Fact, Task, Trait, ValueTask
 
-### Community 467 - "LogEvent"
-Cohesion: 0.06
-Nodes (35): GenericMappingConfig, WebhookConnectorConfig, IReadOnlyDictionary, ChangeEvent, ChangeTargetKind, LogEvent, OwnerGroups, ParseStatus (+27 more)
+### Community 467 - "ChangeFeedProvider"
+Cohesion: 0.18
+Nodes (11): ChangeFeedProvider, CancellationToken, DateTimeOffset, EvidenceItem, EvidenceKind, EvidenceSlice, GatherBudget, RcaWindow (+3 more)
 
 ### Community 468 - "devDependencies"
 Cohesion: 0.13
@@ -2592,12 +2652,12 @@ Cohesion: 0.46
 Nodes (4): SigmaRuleSyncServiceTests, CancellationToken, Fact, Task
 
 ### Community 470 - "McpResourceContractTests"
-Cohesion: 0.26
-Nodes (6): McpResourceContractTests, Fact, Guid, IReadOnlyList, IServiceProvider, Task
+Cohesion: 0.20
+Nodes (8): McpResourceContractTests, Fact, Guid, InlineData, IReadOnlyList, IServiceProvider, Task, Theory
 
 ### Community 471 - "McpStdioIdentityTests"
-Cohesion: 0.05
-Nodes (37): Identity, ITransport, SecurityKey, McpStdioIdentity, McpStdioIdentitySettings, CancellationToken, ClaimsPrincipal, DateTimeOffset (+29 more)
+Cohesion: 0.07
+Nodes (27): Identity, SecurityKey, McpStdioIdentity, McpStdioIdentitySettings, CancellationToken, ClaimsPrincipal, DateTimeOffset, Failure (+19 more)
 
 ### Community 472 - "T55 — Keşif yükleminin üç kopyası ve keşfin iki kör noktası"
 Cohesion: 0.18
@@ -2624,8 +2684,8 @@ Cohesion: 0.26
 Nodes (11): assertStackIsUp(), BASE_SERVICES, build(), buildUi(), CONTAINER_SERVICES, REPO, run(), scopeAndInventory() (+3 more)
 
 ### Community 478 - ".Analyze"
-Cohesion: 0.19
-Nodes (10): TraceRelation, TraceRelationshipResult, TraceRelationships, TraceServiceRelation, IReadOnlyList, JsonElement, TraceEvidenceProviderTests, Fact (+2 more)
+Cohesion: 0.18
+Nodes (12): TraceRelation, TraceRelationshipResult, TraceRelationships, TraceServiceRelation, IReadOnlyList, JsonElement, TelemetryRecord, TraceEvidenceProviderTests (+4 more)
 
 ### Community 479 - "5 · BAŞARISIZLIK MODLARI"
 Cohesion: 0.17
@@ -2639,9 +2699,9 @@ Nodes (12): 0 · Kapsam kararı — bu vault neye ait, neye ait değil, 1 · Ara
 Cohesion: 0.14
 Nodes (11): TokenBucketPacer, double, long, TimeProvider, TimeSpan, GeneratorPacingTests, DateTimeOffset, Fact (+3 more)
 
-### Community 482 - ".HandleAsync"
-Cohesion: 0.11
-Nodes (16): BodyStatus, HttpResponse, MemoryStream, BodyRead, BodyStatus, LogsEndpoint, CancellationToken, HttpRequest (+8 more)
+### Community 482 - "StorageSchemaTests"
+Cohesion: 0.21
+Nodes (9): IPAddress, StorageSchemaTests, DateTimeOffset, Fact, InlineData, Task, Theory, Trait (+1 more)
 
 ### Community 483 - "NE ATLANDI — boşluk taraması"
 Cohesion: 0.18
@@ -2652,12 +2712,12 @@ Cohesion: 0.18
 Nodes (10): 1 · Kurulum doğrulaması ve isim çakışması tuzağı, 2 · Hook nasıl çalışıyor, 3 · Ölçülen tasarruf, 4 · Nerede kazandırıyor, nerede fark etmiyor, 5 · Meta komutlar, 6 · Açık uçlar — bilerek kapatmadım, İlgili yollar, Kapsam **cwd** başına, proje ya da worktree başına değil (+2 more)
 
 ### Community 485 - "CliEmulationTests"
-Cohesion: 0.21
-Nodes (11): CliEmulationTests, Fact, IContainer, IFutureDockerImage, IReadOnlyList, List, string, Task (+3 more)
+Cohesion: 0.11
+Nodes (17): SqlStatementSplitter, IReadOnlyList, List, StringBuilder, CliEmulationTests, Fact, IContainer, IFutureDockerImage (+9 more)
 
-### Community 486 - "ParserTryTests"
-Cohesion: 0.12
-Nodes (12): ParseIssueResponse, ParseOutcomeResponse, ParserDispatchResponse, DateTimeOffset, IReadOnlyDictionary, ParserTryRequest, ParserPublishGate, ParserTryTests (+4 more)
+### Community 486 - "PublishVerdictResponse"
+Cohesion: 0.11
+Nodes (15): ParserAuthoringResponse, ParserExpectationResponse, ParserRedosFindingResponse, ParserSchemaErrorResponse, ParserTestCaseResponse, ParserTryResponse, PublishVerdictResponse, Guid (+7 more)
 
 ### Community 487 - "Deklaratif parser motoru yazmak"
 Cohesion: 0.20
@@ -2776,7 +2836,7 @@ Cohesion: 0.12
 Nodes (17): 1 · Bugünkü hâl — ölçüldü, 2 · Kapsam, 3.1 · Bir tur `1` kaldı — ve bu bölüm artık GEÇMİŞ, 3.2 · `evidence.bundle` aracı YAZILMADI — kaynak olarak karşılandı (M14), 3 · Kabul kriterleri, 4 · Bitti tanımından karşıladıkları, 5 · Bağımlılık ve sıra, 6.1.1 · Ajan tetiklemesi yeni bir **kaynak** (+9 more)
 
 ### Community 516 - "EventResponses.cs"
-Cohesion: 0.18
+Cohesion: 0.20
 Nodes (13): EventCursorResponse, EventDetailResponse, EventFieldResponse, EventRawResponse, EventRawTransport, EventResponse, EventSearchResponse, DateTimeOffset (+5 more)
 
 ### Community 517 - "Q: ne iş kaldı? liste ver. bir an önce buranın bitmesini istiyorum."
@@ -2788,7 +2848,7 @@ Cohesion: 0.25
 Nodes (8): 1 · "Bu ölçüm neye bağlı" — bağımlılık iddiası, 2 · "Bu kapı nerede koşuyor" — yerleşim iddiası, 3 · "Bu bekçiyi kim koşturabilir" — **yeni doğan** iddia, Ayırıcı soru, Açık sorular, Kaynaklar, "Konteyner gerekmiyor" üç ayrı iddiadır, Neden ayrılmaları gerekiyor
 
 ### Community 519 - ".Describe"
-Cohesion: 0.14
+Cohesion: 0.15
 Nodes (10): RcaRunState, RcaRunLifecycle, RcaStopReason, RcaReportStatusGuardTests, RcaRunLifecycleTests, Assembly, Fact, InlineData (+2 more)
 
 ### Community 520 - "6 · Maliyet — ve bir sorunun ikiye bölünmesi"
@@ -2799,9 +2859,9 @@ Nodes (15): 1 · `compiled = 24, runs = 14` — sebebi statik olarak bulundu, 2 
 Cohesion: 0.29
 Nodes (3): MigrationBuilder, AddRcaRuns, ModelBuilder
 
-### Community 529 - "T43 · Senaryo plugin çekirdeği"
-Cohesion: 0.29
-Nodes (7): 1 · Ne kuruldu, 2 · Dört kararın karşılığı, 3 · Uzantı noktası olarak açık bırakılanlar, 4 · Sabitler — §8.1'in kuralı, 5 · Bilinen borç: `baseline` şartı bugün zorlanmıyor, 6 · Kesişmeler, T43 · Senaryo plugin çekirdeği
+### Community 529 - ".Metrics"
+Cohesion: 0.24
+Nodes (10): ExportMetricsServiceRequest, ArchiveFault, FailCheckpoint, TelemetryReplayIntegrationTests, CancellationToken, Fact, InlineData, Task (+2 more)
 
 ### Community 530 - "SimulatorStateStore"
 Cohesion: 0.09
@@ -2824,8 +2884,8 @@ Cohesion: 0.13
 Nodes (17): RawArchiveScrubber, ScrubReport, CancellationToken, IDbContextFactory, ILogger, IOptions, Task, TimeProvider (+9 more)
 
 ### Community 535 - "WebhookGeneratorTests"
-Cohesion: 0.18
-Nodes (11): WebhookGeneratorTests, DateTimeOffset, Fact, FakeTimeProvider, IEnumerable, InlineData, JsonElement, MemberData (+3 more)
+Cohesion: 0.16
+Nodes (12): ByteString, WebhookGeneratorTests, DateTimeOffset, Fact, FakeTimeProvider, IEnumerable, InlineData, JsonElement (+4 more)
 
 ### Community 536 - "IngestRetryWindowTests"
 Cohesion: 0.15
@@ -2840,32 +2900,32 @@ Cohesion: 0.33
 Nodes (6): CI ağa çıkmıyor — bu değişmiyor, Lisans — **DRL 1.1**, ve bu bir kalem, Nasıl çekilecek, Ne çekilecek — **liste**, filtre değil, Tasarım · Ağ tarafındaki yükseltme yolu (yazılmadı, kararları burada), Yükseltme bir **inceleme** üretmeli
 
 ### Community 539 - "AlertsMaintenanceTool"
-Cohesion: 0.15
-Nodes (16): AlertsMaintenanceTool, Payload, Row, CancellationToken, DateTimeOffset, Guid, IDbContextFactory, int (+8 more)
+Cohesion: 0.12
+Nodes (20): AlertSuppression, DateTimeOffset, IEnumerable, MaintenanceWindowEntity, AlertsMaintenanceTool, Payload, Row, CancellationToken (+12 more)
 
 ### Community 540 - ".Fixture"
-Cohesion: 0.19
-Nodes (9): Attempt, Manifest, Observation, CapacityEvaluation, IEnumerable, CapacityEvaluationTests, Fact, InlineData (+1 more)
+Cohesion: 0.16
+Nodes (11): Attempt, Manifest, Observation, CapacityEvaluation, IEnumerable, CapacityDecision, CapacityGap, CapacityEvaluationTests (+3 more)
 
-### Community 541 - ".Split"
-Cohesion: 0.22
-Nodes (6): SqlStatementSplitter, IReadOnlyList, List, StringBuilder, SqlStatementSplitterTests, Fact
+### Community 541 - "RcaAdmissionStoreTests"
+Cohesion: 0.21
+Nodes (8): RcaAdmissionStoreTests, RejectingQuotaGate, CancellationToken, DateTimeOffset, Fact, IDbContextFactory, Task, ValueTask
 
 ### Community 542 - "SshSimulatorCliTests"
 Cohesion: 0.20
 Nodes (9): Output, SshSimulatorCliTests, Error, ExitCode, Fact, InlineData, IReadOnlyList, string (+1 more)
 
-### Community 543 - "ChangeConnectorEntity"
-Cohesion: 0.16
-Nodes (12): ConnectorInput, ConnectorSaveResult, JsonElement, CancellationToken, Task, ChangeConfigSnapshotEntity, ChangeConnectorEntity, ChangeConnectorRunEntity (+4 more)
+### Community 543 - "ChangeConnectorService"
+Cohesion: 0.13
+Nodes (22): ChangeConnectorService, ConnectorInput, ConnectorSaveResult, CancellationToken, Dictionary, Guid, IDbContextFactory, IEnumerable (+14 more)
 
 ### Community 544 - ".Callees"
-Cohesion: 0.17
-Nodes (9): OpCode, IlCallReader, BindingFlags, Dictionary, IEnumerable, MethodBase, IEnumerable, MethodBase (+1 more)
+Cohesion: 0.27
+Nodes (6): OpCode, IlCallReader, BindingFlags, Dictionary, IEnumerable, MethodBase
 
 ### Community 545 - "Bizigo.Contracts"
-Cohesion: 0.04
-Nodes (15): Bizigo.IntegrationTests, Bizigo.Storage.ClickHouse, Bizigo.Evidence.Providers, Bizigo.Replay, Bizigo.Mcp.Product, Bizigo.Mcp.Product.Tools, Bizigo.Query, Bizigo.Contracts (+7 more)
+Cohesion: 0.05
+Nodes (8): Bizigo.IntegrationTests, Bizigo.Storage.ClickHouse, Bizigo.Mcp.Product, Bizigo.Mcp.Product.Tools, Bizigo.Query, Bizigo.Contracts, BizigoReadToolsSetup, IServiceCollection
 
 ### Community 546 - "SimulatorProfile"
 Cohesion: 0.10
@@ -2883,13 +2943,13 @@ Nodes (10): WebhookDelivery, WebhookDeliveryFactory, WebhookDeliveryRequest, Web
 Cohesion: 0.18
 Nodes (10): McpProductToolChainTests, CancellationToken, DateTimeOffset, Fact, Guid, IDbContextFactory, IServiceScopeFactory, string (+2 more)
 
-### Community 550 - "3 · Kapsam kararı — C → dar B → gölge A"
-Cohesion: 0.29
-Nodes (7): 3 · Kapsam kararı — C → dar B → gölge A, A gölge modda ne yayıyor, A neden gölgede — §4'ün doğrudan sonucu, C'nin taşınmasında bir tuzak var — ölçülmezse kapı boş çalışır, C'nin yanlış pozitifi ölçüldü — iki kez, ve iki sayı çıktı, Neyin arasından seçildi, Seçimi belirleyen ölçütler
+### Community 550 - "ClaimContractTests"
+Cohesion: 0.36
+Nodes (3): ClaimContractTests, ClaimsPrincipal, Fact
 
-### Community 551 - "IRawObjectStore"
-Cohesion: 0.10
-Nodes (17): IRawObjectStore, RawObjectInfo, S3RawObjectStore, AmazonS3Client, CancellationToken, ReadOnlyMemory, string, Task (+9 more)
+### Community 551 - "NotificationMessage"
+Cohesion: 0.18
+Nodes (10): HttpContent, NotificationLine, NotificationMessage, WebhookLine, WebhookPayload, DateTimeOffset, IReadOnlyList, JsonSerializerOptions (+2 more)
 
 ### Community 552 - "M07 — Araç değil veri: kaynaklar ve durum bildirimi"
 Cohesion: 0.10
@@ -2900,8 +2960,8 @@ Cohesion: 0.15
 Nodes (16): RcaRunEndpoints, RcaRunListResponse, RcaRunResponse, CancellationToken, DateTimeOffset, Guid, IDbContextFactory, IEndpointRouteBuilder (+8 more)
 
 ### Community 554 - ".Structured"
-Cohesion: 0.06
-Nodes (46): ColumnPayload, FieldsCoverageOutcome, FieldsValuesOutcome, ParserTryOutcome, CancellationToken, Payload, ValueTask, CancellationToken (+38 more)
+Cohesion: 0.05
+Nodes (47): ParserTryOutcome, SimulatorErrors, FleetSnapshot, SimulatorMcpContext, IReadOnlyList, SimulatorProfile, string, CancellationToken (+39 more)
 
 ### Community 555 - "M02 — Tek çekirdek, iki sunum"
 Cohesion: 0.20
@@ -2911,9 +2971,9 @@ Nodes (10): 1 · Bugünkü hâl — ölçüldü, 2 · Çekirdek nerede yaşıyor
 Cohesion: 0.27
 Nodes (7): McpPrimitiveDiscovery, Assembly, Func, IEnumerable, IReadOnlyList, IServiceProvider, Type
 
-### Community 557 - "NotificationMessage"
-Cohesion: 0.08
-Nodes (34): HttpContent, Queue, EmailChannel, ISmtpTransport, SmtpEnvelope, SystemSmtpTransport, AlertingOptions, CancellationToken (+26 more)
+### Community 557 - ".SendAsync"
+Cohesion: 0.23
+Nodes (10): EmailChannel, ISmtpTransport, SmtpEnvelope, SystemSmtpTransport, AlertingOptions, CancellationToken, IReadOnlyList, Task (+2 more)
 
 ### Community 558 - "T47 — Kalite ölçümü"
 Cohesion: 0.08
@@ -2923,13 +2983,13 @@ Nodes (24): 1 · Ölçünün tamamı paydada, 2 · Verilen kararlar, 3. tereddü
 Cohesion: 0.13
 Nodes (15): 10 · İlk bakılacak yer, 1 · Kapsam kararı: (a) uçtan uca, 2 · Üç hâl — F3'ün dört durumunun F4 karşılığı, 3 · `dropped_sentence_ratio` payda sıfırken `null`, 4 · `findings[]` sıralıdır ve sırası anlamlıdır, 5 · Depolama, 6 · Ölçülen kırmızılar, 7.1 · Model bölümü muafiyeti de söylüyor (T54'ün bulgusu) (+7 more)
 
-### Community 560 - ".Parse"
-Cohesion: 0.20
-Nodes (8): Continuation, TelemetryReadRequest, IQueryCollection, TelemetryReadContractTests, Fact, InlineData, IQueryCollection, Theory
+### Community 560 - "InMemoryObjectStore"
+Cohesion: 0.18
+Nodes (9): InMemoryObjectStore, InMemorySegmentSource, CancellationToken, Dictionary, HashSet, IEnumerable, List, ReadOnlyMemory (+1 more)
 
-### Community 561 - "RcaAdmission"
-Cohesion: 0.10
-Nodes (25): Admitted, Rejected, RcaScheduleTurn, RcaScheduleWorker, CancellationToken, IDbContextFactory, ILogger, IServiceScopeFactory (+17 more)
+### Community 561 - ".ClickHouseAsync"
+Cohesion: 0.16
+Nodes (10): CapacityEmitterIntegrationTests, Fact, Task, Trait, DevStackSetup, CancellationToken, Task, Fact (+2 more)
 
 ### Community 562 - "SshTransportTests"
 Cohesion: 0.29
@@ -2948,7 +3008,7 @@ Cohesion: 0.18
 Nodes (11): SourceDirectory, TelemetrySnapshot, Dictionary, Func, HashSet, IDbContextFactory, IEnumerable, IReadOnlyList (+3 more)
 
 ### Community 566 - "CommandCatalogTests"
-Cohesion: 0.28
+Cohesion: 0.26
 Nodes (5): CommandCatalogTests, Fact, GeneratedRegex, int, Regex
 
 ### Community 568 - "T49 — Dashboard compose'a giriyor"
@@ -2963,17 +3023,17 @@ Nodes (6): Bitti tanımı, Dilimleme mantığı, F3 Implementasyon Ticket'ları,
 Cohesion: 0.21
 Nodes (7): HarnessSeedingTests, Dictionary, Fact, GeneratedRegex, int, IReadOnlyList, Regex
 
-### Community 571 - "McpToolAssemblyTests"
-Cohesion: 0.24
-Nodes (6): Carriers, McpToolAssemblyTests, Fact, IReadOnlyList, IReadOnlySet, Unreadable
+### Community 571 - "McpRcaToolChainTests"
+Cohesion: 0.20
+Nodes (9): McpRcaToolChainTests, CancellationToken, DateTimeOffset, Fact, IDbContextFactory, IServiceScopeFactory, Task, Trait (+1 more)
 
 ### Community 572 - "M03 — Simülatörü çalışırken yönetmek"
 Cohesion: 0.11
 Nodes (19): 1 · Bugünkü hâl — ölçüldü, 1. maddenin cevabı — bağlam maliyeti tahminin İKİ KATI, 2 · Kapsam, 2. sorunun cevabı — ayrı süreç yok, ve bu ticket'ı yeniden tanımladı, 3 · Kabul kriterleri, 3. sorunun cevabı — iptal M01'in mekanizmasıyla, ayrı bir şey gerekmedi, 4 · Bitti tanımından karşıladıkları, 4. sorunun cevabı — bu yüzeyde redaksiyonun öznesi YOK (+11 more)
 
-### Community 573 - "InventoryListTool"
-Cohesion: 0.15
-Nodes (14): InventoryListTool, Payload, Row, CancellationToken, DateTimeOffset, int, IReadOnlyList, IServiceScopeFactory (+6 more)
+### Community 573 - "SimulatorProfileTests"
+Cohesion: 0.31
+Nodes (4): SimulatorProfileTests, Fact, IReadOnlyList, Task
 
 ### Community 574 - "vendor-cli.sh"
 Cohesion: 0.24
@@ -2999,17 +3059,17 @@ Nodes (15): 1 · Vendor hata metni stdout'a kaydı — **bu ticket'ın kendi reg
 Cohesion: 0.20
 Nodes (9): ⚠ Bugün YALNIZCA macOS'ta doğru ölçüyor — ve Linux'ta sessizce yanlış, Durum kaydı makinede, depoda değil, Dördüncü ölçüm: Docker ÇÖKMÜYOR, **kibarca kapanıyor** — ve bu teşhisi iki kez yanlışlattı, `*-kirmizi-olcumu.py`, `machine-resources.sh` — kaynak kapısı, Neden depoda — ve neden geç eklendi, Sebep ölçüldü ve ilk atıf YANLIŞTI, `tools/` (+1 more)
 
-### Community 580 - "IngestServiceCollectionExtensions"
-Cohesion: 0.29
-Nodes (5): ModuleInitializer, IngestServiceCollectionExtensions, IConfiguration, IServiceCollection, TestModuleInitializer
+### Community 580 - ".ExecuteScopedAsync"
+Cohesion: 0.17
+Nodes (14): AlertTriggersTool, Payload, Row, CancellationToken, DateTimeOffset, Guid, IReadOnlyDictionary, IReadOnlyList (+6 more)
 
 ### Community 581 - ".SendAsync"
 Cohesion: 0.25
 Nodes (7): WebhookSender, WebhookSendResult, CancellationToken, HttpClient, IReadOnlyList, Task, Uri
 
-### Community 582 - ".CloseAsync"
-Cohesion: 0.21
-Nodes (10): AlertClosureEndpoints, CloseTriggerRequest, CloseTriggerResponse, CancellationToken, DateTimeOffset, Guid, IEndpointRouteBuilder, IReadOnlyList (+2 more)
+### Community 582 - "IngestGatewayTests"
+Cohesion: 0.31
+Nodes (5): IngestGatewayTests, Action, Fact, string, Task
 
 ### Community 583 - "T23 — Alarm yönetim ekranı"
 Cohesion: 0.25
@@ -3019,9 +3079,9 @@ Nodes (7): Amaç, Dışında, İçinde, Kabul kriterleri, Kapsam, Notlar, T23 �
 Cohesion: 0.33
 Nodes (5): Aday 1 · Commit mesajı konvansiyonu (`T54: …`), Aday 2 · Merge'in dokunduğu dosyalardan ticket'ı türetmek, Kapanmayan ikinci kalem: `1 → 2`, Karar: kör nokta kalıyor, **görünür** oluyor, Statü bekçisinin kör noktası
 
-### Community 585 - "tickets-f2/index.md"
-Cohesion: 0.06
-Nodes (29): Amaç, Dışında, İçinde, Kabul kriterleri, Kapsam, Notlar, T22 — Bildirim kanalları, Amaç (+21 more)
+### Community 585 - "T22 — Bildirim kanalları"
+Cohesion: 0.25
+Nodes (7): Amaç, Dışında, İçinde, Kabul kriterleri, Kapsam, Notlar, T22 — Bildirim kanalları
 
 ### Community 586 - "Söz ile sınır aynı listede duramaz"
 Cohesion: 0.33
@@ -3051,17 +3111,17 @@ Nodes (15): EventWriter, IEventWriter, WriteResult, CancellationToken, IEnumerab
 Cohesion: 0.43
 Nodes (4): ParsersEndpointTests, Fact, IReadOnlyList, RouteEndpoint
 
-### Community 593 - "GoldenReviewEvidenceKindsTests"
-Cohesion: 0.23
-Nodes (7): IReadOnlyList, GoldenReviewEvidenceKindsTests, CancellationToken, Fact, InlineData, Task, Theory
+### Community 593 - "ArrivalLedger"
+Cohesion: 0.20
+Nodes (9): Attributions, Rationale, ArrivalLedger, LedgerAttribution, LedgerVerdict, IEnumerable, IReadOnlyList, string (+1 more)
 
 ### Community 594 - "Tek dosya, tek kaynak değildir"
 Cohesion: 0.29
 Nodes (7): 1 · Veri tek dosyada, kavram iki yerde, 2 · Sözlük tek, predicate iki, 3 · Yeni kavram eklerken onu görecek eski kodu aramamak, Ama bu sayfanın ölçtüğü şey ölçüm aracının kendisine de uygulanıyor, Silmenin yan ürünü: gizlediği şey görünür, Tek dosya, tek kaynak değildir, Uygulama
 
-### Community 595 - "sessionStore"
+### Community 595 - ".CreateAsync"
 Cohesion: 0.21
-Nodes (7): dynamic, POST(), GET(), endSessionUrl(), clearedSessionCookie(), readSessionId(), sessionStore
+Nodes (11): GoldenReviewEvidenceKindsIntegrationTests, BundleId, CancellationToken, DevStackFixture, Fact, Guid, InlineData, Task (+3 more)
 
 ### Community 596 - "100 Mikroservislik Kurumsal Estate İçin Katmanlı Referans Mimari"
 Cohesion: 0.10
@@ -3075,9 +3135,9 @@ Nodes (8): McpIdempotency, char, DateTimeOffset, IEnumerable, string, McpIdempot
 Cohesion: 0.47
 Nodes (5): kosum(), main(), Ekran tarafı. `-t` testi ADINA göre filtreliyor., Tek bir testi koşturur; (gecti, ozet) döndürür., vitest_kosum()
 
-### Community 599 - "diff.ts"
-Cohesion: 0.28
-Nodes (11): DiffView(), commonPrefix(), commonSuffix(), DiffKind, DiffLine, diffLines(), DiffResult, key() (+3 more)
+### Community 599 - ".Format"
+Cohesion: 0.21
+Nodes (7): RcaQuotaCommandHandlers, CancellationToken, Task, ComputedButUnreadTests, Assembly, Fact, IReadOnlyList
 
 ### Community 600 - "T24 — Change: elle giriş ve webhook"
 Cohesion: 0.25
@@ -3088,16 +3148,16 @@ Cohesion: 0.29
 Nodes (6): Bu belgenin bilmediği şey, Bugünkü dağılım (2026-09-05), Koordinasyon defteri, Kural, Neden var — ölçülmüş bir olay, Ölçüm tuzağı — dosya zaman damgası vekil değildir
 
 ### Community 603 - "FakeTime"
-Cohesion: 0.21
-Nodes (8): FakeTime, DateTimeOffset, TimeSpan, FixedTime, DateTimeOffset, FixedClock, DateTimeOffset, TimeProvider
+Cohesion: 0.27
+Nodes (7): FakeTime, DateTimeOffset, FixedTime, DateTimeOffset, FixedClock, DateTimeOffset, TimeProvider
 
 ### Community 604 - "t63-wal-kill-olcumu.py"
 Cohesion: 0.52
 Nodes (6): bir_kosum(), derle(), diskteki_cerceveler(), main(), Path, Ayrı derleme adımı. Gerekçesi ölçüldü: `dotnet run` içindeki derleme hatası,…
 
 ### Community 605 - ".CloseAsync"
-Cohesion: 0.23
-Nodes (10): Generated, AlertClosureService, BundleId, CancellationToken, Guid, IDbContextFactory, IReadOnlyList, Task (+2 more)
+Cohesion: 0.17
+Nodes (15): AlertTriggerEntity, Generated, AlertClosure, AlertClosureService, AccessScope, BundleId, CancellationToken, ControlPlaneDbContext (+7 more)
 
 ### Community 606 - "T61 — Merge geçmişi, statünün beşinci gösterimi"
 Cohesion: 0.12
@@ -3116,8 +3176,8 @@ Cohesion: 0.25
 Nodes (7): Amaç, Dışında, İçinde, Kabul kriterleri, Kapsam, Notlar, T19 — Parser editörü ve canlı test
 
 ### Community 610 - "ConfigurationFileTests"
-Cohesion: 0.13
-Nodes (10): ConfigurationFileTests, Fact, JsonElement, List, MemberData, string, Theory, TheoryData (+2 more)
+Cohesion: 0.17
+Nodes (8): ConfigurationFileTests, Fact, JsonElement, List, MemberData, string, Theory, TheoryData
 
 ### Community 611 - "McpRcaToolTests"
 Cohesion: 0.25
@@ -3128,19 +3188,19 @@ Cohesion: 0.12
 Nodes (16): 1 · Bugünkü hâl — ölçüldü, 2 · Ticket'ın ilk ölçümü: SDK adlandırılmış şemayı destekliyor mu?, 3 · Yapılanlar, 4 · Kabul kriterleri ve nasıl ölçüldükleri, 5 · Bu değişikliğin kırdığı sekiz test — üçü de bulgu, 6 · Canlı Keycloak — yazıldı, **koşturulmadı**, 7 · Bilinen sınırlar ve açık sorular, `"account"` varsayılanı kaldırıldı (+8 more)
 
 ### Community 614 - ".CoverageAsync"
-Cohesion: 0.10
-Nodes (18): FieldsCommandHandlers, CancellationToken, IReadOnlyList, Task, OcsfViewColumn, OcsfViewSchema, IEnumerable, IReadOnlyList (+10 more)
+Cohesion: 0.15
+Nodes (12): OcsfViewColumn, OcsfViewSchema, IEnumerable, IReadOnlyList, List, Regex, FieldsCommands, FieldsCoverageOutcome (+4 more)
 
 ### Community 615 - "HttpTokenExpiryTests"
 Cohesion: 0.22
 Nodes (9): HttpTokenExpiryTests, Fact, JwtBearerOptions, string, SymmetricSecurityKey, Task, TimeSpan, TokenValidationParameters (+1 more)
 
-### Community 616 - "McpRcaToolChainTests"
-Cohesion: 0.20
-Nodes (9): McpRcaToolChainTests, CancellationToken, DateTimeOffset, Fact, IDbContextFactory, IServiceScopeFactory, Task, Trait (+1 more)
+### Community 616 - ".SendAsync"
+Cohesion: 0.15
+Nodes (19): Queue, HttpNotificationChannel, SlackChannel, TeamsChannel, WebhookChannel, AlertingOptions, CancellationToken, HttpStatusCode (+11 more)
 
 ### Community 617 - ".Redact"
-Cohesion: 0.18
+Cohesion: 0.20
 Nodes (8): SecretRedactor, HashSet, IEnumerable, int, IReadOnlyList, string, InlineData, Theory
 
 ### Community 618 - "EngineFeedbackFixTests"
@@ -3153,18 +3213,18 @@ Nodes (14): derle(), geri_al(), iddia_et(), kos(), Kusur, main(), CompletedProce
 
 ### Community 620 - "Bizigo.IntegrationTests.csproj"
 Cohesion: 0.14
-Nodes (11): Testcontainers, Testcontainers.ClickHouse, Testcontainers.PostgreSql, Microsoft.NET.Sdk, coverlet.collector, Microsoft.Extensions.TimeProvider.Testing, Microsoft.NET.Test.Sdk, xunit.runner.visualstudio (+3 more)
+Nodes (11): coverlet.collector, Microsoft.Extensions.TimeProvider.Testing, Microsoft.NET.Test.Sdk, Testcontainers, Testcontainers.ClickHouse, Testcontainers.PostgreSql, xunit.runner.visualstudio, xunit.v3 (+3 more)
 
 ### Community 621 - ".CountAsync"
 Cohesion: 0.48
 Nodes (3): SeedMaintenance, CancellationToken, Task
 
-### Community 622 - ".Format"
-Cohesion: 0.21
-Nodes (7): RcaQuotaCommandHandlers, CancellationToken, Task, ComputedButUnreadTests, Assembly, Fact, IReadOnlyList
+### Community 622 - "RcaTriggerSource"
+Cohesion: 0.22
+Nodes (7): RcaTriggerSource, RcaTriggerVocabulary, IReadOnlySet, RcaTriggerKey, char, DateTimeOffset, TimeSpan
 
 ### Community 623 - ".LoadFromDirectory"
-Cohesion: 0.22
+Cohesion: 0.20
 Nodes (7): IEnumerable, KeyValuePair, GrokPatternLibraryTests, Fact, MemberData, Theory, TheoryData
 
 ### Community 624 - "m12-kirmizi-olcumu.py"
@@ -3188,8 +3248,8 @@ Cohesion: 0.25
 Nodes (13): derle(), geri_al(), iddia_et(), kos(), Kusur, main(), CompletedProcess, M16 — gözlem yüzeyi bekçilerinin KIRMIZI YANABİLDİĞİNİ ölçen araç. Yordam… (+5 more)
 
 ### Community 629 - "MetricEvidenceOracleTests"
-Cohesion: 0.35
-Nodes (6): MetricEvidenceOracleTests, CancellationToken, Fact, InlineData, Task, Theory
+Cohesion: 0.29
+Nodes (8): MetricEvidenceOracleTests, AccessScope, CancellationToken, Fact, InlineData, Task, TelemetryRecord, Theory
 
 ### Community 630 - "Neden hâlâ `status: 1` — denetim (2026-09-15)"
 Cohesion: 0.12
@@ -3211,13 +3271,13 @@ Nodes (7): McpIdentityDiscoveryTests, Fact, InlineData, ServiceProvider, string,
 Cohesion: 0.29
 Nodes (12): derle(), geri_al(), iddia_et(), kos(), Kusur, main(), CompletedProcess, §6'nın İDDİA ADIMI: kusur dosyada gerçekten var mı. (+4 more)
 
-### Community 635 - "ChangeOutOfScopeCountTests"
-Cohesion: 0.15
-Nodes (13): ChangeEventReader, CancellationToken, IReadOnlyList, Task, ClickHouseOptions, string, ChangeOutOfScopeCountTests, DateTimeOffset (+5 more)
+### Community 635 - "ClickHouseContext"
+Cohesion: 0.06
+Nodes (26): Applied, ClickHouseClient, QueryServiceCollectionExtensions, CancellationToken, Existing, IServiceCollection, IServiceProvider, Task (+18 more)
 
-### Community 636 - ".ExecuteAsync"
-Cohesion: 0.15
-Nodes (16): BizigoMcpTool, ProductReadTool, CancellationToken, McpSurface, McpToolError, McpToolInvocation, McpToolResult, ValueTask (+8 more)
+### Community 636 - ".Failure"
+Cohesion: 0.11
+Nodes (19): BizigoMcpTool, McpToolError, IReadOnlyDictionary, string, ProductReadTool, CancellationToken, McpSurface, McpToolError (+11 more)
 
 ### Community 637 - "Kalem 2 · Idempotency araması penceresiz — **ve öyle kalması gerekiyor**"
 Cohesion: 0.17
@@ -3225,11 +3285,11 @@ Nodes (11): Ama **türetilmiş** anahtarlar sözleşmenin dışında, Aramaya pe
 
 ### Community 638 - ".Discover"
 Cohesion: 0.20
-Nodes (6): Endpoint, Registration, Exception, Key, MethodInfo, WebApplication
+Nodes (6): Endpoint, Key, MethodInfo, Registration, Exception, WebApplication
 
-### Community 639 - "RcaAdmissionStoreTests"
+### Community 639 - ".RecordAsync"
 Cohesion: 0.21
-Nodes (8): RcaAdmissionStoreTests, RejectingQuotaGate, CancellationToken, DateTimeOffset, Fact, IDbContextFactory, Task, ValueTask
+Nodes (8): IRawRefSink, NullRawRefSink, CancellationToken, IReadOnlyList, ValueTask, NoOpRawRefSink, IReadOnlyList, ValueTask
 
 ### Community 640 - "ReplayReport"
 Cohesion: 0.17
@@ -3244,8 +3304,8 @@ Cohesion: 0.05
 Nodes (40): 10 · Ölçülen sayılar, 1 · Neyi çözüyor, 2 · Üç sayaç aynı şeyi saymıyor, 3 · Hüküm — dört hâl, 4 · `LEDGER-LIMITED` — bu ticket'ın asıl kalemi, 5 · Ölçümün kendi kusurları — ikisi kodu değiştirdi, 6 · Collector'ın metrik ucu yoktu — ölçüldü, 7 · Nerede duruyor (+32 more)
 
 ### Community 643 - ".ImportCsvAsync"
-Cohesion: 0.14
-Nodes (15): Result, SourceCsvImport, IReadOnlyList, string, SourcesEndpoints, SourceUpsertRequest, CancellationToken, HttpRequest (+7 more)
+Cohesion: 0.10
+Nodes (23): Result, SourceCsvImport, IReadOnlyList, string, SourceActivityListResponse, SourceActivityResponse, SourceCsvErrorResponse, SourceCsvImportResponse (+15 more)
 
 ### Community 644 - "F1 Implementasyon Ticket'ları"
 Cohesion: 0.33
@@ -3260,8 +3320,8 @@ Cohesion: 0.29
 Nodes (8): GoldenSamplePlan, PlannedOccurrence, SeedPlanOptions, DateTimeOffset, IReadOnlyList, List, Random, TimeSpan
 
 ### Community 647 - ".ProductEndpoints"
-Cohesion: 0.30
-Nodes (3): InlineData, RouteEndpoint, Theory
+Cohesion: 0.27
+Nodes (3): RouteEndpoint, InlineData, Theory
 
 ### Community 648 - "T62 — BFF hazırlık ucu"
 Cohesion: 0.18
@@ -3271,13 +3331,13 @@ Nodes (10): 1 · Sondanın görüş alanı — ölçüldü, 2 · Hazırlık mı 
 Cohesion: 0.35
 Nodes (6): McpResourceScopeIntegrationTests, Fact, Guid, IServiceProvider, ServiceProvider, Task
 
-### Community 650 - "T30 — Sigma pipeline prototipi"
-Cohesion: 0.20
-Nodes (10): Amaç, Dışında, İçinde, Kabul kriterleri, Kapanırken karşılanmayan, Kapsam, Neden gerekiyor, Notlar (+2 more)
+### Community 650 - ".HandleAsync"
+Cohesion: 0.21
+Nodes (8): OtlpErrorResult, TelemetryEndpoints, CancellationToken, HttpContext, HttpRequest, IEndpointRouteBuilder, IResult, Task
 
 ### Community 651 - "CapacityChild"
-Cohesion: 0.11
-Nodes (17): NamedPipeServerStream, CapacityChild, bool, CancellationToken, Process, SemaphoreSlim, StreamReader, Task (+9 more)
+Cohesion: 0.21
+Nodes (10): NamedPipeServerStream, CapacityChild, bool, CancellationToken, Process, SemaphoreSlim, StreamReader, Task (+2 more)
 
 ### Community 652 - ".SplitOpen"
 Cohesion: 0.31
@@ -3288,12 +3348,12 @@ Cohesion: 0.18
 Nodes (9): Microsoft.Extensions.DependencyInjection.Abstractions, Microsoft.Extensions.Http, Microsoft.Extensions.Logging.Abstractions, Microsoft.Extensions.Options, Microsoft.Extensions.Options.ConfigurationExtensions, Microsoft.NET.Sdk, Microsoft.Extensions.DependencyInjection.Abstractions, YamlDotNet (+1 more)
 
 ### Community 654 - "DateTime"
-Cohesion: 0.24
-Nodes (5): DateTime, main(), s3_get(), main(), verify_raw()
+Cohesion: 0.40
+Nodes (3): DateTime, main(), s3_get()
 
-### Community 655 - ".ReceiveAsync"
+### Community 655 - "ChangeWebhookEndpoint"
 Cohesion: 0.08
-Nodes (23): ControlPlaneWebhookRegistry, IDbContextFactory, ILogger, ChangeWebhookEndpoints, CancellationToken, HttpRequest, IConfiguration, IEndpointRouteBuilder (+15 more)
+Nodes (26): ControlPlaneWebhookRegistry, IDbContextFactory, ILogger, ChangeWebhookEndpoints, CancellationToken, HttpRequest, IConfiguration, IEndpointRouteBuilder (+18 more)
 
 ### Community 656 - "M15 — Kota rezervi `Agent` kaynağını kapsamıyor"
 Cohesion: 0.20
@@ -3303,16 +3363,16 @@ Nodes (9): Bekçi · "hesaplanıp atılan alan" — bir SINIFIN ilk örneği, Bu
 Cohesion: 0.13
 Nodes (15): 1 · Bugünkü hâl — ölçüldü, 2 · Kapsam, 3.1 · ÖLÇÜLDÜ — ve bu beklenti YANLIŞ çıktı, 3 · Ölçüm protokolü — birinci yarı (`kill -9`), 4.1 · HANGİ sayaç, HANGİ değer — rakamla, 4.2 · İddianın bir SON TARİHİ var ve kriterde yazılı değil, 4.3 · Kapasite ayarı testten VERİLEBİLİYOR — 8 GiB doldurmak gerekmiyor, 4.4 · ÖLÇÜLDÜ — gerçek compose kesintisi (+7 more)
 
-### Community 658 - "McpHttpTransportTests"
-Cohesion: 0.25
-Nodes (7): McpHttpTransportTests, AuthenticateResult, CancellationToken, Fact, string, Task, WebApplication
+### Community 658 - "AlwaysAuthenticated"
+Cohesion: 0.17
+Nodes (12): AlwaysAuthenticated, McpHttpTransportTests, AuthenticateResult, AuthenticationSchemeOptions, CancellationToken, Fact, ILoggerFactory, IOptionsMonitor (+4 more)
 
 ### Community 659 - "TemplateRenderer"
 Cohesion: 0.33
 Nodes (3): TemplateRenderer, IReadOnlyDictionary, IReadOnlyList
 
 ### Community 660 - "PrePushHookTests"
-Cohesion: 0.38
+Cohesion: 0.33
 Nodes (5): PrePushHookTests, Fact, InlineData, Task, Theory
 
 ### Community 661 - "t61-kirmizi-olcumu.py"
@@ -3320,36 +3380,36 @@ Cohesion: 0.27
 Nodes (7): build(), main(), measure(), read(), run(), write(), main()
 
 ### Community 662 - "ValueError"
-Cohesion: 0.22
+Cohesion: 0.24
 Nodes (16): belirtec(), degisen_segmentler(), http_json(), istatistik(), komut(), main(), manifest_ozeti(), ManifestOzeti (+8 more)
 
-### Community 663 - ".MigrateDataPlaneAsync"
-Cohesion: 0.22
-Nodes (7): Applied, QueryServiceCollectionExtensions, CancellationToken, Existing, IServiceCollection, IServiceProvider, Task
+### Community 663 - ".ReadAsync"
+Cohesion: 0.21
+Nodes (7): GoldenReviewMigrationIntegrationTests, GoldenReviewRestartProbe, DevStackFixture, Fact, Task, IntegrationTestEntryPoint, Task
 
 ### Community 664 - "TelemetryHarnessTests"
-Cohesion: 0.11
-Nodes (7): change(), main(), patch(), CollectorHarnessTests, No Docker: verify fixture setup and owned early-failure cleanup wiring., Docker-free checks of ownership cleanup and the independent wire oracle., TelemetryHarnessTests
+Cohesion: 0.14
+Nodes (5): patch(), CollectorHarnessTests, No Docker: verify fixture setup and owned early-failure cleanup wiring., Docker-free checks of ownership cleanup and the independent wire oracle., TelemetryHarnessTests
 
 ### Community 665 - "Bizigo.Contracts.csproj"
 Cohesion: 0.09
 Nodes (22): AWSSDK.S3, ClickHouse.Driver, EFCore.NamingConventions, Microsoft.EntityFrameworkCore.Relational, Npgsql.EntityFrameworkCore.PostgreSQL, ZstdSharp.Port, Microsoft.NET.Sdk, Microsoft.NET.Sdk (+14 more)
 
 ### Community 666 - "FixtureAuth"
+Cohesion: 0.13
+Nodes (13): AuthenticateResult, AuthenticationHandler, AuthenticationSchemeOptions, ILoggerFactory, IOptionsMonitor, FixtureAuth, ClaimsFromHeader, AuthenticateResult (+5 more)
+
+### Community 667 - ".GatherAsync"
+Cohesion: 0.10
+Nodes (26): TraceErrorPropagationProvider, TraceProviderOutput, TraceServiceDependencyProvider, AccessScope, CancellationToken, EvidenceKind, EvidenceSlice, GatherBudget (+18 more)
+
+### Community 668 - ".Configure"
 Cohesion: 0.25
-Nodes (7): AuthenticationHandler, AuthenticateResult, AuthenticationSchemeOptions, ILoggerFactory, IOptionsMonitor, UrlEncoder, FixtureAuth
-
-### Community 667 - ".ReadAsync"
-Cohesion: 0.21
-Nodes (7): TelemetryEvidenceOptions, TelemetryEvidenceReader, TelemetryInputs, CancellationToken, DateTimeOffset, IReadOnlyList, Task
-
-### Community 668 - ".ApplyAsync"
-Cohesion: 0.18
-Nodes (10): DbContextOptionsBuilder, FleetCommandHandlers, CancellationToken, IReadOnlyList, Task, ControlPlaneServiceCollectionExtensions, CancellationToken, IServiceCollection (+2 more)
+Nodes (6): DbContextOptionsBuilder, ControlPlaneServiceCollectionExtensions, CancellationToken, IServiceCollection, IServiceProvider, Task
 
 ### Community 669 - "VendorCatalogTests"
-Cohesion: 0.32
-Nodes (5): VendorCatalogTests, Fact, MemberData, Theory, TheoryData
+Cohesion: 0.18
+Nodes (9): SampleCoverage, SampleFileCoverage, IReadOnlyDictionary, string, VendorCatalogTests, Fact, MemberData, Theory (+1 more)
 
 ### Community 670 - "FleetListTool"
 Cohesion: 0.16
@@ -3363,9 +3423,9 @@ Nodes (8): Amaç, Dışında, Gated bölümü `remedy`'ye göre gruplanmalı, İ
 Cohesion: 0.36
 Nodes (5): ScopedQueryConsumerTests, Assembly, Fact, IEnumerable, string
 
-### Community 673 - "InMemorySessionStore"
-Cohesion: 0.28
-Nodes (4): attempts(), consumeLoginAttempt(), InMemorySessionStore, peekLoginAttempt()
+### Community 673 - "store.ts"
+Cohesion: 0.17
+Nodes (10): AttemptHolder, attemptKey, attempts(), consumeLoginAttempt(), globalKey, InMemorySessionStore, LoginAttempt, peekLoginAttempt() (+2 more)
 
 ### Community 674 - "T18 — Parser taslak deposu ve yayın akışı"
 Cohesion: 0.25
@@ -3377,23 +3437,23 @@ Nodes (4): derle(), kosk(), main(), Testi koşturur; True = geçti.
 
 ### Community 676 - "EvidenceCompositionTests"
 Cohesion: 0.52
-Nodes (3): EvidenceCompositionTests, Fact, ServiceProvider
+Nodes (3): ServiceProvider, EvidenceCompositionTests, Fact
 
 ### Community 677 - "CancellationToken"
-Cohesion: 0.24
-Nodes (8): CancellationToken, FileStream, ReadOnlyMemory, Task, ValueTask, FileObjects, Flush, Gates
+Cohesion: 0.17
+Nodes (12): FileStream, IRawObjectStore, ISignalCheckpoints, IWalDurability, RawObjectInfo, ReadOnlyMemory, CancellationToken, Task (+4 more)
 
 ### Community 678 - "StateTool"
-Cohesion: 0.19
+Cohesion: 0.17
 Nodes (12): DevicePayload, Payload, StateTool, DateTimeOffset, DevicePayload, IReadOnlyList, JsonElement, Payload (+4 more)
 
 ### Community 679 - "Bizigo.Parsing.csproj"
 Cohesion: 0.17
 Nodes (10): Microsoft.Extensions.Configuration.Abstractions, Microsoft.Extensions.Logging.Abstractions, Microsoft.Extensions.Options, Microsoft.NET.Sdk, Microsoft.Extensions.DependencyInjection.Abstractions, Microsoft.Extensions.Options, Microsoft.Extensions.Options.ConfigurationExtensions, System.IO.Hashing (+2 more)
 
-### Community 680 - "IngestGatewayTests"
-Cohesion: 0.31
-Nodes (5): IngestGatewayTests, Action, Fact, string, Task
+### Community 680 - ".JoinRules"
+Cohesion: 0.26
+Nodes (6): FieldsCommandHandlers, CancellationToken, IReadOnlyList, Task, FieldCoverageRequest, DateTimeOffset
 
 ### Community 681 - "AddSourceTopologyAttributes"
 Cohesion: 0.29
@@ -3403,21 +3463,21 @@ Nodes (3): MigrationBuilder, AddSourceTopologyAttributes, ModelBuilder
 Cohesion: 0.29
 Nodes (3): MigrationBuilder, AddRcaModelBoundary, ModelBuilder
 
-### Community 683 - ".PublishAsync"
-Cohesion: 0.18
-Nodes (8): McpResourceUpdates, McpResourceUpdates, CancellationToken, ILogger, ValueTask, McpRcaRunChangeListener, CancellationToken, ValueTask
+### Community 683 - ".ExecuteAsync"
+Cohesion: 0.21
+Nodes (10): DecisionPayload, SigmaPlanOutcome, DecisionPayload, Payload, SigmaPlanTool, CancellationToken, IReadOnlyList, JsonElement (+2 more)
 
 ### Community 684 - "FirstWriteGate"
 Cohesion: 0.15
-Nodes (11): SaveChangesInterceptor, ConcurrentAuditTests, FirstWriteGate, CancellationToken, DbContextEventData, Fact, int, InterceptionResult (+3 more)
+Nodes (11): DbContextEventData, InterceptionResult, SaveChangesInterceptor, TaskCompletionSource, ConcurrentAuditTests, FirstWriteGate, CancellationToken, Fact (+3 more)
 
 ### Community 685 - "m21-kirmizi-olcumu.py"
 Cohesion: 0.67
 Nodes (3): kos(), Kusur, main()
 
-### Community 686 - ".HandleAsync"
-Cohesion: 0.09
-Nodes (18): FieldDescriptor, JsonFormatter, JsonObject, MessageDescriptor, OtlpErrorResult, TelemetryEndpoints, CancellationToken, HttpContext (+10 more)
+### Community 686 - ".Format"
+Cohesion: 0.17
+Nodes (10): FieldDescriptor, JsonFormatter, JsonObject, MessageDescriptor, OtlpJsonCodec, IMessage, JsonElement, JsonNode (+2 more)
 
 ### Community 687 - "Kapı 2 kendini sınıyor"
 Cohesion: 0.50
@@ -3435,17 +3495,17 @@ Nodes (6): CommandCatalog, CommandDescriptor, CommandExposure, Exempt, Tool, IRe
 Cohesion: 0.20
 Nodes (8): ReplayEndpoints, ReplayRequest, CancellationToken, DateTimeOffset, IEndpointRouteBuilder, IReadOnlyList, IResult, Task
 
-### Community 692 - "EvidenceKindScopeTests"
-Cohesion: 0.36
-Nodes (3): EvidenceKindScopeTests, Fact, Task
+### Community 692 - ".Json"
+Cohesion: 0.33
+Nodes (7): TelemetryApiIntegrationTests, CancellationToken, DevStackFixture, Fact, JsonElement, string, Task
 
 ### Community 693 - "CommandCoreConsoleTests"
 Cohesion: 0.40
 Nodes (3): CommandCoreConsoleTests, Fact, IReadOnlyList
 
-### Community 694 - "RcaReviewWireTests"
-Cohesion: 0.33
-Nodes (3): RcaReviewWireTests, DateTimeOffset, Fact
+### Community 694 - ".Materialize"
+Cohesion: 0.26
+Nodes (7): Span, TelemetryLeaf, InstrumentationScope, Resource, TelemetryMaterializer, IMessage, JsonElement
 
 ### Community 695 - "Preflight"
 Cohesion: 0.22
@@ -3456,12 +3516,12 @@ Cohesion: 0.20
 Nodes (10): Payload, ServerInfoTool, CancellationToken, JsonElement, McpSurface, McpToolInvocation, McpToolResult, Payload (+2 more)
 
 ### Community 697 - "MappingTableCatalog"
-Cohesion: 0.09
-Nodes (19): SortedSet, ColumnAccumulator, ColumnValueSpace, ColumnValueSpaces, ValueSpaceKind, VendorAccumulator, VendorValueSpace, bool (+11 more)
+Cohesion: 0.14
+Nodes (12): SortedSet, ColumnAccumulator, ColumnValueSpaces, VendorAccumulator, bool, Dictionary, IReadOnlyDictionary, MappingTableCatalog (+4 more)
 
-### Community 698 - "SourceResponses.cs"
-Cohesion: 0.31
-Nodes (8): SourceActivityListResponse, SourceActivityResponse, SourceCsvErrorResponse, SourceCsvImportResponse, SourceListResponse, SourceResponse, DateTimeOffset, IReadOnlyList
+### Community 698 - ".SearchableAsync"
+Cohesion: 0.47
+Nodes (5): ArrivalLedgerIntegrationTests, CancellationToken, DateTimeOffset, Fact, Task
 
 ### Community 699 - "T14 — OpenAPI tip üretimi ve API istemcisi"
 Cohesion: 0.25
@@ -3487,25 +3547,25 @@ Nodes (3): kos(), Kusur, main()
 Cohesion: 0.67
 Nodes (3): kos(), Kusur, main()
 
-### Community 705 - "T31 — Bizigo `ProcessingPipeline`"
-Cohesion: 0.25
-Nodes (8): Amaç, Dışında, İçinde, Kabul kriterleri, Kapanırken karşılanmayan, Kapsam, Notlar, T31 — Bizigo `ProcessingPipeline`
+### Community 705 - "TelemetryBoundaryIntegrationTests"
+Cohesion: 0.38
+Nodes (6): TelemetryBoundaryIntegrationTests, Fact, InlineData, Task, Theory, Trait
 
 ### Community 706 - "McpEndpoints.cs"
 Cohesion: 0.22
 Nodes (6): McpEndpoints, Assembly, IConfiguration, IEndpointRouteBuilder, IReadOnlyList, IServiceCollection
 
 ### Community 707 - ".ServeAsync"
-Cohesion: 0.09
-Nodes (22): McpCommandHandlers, Assembly, CancellationToken, IReadOnlyList, ServiceProvider, string, Task, McpStdioHost (+14 more)
+Cohesion: 0.07
+Nodes (27): McpCommandHandlers, Assembly, CancellationToken, IReadOnlyList, ServiceProvider, string, Task, McpStdioHost (+19 more)
 
 ### Community 708 - "otlp-durability-smoke.py"
 Cohesion: 0.37
 Nodes (9): acknowledged_restart(), Child, corrupt_middle(), crash_case(), envelopes(), main(), request(), verify() (+1 more)
 
-### Community 709 - "Auth"
-Cohesion: 0.22
-Nodes (8): Configuration, Auth, AuthenticateResult, AuthenticationSchemeOptions, ILoggerFactory, IOptionsMonitor, Task, UrlEncoder
+### Community 709 - "ParserTryTests"
+Cohesion: 0.38
+Nodes (3): ParserTryTests, Fact, string
 
 ### Community 711 - "Abonelik bildiriminin kimliği ve kapsamı"
 Cohesion: 0.20
@@ -3520,8 +3580,8 @@ Cohesion: 0.33
 Nodes (7): ReplayBlockedResponse, ReplayDiffResponse, ReplayFieldChangeResponse, ReplayResponse, Guid, IReadOnlyDictionary, IReadOnlyList
 
 ### Community 720 - "RedisClient"
-Cohesion: 0.10
-Nodes (4): RedisClient, FakeRedisClient, FakeRedis, FakeRedis
+Cohesion: 0.09
+Nodes (12): createRedisClient(), parse(), RedisClient, RedisSessionStore, ResolvedSession, createConfiguredStore(), SessionRecord, SessionStoreUnavailableError (+4 more)
 
 ### Community 721 - "capacity-process-smoke.py"
 Cohesion: 0.47
@@ -3532,44 +3592,52 @@ Cohesion: 0.36
 Nodes (4): SecretPatterns, GeneratedRegex, Regex, string
 
 ### Community 723 - "EvidenceSession"
-Cohesion: 0.19
-Nodes (6): http(), main(), wait_for(), EvidenceSession, main(), snapshot()
+Cohesion: 0.16
+Nodes (9): Time, http(), main(), wait_for(), main(), verify_raw(), EvidenceSession, main() (+1 more)
 
 ### Community 724 - ".BuildCallGraph"
 Cohesion: 0.25
 Nodes (6): CallGraph, CallGraph, IEnumerable, IReadOnlySet, MethodBase, Type
 
-### Community 725 - ".RecordAsync"
-Cohesion: 0.21
-Nodes (8): IRawRefSink, NullRawRefSink, CancellationToken, IReadOnlyList, ValueTask, NoOpRawRefSink, IReadOnlyList, ValueTask
+### Community 725 - "T30 — Sigma pipeline prototipi"
+Cohesion: 0.20
+Nodes (10): Amaç, Dışında, İçinde, Kabul kriterleri, Kapanırken karşılanmayan, Kapsam, Neden gerekiyor, Notlar (+2 more)
 
 ### Community 726 - "T13 — Next.js iskelet ve BFF"
-Cohesion: 0.25
+Cohesion: 0.29
 Nodes (7): Amaç, Dışında, İçinde, Kabul kriterleri, Kapsam, Notlar, T13 — Next.js iskelet ve BFF
 
 ### Community 727 - "McpSchemaBudgetTests"
 Cohesion: 0.33
 Nodes (5): McpSchemaBudgetTests, CancellationToken, Fact, int, TiktokenTokenizer
 
-### Community 728 - "GoldenReviewEntity"
-Cohesion: 0.32
-Nodes (6): GoldenReviewEntity, ReviewVerdict, DateTimeOffset, Guid, int, AlertClosure
+### Community 728 - "ChangeConnectorStoreTests"
+Cohesion: 0.33
+Nodes (5): ChangeConnectorStoreTests, Fact, IDbContextFactory, Task, ValueTask
+
+### Community 729 - "Path"
+Cohesion: 0.20
+Nodes (3): Path, EvidenceHarnessTests, Docker-free session ownership, independent journals and cleanup failure gates.
 
 ### Community 730 - "Capacity discovery (B03–B05)"
 Cohesion: 0.40
 Nodes (4): Acceptance commands, Capacity discovery (B03–B05), Persistence and cancellation, Target probe protocol
 
 ### Community 731 - ".CreateOptions"
-Cohesion: 0.24
-Nodes (11): BizigoMcpServer, Assembly, IEnumerable, IReadOnlyList, IServiceProvider, McpServerOptions, string, McpResourceBudgetTests (+3 more)
+Cohesion: 0.23
+Nodes (12): IMcpServerBuilder, BizigoMcpServer, Assembly, IEnumerable, IReadOnlyList, IServiceProvider, McpServerOptions, string (+4 more)
 
-### Community 735 - "RoleHeader"
-Cohesion: 0.29
-Nodes (6): RoleHeader, AuthenticateResult, AuthenticationSchemeOptions, ILoggerFactory, IOptionsMonitor, UrlEncoder
+### Community 735 - ".Real_inventory_and_S3_preserve_signal_envelope_after_wal_retention"
+Cohesion: 0.20
+Nodes (8): ITelemetrySink, SignalIngest, OtlpTelemetryIntegrationTests, InlineData, Task, Theory, Trait, ISignalCheckpoints
 
 ### Community 736 - ".Historical"
-Cohesion: 0.45
-Nodes (4): TelemetryEvidenceScopeIntegrationTests, CancellationToken, Fact, Task
+Cohesion: 0.40
+Nodes (5): TelemetryEvidenceScopeIntegrationTests, CancellationToken, DevStackFixture, Fact, Task
+
+### Community 737 - "EvidenceBundleStoreTests"
+Cohesion: 0.49
+Nodes (4): InMemoryControlPlaneFactory, EvidenceBundleStoreTests, Fact, Task
 
 ### Community 738 - "Metric and trace storage"
 Cohesion: 0.40
@@ -3579,69 +3647,85 @@ Nodes (4): Delivery and query contract, Metric and trace storage, Restore set an
 Cohesion: 0.40
 Nodes (4): Answer, Outcome, Q: Which product discovery, architecture and wiki digest guards are affected by OTLP fixture integration?, Source Nodes
 
-### Community 740 - "FixtureUser"
-Cohesion: 0.33
-Nodes (6): Configuration, ClaimsPrincipal, Dictionary, IHttpContextAccessor, FixtureUser, TelemetryQueryHost
+### Community 740 - "EventFieldKinds"
+Cohesion: 0.27
+Nodes (5): EventFieldKind, EventFieldKinds, Dictionary, IReadOnlyCollection, IReadOnlyList
 
 ### Community 741 - "capture.test.tsx"
 Cohesion: 0.21
 Nodes (11): BASE_STYLES, css(), OUT, page(), probe(), THEMES, UI, unhash() (+3 more)
 
-### Community 742 - "test_expectation_count.py"
-Cohesion: 0.48
-Nodes (6): _document(), Sigma canlı beklenti kümesinin boyutu sessizce sürüklenmesin (T32)., test_beyan_dosyasi_uretilen_sqlle_ortusuyor(), test_beyan_sayisi_civili(), test_beyansiz_kural_sayisi_civili(), test_iki_sinifin_dagilimi_civili()
+### Community 742 - "McpTestServices"
+Cohesion: 0.27
+Nodes (5): FixedScopeResolver, McpTestServices, ClaimsPrincipal, IServiceCollection, ServiceProvider
 
-### Community 743 - "AnonymousAuthenticationHandler"
-Cohesion: 0.25
-Nodes (7): AnonymousAuthenticationHandler, AuthenticateResult, AuthenticationSchemeOptions, ILoggerFactory, IOptionsMonitor, Task, UrlEncoder
+### Community 743 - "IngestServiceCollectionExtensions"
+Cohesion: 0.29
+Nodes (5): ModuleInitializer, IngestServiceCollectionExtensions, IConfiguration, IServiceCollection, TestModuleInitializer
 
 ### Community 744 - "capacity-descendant-smoke.py"
 Cohesion: 0.83
 Nodes (3): main(), pids(), wrapper()
 
-### Community 745 - "api_version_header"
-Cohesion: 0.67
-Nodes (3): middleware, api_version_header(), Sürüm her yanıtta. İstemci `/healthz`'i beklemeden uyuşmazlığı görebilsin.
+### Community 745 - "RcaReportResource"
+Cohesion: 0.33
+Nodes (7): RcaReportResource, CancellationToken, IServiceScopeFactory, McpResourceBody, McpResourceRead, string, ValueTask
+
+### Community 747 - "tickets-mcp/index.md"
+Cohesion: 0.13
+Nodes (15): 1 · Bugünkü hâl — ölçüldü, 2 · Kapsam, 3 · Kabul kriterleri, 4 · Bitti tanımından karşıladıkları, 5 · Bağımlılık ve sıra — **sona bırakılmadı, sonda duruyor**, 6 · Bilinen sınırlar ve açık sorular, M06 — Planın ilk cümlesi bir yasaktı; burada mekanizma oluyor, Bağlam bütçesi · `rca.quality` bir tur tavanı aştı (+7 more)
 
 ### Community 748 - "Bizigo.Mcp"
 Cohesion: 0.04
-Nodes (22): Bizigo.Mcp, Bizigo.Cli, Bizigo.Contracts.Security, Bizigo.Simulators.Mcp, Bizigo.Mcp.Product.Resources, Bizigo.Rca.Models, Bizigo.Mcp.Tools, Bizigo.Simulators.Mcp.Tools (+14 more)
+Nodes (26): Bizigo.Mcp, Bizigo.Cli, Bizigo.Contracts.Security, Bizigo.Simulators.Mcp, Bizigo.Mcp.Product.Resources, Bizigo.Rca.Models, Bizigo.Mcp.Tools, Bizigo.Rca.Reasoning (+18 more)
 
-### Community 749 - "ParserResponses.cs"
-Cohesion: 0.12
-Nodes (17): ParserAuthoringResponse, ParserExpectationResponse, ParserRedosFindingResponse, ParserSchemaErrorResponse, ParserTestCaseResponse, ParserTryResponse, PublishVerdictResponse, Guid (+9 more)
+### Community 749 - "T42 — Model sağlayıcısı soyutlaması"
+Cohesion: 0.22
+Nodes (9): 1 · Sorulan soru ve verilen cevap, 2 · K6 bugüne kadar bir cümleydi, 3 · T41'in şartı nasıl uygulandı, 4 · Ölçüldü, 5 · Kapsam dışı ve sınırlar, 6 · Tereddüt, Kapının tutamadıkları — yazılı olması şart, Kırmızı yanabildiği ölçüldü — sekiz kusur, hepsi geri alındı (+1 more)
 
-### Community 750 - "MissingEvidenceQuality"
-Cohesion: 0.33
-Nodes (3): MissingEvidenceAnswers, MissingEvidenceQuality, string
+### Community 750 - "TraceEvidenceBudgetTests"
+Cohesion: 0.27
+Nodes (7): TraceEvidenceBudgetTests, AccessScope, CancellationToken, InlineData, Task, TelemetryRecord, Theory
 
 ### Community 752 - "execute"
-Cohesion: 0.73
-Nodes (5): catalog(), execute(), main(), resources(), tests()
+Cohesion: 0.36
+Nodes (7): catalog(), execute(), main(), resources(), tests(), change(), main()
 
-### Community 754 - ".Run"
-Cohesion: 0.24
-Nodes (7): ParserCoverageOutcome, SampleCoverage, SampleCoverageReport, SampleFileCoverage, IReadOnlyDictionary, IReadOnlyList, string
+### Community 753 - ".One_resource_boundary_leaves_preserve_A_B_B_during_transfer_replay"
+Cohesion: 0.28
+Nodes (7): TelemetryScopeIntegrationTests, CancellationToken, Fact, InlineData, Task, Theory, Trait
 
-### Community 755 - "ScenarioTriggers.cs"
-Cohesion: 0.50
-Nodes (3): ScenarioTriggers, IReadOnlySet, string
+### Community 754 - "ParserPublishGateTests"
+Cohesion: 0.47
+Nodes (3): ParserPublishGateTests, Fact, string
 
-### Community 756 - ".ReadAsync"
-Cohesion: 0.24
-Nodes (6): GoldenReviewMigrationIntegrationTests, GoldenReviewRestartProbe, Fact, Task, IntegrationTestEntryPoint, Task
-
-### Community 757 - "M10 — Üç ertelenmiş ürün aracı"
+### Community 755 - "Bizigo.Replay"
 Cohesion: 0.25
-Nodes (8): Bağlam bütçesi · `rca.quality` bir tur tavanı aştı, Bu ticket'ın açtığı kalem, Kabul kriterleri, Kesişme · `AlertSuppression.cs`, M10 — Üç ertelenmiş ürün aracı, Verilen karar · `alerts.maintenance` OKUMA, Ölçülen bulgu · `IlCallReader` `async` gövdeleri kaçırıyordu, Ölçülen bulgu · yapısal kanalda kapı derleyicide DEĞİL
+Nodes (3): Bizigo.Replay, ReplayServiceCollectionExtensions, IServiceCollection
 
-### Community 759 - "ProductResource"
-Cohesion: 0.31
-Nodes (7): BizigoMcpResource, ProductResource, CancellationToken, McpResourceBody, McpResourceRead, McpSurface, ValueTask
+### Community 756 - "test_corpus_single_source.py"
+Cohesion: 0.28
+Nodes (8): Path, Sigma kural korpusunun **tek** kopyası var mı (T32). Bu bekçi ölçülmüş bir…, `detection:` VE `logsource:` taşıyan bütün YAML'lar., Korpusun ikinci bir kopyası olamaz. Kırmızı yandığında yapılacak şey kopyayı…, Bekçinin kendisi boş bir depoda da yeşil yanardı. "Korpus dışında kural yok"…, sigma_rule_files(), test_korpus_bos_degil(), test_sigma_kurallari_yalnizca_katalogda()
 
-### Community 760 - "M06 — Planın ilk cümlesi bir yasaktı; burada mekanizma oluyor"
-Cohesion: 0.29
-Nodes (7): 1 · Bugünkü hâl — ölçüldü, 2 · Kapsam, 3 · Kabul kriterleri, 4 · Bitti tanımından karşıladıkları, 5 · Bağımlılık ve sıra — **sona bırakılmadı, sonda duruyor**, 6 · Bilinen sınırlar ve açık sorular, M06 — Planın ilk cümlesi bir yasaktı; burada mekanizma oluyor
+### Community 757 - "T31 — Bizigo `ProcessingPipeline`"
+Cohesion: 0.25
+Nodes (8): Amaç, Dışında, İçinde, Kabul kriterleri, Kapanırken karşılanmayan, Kapsam, Notlar, T31 — Bizigo `ProcessingPipeline`
+
+### Community 758 - "T25 — Change: connector yapılandırma"
+Cohesion: 0.25
+Nodes (7): Amaç, Dışında, İçinde, Kabul kriterleri, Kapsam, Notlar, T25 — Change: connector yapılandırma
+
+### Community 759 - "RcaRunsTool"
+Cohesion: 0.10
+Nodes (23): RcaRunsResource, CancellationToken, IDbContextFactory, McpResourceBody, McpResourceRead, McpToolResult, string, ValueTask (+15 more)
+
+### Community 760 - "F4 Implementasyon Ticket'ları"
+Cohesion: 0.25
+Nodes (8): Bitti tanımı, Bu belgenin bilmediği şey, Dilimleme mantığı, F4 Implementasyon Ticket'ları, Sıra ve bağımlılıklar, Ticket listesi, Verilmiş kararlar, Üç sorunun cevabı — F4'ün kapsamını bunlar belirledi
+
+### Community 761 - "ParsersEndpoints"
+Cohesion: 0.36
+Nodes (3): ParsersEndpoints, IEndpointRouteBuilder, IResult
 
 ### Community 762 - "AlertCriteriaBridgeTests"
 Cohesion: 0.38
@@ -3651,6 +3735,10 @@ Nodes (3): AlertCriteriaBridgeTests, Fact, string
 Cohesion: 0.29
 Nodes (6): RepeatedField, TelemetryTypedEdgeIntegrationTests, InlineData, Task, Theory, Trait
 
+### Community 764 - "IAccessScopeResolver"
+Cohesion: 0.32
+Nodes (5): IAccessScopeResolver, ClaimsPrincipal, RecordingScopeResolver, ClaimsPrincipal, List
+
 ### Community 765 - "Metric and trace reads and evidence"
 Cohesion: 0.33
 Nodes (5): Evidence and review semantics, Metric and trace reads and evidence, Metric policy, REST reads, Verification ownership
@@ -3659,38 +3747,74 @@ Nodes (5): Evidence and review semantics, Metric and trace reads and evidence, M
 Cohesion: 0.40
 Nodes (3): AuthEndpoints, AuthMeResponse, IEndpointRouteBuilder
 
-### Community 768 - "AuthenticationSetup.cs"
-Cohesion: 0.26
-Nodes (8): AuthenticationSetup, AuthOptions, BizigoAuthPolicies, BizigoAuthSchemes, IConfiguration, IServiceCollection, JwtBearerOptions, string
+### Community 767 - "DocumentGeneration"
+Cohesion: 0.22
+Nodes (5): DocumentGeneration, WebApplicationBuilder, ScenarioTriggers, IReadOnlySet, string
 
-### Community 769 - ".AddBizigoModelProvider"
-Cohesion: 0.40
-Nodes (3): ModelServiceCollectionExtensions, IConfiguration, IServiceCollection
+### Community 768 - "AuthenticationSetup.cs"
+Cohesion: 0.14
+Nodes (15): AnonymousAuthenticationHandler, AuthenticationSetup, AuthOptions, BizigoAuthPolicies, BizigoAuthSchemes, AuthenticateResult, AuthenticationSchemeOptions, IConfiguration (+7 more)
+
+### Community 769 - ".Four_production_providers_preserve_exact_decisions_and_distinct_outside_counts"
+Cohesion: 0.39
+Nodes (5): MetricTraceEvidenceIntegrationTests, CancellationToken, DevStackFixture, Fact, Task
 
 ### Community 770 - "Q: ne iş kaldı?"
 Cohesion: 0.50
 Nodes (3): Answer, Outcome, Q: ne iş kaldı?
 
-### Community 771 - "Bizigo.Devices.csproj"
-Cohesion: 0.50
-Nodes (3): SSH.NET, Microsoft.Extensions.Logging.Abstractions, Microsoft.NET.Sdk
+### Community 771 - "T27 — F2 doğrulaması"
+Cohesion: 0.29
+Nodes (7): Amaç, Dışında, İçinde, Kabul kriterleri, Kapsam, Notlar, T27 — F2 doğrulaması
 
 ### Community 772 - "main"
 Cohesion: 0.67
 Nodes (3): contains(), main(), Wire oracle: check every sender leaf field, allowing Collector defaults.…
 
-### Community 776 - "AlwaysAuthenticated"
-Cohesion: 0.40
-Nodes (5): AlwaysAuthenticated, AuthenticationSchemeOptions, ILoggerFactory, IOptionsMonitor, UrlEncoder
+### Community 773 - "Bizigo.Capacity"
+Cohesion: 0.12
+Nodes (8): Command, Bizigo.Capacity, CapacitySupervisor, CapacitySupervisorRequest, CapacitySupervisorStatus, CapacityCommandHandlers, CancellationToken, Task
+
+### Community 776 - "F2 Implementasyon Ticket'ları"
+Cohesion: 0.33
+Nodes (6): Bitti tanımı, Dilimleme mantığı, F2 Implementasyon Ticket'ları, F2 sonrası — dağıtım ve sağlık, Sıra ve bağımlılıklar, Ticket listesi
+
+### Community 777 - "3 · Kapsam kararı — C → dar B → gölge A"
+Cohesion: 0.29
+Nodes (7): 3 · Kapsam kararı — C → dar B → gölge A, A gölge modda ne yayıyor, A neden gölgede — §4'ün doğrudan sonucu, C'nin taşınmasında bir tuzak var — ölçülmezse kapı boş çalışır, C'nin yanlış pozitifi ölçüldü — iki kez, ve iki sayı çıktı, Neyin arasından seçildi, Seçimi belirleyen ölçütler
 
 ### Community 778 - "RcaServiceCollectionExtensions.cs"
 Cohesion: 0.40
 Nodes (3): RcaServiceCollectionExtensions, IConfiguration, IServiceCollection
 
+### Community 779 - ".Telemetry_inflight_cancel_is_bounded_and_audited"
+Cohesion: 0.40
+Nodes (4): TelemetryCancellationIntegrationTests, DevStackFixture, Fact, Task
+
+### Community 780 - "T43 · Senaryo plugin çekirdeği"
+Cohesion: 0.29
+Nodes (7): 1 · Ne kuruldu, 2 · Dört kararın karşılığı, 3 · Uzantı noktası olarak açık bırakılanlar, 4 · Sabitler — §8.1'in kuralı, 5 · Bilinen borç: `baseline` şartı bugün zorlanmıyor, 6 · Kesişmeler, T43 · Senaryo plugin çekirdeği
+
+### Community 823 - "F1'in kapsam kabul kriteri yanlış yazılmış"
+Cohesion: 0.33
+Nodes (6): Bu bir kusur değil — ama kriterin yanlış olması kusur, Bunun açtığı soru — cevaplanmadı, Düzeltilmiş kriter, F1'in kapsam kabul kriteri yanlış yazılmış, Kriterin hâli, Ve kimse ölçmedi
+
+### Community 824 - "ip_text_expression"
+Cohesion: 0.33
+Nodes (6): ip_text_expression(), IP kolonunun **metin** karşılığı; `startswith`/`contains` için. Sorun -----…, **Düz `toString()` sessizce sıfır döndürürdü.** ClickHouse IPv4'ü…, Bekçi fazla hevesli olsaydı her kuralı düşürürdü; ölçüsü budur., test_bekci_gercek_kolonlari_gecirıyor(), test_ip_ifadesi_ipv4_mapped_onekini_sokuyor()
+
+### Community 825 - "McpTestSession"
+Cohesion: 0.33
+Nodes (5): McpTestSession, CancellationTokenSource, McpClient, McpServer, TimeSpan
+
+### Community 826 - "McpResourceBudgetTests"
+Cohesion: 0.40
+Nodes (4): McpResourceBudgetTests, Fact, int, TiktokenTokenizer
+
 ## Knowledge Gaps
-- **2539 isolated node(s):** `fetch-compose.sh script`, `cli-oykunmesi.sh script`, `entrypoint.sh script`, `komut-dagitici.sh script`, `vendor-cli.sh script` (+2534 more)
+- **2539 isolated node(s):** `ChannelTestResponse`, `ErrorResponse`, `RawParams`, `SavedSearch`, `CriterionMapping` (+2534 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **47 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **91 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Work-memory lessons
 
@@ -3700,17 +3824,17 @@ Nodes (3): RcaServiceCollectionExtensions, IConfiguration, IServiceCollection
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Bizigo.UnitTests` connect `Bizigo.UnitTests` to `CompositionRootTests`, `Bizigo.ControlPlane`, `.Callees`, `Bizigo.Contracts`, `CliSmokeTests`, `.Published_capacity_links_to_three_existing_pass_records`, `UiHealthcheckTests`, `CommandCoreConsoleTests`, `HarnessSeedingTests`, `Bizigo.Storage.Raw`, `Bizigo.Capacity`, `KeycloakRealmTests`, `.Senaryo_urunun_zincirinde_beklenen_sonucu_uretiyor`, `ShadowPromotionMeasurementTests`, `ProductDiscoveryTests`, `Bizigo.Parsing.Grok`, `EpicStatusTests`, `ConfigurationFileTests`, `.Reject`, `ProductDiscovery`, `Bizigo.Mcp`, `WikiSourceDigest`, `AlertCriteriaBridgeTests`?**
-  _High betweenness centrality (0.107) - this node is a cross-community bridge._
-- **Why does `Bizigo.Contracts` connect `Bizigo.Contracts` to `EventResponses.cs`, `McpIdentityTests`, `AccessScope`, `Bizigo.ControlPlane`, `.Materialize`, `OtlpLogsDecoder.cs`, `.From`, `IScopedQuery`, `TelemetryQuery`, `RcaWindow`, `RawArchiveUploader`, `AlertPreviewTests`, `.GatherAsync`, `ParserToolbox`, `ScopePredicate`, `.Point`, `RecordingScopedQuery`, `EvidenceResponses.cs`, `RcaTriggerSource`, `.GatherItemsAsync`, `ChangesEndpoints.cs`, `AlertRuleService`, `Bizigo.Storage.Raw`, `IRcaRunChangeListener`, `AlertingStats`, `Bizigo.UnitTests`, `.Hash`, `Bizigo.Capacity`, `TelemetryDtos.cs`, `.WriteEventsAsync`, `Dispatcher`, `LogEvent`, `Bizigo.Parsing.Grok`, `TelemetryRecord`, `ClaimContractTests`, `FieldCoverage`, `.Analyze`, `RawRecord`, `RcaRunEntity`, `ChangeWebhookEndpoint`, `Bizigo.Mcp`, `ParserResponses.cs`, `CommandTool`, `ScenarioTriggers.cs`?**
+- **Why does `Bizigo.Contracts` connect `Bizigo.Contracts` to `.ZincirAsync`, `EventResponses.cs`, `AccessScope`, `Bizigo.ControlPlane`, `ChangeWebhookEndpoint`, `HistoricalTelemetryOwners`, `IScopedQuery`, `OtlpLogsDecoder.cs`, `.From`, `RcaWindow`, `RawArchiveUploader`, `AlertPreviewTests`, `.GatherAsync`, `ParserToolbox`, `TelemetryReader`, `.Point`, `EvidenceResponses.cs`, `CorrelationWindow`, `ChangesEndpoints.cs`, `AlertRuleService`, `ConnectorContext`, `Bizigo.Storage.Raw`, `RcaQuotaTests`, `AlertRuleEntity`, `PipelineStep`, `RcaScheduleWorkerTests`, `Bizigo.UnitTests`, `.Hash`, `Bizigo.Simulators`, `LogEvent`, `TelemetryDtos.cs`, `.GatherAsync`, `.WriteEventsAsync`, `Dispatcher`, `AlertRuleServiceTests`, `Bizigo.Parsing.Grok`, `TelemetryRecord`, `GroupMapping`, `FieldCoverage`, `.Analyze`, `RawRecord`, `PublishVerdictResponse`, `ChangeWebhookMapper`, `Bizigo.Mcp`, `EventQuery`, `RcaTriggerSource`, `CommandTool`, `Bizigo.Replay`, `IAccessScopeResolver`, `DocumentGeneration`?**
   _High betweenness centrality (0.102) - this node is a cross-community bridge._
-- **Why does `main()` connect `EvidenceSession` to `t61-kirmizi-olcumu.py`?**
-  _High betweenness centrality (0.085) - this node is a cross-community bridge._
-- **What connects `fetch-compose.sh script`, `cli-oykunmesi.sh script`, `entrypoint.sh script` to the rest of the system?**
+- **Why does `Bizigo.UnitTests` connect `Bizigo.UnitTests` to `Bizigo.Capacity`, `CompositionRootTests`, `.Join`, `Bizigo.ControlPlane`, `OtlpCollectorConfigurationTests.cs`, `PrePushHookTests`, `CapacityAttemptRecord`, `.Callees`, `Bizigo.Contracts`, `CliSmokeTests`, `.Load`, `UiHealthcheckTests`, `CommandCoreConsoleTests`, `ParserQuarantine`, `HarnessSeedingTests`, `MaskCatalog`, `Bizigo.Storage.Raw`, `SimulatorProfileTests`, `Bizigo.Simulators`, `KeycloakRealmTests`, `.Compile`, `.RunAsync`, `.Senaryo_urunun_zincirinde_beklenen_sonucu_uretiyor`, `ShadowPromotionMeasurementTests`, `ProductDiscoveryTests`, `Bizigo.Parsing.Grok`, `EpicStatusTests`, `.Compute`, `ConfigurationFileTests`, `ProductDiscovery`, `GrokPropertyTests`, `Bizigo.Mcp`, `.LoadFromDirectory`, `.Build`, `.Build`, `WikiSourceDigest`, `Bizigo.Replay`, `AlertCriteriaBridgeTests`, `GrokCompilerTests`?**
+  _High betweenness centrality (0.097) - this node is a cross-community bridge._
+- **Why does `Bizigo.ControlPlane` connect `Bizigo.ControlPlane` to `AuthenticationSetup.cs`, `RcaReportDocument`, `SigmaRuleChainTests`, `AddRcaRuns`, `HistoricalTelemetryOwners`, `AddRcaReports`, `.From`, `AddReviewFindingRank`, `RawArchiveUploader`, `AlertPreviewTests`, `.SaveAsync`, `ChangeConnectorService`, `Bizigo.Contracts`, `CancellationToken`, `NotificationMessage`, `AddChangeWebhookDeliveries`, `EvidenceResponses.cs`, `.SendGroupAsync`, `GoldenReviewEntity`, `AddSourceTopologyAttributes`, `.SendAsync`, `AddRcaModelBoundary`, `RcaModelBoundaryRecordTests`, `Bizigo.ControlPlane.Migrations`, `AlertRuleService`, `ConnectorContext`, `Bizigo.Storage.Raw`, `RcaQuotaTests`, `AlertRuleEntity`, `RcaScheduleWorkerTests`, `Bizigo.UnitTests`, `Bizigo.Simulators`, `ControlPlaneDbContext`, `AddRcaRunState`, `Migration`, `AddAlertingTables`, `AddChangeConnectors`, `AddParserUpdatedAt`, `AddConfigSnapshots`, `AddEvidenceBundles`, `AddGoldenReviews`, `AddActualRootCauseToGoldenReview`, `AddRawRecoveryAttempts`, `Bizigo.Parsing.Grok`, `AddSigmaRuleStatus`, `GroupMapping`, `.SendAsync`, `Bizigo.Mcp`, `AddSigmaChangedAt`, `ParserAuthoringService`, `ControlPlaneDbContextModelSnapshot.cs`, `AddSigmaGatedFingerprint`, `.ClaimAsync`, `AuthEndpoints.cs`?**
+  _High betweenness centrality (0.064) - this node is a cross-community bridge._
+- **What connects `ChannelTestResponse`, `ErrorResponse`, `RawParams` to the rest of the system?**
   _2539 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `.ZincirAsync` be split into smaller, more focused modules?**
+  _Cohesion score 0.06818181818181818 - nodes in this community are weakly interconnected._
 - **Should `test_golden_gate.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.04789915966386555 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.045389393215480175 - nodes in this community are weakly interconnected._
 - **Should `test_manifest.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.06167527251864601 - nodes in this community are weakly interconnected._
-- **Should `repo_root` be split into smaller, more focused modules?**
-  _Cohesion score 0.04664224664224664 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06200411401704378 - nodes in this community are weakly interconnected._

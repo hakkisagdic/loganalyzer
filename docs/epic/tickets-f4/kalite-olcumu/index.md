@@ -252,7 +252,7 @@ tereddüdü ve **üçü aynı sınıfta değil**. Denetimin ilk çıktısı o ay
 | --- | --- | --- |
 | 1 · Atıfsız cümle bağlam devralmıyor → oran yükselebilir | **canlı model** | Sorulan şey mekanizma değil **pratikteki oran**: insan gibi yazan bir modelin ürettiği metinde kaç cümle atıfsız kalıyor. Mekanizma zaten yazılı ve bilinçli bir karar; ölçülecek olan davranış |
 | 2 · Kapı atfın yerindeliğini değil varlığını ölçüyor | **karar** | Makine tarafı bir **anlam** yargısı istiyor. Ucuz bir vekil (atıf ile cümle arasında sözcük örtüşmesi) yazılabilir ama o bir sezgi — ve bu depoda yanlış pozitifin bedeli yazılı. Yazılıp yazılmayacağı ürün kararı |
-| 3 · Cümle bölme noktalama tabanlı | **yapıldı ve düzeltildi** | Konteyner/model yok: zor girdiler ölçüldü; ilk bağlayıcı sayıdan önce kural düzeltildi |
+| 3 · Cümle bölme noktalama tabanlı | **şimdi yapılabilir → yapıldı, ve DÜZELTİLDİ** | Konteyner yok, model yok: bölme kuralına bilinen zor girdiler verildi, sonra kural düzeltildi |
 
 ### 3. tereddüdün ölçümü — ondalık GÜVENLİ, numaralı liste DEĞİL
 
@@ -270,15 +270,52 @@ cümlesinden keskin:
 değişiklik geçmişi yeniden tanımlamıyor; tanımı ilk kullanımdan önce doğru
 kuruyor. Yarın aynı değişiklik geçmiş seriyi kırardı.
 
-Tek sezgi kullanılmadı. Küçük-harf yaklaşımı `1. Kök`ü koruyamaz; bu yüzden
-kısaltma listesi ve numaralı madde koruması bağımsız. `IgnoreCase` yanında
-`CultureInvariant` zorunlu; aksi hâlde Türkçe kültürde `I/ı` katlaması davranışı
-değiştirir.
+Bekçi: `SentenceSplitMeasurementTests` — ilk hâli bugünkü (yanlış) davranışı
+çiviliyordu: **10 test**. Düzeltmeden sonra aynı dosya yeni davranışı çiviliyor:
+**15 test**. Aşağıdaki karar o dönüşümü ve zamanlamasını anlatıyor.
 
-Yan yana ölçüm artık kısaltmalı, kısaltmasız ve numaralı biçimlerin üçünde de
-`Dropped = 0` veriyor. Ters yön ayrıca tutuluyor: koruma satır sonunu yutarsa
-atıfsız maddeler atıflı bir maddenin arkasına saklanır. Dört yapay kusurun
-tamamı `tools/t47-kirmizi-olcumu.py` ile kırmızı ölçülür.
+### KARAR · Kural DÜZELTİLDİ, ve zamanlaması gerekçenin parçası
+
+Yukarıdaki *"çiviliyor, düzeltmiyor"* kararı **aynı gün geri alındı** ve sebebi
+gerekçenin kendi koşuluydu: değiştirmenin bedeli **korunacak bir geçmiş**
+olduğunda doğar. Bu ölçü bugüne kadar **bağlayıcı tek bir sayı üretmedi** —
+ticket açık, canlı model koşumu hiç yapılmadı. Yarın değiştirmek bir *tanım
+değişikliği* olurdu; bugün değiştirmek tanımı **ilk kullanımdan önce doğru
+kurmak**.
+
+Ve düzeltme tanımı **gevşetmiyor, sadakatini artırıyor**: numaralı liste en sık
+karşılaşılan biçim, bölünen parça atıfsız kalıyor, yani metrik model kötü
+yazmadığı hâlde *"kötü yazdı"* diyordu.
+
+**İki kural, çünkü tek sezgi ikisini kapatmıyor:**
+
+| Koruma | Ne | Neden ayrı |
+| --- | --- | --- |
+| Kısaltma listesi | `vb·vs·örn·ör·bkz·age·sy·yy·çev·haz·Dr·Doç·Prof·Sn·Nu·no·etc·e.g·i.e·Fig·vol` | **Elle ve kapalı**; türetmek bu üründe kaybedilmiş bir bahis. Listede olmayan kısaltma hâlâ bölüyor ve bu **ölçülü** (`Listede_olmayan_kisaltma_hala_boluyor`) |
+| Numaralı liste | satır başındaki `\d{1,3}\.` sınır değil | Küçük harf sezgisi bunu **kapatmıyor** — `1. Kök` büyük harfle devam ediyor |
+
+`RegexOptions.CultureInvariant` **zorunlu**: `IgnoreCase` tek başına o anki
+kültürle katlama yapıyor ve `tr-TR`'de `I`/`ı` eşlemesi bambaşka — deponun altı
+analizör kuralıyla hata seviyesine çektiği tuzağın regex tarafı.
+
+**Testler silinmedi, çevrildi.** Her testin yanında **eski hâlin neden yanlış
+olduğu** duruyor, ve **yanlışlanan iddia da duruyor**: *"ondalık yanlış
+bölünebiliyor"* cümlesi ölçülüp çürütüldü, testi kayıt olarak kaldı — bir sonraki
+okuyan aynı endişeyi tekrar üretip gereksiz bir koruma yazmaya kalkarsa cevabı
+orada.
+
+**Yan yana ölçüm korundu ve anlamı değişti:** eskiden kısaltmalı `Dropped = 1` /
+kısaltmasız `0` idi (*aynı bilgi, farklı yazım, farklı metrik*); şimdi ikisi de
+`0`. Tek sayı yazılmıyor, çünkü `Dropped = 1` tek başına *"model kötü yazdı"*
+diye okunurdu.
+
+**Ters yön de ölçüldü:** koruma satır sonunu yutarsa bütün liste tek cümle olur
+ve oran **yanlış yönde** iyileşir — atıfsız maddeler atıflı bir maddenin
+arkasına saklanır. `Maddeler_arasi_sinir_duruyor` bunu tutuyor.
+
+Kırmızı ölçümü: `tools/t47-kirmizi-olcumu.py` — dört kusur, ve **A/B çifti iki
+korumanın bağımsız olduğunu** gösteriyor (kısaltma korumasını düşürmek numaralı
+liste testini kırmızı yakmıyor, ve tersi).
 
 **Bu denetimin aramadığı:** bölme kuralının Türkçe dışındaki dillerde davranışı,
 ve modelin gerçekten hangi biçimde yazdığı (numaralı liste ne sıklıkta çıkıyor —

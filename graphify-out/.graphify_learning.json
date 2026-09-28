@@ -1,0 +1,118 @@
+{
+  "generated_at": "2026-09-27T22:43:18.382177+00:00",
+  "nodes": {
+    "docs_otlp_durability_otlp_metrics_and_traces_admission_archive_and_replay": {
+      "code_fingerprint": "34480d8ae914c4170077855b662378adfaa3e0f84799c9982b4047a53dec526f",
+      "label": "OTLP metrics and traces: admission, archive and replay",
+      "last": "2026-09-26T13:12:19.688148+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-26T13:12:19.688148+00:00",
+          "outcome": "useful",
+          "q": "ne iş kaldı? liste ver. bir an önce buranın bitmesini istiyorum."
+        }
+      ],
+      "score": 0.968248709,
+      "source_file": "docs/otlp-durability.md",
+      "status": "tentative",
+      "uses": 1
+    },
+    "src_bizigo_query_scopedquery_telemetry_bizigo_query_scopedquery": {
+      "code_fingerprint": "a8fde33ddf02f02852f05825a19f32186f15d1664f9a2abcce515efb24f1bfaf",
+      "label": "ScopedQuery",
+      "last": "2026-09-26T13:12:19.688148+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-26T13:12:19.688148+00:00",
+          "outcome": "useful",
+          "q": "ne iş kaldı? liste ver. bir an önce buranın bitmesini istiyorum."
+        }
+      ],
+      "score": 0.968248709,
+      "source_file": "src/Bizigo.Query/ScopedQuery.Telemetry.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "tests_bizigo_unittests_architecturetests_bizigo_unittests_architecturetests": {
+      "code_fingerprint": "41653fb5b1aba3884f4713a082855386e434c8f613434e616743f7e51a7a3dec",
+      "label": "ArchitectureTests",
+      "last": "2026-09-26T15:15:48.158450+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-26T15:15:48.158450+00:00",
+          "outcome": "useful",
+          "q": "Which product discovery, architecture and wiki digest guards are affected by OTLP fixture integration?"
+        }
+      ],
+      "score": 0.970168864,
+      "source_file": "tests/Bizigo.UnitTests/ArchitectureTests.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "tests_bizigo_unittests_compositionroottests_bizigo_unittests_compositionroottests": {
+      "code_fingerprint": "276a6e2b71a8caf8e8763471fd0accb9a9cdcfc838e7a3ff04fcab4a0927d3a3",
+      "label": "CompositionRootTests",
+      "last": "2026-09-26T15:15:48.158450+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-26T15:15:48.158450+00:00",
+          "outcome": "useful",
+          "q": "Which product discovery, architecture and wiki digest guards are affected by OTLP fixture integration?"
+        }
+      ],
+      "score": 0.970168864,
+      "source_file": "tests/Bizigo.UnitTests/CompositionRootTests.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "tests_bizigo_unittests_productdiscovery_bizigo_unittests_productdiscovery": {
+      "code_fingerprint": "2bea85b73e78016a4feb922a10468e68578579a7486f05a903deb6abc14bef82",
+      "label": "ProductDiscovery",
+      "last": "2026-09-26T15:15:48.158450+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-26T15:15:48.158450+00:00",
+          "outcome": "useful",
+          "q": "Which product discovery, architecture and wiki digest guards are affected by OTLP fixture integration?"
+        }
+      ],
+      "score": 0.970168864,
+      "source_file": "tests/Bizigo.UnitTests/ProductDiscovery.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "tests_bizigo_unittests_wikisourcedigeststamper_bizigo_unittests_wikisourcedigeststamper": {
+      "code_fingerprint": "40235f579a5d44782c077c31c269d385a347ab0f7988d9acf02d1e9ac145622d",
+      "label": "WikiSourceDigestStamper",
+      "last": "2026-09-26T15:15:48.158450+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-26T15:15:48.158450+00:00",
+          "outcome": "useful",
+          "q": "Which product discovery, architecture and wiki digest guards are affected by OTLP fixture integration?"
+        }
+      ],
+      "score": 0.970168864,
+      "source_file": "tests/Bizigo.UnitTests/WikiSourceDigestStamper.cs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "ui_src_lib_api_proxy": {
+      "code_fingerprint": "1ee304e463cf4e2e54024f3cf521d9aa4f9f1fb63a4846ff8910f085fd636b92",
+      "label": "proxy.ts",
+      "last": "2026-09-26T13:12:19.688148+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-26T13:12:19.688148+00:00",
+          "outcome": "useful",
+          "q": "ne iş kaldı? liste ver. bir an önce buranın bitmesini istiyorum."
+        }
+      ],
+      "score": 0.968248709,
+      "source_file": "ui/src/lib/api/proxy.ts",
+      "status": "tentative",
+      "uses": 1
+    }
+  },
+  "version": 1
+}

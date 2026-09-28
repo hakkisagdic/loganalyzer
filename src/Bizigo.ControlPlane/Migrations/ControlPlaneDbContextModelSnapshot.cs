@@ -652,7 +652,7 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("correct_finding_rank_asked");
 
-                    b.Property<string[]>("MissingEvidenceKinds")
+                    b.PrimitiveCollection<string[]>("MissingEvidenceKinds")
                         .HasColumnType("text[]")
                         .HasColumnName("missing_evidence_kinds");
 
@@ -1370,36 +1370,296 @@ namespace Bizigo.ControlPlane.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint")
                         .HasColumnName("revision");
+
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Revision"));
-                    b.Property<string>("SourceId").IsRequired().HasMaxLength(128)
-                        .HasColumnType("character varying(128)").HasColumnName("source_id");
-                    b.Property<string>("OwnerGroup").IsRequired().HasMaxLength(64)
-                        .HasColumnType("character varying(64)").HasColumnName("owner_group");
-                    b.Property<string>("PeerAddress").HasMaxLength(256)
-                        .HasColumnType("character varying(256)").HasColumnName("peer_address");
-                    b.Property<string>("Hostname").HasMaxLength(256)
-                        .HasColumnType("character varying(256)").HasColumnName("hostname");
-                    b.Property<bool>("Enabled").HasColumnType("boolean").HasColumnName("enabled");
-                    b.Property<decimal>("EffectiveFromNano").HasPrecision(20, 0)
-                        .HasColumnType("numeric(20,0)").HasColumnName("effective_from_nano");
-                    b.Property<decimal?>("EffectiveToNano").HasPrecision(20, 0)
-                        .HasColumnType("numeric(20,0)").HasColumnName("effective_to_nano");
-                    b.HasKey("Revision").HasName("pk_source_ownership_history");
-                    b.HasIndex("SourceId").IsUnique()
-                        .HasDatabaseName("ix_source_ownership_history_source_id").HasFilter("effective_to_nano IS NULL");
-                    b.HasIndex("SourceId", "EffectiveFromNano").IsUnique()
+
+                    b.Property<decimal>("EffectiveFromNano")
+                        .HasPrecision(20)
+                        .HasColumnType("numeric(20,0)")
+                        .HasColumnName("effective_from_nano");
+
+                    b.Property<decimal?>("EffectiveToNano")
+                        .HasPrecision(20)
+                        .HasColumnType("numeric(20,0)")
+                        .HasColumnName("effective_to_nano");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("enabled");
+
+                    b.Property<string>("Hostname")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("hostname");
+
+                    b.Property<string>("OwnerGroup")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("owner_group");
+
+                    b.Property<string>("PeerAddress")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("peer_address");
+
+                    b.Property<string>("SourceId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_id");
+
+                    b.HasKey("Revision")
+                        .HasName("pk_source_ownership_history");
+
+                    b.HasIndex("SourceId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_source_ownership_history_source_id")
+                        .HasFilter("effective_to_nano IS NULL");
+
+                    b.HasIndex("SourceId", "EffectiveFromNano")
+                        .IsUnique()
                         .HasDatabaseName("ix_source_ownership_history_source_id_effective_from_nano");
+
                     b.ToTable("source_ownership_history", "bizigo");
                 });
 
             modelBuilder.Entity("Bizigo.ControlPlane.TelemetryOwnerClaimEntity", b =>
                 {
-                    b.Property<Guid>("EnvelopeId").ValueGeneratedOnAdd()
-                        .HasColumnType("uuid").HasColumnName("envelope_id");
-                    b.Property<string>("BindingHash").IsRequired().HasMaxLength(64)
-                        .HasColumnType("character varying(64)").HasColumnName("binding_hash");
-                    b.HasKey("EnvelopeId").HasName("pk_telemetry_owner_claims");
+                    b.Property<Guid>("EnvelopeId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("envelope_id");
+
+                    b.Property<string>("BindingHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("binding_hash");
+
+                    b.HasKey("EnvelopeId")
+                        .HasName("pk_telemetry_owner_claims");
+
                     b.ToTable("telemetry_owner_claims", "bizigo");
+                });
+
+            modelBuilder.Entity("Bizigo.ControlPlane.TopologyBindingEntity", b =>
+                {
+                    b.Property<long>("Revision")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("revision");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Revision"));
+
+                    b.Property<Guid>("BindingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("binding_id");
+
+                    b.Property<decimal>("FromNano")
+                        .HasPrecision(20)
+                        .HasColumnType("numeric(20,0)")
+                        .HasColumnName("from_nano");
+
+                    b.Property<string>("InstanceId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("instance_id");
+
+                    b.Property<string>("ServiceName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("service_name");
+
+                    b.Property<string>("ServiceNamespace")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("service_namespace");
+
+                    b.Property<string>("ServiceNodeId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("service_node_id");
+
+                    b.Property<long>("SourceHistoryRevision")
+                        .HasColumnType("bigint")
+                        .HasColumnName("source_history_revision");
+
+                    b.Property<string>("SourceId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_id");
+
+                    b.Property<string>("TargetNodeId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("target_node_id");
+
+                    b.Property<decimal?>("ToNano")
+                        .HasPrecision(20)
+                        .HasColumnType("numeric(20,0)")
+                        .HasColumnName("to_nano");
+
+                    b.HasKey("Revision")
+                        .HasName("pk_topology_bindings");
+
+                    b.HasIndex("BindingId", "FromNano")
+                        .IsUnique()
+                        .HasDatabaseName("ix_topology_bindings_binding_id_from_nano");
+
+                    b.HasIndex("SourceId", "ServiceNamespace", "ServiceName", "InstanceId", "FromNano")
+                        .HasDatabaseName("ix_topology_bindings_source_id_service_namespace_service_name_");
+
+                    b.ToTable("topology_bindings", "bizigo");
+                });
+
+            modelBuilder.Entity("Bizigo.ControlPlane.TopologyNodeEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Deleted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("deleted");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("display_name");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("enabled");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("OwnerGroup")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("owner_group");
+
+                    b.Property<string>("SourceId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("source_id");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_topology_nodes");
+
+                    b.HasIndex("SourceId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_topology_nodes_source_id")
+                        .HasFilter("source_id IS NOT NULL");
+
+                    b.HasIndex("OwnerGroup", "Id")
+                        .HasDatabaseName("ix_topology_nodes_owner_group_id");
+
+                    b.ToTable("topology_nodes", "bizigo");
+                });
+
+            modelBuilder.Entity("Bizigo.ControlPlane.TopologyNodeHistoryEntity", b =>
+                {
+                    b.Property<long>("Revision")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("revision");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Revision"));
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("display_name");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("enabled");
+
+                    b.Property<decimal>("FromNano")
+                        .HasPrecision(20)
+                        .HasColumnType("numeric(20,0)")
+                        .HasColumnName("from_nano");
+
+                    b.Property<string>("NodeId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("node_id");
+
+                    b.Property<long>("NodeVersion")
+                        .HasColumnType("bigint")
+                        .HasColumnName("node_version");
+
+                    b.Property<string>("OwnerGroup")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("owner_group");
+
+                    b.Property<long?>("SourceHistoryRevision")
+                        .HasColumnType("bigint")
+                        .HasColumnName("source_history_revision");
+
+                    b.Property<decimal?>("ToNano")
+                        .HasPrecision(20)
+                        .HasColumnType("numeric(20,0)")
+                        .HasColumnName("to_nano");
+
+                    b.HasKey("Revision")
+                        .HasName("pk_topology_node_history");
+
+                    b.HasIndex("NodeId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_topology_node_history_node_id")
+                        .HasFilter("to_nano IS NULL");
+
+                    b.HasIndex("NodeId", "FromNano")
+                        .IsUnique()
+                        .HasDatabaseName("ix_topology_node_history_node_id_from_nano");
+
+                    b.ToTable("topology_node_history", "bizigo");
+                });
+
+            modelBuilder.Entity("Bizigo.ControlPlane.TopologyReadStateEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<long>("Epoch")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("epoch");
+
+                    b.Property<long>("PublishedSequence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("published_sequence");
+
+                    b.HasKey("Id")
+                        .HasName("pk_topology_read_state");
+
+                    b.ToTable("topology_read_state", "bizigo");
                 });
 #pragma warning restore 612, 618
         }

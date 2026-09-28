@@ -26,6 +26,8 @@ public static class ControlPlaneServiceCollectionExtensions
             lifetime: ServiceLifetime.Singleton);
 
         services.AddSingleton<SourceDirectory>();
+        services.AddSingleton<ITopologyBindingResolver, HistoricalTopologyBindings>();
+        services.AddSingleton<TopologyRegistry>();
         services.AddSingleton<HistoricalTelemetryOwners>();
         services.AddSingleton<ITelemetryOwnerResolver>(sp => sp.GetRequiredService<HistoricalTelemetryOwners>());
         services.AddSingleton<ITelemetryBindingRegistry>(sp => sp.GetRequiredService<HistoricalTelemetryOwners>());

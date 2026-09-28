@@ -39,6 +39,9 @@ internal sealed class TelemetryApiHost : IAsyncDisposable
     internal static Task<TelemetryApiHost> StartReviewAsync(Microsoft.EntityFrameworkCore.IDbContextFactory<ControlPlaneDbContext> factory, CancellationToken token) =>
         StartCoreAsync(factory, token, true, null);
 
+    internal static Task<TelemetryApiHost> StartTopologyAsync(Microsoft.EntityFrameworkCore.IDbContextFactory<ControlPlaneDbContext> factory, CancellationToken token) =>
+        StartCoreAsync(factory, token, false, null);
+
     private static async Task<TelemetryApiHost> StartCoreAsync(Microsoft.EntityFrameworkCore.IDbContextFactory<ControlPlaneDbContext> factory,
         CancellationToken token, bool includeEvidence, TelemetryDbFixture? f, Action<CancellationToken>? queryStarted = null)
     {
@@ -55,6 +58,7 @@ internal sealed class TelemetryApiHost : IAsyncDisposable
             ["Auth:McpResource"] = "https://telemetry-fixture.invalid/mcp", ["Auth:RequireHttpsMetadata"] = "false",
         });
         builder.Services.AddSingleton(factory);
+        builder.Services.AddSingleton<TopologyRegistry>();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped(_ => factory.CreateDbContext());
         if (f is not null) builder.Services.AddScoped<IScopedQuery>(sp =>
@@ -82,6 +86,7 @@ internal sealed class TelemetryApiHost : IAsyncDisposable
         });
         host.App = builder.Build(); host.App.UseAuthentication(); host.App.UseAuthorization();
         if (f is not null) host.App.MapTelemetryReads();
+        host.App.MapTopologyWrites();
         if (includeEvidence) { host.App.MapRca(); host.App.MapAlertClosure(); }
         try
         {
@@ -101,6 +106,12 @@ internal sealed class TelemetryApiHost : IAsyncDisposable
 
     public Task<HttpResponseMessage> PostAsync(string path, string body, string? owner = "A", string role = "reader") =>
         SendAsync(HttpMethod.Post, path, body, owner, role, "bizigo-api");
+
+    public Task<HttpResponseMessage> PutAsync(string path, string body, string? owner = "A", string role = "reader") =>
+        SendAsync(HttpMethod.Put, path, body, owner, role, "bizigo-api");
+
+    public Task<HttpResponseMessage> DeleteAsync(string path, string? owner = "A", string role = "reader") =>
+        SendAsync(HttpMethod.Delete, path, null, owner, role, "bizigo-api");
 
     private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, string? body, string? owner, string role, string audience, CancellationToken? token = null)
     {
