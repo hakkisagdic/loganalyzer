@@ -37,6 +37,27 @@ Bekçinin dört kimlik okuma noktası vardı ve **ikisi `B`'yi zaten tanıyordu*
 yapıldı, dördünde sayıldı — *bir iddiayı düzeltmeden önce kaç yerin söylediğini
 say.*
 
+### Genişletmenin kırmızı yanabildiği ölçüldü — üçü birlikte
+
+Bir desen genişletmesinin iki ayrı yönde yanlış olabileceği için üç kusur
+gerekiyor; biri tek başına ikisini de göstermiyor
+(`tools/b02-kirmizi-olcumu.py`).
+
+| Kusur | Beklenen | Sonuç | Neyi kanıtlıyor |
+| --- | --- | --- | --- |
+| Desen `[TSM]`'e döndürülüyor | `Her_ticket_bir_yol_haritasi_tablosunda_gorunuyor` **kırmızı** | **kırmızı ✓** | Genişletme **taşıyıcı**: onsuz B02'nin satırı görünmüyor |
+| Asılı bir **`B99`** satırı ekleniyor | `Yol_haritasi_baglari_var_olan_ticketa_gidiyor` **kırmızı** | **kırmızı ✓** | `B` satırları **gerçekten ayrıştırılıyor** — ayrıştırılmasaydı asılı bağ görünmez kalır ve bekçi yeşil yanardı |
+| Asılı bir **`X99`** satırı ekleniyor | aynı bekçi **yeşil kalmalı** | **yeşil kaldı ✓** | Genişletme bir **joker değil**: tanınmayan önek hâlâ görünmüyor |
+
+**İkinci satır ölçümün belkemiği.** Bir bekçiyi *"kırmızı yanabiliyor"* diye
+göstermenin kolay yolu onu bozmaktır; buradaki asıl soru başkaydı — desen `B`'yi
+**okuyor** mu, yoksa satırı sessizce atlıyor mu? Atlıyorsa asılı bir bağ hiç
+görünmez ve *"bekçi yeşil"* cevabı **hiçbir şey ifade etmez**. Üçüncü satır ise
+genişletmenin sınırını çiziyor: kabul kümesi büyüdü ama **her şeyi** kabul
+etmiyor.
+
+Geri alındıktan sonra tam paket: **1654 geçti / 0 düştü.**
+
 ## Ticket listesi
 
 | # | Ticket | Özü | Durum |
