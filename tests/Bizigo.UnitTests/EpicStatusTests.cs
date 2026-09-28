@@ -171,6 +171,35 @@ public sealed class EpicStatusTests
         ["yol-haritasi:tickets-f4/senaryo-plugin-cekirdegi"] = "T43 — F4 tablosunda ticket satırı yok.",
         ["yol-haritasi:tickets/ham-arsiv-kurtarma"] = "F1 tablosunda yok.",
 
+        // 1b · KİMLİK DESENİ — bu satırın sebebi tablo eksikliği DEĞİL, ve
+        //      yukarıdakilerle aynı yolla kapanamıyor.
+        //
+        //      `tickets-kapasite/index.md` B01 için BAĞLI bir satır taşıyor.
+        //      Buna rağmen kapı kırmızı yanıyor, çünkü `ReadRoadmap` kimliği
+        //      `[TSM]\d+` ile arıyor ve `B` ön eki desende yok. Yani hiçbir
+        //      tablo yerleşimi bunu düzeltemiyor — ölçüldü: satır eklendi, kapı
+        //      yine kırmızı yandı.
+        //
+        //      Ve dört okuyucu BÖLÜNMÜŞ hâlde:
+        //
+        //        ReadRoadmap   [TSM]      → B01'i görmüyor
+        //        ReportedOpen  [TSM]      → B01'i görmüyor
+        //        ReadMerged    [tsmbTSMB] → görüyor
+        //        ReadDeclared  [TSMB]     → görüyor
+        //
+        //      Sonucu tek yönlü değil: kapı B (*merge edilmiş her kimlik bir
+        //      tabloda anılıyor*) B kalemlerinde ÇALIŞIYOR, ama kapı A
+        //      (*merge edilmiş bir iş `status: 0` görünmüyor*) HİÇ çalışmıyor —
+        //      yani B kalemlerinde T61'in mekanik koruması yok.
+        //
+        //      Desen BİLEREK genişletilmedi: kimlik uzayının şekli
+        //      koordinatörün kararı ve ona ölçümle bildirildi. Karar geldiğinde
+        //      bu satır silinecek ve silinmesini `Listeler_bayat_giris_tasimiyor`
+        //      isteyecek.
+        ["yol-haritasi:tickets-kapasite/gercek-hiz-kontrolu"] =
+            "B01 — bağlı satırı VAR (`tickets-kapasite/index.md`); görünmemesinin sebebi " +
+            "kimlik deseninin (`[TSM]\\d+`) `B` ön ekini tanımaması. Desen kararı koordinatörde.",
+
         // 2 · `tickets-fs` tablosunun Durum sütunu ile ticket dosyaları
         //     çelişiyor. `kalan-is-raporu` §6 bu dördü bir kez düzeltmişti;
         //     mekanizma olmadığı için yeniden ayrıştılar — raporun kendi
