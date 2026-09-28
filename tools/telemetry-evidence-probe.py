@@ -44,7 +44,12 @@ def verify_raw(session, output, nonce):
         if any(any(a.get("key") == "test.run" and a.get("value", {}).get("stringValue") == nonce
                    for a in leaf["resource"].get("attributes", [])) for leaf in item["leaves"]):
             processed.append(item)
-    assert {item["signal"] for item in processed} == {"Metrics", "Traces"}
+    actual_signals = {item["signal"] for item in processed}
+    assert actual_signals == {"Metrics", "Traces"}, (
+        f"processed signals: {sorted(actual_signals)}, "
+        f"processed count: {len(processed)}, nonce: {nonce}, "
+        f"files: {sorted(p.name for p in (root / 'processed').glob('*.json'))}"
+    )
     captures = {entry["sha256"]: entry for path in Path(session["captures"]).glob("*.json")
                 if (entry := json.loads(path.read_text()))["status"] == 200}
     for item in processed:
