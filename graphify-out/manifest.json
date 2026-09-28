@@ -450,9 +450,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Api/Program.cs": {
-    "mtime": 1790535691.173304,
-    "seen": 1790543317.229402,
-    "ast_hash": "72fd02c71f40a3f8a1b4ed652b275b3a",
+    "mtime": 1790552560.3861206,
+    "seen": 1790595779.341343,
+    "ast_hash": "64d456d499cd99b002bfc4f98b7e1e96",
     "semantic_hash": ""
   },
   "src/Bizigo.Api/Properties/launchSettings.json": {
@@ -690,15 +690,15 @@
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/ControlPlaneDbContext.cs": {
-    "mtime": 1790437284.1937258,
-    "seen": 1790444381.580488,
-    "ast_hash": "978a45f6ac6e14238f12ac2fff3ef8fe",
+    "mtime": 1790552259.291671,
+    "seen": 1790595779.341491,
+    "ast_hash": "ee33c8f4afa8b489a297c9849c890245",
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/ControlPlaneServiceCollectionExtensions.cs": {
-    "mtime": 1790436762.6107454,
-    "seen": 1790444381.580489,
-    "ast_hash": "040dca80ae266cf76806af04b140d3c6",
+    "mtime": 1790552529.831671,
+    "seen": 1790595779.341492,
+    "ast_hash": "c84b7a9ca8d5481485e41abe8c8d8735",
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/Entities.cs": {
@@ -864,9 +864,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/Migrations/ControlPlaneDbContextModelSnapshot.cs": {
-    "mtime": 1790535249.8591068,
-    "seen": 1790543317.231262,
-    "ast_hash": "0d44cf4880790b2d91fad9b261a53841",
+    "mtime": 1790552621.0566807,
+    "seen": 1790595779.3415701,
+    "ast_hash": "68a5ed2ec7b7fd91b87581442777fc6d",
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/SourceDirectory.cs": {
@@ -1704,9 +1704,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/DevStackSetup.cs": {
-    "mtime": 1790438184.7397287,
-    "seen": 1790444381.584566,
-    "ast_hash": "030f49f6ab77a8e11573b5f8dcf75697",
+    "mtime": 1790551687.5326836,
+    "seen": 1790595779.3425431,
+    "ast_hash": "0daae25b5d87c12506eebe995a8723ac",
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/DevStackSmokeTests.cs": {
@@ -2256,9 +2256,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/ProducesContractTests.cs": {
-    "mtime": 1790542763.646665,
-    "seen": 1790543317.2367082,
-    "ast_hash": "d2c559975fb69f3a2348137c382197c8",
+    "mtime": 1790595504.9312372,
+    "seen": 1790595779.3429382,
+    "ast_hash": "79a5b67c94b750bd1a7ee190aadc19fc",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/RawArchiveDoubles.cs": {
@@ -2364,9 +2364,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/SidecarClientTests.cs": {
-    "mtime": 1790004574.9200878,
-    "seen": 1790008053.5079072,
-    "ast_hash": "6792319884e79082f8b451fe77e3a17e",
+    "mtime": 1790594664.7379608,
+    "seen": 1790595779.342997,
+    "ast_hash": "02600436bdc6073485489d3558b8ce63",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/SidecarLiveTests.cs": {
@@ -4086,9 +4086,9 @@
     "semantic_hash": ""
   },
   "docs/epic/tickets-f3/sigma-derleme/index.md": {
-    "mtime": 1790006414.79593,
-    "seen": 1790008053.515281,
-    "ast_hash": "19af5ab05904c7ebdf03d58f69945abf",
+    "mtime": 1790594577.7894413,
+    "seen": 1790595779.343414,
+    "ast_hash": "dc3c2660bbb0055649290bc4f70262a6",
     "semantic_hash": ""
   },
   "docs/epic/tickets-f3/sigma-pipeline/index.md": {
@@ -5136,9 +5136,9 @@
     "semantic_hash": ""
   },
   "docs/wiki/concepts/f3-determinizm-bir-kapi-sartidir.md": {
-    "mtime": 1790007461.1568599,
-    "seen": 1790008053.516308,
-    "ast_hash": "0414610865ee8abd4a8763bca97e076d",
+    "mtime": 1790595739.5488095,
+    "seen": 1790595779.343492,
+    "ast_hash": "9497188e5f16c839ebed8ad968ff1a0f",
     "semantic_hash": ""
   },
   "docs/wiki/concepts/f3-kanit-once-akil-sonra.md": {
@@ -5292,9 +5292,9 @@
     "semantic_hash": ""
   },
   "docs/wiki/skills/f3-sigma-derleme-kapilari.md": {
-    "mtime": 1790007461.1711023,
-    "seen": 1790008053.516649,
-    "ast_hash": "35d1285c4304e81bdc35e9a251c136ba",
+    "mtime": 1790595739.573001,
+    "seen": 1790595779.3435168,
+    "ast_hash": "5431769d110c318156061d2be9cc1371",
     "semantic_hash": ""
   },
   "docs/wiki/skills/kapsam-kapanacak-ile-kapanmayacagi-ayirmak.md": {
@@ -6126,9 +6126,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Rca/Reasoning/SentenceBinder.cs": {
-    "mtime": 1790056688.1174676,
-    "seen": 1790063987.404841,
-    "ast_hash": "4161cdb9b2f0b7ffd1ed2958f373bd45",
+    "mtime": 1790594790.9590685,
+    "seen": 1790595779.341951,
+    "ast_hash": "bfab81473a9924e7f95d00a8dbf39146",
     "semantic_hash": ""
   },
   "src/Bizigo.Rca/Reasoning/StepEvidenceView.cs": {
@@ -6336,9 +6336,9 @@
     "semantic_hash": ""
   },
   "docs/epic/tickets-f4/kalite-olcumu/index.md": {
-    "mtime": 1790006990.2908149,
-    "seen": 1790008053.515404,
-    "ast_hash": "ed26bad65d7f60203c1f93f021498c93",
+    "mtime": 1790594577.786247,
+    "seen": 1790595779.343422,
+    "ast_hash": "057ee06cfa86af560c117138605e3614",
     "semantic_hash": ""
   },
   "docs/epic/tickets-f4/llm-adimlari-ve-iki-kapi/index.md": {
@@ -7512,9 +7512,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/SentenceSplitMeasurementTests.cs": {
-    "mtime": 1790025760.4823244,
-    "seen": 1790063987.41235,
-    "ast_hash": "1e392700175341b26d06005d849dbb96",
+    "mtime": 1790594664.7387621,
+    "seen": 1790595779.342994,
+    "ast_hash": "7fe9ed692fcf2cd7c6cd758d039f07ac",
     "semantic_hash": ""
   },
   "docs/epic/kapasite-olcumu/b02-varis-defteri/index.md": {
@@ -7602,15 +7602,15 @@
     "semantic_hash": ""
   },
   "tools/sigma-build/tests/test_expectation_count.py": {
-    "mtime": 1790004574.9284503,
-    "seen": 1790008053.5087092,
-    "ast_hash": "1327fc1cb173326c6d458d0030b2a261",
+    "mtime": 1790594577.792675,
+    "seen": 1790595779.343084,
+    "ast_hash": "c19f242cac59bf0acaeb340e46c0f6c1",
     "semantic_hash": ""
   },
   "tools/t47-kirmizi-olcumu.py": {
-    "mtime": 1790004540.2799468,
-    "seen": 1790008053.509386,
-    "ast_hash": "896d0214d3f186d5171546fba6ac2c42",
+    "mtime": 1790594577.7962725,
+    "seen": 1790595779.343091,
+    "ast_hash": "659dbf9f557fa383bcd97de5891d64b8",
     "semantic_hash": ""
   },
   "tools/t63-rustfs-outage-olcumu.py": {
@@ -8256,9 +8256,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/TelemetryApiHost.cs": {
-    "mtime": 1790544120.5593188,
-    "seen": 1790544739.3986251,
-    "ast_hash": "3ccfa4503b2b1d36f32c8980ab9899b3",
+    "mtime": 1790552690.5793111,
+    "seen": 1790595779.342601,
+    "ast_hash": "94aea814e603264af15ec1497036aa06",
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/TelemetryApiIntegrationTests.cs": {
@@ -8397,6 +8397,102 @@
     "mtime": 1790545985.5126626,
     "seen": 1790546242.426053,
     "ast_hash": "a6dd1b3a748baa77a8a38a7925221068",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Api/TopologyWriteEndpoints.cs": {
+    "mtime": 1790552560.3853698,
+    "seen": 1790595779.3413708,
+    "ast_hash": "0528bd913fb5b7ac8c0b967ad7071268",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Contracts/TopologyIdentity.cs": {
+    "mtime": 1790551687.5316827,
+    "seen": 1790595779.341481,
+    "ast_hash": "04ea8cb436908187116ae50870f6462e",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Contracts/TopologyRegistry.cs": {
+    "mtime": 1790552529.829876,
+    "seen": 1790595779.341483,
+    "ast_hash": "7e83b0e123e6eb4bbdbfe32596f12f94",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/ControlPlaneDbContext.Topology.cs": {
+    "mtime": 1790552797.806021,
+    "seen": 1790595779.34149,
+    "ast_hash": "aedb4a9889277808bf36bea49897d9b2",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/HistoricalTopologyBindings.cs": {
+    "mtime": 1790552736.1967704,
+    "seen": 1790595779.341496,
+    "ast_hash": "44b1d1c7ca876394c42c99cc50e338f2",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/Migrations/20260927232926_AddTopologyRegistry.Designer.cs": {
+    "mtime": 1790551766.5610704,
+    "seen": 1790595779.341565,
+    "ast_hash": "fcb1cb5ac49bae5e2d51b1b169a5eefe",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/Migrations/20260927232926_AddTopologyRegistry.cs": {
+    "mtime": 1790551888.0177844,
+    "seen": 1790595779.3415658,
+    "ast_hash": "89db21ba0d786e0750ebcf1e327845ea",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/Migrations/20260927234341_AddTopologyBindingSourceRevision.Designer.cs": {
+    "mtime": 1790552621.05598,
+    "seen": 1790595779.341568,
+    "ast_hash": "72e2eca55643513fe7d63325e4ec0960",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/Migrations/20260927234341_AddTopologyBindingSourceRevision.cs": {
+    "mtime": 1790552702.0798395,
+    "seen": 1790595779.341569,
+    "ast_hash": "56be572b7e7d9d1a17c24d130a387e22",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/TopologyEntities.cs": {
+    "mtime": 1790552529.8310618,
+    "seen": 1790595779.341577,
+    "ast_hash": "d1d0c7f56e9c25dff3d04784e13def47",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/TopologyRegistry.cs": {
+    "mtime": 1790552797.806462,
+    "seen": 1790595779.341578,
+    "ast_hash": "7f3caadc7477cafb15e77b6b678b555f",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyIdentityIntegrationTests.cs": {
+    "mtime": 1790552259.3353584,
+    "seen": 1790595779.34262,
+    "ast_hash": "a73619e4fb5897f430965c211c2b304b",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyRegistryIntegrationTests.cs": {
+    "mtime": 1790552937.4861286,
+    "seen": 1790595779.342622,
+    "ast_hash": "fb7f49351af8f254ade7d1237719dc04",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyHistoryBoundaryTests.cs": {
+    "mtime": 1790552218.4015017,
+    "seen": 1790595779.34302,
+    "ast_hash": "ce67c43dad1bfdeb8fa218a9f8eb3d40",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyIdentityTests.cs": {
+    "mtime": 1790552736.1986134,
+    "seen": 1790595779.3430212,
+    "ast_hash": "db4c05b31b3a7abd86c80abed427654f",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyRegistryTests.cs": {
+    "mtime": 1790552797.8067281,
+    "seen": 1790595779.343023,
+    "ast_hash": "cf149487a2ea7aa04be76ebcf558d832",
     "semantic_hash": ""
   }
 }

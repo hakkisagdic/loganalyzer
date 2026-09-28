@@ -138,7 +138,14 @@ KUSURLAR = [
         koy="",
         kirmizi_bekleniyor=["Collector_metrik_ucu_iki_parcali_ve_ikisi_de_yerinde"],
     ),
+
+    # ------------------------------------------------------------------------
+    # Kimlik deseninin genişletilmesi (`[TSM]` → `[TSMB]`). Üç kusur birlikte
+    # bir şeyi ölçüyor: genişletme TAŞIYICI mı, ve *"her şeyi kabul et"* hâline
+    # kaydı mı. Biri tek başına ikisini de göstermiyor.
+    # ------------------------------------------------------------------------
     Kusur(
+        # Genişletme geri alınıyor: B02'nin yol haritası satırı görünmez oluyor.
         ad="kimlik deseni B'yi tanımayan hâline döndürülüyor",
         dosya=GATE,
         bul='@"^\\|\\s*\\*{0,2}([TSMB]\\d+)\\*{0,2}\\s*\\|\\s*\\[[^\\]]*\\]\\(([^)]+)\\)\\s*\\|(.*)$",',
@@ -146,6 +153,9 @@ KUSURLAR = [
         kirmizi_bekleniyor=["Her_ticket_bir_yol_haritasi_tablosunda_gorunuyor"],
     ),
     Kusur(
+        # B satırı GERÇEKTEN ayrıştırılıyor mu? Ayrıştırılmıyorsa bu asılı bağ
+        # görünmez kalır ve bekçi YEŞİL yanar — yani kırmızı yanması,
+        # genişletmenin iş yaptığının kanıtı.
         ad="asılı bir B satırı ekleniyor",
         dosya=STORY,
         bul="| B02 | [Üç katmanlı varış defteri]",
@@ -153,6 +163,9 @@ KUSURLAR = [
         kirmizi_bekleniyor=["Yol_haritasi_baglari_var_olan_ticketa_gidiyor"],
     ),
     Kusur(
+        # Ve genişletme bir JOKER DEĞİL: tanınmayan bir önek hâlâ görünmüyor,
+        # yani aynı asılı bağ X99 ile kırmızı YANMIYOR. Bu kusurun beklentisi
+        # bilerek "yeşil kalmalı" — ölçtüğü şey desenin SINIRI.
         ad="asılı bir X satırı ekleniyor (desen joker değil)",
         dosya=STORY,
         bul="| B02 | [Üç katmanlı varış defteri]",

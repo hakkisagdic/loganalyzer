@@ -692,15 +692,24 @@ public sealed class EpicStatusTests
     /// </para>
     ///
     /// <para>
-    /// <b><c>kapasite-olcumu</c>'nun B01–B05'i bu kapıya takılmıyor ve bu bir
-    /// karar.</b> Beşinin de tablo satırı var, ticket dosyası yok, ve hiçbiri
-    /// merge edilmedi — yani <i>plan yazıldı, iş başlamadı</i>. "Belgede adı
-    /// geçen ama dosyası olmayan ticket" hâli bu bekçinin
-    /// <b>kapsamında değil</b>: bir planın dilimleme önerisini ticket dosyası
-    /// yazma zorunluluğuna çevirirdi, ve <c>kapasite-olcumu</c> §6'nın üç açık
-    /// sorusu cevaplanmadan o dosyalar zaten yazılamaz. Kapı ilk <c>b01-*</c>
-    /// dalı merge edildiği gün konuşmaya başlıyor — yani kapsamı, bağlandığı
-    /// olguyla birlikte kendiliğinden büyüyor.
+    /// <b>B serisi bu kapıya takılmıyor ve bu bir karar.</b> "Belgede adı geçen
+    /// ama dosyası olmayan ticket" hâli bu bekçinin <b>kapsamında değil</b>:
+    /// bir planın dilimleme önerisini ticket dosyası yazma zorunluluğuna
+    /// çevirirdi, ve <c>kapasite-olcumu</c> §6'nın üç açık sorusu cevaplanmadan
+    /// B01/B03–B05 zaten yazılamaz.
+
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Kapsam notu — 2026-09-15'te değişti ve buradaki cümle bayatlıyordu:</b>
+    /// B02 artık bir ticket dosyası <b>ve</b> yol haritası satırı taşıyor
+    /// (<c>tickets-kapasite</c>). Ama bu kapı onu <b>hâlâ görmüyor</b>, ve
+    /// sebebi kapsam değil <b>dal adı</b>: işi <c>t60-entropi-terfisi</c>
+    /// içinde merge edildi, yani <see cref="Merged"/> kümesinde B02 diye bir
+    /// kimlik yok. Kapı B serisi hakkında konuşmaya ilk <c>b0N-*</c> dalı merge
+    /// edildiği gün başlıyor — kapsamı bağlandığı olguyla birlikte
+    /// kendiliğinden büyüyor, ama <i>hangi olgu</i> olduğu yazılı olmazsa
+    /// yeşilliği yanlış okunur.
     /// </para>
     /// </summary>
     [Fact]
