@@ -151,7 +151,92 @@ public sealed class EpicStatusTests
     /// <c>durum:</c> · <c>rapor:</c>.
     /// </para>
     /// </summary>
-    private static readonly Dictionary<string, string> KnownDivergence = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, string> KnownDivergence = new(StringComparer.Ordinal)
+    {
+        // 1 · Yol haritası tablosunda hiç görünmeyen ticket dosyaları. Yazıldılar,
+        //     tablolarına eklenmediler — ticket dosyası ile yol haritası
+        //     birbirinden ayrıştı ve ayrışmayı kimse görmüyordu.
+        //
+        //     T48/T50/T53 buradan ÇIKTI: koordinatörün kararıyla
+        //     `tickets-f3/index.md`'ye "Kapı ticket'ları" alt başlığı altında
+        //     eklendiler ve `references/f3-detection-ve-rca-kaniti` vault
+        //     sayfası okunup güncellendi, damgalandı (§11).
+        //
+        //     T49 da ÇIKTI (T62): `tickets-f2/index.md`'ye "F2 sonrası —
+        //     dağıtım ve sağlık" alt başlığı altında T62 ile birlikte eklendi.
+        //     Aynı kalıp, aynı gerekçe — tablo fazın ÜRÜNÜNÜ anlatıyor, bu iki
+        //     satır o ürünün KALKIŞINI.
+        ["yol-haritasi:tickets-f3/specificity-olcutu"] = "F3 tablosunda yok; kimliği de belirsiz.",
+        ["yol-haritasi:tickets-f4/model-saglayicisi"] = "T42 — F4 tablosunda ticket satırı yok.",
+        ["yol-haritasi:tickets-f4/senaryo-plugin-cekirdegi"] = "T43 — F4 tablosunda ticket satırı yok.",
+        ["yol-haritasi:tickets/ham-arsiv-kurtarma"] = "F1 tablosunda yok.",
+
+        // 1b · KİMLİK DESENİ — bu satırın sebebi tablo eksikliği DEĞİL, ve
+        //      yukarıdakilerle aynı yolla kapanamıyor.
+        //
+        //      `tickets-kapasite/index.md` B01 için BAĞLI bir satır taşıyor.
+        //      Buna rağmen kapı kırmızı yanıyor, çünkü `ReadRoadmap` kimliği
+        //      `[TSM]\d+` ile arıyor ve `B` ön eki desende yok. Yani hiçbir
+        //      tablo yerleşimi bunu düzeltemiyor — ölçüldü: satır eklendi, kapı
+        //      yine kırmızı yandı.
+        //
+        //      Ve dört okuyucu BÖLÜNMÜŞ hâlde:
+        //
+        //        ReadRoadmap   [TSM]      → B01'i görmüyor
+        //        ReportedOpen  [TSM]      → B01'i görmüyor
+        //        ReadMerged    [tsmbTSMB] → görüyor
+        //        ReadDeclared  [TSMB]     → görüyor
+        //
+        //      Sonucu tek yönlü değil: kapı B (*merge edilmiş her kimlik bir
+        //      tabloda anılıyor*) B kalemlerinde ÇALIŞIYOR, ama kapı A
+        //      (*merge edilmiş bir iş `status: 0` görünmüyor*) HİÇ çalışmıyor —
+        //      yani B kalemlerinde T61'in mekanik koruması yok.
+        //
+        //      Desen BİLEREK genişletilmedi: kimlik uzayının şekli
+        //      koordinatörün kararı ve ona ölçümle bildirildi. Karar geldiğinde
+        //      bu satır silinecek ve silinmesini `Listeler_bayat_giris_tasimiyor`
+        //      isteyecek.
+        ["yol-haritasi:tickets-kapasite/gercek-hiz-kontrolu"] =
+            "B01 — bağlı satırı VAR (`tickets-kapasite/index.md`); görünmemesinin sebebi " +
+            "kimlik deseninin (`[TSM]\\d+`) `B` ön ekini tanımaması. Desen kararı koordinatörde.",
+
+        // 2 · `tickets-fs` tablosunun Durum sütunu ile ticket dosyaları
+        //     çelişiyor. `kalan-is-raporu` §6 bu dördü bir kez düzeltmişti;
+        //     mekanizma olmadığı için yeniden ayrıştılar — raporun kendi
+        //     öngörüsü gerçekleşti.
+        ["durum:S02"] = "Tablo 🔄 diyor, ticket dosyası `status: 2`.",
+        ["durum:S03"] = "Tablo 🔄 diyor, ticket dosyası `status: 2`.",
+        ["durum:S04"] = "Tablo ⬜ diyor, ticket dosyası `status: 2`.",
+        ["durum:S05"] = "Tablo ⬜ diyor, ticket dosyası `status: 2`.",
+
+        // 3 · `kalan-is-raporu`'nun "açık" dediği kalemler.
+        //
+        // T38, T44 ve T47/T48 girişleri 2026-09-05'te SİLİNDİ, çünkü rapor o
+        // gün bugünkü hâline getirildi ve üçü artık ayrışmıyor. Silinmeleri bu
+        // kapının ikinci yarısının istediği şey: küçülmeyen bir ayrışma listesi
+        // bir süre sonra hiçbir şey ifade etmiyor, ve birinci yarıyı dürüst
+        // tutan da bu.
+        //
+        // Silinmeden önce T44'ün gerekçesi bir kez GÜNCELLENDİ ve o da kayda
+        // değer: ayrışma sürüyordu ama sebebi değişmişti — eskisi "belge yok",
+        // yenisi "belge var ve çelişiyor". Metin güncellenmeseydi liste doğru
+        // kalemi tutup yanındaki cümle yalan söyleyecekti.
+        //
+        // T48'de aynı şey İKİNCİ kez görüldü ve mekanizması T44'ünkinden
+        // farklıydı: yol haritası satırı eklenince kimlik çözülebilir hâle
+        // geldi ve bulgu "eşlenemiyor"dan "rapor açık diyor, dosya `status: 2`"
+        // hâline döndü. Yani BİRİNCİ ayrışma ikincisini maskeliyormuş —
+        // eşleme boşluğu kapatılana kadar altındaki çelişki hiç görünmüyordu.
+        // İki örnek bir desen: bir ayrışmanın kapanması, aynı satırın
+        // kapandığı anlamına gelmiyor.
+        //
+        // ÜÇÜNCÜ örnek T49 ve maskenin ALTINDA çelişki YOKTU: yol haritası
+        // satırı eklenince kimlik çözüldü, dosya `status: 1` çıktı ve raporun
+        // "açık" demesi ÇELİŞMİYOR. Yani bu kez maske gerçek bir hizasızlığı
+        // değil, sonradan doğru çıkan bir kaydı saklıyordu. Giriş bu yüzden
+        // güncellenmedi, SİLİNDİ — ve iki hâlin ayrı ayrı görülmesi listeyi
+        // dürüst tutan şey (T62 ölçtü, `Listeler_bayat_giris_tasimiyor` söyledi).
+    };
 
     /// <summary>
     /// <b>Hiçbir zaman hizalanmayacak olanlar.</b> Gerekçesiyle, ve sayısı
