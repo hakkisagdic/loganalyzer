@@ -71,6 +71,7 @@ public sealed class TopologyPublicationIntegrationTests(DevStackFixture stack)
         var key = new string('c', 64);
         await Assert.ThrowsAsync<IOException>(() => publisher.PublishAsync(key, (_, _) =>
             throw new IOException("projection insert failed"), Ct));
+        Assert.Equal(key, await publisher.ReadPendingKeyAsync(Ct));
         Assert.Equal(0UL, await watermarkReader.ReadAsync(Ct));
         await using var db = await factory.CreateDbContextAsync(Ct);
         Assert.True(await db.TopologyReadState.AllAsync(s => s.PublishedSequence == 0, Ct));
@@ -85,5 +86,6 @@ public sealed class TopologyPublicationIntegrationTests(DevStackFixture stack)
             return Task.CompletedTask;
         }, Ct));
         Assert.Equal(1UL, await watermarkReader.ReadAsync(Ct));
+        Assert.Null(await publisher.ReadPendingKeyAsync(Ct));
     }
 }

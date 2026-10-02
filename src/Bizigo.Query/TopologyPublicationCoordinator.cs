@@ -19,6 +19,21 @@ public sealed class TopologyPublicationCoordinator(
 {
     private const long AdvisoryLockId = 735032;
 
+    public async Task<string?> ReadPendingKeyAsync(CancellationToken cancellationToken)
+    {
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+        if (!db.Database.IsNpgsql())
+            throw new NotSupportedException("Topology publication recovery requires PostgreSQL.");
+        await db.Database.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            // A concurrent writer may finish between this read and replay;
+            // PublishAsync serializes the callback and recognizes its receipt.
+            return (await ReadPendingAsync(db.Database.GetDbConnection(), cancellationToken))?.Key;
+        }
+        finally { await db.Database.CloseConnectionAsync(); }
+    }
+
     public async Task<ulong> PublishAsync(string publicationKey,
         Func<ulong, CancellationToken, Task> writeProjection, CancellationToken cancellationToken)
     {

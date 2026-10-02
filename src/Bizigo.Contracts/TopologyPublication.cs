@@ -14,6 +14,12 @@ public interface ITopologyPublicationRevisionSource
 /// </summary>
 public interface ITopologyPublicationCoordinator
 {
+    /// <summary>
+    /// The immutable batch identity that must be replayed before any newer
+    /// cumulative projection may publish. Null means no unfinished batch.
+    /// </summary>
+    Task<string?> ReadPendingKeyAsync(CancellationToken cancellationToken);
+
     Task<ulong> PublishAsync(string publicationKey, Func<ulong, CancellationToken, Task> writeProjection,
         CancellationToken cancellationToken);
 }
