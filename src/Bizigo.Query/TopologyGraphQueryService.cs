@@ -50,17 +50,24 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         return page with { EarliestEvidenceExpiryUnixNano = MinExpiry(rows) };
     }
 
+    public Task<TopologyEdgeDetail?> GetEdgeAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
+        CancellationToken cancellationToken = default) =>
+        GetEdgeAsync(edgeId, readClockUnixNano, scope, null, MaxPageSize, cancellationToken);
+
     public async Task<TopologyEdgeDetail?> GetEdgeAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
-        CancellationToken cancellationToken = default)
+        string? evidenceCursor, int evidencePageSize, CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(edgeId); ArgumentNullException.ThrowIfNull(scope);
-        var snapshot = await _source.ReadAsync(null, cancellationToken);
+        ArgumentException.ThrowIfNullOrWhiteSpace(edgeId); ValidateScopeAndPage(scope, evidencePageSize);
+        var fingerprint = Fingerprint("edge-evidence", scope, edgeId,
+            readClockUnixNano.ToString(CultureInfo.InvariantCulture));
+        var (snapshot, cursor) = await ReadAsync(evidenceCursor, fingerprint, cancellationToken);
         var edge = VisibleActiveEdges(snapshot, scope, readClockUnixNano, ResolveWindow(readClockUnixNano, null, null))
             .SingleOrDefault(candidate => candidate.Id == edgeId);
         if (edge is null) return null;
         var evidence = snapshot.Evidence.Where(item => item.EdgeId == edgeId).OrderBy(static item => item.EventTimeUnixNano)
-            .ThenBy(static item => item.Id, StringComparer.Ordinal).Take(200).ToArray();
-        return new(edge, evidence, null);
+            .ThenBy(static item => item.Id, StringComparer.Ordinal).ToArray();
+        var page = Page(evidence, evidencePageSize, cursor?.LastKey, EvidenceKey, snapshot.PublishedSequence, fingerprint);
+        return new(edge, page.Items, page.Cursor);
     }
 
     public async Task<TopologyPathResult> PathAsync(TopologyPathQuery query, AccessScope scope,
@@ -255,6 +262,9 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
 
     private static string NeighborKey(TopologyNeighbor neighbor) => string.Create(CultureInfo.InvariantCulture,
         $"{neighbor.NodeId}\0{neighbor.EdgeId}\0{(int)neighbor.Direction}");
+
+    private static string EvidenceKey(TopologyEvidenceReference evidence) => string.Create(CultureInfo.InvariantCulture,
+        $"{evidence.EventTimeUnixNano}\0{evidence.Id}");
 
     private static byte[] Fingerprint(string kind, AccessScope scope, params string[] parts)
     {

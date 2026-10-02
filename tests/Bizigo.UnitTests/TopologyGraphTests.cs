@@ -163,6 +163,26 @@ public sealed class TopologyGraphTests
         Assert.True(TopologyIdentity.CanReadEdge(AccessScope.System("admin"), "A", OwnerGroups.Unassigned));
     }
 
+    [Fact]
+    public async Task Edge_evidence_detail_pages_without_silent_truncation()
+    {
+        var edge = Edge("proof", R, A);
+        var evidence = Enumerable.Range(1, 201)
+            .Select(index => new TopologyEvidenceReference(edge.Id, $"occ-{index:D3}", "trace", "span", index))
+            .ToArray();
+        var query = new TopologyGraphQueryService(new MemorySource(new(9, [edge]) { Evidence = evidence }));
+        var first = await query.GetEdgeAsync(edge.Id, 1000, ScopeA, null, 200, Ct);
+        Assert.NotNull(first);
+        Assert.Equal(200, first.Evidence.Count);
+        Assert.NotNull(first.EvidenceCursor);
+        var second = await query.GetEdgeAsync(edge.Id, 1000, ScopeA, first.EvidenceCursor, 200, Ct);
+        Assert.NotNull(second);
+        Assert.Equal("occ-201", Assert.Single(second.Evidence).Id);
+        Assert.Null(second.EvidenceCursor);
+        await Assert.ThrowsAsync<TopologyCursorException>(() =>
+            query.GetEdgeAsync(edge.Id, 1000, AccessScope.ForGroups("other", ["A"]), first.EvidenceCursor, 200, Ct));
+    }
+
     private static TopologyGraphQueryService Query(IReadOnlyList<TopologyEdgeProjection> edges) =>
         new(new MemorySource(new(9, edges)));
 

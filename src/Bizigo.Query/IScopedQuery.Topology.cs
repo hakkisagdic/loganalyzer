@@ -12,6 +12,9 @@ public partial interface IScopedQuery
         CancellationToken cancellationToken = default) => throw new NotSupportedException("Topology graph is not configured.");
     Task<TopologyEdgeDetail?> GetTopologyEdgeAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
         CancellationToken cancellationToken = default) => throw new NotSupportedException("Topology graph is not configured.");
+    Task<TopologyEdgeDetail?> GetTopologyEdgeAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
+        string? evidenceCursor, int evidencePageSize, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Topology graph evidence paging is not configured.");
 
     Task<IReadOnlyList<TopologySourceNode>> ResolveTopologySourceNodesAsync(
         IReadOnlyList<string> sourceIds,
