@@ -51,8 +51,10 @@ public sealed class TopologyObservationTests
             LogicalId = "dddddddddddddddddddddddddddddddd/c",
         };
         var one = TopologyObservation.Reduce([parent, child]);
+        var otherHttpOnly = TopologyObservation.Reduce([againParent, againChild]);
         var two = TopologyObservation.Reduce([parent, child, againParent, againChild]);
         Assert.Single(two.Edges);
+        Assert.Equal(Assert.Single(one.Edges).EdgeId, Assert.Single(otherHttpOnly.Edges).EdgeId);
         Assert.Equal(Assert.Single(one.Edges).EdgeId, Assert.Single(two.Edges).EdgeId);
         Assert.Equal(2, Assert.Single(two.Edges).ParentOccurrences.Count);
         Assert.Equal(2, Assert.Single(two.Edges).ChildOccurrences.Count);
