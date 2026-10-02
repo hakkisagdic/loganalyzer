@@ -20,6 +20,28 @@ public sealed class TopologyGraphTests
     }
 
     [Fact]
+    public async Task Path_pages_complete_hops_with_boundary_node()
+    {
+        var query = Query(OracleEdges());
+        var first = await query.PathAsync(new(R, D, 1000, 1), ScopeA, Ct);
+        Assert.Equal([R, A], first.Nodes);
+        Assert.Single(first.EdgeIds);
+        Assert.NotNull(first.Cursor);
+        var second = await query.PathAsync(new(R, D, 1000, 1, first.Cursor), ScopeA, Ct);
+        Assert.Equal([A, C], second.Nodes);
+        Assert.Single(second.EdgeIds);
+        Assert.NotEqual(first.EdgeIds[0], second.EdgeIds[0]);
+        Assert.NotNull(second.Cursor);
+        var third = await query.PathAsync(new(R, D, 1000, 1, second.Cursor), ScopeA, Ct);
+        Assert.Equal([C, D], third.Nodes);
+        Assert.Single(third.EdgeIds);
+        Assert.Null(third.Cursor);
+        Assert.Equal([R, A, C, D], first.Nodes.Concat(second.Nodes.Skip(1)).Concat(third.Nodes.Skip(1)));
+        await Assert.ThrowsAsync<TopologyCursorException>(() =>
+            query.PathAsync(new(R, D, 1000, 1, first.Cursor![..^1]), ScopeA, Ct));
+    }
+
+    [Fact]
     public async Task Common_ancestor_selection()
     {
         var query = Query(OracleEdges());

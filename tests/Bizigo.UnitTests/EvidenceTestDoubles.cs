@@ -31,6 +31,8 @@ internal class RecordingScopedQuery : IScopedQuery
     public Task<TelemetryCount> GetTelemetryFeedAsync(TelemetrySignal signal, string? resourceId, AccessScope scope, CancellationToken cancellationToken = default) =>
         TelemetryFeed?.Invoke(signal, resourceId, scope, cancellationToken) ?? throw new NotSupportedException();
     public List<TopologySourceNode> TopologySourceNodes { get; } = [];
+    public Func<IReadOnlyList<string>, AccessScope, CancellationToken, Task<IReadOnlyList<TopologySourceNode>>>?
+        TopologySourceNodesResponse { get; set; }
     public TopologyPathResult? TopologyPath { get; set; }
     public TopologyCommonAncestorResult? TopologyAncestor { get; set; }
     public Func<TopologyPathQuery, AccessScope, CancellationToken, Task<TopologyPathResult>>? TopologyPathResponse { get; set; }
@@ -38,8 +40,9 @@ internal class RecordingScopedQuery : IScopedQuery
     public Func<string, decimal, AccessScope, CancellationToken, Task<TopologyEdgeDetail?>>? TopologyEdgeResponse { get; set; }
     public Dictionary<string, TopologyEdgeDetail> TopologyEdges { get; } = new(StringComparer.Ordinal);
     public Task<IReadOnlyList<TopologySourceNode>> ResolveTopologySourceNodesAsync(IReadOnlyList<string> sourceIds, AccessScope scope,
-        CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<TopologySourceNode>>(
-            [.. TopologySourceNodes.Where(node => sourceIds.Contains(node.SourceId, StringComparer.Ordinal))]);
+        CancellationToken cancellationToken = default) => TopologySourceNodesResponse?.Invoke(sourceIds, scope, cancellationToken)
+            ?? Task.FromResult<IReadOnlyList<TopologySourceNode>>(
+                [.. TopologySourceNodes.Where(node => sourceIds.Contains(node.SourceId, StringComparer.Ordinal))]);
     public Task<TopologyPathResult> GetTopologyPathAsync(TopologyPathQuery query, AccessScope scope,
         CancellationToken cancellationToken = default) => TopologyPathResponse?.Invoke(query, scope, cancellationToken)
             ?? Task.FromResult(TopologyPath ?? throw new NotSupportedException());

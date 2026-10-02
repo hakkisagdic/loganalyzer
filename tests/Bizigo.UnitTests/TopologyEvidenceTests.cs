@@ -88,18 +88,26 @@ public sealed class TopologyEvidenceTests
     {
         var one = TopologyIdentity.Node(TopologyNodeKind.Source, Guid.Parse("00000000-0000-0000-0000-000000000001"));
         var two = TopologyIdentity.Node(TopologyNodeKind.Source, Guid.Parse("00000000-0000-0000-0000-000000000002"));
+        var root = TopologyIdentity.Node(TopologyNodeKind.Service, Guid.Parse("00000000-0000-0000-0000-000000000003"));
         var query = new RecordingScopedQuery
         {
             TelemetryFeed = (_, _, _, _) => Task.FromResult(new TelemetryCount(feedStatus,
                 feedStatus == TelemetryResultStatus.Failed ? null : 1, feedStatus == TelemetryResultStatus.Failed ? "QueryUnavailable" : null)),
             TopologyPath = new(TopologyGraphResultStatus.Found, [one, two], ["edge-1"], null, 1),
-            TopologyAncestor = new(TopologyGraphResultStatus.Found, one,
-                [new(two, [one, two], ["edge-1"])], 1),
+            TopologyAncestor = new(TopologyGraphResultStatus.Found, root,
+                [new(one, [root, one], ["ancestor-1"]), new(two, [root, two], ["ancestor-2"])], 1),
         };
         query.Onsets.Add(new("A", "source-1", Window.From, 1, 0));
         query.Onsets.Add(new("A", "source-2", Window.From.AddSeconds(1), 1, 0));
         query.TopologySourceNodes.Add(new("source-1", one, "A"));
         query.TopologySourceNodes.Add(new("source-2", two, "A"));
+        query.TopologyEdges["edge-1"] = Detail("edge-1", one, two);
+        query.TopologyEdges["ancestor-1"] = Detail("ancestor-1", root, one);
+        query.TopologyEdges["ancestor-2"] = Detail("ancestor-2", root, two);
         return query;
     }
+
+    private static TopologyEdgeDetail Detail(string id, string from, string to) => new(
+        new(id, from, to, TopologyRelation.DependsOn, TopologyProvenance.Observed, true, 0.75m,
+            "A", "A", TopologyEdgeVisibility.SameOwner, 0, 1, null, 1, 1, false), [], null);
 }

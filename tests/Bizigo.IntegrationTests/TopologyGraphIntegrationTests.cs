@@ -101,6 +101,27 @@ public sealed class TopologyGraphIntegrationTests
         Assert.Single(source.Snapshot.Edges);
     }
 
+    [Fact]
+    [Trait("Category", "Integration")]
+    public async Task Mixed_provenance_and_time()
+    {
+        var declared = Edge("declared-ab", A, B, "A", "A");
+        var observed = Edge("observed-ab", A, B, "A", "A") with
+        { Provenance = TopologyProvenance.Observed, Confidence = 0.4m, LastSeenUnixNano = 1000, EffectiveExpiry = 2000 };
+        var reverse = observed with { Id = "observed-ba", FromNode = B, ToNode = A };
+        var stale = observed with { Id = "observed-stale", ToNode = Node(4), EffectiveExpiry = 1000 };
+        var query = new TopologyGraphQueryService(new MemorySource(new(17, [declared, observed, observed, reverse, stale])));
+        var page = await query.SearchEdgesAsync(new(1001), ScopeA, TestContext.Current.CancellationToken);
+        Assert.Equal(["declared-ab", "observed-ab", "observed-ba"], page.Items.Select(static edge => edge.Id));
+        Assert.Equal(TopologyProvenance.Declared, page.Items[0].Provenance);
+        Assert.Equal(TopologyProvenance.Observed, page.Items[1].Provenance);
+        Assert.Equal(0.4m, page.Items[1].Confidence);
+        var reversePath = await query.PathAsync(new(B, A, 1001), ScopeA, TestContext.Current.CancellationToken);
+        Assert.Equal(["observed-ba"], reversePath.EdgeIds);
+        Assert.Equal(TopologyGraphResultStatus.Unreachable,
+            (await query.PathAsync(new(A, Node(4), 1001), ScopeA, TestContext.Current.CancellationToken)).Status);
+    }
+
     private static TopologyNodeProjection Projection(string id, string owner) =>
         new(id, TopologyNodeKind.Service, id, owner, true, false, 1, 0, null);
 

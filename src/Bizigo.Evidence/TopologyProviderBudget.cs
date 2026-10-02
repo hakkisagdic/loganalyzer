@@ -31,3 +31,38 @@ public static class TopologyProviderFailure
         _ => throw new ArgumentOutOfRangeException(nameof(outcome)),
     };
 }
+
+internal sealed class TopologyProviderUsage(TopologyProviderBudget budget)
+{
+    private readonly HashSet<string> _nodes = new(StringComparer.Ordinal);
+    private readonly HashSet<string> _edges = new(StringComparer.Ordinal);
+    private int _pages;
+    private int _serializedBytes;
+
+    public bool IncludeNodes(IEnumerable<string> nodes)
+    {
+        foreach (var node in nodes) _nodes.Add(node);
+        return WithinBudget();
+    }
+
+    public bool IncludeEdges(IEnumerable<string> edges)
+    {
+        foreach (var edge in edges) _edges.Add(edge);
+        return WithinBudget();
+    }
+
+    public bool NextPage()
+    {
+        _pages = checked(_pages + 1);
+        return WithinBudget();
+    }
+
+    public bool IncludeSerializedBytes(int length)
+    {
+        _serializedBytes = checked(_serializedBytes + length);
+        return WithinBudget();
+    }
+
+    private bool WithinBudget() => budget.Measure(_nodes.Count, _edges.Count, _pages, _serializedBytes)
+        == TopologyProviderCompleteness.Complete;
+}

@@ -89,9 +89,23 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             return new(partial ? TopologyGraphResultStatus.NotVerified : TopologyGraphResultStatus.Unreachable,
                 [], [], null, snapshot.PublishedSequence, partial ? "HiddenBoundary" : null);
         }
-        var page = Page(path.Nodes, query.PageSize, cursor?.LastKey, static node => node,
-            snapshot.PublishedSequence, fingerprint);
-        return new TopologyPathResult(TopologyGraphResultStatus.Found, page.Items, path.EdgeIds, page.Cursor, page.PublishedSequence)
+        // Page complete hops, not independent node/edge arrays. The boundary
+        // node is repeated on the next page so every returned edge has both
+        // endpoints; the cursor still advances to the last emitted node.
+        var start = 0;
+        if (cursor is not null)
+        {
+            start = -1;
+            for (var index = 0; index < path.Nodes.Count; index++)
+                if (path.Nodes[index] == cursor.Value.LastKey) { start = index; break; }
+            if (start < 0 || start >= path.EdgeIds.Count)
+                throw new TopologyCursorException("Topology path cursor key is absent from its snapshot.");
+        }
+        var pageEdges = path.EdgeIds.Skip(start).Take(query.PageSize).ToArray();
+        var pageNodes = path.Nodes.Skip(start).Take(pageEdges.Length + 1).ToArray();
+        var nextCursor = start + pageEdges.Length < path.EdgeIds.Count
+            ? TopologyGraphCursorCodec.Encode(snapshot.PublishedSequence, fingerprint, pageNodes[^1]) : null;
+        return new TopologyPathResult(TopologyGraphResultStatus.Found, pageNodes, pageEdges, nextCursor, snapshot.PublishedSequence)
         {
             EarliestEvidenceExpiryUnixNano = MinExpiry(edges.Where(edge => path.EdgeIds.Contains(edge.Id, StringComparer.Ordinal))),
         };
@@ -182,10 +196,16 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         (decimal From, decimal To) window)
     {
         _ = TopologyExpiry.FromDecimal(readClockUnixNano);
-        return snapshot.Edges.Where(edge => !edge.Deleted && edge.FirstSeenUnixNano <= readClockUnixNano
+        var active = snapshot.Edges.Where(edge => !edge.Deleted && edge.FirstSeenUnixNano <= readClockUnixNano
             && (edge.EffectiveExpiry is null || TopologyExpiry.IsReadable(readClockUnixNano, edge.EffectiveExpiry.Value))
             && (edge.Provenance != TopologyProvenance.Observed
                 || edge.LastSeenUnixNano >= window.From && edge.LastSeenUnixNano < window.To));
+        return active.GroupBy(static edge => edge.Id, StringComparer.Ordinal).Select(group =>
+        {
+            if (group.Distinct().Skip(1).Any())
+                throw new InvalidDataException($"Conflicting topology edge projection '{group.Key}'.");
+            return group.First();
+        }).ToArray();
     }
 
     private static IEnumerable<TopologyEdgeProjection> VisibleActiveEdges(TopologyGraphSnapshot snapshot, AccessScope scope,
