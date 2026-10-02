@@ -59,6 +59,7 @@ internal sealed class TelemetryApiHost : IAsyncDisposable
         });
         builder.Services.AddSingleton(factory);
         builder.Services.AddSingleton<TopologyRegistry>();
+        builder.Services.AddSingleton<TopologyEdgeRegistry>();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped(_ => factory.CreateDbContext());
         if (f is not null) builder.Services.AddScoped<IScopedQuery>(sp =>

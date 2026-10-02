@@ -91,6 +91,8 @@ public static class DevStackSetup
         await db.Sources.ExecuteDeleteAsync(cancellationToken);
         await db.SourceOwnershipHistory.ExecuteDeleteAsync(cancellationToken);
         await db.TelemetryOwnerClaims.ExecuteDeleteAsync(cancellationToken);
+        await db.TopologyDeclaredEdgeHistory.ExecuteDeleteAsync(cancellationToken);
+        await db.TopologyDeclaredEdges.ExecuteDeleteAsync(cancellationToken);
         await db.TopologyBindings.ExecuteDeleteAsync(cancellationToken);
         await db.TopologyOwnerHistory.ExecuteDeleteAsync(cancellationToken);
         await db.TopologyNodeHistory.ExecuteDeleteAsync(cancellationToken);

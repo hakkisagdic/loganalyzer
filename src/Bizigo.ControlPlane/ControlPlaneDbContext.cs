@@ -148,6 +148,7 @@ public partial class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContex
 
         modelBuilder.HasDefaultSchema(Schema);
         TopologyModel.Configure(modelBuilder);
+        TopologyEdgeModel.Configure(modelBuilder);
 
         modelBuilder.Entity<SourceEntity>(e =>
         {

@@ -3,6 +3,7 @@ using System;
 using Bizigo.ControlPlane;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Bizigo.ControlPlane.Migrations
 {
     [DbContext(typeof(ControlPlaneDbContext))]
-    partial class ControlPlaneDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261002231400_AddTopologyDeclaredEdges")]
+    partial class AddTopologyDeclaredEdges
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1822,60 +1825,6 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasDatabaseName("ix_topology_node_history_node_id_from_nano");
 
                     b.ToTable("topology_node_history", "bizigo");
-                });
-
-            modelBuilder.Entity("Bizigo.ControlPlane.TopologyOwnerHistoryEntity", b =>
-                {
-                    b.Property<long>("Revision")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint")
-                        .HasColumnName("revision");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Revision"));
-
-                    b.Property<DateTimeOffset>("ChangedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("changed_at");
-
-                    b.Property<string>("ChangedBy")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("changed_by");
-
-                    b.Property<string>("NewOwner")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("new_owner");
-
-                    b.Property<string>("NodeId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("node_id");
-
-                    b.Property<long>("NodeVersion")
-                        .HasColumnType("bigint")
-                        .HasColumnName("node_version");
-
-                    b.Property<string>("OldOwner")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("old_owner");
-
-                    b.HasKey("Revision")
-                        .HasName("pk_topology_owner_history");
-
-                    b.HasIndex("ChangedAt")
-                        .HasDatabaseName("ix_topology_owner_history_changed_at");
-
-                    b.HasIndex("NodeId", "Revision")
-                        .IsUnique()
-                        .HasDatabaseName("ix_topology_owner_history_node_id_revision");
-
-                    b.ToTable("topology_owner_history", "bizigo");
                 });
 
             modelBuilder.Entity("Bizigo.ControlPlane.TopologyReadStateEntity", b =>

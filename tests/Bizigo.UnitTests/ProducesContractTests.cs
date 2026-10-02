@@ -125,6 +125,7 @@ public sealed class ProducesContractTests
         ["DELETE /v1/alerts/channels/{id}"] = "204, gövdesiz.",
         ["DELETE /v1/changes/connectors/{id}"] = "204, gövdesiz.",
         ["DELETE /v1/topology/nodes/{nodeId}"] = "204, gövdesiz.",
+        ["DELETE /v1/topology/edges/{edgeId}"] = "204, gövdesiz.",
     };
 
     /// <summary>
@@ -138,7 +139,7 @@ public sealed class ProducesContractTests
     /// düşmeli.
     /// </para>
     /// </summary>
-    private const int ExpectedExemptCount = 10;
+    private const int ExpectedExemptCount = 11;
 
     /// <summary>
     /// Kapının <b>hiç göremediği</b> uçlar — ve neden.
