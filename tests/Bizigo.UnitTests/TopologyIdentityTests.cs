@@ -31,6 +31,15 @@ public sealed partial class TopologyIdentityTests
     public void Dual_endpoint_predicate(string groups, bool expected) =>
         Assert.Equal(expected, TopologyIdentity.CanReadEdge(AccessScope.ForGroups("reader", groups.Split(',')), "A", "B"));
 
+    [Fact]
+    public void Mapped_unassigned_owner_is_not_public_scope()
+    {
+        var mapped = AccessScope.ForGroups("reader", ["A", OwnerGroups.Unassigned]);
+        Assert.False(TopologyIdentity.CanReadOwner(mapped, OwnerGroups.Unassigned));
+        Assert.False(TopologyIdentity.CanReadEdge(mapped, "A", OwnerGroups.Unassigned));
+        Assert.True(TopologyIdentity.CanReadOwner(AccessScope.System("admin"), OwnerGroups.Unassigned));
+    }
+
     private static TopologyBindingRequest Request(string source = "SA", string owner = "A", string? instance = null, ulong time = 100) =>
         new(new("leaf", source, owner, 1, time, "known"), "n", "checkout", instance);
 

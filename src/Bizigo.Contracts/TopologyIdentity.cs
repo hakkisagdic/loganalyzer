@@ -28,8 +28,10 @@ public static class TopologyIdentity
 
     public static decimal Nano(DateTimeOffset time) => (decimal)(time.UtcTicks - DateTimeOffset.UnixEpoch.UtcTicks) * 100;
     public static bool At(decimal from, decimal? to, ulong time) => from <= time && (to is null || time < to);
+    public static bool CanReadOwner(AccessScope scope, string ownerGroup) =>
+        (ownerGroup != OwnerGroups.Unassigned || scope.IsUnrestricted) && scope.Allows(ownerGroup);
     public static bool CanReadEdge(AccessScope scope, string parentOwner, string childOwner) =>
-        scope.Allows(parentOwner) && scope.Allows(childOwner);
+        CanReadOwner(scope, parentOwner) && CanReadOwner(scope, childOwner);
 }
 
 /// <summary>Immutable topology decision for a single admitted leaf. Negative decisions are durable too.</summary>

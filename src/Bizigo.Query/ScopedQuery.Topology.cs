@@ -44,7 +44,7 @@ public sealed partial class ScopedQuery
                 var rows = await controlPlane.TopologyNodes.AsNoTracking()
                     .Where(node => node.SourceId != null && wanted.Contains(node.SourceId) && node.Enabled && !node.Deleted)
                     .ToArrayAsync(cancellationToken);
-                return rows.Where(node => scope.Allows(node.OwnerGroup))
+                return rows.Where(node => TopologyIdentity.CanReadOwner(scope, node.OwnerGroup))
                     .OrderBy(node => node.SourceId, StringComparer.Ordinal)
                     .Select(node => new TopologySourceNode(node.SourceId!, node.Id, node.OwnerGroup)).ToArray();
             }, result => result.Length);

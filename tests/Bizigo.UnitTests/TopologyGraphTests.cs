@@ -110,6 +110,59 @@ public sealed class TopologyGraphTests
             new(R, 2000, 1, first.Cursor, FromUnixNano: 999, ToUnixNano: 1001), ScopeA, Ct));
     }
 
+    [Fact]
+    public async Task Cursor_expiry_includes_later_visible_pages_but_excludes_hidden_and_filtered_edges()
+    {
+        var edges = new[]
+        {
+            Edge("a", R, A, provenance: TopologyProvenance.Observed) with { EffectiveExpiry = 1100 },
+            Edge("b", R, B, provenance: TopologyProvenance.Observed) with { EffectiveExpiry = 1050 },
+            Edge("hidden", R, C, "A", "B", TopologyProvenance.Observed) with { EffectiveExpiry = 1020 },
+            Edge("filtered", R, D, provenance: TopologyProvenance.Observed) with
+            { EffectiveExpiry = 1030, Relation = TopologyRelation.Contains },
+        };
+        var query = Query(edges);
+        var first = await query.SearchEdgesAsync(new(1001, 1, Provenance: TopologyProvenance.Observed,
+            Relation: TopologyRelation.DependsOn), ScopeA, Ct);
+        Assert.Equal("a", Assert.Single(first.Items).Id);
+        Assert.Equal(1050, first.EarliestEvidenceExpiryUnixNano);
+        Assert.NotNull(first.Cursor);
+        var second = await query.SearchEdgesAsync(new(1001, 1, first.Cursor,
+            TopologyRelation.DependsOn, TopologyProvenance.Observed), ScopeA, Ct);
+        Assert.Equal("b", Assert.Single(second.Items).Id);
+        Assert.Equal(1050, second.EarliestEvidenceExpiryUnixNano);
+
+        var neighborhood = await query.NeighborhoodAsync(new(R, 1001, 1,
+            Relation: TopologyRelation.DependsOn), ScopeA, Ct);
+        Assert.Equal(A, Assert.Single(neighborhood.Neighbors).NodeId);
+        Assert.Equal(1050, neighborhood.EarliestEvidenceExpiryUnixNano);
+    }
+
+    [Fact]
+    public async Task Mapped_unassigned_owner_does_not_authorize_topology_reads()
+    {
+        var scope = AccessScope.ForGroups("idp-mapped", ["A", OwnerGroups.Unassigned]);
+        var unassigned = Node(8);
+        var edge = Edge("unknown", R, unassigned, "A", OwnerGroups.Unassigned);
+        var snapshot = new TopologyGraphSnapshot(9, [edge])
+        {
+            Nodes =
+            [
+                new(R, TopologyNodeKind.Service, "root", "A", true, false, 1, 0, null),
+                new(unassigned, TopologyNodeKind.Service, "unknown", OwnerGroups.Unassigned, true, false, 1, 0, null),
+            ],
+        };
+        var query = new TopologyGraphQueryService(new MemorySource(snapshot));
+        Assert.Equal([R], (await query.SearchNodesAsync(new(1001), scope, Ct)).Items.Select(static node => node.Id));
+        Assert.Null(await query.GetNodeAsync(unassigned, 1001, scope, Ct));
+        Assert.Empty((await query.SearchEdgesAsync(new(1001), scope, Ct)).Items);
+        Assert.Null(await query.GetEdgeAsync(edge.Id, 1001, scope, Ct));
+        Assert.Empty((await query.NeighborhoodAsync(new(R, 1001), scope, Ct)).Neighbors);
+        Assert.Equal(TopologyGraphResultStatus.NotVerified,
+            (await query.PathAsync(new(R, unassigned, 1001), scope, Ct)).Status);
+        Assert.True(TopologyIdentity.CanReadEdge(AccessScope.System("admin"), "A", OwnerGroups.Unassigned));
+    }
+
     private static TopologyGraphQueryService Query(IReadOnlyList<TopologyEdgeProjection> edges) =>
         new(new MemorySource(new(9, edges)));
 

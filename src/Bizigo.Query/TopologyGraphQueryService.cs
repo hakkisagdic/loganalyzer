@@ -18,7 +18,7 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var fingerprint = Fingerprint("nodes", scope, query.ReadClockUnixNano.ToString(CultureInfo.InvariantCulture),
             query.Kind?.ToString() ?? "*");
         var (snapshot, cursor) = await ReadAsync(query.Cursor, fingerprint, cancellationToken);
-        var rows = snapshot.Nodes.Where(node => scope.Allows(node.OwnerGroup) && node.Enabled && !node.Deleted
+        var rows = snapshot.Nodes.Where(node => TopologyIdentity.CanReadOwner(scope, node.OwnerGroup) && node.Enabled && !node.Deleted
                 && node.ValidFromUnixNano <= query.ReadClockUnixNano
                 && (node.ValidToUnixNano is null || query.ReadClockUnixNano < node.ValidToUnixNano))
             .Where(node => query.Kind is null || node.Kind == query.Kind).OrderBy(static node => node.Id, StringComparer.Ordinal).ToArray();
@@ -30,7 +30,7 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
     {
         ValidateNode(nodeId); ArgumentNullException.ThrowIfNull(scope); _ = TopologyExpiry.FromDecimal(readClockUnixNano);
         var snapshot = await _source.ReadAsync(null, cancellationToken);
-        return snapshot.Nodes.SingleOrDefault(node => node.Id == nodeId && scope.Allows(node.OwnerGroup) && node.Enabled && !node.Deleted
+        return snapshot.Nodes.SingleOrDefault(node => node.Id == nodeId && TopologyIdentity.CanReadOwner(scope, node.OwnerGroup) && node.Enabled && !node.Deleted
             && node.ValidFromUnixNano <= readClockUnixNano && (node.ValidToUnixNano is null || readClockUnixNano < node.ValidToUnixNano));
     }
 
@@ -47,7 +47,7 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             .Where(edge => query.Provenance is null || edge.Provenance == query.Provenance)
             .OrderBy(static edge => edge.Id, StringComparer.Ordinal).ToArray();
         var page = Page(rows, query.PageSize, cursor?.LastKey, static edge => edge.Id, snapshot.PublishedSequence, fingerprint);
-        return page with { EarliestEvidenceExpiryUnixNano = MinExpiry(page.Items) };
+        return page with { EarliestEvidenceExpiryUnixNano = MinExpiry(rows) };
     }
 
     public async Task<TopologyEdgeDetail?> GetEdgeAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
@@ -132,7 +132,9 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var (snapshot, cursor) = await ReadAsync(query.Cursor, fingerprint, cancellationToken);
         var active = ActiveEdges(snapshot, query.ReadClockUnixNano, window)
             .Where(edge => query.Relation is null || edge.Relation == query.Relation).ToArray();
-        var neighbors = active.Where(edge => TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup))
+        var visibleIncident = active.Where(edge => TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup)
+            && (edge.FromNode == query.NodeId || edge.ToNode == query.NodeId)).ToArray();
+        var neighbors = visibleIncident
             .SelectMany(edge => Neighbors(query.NodeId, edge))
             .OrderBy(static neighbor => neighbor.NodeId, StringComparer.Ordinal)
             .ThenBy(static neighbor => neighbor.EdgeId, StringComparer.Ordinal)
@@ -142,7 +144,7 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var page = Page(neighbors, query.PageSize, cursor?.LastKey, NeighborKey, snapshot.PublishedSequence, fingerprint);
         return new TopologyNeighborhoodResult(page.Items, externalCount, null, page.Cursor, page.PublishedSequence)
         {
-            EarliestEvidenceExpiryUnixNano = MinExpiry(active.Where(edge => page.Items.Any(item => item.EdgeId == edge.Id))),
+            EarliestEvidenceExpiryUnixNano = MinExpiry(visibleIncident),
         };
     }
 
@@ -228,8 +230,10 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
 
     private static string? ExternalNeighbor(string node, TopologyEdgeProjection edge, AccessScope scope)
     {
-        if (edge.FromNode == node && scope.Allows(edge.FromOwnerGroup) && !scope.Allows(edge.ToOwnerGroup)) return edge.ToNode;
-        if (edge.ToNode == node && scope.Allows(edge.ToOwnerGroup) && !scope.Allows(edge.FromOwnerGroup)) return edge.FromNode;
+        if (edge.FromNode == node && TopologyIdentity.CanReadOwner(scope, edge.FromOwnerGroup)
+            && !TopologyIdentity.CanReadOwner(scope, edge.ToOwnerGroup)) return edge.ToNode;
+        if (edge.ToNode == node && TopologyIdentity.CanReadOwner(scope, edge.ToOwnerGroup)
+            && !TopologyIdentity.CanReadOwner(scope, edge.FromOwnerGroup)) return edge.FromNode;
         return null;
     }
 
