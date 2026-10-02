@@ -23,13 +23,16 @@ public sealed record TopologyPathQuery(
     string ToNodeId,
     decimal ReadClockUnixNano,
     int PageSize = 100,
-    string? Cursor = null);
+    string? Cursor = null,
+    decimal? FromUnixNano = null,
+    decimal? ToUnixNano = null);
 
 public sealed record TopologyNodeQuery(decimal ReadClockUnixNano, int PageSize = 100, string? Cursor = null,
     TopologyNodeKind? Kind = null);
 
 public sealed record TopologyEdgeQuery(decimal ReadClockUnixNano, int PageSize = 100, string? Cursor = null,
-    TopologyRelation? Relation = null, TopologyProvenance? Provenance = null);
+    TopologyRelation? Relation = null, TopologyProvenance? Provenance = null,
+    decimal? FromUnixNano = null, decimal? ToUnixNano = null);
 
 public sealed record TopologyNodeProjection(string Id, TopologyNodeKind Kind, string DisplayName, string OwnerGroup,
     bool Enabled, bool Deleted, long Version, decimal ValidFromUnixNano, decimal? ValidToUnixNano);
@@ -42,19 +45,26 @@ public sealed record TopologyEdgeDetail(TopologyEdgeProjection Edge, IReadOnlyLi
 
 public sealed record TopologyCommonAncestorQuery(
     IReadOnlyList<string> NodeIds,
-    decimal ReadClockUnixNano);
+    decimal ReadClockUnixNano,
+    decimal? FromUnixNano = null,
+    decimal? ToUnixNano = null);
 
 public sealed record TopologyNeighborhoodQuery(
     string NodeId,
     decimal ReadClockUnixNano,
     int PageSize = 100,
     string? Cursor = null,
-    TopologyRelation? Relation = null);
+    TopologyRelation? Relation = null,
+    decimal? FromUnixNano = null,
+    decimal? ToUnixNano = null);
 
 public sealed record TopologyGraphPage<T>(
     IReadOnlyList<T> Items,
     string? Cursor,
-    long PublishedSequence);
+    long PublishedSequence)
+{
+    public decimal? EarliestEvidenceExpiryUnixNano { get; init; }
+}
 
 public sealed record TopologyPathResult(
     TopologyGraphResultStatus Status,
@@ -62,7 +72,10 @@ public sealed record TopologyPathResult(
     IReadOnlyList<string> EdgeIds,
     string? Cursor,
     long PublishedSequence,
-    string? Reason = null);
+    string? Reason = null)
+{
+    public decimal? EarliestEvidenceExpiryUnixNano { get; init; }
+}
 
 public sealed record TopologyCommonAncestorResult(
     TopologyGraphResultStatus Status,
@@ -92,7 +105,10 @@ public sealed record TopologyNeighborhoodResult(
     int? ExternalNeighborCount,
     string? ExternalNeighborReason,
     string? Cursor,
-    long PublishedSequence);
+    long PublishedSequence)
+{
+    public decimal? EarliestEvidenceExpiryUnixNano { get; init; }
+}
 
 public sealed record TopologyOutsideNeighborCount(int? Count, string? Reason);
 

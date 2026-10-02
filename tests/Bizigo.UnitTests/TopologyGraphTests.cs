@@ -74,9 +74,40 @@ public sealed class TopologyGraphTests
     public async Task Logical_expiry_hides_physical_edge_at_deadline()
     {
         var edge = Edge("ttl", R, A) with { EffectiveExpiry = 500 };
-        Assert.Equal(TopologyGraphResultStatus.Found, (await Query([edge]).PathAsync(new(R, A, 499), ScopeA, Ct)).Status);
+        var service = Query([edge]);
+        var before = await service.PathAsync(new(R, A, 499), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, before.Status);
+        Assert.Equal(500, before.EarliestEvidenceExpiryUnixNano);
+        var edgePage = await service.SearchEdgesAsync(new(499), ScopeA, Ct);
+        Assert.Equal(500, edgePage.EarliestEvidenceExpiryUnixNano);
+        var neighborhood = await service.NeighborhoodAsync(new(R, 499), ScopeA, Ct);
+        Assert.Equal(500, neighborhood.EarliestEvidenceExpiryUnixNano);
         Assert.Equal(TopologyGraphResultStatus.Unreachable, (await Query([edge]).PathAsync(new(R, A, 500), ScopeA, Ct)).Status);
         Assert.Equal(TopologyGraphResultStatus.Unreachable, (await Query([edge]).PathAsync(new(R, A, 501), ScopeA, Ct)).Status);
+    }
+
+    [Fact]
+    public async Task Observed_window_is_half_open_validated_and_bound_to_cursor()
+    {
+        var observed = new[]
+        {
+            Edge("1", R, A, provenance: TopologyProvenance.Observed),
+            Edge("2", R, B, provenance: TopologyProvenance.Observed),
+        };
+        var query = Query(observed);
+        Assert.Equal(TopologyGraphResultStatus.Found,
+            (await query.PathAsync(new(R, A, 2000, FromUnixNano: 1000, ToUnixNano: 1001), ScopeA, Ct)).Status);
+        Assert.Equal(TopologyGraphResultStatus.Unreachable,
+            (await query.PathAsync(new(R, A, 2000, FromUnixNano: 0, ToUnixNano: 1000), ScopeA, Ct)).Status);
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            query.PathAsync(new(R, A, 2000, FromUnixNano: 0), ScopeA, Ct));
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            query.PathAsync(new(R, A, 2000, FromUnixNano: 1000, ToUnixNano: 2001), ScopeA, Ct));
+
+        var first = await query.NeighborhoodAsync(new(R, 2000, 1, FromUnixNano: 1000, ToUnixNano: 1001), ScopeA, Ct);
+        Assert.NotNull(first.Cursor);
+        await Assert.ThrowsAsync<TopologyCursorException>(() => query.NeighborhoodAsync(
+            new(R, 2000, 1, first.Cursor, FromUnixNano: 999, ToUnixNano: 1001), ScopeA, Ct));
     }
 
     private static TopologyGraphQueryService Query(IReadOnlyList<TopologyEdgeProjection> edges) =>
