@@ -1,0 +1,45 @@
+using Bizigo.Contracts;
+
+namespace Bizigo.Query;
+
+public partial interface IScopedQuery
+{
+    Task<TopologyGraphPage<TopologyNodeProjection>> SearchTopologyNodesAsync(TopologyNodeQuery query, AccessScope scope,
+        CancellationToken cancellationToken = default) => throw new NotSupportedException("Topology graph is not configured.");
+    Task<TopologyNodeProjection?> GetTopologyNodeAsync(string nodeId, decimal readClockUnixNano, AccessScope scope,
+        CancellationToken cancellationToken = default) => throw new NotSupportedException("Topology graph is not configured.");
+    Task<TopologyGraphPage<TopologyEdgeProjection>> SearchTopologyEdgesAsync(TopologyEdgeQuery query, AccessScope scope,
+        CancellationToken cancellationToken = default) => throw new NotSupportedException("Topology graph is not configured.");
+    Task<TopologyEdgeDetail?> GetTopologyEdgeAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
+        CancellationToken cancellationToken = default) => throw new NotSupportedException("Topology graph is not configured.");
+
+    Task<IReadOnlyList<TopologySourceNode>> ResolveTopologySourceNodesAsync(
+        IReadOnlyList<string> sourceIds,
+        AccessScope scope,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Topology graph is not configured.");
+
+    Task<TopologyPathResult> GetTopologyPathAsync(
+        TopologyPathQuery query,
+        AccessScope scope,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Topology graph is not configured.");
+
+    Task<TopologyCommonAncestorResult> GetTopologyCommonAncestorAsync(
+        TopologyCommonAncestorQuery query,
+        AccessScope scope,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Topology graph is not configured.");
+
+    Task<TopologyNeighborhoodResult> GetTopologyNeighborhoodAsync(
+        TopologyNeighborhoodQuery query,
+        AccessScope scope,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Topology graph is not configured.");
+
+    Task<TopologyOutsideNeighborCount> CountExternalTopologyNeighborsAsync(
+        TopologyNeighborhoodQuery query,
+        AccessScope scope,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Topology graph is not configured.");
+}

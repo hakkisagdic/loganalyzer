@@ -58,6 +58,8 @@ public static class EvidenceServiceCollectionExtensions
         // değişmedi. Sağlayıcı yeni bir sorgu yüzeyi açmıyor;
         // `GetPropagationAsync` + `SearchSourcesAsync` paylaşılıyor.
         services.AddScoped<IEvidenceProvider, TopologyProvider>();
+        services.AddScoped<IEvidenceProvider, TopologyGraphPathProvider>();
+        services.AddScoped<IEvidenceProvider, TopologyCommonAncestorProvider>();
 
         services.AddScoped<EvidenceCollector>();
 

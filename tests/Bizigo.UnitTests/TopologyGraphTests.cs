@@ -1,0 +1,110 @@
+using Bizigo.Contracts;
+using Bizigo.Query;
+
+namespace Bizigo.UnitTests;
+
+public sealed class TopologyGraphTests
+{
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
+    private static readonly AccessScope ScopeA = AccessScope.ForGroups("graph-a", ["A"]);
+    private static readonly string R = Node(1), A = Node(2), B = Node(3), C = Node(4), D = Node(5), X = Node(6), Y = Node(7);
+
+    [Fact]
+    public async Task Shortest_directed_paths()
+    {
+        var query = Query(OracleEdges());
+        Assert.Equal([R, A, C], (await query.PathAsync(new(R, C, 1000), ScopeA, Ct)).Nodes);
+        Assert.Equal([R, A, C, D], (await query.PathAsync(new(R, D, 1000), ScopeA, Ct)).Nodes);
+        Assert.Equal(TopologyGraphResultStatus.Unreachable, (await query.PathAsync(new(C, R, 1000), ScopeA, Ct)).Status);
+        Assert.Equal(TopologyGraphResultStatus.Unreachable, (await query.PathAsync(new(X, D, 1000), ScopeA, Ct)).Status);
+    }
+
+    [Fact]
+    public async Task Common_ancestor_selection()
+    {
+        var query = Query(OracleEdges());
+        var ab = await query.CommonAncestorAsync(new([A, B], 1000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, ab.Status); Assert.Equal(R, ab.NodeId);
+        var cd = await query.CommonAncestorAsync(new([C, D], 1000), ScopeA, Ct);
+        Assert.Equal(A, cd.NodeId); Assert.Equal([1, 2], cd.Paths.Select(path => path.EdgeIds.Count).Order().ToArray());
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => query.CommonAncestorAsync(new([A], 1000), ScopeA, Ct));
+        await Assert.ThrowsAsync<ArgumentException>(() => query.CommonAncestorAsync(new([A, A], 1000), ScopeA, Ct));
+    }
+
+    [Fact]
+    public async Task Cycle_selfloop_and_order()
+    {
+        var expected = await Query(OracleEdges()).PathAsync(new(R, D, 1000), ScopeA, Ct);
+        for (var seed = 0; seed < 20; seed++)
+        {
+            var random = new Random(seed);
+            var shuffled = OracleEdges().OrderBy(_ => random.Next()).ToArray();
+            var actual = await Query(shuffled).PathAsync(new(R, D, 1000), ScopeA, Ct);
+            Assert.Equal(expected.Nodes, actual.Nodes); Assert.Equal(expected.EdgeIds, actual.EdgeIds);
+        }
+    }
+
+    [Fact]
+    public async Task Hidden_bridge_no_claim()
+    {
+        var hidden = new[] { Edge("h1", R, B, "A", "B"), Edge("h2", B, C, "B", "A"), Edge("h3", R, B, "A", "B",
+            TopologyProvenance.Observed) };
+        var query = Query(hidden);
+        var path = await query.PathAsync(new(R, C, 1000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.NotVerified, path.Status); Assert.Empty(path.Nodes); Assert.Empty(path.EdgeIds);
+        var neighborhood = await query.NeighborhoodAsync(new(R, 1000), ScopeA, Ct);
+        Assert.Empty(neighborhood.Neighbors); Assert.Equal(1, neighborhood.ExternalNeighborCount);
+    }
+
+    [Fact]
+    public async Task Cursor_is_stable_and_partial_cursor_never_restarts()
+    {
+        var query = Query([Edge("1", R, A), Edge("2", R, B), Edge("3", R, C)]);
+        var first = await query.NeighborhoodAsync(new(R, 1000, 1), ScopeA, Ct);
+        Assert.Single(first.Neighbors); Assert.NotNull(first.Cursor);
+        var second = await query.NeighborhoodAsync(new(R, 1000, 1, first.Cursor), ScopeA, Ct);
+        Assert.Single(second.Neighbors); Assert.NotEqual(first.Neighbors[0].NodeId, second.Neighbors[0].NodeId);
+        await Assert.ThrowsAsync<TopologyCursorException>(() =>
+            query.NeighborhoodAsync(new(R, 1000, 1, first.Cursor![..^1]), ScopeA, Ct));
+        await Assert.ThrowsAsync<TopologyCursorException>(() =>
+            query.NeighborhoodAsync(new(R, 1000, 1, first.Cursor, TopologyRelation.Contains), ScopeA, Ct));
+    }
+
+    [Fact]
+    public async Task Logical_expiry_hides_physical_edge_at_deadline()
+    {
+        var edge = Edge("ttl", R, A) with { EffectiveExpiry = 500 };
+        Assert.Equal(TopologyGraphResultStatus.Found, (await Query([edge]).PathAsync(new(R, A, 499), ScopeA, Ct)).Status);
+        Assert.Equal(TopologyGraphResultStatus.Unreachable, (await Query([edge]).PathAsync(new(R, A, 500), ScopeA, Ct)).Status);
+        Assert.Equal(TopologyGraphResultStatus.Unreachable, (await Query([edge]).PathAsync(new(R, A, 501), ScopeA, Ct)).Status);
+    }
+
+    private static TopologyGraphQueryService Query(IReadOnlyList<TopologyEdgeProjection> edges) =>
+        new(new MemorySource(new(9, edges)));
+
+    private static TopologyEdgeProjection[] OracleEdges() =>
+    [
+        Edge("ra", R, A), Edge("rb", R, B), Edge("ac", A, C), Edge("bc", B, C), Edge("cd", C, D),
+        Edge("da", D, A), Edge("xy", X, Y), Edge("cc", C, C),
+    ];
+
+    private static TopologyEdgeProjection Edge(string id, string from, string to, string fromOwner = "A", string toOwner = "A",
+        TopologyProvenance provenance = TopologyProvenance.Declared) => new(id, from, to, TopologyRelation.DependsOn,
+        provenance, true, provenance == TopologyProvenance.Declared ? 1 : 0.5m, fromOwner, toOwner,
+        fromOwner == toOwner ? TopologyEdgeVisibility.SameOwner : TopologyEdgeVisibility.CrossOwner,
+        0, 1000, null, 9, 1, false);
+
+    private static string Node(int value) => TopologyIdentity.Node(TopologyNodeKind.Service,
+        Guid.Parse($"00000000-0000-0000-0000-{value:D12}"));
+
+    private sealed class MemorySource(TopologyGraphSnapshot snapshot) : ITopologyGraphSnapshotSource
+    {
+        public Task<TopologyGraphSnapshot> ReadAsync(long? publishedSequence, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (publishedSequence is not null && publishedSequence != snapshot.PublishedSequence)
+                throw new TopologySnapshotUnavailableException(publishedSequence.Value);
+            return Task.FromResult(snapshot);
+        }
+    }
+}

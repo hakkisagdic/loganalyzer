@@ -3,7 +3,7 @@ using Bizigo.ControlPlane;
 
 namespace Bizigo.UnitTests;
 
-public sealed class TopologyIdentityTests
+public sealed partial class TopologyIdentityTests
 {
     private static readonly Guid Uuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
 

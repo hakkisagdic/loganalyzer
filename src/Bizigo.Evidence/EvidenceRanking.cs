@@ -121,6 +121,8 @@ public static class EvidenceRanking
         ["logs.volume"] = 2,
         ["logs.attribute-lift"] = 1,
         ["topology.shared-attribute"] = 1,
+        ["topology.graph-path"] = 4,
+        ["topology.common-ancestor"] = 4,
         ["logs.window"] = 0,
         // Telemetry shares existing signal classes: directed error evidence,
         // explicit symptom, statistical deviation, supporting relationship.
