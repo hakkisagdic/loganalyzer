@@ -3,7 +3,7 @@
   "sourceHashes": {
     "src/Bizigo.ControlPlane/SourceOwnershipHistory.cs": "2c637a61d42e4efc0c7a74502be9e2bb487ddfd25c64f315c57769ef6692fd11",
     "src/Bizigo.Contracts/TopologyVisibility.cs": "d21c811d4a78f5188edc42ac13ac332f7ccf1881a67823b935ed488bd0e4abf4",
-    "src/Bizigo.Query/TopologyGraphQueryService.cs": "0ba396ce5404efd2cf87199811bea9c9a8938985fa975d5a6c961f0fe5c232fc",
+    "src/Bizigo.Query/TopologyGraphQueryService.cs": "08fa3939f9f621e64157a314beb794b08a97c837fa15875c7fac7f408f60d1bb",
     "src/Bizigo.Api/TopologyReadCursorCodec.cs": "242585a872bab79c0e23d345226b68936c39f35508d7325ecac02273ba5eafce",
     "src/Bizigo.Query/ScopedQuery.Topology.cs": "c4ebd545fad520e0746b2b2ebd9931cca6819da1d9f54936bd0c5a1dbe80c3a0",
     "src/Bizigo.Query/TopologyPublicationFence.cs": "4531a18ad25954b0363c71f35216cfc3dfc7d085f8a54be15d4781048e967600"

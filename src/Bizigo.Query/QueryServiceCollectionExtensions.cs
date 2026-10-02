@@ -39,10 +39,12 @@ public static class QueryServiceCollectionExtensions
         services.AddSingleton<TopologyPublicationWatermarkWriter>();
         services.AddSingleton<ITopologyPublicationRevisionSource, TopologyPublicationRevisionSource>();
         services.AddSingleton<ITopologyPublicationCoordinator, TopologyPublicationCoordinator>();
-        services.AddSingleton<ITopologyObservedProjector>(sp => new TopologyObservedProjector(
-            sp.GetRequiredService<ClickHouseContext>(),
-            (key, write, cancellationToken) => sp.GetRequiredService<ITopologyPublicationCoordinator>()
-                .PublishAsync(key, write, cancellationToken)));
+        services.AddSingleton<ITopologyObservedProjector>(sp =>
+        {
+            var coordinator = sp.GetRequiredService<ITopologyPublicationCoordinator>();
+            return new TopologyObservedProjector(sp.GetRequiredService<ClickHouseContext>(),
+                coordinator.PublishAsync, readPendingKey: coordinator.ReadPendingKeyAsync);
+        });
         services.AddSingleton<TopologyPublicationFence>();
         services.AddSingleton<TopologyObservedSnapshotReader>();
         services.AddScoped<ITopologyGraphSnapshotSource, TopologyGraphSnapshotSource>();

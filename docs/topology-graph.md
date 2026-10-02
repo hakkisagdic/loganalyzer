@@ -39,17 +39,21 @@ Observed projector writes are tagged with a server-controlled
 `publication_seq`. Inserted rows remain ineligible until the single-row
 `topology_publication_watermark` advances contiguously. Publication order is:
 
-1. reserve `(publication_key, sequence)` durably in PostgreSQL while holding a
+1. persist an immutable ClickHouse batch manifest (canonical occurrence IDs,
+   normalized edge/conflict rows, payload and row-set hashes/counts);
+2. reserve `(publication_key, sequence)` durably in PostgreSQL while holding a
    session advisory lock across the entire operation;
-2. write every idempotent ClickHouse projection row using that sequence;
-3. commit the sequence, its immutable receipt, and the PostgreSQL read epoch in
+3. write every idempotent ClickHouse projection row using that sequence;
+4. commit the sequence, its immutable receipt, and the PostgreSQL read epoch in
    one transaction;
-4. acknowledge the sequence in the ClickHouse committed watermark, then clear
+5. acknowledge the sequence in the ClickHouse committed watermark, then clear
    the pending reservation.
 
 A crash after reservation or ClickHouse insert leaves public results unchanged;
-only replay of the same publication key may reuse that sequence. A different
-key receives retryable conflict until recovery. A crash between steps 3 and 4
+only replay of the same publication key may reuse that sequence. At restart,
+the projector verifies and replays that exact durable manifest before reducing
+newer cumulative trace occurrences. A different key receives retryable conflict
+until recovery. A crash between steps 4 and 5
 leaves PostgreSQL ahead by exactly one; reads return 409/restart and the next
 publisher repairs the missing acknowledgement before allocating another
 sequence. Receipts make even late successful replays idempotent. Gaps and
