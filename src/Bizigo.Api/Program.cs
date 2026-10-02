@@ -206,6 +206,7 @@ app.MapTelemetryReads();
 app.MapEvents();
 app.MapSources();
 app.MapTopologyWrites();
+app.MapTopologyReads();
 app.MapChanges();
 app.MapChangeWebhooks();
 app.MapChangeConnectors();
