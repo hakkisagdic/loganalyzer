@@ -7,6 +7,8 @@ public sealed class SignalOptions
     public string Directory { get; set; } = string.Empty;
     public int ChannelCapacity { get; set; } = 128;
     public TimeSpan RetryInterval { get; set; } = TimeSpan.FromSeconds(1);
+    /// <summary>Captured at admission; null follows the typed trace retention.</summary>
+    public int? ObservedRetentionDays { get; set; }
 }
 
 public interface ISignalCheckpoints

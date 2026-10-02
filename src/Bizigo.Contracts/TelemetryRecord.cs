@@ -12,6 +12,9 @@ public sealed record TelemetryRecord(
     string ScopeSchemaUrl, JsonElement? Metric, JsonElement? Span)
 {
     public int RetentionDays { get; init; } = 90;
+    public int ObservedRetentionDays { get; init; } = 90;
+    public TopologyLeafBinding? Topology { get; init; }
+    public string? TopologyBindingsSha256 { get; init; }
 }
 
 public interface ITelemetrySink

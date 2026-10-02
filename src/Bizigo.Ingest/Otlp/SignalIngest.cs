@@ -26,8 +26,10 @@ public sealed class SignalIngest : IDisposable
     private readonly WalOptions walOptions;
     private readonly ITelemetryOwnerResolver owners;
     private readonly ITelemetryBindingRegistry bindings;
+    private readonly ITopologyBindingResolver topology;
     private readonly ITelemetrySink? sink;
     private readonly TelemetryRetentionPolicy retention;
+    private readonly int observedRetentionDays;
     private readonly SemaphoreSlim slots;
     private readonly SemaphoreSlim processing = new(1, 1);
     private readonly Channel<SignalWork> queue;
@@ -40,16 +42,20 @@ public sealed class SignalIngest : IDisposable
         IOptions<SignalOptions> options, IOptions<WalOptions> walOptions, IOptions<RawStoreOptions> rawOptions,
         ILogger<WriteAheadLog> logger, ISignalCheckpoints? checkpoints = null, IWalDurability? durability = null,
         ITelemetryOwnerResolver? owners = null, ITelemetryBindingRegistry? bindings = null, ITelemetrySink? sink = null,
-        TelemetryRetentionPolicy? retention = null)
+        TelemetryRetentionPolicy? retention = null, ITopologyBindingResolver? topology = null)
     {
         this.decoder = decoder; this.sources = sources; this.objects = objects;
         this.rawOptions = rawOptions.Value; this.walOptions = walOptions.Value;
         this.checkpoints = checkpoints ?? new SignalCheckpoints();
         this.owners = owners ?? sources.HistoricalOwners;
         this.bindings = bindings ?? sources.HistoricalOwners;
+        this.topology = topology ?? sources.HistoricalTopologyBindings;
         this.sink = sink;
         this.retention = retention ?? new();
         if (this.retention.Days is < 1 or > 36500) throw new ArgumentException("Telemetry retention must be between 1 and 36500 days.", nameof(retention));
+        observedRetentionDays = options.Value.ObservedRetentionDays ?? this.retention.Days;
+        if (observedRetentionDays is < 1 or > 36500)
+            throw new ArgumentException("Observed topology retention must be between 1 and 36500 days.", nameof(options));
         if (options.Value.ChannelCapacity <= 0 || options.Value.RetryInterval <= TimeSpan.Zero)
             throw new ArgumentException("Signal queue capacity and retry interval must be positive.");
         Root = Path.GetFullPath(string.IsNullOrWhiteSpace(options.Value.Directory)
@@ -105,10 +111,28 @@ public sealed class SignalIngest : IDisposable
             try { resolved = await owners.ResolveAsync(decoded.Accepted.Select(TelemetryMaterializer.Ownership).ToArray(), token); }
             catch (Exception ex) when (ex is DbException or TimeoutException or InvalidOperationException or IOException)
             { SetFailure(ex); return Full("Authoritative ownership history is unavailable."); }
+            if (resolved.Length != decoded.Accepted.Count)
+                return Full("Authoritative ownership history returned an incomplete decision.");
+            TopologyLeafBinding[] topologyBindings;
+            try
+            {
+                topologyBindings = await topology.ResolveAsync(decoded.Accepted.Zip(resolved,
+                    TelemetryMaterializer.TopologyRequest).ToArray(), token);
+            }
+            catch (Exception ex) when (ex is DbException or TimeoutException or InvalidOperationException or IOException or InvalidDataException)
+            { SetFailure(ex); return Full("Authoritative topology history is unavailable."); }
+            if (topologyBindings.Length != decoded.Accepted.Count)
+                return Full("Authoritative topology history returned an incomplete decision.");
             var envelope = new RawSignalEnvelope(RawSignalEnvelope.CurrentVersion, Guid.CreateVersion7(), signal, contentType, DateTimeOffset.UtcNow,
                 RawSignalEnvelope.Hash(payload.Span), payload.ToArray(), 1,
-                decoded.Accepted.Select(x => x.Key).ToArray(), decoded.RejectedCount) { OwnerBindings = resolved, RetentionDays = retention.Days };
+                decoded.Accepted.Select(x => x.Key).ToArray(), decoded.RejectedCount)
+            { OwnerBindings = resolved, TopologyBindings = topologyBindings, RetentionDays = retention.Days,
+                ObservedRetentionDays = observedRetentionDays };
             envelope = envelope with { OwnerBindingsSha256 = envelope.ComputeOwnerBindingsHash() };
+            envelope = envelope with { TopologyBindingsSha256 = envelope.ComputeTopologyBindingsHash() };
+            try { envelope.Validate(); }
+            catch (InvalidDataException ex)
+            { SetFailure(ex); return Full("Authoritative topology decision is invalid."); }
             try { await bindings.ClaimAsync(envelope.EnvelopeId, envelope.OwnerBindingsSha256, token); }
             catch (Exception ex) when (ex is DbException or TimeoutException or InvalidOperationException)
             { SetFailure(ex); return Full("Authoritative ownership registry is unavailable."); }
@@ -189,7 +213,8 @@ public sealed class SignalIngest : IDisposable
                 var decoded = decoder.Replay(envelope);
                 var bound = BindLegacy(envelope, decoded);
                 await bindings.ClaimAsync(bound.EnvelopeId, bound.OwnerBindingsSha256!, token);
-                if (envelope.Version == 1) await Archive.ArchiveAsync(bound, manifest.WalSegment, token, checkpoints.ReachAsync);
+                if (envelope.Version < RawSignalEnvelope.CurrentVersion)
+                    await Archive.ArchiveAsync(bound, manifest.WalSegment, token, checkpoints.ReachAsync);
                 await WriteResultAsync(bound, decoded, token);
             }
             Volatile.Write(ref lastFailure, null);
@@ -205,6 +230,7 @@ public sealed class SignalIngest : IDisposable
         foreach (var leaf in decoded.Accepted)
         {
             var source = envelope.OwnerBindings!.Single(b => b.LeafKey == leaf.Key);
+            var topologyBinding = envelope.TopologyBindings!.Single(b => b.LeafKey == leaf.Key);
             records.Add(TelemetryMaterializer.Materialize(envelope, leaf, source));
             leaves.Add(new JsonObject
             {
@@ -212,6 +238,9 @@ public sealed class SignalIngest : IDisposable
                 ["key"] = leaf.Key, ["owner_group"] = source.OwnerGroup, ["source_id"] = source.SourceId,
                 ["known_source"] = source.Reason == "known",
                 ["owner_reason"] = source.Reason, ["owner_history_revision"] = source.HistoryRevision,
+                ["topology_binding_sha256"] = envelope.TopologyBindingsSha256,
+                ["topology_reason"] = topologyBinding.Reason, ["topology_node_id"] = topologyBinding.NodeId,
+                ["topology_node_history_revision"] = topologyBinding.NodeHistoryRevision,
                 ["resource"] = OtlpJsonCodec.Format(leaf.Resource), ["scope"] = OtlpJsonCodec.Format(leaf.Scope),
                 ["resource_schema_url"] = leaf.ResourceSchemaUrl, ["scope_schema_url"] = leaf.ScopeSchemaUrl,
                 ["metric"] = leaf.Metric is null ? null : OtlpJsonCodec.Format(leaf.Metric),
@@ -223,6 +252,7 @@ public sealed class SignalIngest : IDisposable
             ["version"] = 2, ["envelope_id"] = envelope.EnvelopeId.ToString("N"),
             ["delivery"] = sink is null ? "fixture-file-only" : "clickhouse",
             ["owner_binding_sha256"] = envelope.OwnerBindingsSha256,
+            ["topology_binding_sha256"] = envelope.TopologyBindingsSha256,
             ["signal"] = envelope.Signal.ToString(), ["payload_sha256"] = envelope.PayloadSha256,
             ["received_at"] = envelope.ReceivedAt, ["rejected_count"] = envelope.RejectedCount, ["leaves"] = leaves,
         };
@@ -236,17 +266,25 @@ public sealed class SignalIngest : IDisposable
 
     private static RawSignalEnvelope BindLegacy(RawSignalEnvelope envelope, TelemetryDecode decoded)
     {
-        if (envelope.Version != 1) return envelope;
-        // Legacy exports have no trustworthy historical owner. Do not infer
-        // one from today's mutable inventory or an overwritten processed file.
-        var bound = envelope with
+        if (envelope.Version == RawSignalEnvelope.CurrentVersion) return envelope;
+        // Historical exports without immutable topology decisions must not be
+        // rebound from the current alias inventory during restore.
+        var bound = envelope.Version == 1 ? envelope with
         {
-            Version = RawSignalEnvelope.CurrentVersion,
+            Version = 2,
             OwnerBindings = decoded.Accepted.Select(leaf => new TelemetryOwnerBinding(leaf.Key,
                 TelemetryMaterializer.Ownership(leaf).Candidates.FirstOrDefault(candidate => !string.IsNullOrWhiteSpace(candidate)) ?? "_unknown",
                 OwnerGroups.Unassigned, 0, TelemetryMaterializer.Time(leaf), "legacy-owner-unknown")).ToArray(),
+        } : envelope;
+        if (envelope.Version == 1) bound = bound with { OwnerBindingsSha256 = bound.ComputeOwnerBindingsHash() };
+        bound = bound with
+        {
+            Version = RawSignalEnvelope.CurrentVersion,
+            TopologyBindings = bound.OwnerBindings!.Select(owner => new TopologyLeafBinding(owner.LeafKey,
+                owner.EventTimeUnixNano, owner.SourceId, owner.OwnerGroup, owner.HistoryRevision,
+                null, null, null, null, null, null, "LegacyTopologyUnknown")).ToArray(),
         };
-        return bound with { OwnerBindingsSha256 = bound.ComputeOwnerBindingsHash() };
+        return bound with { TopologyBindingsSha256 = bound.ComputeTopologyBindingsHash() };
     }
 
     public async Task SweepAsync(CancellationToken token)
@@ -279,6 +317,8 @@ public sealed class SignalIngest : IDisposable
             && result.GetProperty("payload_sha256").GetString() == envelope.PayloadSha256
             && result.TryGetProperty("owner_binding_sha256", out var binding) && binding.GetString() is { Length: 64 }
             && (envelope.Version == 1 || binding.GetString() == envelope.OwnerBindingsSha256)
+            && (envelope.Version < RawSignalEnvelope.CurrentVersion || result.TryGetProperty("topology_binding_sha256", out var topologyBinding)
+                && topologyBinding.GetString() == envelope.TopologyBindingsSha256)
             && result.GetProperty("delivery").GetString() == (sink is null ? "fixture-file-only" : "clickhouse");
     }
 

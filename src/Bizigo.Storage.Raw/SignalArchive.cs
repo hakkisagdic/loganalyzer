@@ -36,8 +36,14 @@ public sealed class SignalArchive(IRawObjectStore store, string directory, int c
                 // admitted envelope. Keep the already verified restore set.
                 if (RawSignalCodec.Encode(previous).AsSpan().SequenceEqual(bytes))
                     return old;
-                var legacy = envelope with { Version = 1, OwnerBindings = null, OwnerBindingsSha256 = null };
-                if (previous.Version != 1 || envelope.Version != RawSignalEnvelope.CurrentVersion
+                var legacy = previous.Version switch
+                {
+                    1 => envelope with { Version = 1, OwnerBindings = null, OwnerBindingsSha256 = null,
+                        TopologyBindings = null, TopologyBindingsSha256 = null },
+                    2 => envelope with { Version = 2, TopologyBindings = null, TopologyBindingsSha256 = null },
+                    _ => throw new InvalidDataException("Archived admission decision cannot be replaced."),
+                };
+                if (envelope.Version != RawSignalEnvelope.CurrentVersion
                     || !RawSignalCodec.Encode(previous).AsSpan().SequenceEqual(RawSignalCodec.Encode(legacy)))
                     throw new InvalidDataException("Archived admission decision cannot be replaced.");
                 // Copy-on-write: the old manifest always retains its verified

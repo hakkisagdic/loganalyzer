@@ -6,7 +6,8 @@ using ClickHouse.Driver;
 namespace Bizigo.Storage.ClickHouse;
 
 /// <summary>Writes complete, versioned typed leaves. No acknowledgement/checkpoint belongs here.</summary>
-public sealed class TelemetryWriter(ClickHouseContext context, ITelemetryBindingRegistry bindings) : ITelemetrySink
+public sealed class TelemetryWriter(ClickHouseContext context, ITelemetryBindingRegistry bindings,
+    ITopologyObservedProjector? topologyProjector = null) : ITelemetrySink
 {
     private static readonly string[] Columns =
     [
@@ -41,6 +42,8 @@ public sealed class TelemetryWriter(ClickHouseContext context, ITelemetryBinding
         var fed = await context.Client.InsertBinaryAsync("telemetry_feed_history", ["owner_group", "resource_id", "signal"],
             feeds, new InsertOptions { BatchSize = context.Options.BulkBatchSize, MaxDegreeOfParallelism = 1 }, cancellationToken);
         if (fed != feeds.Length) throw new IOException("Incomplete telemetry feed-history insert.");
+        if (topologyProjector is not null)
+            await topologyProjector.ProjectAsync(records, cancellationToken);
     }
 
     internal static string Table(TelemetrySignal signal) => signal switch

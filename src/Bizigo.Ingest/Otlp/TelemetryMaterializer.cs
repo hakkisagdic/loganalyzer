@@ -13,6 +13,14 @@ public static class TelemetryMaterializer
         SourceDirectory.TelemetryCandidateOrder.Select(name => leaf.Resource.Attributes.FirstOrDefault(a => a.Key == name)?.Value)
             .Where(v => v?.ValueCase == AnyValue.ValueOneofCase.StringValue).Select(v => v!.StringValue).ToArray());
 
+    public static TopologyBindingRequest TopologyRequest(TelemetryLeaf leaf, TelemetryOwnerBinding owner)
+    {
+        string? Attribute(string key) => leaf.Resource.Attributes.FirstOrDefault(a => a.Key == key)?.Value is { } value
+            && value.ValueCase == AnyValue.ValueOneofCase.StringValue ? value.StringValue : null;
+        return new(owner, Attribute("service.namespace") ?? string.Empty,
+            Attribute("service.name") ?? string.Empty, Attribute("service.instance.id"));
+    }
+
     public static ulong Time(TelemetryLeaf leaf) => leaf.Metric?.DataCase switch
     {
         Metric.DataOneofCase.Gauge => leaf.Metric.Gauge.DataPoints[0].TimeUnixNano,
@@ -57,7 +65,13 @@ public static class TelemetryMaterializer
             leaf.Span is null ? string.Empty : Convert.ToHexStringLower(leaf.Span.SpanId.Span),
             (int)(leaf.Span?.Status?.Code ?? 0), RawSignalEnvelope.Hash(series),
             Json(leaf.Resource), Json(leaf.Scope), leaf.ResourceSchemaUrl, leaf.ScopeSchemaUrl,
-            metric is null ? null : Json(metric), leaf.Span is null ? null : Json(leaf.Span)) { RetentionDays = envelope.RetentionDays };
+            metric is null ? null : Json(metric), leaf.Span is null ? null : Json(leaf.Span))
+        {
+            RetentionDays = envelope.RetentionDays,
+            ObservedRetentionDays = envelope.ObservedRetentionDays,
+            Topology = envelope.TopologyBindings?.SingleOrDefault(b => b.LeafKey == leaf.Key),
+            TopologyBindingsSha256 = envelope.TopologyBindingsSha256,
+        };
     }
 
     private static JsonElement Json(IMessage value)

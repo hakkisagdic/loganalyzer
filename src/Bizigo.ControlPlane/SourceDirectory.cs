@@ -38,6 +38,7 @@ public sealed class SourceDirectory(IDbContextFactory<ControlPlaneDbContext> fac
     public static IReadOnlyList<string> TelemetryCandidateOrder { get; } =
         Array.AsReadOnly(new[] { "bizigo.source_key", "service.instance.id", "host.id", "host.name", "service.name" });
     public HistoricalTelemetryOwners HistoricalOwners { get; } = new(factory);
+    public HistoricalTopologyBindings HistoricalTopologyBindings { get; } = new(factory);
     private readonly IDbContextFactory<ControlPlaneDbContext> _factory = factory;
     private Dictionary<string, ResolvedSource> _snapshot = new(StringComparer.OrdinalIgnoreCase);
     private sealed record TelemetrySnapshot(Dictionary<string, ResolvedSource> Sources, HashSet<string> Ambiguous);

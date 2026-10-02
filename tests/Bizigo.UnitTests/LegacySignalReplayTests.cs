@@ -55,13 +55,14 @@ public sealed class LegacySignalReplayTests : IDisposable
         Assert.Equal(originalBytes, await objects.GetAsync(original.ObjectKey, Ct));
         Assert.Equal(1, (await archive.ReadAsync(original, Ct)).Version);
         var current = await archive.ReadAsync(Assert.Single(archive.Manifests()), Ct);
-        Assert.Equal(stage.EndsWith("after-rename", StringComparison.Ordinal) ? 2 : 1, current.Version);
+        Assert.Equal(stage.EndsWith("after-rename", StringComparison.Ordinal) ? RawSignalEnvelope.CurrentVersion : 1, current.Version);
         using var recovered = Open(); await recovered.RecoverAsync(Ct); await recovered.ReplayArchiveAsync(Ct);
         var manifest = Assert.Single(archive.Manifests());
         Assert.NotEqual(original.ObjectKey, manifest.ObjectKey);
         var upgraded = await archive.ReadAsync(manifest, Ct);
         Assert.Equal(original.EnvelopeId, upgraded.EnvelopeId); Assert.Equal(original.PayloadSha256, upgraded.PayloadSha256);
         Assert.Equal("legacy-owner-unknown", Assert.Single(upgraded.OwnerBindings!).Reason);
+        Assert.Equal("LegacyTopologyUnknown", Assert.Single(upgraded.TopologyBindings!).Reason);
         await recovered.ReplayArchiveAsync(Ct);
         Assert.Equal(manifest.ObjectKey, Assert.Single(archive.Manifests()).ObjectKey);
         Assert.Single(Directory.GetFiles(Path.Combine(root, "processed"), "*.json"));
