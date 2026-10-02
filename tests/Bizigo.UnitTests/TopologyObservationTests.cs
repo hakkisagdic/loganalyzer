@@ -104,6 +104,24 @@ public sealed class TopologyObservationTests
             TopologyCanonicalIdentity.Hash("trace-span-v1", Trace, ParentSpan));
     }
 
+    [Fact]
+    public void Durable_projection_manifest_round_trips_exact_edge_payload()
+    {
+        var parent = Span(Guid.NewGuid(), "p", ParentSpan, string.Empty, ParentNode, 1000);
+        var child = Span(Guid.NewGuid(), "c", ChildSpan, ParentSpan, ChildNode, 2000);
+        var batch = TopologyObservation.Reduce([parent, child]);
+        var payload = JsonSerializer.Serialize(batch, RawSignalCodec.Json);
+        var replay = JsonSerializer.Deserialize<TopologyProjectionBatch>(payload, RawSignalCodec.Json);
+        Assert.NotNull(replay);
+        Assert.Equal(batch.PublicationKey, replay.PublicationKey);
+        Assert.Equal(Assert.Single(batch.Edges).EdgeId, Assert.Single(replay.Edges).EdgeId);
+        Assert.Equal(batch.Edges[0].EffectiveExpiry, replay.Edges[0].EffectiveExpiry);
+        Assert.Equal(batch.Edges[0].Parent.NodeId, replay.Edges[0].Parent.NodeId);
+        Assert.Equal(batch.Edges[0].Child.NodeId, replay.Edges[0].Child.NodeId);
+        Assert.Equal(batch.Edges[0].ParentOccurrences, replay.Edges[0].ParentOccurrences);
+        Assert.Equal(batch.Edges[0].ChildOccurrences, replay.Edges[0].ChildOccurrences);
+    }
+
     private static TelemetryRecord Span(Guid envelopeId, string leaf, string spanId, string parentSpanId,
         string nodeId, ulong start, int retainedDays = 90, int observedDays = 90, string? extraSpan = null)
     {
