@@ -1,0 +1,52 @@
+{
+  "contractSha256": "b9590c5192e324fd3a971a36d5026d967f1fac822ca68a8ea7b51dbca5b523ae",
+  "sourceHashes": {
+    "src/Bizigo.ControlPlane/SourceOwnershipHistory.cs": "2c637a61d42e4efc0c7a74502be9e2bb487ddfd25c64f315c57769ef6692fd11",
+    "src/Bizigo.Contracts/TopologyVisibility.cs": "d21c811d4a78f5188edc42ac13ac332f7ccf1881a67823b935ed488bd0e4abf4",
+    "src/Bizigo.Query/TopologyGraphQueryService.cs": "0ba396ce5404efd2cf87199811bea9c9a8938985fa975d5a6c961f0fe5c232fc",
+    "src/Bizigo.Api/TopologyReadCursorCodec.cs": "242585a872bab79c0e23d345226b68936c39f35508d7325ecac02273ba5eafce",
+    "src/Bizigo.Query/ScopedQuery.Topology.cs": "c4ebd545fad520e0746b2b2ebd9931cca6819da1d9f54936bd0c5a1dbe80c3a0",
+    "src/Bizigo.Query/TopologyPublicationFence.cs": "4531a18ad25954b0363c71f35216cfc3dfc7d085f8a54be15d4781048e967600"
+  },
+  "restoreFilters": {
+    "UnitTests": [
+      "TopologyGraphTests", "TopologyVisibilityTests", "TopologyOutsideCountTests",
+      "TopologyWireTests", "TopologyAuditTests", "TopologyPublicationFenceTests"
+    ],
+    "IntegrationTests": ["TopologyPublicationIntegrationTests"]
+  },
+  "mutations": [
+    {
+      "id": "M03", "project": "UnitTests", "red": "Save_changes_captures_create_transfer_alias_and_disable_history", "green": "Candidate_precedence_and_ambiguous_history_never_pick_a_winner",
+      "changes": [{"path": "src/Bizigo.ControlPlane/SourceOwnershipHistory.cs", "before": "h.EffectiveFromNano <= upper && (h.EffectiveToNano == null || h.EffectiveToNano > lower)", "after": "h.EffectiveToNano == null", "occurrence": null}]
+    },
+    {
+      "id": "M04", "project": "UnitTests", "red": "Declared_and_observed_parallel_edges_remain_separate_proofs", "green": "Shortest_directed_paths",
+      "changes": [{"path": "src/Bizigo.Query/TopologyGraphQueryService.cs", "before": ".Where(edge => TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup));", "after": ".Where(edge => TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup))\n        .DistinctBy(edge => (edge.FromNode, edge.ToNode, edge.Relation));", "occurrence": null}]
+    },
+    {
+      "id": "M02", "project": "UnitTests", "red": "Hidden_bridge_no_claim", "green": "Shortest_directed_paths",
+      "changes": [{"path": "src/Bizigo.Query/TopologyGraphQueryService.cs", "before": ".Where(edge => TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup));", "after": ".Where(_ => true);", "occurrence": null}]
+    },
+    {
+      "id": "M14", "project": "UnitTests", "red": "Unknown_external_count_stays_null_not_zero", "green": "Shortest_directed_paths",
+      "changes": [{"path": "src/Bizigo.Query/TopologyGraphQueryService.cs", "before": "return new(null, ex is TimeoutException ? \"Timeout\" : \"QueryUnavailable\");", "after": "return new(0, ex is TimeoutException ? \"Timeout\" : \"QueryUnavailable\");", "occurrence": null}]
+    },
+    {
+      "id": "M15", "project": "UnitTests", "red": "External_neighbour_count_is_distinct_and_reveals_no_edge_multiplicity", "green": "Cross_owner_edge_requires_both_endpoint_permissions",
+      "changes": [{"path": "src/Bizigo.Contracts/TopologyVisibility.cs", "before": "_ => new HashSet<string>(StringComparer.Ordinal), StringComparer.Ordinal);", "after": "_ => new List<string>(), StringComparer.Ordinal);", "occurrence": null}]
+    },
+    {
+      "id": "M18", "project": "UnitTests", "red": "Cursor_scope_binding_rejects_identity_changes", "green": "Tampered_cursor_is_rejected_before_query",
+      "changes": [{"path": "src/Bizigo.Api/TopologyReadCursorCodec.cs", "before": "|| !string.Equals(state.ScopeBinding, expected, StringComparison.Ordinal)", "after": "|| expected.Length == 0", "occurrence": null}]
+    },
+    {
+      "id": "M19", "project": "UnitTests", "red": "Read_audit_failure_never_returns_data", "green": "Healthy_read_audit_commits_actor_scope_and_count",
+      "changes": [{"path": "src/Bizigo.Query/ScopedQuery.Topology.cs", "before": "await _audit.RecordAsync(", "after": "_ = _audit.RecordAsync(", "occurrence": null}]
+    },
+    {
+      "id": "M25", "project": "UnitTests", "red": "Cursor_revision_and_ttl_are_both_required", "green": "Stable_two_store_revision_returns_the_operation_result",
+      "changes": [{"path": "src/Bizigo.Query/TopologyPublicationFence.cs", "before": "|| cursor.ClickHouseWatermark != current.ClickHouseWatermark\n            || nowUnixNano >= deadline", "after": "", "occurrence": null}]
+    }
+  ]
+}

@@ -63,6 +63,12 @@ key, and `validUntil`. `validUntil` is the earlier of normal cursor expiry and
 the earliest eligible evidence expiry. Scope/tamper errors are 400; changed
 revision or `clock >= validUntil` is 409/restart.
 
+REST pages are measured after snake_case JSON serialization. If an aggregate
+page exceeds 1 MiB, the server repeats the same stable query with a smaller
+item limit and returns a continuation cursor; a single record that cannot fit
+is 422. The requested limit remains cursor-bound while each response may carry
+fewer items. Edge-detail evidence uses the same bounded paging rule.
+
 ## Retention, replay, and operations
 
 Observed rows are excluded at the exact effective-expiry boundary even if a

@@ -10,7 +10,6 @@ namespace Bizigo.Api;
 public static partial class TopologyReadEndpoints
 {
     private const int MaximumPageSize = 200;
-    private const int MaximumResponseBytes = 1_048_576;
     private static readonly JsonSerializerOptions WireOptions = new(JsonSerializerDefaults.Web);
 
     [GeneratedRegex(@"\A(?<second>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(?<fraction>\d{1,9}))?Z\z", RegexOptions.CultureInvariant)]
@@ -74,12 +73,16 @@ public static partial class TopologyReadEndpoints
                 {
                     case "nodes":
                     {
-                        var page = await query.SearchTopologyNodesAsync(new(request.AsOfNano, request.Limit,
-                            request.Cursor, request.Kind), scope, token);
-                        EnsurePublished(page.PublishedSequence, revision);
-                        return Json(new TopologyNodePageDto(page.Items.Select(Node).ToArray(),
-                            Wrap(page.Cursor, route, routeId, scope, revision, request, cursors, null),
-                            page.Cursor is not null, null, Number(page.PublishedSequence)));
+                        var body = await TopologyResponseBudget.FitPageAsync(request.Limit, async size =>
+                        {
+                            var page = await query.SearchTopologyNodesAsync(new(request.AsOfNano, size,
+                                request.Cursor, request.Kind), scope, token);
+                            EnsurePublished(page.PublishedSequence, revision);
+                            return new TopologyNodePageDto(page.Items.Select(Node).ToArray(),
+                                Wrap(page.Cursor, route, routeId, scope, revision, request, cursors, null),
+                                page.Cursor is not null, null, Number(page.PublishedSequence));
+                        }, WireOptions);
+                        return Json(body);
                     }
                     case "node":
                     {
@@ -88,35 +91,51 @@ public static partial class TopologyReadEndpoints
                     }
                     case "edges":
                     {
-                        var page = await query.SearchTopologyEdgesAsync(new(request.AsOfNano, request.Limit,
-                            request.Cursor, request.Relation, request.Provenance, request.FromNano, request.ToNano), scope, token);
-                        EnsurePublished(page.PublishedSequence, revision);
-                        return Json(new TopologyEdgePageDto(page.Items.Select(Edge).ToArray(),
-                            Wrap(page.Cursor, route, routeId, scope, revision, request, cursors,
-                                page.EarliestEvidenceExpiryUnixNano),
-                            page.Cursor is not null, null, Number(page.PublishedSequence)));
+                        var body = await TopologyResponseBudget.FitPageAsync(request.Limit, async size =>
+                        {
+                            var page = await query.SearchTopologyEdgesAsync(new(request.AsOfNano, size,
+                                request.Cursor, request.Relation, request.Provenance, request.FromNano, request.ToNano), scope, token);
+                            EnsurePublished(page.PublishedSequence, revision);
+                            return new TopologyEdgePageDto(page.Items.Select(Edge).ToArray(),
+                                Wrap(page.Cursor, route, routeId, scope, revision, request, cursors,
+                                    page.EarliestEvidenceExpiryUnixNano),
+                                page.Cursor is not null, null, Number(page.PublishedSequence));
+                        }, WireOptions);
+                        return Json(body);
                     }
                     case "edge":
                     {
-                        var found = await query.GetTopologyEdgeAsync(RequiredId(routeId), request.AsOfNano, scope, token);
-                        return found is null ? Results.NotFound() : Json(new TopologyEdgeDetailDto(Edge(found.Edge),
-                            found.Evidence.Select(Evidence).ToArray(), found.EvidenceCursor));
+                        var body = await TopologyResponseBudget.FitPageAsync(request.Limit, async size =>
+                        {
+                            var found = await query.GetTopologyEdgeAsync(RequiredId(routeId), request.AsOfNano, scope,
+                                request.Cursor, size, token);
+                            if (found is null) return null;
+                            return new TopologyEdgeDetailDto(Edge(found.Edge),
+                                found.Evidence.Select(Evidence).ToArray(),
+                                Wrap(found.EvidenceCursor, route, routeId, scope, revision, request, cursors,
+                                    found.Edge.EffectiveExpiry));
+                        }, WireOptions);
+                        return body is null ? Results.NotFound() : Json(body);
                     }
                     case "neighbors":
                     {
                         var nodeId = RequiredId(routeId);
                         if (await query.GetTopologyNodeAsync(nodeId, request.AsOfNano, scope, token) is null)
                             return Results.NotFound();
-                        var result = await query.GetTopologyNeighborhoodAsync(new(nodeId, request.AsOfNano,
-                            request.Limit, request.Cursor, request.Relation, request.FromNano, request.ToNano), scope, token);
-                        EnsurePublished(result.PublishedSequence, revision);
-                        return Json(new TopologyNeighborhoodDto(result.Neighbors.Select(n => new TopologyNeighborDto(
-                            n.NodeId, n.EdgeId, RelationWire(n.Relation), ProvenanceWire(n.Provenance),
-                            n.Direction == TopologyNeighborDirection.Incoming ? "incoming" : "outgoing")).ToArray(),
-                            result.ExternalNeighborCount?.ToString(CultureInfo.InvariantCulture), result.ExternalNeighborReason,
-                            Wrap(result.Cursor, route, routeId, scope, revision, request, cursors,
-                                result.EarliestEvidenceExpiryUnixNano),
-                            result.Cursor is not null, result.ExternalNeighborReason, Number(result.PublishedSequence)));
+                        var body = await TopologyResponseBudget.FitPageAsync(request.Limit, async size =>
+                        {
+                            var result = await query.GetTopologyNeighborhoodAsync(new(nodeId, request.AsOfNano,
+                                size, request.Cursor, request.Relation, request.FromNano, request.ToNano), scope, token);
+                            EnsurePublished(result.PublishedSequence, revision);
+                            return new TopologyNeighborhoodDto(result.Neighbors.Select(n => new TopologyNeighborDto(
+                                n.NodeId, n.EdgeId, RelationWire(n.Relation), ProvenanceWire(n.Provenance),
+                                n.Direction == TopologyNeighborDirection.Incoming ? "incoming" : "outgoing")).ToArray(),
+                                result.ExternalNeighborCount?.ToString(CultureInfo.InvariantCulture), result.ExternalNeighborReason,
+                                Wrap(result.Cursor, route, routeId, scope, revision, request, cursors,
+                                    result.EarliestEvidenceExpiryUnixNano),
+                                result.Cursor is not null, result.ExternalNeighborReason, Number(result.PublishedSequence));
+                        }, WireOptions);
+                        return Json(body);
                     }
                     case "path":
                     {
@@ -158,11 +177,12 @@ public static partial class TopologyReadEndpoints
         catch (TopologySnapshotUnavailableException) { return Problem(409, "SnapshotChanged"); }
         catch (TopologyCursorException) { return Problem(400, "InvalidCursor"); }
         catch (TopologyCursorWireException) { return Problem(400, "InvalidCursor"); }
+        catch (TopologyRecordTooLargeException) { return Problem(422, "RecordTooLarge"); }
         catch (ArgumentException) { return Problem(400, "InvalidQuery"); }
         catch (Exception ex) when (ex is not OutOfMemoryException) { return Problem(503, "QueryUnavailable"); }
     }
 
-    private static IResult Json<T>(T body) => JsonSerializer.SerializeToUtf8Bytes(body, WireOptions).Length > MaximumResponseBytes
+    private static IResult Json<T>(T body) => !TopologyResponseBudget.Fits(body, WireOptions)
         ? Problem(422, "RecordTooLarge") : Results.Json(body, WireOptions);
     private static IResult Problem(int status, string reason) => Results.Json(new TopologyProblemDto(reason, reason),
         WireOptions, statusCode: status);
@@ -214,6 +234,7 @@ public static partial class TopologyReadEndpoints
     {
         var allowed = new HashSet<string>(["asOf"], StringComparer.Ordinal);
         if (route is "nodes" or "edges" or "neighbors" or "path") allowed.UnionWith(["limit", "cursor"]);
+        if (route == "edge") allowed.UnionWith(["evidenceCursor", "evidencePageSize"]);
         if (route == "nodes") allowed.Add("kind");
         if (route is "edges" or "neighbors") allowed.Add("relation");
         if (route == "edges") allowed.Add("provenance");
@@ -224,7 +245,9 @@ public static partial class TopologyReadEndpoints
             throw new ArgumentException("Unknown or repeated topology query parameter.");
 
         string? Get(string key) => input.TryGetValue(key, out var values) ? values[0] : null;
-        var state = Get("cursor") is string encoded ? cursors.Decode(encoded) : null;
+        var cursorKey = route == "edge" ? "evidenceCursor" : "cursor";
+        var limitKey = route == "edge" ? "evidencePageSize" : "limit";
+        var state = Get(cursorKey) is string encoded ? cursors.Decode(encoded) : null;
         if (state is not null)
         {
             TopologyReadCursorCodec.EnsureBound(state, route, routeId, scope);
@@ -252,8 +275,8 @@ public static partial class TopologyReadEndpoints
             throw new TopologyCursorWireException();
         if (fromNano is decimal from && toNano is decimal to && (from < 0 || from >= to || to > asOf))
             throw new ArgumentException("Invalid topology observed window.");
-        var limit = state?.Limit ?? 100;
-        if (Get("limit") is string rawLimit)
+        var limit = state?.Limit ?? (route == "edge" ? 200 : 100);
+        if (Get(limitKey) is string rawLimit)
         {
             if (!int.TryParse(rawLimit, NumberStyles.None, CultureInfo.InvariantCulture, out var suppliedLimit)
                 || suppliedLimit is < 1 or > MaximumPageSize)
