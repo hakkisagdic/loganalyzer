@@ -35,6 +35,14 @@ public static class QueryServiceCollectionExtensions
         services.AddSingleton<ChangeEventReader>();
         services.AddSingleton<CorrelationReader>();
         services.AddSingleton<TelemetryReader>();
+        services.AddSingleton<TopologyPublicationWatermarkReader>();
+        services.AddSingleton<TopologyPublicationWatermarkWriter>();
+        services.AddSingleton<ITopologyPublicationRevisionSource, TopologyPublicationRevisionSource>();
+        services.AddSingleton<ITopologyPublicationCoordinator, TopologyPublicationCoordinator>();
+        services.AddSingleton<TopologyPublicationFence>();
+        services.AddSingleton<TopologyObservedSnapshotReader>();
+        services.AddScoped<ITopologyGraphSnapshotSource, TopologyGraphSnapshotSource>();
+        services.AddScoped<TopologyGraphQueryService>();
         services.AddSingleton(new TelemetryRetentionPolicy(options.TelemetryRetentionDays));
         services.AddSingleton<ITelemetrySink, TelemetryWriter>();
 
