@@ -24,7 +24,7 @@ public sealed class TopologyPublicationIntegrationTests(DevStackFixture stack)
 
         Assert.Equal(new TopologyPublicationRevision(0, 0), await revisions.ReadAsync(Ct));
         ulong insertedSequence = 0;
-        var published = await publisher.PublishAsync(async (sequence, token) =>
+        var published = await publisher.PublishAsync(new string('a', 64), async (sequence, token) =>
         {
             insertedSequence = sequence;
             Assert.Equal(0UL, await watermarkReader.ReadAsync(token));
@@ -36,6 +36,8 @@ public sealed class TopologyPublicationIntegrationTests(DevStackFixture stack)
         Assert.Equal(1UL, insertedSequence);
         Assert.Equal(1UL, published);
         Assert.Equal(new TopologyPublicationRevision(1, 1), await revisions.ReadAsync(Ct));
+        Assert.Equal(1UL, await publisher.PublishAsync(new string('a', 64), (_, _) =>
+            throw new InvalidOperationException("A committed identity must not replay its callback."), Ct));
 
         // PG committed but CH ACK was lost. Public reads reject the gap; the
         // next publisher repairs sequence 2 before allocating sequence 3.
@@ -47,12 +49,14 @@ public sealed class TopologyPublicationIntegrationTests(DevStackFixture stack)
             await db.SaveChangesAsync(Ct);
         }
         await Assert.ThrowsAsync<TopologyRestartRequiredException>(() => revisions.ReadAsync(Ct));
-        Assert.Equal(3UL, await publisher.PublishAsync((sequence, _) =>
+        Assert.Equal(3UL, await publisher.PublishAsync(new string('b', 64), (sequence, _) =>
         {
             Assert.Equal(3UL, sequence);
             return Task.CompletedTask;
         }, Ct));
         Assert.Equal(new TopologyPublicationRevision(3, 3), await revisions.ReadAsync(Ct));
+        Assert.Equal(1UL, await publisher.PublishAsync(new string('a', 64), (_, _) =>
+            throw new InvalidOperationException("A late duplicate must retain its original receipt."), Ct));
     }
 
     [Fact]
@@ -64,10 +68,22 @@ public sealed class TopologyPublicationIntegrationTests(DevStackFixture stack)
         var publisher = new TopologyPublicationCoordinator(factory, watermarkReader,
             new TopologyPublicationWatermarkWriter(watermarkReader, storage));
 
-        await Assert.ThrowsAsync<IOException>(() => publisher.PublishAsync((_, _) =>
+        var key = new string('c', 64);
+        await Assert.ThrowsAsync<IOException>(() => publisher.PublishAsync(key, (_, _) =>
             throw new IOException("projection insert failed"), Ct));
         Assert.Equal(0UL, await watermarkReader.ReadAsync(Ct));
         await using var db = await factory.CreateDbContextAsync(Ct);
         Assert.True(await db.TopologyReadState.AllAsync(s => s.PublishedSequence == 0, Ct));
+
+        // CH may already contain rows at sequence 1. A different event may
+        // never reuse that sequence and publish the orphaned projection.
+        await Assert.ThrowsAsync<TopologyRestartRequiredException>(() => publisher.PublishAsync(
+            new string('d', 64), (_, _) => Task.CompletedTask, Ct));
+        Assert.Equal(1UL, await publisher.PublishAsync(key, (sequence, _) =>
+        {
+            Assert.Equal(1UL, sequence);
+            return Task.CompletedTask;
+        }, Ct));
+        Assert.Equal(1UL, await watermarkReader.ReadAsync(Ct));
     }
 }

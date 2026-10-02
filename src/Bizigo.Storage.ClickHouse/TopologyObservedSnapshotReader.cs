@@ -11,7 +11,8 @@ public sealed record TopologyObservedSnapshotRow(
     decimal FirstSeenUnixNano, decimal LastSeenUnixNano, decimal ExpiresUnixNano,
     ulong PublicationSequence, string ParentSemanticAnchor, string ChildSemanticAnchor,
     IReadOnlyList<string> EvidenceOccurrenceIds, string TraceLogicalId, string SpanLogicalId,
-    decimal EventTimeUnixNano);
+    decimal EventTimeUnixNano, string ParentSpanLogicalId, decimal ParentEventTimeUnixNano,
+    IReadOnlyList<string> ParentOccurrenceIds, IReadOnlyList<string> ChildOccurrenceIds);
 
 /// <summary>
 /// Reads only published observed projections. The watermark predicate is
@@ -46,7 +47,11 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
                 argMax(toJSONString(evidence_occurrence_ids), publication_seq),
                 argMax(trace_logical_id, publication_seq),
                 argMax(span_logical_id, publication_seq),
-                argMax(child_event_time_nano, publication_seq)
+                argMax(child_event_time_nano, publication_seq),
+                argMax(parent_span_logical_id, publication_seq),
+                argMax(parent_event_time_nano, publication_seq),
+                argMax(toJSONString(parent_occurrence_ids), publication_seq),
+                argMax(toJSONString(child_occurrence_ids), publication_seq)
             FROM topology_edges_observed
             WHERE publication_seq <= {watermark:UInt64}
             GROUP BY edge_id
@@ -65,6 +70,10 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
             var evidenceJson = ReadString(reader.GetValue(15));
             var evidence = JsonSerializer.Deserialize<string[]>(evidenceJson)
                 ?? throw new InvalidDataException("Invalid topology evidence occurrence vector.");
+            var parentOccurrences = JsonSerializer.Deserialize<string[]>(ReadString(reader.GetValue(21)))
+                ?? throw new InvalidDataException("Invalid parent topology evidence occurrence vector.");
+            var childOccurrences = JsonSerializer.Deserialize<string[]>(ReadString(reader.GetValue(22)))
+                ?? throw new InvalidDataException("Invalid child topology evidence occurrence vector.");
             rows.Add(new(
                 ReadString(reader.GetValue(0)), ReadString(reader.GetValue(1)), ReadString(reader.GetValue(2)),
                 ReadString(reader.GetValue(3)), ReadString(reader.GetValue(4)),
@@ -76,7 +85,9 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
                 Convert.ToDecimal(reader.GetValue(11), CultureInfo.InvariantCulture),
                 Convert.ToUInt64(reader.GetValue(12), CultureInfo.InvariantCulture), parent, child,
                 evidence, ReadString(reader.GetValue(16)), ReadString(reader.GetValue(17)),
-                Convert.ToDecimal(reader.GetValue(18), CultureInfo.InvariantCulture)));
+                Convert.ToDecimal(reader.GetValue(18), CultureInfo.InvariantCulture),
+                ReadString(reader.GetValue(19)), Convert.ToDecimal(reader.GetValue(20), CultureInfo.InvariantCulture),
+                parentOccurrences, childOccurrences));
         }
         return rows;
     }

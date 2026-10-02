@@ -14,6 +14,6 @@ public interface ITopologyPublicationRevisionSource
 /// </summary>
 public interface ITopologyPublicationCoordinator
 {
-    Task<ulong> PublishAsync(Func<ulong, CancellationToken, Task> writeProjection,
+    Task<ulong> PublishAsync(string publicationKey, Func<ulong, CancellationToken, Task> writeProjection,
         CancellationToken cancellationToken);
 }

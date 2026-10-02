@@ -540,7 +540,7 @@ public sealed class ProducesContractTests
                 "MapEvents",
                 "MapNotificationChannels", "MapOtlpLogs", "MapOtlpTelemetry", "MapParserAuthoring", "MapParsers",
                 "MapPipelineHealth", "MapRca", "MapRcaRuns", "MapReplay", "MapSources", "MapTelemetryReads",
-                "MapTopologyWrites",
+                "MapTopologyReads", "MapTopologyWrites",
             ],
             names);
 

@@ -53,7 +53,10 @@ public sealed class TopologyGraphSnapshotSource(
                     Visibility(row.FromOwnerGroup, row.ToOwnerGroup), row.FirstSeenUnixNano, row.LastSeenUnixNano,
                     row.ExpiresUnixNano, checked((long)row.PublicationSequence),
                     checked((long)row.PublicationSequence), false));
-                foreach (var occurrence in row.EvidenceOccurrenceIds.Distinct(StringComparer.Ordinal))
+                foreach (var occurrence in row.ParentOccurrenceIds.Distinct(StringComparer.Ordinal))
+                    evidence.Add(new(row.Id, occurrence, row.TraceLogicalId, row.ParentSpanLogicalId,
+                        row.ParentEventTimeUnixNano));
+                foreach (var occurrence in row.ChildOccurrenceIds.Distinct(StringComparer.Ordinal))
                     evidence.Add(new(row.Id, occurrence, row.TraceLogicalId, row.SpanLogicalId,
                         row.EventTimeUnixNano));
             }

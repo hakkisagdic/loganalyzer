@@ -39,16 +39,21 @@ Observed projector writes are tagged with a server-controlled
 `publication_seq`. Inserted rows remain ineligible until the single-row
 `topology_publication_watermark` advances contiguously. Publication order is:
 
-1. write every idempotent ClickHouse projection row using the supplied sequence;
-2. commit that sequence and advance the PostgreSQL read epoch under the
-   publication advisory lock;
-3. acknowledge the same sequence in the ClickHouse committed watermark.
+1. reserve `(publication_key, sequence)` durably in PostgreSQL while holding a
+   session advisory lock across the entire operation;
+2. write every idempotent ClickHouse projection row using that sequence;
+3. commit the sequence, its immutable receipt, and the PostgreSQL read epoch in
+   one transaction;
+4. acknowledge the sequence in the ClickHouse committed watermark, then clear
+   the pending reservation.
 
-A crash before step 2 leaves public results unchanged and replay reuses the
-same next sequence. A crash between steps 2 and 3 leaves PostgreSQL ahead by
-exactly one; reads return 409/restart and the next publisher repairs the missing
-acknowledgement before allocating another sequence. Gaps and skipped sequences
-are rejected. Queries filter observed rows at or below the committed watermark,
+A crash after reservation or ClickHouse insert leaves public results unchanged;
+only replay of the same publication key may reuse that sequence. A different
+key receives retryable conflict until recovery. A crash between steps 3 and 4
+leaves PostgreSQL ahead by exactly one; reads return 409/restart and the next
+publisher repairs the missing acknowledgement before allocating another
+sequence. Receipts make even late successful replays idempotent. Gaps and
+skipped sequences are rejected. Queries filter observed rows at or below the committed watermark,
 capture `(PG epoch, CH watermark)` before work, and compare it again before
 returning. A mismatch is 409, never a mixed 200 response.
 
