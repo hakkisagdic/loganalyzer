@@ -1,0 +1,303 @@
+using System.Globalization;
+using System.IdentityModel.Tokens.Jwt;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Reflection;
+using System.Security.Claims;
+using System.Text.Json;
+using Bizigo.Contracts;
+using Bizigo.ControlPlane;
+using Bizigo.Evidence;
+using Bizigo.Evidence.Providers;
+using Bizigo.Ingest.Otlp;
+using Bizigo.Ingest.Wal;
+using Bizigo.Query;
+using Bizigo.Storage.ClickHouse;
+using Google.Protobuf;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.EntityFrameworkCore;
+using OpenTelemetry.Proto.Common.V1;
+
+namespace Bizigo.IntegrationTests;
+
+/// <summary>
+/// B04 exact captured-retention cases. The event is historical while E is two
+/// hours in the future: public detail can prove an explicit old event window
+/// today, and direct scoped reads can probe E-1ns/E/E+1ns without wall-clock
+/// sleeps. A separate process replay remains a distinct O06/B04 oracle.
+/// </summary>
+[Collection(DevStackCollection.Name)]
+[Trait("Category", "Integration")]
+public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture stack)
+{
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
+    private const ulong Day = TopologyExpiry.NanosecondsPerDay;
+
+    [Theory]
+    [InlineData(30, 90, 90)]
+    [InlineData(90, 30, 90)]
+    [InlineData(90, 90, 10)]
+    public async Task B04_Exact_30_90_10_captured_minimum_physical_row_and_all_scoped_graph_surfaces(
+        int parentDays, int childDays, int observedDays)
+    {
+        await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var shortDays = Math.Min(parentDays, Math.Min(childDays, observedDays));
+        var parentAt = DateTimeOffset.UtcNow.AddHours(2).AddDays(-shortDays);
+        var parentStart = TopologyIdentity.Nano(parentAt);
+        var childStart = parentStart + 1000;
+        var historical = parentAt.AddDays(-2);
+        var suffix = Guid.NewGuid().ToString("N")[..12];
+        var sourceA = "b04-a-" + suffix;
+        var sourceB = "b04-b-" + suffix;
+        var scopeA = AccessScope.ForGroups("b04-A-" + suffix, ["A"]);
+        var scopeAB = AccessScope.ForGroups("b04-AB-" + suffix, ["A", "B"]);
+        await fixture.SourceAsync(sourceA, "A", historical);
+        await fixture.SourceAsync(sourceB, "B", historical);
+        var historicalClock = new FakeTimeProvider(parentAt.AddDays(-1));
+        var registry = new TopologyRegistry(fixture.Factory, historicalClock);
+        var root = (await registry.CreateAsync(scopeAB, true,
+            new(TopologyNodeKind.Service, "b04-root", "A", true, []), Ct)).Node!.Id;
+        var parent = (await registry.CreateAsync(scopeAB, true,
+            new(TopologyNodeKind.Service, "b04-parent", "A", true,
+                [new(sourceA, "n", "parent")]), Ct)).Node!.Id;
+        var child = (await registry.CreateAsync(scopeAB, true,
+            new(TopologyNodeKind.Service, "b04-child", "B", true,
+                [new(sourceB, "n", "child")]), Ct)).Node!.Id;
+        await using var history = await fixture.Factory.CreateDbContextAsync(Ct);
+        var sourceRoots = await history.TopologyNodes.AsNoTracking()
+            .Where(node => node.SourceId == sourceA || node.SourceId == sourceB)
+            .ToDictionaryAsync(node => node.SourceId!, Ct);
+        var declared = new TopologyEdgeRegistry(fixture.Factory, historicalClock);
+        Assert.Equal(201, (await declared.CreateAsync(scopeAB, true,
+            new(sourceRoots[sourceA].Id, parent, "contains"), Ct)).Status);
+        Assert.Equal(201, (await declared.CreateAsync(scopeAB, true,
+            new(sourceRoots[sourceB].Id, child, "contains"), Ct)).Status);
+        Assert.Equal(201, (await declared.CreateAsync(
+            scopeAB, true, new(root, parent, "depends_on"), Ct)).Status);
+
+        var watermark = new TopologyPublicationWatermarkReader(fixture.Storage);
+        var publisher = new TopologyPublicationCoordinator(fixture.Factory, watermark,
+            new TopologyPublicationWatermarkWriter(watermark, fixture.Storage));
+        var writer = new TelemetryWriter(fixture.Storage, fixture.Owners,
+            new TopologyObservedProjector(fixture.Storage, publisher.PublishAsync,
+                readPendingKey: publisher.ReadPendingKeyAsync));
+        var parentExport = TelemetryDbFixture.Traces(sourceA, checked((ulong)parentStart));
+        var childExport = TelemetryDbFixture.Traces(sourceB, checked((ulong)childStart));
+        Bind(parentExport.ResourceSpans[0].Resource.Attributes, "parent");
+        Bind(childExport.ResourceSpans[0].Resource.Attributes, "child");
+        var parentSpan = parentExport.ResourceSpans[0].ScopeSpans[0].Spans[0];
+        var childSpan = childExport.ResourceSpans[0].ScopeSpans[0].Spans[0];
+        parentSpan.ParentSpanId = ByteString.Empty;
+        childSpan.SpanId = ByteString.CopyFrom(Convert.FromHexString("0000000000000002"));
+        childSpan.ParentSpanId = parentSpan.SpanId;
+        var rawParent = await AdmitAsync(fixture, writer, parentExport, "parent-" + suffix,
+            parentDays, parentDays);
+        var rawChild = await AdmitAsync(fixture, writer, childExport, "child-" + suffix,
+            childDays, observedDays);
+        Assert.Equal(parentDays, rawParent.RetentionDays);
+        Assert.Equal(childDays, rawChild.RetentionDays);
+        Assert.Equal(observedDays, rawChild.ObservedRetentionDays);
+        Assert.Equal(parent, Assert.Single(rawParent.TopologyBindings!).NodeId);
+        Assert.Equal(child, Assert.Single(rawChild.TopologyBindings!).NodeId);
+
+        var expectedParent = parentStart + (decimal)parentDays * Day;
+        var expectedChild = childStart + (decimal)childDays * Day;
+        var expectedObserved = childStart + (decimal)observedDays * Day;
+        var expiry = Math.Min(expectedParent, Math.Min(expectedChild, expectedObserved));
+        var from = parentStart - 1;
+        var to = childStart + 1;
+        var graph = Graph(fixture);
+        var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
+            new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph);
+        var before = await query.SearchTopologyEdgesAsync(new(expiry - 1,
+            Provenance: TopologyProvenance.Observed, FromUnixNano: from, ToUnixNano: to), scopeAB, Ct);
+        var edge = Assert.Single(before.Items);
+        Assert.Equal(expiry, edge.EffectiveExpiry!.Value);
+        var physical = await fixture.SqlAsync("SELECT toString(parent_trace_expiry), "
+            + "toString(child_trace_expiry), toString(observed_expiry), toString(expires_nano) "
+            + "FROM topology_edges_observed WHERE edge_id = '" + edge.Id + "' "
+            + "ORDER BY publication_seq DESC LIMIT 1");
+        Assert.Equal(new[] { expectedParent, expectedChild, expectedObserved, expiry }, physical.Trim()
+            .Split('\t').Select(value => decimal.Parse(value, CultureInfo.InvariantCulture)).ToArray());
+
+        var eventAt = DateTimeOffset.FromUnixTimeSeconds((long)(parentStart / 1_000_000_000m));
+        await new EventWriter(fixture.Storage).WriteEventsAsync([
+            Degraded("A", sourceA, eventAt.AddMinutes(1)),
+            Degraded("B", sourceB, eventAt.AddMinutes(2)),
+        ], Ct);
+        foreach (var clock in new[] { expiry - 1, expiry, expiry + 1 })
+        {
+            var eligible = clock < expiry;
+            var page = await query.SearchTopologyEdgesAsync(new(clock,
+                Provenance: TopologyProvenance.Observed, FromUnixNano: from, ToUnixNano: to), scopeAB, Ct);
+            Assert.Equal(eligible, page.Items.Any(row => row.Id == edge.Id));
+            Assert.Equal(eligible, await WindowDetailAsync(query, edge.Id, clock, from, to, scopeAB) is not null);
+            var neighbors = await query.GetTopologyNeighborhoodAsync(new(parent, clock,
+                FromUnixNano: from, ToUnixNano: to), scopeAB, Ct);
+            Assert.Equal(eligible, neighbors.Neighbors.Any(row => row.EdgeId == edge.Id));
+            Assert.Equal(eligible ? TopologyGraphResultStatus.Found : TopologyGraphResultStatus.Unreachable,
+                (await query.GetTopologyPathAsync(new(parent, child, clock,
+                    FromUnixNano: from, ToUnixNano: to), scopeAB, Ct)).Status);
+            var ancestor = await query.GetTopologyCommonAncestorAsync(new([parent, child], clock,
+                from, to), scopeAB, Ct);
+            Assert.Equal(eligible ? TopologyGraphResultStatus.Found : TopologyGraphResultStatus.Unreachable,
+                ancestor.Status);
+            if (eligible) Assert.Equal(root, ancestor.NodeId);
+            var outside = await query.CountExternalTopologyNeighborsAsync(new(parent, clock,
+                FromUnixNano: from, ToUnixNano: to), scopeA, Ct);
+            Assert.Equal(eligible ? 1 : 0, outside.Count);
+            Assert.Null(outside.Reason);
+        }
+        Assert.Equal("1", (await fixture.SqlAsync("SELECT count() FROM topology_edges_observed "
+            + "WHERE edge_id = '" + edge.Id + "'")).Trim());
+
+        // The trace feed remains physically present at all three read clocks.
+        // RCA must use captured edge expiry, not turn feed presence into proof.
+        Assert.Equal(TelemetryResultStatus.Data,
+            (await query.GetTelemetryFeedAsync(TelemetrySignal.Traces, null, scopeAB, Ct)).Status);
+        foreach (var clock in new[] { expiry - 100, expiry, expiry + 100 })
+        {
+            var window = new RcaWindow
+            {
+                BaselineFrom = eventAt.AddDays(-7), BaselineTo = eventAt.AddMinutes(-2),
+                From = eventAt.AddMinutes(-1), To = ClockDate(clock), OwnerGroups = ["A", "B"],
+            };
+            var path = await new TopologyGraphPathProvider(query).GatherAsync(window,
+                scopeAB, GatherBudget.Default, Ct);
+            var ancestorProof = await new TopologyCommonAncestorProvider(query).GatherAsync(window,
+                scopeAB, GatherBudget.Default, Ct);
+            var expected = clock < expiry ? EvidenceStatus.Gathered : EvidenceStatus.Empty;
+            Assert.Equal(expected, path.Status);
+            Assert.Equal(expected, ancestorProof.Status);
+            if (clock < expiry)
+            {
+                using var pathProof = JsonDocument.Parse(Assert.Single(path.Items).Payload["proof_edges"]);
+                Assert.Equal(edge.Id, Assert.Single(pathProof.RootElement.EnumerateArray().ToArray())
+                    .GetProperty("id").GetString());
+                Assert.Equal(root, Assert.Single(ancestorProof.Items).Payload["ancestor_node_id"]);
+            }
+            else
+            {
+                Assert.Empty(path.Items);
+                Assert.Empty(ancestorProof.Items);
+            }
+        }
+
+        // At real server time, the row is still TTL-valid but older than the
+        // default 24-hour observed window. V's public from/to contract must
+        // make explicit historical detail available without changing asOf.
+        await using var api = await TopologyHttpOracleHost.StartAsync(fixture, Ct);
+        var asOfNow = TopologyIdentity.Nano(DateTimeOffset.UtcNow);
+        var route = "/v1/topology/edges/" + edge.Id + "?asOf=" + Uri.EscapeDataString(Utc(asOfNow))
+            + "&from=" + Uri.EscapeDataString(Utc(from)) + "&to=" + Uri.EscapeDataString(Utc(to));
+        using var defaultDetail = await GetAsBothAsync(api, "/v1/topology/edges/" + edge.Id);
+        Assert.Equal(HttpStatusCode.NotFound, defaultDetail.StatusCode);
+        using var first = await GetAsBothAsync(api, route + "&evidencePageSize=1");
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        using var firstJson = JsonDocument.Parse(await first.Content.ReadAsStringAsync(Ct));
+        Assert.Single(firstJson.RootElement.GetProperty("evidence").EnumerateArray().ToArray());
+        var cursor = firstJson.RootElement.GetProperty("evidence_cursor").GetString();
+        Assert.NotNull(cursor);
+        using var second = await GetAsBothAsync(api, route + "&evidencePageSize=1&evidenceCursor="
+            + Uri.EscapeDataString(cursor));
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        using var secondJson = JsonDocument.Parse(await second.Content.ReadAsStringAsync(Ct));
+        Assert.Single(secondJson.RootElement.GetProperty("evidence").EnumerateArray().ToArray());
+        Assert.Null(secondJson.RootElement.GetProperty("evidence_cursor").GetString());
+        var changed = route[..route.LastIndexOf("&to=", StringComparison.Ordinal)]
+            + "&to=" + Uri.EscapeDataString(Utc(to - 1));
+        using var altered = await GetAsBothAsync(api, changed + "&evidencePageSize=1&evidenceCursor="
+            + Uri.EscapeDataString(cursor));
+        Assert.Equal(HttpStatusCode.BadRequest, altered.StatusCode);
+        using var partial = await GetAsBothAsync(api, "/v1/topology/edges/" + edge.Id + "?from="
+            + Uri.EscapeDataString(Utc(from)));
+        Assert.Equal(HttpStatusCode.BadRequest, partial.StatusCode);
+        using var onlyA = await api.GetAsync(route, "A");
+        using var onlyB = await api.GetAsync(route, "B");
+        Assert.Equal(HttpStatusCode.NotFound, onlyA.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, onlyB.StatusCode);
+    }
+
+    private static async Task<RawSignalEnvelope> AdmitAsync(TelemetryDbFixture fixture, TelemetryWriter writer,
+        OpenTelemetry.Proto.Collector.Trace.V1.ExportTraceServiceRequest request, string root,
+        int traceDays, int observedDays)
+    {
+        var path = Path.Combine(fixture.Root, root);
+        using var ingest = new SignalIngest(new(), new(fixture.Factory), fixture.Objects,
+            Options.Create(new SignalOptions { Directory = path, ObservedRetentionDays = observedDays }),
+            Options.Create(new WalOptions { Directory = path }), Options.Create(fixture.RawOptions),
+            NullLogger<WriteAheadLog>.Instance, owners: fixture.Owners, bindings: fixture.Owners,
+            sink: writer, retention: new TelemetryRetentionPolicy(traceDays));
+        await ingest.RecoverAsync(Ct);
+        return await fixture.EmitAsync(ingest, request, TelemetrySignal.Traces);
+    }
+
+    private static TopologyGraphQueryService Graph(TelemetryDbFixture fixture)
+    {
+        var fence = new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
+            new TopologyPublicationWatermarkReader(fixture.Storage)));
+        return new(new TopologyGraphSnapshotSource(fixture.Factory,
+            new TopologyObservedSnapshotReader(fixture.Storage), fence));
+    }
+
+    private static async Task<TopologyEdgeDetail?> WindowDetailAsync(IScopedQuery query, string edgeId,
+        decimal clock, decimal from, decimal to, AccessScope scope)
+    {
+        // Q's window-aware scoped overload is on the integration branch and is
+        // intentionally required. Reflection lets this source-only test compile
+        // against the unmerged E base without inventing a default-window fallback.
+        var method = typeof(IScopedQuery).GetMethods().Single(info => info.Name == "GetTopologyEdgeAsync"
+            && info.GetParameters().Length == 6 && info.GetParameters()[2].ParameterType == typeof(decimal));
+        return await (Task<TopologyEdgeDetail?>)method.Invoke(query,
+            [edgeId, clock, from, to, scope, Ct])!;
+    }
+
+    private static string Utc(decimal nano)
+    {
+        var seconds = decimal.Truncate(nano / 1_000_000_000m);
+        var fraction = (long)(nano - seconds * 1_000_000_000m);
+        return DateTimeOffset.FromUnixTimeSeconds((long)seconds)
+            .ToString("yyyy-MM-dd'T'HH:mm:ss", CultureInfo.InvariantCulture) + "."
+            + fraction.ToString("D9", CultureInfo.InvariantCulture) + "Z";
+    }
+
+    private static DateTimeOffset ClockDate(decimal nano) =>
+        new(DateTime.UnixEpoch.AddTicks(checked((long)(nano / 100m))), TimeSpan.Zero);
+
+    private static async Task<HttpResponseMessage> GetAsBothAsync(TopologyHttpOracleHost api, string route)
+    {
+        // The shared host exposes only one-group convenience requests. Use its
+        // fixture-local signing key and its two already mapped IdP groups for
+        // a true AB JWT, without widening the production AccessScope.
+        var key = (SymmetricSecurityKey)typeof(TopologyHttpOracleHost)
+            .GetField("key", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(api)!;
+        var token = new JwtSecurityToken("https://telemetry-fixture.invalid/issuer", "bizigo-api",
+            [new Claim("sub", api.Subject("AB")), new Claim("roles", "reader"),
+                new Claim("groups", "/" + api.Subject("A")),
+                new Claim("groups", "/" + api.Subject("B"))],
+            DateTime.UtcNow.AddMinutes(-1), DateTime.UtcNow.AddMinutes(5),
+            new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
+        using var request = new HttpRequestMessage(HttpMethod.Get, route);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer",
+            new JwtSecurityTokenHandler().WriteToken(token));
+        return await api.Http.SendAsync(request, Ct);
+    }
+
+    private static void Bind(Google.Protobuf.Collections.RepeatedField<KeyValue> attributes, string service)
+    {
+        attributes.Single(attribute => attribute.Key == "service.name").Value.StringValue = service;
+        attributes.Add(new KeyValue { Key = "service.namespace", Value = new AnyValue { StringValue = "n" } });
+    }
+
+    private static LogEvent Degraded(string owner, string source, DateTimeOffset at) => new()
+    {
+        EventId = Guid.NewGuid(), Timestamp = at, OwnerGroup = owner, SourceId = source, Host = source,
+        Vendor = "b04", Product = "test", ParserId = "b04", ParserVersion = "1.0.0",
+        ParseStatus = ParseStatus.Ok, SignatureHash = 1, TimeSource = TimeSources.Parsed,
+        SeverityNum = 3, SrcIp = IPAddress.IPv6Any, DstIp = IPAddress.IPv6Any,
+        Attrs = new Dictionary<string, string>(StringComparer.Ordinal), Body = "degraded",
+    };
+}
