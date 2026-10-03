@@ -59,6 +59,10 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests(DevStackFixtur
             window, scope, GatherBudget.Default, token);
         Assert.Equal(EvidenceStatus.Gathered, baseline.Status);
         var itemBytes = JsonSerializer.SerializeToUtf8Bytes(Assert.Single(baseline.Items), BundleSerializer.Options).Length;
+        long auditBoundary;
+        await using (var boundaryDb = await fixture.Factory.CreateDbContextAsync(token))
+            auditBoundary = await boundaryDb.AuditLog.Where(row => row.Subject == scope.Subject)
+                .MaxAsync(row => (long?)row.Id, token) ?? 0;
         var limits = new Dictionary<string, int>
         {
             ["node"] = 1000, ["edge"] = 4000, ["page"] = 20, ["byte"] = 1024 * 1024,
@@ -77,15 +81,28 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests(DevStackFixtur
         Assert.Equal(delta < 0 ? "NotComparable" : "Evaluated", result.Telemetry!.Evaluation);
 
         await using var auditDb = await fixture.Factory.CreateDbContextAsync(token);
-        var audits = await auditDb.AuditLog.Where(row => row.Subject == scope.Subject).ToArrayAsync(token);
+        // The default-budget calibration above has its own successful audit
+        // rows. Measure only the tested budget run, never those baseline rows.
+        var audits = await auditDb.AuditLog.Where(row => row.Subject == scope.Subject && row.Id > auditBoundary)
+            .ToArrayAsync(token);
         Assert.Contains(audits, row => row.Action == "rca.propagation");
         Assert.Contains(audits, row => row.Action.Contains("feed", StringComparison.Ordinal));
-        Assert.Contains(audits, row => row.Action == (providerId == "topology.graph-path"
-            ? "topology.path" : "topology.ancestors") && row.Succeeded &&
-            row.Details.Contains("outcome=Success", StringComparison.Ordinal));
-        Assert.Contains(audits, row => row.Action == "topology.edges.detail" && row.Succeeded &&
-            row.Details.Contains("outcome=Success", StringComparison.Ordinal));
-        Assert.DoesNotContain(audits, row => row.Action.StartsWith("topology.", StringComparison.Ordinal) && !row.Succeeded);
+        var graphAction = providerId == "topology.graph-path" ? "topology.path" : "topology.ancestors";
+        var expectedGraphReads = providerId == "topology.graph-path" && delta < 0 &&
+            (dimension is "node" or "edge") ? 1 : providerId == "topology.graph-path" ? 2 : 1;
+        var expectedDetailReads = delta < 0 ? dimension switch
+        {
+            "node" or "edge" => 0,
+            "page" => 1,
+            _ => 2,
+        } : 2;
+        Assert.Equal(expectedGraphReads, audits.Count(row => row.Action == graphAction));
+        Assert.Equal(expectedDetailReads, audits.Count(row => row.Action == "topology.edges.detail"));
+        Assert.All(audits.Where(row => row.Action.StartsWith("topology.", StringComparison.Ordinal)), row =>
+        {
+            Assert.True(row.Succeeded);
+            Assert.Contains("outcome=Success", row.Details, StringComparison.Ordinal);
+        });
     }
 
     [Fact]
@@ -216,7 +233,9 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests(DevStackFixtur
         id == "topology.graph-path" ? new TopologyGraphPathProvider(query, budget,
             new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
                 new TopologyPublicationWatermarkReader(fixture.Storage)))) :
-        new TopologyCommonAncestorProvider(query, budget);
+        new TopologyCommonAncestorProvider(query, budget,
+            new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
+                new TopologyPublicationWatermarkReader(fixture.Storage))));
 
     private static LogEvent Degraded(string owner, string source, DateTimeOffset timestamp) => new()
     {

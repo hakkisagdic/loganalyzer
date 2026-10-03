@@ -305,6 +305,60 @@ public sealed class TopologyProductionProviderTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task Production_ancestor_proof_restarts_on_pg_epoch_or_ch_watermark_change(bool changeWatermark)
+    {
+        var query = Ready();
+        var revisions = new MutableRevisionSource(new(7, 1));
+        query.TopologyEdgeResponse = (edgeId, _, _, _) =>
+        {
+            revisions.Current = changeWatermark ? new(7, 2) : new(8, 1);
+            return Task.FromResult<TopologyEdgeDetail?>(query.TopologyEdges[edgeId]);
+        };
+        var services = new ServiceCollection();
+        services.AddSingleton<IScopedQuery>(query);
+        services.AddSingleton(new TopologyPublicationFence(revisions));
+        services.AddTransient<TopologyCommonAncestorProvider>();
+        using var provider = services.BuildServiceProvider();
+        var result = await provider.GetRequiredService<TopologyCommonAncestorProvider>().GatherAsync(
+            Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+        Assert.Equal(EvidenceStatus.Unavailable, result.Status);
+        Assert.True(result.Truncated);
+        Assert.Empty(result.Items);
+        Assert.Equal("NotComparable", result.Telemetry!.Evaluation);
+        Assert.Equal(2, revisions.Reads);
+    }
+
+    [Fact]
+    public async Task Production_ancestor_inflight_cancel_reaches_query_within_one_second_and_result_within_two()
+    {
+        var query = Ready();
+        using var caller = new CancellationTokenSource();
+        var inFlight = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var tokenObserved = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        query.TopologyEdgeResponse = async (_, _, _, token) =>
+        {
+            using var registration = token.Register(() => tokenObserved.TrySetResult(true));
+            inFlight.TrySetResult(true);
+            await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            throw new InvalidOperationException("Cancellation must leave the proof read.");
+        };
+        var services = new ServiceCollection();
+        services.AddSingleton<IScopedQuery>(query);
+        services.AddSingleton(new TopologyPublicationFence(new MutableRevisionSource(new(7, 1))));
+        services.AddTransient<TopologyCommonAncestorProvider>();
+        using var provider = services.BuildServiceProvider();
+        var gathering = provider.GetRequiredService<TopologyCommonAncestorProvider>().GatherAsync(
+            Window, Scope, GatherBudget.Default, caller.Token);
+        await inFlight.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        caller.Cancel();
+        await tokenObserved.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            gathering.WaitAsync(TimeSpan.FromSeconds(2)));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task Production_exhausted_page_budget_prevents_reverse_or_continuation_io(bool continuation)
     {
         var query = Ready();
