@@ -1,9 +1,12 @@
 using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
+using System.Diagnostics;
+using System.Data.Common;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using Bizigo.Contracts;
 using Bizigo.ControlPlane;
@@ -13,6 +16,7 @@ using Bizigo.Ingest.Otlp;
 using Bizigo.Ingest.Wal;
 using Bizigo.Query;
 using Bizigo.Storage.ClickHouse;
+using Bizigo.Storage.Raw;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -93,9 +97,10 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
         parentSpan.ParentSpanId = ByteString.Empty;
         childSpan.SpanId = ByteString.CopyFrom(Convert.FromHexString("0000000000000002"));
         childSpan.ParentSpanId = parentSpan.SpanId;
-        var rawParent = await AdmitAsync(fixture, writer, parentExport, "parent-" + suffix,
+        var ingestRoot = "captured-" + suffix;
+        var rawParent = await AdmitAsync(fixture, writer, parentExport, ingestRoot,
             parentDays, parentDays);
-        var rawChild = await AdmitAsync(fixture, writer, childExport, "child-" + suffix,
+        var rawChild = await AdmitAsync(fixture, writer, childExport, ingestRoot,
             childDays, observedDays);
         Assert.Equal(parentDays, rawParent.RetentionDays);
         Assert.Equal(childDays, rawChild.RetentionDays);
@@ -219,6 +224,130 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
         using var onlyB = await api.GetAsync(route, "B");
         Assert.Equal(HttpStatusCode.NotFound, onlyA.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, onlyB.StatusCode);
+
+        await VerifyFreshProcessReplayAsync(fixture, ingestRoot, rawParent, rawChild,
+            edge.Id, expiry, from, to, scopeAB);
+    }
+
+    private async Task VerifyFreshProcessReplayAsync(TelemetryDbFixture fixture, string ingestRoot,
+        RawSignalEnvelope parentEnvelope, RawSignalEnvelope childEnvelope, string originalEdgeId,
+        decimal expiry, decimal from, decimal to, AccessScope scope)
+    {
+        var originalArchive = new SignalArchive(fixture.Objects, Path.Combine(fixture.Root, ingestRoot));
+        var originals = originalArchive.Manifests().ToArray();
+        Assert.Equal(2, originals.Length);
+        foreach (var manifest in originals) await originalArchive.ReadAsync(manifest, Ct);
+        var archiveRoot = Path.Combine(fixture.Root, "archive-only-" + Guid.NewGuid().ToString("N"));
+        var manifestDirectory = Path.Combine(archiveRoot, "manifests");
+        Directory.CreateDirectory(manifestDirectory);
+        foreach (var file in Directory.GetFiles(originalArchive.ManifestDirectory, "*.json"))
+            File.Copy(file, Path.Combine(manifestDirectory, Path.GetFileName(file)));
+        Assert.Equal(2, Directory.GetFiles(manifestDirectory, "*.json").Length);
+        Assert.False(Directory.Exists(Path.Combine(archiveRoot, "wal")));
+        Assert.False(Directory.Exists(Path.Combine(archiveRoot, "processed")));
+
+        // The restore target retains authoritative PG history and verified S3
+        // objects only. Derived CH projection and PG publication receipts start
+        // together at zero; the child cannot consult the old process or WAL.
+        using var fresh = await DevStackSetup.ClickHouseAsync(stack, Ct);
+        await using (var db = await fixture.Factory.CreateDbContextAsync(Ct))
+        {
+            await using var reset = await db.Database.BeginTransactionAsync(Ct);
+            await db.Database.ExecuteSqlRawAsync("""
+                DELETE FROM bizigo.topology_publication_pending;
+                DELETE FROM bizigo.topology_publication_receipts;
+                UPDATE bizigo.topology_read_state SET published_sequence = 0, epoch = epoch + 1;
+                """, Ct);
+            await db.TelemetryOwnerClaims.ExecuteDeleteAsync(Ct);
+            await reset.CommitAsync(Ct);
+            Assert.True(await db.TopologyBindings.AnyAsync(Ct));
+        }
+        var config = Path.Combine(fixture.Root, "captured-recover.json");
+        await File.WriteAllBytesAsync(config, JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            root = archiveRoot, stage = "after-wal-before-ack", recover = true,
+            first = "", second = "", TelemetryRetentionDays = 365, ObservedRetentionDays = 365,
+        }), Ct);
+        var start = new ProcessStartInfo("dotnet")
+        {
+            WorkingDirectory = DevStackSetup.RepoPath(""), RedirectStandardOutput = true,
+            RedirectStandardError = true, UseShellExecute = false,
+        };
+        start.ArgumentList.Add(DevStackSetup.RepoPath(
+            "sim/Bizigo.OtlpFixture/bin/Release/net10.0/Bizigo.OtlpFixture.dll"));
+        start.ArgumentList.Add("--topology-crash");
+        start.ArgumentList.Add(config);
+        start.Environment["ConnectionStrings__ControlPlane"] = stack.PostgresConnectionString;
+        start.Environment["ConnectionStrings__ClickHouse"] = fresh.Options.ConnectionString;
+        start.Environment["RawStore__ServiceUrl"] = fixture.RawOptions.ServiceUrl;
+        start.Environment["RawStore__Bucket"] = fixture.RawOptions.Bucket;
+        start.Environment["RawStore__AccessKey"] = fixture.RawOptions.AccessKey;
+        start.Environment["RawStore__SecretKey"] = fixture.RawOptions.SecretKey;
+        using var child = Process.Start(start) ?? throw new IOException("Could not start captured-TTL archive child.");
+        var stdout = child.StandardOutput.ReadToEndAsync(Ct);
+        var stderr = child.StandardError.ReadToEndAsync(Ct);
+        try
+        {
+            Assert.NotEqual(Environment.ProcessId, child.Id);
+            using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(Ct))
+            {
+                timeout.CancelAfter(TimeSpan.FromSeconds(90));
+                await child.WaitForExitAsync(timeout.Token);
+            }
+            Assert.True(child.ExitCode == 0, await stderr);
+            using var receipt = JsonDocument.Parse(await File.ReadAllBytesAsync(
+                Path.Combine(archiveRoot, "recovered.json"), Ct));
+            Assert.Equal(child.Id, receipt.RootElement.GetProperty("pid").GetInt32());
+            Assert.True(receipt.RootElement.GetProperty("ready").GetBoolean());
+            Assert.Equal(365, receipt.RootElement.GetProperty("configuredTelemetryRetentionDays").GetInt32());
+            Assert.Equal(365, receipt.RootElement.GetProperty("configuredObservedRetentionDays").GetInt32());
+            Assert.Equal(2, receipt.RootElement.GetProperty("verifiedReplayCount").GetInt32());
+            Assert.Equal(2, receipt.RootElement.GetProperty("replayCount").GetInt32());
+            Assert.Equal(2, receipt.RootElement.GetProperty("verified").GetArrayLength());
+            var restoredArchive = new SignalArchive(fixture.Objects, archiveRoot);
+            foreach (var original in new[] { parentEnvelope, childEnvelope })
+            {
+                var restored = await restoredArchive.ReadAsync(restoredArchive.Manifests()
+                    .Single(manifest => manifest.EnvelopeId == original.EnvelopeId), Ct);
+                Assert.Equal(RawSignalCodec.Encode(original), RawSignalCodec.Encode(restored));
+                Assert.Equal(original.TopologyBindingsSha256, restored.TopologyBindingsSha256);
+                Assert.Equal(original.OwnerBindingsSha256, restored.OwnerBindingsSha256);
+                Assert.Equal(original.RetentionDays, restored.RetentionDays);
+                Assert.Equal(original.ObservedRetentionDays, restored.ObservedRetentionDays);
+            }
+            var wal = Path.Combine(archiveRoot, "wal");
+            if (Directory.Exists(wal))
+                Assert.All(Directory.GetFiles(wal, "*.log"), file =>
+                    Assert.Equal(0L, new FileInfo(file).Length));
+            var watermark = new TopologyPublicationWatermarkReader(fresh);
+            var graph = new TopologyGraphQueryService(new TopologyGraphSnapshotSource(fixture.Factory,
+                new TopologyObservedSnapshotReader(fresh), new TopologyPublicationFence(
+                    new TopologyPublicationRevisionSource(fixture.Factory, watermark))));
+            var query = new ScopedQuery(new(fresh), new(fresh), new(fresh), new(fresh),
+                fixture.Db, new ControlPlaneAuditSink(fixture.Factory), new TelemetryReader(fresh, fixture.Clock), graph);
+            foreach (var clock in new[] { expiry - 1, expiry, expiry + 1 })
+            {
+                var page = await query.SearchTopologyEdgesAsync(new(clock,
+                    Provenance: TopologyProvenance.Observed, FromUnixNano: from, ToUnixNano: to), scope, Ct);
+                Assert.Equal(clock < expiry, page.Items.Any(edge => edge.Id == originalEdgeId));
+                if (clock < expiry) Assert.Equal(originalEdgeId, Assert.Single(page.Items).Id);
+                Assert.Equal(clock < expiry,
+                    await WindowDetailAsync(query, originalEdgeId, clock, from, to, scope) is not null);
+            }
+            var persisted = await SqlAsync(fresh, "SELECT toString(expires_nano) FROM topology_edges_observed "
+                + "WHERE edge_id = '" + originalEdgeId + "' ORDER BY publication_seq DESC LIMIT 1");
+            Assert.Equal(expiry, decimal.Parse(persisted.Trim(), CultureInfo.InvariantCulture));
+            Assert.Equal("1", (await SqlAsync(fresh, "SELECT count() FROM topology_edges_observed "
+                + "WHERE edge_id = '" + originalEdgeId + "'")).Trim());
+        }
+        finally
+        {
+            if (!child.HasExited) child.Kill(entireProcessTree: true);
+            using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            await child.WaitForExitAsync(cleanup.Token);
+            _ = await stdout;
+            _ = await stderr;
+        }
     }
 
     private static async Task<RawSignalEnvelope> AdmitAsync(TelemetryDbFixture fixture, TelemetryWriter writer,
@@ -241,6 +370,22 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
             new TopologyPublicationWatermarkReader(fixture.Storage)));
         return new(new TopologyGraphSnapshotSource(fixture.Factory,
             new TopologyObservedSnapshotReader(fixture.Storage), fence));
+    }
+
+    private async Task<string> SqlAsync(ClickHouseContext storage, string sql)
+    {
+        var database = new DbConnectionStringBuilder
+        { ConnectionString = storage.Options.ConnectionString }["Database"].ToString()!;
+        using var http = new HttpClient { BaseAddress = new Uri(stack.ClickHouseHttpUrl),
+            Timeout = TimeSpan.FromMinutes(2) };
+        http.DefaultRequestHeaders.Add("X-ClickHouse-User", "bizigo");
+        http.DefaultRequestHeaders.Add("X-ClickHouse-Key", "bizigo");
+        http.DefaultRequestHeaders.Add("X-ClickHouse-Database", database);
+        using var content = new StringContent(sql, Encoding.UTF8, new MediaTypeHeaderValue("text/plain"));
+        using var response = await http.PostAsync("/", content, Ct);
+        var result = await response.Content.ReadAsStringAsync(Ct);
+        Assert.True(response.IsSuccessStatusCode, result);
+        return result;
     }
 
     private static async Task<TopologyEdgeDetail?> WindowDetailAsync(IScopedQuery query, string edgeId,
