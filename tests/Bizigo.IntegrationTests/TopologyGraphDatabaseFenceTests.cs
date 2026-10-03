@@ -58,24 +58,8 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests
         var (_, window, scope) = await SeedScenarioAsync(fixture, token);
         var revisions = Revisions(fixture);
         var before = await revisions.ReadAsync(token);
-        async Task ChangeRevision(CancellationToken mutationToken)
-        {
-            if (changedStore == "pg")
-            {
-                var written = await new TopologyRegistry(fixture.Factory).CreateAsync(scope, true,
-                    new(TopologyNodeKind.Service, "revision-bump", scope.OwnerGroups.Single(), true, []), mutationToken);
-                Assert.Equal(201, written.Status);
-            }
-            else
-            {
-                var watermark = new TopologyPublicationWatermarkReader(fixture.Storage);
-                var publisher = new TopologyPublicationCoordinator(fixture.Factory,
-                    watermark, new TopologyPublicationWatermarkWriter(watermark, fixture.Storage));
-                var key = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
-                await publisher.PublishAsync(key, (_, _) => Task.CompletedTask, mutationToken);
-            }
-        }
-        var audit = new RevisionChangingAuditSink(new ControlPlaneAuditSink(fixture.Factory), ChangeRevision);
+        var audit = new RevisionChangingAuditSink(new ControlPlaneAuditSink(fixture.Factory),
+            mutationToken => ChangeRevisionAsync(changedStore, fixture, scope, mutationToken), "topology.path");
         var graph = new TopologyGraphQueryService(RealSnapshotSource(fixture.Factory, fixture.Storage));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
             new(fixture.Storage), fixture.Db, audit, fixture.Reader, graph);
@@ -99,6 +83,55 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests
         Assert.All(pathAudits, row => Assert.True(row.Succeeded));
     }
 
+    [Theory]
+    [InlineData("pg")]
+    [InlineData("ch")]
+    [Trait("Category", "Integration")]
+    public async Task Real_ancestor_proof_revision_change_is_not_evaluated(string changedStore)
+    {
+        var token = TestContext.Current.CancellationToken;
+        await using var fixture = await TelemetryDbFixture.CreateAsync(Stack, token);
+        var (_, window, scope) = await SeedScenarioAsync(fixture, token);
+        var revisions = Revisions(fixture);
+        var before = await revisions.ReadAsync(token);
+        var audit = new RevisionChangingAuditSink(new ControlPlaneAuditSink(fixture.Factory),
+            mutationToken => ChangeRevisionAsync(changedStore, fixture, scope, mutationToken), "topology.ancestors");
+        var graph = new TopologyGraphQueryService(RealSnapshotSource(fixture.Factory, fixture.Storage));
+        var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
+            new(fixture.Storage), fixture.Db, audit, fixture.Reader, graph);
+        using var services = Services(query, new TopologyPublicationFence(revisions)).BuildServiceProvider();
+        var result = await services.GetRequiredService<TopologyCommonAncestorProvider>()
+            .GatherAsync(window, scope, GatherBudget.Default, token);
+        Assert.True(audit.Mutated);
+        Assert.Equal(EvidenceStatus.Unavailable, result.Status);
+        Assert.True(result.Truncated);
+        Assert.Empty(result.Items);
+        Assert.Equal("NotComparable", result.Telemetry!.Evaluation);
+        var after = await revisions.ReadAsync(token);
+        Assert.True(after.PostgresEpoch > before.PostgresEpoch);
+        if (changedStore == "pg") Assert.Equal(before.ClickHouseWatermark, after.ClickHouseWatermark);
+        else Assert.True(after.ClickHouseWatermark > before.ClickHouseWatermark);
+    }
+
+    private static async Task ChangeRevisionAsync(string changedStore, TelemetryDbFixture fixture,
+        AccessScope scope, CancellationToken mutationToken)
+    {
+        if (changedStore == "pg")
+        {
+            var written = await new TopologyRegistry(fixture.Factory).CreateAsync(scope, true,
+                new(TopologyNodeKind.Service, "revision-bump", scope.OwnerGroups.Single(), true, []), mutationToken);
+            Assert.Equal(201, written.Status);
+        }
+        else
+        {
+            var watermark = new TopologyPublicationWatermarkReader(fixture.Storage);
+            var publisher = new TopologyPublicationCoordinator(fixture.Factory,
+                watermark, new TopologyPublicationWatermarkWriter(watermark, fixture.Storage));
+            var key = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
+            await publisher.PublishAsync(key, (_, _) => Task.CompletedTask, mutationToken);
+        }
+    }
+
     private static ServiceCollection Services(IScopedQuery query, TopologyPublicationFence fence)
     {
         var services = new ServiceCollection();
@@ -115,7 +148,8 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests
 
     private static TopologyPublicationFence Fence(TelemetryDbFixture fixture) => new(Revisions(fixture));
 
-    private sealed class RevisionChangingAuditSink(IAuditSink inner, Func<CancellationToken, Task> mutate) : IAuditSink
+    private sealed class RevisionChangingAuditSink(IAuditSink inner, Func<CancellationToken, Task> mutate,
+        string afterAction) : IAuditSink
     {
         private int changed;
         public bool Mutated => Volatile.Read(ref changed) != 0;
@@ -123,7 +157,7 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests
         public async Task RecordAsync(AuditRecord record, CancellationToken cancellationToken = default)
         {
             await inner.RecordAsync(record, cancellationToken);
-            if (record.Action == "topology.path" && Interlocked.Exchange(ref changed, 1) == 0)
+            if (record.Action == afterAction && Interlocked.Exchange(ref changed, 1) == 0)
                 await mutate(TestContext.Current.CancellationToken);
         }
     }
