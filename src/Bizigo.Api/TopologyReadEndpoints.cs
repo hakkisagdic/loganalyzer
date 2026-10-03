@@ -131,7 +131,7 @@ public static partial class TopologyReadEndpoints
                             return new TopologyEdgeDetailDto(Edge(found.Edge),
                                 found.Evidence.Select(Evidence).ToArray(),
                                 Wrap(found.EvidenceCursor, route, routeId, scope, revision, request, cursors,
-                                    found.Edge.EffectiveExpiry));
+                                    TopologyReadCursorCodec.EvidenceExpiry(found.Edge)));
                         }, WireOptions);
                         return body is null ? Results.NotFound() : Json(body);
                     }
