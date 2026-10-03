@@ -18,8 +18,10 @@ namespace Bizigo.IntegrationTests;
 /// missing production types fail the test rather than skipping it.
 /// </summary>
 [Collection(DevStackCollection.Name)]
-public sealed class TopologyGraphDatabaseIntegrationTests(DevStackFixture stack)
+public sealed partial class TopologyGraphDatabaseIntegrationTests(DevStackFixture stack)
 {
+    private DevStackFixture Stack => stack;
+
     public static IEnumerable<object[]> BudgetCases()
     {
         foreach (var provider in new[] { "topology.graph-path", "topology.common-ancestor" })
@@ -34,7 +36,7 @@ public sealed class TopologyGraphDatabaseIntegrationTests(DevStackFixture stack)
         var token = TestContext.Current.CancellationToken;
         await using var fixture = await TelemetryDbFixture.CreateAsync(stack, token);
         var (query, window, scope) = await SeedScenarioAsync(fixture, token);
-        var slice = await Provider("topology.graph-path", query, TopologyProviderBudget.Default)
+        var slice = await Provider("topology.graph-path", query, TopologyProviderBudget.Default, fixture)
             .GatherAsync(window, scope, GatherBudget.Default, token);
         Assert.Equal(EvidenceStatus.Gathered, slice.Status);
         var item = Assert.Single(slice.Items);
@@ -53,10 +55,14 @@ public sealed class TopologyGraphDatabaseIntegrationTests(DevStackFixture stack)
         var token = TestContext.Current.CancellationToken;
         await using var fixture = await TelemetryDbFixture.CreateAsync(stack, token);
         var (query, window, scope) = await SeedScenarioAsync(fixture, token);
-        var baseline = await Provider(providerId, query, TopologyProviderBudget.Default).GatherAsync(
+        var baseline = await Provider(providerId, query, TopologyProviderBudget.Default, fixture).GatherAsync(
             window, scope, GatherBudget.Default, token);
         Assert.Equal(EvidenceStatus.Gathered, baseline.Status);
         var itemBytes = JsonSerializer.SerializeToUtf8Bytes(Assert.Single(baseline.Items), BundleSerializer.Options).Length;
+        long auditBoundary;
+        await using (var boundaryDb = await fixture.Factory.CreateDbContextAsync(token))
+            auditBoundary = await boundaryDb.AuditLog.Where(row => row.Subject == scope.Subject)
+                .MaxAsync(row => (long?)row.Id, token) ?? 0;
         var limits = new Dictionary<string, int>
         {
             ["node"] = 1000, ["edge"] = 4000, ["page"] = 20, ["byte"] = 1024 * 1024,
@@ -68,17 +74,35 @@ public sealed class TopologyGraphDatabaseIntegrationTests(DevStackFixture stack)
             _ => itemBytes,
         }) + delta;
         var budget = new TopologyProviderBudget(limits["node"], limits["edge"], limits["page"], limits["byte"]);
-        var result = await Provider(providerId, query, budget).GatherAsync(window, scope, GatherBudget.Default, token);
+        var result = await Provider(providerId, query, budget, fixture).GatherAsync(window, scope, GatherBudget.Default, token);
         Assert.Equal(delta < 0 ? EvidenceStatus.Unavailable : EvidenceStatus.Gathered, result.Status);
         Assert.Equal(delta < 0, result.Truncated);
         Assert.Equal(delta < 0 ? 0 : 1, result.Items.Count);
         Assert.Equal(delta < 0 ? "NotComparable" : "Evaluated", result.Telemetry!.Evaluation);
 
         await using var auditDb = await fixture.Factory.CreateDbContextAsync(token);
-        var actions = await auditDb.AuditLog.Where(row => row.Subject == scope.Subject)
-            .Select(row => row.Action).ToArrayAsync(token);
-        Assert.Contains("rca.propagation", actions);
-        Assert.Contains(actions, action => action.Contains("feed", StringComparison.Ordinal));
+        // The default-budget calibration above has its own successful audit
+        // rows. Measure only the tested budget run, never those baseline rows.
+        var audits = await auditDb.AuditLog.Where(row => row.Subject == scope.Subject && row.Id > auditBoundary)
+            .ToArrayAsync(token);
+        Assert.Contains(audits, row => row.Action == "rca.propagation");
+        Assert.Contains(audits, row => row.Action.Contains("feed", StringComparison.Ordinal));
+        var graphAction = providerId == "topology.graph-path" ? "topology.path" : "topology.ancestors";
+        var expectedGraphReads = providerId == "topology.graph-path" && delta < 0 &&
+            (dimension is "node" or "edge") ? 1 : providerId == "topology.graph-path" ? 2 : 1;
+        var expectedDetailReads = delta < 0 ? dimension switch
+        {
+            "node" or "edge" => 0,
+            "page" => 1,
+            _ => 2,
+        } : 2;
+        Assert.Equal(expectedGraphReads, audits.Count(row => row.Action == graphAction));
+        Assert.Equal(expectedDetailReads, audits.Count(row => row.Action == "topology.edges.detail"));
+        Assert.All(audits.Where(row => row.Action.StartsWith("topology.", StringComparison.Ordinal)), row =>
+        {
+            Assert.True(row.Succeeded);
+            Assert.Contains("outcome=Success", row.Details, StringComparison.Ordinal);
+        });
     }
 
     [Fact]
@@ -88,7 +112,7 @@ public sealed class TopologyGraphDatabaseIntegrationTests(DevStackFixture stack)
         var token = TestContext.Current.CancellationToken;
         await using var fixture = await TelemetryDbFixture.CreateAsync(stack, token);
         var (query, window, scope) = await SeedScenarioAsync(fixture, token);
-        var path = Provider("topology.graph-path", query, TopologyProviderBudget.Default);
+        var path = Provider("topology.graph-path", query, TopologyProviderBudget.Default, fixture);
         var first = await path.GatherAsync(window, scope, GatherBudget.Default, token);
         var second = await path.GatherAsync(window, scope, GatherBudget.Default, token);
         var foreign = AccessScope.ForGroups(scope.Subject + "-foreign", ["r08-other"]);
@@ -131,7 +155,7 @@ public sealed class TopologyGraphDatabaseIntegrationTests(DevStackFixture stack)
         var token = TestContext.Current.CancellationToken;
         await using var fixture = await TelemetryDbFixture.CreateAsync(stack, token);
         var (query, window, scope) = await SeedScenarioAsync(fixture, token);
-        var slice = await Provider("topology.graph-path", query, TopologyProviderBudget.Default)
+        var slice = await Provider("topology.graph-path", query, TopologyProviderBudget.Default, fixture)
             .GatherAsync(window, scope, GatherBudget.Default, token);
         Assert.Equal(EvidenceStatus.Gathered, slice.Status);
         var item = Assert.Single(slice.Items);
@@ -204,9 +228,14 @@ public sealed class TopologyGraphDatabaseIntegrationTests(DevStackFixture stack)
         return (query, window, scope);
     }
 
-    private static IEvidenceProvider Provider(string id, IScopedQuery query, TopologyProviderBudget budget) =>
-        id == "topology.graph-path" ? new TopologyGraphPathProvider(query, budget) :
-        new TopologyCommonAncestorProvider(query, budget);
+    private static IEvidenceProvider Provider(string id, IScopedQuery query, TopologyProviderBudget budget,
+        TelemetryDbFixture fixture) =>
+        id == "topology.graph-path" ? new TopologyGraphPathProvider(query, budget,
+            new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
+                new TopologyPublicationWatermarkReader(fixture.Storage)))) :
+        new TopologyCommonAncestorProvider(query, budget,
+            new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
+                new TopologyPublicationWatermarkReader(fixture.Storage))));
 
     private static LogEvent Degraded(string owner, string source, DateTimeOffset timestamp) => new()
     {

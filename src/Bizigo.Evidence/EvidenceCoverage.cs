@@ -11,6 +11,8 @@ public sealed record EvidenceProviderRequirements(IReadOnlyList<EvidenceProvider
     public static EvidenceProviderRequirements Telemetry { get; } = new([
         new("metrics.baseline", EvidenceKind.Metric), new("metrics.threshold", EvidenceKind.Metric),
         new("traces.error-propagation", EvidenceKind.Trace), new("traces.service-dependency", EvidenceKind.Trace),
+        new("topology.graph-path", EvidenceKind.Topology),
+        new("topology.common-ancestor", EvidenceKind.Topology),
     ]);
 }
 

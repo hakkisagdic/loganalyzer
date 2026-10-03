@@ -34,10 +34,16 @@ public sealed class TopologyCommonAncestorProvider : IEvidenceProvider
 {
     private readonly IScopedQuery _query;
     private readonly TopologyProviderBudget _topologyBudget;
+    private readonly TopologyPublicationFence? _publicationFence;
 
-    public TopologyCommonAncestorProvider(IScopedQuery query) : this(query, TopologyProviderBudget.Default) { }
+    public TopologyCommonAncestorProvider(IScopedQuery query) : this(query, TopologyProviderBudget.Default, null) { }
     public TopologyCommonAncestorProvider(IScopedQuery query, TopologyProviderBudget topologyBudget)
-    { _query = query; _topologyBudget = topologyBudget; }
+        : this(query, topologyBudget, null) { }
+    public TopologyCommonAncestorProvider(IScopedQuery query, TopologyPublicationFence publicationFence)
+        : this(query, TopologyProviderBudget.Default, publicationFence) { }
+    public TopologyCommonAncestorProvider(IScopedQuery query, TopologyProviderBudget topologyBudget,
+        TopologyPublicationFence? publicationFence)
+    { _query = query; _topologyBudget = topologyBudget; _publicationFence = publicationFence; }
 
     public string Id => "topology.common-ancestor";
     public EvidenceKind Kind => EvidenceKind.Topology;
@@ -46,7 +52,7 @@ public sealed class TopologyCommonAncestorProvider : IEvidenceProvider
     public Task<EvidenceSlice> GatherAsync(RcaWindow window, AccessScope scope, GatherBudget budget,
         CancellationToken cancellationToken) =>
         TopologyGraphEvidence.GatherAsync(_query, true, Id, window, scope, budget, _topologyBudget,
-            null, cancellationToken);
+            _publicationFence, cancellationToken);
 }
 
 internal static class TopologyGraphEvidence
@@ -89,7 +95,10 @@ internal static class TopologyGraphEvidence
             var usage = new TopologyProviderUsage(topologyBudget);
             RequireBudget(usage.IncludeNodes(nodes));
             if (ancestor)
-                return await AncestorAsync(query, providerId, nodes, window, scope, usage, timeout.Token);
+                return publicationFence is null
+                    ? await AncestorAsync(query, providerId, nodes, window, scope, usage, timeout.Token)
+                    : await publicationFence.ExecuteAsync((_, token) =>
+                        AncestorAsync(query, providerId, nodes, window, scope, usage, token), timeout.Token);
             return publicationFence is null
                 ? await PathsAsync(query, providerId, nodes, window, scope, budget, usage, timeout.Token)
                 : await publicationFence.ExecuteAsync((_, token) =>
