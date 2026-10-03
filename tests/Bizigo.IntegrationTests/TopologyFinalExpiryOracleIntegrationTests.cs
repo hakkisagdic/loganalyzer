@@ -4,6 +4,7 @@ using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Bizigo.Query;
 using Bizigo.Storage.ClickHouse;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Bizigo.IntegrationTests;
 
@@ -66,10 +67,9 @@ public sealed class TopologyFinalExpiryOracleIntegrationTests(DevStackFixture st
             new TopologyPublicationWatermarkReader(fixture.Storage)));
         var graph = new TopologyGraphQueryService(new TopologyGraphSnapshotSource(fixture.Factory,
             new TopologyObservedSnapshotReader(fixture.Storage), fence));
-        var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
-            new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph);
-        var pre = await query.SearchTopologyEdgesAsync(new(expiry - 1,
-            Provenance: TopologyProvenance.Observed), scopeAB, Ct);
+        var pre = await graph.SearchEdgesAsync(new TopologyEdgeQuery(expiry - 1,
+            Provenance: TopologyProvenance.Observed)
+            { ExpiryReadClockUnixNano = expiry - 1 }, scopeAB, Ct);
         var edge = Assert.Single(pre.Items);
         Assert.Equal(expiry, edge.EffectiveExpiry!.Value);
         var physical = await fixture.SqlAsync("SELECT toString(parent_trace_expiry), "
@@ -82,42 +82,69 @@ public sealed class TopologyFinalExpiryOracleIntegrationTests(DevStackFixture st
         foreach (var clock in new[] { expiry - 1, expiry, expiry + 1 })
         {
             var before = clock < expiry;
-            var page = await query.SearchTopologyEdgesAsync(new(clock,
-                Provenance: TopologyProvenance.Observed), scopeAB, Ct);
+            var page = await graph.SearchEdgesAsync(new TopologyEdgeQuery(clock,
+                Provenance: TopologyProvenance.Observed)
+                { ExpiryReadClockUnixNano = clock }, scopeAB, Ct);
             Assert.Equal(before, page.Items.Any(item => item.Id == edge.Id));
-            Assert.Equal(before, await query.GetTopologyEdgeAsync(edge.Id, clock, scopeAB, Ct) is not null);
-            var neighborhood = await query.GetTopologyNeighborhoodAsync(new(parent, clock), scopeAB, Ct);
+            Assert.Equal(before, await graph.GetEdgeAtExpiryAsync(edge.Id, clock,
+                null, null, null, clock, scopeAB, null, 200, Ct) is not null);
+            var neighborhood = await graph.NeighborhoodAsync(new TopologyNeighborhoodQuery(parent, clock)
+                { ExpiryReadClockUnixNano = clock }, scopeAB, Ct);
             Assert.Equal(before, neighborhood.Neighbors.Any(item => item.EdgeId == edge.Id));
-            var path = await query.GetTopologyPathAsync(new(parent, child, clock), scopeAB, Ct);
+            var path = await graph.PathAsync(new TopologyPathQuery(parent, child, clock)
+                { ExpiryReadClockUnixNano = clock }, scopeAB, Ct);
             Assert.Equal(before ? TopologyGraphResultStatus.Found : TopologyGraphResultStatus.Unreachable,
                 path.Status);
-            var ancestor = await query.GetTopologyCommonAncestorAsync(new([parent, child], clock), scopeAB, Ct);
+            var ancestor = await graph.CommonAncestorAsync(new TopologyCommonAncestorQuery([parent, child], clock)
+                { ExpiryReadClockUnixNano = clock }, scopeAB, Ct);
             Assert.Equal(before ? TopologyGraphResultStatus.Found : TopologyGraphResultStatus.Unreachable,
                 ancestor.Status);
             if (before) Assert.Equal(root, ancestor.NodeId);
-            var outside = await query.CountExternalTopologyNeighborsAsync(new(parent, clock), scopeA, Ct);
+            var outside = await graph.CountExternalNeighborsAsync(new TopologyNeighborhoodQuery(parent, clock)
+                { ExpiryReadClockUnixNano = clock }, scopeA, Ct);
             Assert.Equal(before ? 1 : 0, outside.Count);
             Assert.Null(outside.Reason);
         }
+        // Scoped production path uses its server TimeProvider (100ns ticks),
+        // not caller asOf for observed TTL. The exact ±1ns engine check above
+        // remains separate until server-authoritative decimal nano DI is wired.
+        foreach (var clock in new[] { expiry - 100, expiry, expiry + 100 })
+        {
+            var scoped = ScopedAt(fixture, graph, clock);
+            Assert.Equal(clock < expiry, (await scoped.SearchTopologyEdgesAsync(new(clock,
+                Provenance: TopologyProvenance.Observed), scopeAB, Ct)).Items.Any(item => item.Id == edge.Id));
+        }
+        Assert.Empty((await ScopedAt(fixture, graph, expiry + 100).SearchTopologyEdgesAsync(new(expiry - 100,
+            Provenance: TopologyProvenance.Observed), scopeAB, Ct)).Items);
         var historicalFrom = (decimal)start - 1;
         var historicalTo = (decimal)(start + 1000) + 1;
-        Assert.Empty((await query.SearchTopologyEdgesAsync(new(expiry + 1,
+        Assert.Empty((await graph.SearchEdgesAsync(new TopologyEdgeQuery(expiry + 1,
             Provenance: TopologyProvenance.Observed,
-            FromUnixNano: historicalFrom, ToUnixNano: historicalTo), scopeAB, Ct)).Items);
-        Assert.Equal(TopologyGraphResultStatus.Unreachable, (await query.GetTopologyPathAsync(
-            new(parent, child, expiry + 1,
-                FromUnixNano: historicalFrom, ToUnixNano: historicalTo), scopeAB, Ct)).Status);
+            FromUnixNano: historicalFrom, ToUnixNano: historicalTo)
+            { ExpiryReadClockUnixNano = expiry + 1 }, scopeAB, Ct)).Items);
+        Assert.Equal(TopologyGraphResultStatus.Unreachable, (await graph.PathAsync(
+            new TopologyPathQuery(parent, child, expiry + 1,
+                FromUnixNano: historicalFrom, ToUnixNano: historicalTo)
+                { ExpiryReadClockUnixNano = expiry + 1 }, scopeAB, Ct)).Status);
         Assert.Equal("1", (await fixture.SqlAsync("SELECT count() FROM topology_edges_observed "
             + "WHERE edge_id = '" + edge.Id + "'")).Trim());
 
         // A new HTTP envelope under a 365-day config remains the same semantic
         // edge/proof, but cannot lengthen the original admission-captured TTL.
         await writer.WriteAsync([Reenvelope(p, 365), Reenvelope(c, 365)], Ct);
-        Assert.Empty((await query.SearchTopologyEdgesAsync(new(expiry + 1,
-            Provenance: TopologyProvenance.Observed), scopeAB, Ct)).Items);
-        Assert.Equal(edge.Id, Assert.Single((await query.SearchTopologyEdgesAsync(new(expiry - 1,
-            Provenance: TopologyProvenance.Observed), scopeAB, Ct)).Items).Id);
+        Assert.Empty((await graph.SearchEdgesAsync(new TopologyEdgeQuery(expiry + 1,
+            Provenance: TopologyProvenance.Observed)
+            { ExpiryReadClockUnixNano = expiry + 1 }, scopeAB, Ct)).Items);
+        Assert.Equal(edge.Id, Assert.Single((await graph.SearchEdgesAsync(new TopologyEdgeQuery(expiry - 1,
+            Provenance: TopologyProvenance.Observed)
+            { ExpiryReadClockUnixNano = expiry - 1 }, scopeAB, Ct)).Items).Id);
     }
+
+    private static IScopedQuery ScopedAt(TelemetryDbFixture fixture, TopologyGraphQueryService graph,
+        decimal expiryClock) => new ScopedQuery(new(fixture.Storage), new(fixture.Storage),
+        new(fixture.Storage), new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory),
+        fixture.Reader, graph, topologyClock: new FakeTimeProvider(new DateTimeOffset(
+            DateTime.UnixEpoch.AddTicks(checked((long)(expiryClock / 100m))), TimeSpan.Zero)));
 
     private static TelemetryRecord Reenvelope(TelemetryRecord record, int retentionDays)
     {

@@ -4,6 +4,7 @@ using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Bizigo.Query;
 using Bizigo.Storage.ClickHouse;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Bizigo.IntegrationTests;
 
@@ -216,7 +217,8 @@ public sealed class TopologyFinalScopeOracleIntegrationTests(DevStackFixture sta
         var graph = new TopologyGraphQueryService(new TopologyGraphSnapshotSource(fixture.Factory,
             new TopologyObservedSnapshotReader(fixture.Storage), fence));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
-            new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph);
+            new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph,
+            topologyClock: new FakeTimeProvider(DateTimeOffset.UtcNow.AddSeconds(10)));
         return new(query, scopeA, scopeB, scopeAB, scopeC, root, parent, child, trace,
             TopologyIdentity.Nano(DateTimeOffset.UtcNow.AddSeconds(5)));
     }
