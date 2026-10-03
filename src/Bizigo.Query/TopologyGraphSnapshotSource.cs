@@ -16,6 +16,8 @@ public sealed class TopologyGraphSnapshotSource(
     TopologyObservedSnapshotReader observed,
     TopologyPublicationFence fence) : ITopologyGraphSnapshotSource
 {
+    public Action<TopologySqlPlan>? ObserveQuery { get; set; }
+
     public Task<TopologyGraphSnapshot> ReadAsync(long? publishedSequence, CancellationToken cancellationToken) =>
         fence.ExecuteAsync(async (revision, token) =>
         {
@@ -108,7 +110,7 @@ public sealed class TopologyGraphSnapshotSource(
             };
         }, cancellationToken);
 
-    private static async Task<IReadOnlyList<TopologyEdgeProjection>> ReadDeclaredHistoryAsync(
+    private async Task<IReadOnlyList<TopologyEdgeProjection>> ReadDeclaredHistoryAsync(
         ControlPlaneDbContext db, long committed, CancellationToken token)
     {
         await db.Database.OpenConnectionAsync(token);
@@ -122,6 +124,7 @@ public sealed class TopologyGraphSnapshotSource(
                 FROM bizigo.topology_edge_declared_history
                 ORDER BY edge_id, from_nano
                 """;
+            ObserveQuery?.Invoke(new("declared-edges", command.CommandText, []));
             var result = new List<TopologyEdgeProjection>();
             await using var reader = await command.ExecuteReaderAsync(token);
             while (await reader.ReadAsync(token))

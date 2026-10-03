@@ -18,6 +18,9 @@ public sealed record TopologyObservedSnapshot(IReadOnlyList<TopologyObservedSnap
 /// <summary>Operational preflight only; never serialize marker counts to public topology responses.</summary>
 public sealed record TopologyObservedReadiness(ulong Watermark, bool Usable, int UnattributedMarkers);
 
+/// <summary>Diagnostic SQL shape only; bound values and hidden owner identities are never observed.</summary>
+public sealed record TopologySqlPlan(string Route, string Sql, IReadOnlyList<string> BoundParameterNames);
+
 public sealed record TopologyObservedSnapshotRow(
     string Id, string FromNodeId, string ToNodeId, string Relation, string Provenance,
     bool Directed, decimal Confidence, string FromOwnerGroup, string ToOwnerGroup,
@@ -39,6 +42,8 @@ public sealed record TopologyObservedSnapshotRow(
 /// </summary>
 public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
 {
+    public Action<TopologySqlPlan>? ObserveQuery { get; set; }
+
     public async Task<TopologyObservedReadiness> CheckReadinessAsync(ulong watermark,
         CancellationToken cancellationToken = default)
     {
@@ -89,6 +94,7 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
             ORDER BY edge_id
             """;
         command.AddParameter("watermark", watermark);
+        ObserveQuery?.Invoke(new("observed-edges", command.CommandText, ["watermark"]));
         command.CommandTimeout = Math.Clamp(context.Options.QueryTimeoutSeconds, 1, 300);
         var rows = new List<TopologyObservedSnapshotRow>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -141,6 +147,7 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
             ORDER BY child_anchor, child_fingerprint
             """;
         command.AddParameter("watermark", watermark);
+        ObserveQuery?.Invoke(new("parent-resolution", command.CommandText, ["watermark"]));
         command.CommandTimeout = Math.Clamp(context.Options.QueryTimeoutSeconds, 1, 300);
         var result = new List<TopologyParentResolution>();
         await using var reader = await command.ExecuteReaderAsync(token);
@@ -172,6 +179,7 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
             ORDER BY semantic_anchor, publication_seq
             """;
         command.AddParameter("watermark", watermark);
+        ObserveQuery?.Invoke(new("conflicts", command.CommandText, ["watermark"]));
         command.CommandTimeout = Math.Clamp(context.Options.QueryTimeoutSeconds, 1, 300);
         var result = new Dictionary<string, List<TopologyConflictCandidate>>(StringComparer.Ordinal);
         var legacy = new HashSet<string>(StringComparer.Ordinal);
