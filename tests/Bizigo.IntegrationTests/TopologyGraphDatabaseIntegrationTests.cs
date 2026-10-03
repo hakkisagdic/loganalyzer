@@ -218,8 +218,13 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests(DevStackFixtur
         await new EventWriter(fixture.Storage).WriteEventsAsync(
             [Degraded(owner, sourceA, now.AddMinutes(1)), Degraded(owner, sourceB, now.AddMinutes(2))], token);
         var graph = new TopologyGraphQueryService(RealSnapshotSource(fixture.Factory, fixture.Storage));
+        // The RCA window is deliberately in the fixture's future. Keep the
+        // production scoped expiry gate on a controlled server clock at To;
+        // passing a historical caller clock must never revive observed proof.
+        var queryClock = new Microsoft.Extensions.Time.Testing.FakeTimeProvider(now.AddMinutes(15));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
-            new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph);
+            new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph,
+            queryClock);
         var window = new RcaWindow
         {
             BaselineFrom = now.AddDays(-7), BaselineTo = now.AddMinutes(-1),
