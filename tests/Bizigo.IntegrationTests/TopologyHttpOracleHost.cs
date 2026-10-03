@@ -35,11 +35,13 @@ internal sealed class TopologyHttpOracleHost : IAsyncDisposable
     public string ApplicationName => prefix;
     public TaskCompletionSource CancellationObserved { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public static Task<TopologyHttpOracleHost> StartAsync(TelemetryDbFixture f, CancellationToken token) =>
-        StartAsync(f.Factory, f.Storage.Options, token);
+    public static Task<TopologyHttpOracleHost> StartAsync(TelemetryDbFixture f, CancellationToken token,
+        ITopologyExpiryNanoClock? expiryClock = null) =>
+        StartAsync(f.Factory, f.Storage.Options, token, expiryClock);
 
     public static async Task<TopologyHttpOracleHost> StartAsync(
-        IDbContextFactory<ControlPlaneDbContext> factory, ClickHouseOptions storage, CancellationToken token)
+        IDbContextFactory<ControlPlaneDbContext> factory, ClickHouseOptions storage, CancellationToken token,
+        ITopologyExpiryNanoClock? expiryClock = null)
     {
         var host = new TopologyHttpOracleHost { requestToken = token };
         await using var mappingDb = await factory.CreateDbContextAsync(token);
@@ -57,6 +59,10 @@ internal sealed class TopologyHttpOracleHost : IAsyncDisposable
         { ApplicationName = host.ApplicationName };
         builder.Services.AddControlPlane(connection.ConnectionString);
         builder.Services.AddBizigoDataPlane(storage);
+        // The same server-owned clock is resolved by ScopedQuery and the REST
+        // wire/cursor path. It is never supplied in a caller's query string.
+        if (expiryClock is not null)
+            builder.Services.AddSingleton(expiryClock);
         builder.Services.AddDataProtection();
         builder.Services.AddSingleton<TopologyReadCursorCodec>();
         builder.Services.AddOpenApi();
