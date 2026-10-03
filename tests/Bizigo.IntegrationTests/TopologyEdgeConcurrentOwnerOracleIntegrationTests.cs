@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Bizigo.IntegrationTests;
 
@@ -40,6 +42,15 @@ public sealed class TopologyEdgeConcurrentOwnerOracleIntegrationTests(DevStackFi
         Assert.Equal(201, created.Status);
         var edgeId = created.Edge!.Id;
 
+        // Hold the exact production inventory lock before releasing either
+        // contender. Both must become visible as PG lock waiters while neither
+        // can yet commit; task scheduling alone is not a concurrency oracle.
+        await using var gate = new NpgsqlConnection(stack.PostgresConnectionString);
+        await gate.OpenAsync(token);
+        await using var gateTransaction = (NpgsqlTransaction)await gate.BeginTransactionAsync(token);
+        await using (var hold = new NpgsqlCommand("SELECT pg_advisory_xact_lock(735031)", gate, gateTransaction))
+            await hold.ExecuteNonQueryAsync(token);
+
         var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var transfer = Task.Run(async () =>
         {
@@ -54,8 +65,19 @@ public sealed class TopologyEdgeConcurrentOwnerOracleIntegrationTests(DevStackFi
             return await registry.UpdateAsync(scopeA, true, edgeId,
                 input with { Version = "1", Relation = TopologyEdgeRelations.ConnectsTo }, token);
         }, token);
-        start.SetResult();
+        int blocked;
+        try
+        {
+            start.SetResult();
+            blocked = await WaitForInventoryLockWaitersAsync(stack.PostgresConnectionString,
+                transfer, update, token);
+        }
+        finally
+        {
+            await gateTransaction.RollbackAsync(CancellationToken.None);
+        }
         await Task.WhenAll(transfer, update);
+        Assert.Equal(2, blocked);
         Assert.Contains(update.Result.Status, new[] { 200, 403 });
 
         await using (var check = await factory.CreateDbContextAsync(token))
@@ -114,5 +136,27 @@ public sealed class TopologyEdgeConcurrentOwnerOracleIntegrationTests(DevStackFi
         Assert.Equal("A", saved.FromOwnerGroup);
         Assert.Equal("B", saved.ToOwnerGroup);
         Assert.Equal(nextRelation, saved.Relation);
+    }
+
+    private static async Task<int> WaitForInventoryLockWaitersAsync(string connection,
+        Task transfer, Task update, CancellationToken token)
+    {
+        await using var probe = new NpgsqlConnection(connection);
+        await probe.OpenAsync(token);
+        await using var command = new NpgsqlCommand("""
+            SELECT count(*)::int FROM pg_locks
+            WHERE locktype = 'advisory' AND granted = false
+              AND classid = 0::oid AND objid = 735031::oid AND objsubid = 1
+              AND database = (SELECT oid FROM pg_database WHERE datname = current_database())
+            """, probe);
+        var deadline = Stopwatch.StartNew();
+        var observed = 0;
+        while (deadline.Elapsed < TimeSpan.FromSeconds(20))
+        {
+            observed = (int)(await command.ExecuteScalarAsync(token) ?? 0);
+            if (observed >= 2 || transfer.IsCompleted || update.IsCompleted) break;
+            await Task.Delay(TimeSpan.FromMilliseconds(50), token);
+        }
+        return observed;
     }
 }
