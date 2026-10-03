@@ -243,6 +243,20 @@ public sealed class TopologyGraphTests
             edge.Id, asOf, 998, 1001, ScopeA, first.EvidenceCursor, 1, Ct));
     }
 
+    [Fact]
+    public async Task Long_window_detail_uses_current_read_clock_at_expiry_boundary()
+    {
+        var expiry = 1000m + 10m * TopologyExpiry.NanosecondsPerDay;
+        var edge = Edge("ten-day-observed", R, A, provenance: TopologyProvenance.Observed)
+            with { EffectiveExpiry = expiry };
+        var query = Query([edge]);
+        Assert.Null(await query.GetEdgeAsync(edge.Id, expiry - 1, ScopeA, Ct));
+        Assert.Equal(edge.Id, (await query.GetEdgeAsync(edge.Id, expiry - 1,
+            999, 1001, ScopeA, Ct))?.Edge.Id);
+        Assert.Null(await query.GetEdgeAsync(edge.Id, expiry, 999, 1001, ScopeA, Ct));
+        Assert.Null(await query.GetEdgeAsync(edge.Id, expiry + 1, 999, 1001, ScopeA, Ct));
+    }
+
     private static TopologyGraphQueryService Query(IReadOnlyList<TopologyEdgeProjection> edges) =>
         new(new MemorySource(new(9, edges)));
 
