@@ -1492,7 +1492,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyNodeVersion"
+                  "$ref": "#/components/schemas/TopologyNodeWriteDto"
                 }
               }
             }
@@ -1582,7 +1582,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyNodeVersion"
+                  "$ref": "#/components/schemas/TopologyNodeWriteDto"
                 }
               }
             }
@@ -9397,6 +9397,45 @@
               "string"
             ],
             "format": "int64"
+          },
+          "validFromUnixNano": {
+            "type": "string"
+          }
+        }
+      },
+      "TopologyNodeWriteDto": {
+        "required": [
+          "id",
+          "kind",
+          "displayName",
+          "ownerGroup",
+          "enabled",
+          "deleted",
+          "version",
+          "validFromUnixNano"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/TopologyNodeKind"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "ownerGroup": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "string"
           },
           "validFromUnixNano": {
             "type": "string"
