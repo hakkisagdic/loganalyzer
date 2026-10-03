@@ -156,6 +156,21 @@ public sealed class TopologyConflictIsolationTests
     }
 
     [Fact]
+    public async Task Missing_parent_upstream_can_shorten_an_existing_path()
+    {
+        var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9,
+            [Edge("s-x", A1, A2, "A"), Edge("x-y", A2, B1, "A"),
+                Edge("y-t", B1, B2, "A"), Edge("c-t", Node(5), B2, "A")])
+        {
+            UnresolvedParents = [new("A", "source-C", Node(5), "MissingParent", 1500, 3000)],
+        }));
+        var result = await graph.PathAsync(new(A1, B2, 2000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.NotVerified, result.Status);
+        Assert.Equal("MissingParent", result.Reason);
+        Assert.Empty(result.EdgeIds);
+    }
+
+    [Fact]
     public async Task Missing_parent_on_common_ancestor_intermediates_is_not_verified()
     {
         var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9,
@@ -179,7 +194,7 @@ public sealed class TopologyConflictIsolationTests
             ConflictArcs = [new(A1, B2, "A", "A", 1500, 3000)],
         }));
         var result = await graph.CommonAncestorAsync(new([A2, B1], 2000,
-            FromUnixNano: 1200, ToUnixNano: 2500), ScopeA, Ct);
+            FromUnixNano: 1200, ToUnixNano: 2000), ScopeA, Ct);
         Assert.Equal(TopologyGraphResultStatus.Found, result.Status);
         Assert.Equal(A1, result.NodeId);
         Assert.Equal(new[] { "r-t1", "r-t2" }, result.Paths.SelectMany(path => path.EdgeIds));

@@ -88,16 +88,22 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             .Where(static edge => edge.Relation == TopologyRelation.DependsOn).ToArray();
         EnsurePathReady(snapshot, scope, query.ReadClockUnixNano, window, edges,
             query.FromNodeId, query.ToNodeId);
+        // A missing parent anywhere upstream of the destination can create a
+        // shorter route, even when a longer complete route already exists.
+        var unresolved = query.FromNodeId == query.ToNodeId ? null
+            : UnresolvedForUpstream(snapshot, scope, query.ReadClockUnixNano, window,
+                edges, [query.ToNodeId]);
+        if (unresolved is not null)
+            return new(TopologyGraphResultStatus.NotVerified, [], [], null,
+                snapshot.PublishedSequence, unresolved);
         var path = FindPath(query.FromNodeId, query.ToNodeId, edges);
         if (path.Nodes.Count == 0)
         {
             var partial = HasHiddenIncident(query.FromNodeId, snapshot, scope, query.ReadClockUnixNano, window)
                 || HasHiddenIncident(query.ToNodeId, snapshot, scope, query.ReadClockUnixNano, window);
-            var unresolved = UnresolvedForUpstream(snapshot, scope, query.ReadClockUnixNano, window,
-                edges, [query.ToNodeId]);
-            return new(partial || unresolved is not null ? TopologyGraphResultStatus.NotVerified
+            return new(partial ? TopologyGraphResultStatus.NotVerified
                     : TopologyGraphResultStatus.Unreachable,
-                [], [], null, snapshot.PublishedSequence, partial ? "HiddenBoundary" : unresolved);
+                [], [], null, snapshot.PublishedSequence, partial ? "HiddenBoundary" : null);
         }
         // Page complete hops, not independent node/edge arrays. The boundary
         // node is repeated on the next page so every returned edge has both
