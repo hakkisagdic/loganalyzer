@@ -321,16 +321,38 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         string from, string to)
     {
         EnsureObservedReady(snapshot);
-        var forward = Reachable(edges, [from], reverse: false);
+        var conflicted = ActiveConflictArcs(snapshot, clock, window)
+            .Where(arc => TopologyIdentity.CanReadEdge(scope, arc.FromOwnerGroup, arc.ToOwnerGroup))
+            .Select(static arc => (From: arc.FromNode, To: arc.ToNode))
+            .Concat(ConflictedActiveEdges(snapshot, clock, window)
+                .Where(edge => edge.Relation == TopologyRelation.DependsOn
+                    && TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup))
+                .Select(static edge => (From: edge.FromNode, To: edge.ToNode))).ToArray();
+        var possible = edges.Select(static edge => (From: edge.FromNode, To: edge.ToNode))
+            .Concat(conflicted).ToArray();
+        var forward = ReachableDirected(possible, from, reverse: false);
+        var backward = ReachableDirected(possible, to, reverse: true);
         if (snapshot.ConflictCandidates.Any(candidate => CandidateActive(candidate, scope, clock, window)
-                && (forward.Contains(candidate.NodeId!) || candidate.NodeId == to))
-            || ActiveConflictArcs(snapshot, clock, window).Any(arc =>
-                TopologyIdentity.CanReadEdge(scope, arc.FromOwnerGroup, arc.ToOwnerGroup)
-                && (forward.Contains(arc.FromNode) || arc.ToNode == to))
-            || ConflictedActiveEdges(snapshot, clock, window).Any(edge => edge.Relation == TopologyRelation.DependsOn
-                && TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup)
-                && (forward.Contains(edge.FromNode) || edge.ToNode == to)))
+                && (candidate.NodeId == from || candidate.NodeId == to))
+            || conflicted.Any(arc => forward.Contains(arc.From) && backward.Contains(arc.To)))
             throw new TopologyConflictException();
+    }
+
+    private static HashSet<string> ReachableDirected(IReadOnlyList<(string From, string To)> arcs,
+        string start, bool reverse)
+    {
+        var reached = new HashSet<string>(StringComparer.Ordinal) { start };
+        var pending = new Queue<string>(); pending.Enqueue(start);
+        while (pending.Count != 0)
+        {
+            var current = pending.Dequeue();
+            foreach (var arc in arcs.Where(arc => reverse ? arc.To == current : arc.From == current))
+            {
+                var next = reverse ? arc.From : arc.To;
+                if (reached.Add(next)) pending.Enqueue(next);
+            }
+        }
+        return reached;
     }
 
     private static void EnsureAncestorReady(TopologyGraphSnapshot snapshot, AccessScope scope, decimal clock,

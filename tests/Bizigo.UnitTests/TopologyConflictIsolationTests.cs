@@ -95,6 +95,20 @@ public sealed class TopologyConflictIsolationTests
     }
 
     [Fact]
+    public async Task Directed_path_ignores_forward_conflict_branch_that_cannot_reach_target()
+    {
+        var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9,
+            [Edge("s-t", A1, A2, "A"), Edge("s-c", A1, B1, "A")])
+        {
+            ConflictArcs = [new(B1, B2, "A", "A", 1500, 3000)],
+            ConflictCandidates = [new("A", B1, 1500, 3000)],
+        }));
+        var path = await graph.PathAsync(new(A1, A2, 2000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, path.Status);
+        Assert.Equal(new[] { "s-t" }, path.EdgeIds);
+    }
+
+    [Fact]
     public async Task Known_negative_binding_cannot_fail_unrelated_same_owner_path()
     {
         var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9,
