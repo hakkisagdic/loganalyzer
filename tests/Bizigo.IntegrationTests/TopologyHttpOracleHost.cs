@@ -36,12 +36,12 @@ internal sealed class TopologyHttpOracleHost : IAsyncDisposable
     public TaskCompletionSource CancellationObserved { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public static Task<TopologyHttpOracleHost> StartAsync(TelemetryDbFixture f, CancellationToken token,
-        ITopologyExpiryNanoClock? expiryClock = null) =>
-        StartAsync(f.Factory, f.Storage.Options, token, expiryClock);
+        ITopologyExpiryNanoClock? expiryClock = null, Action<AuditRecord>? afterAudit = null) =>
+        StartAsync(f.Factory, f.Storage.Options, token, expiryClock, afterAudit);
 
     public static async Task<TopologyHttpOracleHost> StartAsync(
         IDbContextFactory<ControlPlaneDbContext> factory, ClickHouseOptions storage, CancellationToken token,
-        ITopologyExpiryNanoClock? expiryClock = null)
+        ITopologyExpiryNanoClock? expiryClock = null, Action<AuditRecord>? afterAudit = null)
     {
         var host = new TopologyHttpOracleHost { requestToken = token };
         await using var mappingDb = await factory.CreateDbContextAsync(token);
@@ -63,6 +63,10 @@ internal sealed class TopologyHttpOracleHost : IAsyncDisposable
         // wire/cursor path. It is never supplied in a caller's query string.
         if (expiryClock is not null)
             builder.Services.AddSingleton(expiryClock);
+        if (afterAudit is not null)
+            builder.Services.AddScoped<IAuditSink>(sp => new AfterAuditHookSink(
+                new ControlPlaneAuditSink(sp.GetRequiredService<IDbContextFactory<ControlPlaneDbContext>>()),
+                afterAudit));
         builder.Services.AddDataProtection();
         builder.Services.AddSingleton<TopologyReadCursorCodec>();
         builder.Services.AddOpenApi();
@@ -125,5 +129,14 @@ internal sealed class TopologyHttpOracleHost : IAsyncDisposable
     {
         Http?.Dispose();
         if (App is not null) { await App.StopAsync(CancellationToken.None); await App.DisposeAsync(); }
+    }
+
+    private sealed class AfterAuditHookSink(IAuditSink inner, Action<AuditRecord> afterAudit) : IAuditSink
+    {
+        public async Task RecordAsync(AuditRecord record, CancellationToken cancellationToken = default)
+        {
+            await inner.RecordAsync(record, cancellationToken);
+            afterAudit(record);
+        }
     }
 }
