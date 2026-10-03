@@ -60,7 +60,7 @@ public sealed class TopologyEvidenceTests
     public async Task Production_provider_reports_budget_exhaustion_as_partial_not_success()
     {
         var query = ReadyQuery(TelemetryResultStatus.Data);
-        var provider = new TopologyGraphPathProvider(query, new(2, 0 + 1, 1, 1));
+        var provider = new TopologyGraphPathProvider(query, new TopologyProviderBudget(2, 1, 1, 1));
         var result = await provider.GatherAsync(Window, Scope, GatherBudget.Default,
             TestContext.Current.CancellationToken);
         Assert.Equal(EvidenceStatus.Unavailable, result.Status);
