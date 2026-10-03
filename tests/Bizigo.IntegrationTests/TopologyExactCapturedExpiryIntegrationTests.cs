@@ -486,11 +486,16 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
     }
 
     private static IScopedQuery ScopedAt(TelemetryDbFixture fixture, ClickHouseContext storage,
-        TopologyGraphQueryService graph, decimal expiryClock) =>
-        new ScopedQuery(new(storage), new(storage), new(storage), new(storage), fixture.Db,
+        TopologyGraphQueryService graph, decimal expiryClock)
+    {
+        var fence = new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
+            new TopologyPublicationWatermarkReader(storage)));
+        return new ScopedQuery(new(storage), new(storage), new(storage), new(storage), fixture.Db,
             new ControlPlaneAuditSink(fixture.Factory), new TelemetryReader(storage, fixture.Clock), graph,
             topologyClock: new FakeTimeProvider(ClockDate(expiryClock)),
-            expiryNanoClock: new FixedTopologyExpiryNanoClock(expiryClock));
+            expiryNanoClock: new FixedTopologyExpiryNanoClock(expiryClock),
+            sourceTargetPages: new TopologySourceTargetPageReader(fixture.Factory, fence));
+    }
 
     private async Task<string> SqlAsync(ClickHouseContext storage, string sql)
     {
