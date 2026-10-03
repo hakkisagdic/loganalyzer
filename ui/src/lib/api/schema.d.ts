@@ -2518,6 +2518,16 @@ export interface components {
             version: number | string;
             validFromUnixNano: string;
         };
+        TopologyNodeWriteDto: {
+            id: string;
+            kind: components["schemas"]["TopologyNodeKind"];
+            displayName: string;
+            ownerGroup: string;
+            enabled: boolean;
+            deleted: boolean;
+            version: string;
+            validFromUnixNano: string;
+        };
         TopologyRegistryResult: {
             /** Format: int32 */
             status: number | string;
@@ -3866,7 +3876,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyNodeVersion"];
+                    "application/json": components["schemas"]["TopologyNodeWriteDto"];
                 };
             };
             /** @description Bad Request */
@@ -3937,7 +3947,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyNodeVersion"];
+                    "application/json": components["schemas"]["TopologyNodeWriteDto"];
                 };
             };
             /** @description Bad Request */
