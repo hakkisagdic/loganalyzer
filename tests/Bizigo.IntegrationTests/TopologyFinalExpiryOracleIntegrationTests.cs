@@ -105,16 +105,15 @@ public sealed class TopologyFinalExpiryOracleIntegrationTests(DevStackFixture st
             Assert.Equal(before ? 1 : 0, outside.Count);
             Assert.Null(outside.Reason);
         }
-        // Scoped production path uses its server TimeProvider (100ns ticks),
-        // not caller asOf for observed TTL. The exact ±1ns engine check above
-        // remains separate until server-authoritative decimal nano DI is wired.
-        foreach (var clock in new[] { expiry - 100, expiry, expiry + 100 })
+        // Scoped production path uses its server-authoritative decimal nano
+        // clock, never caller asOf, even between DateTimeOffset ticks.
+        foreach (var clock in new[] { expiry - 1, expiry, expiry + 1 })
         {
             var scoped = ScopedAt(fixture, graph, clock);
             Assert.Equal(clock < expiry, (await scoped.SearchTopologyEdgesAsync(new(clock,
                 Provenance: TopologyProvenance.Observed), scopeAB, Ct)).Items.Any(item => item.Id == edge.Id));
         }
-        Assert.Empty((await ScopedAt(fixture, graph, expiry + 100).SearchTopologyEdgesAsync(new(expiry - 100,
+        Assert.Empty((await ScopedAt(fixture, graph, expiry + 1).SearchTopologyEdgesAsync(new(expiry - 1,
             Provenance: TopologyProvenance.Observed), scopeAB, Ct)).Items);
         var historicalFrom = (decimal)start - 1;
         var historicalTo = (decimal)(start + 1000) + 1;
@@ -144,7 +143,8 @@ public sealed class TopologyFinalExpiryOracleIntegrationTests(DevStackFixture st
         decimal expiryClock) => new ScopedQuery(new(fixture.Storage), new(fixture.Storage),
         new(fixture.Storage), new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory),
         fixture.Reader, graph, topologyClock: new FakeTimeProvider(new DateTimeOffset(
-            DateTime.UnixEpoch.AddTicks(checked((long)(expiryClock / 100m))), TimeSpan.Zero)));
+            DateTime.UnixEpoch.AddTicks(checked((long)(expiryClock / 100m))), TimeSpan.Zero)),
+        expiryNanoClock: new FixedTopologyExpiryNanoClock(expiryClock));
 
     private static TelemetryRecord Reenvelope(TelemetryRecord record, int retentionDays)
     {
