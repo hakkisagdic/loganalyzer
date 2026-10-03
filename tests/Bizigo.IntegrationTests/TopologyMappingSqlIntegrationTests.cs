@@ -33,6 +33,16 @@ public sealed class TopologyMappingSqlIntegrationTests(DevStackFixture stack)
         var created = await new TopologyEdgeRegistry(fixture.Factory).CreateAsync(scope, true,
             new(root, service.Id, "contains"), Ct);
         Assert.Equal(201, created.Status);
+        var secondService = (await new TopologyRegistry(fixture.Factory).CreateAsync(scope, true,
+            new(TopologyNodeKind.Service, "mapping-plan-service-2", owner, true, []), Ct)).Node;
+        Assert.NotNull(secondService);
+        Assert.Equal(201, (await new TopologyEdgeRegistry(fixture.Factory).CreateAsync(scope, true,
+            new(root, secondService.Id, "contains"), Ct)).Status);
+        var firstEdge = Assert.IsType<TopologyDeclaredEdgeVersion>(created.Edge);
+        long firstRevision;
+        await using (var db = await fixture.Factory.CreateDbContextAsync(Ct))
+            firstRevision = (await db.TopologyDeclaredEdgeHistory.SingleAsync(
+                history => history.EdgeId == firstEdge.Id, Ct)).Revision;
 
         var commands = new MappingCommandCapture();
         var readerFactory = new InterceptedFactory(stack.PostgresConnectionString, commands);
@@ -44,7 +54,22 @@ public sealed class TopologyMappingSqlIntegrationTests(DevStackFixture stack)
         var page = await reader.ReadPageAsync([sourceId], asOf, scope, 1, null, Ct);
         Assert.Equal(service.Id, Assert.Single(page.Items).Target?.NodeId);
         Assert.NotNull(page.Cursor); // exact full page: terminal needs another charged read
-        var captured = Assert.Single(commands.Commands);
+        Assert.Single(commands.Commands);
+        var second = await reader.ReadPageAsync([sourceId], asOf, scope, 1, page.Cursor, Ct);
+        Assert.Equal(secondService.Id, Assert.Single(second.Items).Target?.NodeId);
+        Assert.NotNull(second.Cursor);
+        Assert.Equal(3, commands.Commands.Count); // at most pageSize+1 raw seeks this page
+        var terminal = await reader.ReadPageAsync([sourceId], asOf, scope, 1, second.Cursor, Ct);
+        Assert.Equal(TopologySourceTargetStatus.Complete, Assert.Single(terminal.Items).FinalStatus);
+        Assert.Null(terminal.Cursor);
+        Assert.Equal(5, commands.Commands.Count);
+        // service-1's empty child seek precedes this root continuation; the
+        // keyset must advance past the first real history revision.
+        var captured = commands.Commands[2];
+        Assert.Contains(captured.Parameters, parameter =>
+            parameter.Name.Contains("afterRevision", StringComparison.Ordinal)
+            && Convert.ToInt64(parameter.Value, System.Globalization.CultureInfo.InvariantCulture)
+                == firstRevision);
         Assert.Contains("LIMIT 1", captured.Sql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("from_node_id", captured.Sql, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("relation", captured.Sql, StringComparison.OrdinalIgnoreCase);
