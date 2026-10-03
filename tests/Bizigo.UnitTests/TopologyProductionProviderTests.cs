@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Bizigo.Contracts;
 using Bizigo.Evidence;
@@ -350,10 +351,17 @@ public sealed class TopologyProductionProviderTests
         var gathering = provider.GetRequiredService<TopologyCommonAncestorProvider>().GatherAsync(
             Window, Scope, GatherBudget.Default, caller.Token);
         await inFlight.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var cancelClock = Stopwatch.StartNew();
         caller.Cancel();
         await tokenObserved.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        var tokenObservedAfter = cancelClock.Elapsed;
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             gathering.WaitAsync(TimeSpan.FromSeconds(2)));
+        var completedAfter = cancelClock.Elapsed;
+        Assert.True(tokenObservedAfter <= TimeSpan.FromSeconds(1),
+            $"Ancestor query token observed cancellation after {tokenObservedAfter}.");
+        Assert.True(completedAfter <= TimeSpan.FromSeconds(2),
+            $"Ancestor provider returned cancellation after {completedAfter}.");
     }
 
     [Theory]
