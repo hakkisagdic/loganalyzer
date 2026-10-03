@@ -175,7 +175,8 @@ public static partial class TopologyReadEndpoints
                         EnsurePublished(result.PublishedSequence, revision);
                         return Json(new TopologyPathDto(result.Status.ToString(), result.Nodes, result.EdgeIds,
                             Wrap(result.Cursor, route, routeId, scope, revision, request, cursors, clock,
-                                result.EarliestEvidenceExpiryUnixNano),
+                                TopologyReadCursorCodec.EarliestExpiry(result.EarliestEvidenceExpiryUnixNano,
+                                    result.EarliestEligibleExpiryUnixNano)),
                             result.Cursor is not null, result.Reason, Number(result.PublishedSequence)));
                     }
                     case "ancestors":
@@ -187,7 +188,9 @@ public static partial class TopologyReadEndpoints
                                 request.FromNano, request.ToNano),
                             scope, token);
                         EnsurePublished(result.PublishedSequence, revision);
-                        EnsureEvidenceCurrent(result.EarliestEvidenceExpiryUnixNano, clock.NowUnixNano());
+                        EnsureEvidenceCurrent(TopologyReadCursorCodec.EarliestExpiry(
+                            result.EarliestEvidenceExpiryUnixNano, result.EarliestEligibleExpiryUnixNano),
+                            clock.NowUnixNano());
                         return Json(new TopologyAncestorsDto(result.Status.ToString(), result.NodeId,
                             result.Paths.Select(p => new TopologyPathProofDto(p.TargetNodeId, p.Nodes, p.EdgeIds)).ToArray(),
                             result.Status == TopologyGraphResultStatus.NotVerified, result.Reason,

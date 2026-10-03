@@ -86,6 +86,34 @@ public sealed class TopologyWireTests
             { ExactValidUntilUnixNano = observedCursor.ValidUntilUnixNano }, new(7, 11), now));
     }
 
+    [Fact]
+    public void Competing_eligible_edge_shortens_cursor_before_selected_proof_expires()
+    {
+        const decimal selectedProofExpiry = 1500m;
+        const decimal competingEligibleExpiry = 1100m;
+        const decimal normalCursorExpiry = 2000m;
+        var deadline = TopologyReadCursorCodec.EarliestExpiry(selectedProofExpiry,
+            competingEligibleExpiry);
+        Assert.Equal(competingEligibleExpiry, deadline);
+        Assert.Equal(selectedProofExpiry, TopologyReadCursorCodec.EarliestExpiry(
+            selectedProofExpiry, null));
+        Assert.Equal(competingEligibleExpiry, TopologyReadCursorCodec.EarliestExpiry(
+            null, competingEligibleExpiry));
+
+        var codec = new TopologyReadCursorCodec(new EphemeralDataProtectionProvider());
+        var scope = AccessScope.ForGroups("reader-A", ["A"]);
+        var cursor = codec.Decode(codec.Encode(State(scope) with
+        {
+            ValidUntilUnixNano = Math.Min(normalCursorExpiry, deadline!.Value),
+        }));
+        TopologyCursorFence.EnsureCurrent(new(cursor.PostgresEpoch,
+            cursor.ClickHouseWatermark, DateTimeOffset.MaxValue)
+        { ExactValidUntilUnixNano = cursor.ValidUntilUnixNano }, new(7, 11), 1099m);
+        Assert.Throws<TopologyRestartRequiredException>(() => TopologyCursorFence.EnsureCurrent(
+            new(cursor.PostgresEpoch, cursor.ClickHouseWatermark, DateTimeOffset.MaxValue)
+            { ExactValidUntilUnixNano = cursor.ValidUntilUnixNano }, new(7, 11), competingEligibleExpiry));
+    }
+
     private static TopologyReadCursorState State(AccessScope scope) => new("nodes",
         TopologyReadCursorCodec.ScopeBinding("nodes", null, scope.Subject, scope.IsUnrestricted, scope.OwnerGroups),
         "inner", 7, 11, 1760000000000000000m, 1760000000000001000m, 2,

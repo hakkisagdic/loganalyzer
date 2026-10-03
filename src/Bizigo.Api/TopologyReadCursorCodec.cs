@@ -26,6 +26,15 @@ public sealed class TopologyReadCursorCodec(IDataProtectionProvider protection)
         return edge.Provenance == TopologyProvenance.Observed ? edge.EffectiveExpiry : null;
     }
 
+    /// <summary>
+    /// A competing eligible observed edge can change the answer before the
+    /// selected proof expires. Neither deadline is exposed on the wire.
+    /// </summary>
+    public static decimal? EarliestExpiry(decimal? selectedProof, decimal? eligibleSnapshot) =>
+        selectedProof is decimal proof
+            ? eligibleSnapshot is decimal eligible ? Math.Min(proof, eligible) : proof
+            : eligibleSnapshot;
+
     public string Encode(TopologyReadCursorState state)
     {
         ArgumentNullException.ThrowIfNull(state);
