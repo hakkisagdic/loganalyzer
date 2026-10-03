@@ -42,7 +42,11 @@ public sealed class TopologyGraphOrderingOracleTests
             var result = await Query(edges.OrderBy(_ => random.Next()).ToArray()).PathAsync(new(Root, Target, 1000), Scope, Ct);
             Assert.Equal([Root, Left, Target], result.Nodes);
             Assert.Equal(["root-left", "left-target"], result.EdgeIds);
-            var window = new RcaWindow { From = DateTimeOffset.UnixEpoch, To = DateTimeOffset.UnixEpoch.AddSeconds(1) };
+            var window = new RcaWindow
+            {
+                BaselineFrom = DateTimeOffset.UnixEpoch.AddSeconds(-1), BaselineTo = DateTimeOffset.UnixEpoch,
+                From = DateTimeOffset.UnixEpoch, To = DateTimeOffset.UnixEpoch.AddSeconds(1),
+            };
             var bundle = new EvidenceBundle
             {
                 Id = Guid.NewGuid(), GatheredAt = window.To.AddSeconds(seed), Window = window,
