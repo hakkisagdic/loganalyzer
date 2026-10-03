@@ -77,6 +77,13 @@ public sealed record TopologyCommonAncestorQuery(
     decimal? FromUnixNano = null,
     decimal? ToUnixNano = null);
 
+/// <summary>Internal RCA group candidates; public REST keeps the flat ancestor contract.</summary>
+public sealed record TopologyGroupedAncestorQuery(
+    IReadOnlyList<IReadOnlyList<string>> TargetGroups,
+    decimal ReadClockUnixNano,
+    decimal? FromUnixNano = null,
+    decimal? ToUnixNano = null);
+
 public sealed record TopologyNeighborhoodQuery(
     string NodeId,
     decimal ReadClockUnixNano,
@@ -141,6 +148,14 @@ public sealed record TopologyNeighborhoodResult(
 public sealed record TopologyOutsideNeighborCount(int? Count, string? Reason);
 
 public sealed record TopologySourceNode(string SourceId, string NodeId, string OwnerGroup);
+
+public enum TopologySourceTargetStatus { Complete = 1, Missing = 2, Hidden = 3, Ambiguous = 4 }
+
+/// <summary>Declared Contains proof chain; never includes observed dependency proof IDs.</summary>
+public sealed record TopologySourceTarget(string NodeId, IReadOnlyList<string> MappingEdgeIds);
+
+public sealed record TopologySourceTargets(string SourceId, string SourceNodeId,
+    IReadOnlyList<TopologySourceTarget> Targets, TopologySourceTargetStatus Status, string? Reason);
 
 public sealed class TopologyCursorException : ArgumentException
 {

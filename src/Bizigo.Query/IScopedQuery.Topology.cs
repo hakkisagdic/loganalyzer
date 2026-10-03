@@ -34,6 +34,10 @@ public partial interface IScopedQuery
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("Topology graph is not configured.");
 
+    Task<TopologyCommonAncestorResult> GetTopologyGroupedCommonAncestorAsync(
+        TopologyGroupedAncestorQuery query, AccessScope scope,
+        CancellationToken cancellationToken = default);
+
     Task<TopologyNeighborhoodResult> GetTopologyNeighborhoodAsync(
         TopologyNeighborhoodQuery query,
         AccessScope scope,

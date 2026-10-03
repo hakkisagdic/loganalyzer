@@ -70,6 +70,12 @@ public sealed partial class ScopedQuery
         AuditedTopologyAsync("ancestors", scope, Summary(query.ReadClockUnixNano, query.NodeIds.Count, false),
             () => Topology.CommonAncestorAsync(query, scope, cancellationToken), result => result.Paths.Count);
 
+    public Task<TopologyCommonAncestorResult> GetTopologyGroupedCommonAncestorAsync(
+        TopologyGroupedAncestorQuery query, AccessScope scope,
+        CancellationToken cancellationToken = default) =>
+        AuditedTopologyAsync("ancestors", scope, Summary(query.ReadClockUnixNano, query.TargetGroups.Count, false),
+            () => Topology.GroupedCommonAncestorAsync(query, scope, cancellationToken), result => result.Paths.Count);
+
     public Task<TopologyNeighborhoodResult> GetTopologyNeighborhoodAsync(
         TopologyNeighborhoodQuery query,
         AccessScope scope,

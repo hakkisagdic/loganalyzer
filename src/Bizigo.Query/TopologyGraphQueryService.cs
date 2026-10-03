@@ -165,6 +165,59 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             null, [], snapshot.PublishedSequence, partial ? "HiddenBoundary" : null);
     }
 
+    public async Task<TopologyCommonAncestorResult> GroupedCommonAncestorAsync(
+        TopologyGroupedAncestorQuery query, AccessScope scope,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(scope);
+        if (query.TargetGroups.Count is < 2 or > 20 || query.TargetGroups.Any(static group => group.Count == 0)
+            || query.TargetGroups.Sum(static group => group.Count) > 200)
+            throw new ArgumentOutOfRangeException(nameof(query.TargetGroups));
+        var groups = query.TargetGroups.Select(group => group.Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal).ToArray()).ToArray();
+        foreach (var target in groups.SelectMany(static group => group)) ValidateNode(target);
+        var window = ResolveWindow(query.ReadClockUnixNano, query.FromUnixNano, query.ToUnixNano);
+        var snapshot = await _source.ReadAsync(null, cancellationToken);
+        var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window)
+            .Where(static edge => edge.Relation == TopologyRelation.DependsOn).ToArray();
+        var allTargets = groups.SelectMany(static group => group).Distinct(StringComparer.Ordinal).ToArray();
+        EnsureAncestorReady(snapshot, scope, query.ReadClockUnixNano, window, edges, allTargets);
+        var unresolved = UnresolvedForUpstream(snapshot, scope, query.ReadClockUnixNano, window,
+            edges, allTargets);
+        if (unresolved is not null)
+            return new(TopologyGraphResultStatus.NotVerified, null, [], snapshot.PublishedSequence, unresolved);
+
+        var matches = new List<(string Node, TopologyPathProof[] Paths)>();
+        foreach (var candidate in edges.SelectMany(static edge => new[] { edge.FromNode, edge.ToNode })
+            .Distinct(StringComparer.Ordinal))
+        {
+            var witnesses = new List<TopologyPathProof>(groups.Length);
+            foreach (var group in groups)
+            {
+                var best = group.Select(target => (Target: target, Path: FindPath(candidate, target, edges)))
+                    .Where(static item => item.Path.EdgeIds.Count > 0)
+                    .OrderBy(static item => item.Path.EdgeIds.Count)
+                    .ThenBy(static item => item.Target, StringComparer.Ordinal)
+                    .ThenBy(static item => string.Join("\0", item.Path.EdgeIds), StringComparer.Ordinal)
+                    .FirstOrDefault();
+                if (best.Target is null) break;
+                witnesses.Add(new(best.Target, best.Path.Nodes, best.Path.EdgeIds));
+            }
+            if (witnesses.Count == groups.Length) matches.Add((candidate, witnesses.ToArray()));
+        }
+        var match = matches.OrderBy(static item => item.Paths.Max(path => path.EdgeIds.Count))
+            .ThenBy(static item => item.Paths.Sum(path => path.EdgeIds.Count))
+            .ThenBy(static item => item.Node, StringComparer.Ordinal).FirstOrDefault();
+        if (match.Node is not null)
+            return new(TopologyGraphResultStatus.Found, match.Node, match.Paths, snapshot.PublishedSequence);
+        var upstream = Reachable(edges, allTargets, reverse: true);
+        var partial = upstream.Any(node => HasHiddenIncident(node, snapshot, scope,
+            query.ReadClockUnixNano, window));
+        return new(partial ? TopologyGraphResultStatus.NotVerified : TopologyGraphResultStatus.Unreachable,
+            null, [], snapshot.PublishedSequence, partial ? "HiddenBoundary" : null);
+    }
+
     public async Task<TopologyNeighborhoodResult> NeighborhoodAsync(TopologyNeighborhoodQuery query,
         AccessScope scope, CancellationToken cancellationToken = default)
     {
