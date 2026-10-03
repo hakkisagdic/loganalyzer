@@ -50,11 +50,14 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
     {
         ArgumentNullException.ThrowIfNull(query); ValidateScopeAndPage(scope, query.PageSize);
         var window = ResolveWindow(query.ReadClockUnixNano, query.FromUnixNano, query.ToUnixNano);
+        var expiryClock = ResolveExpiryClock(query.ReadClockUnixNano, query.ExpiryReadClockUnixNano);
         var fingerprint = Fingerprint("edges", scope, query.ReadClockUnixNano.ToString(CultureInfo.InvariantCulture),
             query.Relation?.ToString() ?? "*", query.Provenance?.ToString() ?? "*", WindowPart(window));
         var (snapshot, cursor) = await ReadAsync(query.Cursor, fingerprint, cancellationToken);
-        EnsureEdgeListReady(snapshot, scope, query.ReadClockUnixNano, window, query.Relation, query.Provenance);
-        var rows = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window)
+        EnsureEdgeListReady(snapshot, scope, query.ReadClockUnixNano, expiryClock, window,
+            query.Relation, query.Provenance);
+        var rows = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window,
+                expiryReadClockUnixNano: expiryClock)
             .Where(edge => query.Relation is null || edge.Relation == query.Relation)
             .Where(edge => query.Provenance is null || edge.Provenance == query.Provenance)
             .OrderBy(static edge => edge.Id, StringComparer.Ordinal).ToArray();
@@ -64,47 +67,58 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
 
     public Task<TopologyEdgeDetail?> GetEdgeAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
         CancellationToken cancellationToken = default) =>
-        GetEdgeCoreAsync(edgeId, readClockUnixNano, scope, null, MaxPageSize, null, null, null, cancellationToken);
+        GetEdgeCoreAsync(edgeId, readClockUnixNano, scope, null, MaxPageSize, null, null, null,
+            null, cancellationToken);
 
     public Task<TopologyEdgeDetail?> GetEdgeAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
         string? evidenceCursor, int evidencePageSize, CancellationToken cancellationToken = default)
         => GetEdgeCoreAsync(edgeId, readClockUnixNano, scope, evidenceCursor, evidencePageSize,
-            null, null, null, cancellationToken);
+            null, null, null, null, cancellationToken);
 
     public Task<TopologyEdgeDetail?> GetEdgeAsync(string edgeId, decimal readClockUnixNano,
         decimal fromUnixNano, decimal toUnixNano, AccessScope scope,
         CancellationToken cancellationToken = default)
         => GetEdgeCoreAsync(edgeId, readClockUnixNano, scope, null, MaxPageSize,
-            fromUnixNano, toUnixNano, null, cancellationToken);
+            fromUnixNano, toUnixNano, null, null, cancellationToken);
 
     public Task<TopologyEdgeDetail?> GetEdgeAsync(string edgeId, decimal readClockUnixNano,
         decimal fromUnixNano, decimal toUnixNano, AccessScope scope,
         string? evidenceCursor, int evidencePageSize, CancellationToken cancellationToken = default)
         => GetEdgeCoreAsync(edgeId, readClockUnixNano, scope, evidenceCursor, evidencePageSize,
-            fromUnixNano, toUnixNano, null, cancellationToken);
+            fromUnixNano, toUnixNano, null, null, cancellationToken);
 
     public Task<TopologyEdgeDetail?> GetEdgeAsync(string edgeId, decimal readClockUnixNano,
         decimal fromUnixNano, decimal toUnixNano, decimal declaredStateClockUnixNano, AccessScope scope,
         string? evidenceCursor, int evidencePageSize, CancellationToken cancellationToken = default)
         => GetEdgeCoreAsync(edgeId, readClockUnixNano, scope, evidenceCursor, evidencePageSize,
-            fromUnixNano, toUnixNano, declaredStateClockUnixNano, cancellationToken);
+            fromUnixNano, toUnixNano, declaredStateClockUnixNano, null, cancellationToken);
+
+    /// <summary>The production scoped gate supplies the current server expiry clock.</summary>
+    public Task<TopologyEdgeDetail?> GetEdgeAtExpiryAsync(string edgeId, decimal readClockUnixNano,
+        decimal? fromUnixNano, decimal? toUnixNano, decimal? declaredStateClockUnixNano,
+        decimal expiryReadClockUnixNano, AccessScope scope, string? evidenceCursor,
+        int evidencePageSize, CancellationToken cancellationToken = default)
+        => GetEdgeCoreAsync(edgeId, readClockUnixNano, scope, evidenceCursor, evidencePageSize,
+            fromUnixNano, toUnixNano, declaredStateClockUnixNano, expiryReadClockUnixNano,
+            cancellationToken);
 
     private async Task<TopologyEdgeDetail?> GetEdgeCoreAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
         string? evidenceCursor, int evidencePageSize, decimal? fromUnixNano, decimal? toUnixNano,
-        decimal? declaredStateClockUnixNano,
+        decimal? declaredStateClockUnixNano, decimal? expiryReadClockUnixNano,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(edgeId); ValidateScopeAndPage(scope, evidencePageSize);
         var window = ResolveWindow(readClockUnixNano, fromUnixNano, toUnixNano);
         ValidateDeclaredStateClock(declaredStateClockUnixNano, readClockUnixNano, window);
+        var expiryClock = ResolveExpiryClock(readClockUnixNano, expiryReadClockUnixNano);
         var fingerprint = Fingerprint("edge-evidence", scope, edgeId,
             readClockUnixNano.ToString(CultureInfo.InvariantCulture), WindowPart(window),
             ClockPart(declaredStateClockUnixNano));
         var (snapshot, cursor) = await ReadAsync(evidenceCursor, fingerprint, cancellationToken);
         var visible = VisibleActiveEdges(snapshot, scope, readClockUnixNano, window,
-            declaredStateClockUnixNano).ToArray();
+            declaredStateClockUnixNano, expiryClock).ToArray();
         if (!visible.Any(candidate => candidate.Id == edgeId && candidate.Provenance == TopologyProvenance.Declared))
-            EnsureEdgeDetailReady(snapshot, edgeId, scope, readClockUnixNano, window);
+            EnsureEdgeDetailReady(snapshot, edgeId, scope, readClockUnixNano, expiryClock, window);
         var edge = visible
             .SingleOrDefault(candidate => candidate.Id == edgeId);
         if (edge is null) return null;
@@ -121,19 +135,20 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         ValidateNode(query.FromNodeId); ValidateNode(query.ToNodeId);
         var window = ResolveWindow(query.ReadClockUnixNano, query.FromUnixNano, query.ToUnixNano);
         ValidateDeclaredStateClock(query.DeclaredStateClockUnixNano, query.ReadClockUnixNano, window);
+        var expiryClock = ResolveExpiryClock(query.ReadClockUnixNano, query.ExpiryReadClockUnixNano);
         var fingerprint = Fingerprint("path", scope, query.FromNodeId, query.ToNodeId,
             query.ReadClockUnixNano.ToString(CultureInfo.InvariantCulture), WindowPart(window),
             ClockPart(query.DeclaredStateClockUnixNano));
         var (snapshot, cursor) = await ReadAsync(query.Cursor, fingerprint, cancellationToken);
         var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window,
-                query.DeclaredStateClockUnixNano)
+                query.DeclaredStateClockUnixNano, expiryClock)
             .Where(static edge => edge.Relation == TopologyRelation.DependsOn).ToArray();
-        EnsurePathReady(snapshot, scope, query.ReadClockUnixNano, window, edges,
+        EnsurePathReady(snapshot, scope, query.ReadClockUnixNano, expiryClock, window, edges,
             query.FromNodeId, query.ToNodeId);
         // A missing parent anywhere upstream of the destination can create a
         // shorter route, even when a longer complete route already exists.
         var unresolved = query.FromNodeId == query.ToNodeId ? null
-            : UnresolvedForUpstream(snapshot, scope, query.ReadClockUnixNano, window,
+            : UnresolvedForUpstream(snapshot, scope, expiryClock, window,
                 edges, [query.ToNodeId]);
         if (unresolved is not null)
             return new(TopologyGraphResultStatus.NotVerified, [], [], null,
@@ -142,9 +157,9 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         if (path.Nodes.Count == 0)
         {
             var partial = HasHiddenIncident(query.FromNodeId, snapshot, scope, query.ReadClockUnixNano,
-                    window, query.DeclaredStateClockUnixNano)
+                    expiryClock, window, query.DeclaredStateClockUnixNano)
                 || HasHiddenIncident(query.ToNodeId, snapshot, scope, query.ReadClockUnixNano,
-                    window, query.DeclaredStateClockUnixNano);
+                    expiryClock, window, query.DeclaredStateClockUnixNano);
             return new(partial ? TopologyGraphResultStatus.NotVerified
                     : TopologyGraphResultStatus.Unreachable,
                 [], [], null, snapshot.PublishedSequence, partial ? "HiddenBoundary" : null);
@@ -180,11 +195,13 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             throw new ArgumentException("Duplicate ancestor targets are not allowed.", nameof(query));
         foreach (var nodeId in query.NodeIds) ValidateNode(nodeId);
         var window = ResolveWindow(query.ReadClockUnixNano, query.FromUnixNano, query.ToUnixNano);
+        var expiryClock = ResolveExpiryClock(query.ReadClockUnixNano, query.ExpiryReadClockUnixNano);
         var snapshot = await _source.ReadAsync(null, cancellationToken);
-        var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window)
+        var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window,
+                expiryReadClockUnixNano: expiryClock)
             .Where(static edge => edge.Relation == TopologyRelation.DependsOn).ToArray();
-        EnsureAncestorReady(snapshot, scope, query.ReadClockUnixNano, window, edges, query.NodeIds);
-        var unresolvedTarget = UnresolvedForUpstream(snapshot, scope, query.ReadClockUnixNano,
+        EnsureAncestorReady(snapshot, scope, query.ReadClockUnixNano, expiryClock, window, edges, query.NodeIds);
+        var unresolvedTarget = UnresolvedForUpstream(snapshot, scope, expiryClock,
             window, edges, query.NodeIds);
         if (unresolvedTarget is not null)
             return new(TopologyGraphResultStatus.NotVerified, null, [], snapshot.PublishedSequence,
@@ -204,7 +221,8 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             .ThenBy(static item => item.Node, StringComparer.Ordinal).FirstOrDefault();
         if (match.Node is not null)
             return new(TopologyGraphResultStatus.Found, match.Node, match.Paths, snapshot.PublishedSequence);
-        var partial = query.NodeIds.Any(node => HasHiddenIncident(node, snapshot, scope, query.ReadClockUnixNano, window));
+        var partial = query.NodeIds.Any(node => HasHiddenIncident(node, snapshot, scope,
+            query.ReadClockUnixNano, expiryClock, window));
         return new(partial ? TopologyGraphResultStatus.NotVerified : TopologyGraphResultStatus.Unreachable,
             null, [], snapshot.PublishedSequence, partial ? "HiddenBoundary" : null);
     }
@@ -223,13 +241,14 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         foreach (var target in groups.SelectMany(static group => group)) ValidateNode(target);
         var window = ResolveWindow(query.ReadClockUnixNano, query.FromUnixNano, query.ToUnixNano);
         ValidateDeclaredStateClock(query.DeclaredStateClockUnixNano, query.ReadClockUnixNano, window);
+        var expiryClock = ResolveExpiryClock(query.ReadClockUnixNano, query.ExpiryReadClockUnixNano);
         var snapshot = await _source.ReadAsync(null, cancellationToken);
         var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window,
-                query.DeclaredStateClockUnixNano)
+                query.DeclaredStateClockUnixNano, expiryClock)
             .Where(static edge => edge.Relation == TopologyRelation.DependsOn).ToArray();
         var allTargets = groups.SelectMany(static group => group).Distinct(StringComparer.Ordinal).ToArray();
-        EnsureAncestorReady(snapshot, scope, query.ReadClockUnixNano, window, edges, allTargets);
-        var unresolved = UnresolvedForUpstream(snapshot, scope, query.ReadClockUnixNano, window,
+        EnsureAncestorReady(snapshot, scope, query.ReadClockUnixNano, expiryClock, window, edges, allTargets);
+        var unresolved = UnresolvedForUpstream(snapshot, scope, expiryClock, window,
             edges, allTargets);
         if (unresolved is not null)
             return new(TopologyGraphResultStatus.NotVerified, null, [], snapshot.PublishedSequence, unresolved);
@@ -259,7 +278,7 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             return new(TopologyGraphResultStatus.Found, match.Node, match.Paths, snapshot.PublishedSequence);
         var upstream = Reachable(edges, allTargets, reverse: true);
         var partial = upstream.Any(node => HasHiddenIncident(node, snapshot, scope,
-            query.ReadClockUnixNano, window, query.DeclaredStateClockUnixNano));
+            query.ReadClockUnixNano, expiryClock, window, query.DeclaredStateClockUnixNano));
         return new(partial ? TopologyGraphResultStatus.NotVerified : TopologyGraphResultStatus.Unreachable,
             null, [], snapshot.PublishedSequence, partial ? "HiddenBoundary" : null);
     }
@@ -269,11 +288,14 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
     {
         ArgumentNullException.ThrowIfNull(query); ValidateScopeAndPage(scope, query.PageSize); ValidateNode(query.NodeId);
         var window = ResolveWindow(query.ReadClockUnixNano, query.FromUnixNano, query.ToUnixNano);
+        var expiryClock = ResolveExpiryClock(query.ReadClockUnixNano, query.ExpiryReadClockUnixNano);
         var fingerprint = Fingerprint("neighborhood", scope, query.NodeId,
             query.ReadClockUnixNano.ToString(CultureInfo.InvariantCulture), query.Relation?.ToString() ?? "*", WindowPart(window));
         var (snapshot, cursor) = await ReadAsync(query.Cursor, fingerprint, cancellationToken);
-        EnsureNeighborhoodReady(snapshot, scope, query.ReadClockUnixNano, window, query.NodeId, query.Relation);
-        var active = ActiveEdges(snapshot, query.ReadClockUnixNano, window)
+        EnsureNeighborhoodReady(snapshot, scope, query.ReadClockUnixNano, expiryClock,
+            window, query.NodeId, query.Relation);
+        var active = ActiveEdges(snapshot, query.ReadClockUnixNano, window,
+                expiryReadClockUnixNano: expiryClock)
             .Where(edge => query.Relation is null || edge.Relation == query.Relation).ToArray();
         var visibleIncident = active.Where(edge => TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup)
             && (edge.FromNode == query.NodeId || edge.ToNode == query.NodeId)).ToArray();
@@ -285,7 +307,7 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var externalCount = active.Select(edge => ExternalNeighbor(query.NodeId, edge, scope))
             .Where(static node => node is not null).Distinct(StringComparer.Ordinal).Count();
         var unresolved = query.Relation is null or TopologyRelation.DependsOn
-            ? UnresolvedForNode(snapshot, scope, query.ReadClockUnixNano, window, query.NodeId)
+            ? UnresolvedForNode(snapshot, scope, expiryClock, window, query.NodeId)
             : null;
         var page = Page(neighbors, query.PageSize, cursor?.LastKey, NeighborKey, snapshot.PublishedSequence, fingerprint);
         return new TopologyNeighborhoodResult(page.Items, unresolved is null ? externalCount : null,
@@ -319,17 +341,20 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
     }
 
     private static IEnumerable<TopologyEdgeProjection> ActiveEdges(TopologyGraphSnapshot snapshot, decimal readClockUnixNano,
-        (decimal From, decimal To) window, decimal? declaredStateClockUnixNano = null)
+        (decimal From, decimal To) window, decimal? declaredStateClockUnixNano = null,
+        decimal? expiryReadClockUnixNano = null)
     {
         _ = TopologyExpiry.FromDecimal(readClockUnixNano);
+        var expiryClock = ResolveExpiryClock(readClockUnixNano, expiryReadClockUnixNano);
         var active = snapshot.Edges.Where(edge =>
         {
             // Declared history is selected immediately before RCA Window.To;
             // observed event window and logical TTL use the current read clock.
             var edgeClock = edge.Provenance == TopologyProvenance.Declared
-                ? declaredStateClockUnixNano ?? readClockUnixNano : readClockUnixNano;
+                ? declaredStateClockUnixNano ?? readClockUnixNano : expiryClock;
             return !edge.Deleted && edge.FirstSeenUnixNano <= edgeClock
                 && (edge.EffectiveExpiry is null || TopologyExpiry.IsReadable(edgeClock, edge.EffectiveExpiry.Value))
+                && edge.FirstSeenUnixNano <= readClockUnixNano
                 && (edge.Provenance != TopologyProvenance.Observed
                     || edge.LastSeenUnixNano >= window.From && edge.LastSeenUnixNano < window.To);
         });
@@ -343,8 +368,8 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
 
     private static IEnumerable<TopologyEdgeProjection> VisibleActiveEdges(TopologyGraphSnapshot snapshot, AccessScope scope,
         decimal readClockUnixNano, (decimal From, decimal To) window,
-        decimal? declaredStateClockUnixNano = null) => ActiveEdges(snapshot, readClockUnixNano,
-            window, declaredStateClockUnixNano)
+        decimal? declaredStateClockUnixNano = null, decimal? expiryReadClockUnixNano = null) =>
+        ActiveEdges(snapshot, readClockUnixNano, window, declaredStateClockUnixNano, expiryReadClockUnixNano)
         .Where(edge => TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup));
 
     private static void EnsureObservedReady(TopologyGraphSnapshot snapshot)
@@ -383,43 +408,46 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             arc.ChildEventTimeUnixNano >= window.From && arc.ChildEventTimeUnixNano < window.To
             && clock < arc.EffectiveExpiryUnixNano);
 
-    private static TopologyEdgeProjection[] ConflictedActiveEdges(TopologyGraphSnapshot snapshot, decimal clock,
-        (decimal From, decimal To) window) => ActiveEdges(
-        new TopologyGraphSnapshot(snapshot.PublishedSequence, snapshot.ConflictedEdges), clock, window).ToArray();
+    private static TopologyEdgeProjection[] ConflictedActiveEdges(TopologyGraphSnapshot snapshot, decimal asOfClock,
+        decimal expiryClock, (decimal From, decimal To) window) => ActiveEdges(
+        new TopologyGraphSnapshot(snapshot.PublishedSequence, snapshot.ConflictedEdges), asOfClock,
+        window, expiryReadClockUnixNano: expiryClock).ToArray();
 
-    private static void EnsureEdgeListReady(TopologyGraphSnapshot snapshot, AccessScope scope, decimal clock,
+    private static void EnsureEdgeListReady(TopologyGraphSnapshot snapshot, AccessScope scope, decimal asOfClock,
+        decimal expiryClock,
         (decimal From, decimal To) window, TopologyRelation? relation, TopologyProvenance? provenance)
     {
         if (provenance == TopologyProvenance.Declared || relation is not null and not TopologyRelation.DependsOn) return;
         EnsureObservedReady(snapshot);
-        if (snapshot.ConflictCandidates.Any(candidate => CandidateActive(candidate, scope, clock, window))
-            || ActiveConflictArcs(snapshot, clock, window).Any(arc =>
+        if (snapshot.ConflictCandidates.Any(candidate => CandidateActive(candidate, scope, expiryClock, window))
+            || ActiveConflictArcs(snapshot, expiryClock, window).Any(arc =>
                 TopologyIdentity.CanReadEdge(scope, arc.FromOwnerGroup, arc.ToOwnerGroup))
-            || ConflictedActiveEdges(snapshot, clock, window).Any(edge =>
+            || ConflictedActiveEdges(snapshot, asOfClock, expiryClock, window).Any(edge =>
                 TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup)))
             throw new TopologyConflictException();
     }
 
     private static void EnsureEdgeDetailReady(TopologyGraphSnapshot snapshot, string edgeId,
-        AccessScope scope, decimal clock, (decimal From, decimal To) window)
+        AccessScope scope, decimal asOfClock, decimal expiryClock, (decimal From, decimal To) window)
     {
         EnsureObservedReady(snapshot);
-        if (ConflictedActiveEdges(snapshot, clock, window).Any(edge => edge.Id == edgeId
+        if (ConflictedActiveEdges(snapshot, asOfClock, expiryClock, window).Any(edge => edge.Id == edgeId
             && TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup)))
             throw new TopologyConflictException();
     }
 
-    private static void EnsureNeighborhoodReady(TopologyGraphSnapshot snapshot, AccessScope scope, decimal clock,
+    private static void EnsureNeighborhoodReady(TopologyGraphSnapshot snapshot, AccessScope scope,
+        decimal asOfClock, decimal expiryClock,
         (decimal From, decimal To) window, string nodeId, TopologyRelation? relation)
     {
         if (relation is not null and not TopologyRelation.DependsOn) return;
         EnsureObservedReady(snapshot);
         if (snapshot.ConflictCandidates.Any(candidate => candidate.NodeId == nodeId
-                && CandidateActive(candidate, scope, clock, window))
-            || ActiveConflictArcs(snapshot, clock, window).Any(arc =>
+                && CandidateActive(candidate, scope, expiryClock, window))
+            || ActiveConflictArcs(snapshot, expiryClock, window).Any(arc =>
                 (arc.FromNode == nodeId && TopologyIdentity.CanReadOwner(scope, arc.FromOwnerGroup))
                 || (arc.ToNode == nodeId && TopologyIdentity.CanReadOwner(scope, arc.ToOwnerGroup)))
-            || ConflictedActiveEdges(snapshot, clock, window).Any(edge =>
+            || ConflictedActiveEdges(snapshot, asOfClock, expiryClock, window).Any(edge =>
                 (edge.FromNode == nodeId && TopologyIdentity.CanReadOwner(scope, edge.FromOwnerGroup))
                 || (edge.ToNode == nodeId && TopologyIdentity.CanReadOwner(scope, edge.ToOwnerGroup))))
             throw new TopologyConflictException();
@@ -444,15 +472,16 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         return reachable;
     }
 
-    private static void EnsurePathReady(TopologyGraphSnapshot snapshot, AccessScope scope, decimal clock,
+    private static void EnsurePathReady(TopologyGraphSnapshot snapshot, AccessScope scope, decimal asOfClock,
+        decimal expiryClock,
         (decimal From, decimal To) window, IReadOnlyList<TopologyEdgeProjection> edges,
         string from, string to)
     {
         EnsureObservedReady(snapshot);
-        var conflicted = ActiveConflictArcs(snapshot, clock, window)
+        var conflicted = ActiveConflictArcs(snapshot, expiryClock, window)
             .Where(arc => TopologyIdentity.CanReadEdge(scope, arc.FromOwnerGroup, arc.ToOwnerGroup))
             .Select(static arc => (From: arc.FromNode, To: arc.ToNode))
-            .Concat(ConflictedActiveEdges(snapshot, clock, window)
+            .Concat(ConflictedActiveEdges(snapshot, asOfClock, expiryClock, window)
                 .Where(edge => edge.Relation == TopologyRelation.DependsOn
                     && TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup))
                 .Select(static edge => (From: edge.FromNode, To: edge.ToNode))).ToArray();
@@ -460,7 +489,7 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             .Concat(conflicted).ToArray();
         var forward = ReachableDirected(possible, from, reverse: false);
         var backward = ReachableDirected(possible, to, reverse: true);
-        if (snapshot.ConflictCandidates.Any(candidate => CandidateActive(candidate, scope, clock, window)
+        if (snapshot.ConflictCandidates.Any(candidate => CandidateActive(candidate, scope, expiryClock, window)
                 && (candidate.NodeId == from || candidate.NodeId == to))
             || conflicted.Any(arc => forward.Contains(arc.From) && backward.Contains(arc.To)))
             throw new TopologyConflictException();
@@ -483,15 +512,16 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         return reached;
     }
 
-    private static void EnsureAncestorReady(TopologyGraphSnapshot snapshot, AccessScope scope, decimal clock,
+    private static void EnsureAncestorReady(TopologyGraphSnapshot snapshot, AccessScope scope,
+        decimal asOfClock, decimal expiryClock,
         (decimal From, decimal To) window, IReadOnlyList<TopologyEdgeProjection> edges,
         IReadOnlyList<string> targets)
     {
         EnsureObservedReady(snapshot);
-        var conflicted = ActiveConflictArcs(snapshot, clock, window)
+        var conflicted = ActiveConflictArcs(snapshot, expiryClock, window)
             .Where(arc => TopologyIdentity.CanReadEdge(scope, arc.FromOwnerGroup, arc.ToOwnerGroup))
             .Select(static arc => (From: arc.FromNode, To: arc.ToNode))
-            .Concat(ConflictedActiveEdges(snapshot, clock, window)
+            .Concat(ConflictedActiveEdges(snapshot, asOfClock, expiryClock, window)
                 .Where(edge => edge.Relation == TopologyRelation.DependsOn
                     && TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup))
                 .Select(static edge => (From: edge.FromNode, To: edge.ToNode))).ToArray();
@@ -500,7 +530,7 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var upstream = new HashSet<string>(StringComparer.Ordinal);
         foreach (var target in targets)
             upstream.UnionWith(ReachableDirected(possible, target, reverse: true));
-        if (snapshot.ConflictCandidates.Any(candidate => CandidateActive(candidate, scope, clock, window)
+        if (snapshot.ConflictCandidates.Any(candidate => CandidateActive(candidate, scope, expiryClock, window)
                 && upstream.Contains(candidate.NodeId!))
             || conflicted.Any(arc => upstream.Contains(arc.To)))
             throw new TopologyConflictException();
@@ -540,9 +570,10 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         .DistinctBy(static next => next.Node, StringComparer.Ordinal);
 
     private static bool HasHiddenIncident(string node, TopologyGraphSnapshot snapshot, AccessScope scope,
-        decimal readClockUnixNano, (decimal From, decimal To) window,
-        decimal? declaredStateClockUnixNano = null) => ActiveEdges(snapshot, readClockUnixNano,
-            window, declaredStateClockUnixNano)
+        decimal readClockUnixNano, decimal expiryReadClockUnixNano,
+        (decimal From, decimal To) window, decimal? declaredStateClockUnixNano = null) =>
+        ActiveEdges(snapshot, readClockUnixNano, window, declaredStateClockUnixNano,
+            expiryReadClockUnixNano)
         .Any(edge => ExternalNeighbor(node, edge, scope) is not null);
 
     private static IEnumerable<TopologyNeighbor> Neighbors(string node, TopologyEdgeProjection edge)
@@ -599,6 +630,16 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         if (resolvedFrom >= resolvedTo || resolvedTo > readClockUnixNano)
             throw new ArgumentOutOfRangeException(nameof(to), "Topology observed window must satisfy from < to <= asOf.");
         return (resolvedFrom, resolvedTo);
+    }
+
+    private static decimal ResolveExpiryClock(decimal asOfUnixNano, decimal? expiryReadClockUnixNano)
+    {
+        var clock = expiryReadClockUnixNano ?? asOfUnixNano;
+        _ = TopologyExpiry.FromDecimal(clock);
+        if (clock < asOfUnixNano)
+            throw new ArgumentOutOfRangeException(nameof(expiryReadClockUnixNano),
+                "Observed expiry clock cannot precede historical as-of.");
+        return clock;
     }
 
     private static string WindowPart((decimal From, decimal To) window) => string.Create(CultureInfo.InvariantCulture,

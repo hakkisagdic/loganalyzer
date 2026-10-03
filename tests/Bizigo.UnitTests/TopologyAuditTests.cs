@@ -91,6 +91,36 @@ public sealed class TopologyAuditTests
         Assert.Contains("outcome=Success", successRecord.Details, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Historical_asof_cannot_revive_observed_edge_after_current_expiry()
+    {
+        var other = TopologyIdentity.Node(TopologyNodeKind.Service,
+            Guid.Parse("00000000-0000-0000-0000-000000000063"));
+        var edge = new TopologyEdgeProjection("expired-observed", NodeId, other,
+            TopologyRelation.DependsOn, TopologyProvenance.Observed, true, 0.5m,
+            "A", "A", TopologyEdgeVisibility.SameOwner, 0, 900, 2000, 0, 1, false);
+        var snapshot = new TopologyGraphSnapshot(0, [edge]);
+        var scope = AccessScope.ForGroups("actor-A", ["A"]);
+        using (var before = new Fixture(new FakeAudit(), snapshot, fixedNowNano: 1900))
+        {
+            Assert.Equal(edge.Id, (await before.Query.GetTopologyEdgeAsync(edge.Id, 1000, scope,
+                TestContext.Current.CancellationToken))?.Edge.Id);
+        }
+        using (var after = new Fixture(new FakeAudit(), snapshot, fixedNowNano: 2000))
+        {
+            Assert.Null(await after.Query.GetTopologyEdgeAsync(edge.Id, 1000, scope,
+                TestContext.Current.CancellationToken));
+            Assert.Empty((await after.Query.SearchTopologyEdgesAsync(new(1000), scope,
+                TestContext.Current.CancellationToken)).Items);
+            Assert.Empty((await after.Query.SearchTopologyEdgesAsync(new TopologyEdgeQuery(1000)
+                { ExpiryReadClockUnixNano = 1900 }, scope,
+                TestContext.Current.CancellationToken)).Items);
+            Assert.Equal(TopologyGraphResultStatus.Unreachable,
+                (await after.Query.GetTopologyPathAsync(new(NodeId, other, 1000), scope,
+                    TestContext.Current.CancellationToken)).Status);
+        }
+    }
+
     private sealed class DriverUnavailableException : DbException { }
 
     private sealed class FakeAudit : IAuditSink
@@ -111,15 +141,21 @@ public sealed class TopologyAuditTests
             .UseInMemoryDatabase("topology-audit-" + Guid.NewGuid()).Options);
         public ScopedQuery Query { get; }
 
-        public Fixture(IAuditSink audit, TopologyGraphSnapshot? snapshot = null, Exception? readFailure = null)
+        public Fixture(IAuditSink audit, TopologyGraphSnapshot? snapshot = null,
+            Exception? readFailure = null, long fixedNowNano = 1500)
         {
             var graph = new TopologyGraphQueryService(new MemorySource(snapshot, readFailure));
             Query = new ScopedQuery(new EventReader(_storage), new ChangeEventReader(_storage),
                 new CorrelationReader(_storage), new EventWriter(_storage), _controlPlane, audit,
-                topology: graph);
+                topology: graph, topologyClock: new FixedTimeProvider(fixedNowNano));
         }
 
         public void Dispose() { _controlPlane.Dispose(); _storage.Dispose(); }
+    }
+
+    private sealed class FixedTimeProvider(long unixNano) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => DateTimeOffset.UnixEpoch.AddTicks(unixNano / 100);
     }
 
     private sealed class MemorySource(TopologyGraphSnapshot? snapshot, Exception? readFailure) : ITopologyGraphSnapshotSource

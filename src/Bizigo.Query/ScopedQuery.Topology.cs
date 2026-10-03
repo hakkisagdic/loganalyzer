@@ -22,38 +22,43 @@ public sealed partial class ScopedQuery
     public Task<TopologyGraphPage<TopologyEdgeProjection>> SearchTopologyEdgesAsync(TopologyEdgeQuery query, AccessScope scope,
         CancellationToken cancellationToken = default) => AuditedTopologyAsync("edges.list", scope,
         Summary(query.ReadClockUnixNano, query.PageSize, query.Cursor is not null),
-        () => Topology.SearchEdgesAsync(query, scope, cancellationToken), result => result.Items.Count);
+        () => Topology.SearchEdgesAsync(query with { ExpiryReadClockUnixNano = TopologyNowNano() },
+            scope, cancellationToken), result => result.Items.Count);
     public Task<TopologyEdgeDetail?> GetTopologyEdgeAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
         CancellationToken cancellationToken = default) => AuditedTopologyAsync("edges.detail", scope,
         Summary(readClockUnixNano, 1, false),
-        () => Topology.GetEdgeAsync(edgeId, readClockUnixNano, scope, cancellationToken), result => result is null ? 0 : 1);
+        () => Topology.GetEdgeAtExpiryAsync(edgeId, readClockUnixNano, null, null, null,
+            TopologyNowNano(), scope, null, 200, cancellationToken), result => result is null ? 0 : 1);
     public Task<TopologyEdgeDetail?> GetTopologyEdgeAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
         string? evidenceCursor, int evidencePageSize, CancellationToken cancellationToken = default) =>
         AuditedTopologyAsync("edges.detail", scope,
             Summary(readClockUnixNano, evidencePageSize, evidenceCursor is not null),
-            () => Topology.GetEdgeAsync(edgeId, readClockUnixNano, scope, evidenceCursor, evidencePageSize, cancellationToken),
+            () => Topology.GetEdgeAtExpiryAsync(edgeId, readClockUnixNano, null, null, null,
+                TopologyNowNano(), scope, evidenceCursor, evidencePageSize, cancellationToken),
             result => result?.Evidence.Count ?? 0);
     public Task<TopologyEdgeDetail?> GetTopologyEdgeAsync(string edgeId, decimal readClockUnixNano,
         decimal fromUnixNano, decimal toUnixNano, AccessScope scope,
         CancellationToken cancellationToken = default) => AuditedTopologyAsync("edges.detail", scope,
             Summary(readClockUnixNano, 1, false),
-            () => Topology.GetEdgeAsync(edgeId, readClockUnixNano, fromUnixNano, toUnixNano,
-                scope, cancellationToken), result => result?.Evidence.Count ?? 0);
+            () => Topology.GetEdgeAtExpiryAsync(edgeId, readClockUnixNano, fromUnixNano, toUnixNano,
+                null, TopologyNowNano(), scope, null, 200, cancellationToken),
+            result => result?.Evidence.Count ?? 0);
     public Task<TopologyEdgeDetail?> GetTopologyEdgeAsync(string edgeId, decimal readClockUnixNano,
         decimal fromUnixNano, decimal toUnixNano, AccessScope scope,
         string? evidenceCursor, int evidencePageSize, CancellationToken cancellationToken = default) =>
         AuditedTopologyAsync("edges.detail", scope,
             Summary(readClockUnixNano, evidencePageSize, evidenceCursor is not null),
-            () => Topology.GetEdgeAsync(edgeId, readClockUnixNano, fromUnixNano, toUnixNano,
-                scope, evidenceCursor, evidencePageSize, cancellationToken),
+            () => Topology.GetEdgeAtExpiryAsync(edgeId, readClockUnixNano, fromUnixNano, toUnixNano,
+                null, TopologyNowNano(), scope, evidenceCursor, evidencePageSize, cancellationToken),
             result => result?.Evidence.Count ?? 0);
     public Task<TopologyEdgeDetail?> GetTopologyEdgeAsync(string edgeId, decimal readClockUnixNano,
         decimal fromUnixNano, decimal toUnixNano, decimal declaredStateClockUnixNano,
         AccessScope scope, string? evidenceCursor, int evidencePageSize,
         CancellationToken cancellationToken = default) => AuditedTopologyAsync("edges.detail", scope,
             Summary(readClockUnixNano, evidencePageSize, evidenceCursor is not null),
-            () => Topology.GetEdgeAsync(edgeId, readClockUnixNano, fromUnixNano, toUnixNano,
-                declaredStateClockUnixNano, scope, evidenceCursor, evidencePageSize, cancellationToken),
+            () => Topology.GetEdgeAtExpiryAsync(edgeId, readClockUnixNano, fromUnixNano, toUnixNano,
+                declaredStateClockUnixNano, TopologyNowNano(), scope, evidenceCursor, evidencePageSize,
+                cancellationToken),
             result => result?.Evidence.Count ?? 0);
 
     public async Task<IReadOnlyList<TopologySourceNode>> ResolveTopologySourceNodesAsync(
@@ -83,38 +88,46 @@ public sealed partial class ScopedQuery
         AccessScope scope,
         CancellationToken cancellationToken = default) =>
         AuditedTopologyAsync("path", scope, Summary(query.ReadClockUnixNano, query.PageSize, query.Cursor is not null),
-            () => Topology.PathAsync(query, scope, cancellationToken), result => result.EdgeIds.Count);
+            () => Topology.PathAsync(query with { ExpiryReadClockUnixNano = TopologyNowNano() },
+                scope, cancellationToken), result => result.EdgeIds.Count);
 
     public Task<TopologyCommonAncestorResult> GetTopologyCommonAncestorAsync(
         TopologyCommonAncestorQuery query,
         AccessScope scope,
         CancellationToken cancellationToken = default) =>
         AuditedTopologyAsync("ancestors", scope, Summary(query.ReadClockUnixNano, query.NodeIds.Count, false),
-            () => Topology.CommonAncestorAsync(query, scope, cancellationToken), result => result.Paths.Count);
+            () => Topology.CommonAncestorAsync(query with { ExpiryReadClockUnixNano = TopologyNowNano() },
+                scope, cancellationToken), result => result.Paths.Count);
 
     public Task<TopologyCommonAncestorResult> GetTopologyGroupedCommonAncestorAsync(
         TopologyGroupedAncestorQuery query, AccessScope scope,
         CancellationToken cancellationToken = default) =>
         AuditedTopologyAsync("ancestors", scope, Summary(query.ReadClockUnixNano, query.TargetGroups.Count, false),
-            () => Topology.GroupedCommonAncestorAsync(query, scope, cancellationToken), result => result.Paths.Count);
+            () => Topology.GroupedCommonAncestorAsync(query with { ExpiryReadClockUnixNano = TopologyNowNano() },
+                scope, cancellationToken), result => result.Paths.Count);
 
     public Task<TopologyNeighborhoodResult> GetTopologyNeighborhoodAsync(
         TopologyNeighborhoodQuery query,
         AccessScope scope,
         CancellationToken cancellationToken = default) =>
         AuditedTopologyAsync("neighbors", scope, Summary(query.ReadClockUnixNano, query.PageSize, query.Cursor is not null),
-            () => Topology.NeighborhoodAsync(query, scope, cancellationToken), result => result.Neighbors.Count);
+            () => Topology.NeighborhoodAsync(query with { ExpiryReadClockUnixNano = TopologyNowNano() },
+                scope, cancellationToken), result => result.Neighbors.Count);
 
     public Task<TopologyOutsideNeighborCount> CountExternalTopologyNeighborsAsync(
         TopologyNeighborhoodQuery query,
         AccessScope scope,
         CancellationToken cancellationToken = default) =>
         AuditedTopologyAsync("neighbors.outside", scope, Summary(query.ReadClockUnixNano, 1, false),
-            () => Topology.CountExternalNeighborsAsync(query, scope, cancellationToken),
+            () => Topology.CountExternalNeighborsAsync(query with { ExpiryReadClockUnixNano = TopologyNowNano() },
+                scope, cancellationToken),
             result => result.Count ?? 0, result => result.Count is not null);
 
     private static string Summary(decimal readClock, int limit, bool continuation) =>
         string.Create(CultureInfo.InvariantCulture, $"as_of_nano={readClock};limit={limit};cursor={continuation}");
+
+    private decimal TopologyNowNano() => checked((decimal)_topologyClock.GetUtcNow().Ticks * 100m
+        - 62135596800000000000m);
 
     private async Task<T> AuditedTopologyAsync<T>(string action, AccessScope scope, string summary,
         Func<Task<T>> operation, Func<T, int> count, Func<T, bool>? isComplete = null)

@@ -55,8 +55,10 @@ public sealed record TopologyPathQuery(
     decimal? FromUnixNano = null,
     decimal? ToUnixNano = null)
 {
-    /// <summary>Internal RCA declared-state cutoff; observed expiry still uses ReadClockUnixNano.</summary>
+    /// <summary>Internal RCA declared-state cutoff; observed expiry uses the current expiry clock.</summary>
     public decimal? DeclaredStateClockUnixNano { get; init; }
+    /// <summary>Current server read clock for observed TTL, independent of historical as-of.</summary>
+    public decimal? ExpiryReadClockUnixNano { get; init; }
 }
 
 public sealed record TopologyNodeQuery(decimal ReadClockUnixNano, int PageSize = 100, string? Cursor = null,
@@ -64,7 +66,10 @@ public sealed record TopologyNodeQuery(decimal ReadClockUnixNano, int PageSize =
 
 public sealed record TopologyEdgeQuery(decimal ReadClockUnixNano, int PageSize = 100, string? Cursor = null,
     TopologyRelation? Relation = null, TopologyProvenance? Provenance = null,
-    decimal? FromUnixNano = null, decimal? ToUnixNano = null);
+    decimal? FromUnixNano = null, decimal? ToUnixNano = null)
+{
+    public decimal? ExpiryReadClockUnixNano { get; init; }
+}
 
 public sealed record TopologyNodeProjection(string Id, TopologyNodeKind Kind, string DisplayName, string OwnerGroup,
     bool Enabled, bool Deleted, long Version, decimal ValidFromUnixNano, decimal? ValidToUnixNano);
@@ -79,7 +84,10 @@ public sealed record TopologyCommonAncestorQuery(
     IReadOnlyList<string> NodeIds,
     decimal ReadClockUnixNano,
     decimal? FromUnixNano = null,
-    decimal? ToUnixNano = null);
+    decimal? ToUnixNano = null)
+{
+    public decimal? ExpiryReadClockUnixNano { get; init; }
+}
 
 /// <summary>Internal RCA group candidates; public REST keeps the flat ancestor contract.</summary>
 public sealed record TopologyGroupedAncestorQuery(
@@ -88,8 +96,9 @@ public sealed record TopologyGroupedAncestorQuery(
     decimal? FromUnixNano = null,
     decimal? ToUnixNano = null)
 {
-    /// <summary>Internal RCA declared-state cutoff; observed expiry still uses ReadClockUnixNano.</summary>
+    /// <summary>Internal RCA declared-state cutoff; observed expiry uses the current expiry clock.</summary>
     public decimal? DeclaredStateClockUnixNano { get; init; }
+    public decimal? ExpiryReadClockUnixNano { get; init; }
 }
 
 public sealed record TopologyNeighborhoodQuery(
@@ -99,7 +108,10 @@ public sealed record TopologyNeighborhoodQuery(
     string? Cursor = null,
     TopologyRelation? Relation = null,
     decimal? FromUnixNano = null,
-    decimal? ToUnixNano = null);
+    decimal? ToUnixNano = null)
+{
+    public decimal? ExpiryReadClockUnixNano { get; init; }
+}
 
 public sealed record TopologyGraphPage<T>(
     IReadOnlyList<T> Items,
