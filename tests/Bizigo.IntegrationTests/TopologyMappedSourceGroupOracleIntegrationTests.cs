@@ -46,11 +46,9 @@ public sealed class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixt
         Assert.Equal(seed.A1, dependency.GetProperty("to_node").GetString());
         Assert.Equal("depends_on", dependency.GetProperty("relation").GetString());
         Assert.Equal("declared", dependency.GetProperty("provenance").GetString());
-        var witnesses = item.Payload["source_witnesses"];
-        Assert.Contains(seed.SourceA, witnesses, StringComparison.Ordinal);
-        Assert.Contains(seed.SourceB, witnesses, StringComparison.Ordinal);
-        Assert.Contains(seed.A1, witnesses, StringComparison.Ordinal);
-        Assert.Contains(seed.B2, witnesses, StringComparison.Ordinal);
+        AssertWitnesses(item.Payload["source_witnesses"],
+            new(seed.SourceA, seed.A1, [seed.ContainsA1], [], []),
+            new(seed.SourceB, seed.B2, [seed.ContainsB2], [], []));
         Assert.DoesNotContain("contains", item.Payload["proof_edges"], StringComparison.OrdinalIgnoreCase);
     }
 
@@ -60,9 +58,8 @@ public sealed class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixt
     public async Task G_Nonterminal_service_and_instance_are_both_eligible_mapped_candidates(bool instanceProof)
     {
         await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
-        var seed = await SeedAsync(fixture, admitInstance: instanceProof);
+        var seed = await SeedAsync(fixture, admitInstance: instanceProof, projectDependency: true);
         var from = instanceProof ? seed.I1 : seed.A1;
-        await EdgeAsync(fixture, seed.Scope, from, seed.B1);
         var slice = await new TopologyGraphPathProvider(seed.Query).GatherAsync(seed.Window,
             seed.Scope, GatherBudget.Default, Ct);
         Assert.Equal(EvidenceStatus.Gathered, slice.Status);
@@ -71,7 +68,16 @@ public sealed class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixt
         Assert.Equal(new[] { from, seed.B1 }, nodes.RootElement.EnumerateArray()
             .Select(static node => node.GetString()!).ToArray());
         Assert.Equal(instanceProof ? seed.I1 : seed.A1, seed.AdmittedA);
-        Assert.Contains(from, item.Payload["source_witnesses"], StringComparison.Ordinal);
+        using var proof = JsonDocument.Parse(item.Payload["proof_edges"]);
+        var dependency = Assert.Single(proof.RootElement.EnumerateArray().ToArray());
+        Assert.Equal(from, dependency.GetProperty("from_node").GetString());
+        Assert.Equal(seed.B1, dependency.GetProperty("to_node").GetString());
+        Assert.Equal("observed", dependency.GetProperty("provenance").GetString());
+        Assert.Equal("depends_on", dependency.GetProperty("relation").GetString());
+        Assert.Equal(0.5m, dependency.GetProperty("confidence").GetDecimal());
+        AssertWitnesses(item.Payload["source_witnesses"],
+            new(seed.SourceA, from, instanceProof ? [seed.ContainsA1, seed.ContainsI1] : [seed.ContainsA1], [], []),
+            new(seed.SourceB, seed.B1, [seed.ContainsB1], [], []));
     }
 
     [Fact]
@@ -83,8 +89,8 @@ public sealed class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixt
         var y = await NodeAsync(fixture, seed.Scope, "union-y");
         var aHub = await NodeAsync(fixture, seed.Scope, "union-a-hub");
         var bHub = await NodeAsync(fixture, seed.Scope, "union-b-hub");
-        await EdgeAsync(fixture, seed.Scope, x, seed.A1);
-        await EdgeAsync(fixture, seed.Scope, x, seed.B1);
+        var xA1 = await EdgeAsync(fixture, seed.Scope, x, seed.A1);
+        var xB1 = await EdgeAsync(fixture, seed.Scope, x, seed.B1);
         await EdgeAsync(fixture, seed.Scope, y, aHub);
         await EdgeAsync(fixture, seed.Scope, y, bHub);
         await EdgeAsync(fixture, seed.Scope, aHub, seed.A1);
@@ -103,9 +109,9 @@ public sealed class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixt
         Assert.All(edges, edge => Assert.Equal(x, edge.GetProperty("from_node").GetString()));
         Assert.Contains(edges, edge => edge.GetProperty("to_node").GetString() == seed.A1);
         Assert.Contains(edges, edge => edge.GetProperty("to_node").GetString() == seed.B1);
-        var witnesses = item.Payload["source_witnesses"];
-        Assert.Contains(seed.SourceA, witnesses, StringComparison.Ordinal);
-        Assert.Contains(seed.SourceB, witnesses, StringComparison.Ordinal);
+        AssertWitnesses(item.Payload["source_witnesses"],
+            new(seed.SourceA, seed.A1, [seed.ContainsA1], [x, seed.A1], [xA1]),
+            new(seed.SourceB, seed.B1, [seed.ContainsB1], [x, seed.B1], [xB1]));
 
         // Public REST/query ancestor still has explicit target-union semantics:
         // x misses a2/b2; y reaches all four through the separate hubs.
@@ -165,9 +171,11 @@ public sealed class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixt
 
     private sealed record Seed(IScopedQuery Query, AccessScope Scope, RcaWindow Window,
         string SourceA, string SourceB, string A1, string A2, string B1, string B2,
-        string I1, string AdmittedA);
+        string I1, string AdmittedA, string ContainsA1, string ContainsB1,
+        string ContainsB2, string ContainsI1);
 
-    private static async Task<Seed> SeedAsync(TelemetryDbFixture fixture, bool admitInstance = false)
+    private static async Task<Seed> SeedAsync(TelemetryDbFixture fixture, bool admitInstance = false,
+        bool projectDependency = false)
     {
         var suffix = Guid.NewGuid().ToString("N")[..12];
         var sourceA = "group-a-" + suffix;
@@ -190,11 +198,11 @@ public sealed class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixt
         await using var db = await fixture.Factory.CreateDbContextAsync(Ct);
         var roots = await db.TopologyNodes.Where(node => node.SourceId == sourceA || node.SourceId == sourceB)
             .ToDictionaryAsync(node => node.SourceId!, Ct);
-        await ContainsAsync(fixture, scope, roots[sourceA].Id, a1.Id);
+        var containsA1 = await ContainsAsync(fixture, scope, roots[sourceA].Id, a1.Id);
         await ContainsAsync(fixture, scope, roots[sourceA].Id, a2.Id);
-        await ContainsAsync(fixture, scope, a1.Id, i1.Id);
-        await ContainsAsync(fixture, scope, roots[sourceB].Id, b1.Id);
-        await ContainsAsync(fixture, scope, roots[sourceB].Id, b2.Id);
+        var containsI1 = await ContainsAsync(fixture, scope, a1.Id, i1.Id);
+        var containsB1 = await ContainsAsync(fixture, scope, roots[sourceB].Id, b1.Id);
+        var containsB2 = await ContainsAsync(fixture, scope, roots[sourceB].Id, b2.Id);
 
         var latestBinding = new[] { a1, a2, b1, b2, i1 }
             .Max(version => decimal.Parse(version.ValidFromUnixNano, CultureInfo.InvariantCulture));
@@ -203,10 +211,20 @@ public sealed class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixt
         var requestB = TelemetryDbFixture.Traces(sourceB, eventTime + 1000);
         SetService(requestA.ResourceSpans[0].Resource.Attributes, "a1", admitInstance ? "i1" : null);
         SetService(requestB.ResourceSpans[0].Resource.Attributes, "b1", null);
-        requestA.ResourceSpans[0].ScopeSpans[0].Spans[0].ParentSpanId = ByteString.Empty;
-        requestB.ResourceSpans[0].ScopeSpans[0].Spans[0].ParentSpanId = ByteString.Empty;
+        var parentSpan = requestA.ResourceSpans[0].ScopeSpans[0].Spans[0];
+        var childSpan = requestB.ResourceSpans[0].ScopeSpans[0].Spans[0];
+        parentSpan.ParentSpanId = ByteString.Empty;
+        childSpan.SpanId = ByteString.CopyFrom(Convert.FromHexString("0000000000000002"));
+        childSpan.ParentSpanId = parentSpan.SpanId;
         string admitted;
-        using (var ingest = fixture.Open())
+        var publisher = new TopologyPublicationCoordinator(fixture.Factory,
+            new TopologyPublicationWatermarkReader(fixture.Storage),
+            new TopologyPublicationWatermarkWriter(new TopologyPublicationWatermarkReader(fixture.Storage),
+                fixture.Storage));
+        var writer = new TelemetryWriter(fixture.Storage, fixture.Owners,
+            new TopologyObservedProjector(fixture.Storage, publisher.PublishAsync,
+                readPendingKey: publisher.ReadPendingKeyAsync));
+        using (var ingest = fixture.Open(sink: projectDependency ? writer : null))
         {
             await ingest.RecoverAsync(Ct);
             var envelopeA = await fixture.EmitAsync(ingest, requestA, TelemetrySignal.Traces);
@@ -231,7 +249,7 @@ public sealed class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixt
             From = now, To = now.AddMinutes(15), OwnerGroups = [owner],
         };
         return new(query, scope, window, sourceA, sourceB, a1.Id, a2.Id, b1.Id, b2.Id,
-            i1.Id, admitted);
+            i1.Id, admitted, containsA1, containsB1, containsB2, containsI1);
     }
 
     private static void SetService(Google.Protobuf.Collections.RepeatedField<KeyValue> attributes,
@@ -252,19 +270,46 @@ public sealed class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixt
         return result.Node!.Id;
     }
 
-    private static async Task ContainsAsync(TelemetryDbFixture fixture, AccessScope scope, string from, string to)
+    private static async Task<string> ContainsAsync(TelemetryDbFixture fixture, AccessScope scope,
+        string from, string to)
     {
         var result = await new TopologyEdgeRegistry(fixture.Factory).CreateAsync(scope, true,
             new(from, to, "contains"), Ct);
         Assert.Equal(201, result.Status);
+        return result.Edge!.Id.ToString();
     }
 
-    private static async Task EdgeAsync(TelemetryDbFixture fixture, AccessScope scope, string from, string to)
+    private static async Task<string> EdgeAsync(TelemetryDbFixture fixture, AccessScope scope,
+        string from, string to)
     {
         var result = await new TopologyEdgeRegistry(fixture.Factory).CreateAsync(scope, true,
             new(from, to, "depends_on"), Ct);
         Assert.Equal(201, result.Status);
+        return result.Edge!.Id.ToString();
     }
+
+    private sealed record ExpectedWitness(string SourceId, string TargetNodeId,
+        string[] MappingEdgeIds, string[] Nodes, string[] EdgeIds);
+
+    private static void AssertWitnesses(string json, params ExpectedWitness[] expected)
+    {
+        using var document = JsonDocument.Parse(json);
+        var actual = document.RootElement.EnumerateArray().ToArray();
+        Assert.Equal(expected.Length, actual.Length);
+        var ordered = expected.OrderBy(witness => witness.SourceId, StringComparer.Ordinal).ToArray();
+        for (var index = 0; index < ordered.Length; index++)
+        {
+            var witness = actual[index];
+            Assert.Equal(ordered[index].SourceId, witness.GetProperty("source_id").GetString());
+            Assert.Equal(ordered[index].TargetNodeId, witness.GetProperty("target_node_id").GetString());
+            Assert.Equal(ordered[index].MappingEdgeIds, Strings(witness, "mapping_edge_ids"));
+            Assert.Equal(ordered[index].Nodes, Strings(witness, "nodes"));
+            Assert.Equal(ordered[index].EdgeIds, Strings(witness, "edge_ids"));
+        }
+    }
+
+    private static string[] Strings(JsonElement element, string field) => element.GetProperty(field)
+        .EnumerateArray().Select(static value => value.GetString()!).ToArray();
 
     private static LogEvent Degraded(string owner, string source, DateTimeOffset at) => new()
     {

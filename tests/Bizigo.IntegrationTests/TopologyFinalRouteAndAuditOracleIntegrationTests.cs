@@ -25,12 +25,15 @@ public sealed class TopologyFinalRouteAndAuditOracleIntegrationTests(DevStackFix
         var root = (await registry.CreateAsync(scope, true,
             new(TopologyNodeKind.Service, "ancestor-root", "A", true, []), Ct)).Node!.Id;
         var targets = new List<string>();
+        var proofByTarget = new Dictionary<string, string>(StringComparer.Ordinal);
         for (var index = 0; index < 21; index++)
         {
             var target = (await registry.CreateAsync(scope, true,
                 new(TopologyNodeKind.Service, "ancestor-target-" + index, "A", true, []), Ct)).Node!.Id;
             targets.Add(target);
-            Assert.Equal(201, (await edges.CreateAsync(scope, true, new(root, target, "depends_on"), Ct)).Status);
+            var edge = await edges.CreateAsync(scope, true, new(root, target, "depends_on"), Ct);
+            Assert.Equal(201, edge.Status);
+            proofByTarget.Add(target, edge.Edge!.Id.ToString("D"));
         }
         var hidden = (await registry.CreateAsync(scope, true,
             new(TopologyNodeKind.Service, "ancestor-hidden", "B", true, []), Ct)).Node!.Id;
@@ -45,8 +48,17 @@ public sealed class TopologyFinalRouteAndAuditOracleIntegrationTests(DevStackFix
             Assert.Equal("Found", json.RootElement.GetProperty("status").GetString());
             Assert.Equal(root, json.RootElement.GetProperty("node_id").GetString());
             Assert.Equal(count, json.RootElement.GetProperty("paths").GetArrayLength());
-            Assert.All(json.RootElement.GetProperty("paths").EnumerateArray().ToArray(), path =>
-                Assert.Equal(root, path.GetProperty("nodes")[0].GetString()));
+            var paths = json.RootElement.GetProperty("paths").EnumerateArray().ToArray();
+            Assert.Equal(targets.Take(count).Order(StringComparer.Ordinal), paths.Select(path =>
+                path.GetProperty("target_node_id").GetString()!).Order(StringComparer.Ordinal));
+            foreach (var path in paths)
+            {
+                var target = path.GetProperty("target_node_id").GetString()!;
+                Assert.Equal(new[] { root, target }, path.GetProperty("nodes").EnumerateArray()
+                    .Select(static node => node.GetString()!).ToArray());
+                Assert.Equal(new[] { proofByTarget[target] }, path.GetProperty("edge_ids").EnumerateArray()
+                    .Select(static edgeId => edgeId.GetString()!).ToArray());
+            }
         }
         foreach (var invalid in new[] { Route(targets.Take(1)), Route(targets),
                      Route([targets[0], targets[0]]), Route([targets[0] + "," + targets[1]]) })

@@ -43,6 +43,18 @@ public sealed class TopologyFinalScopeOracleIntegrationTests(DevStackFixture sta
             node => node.Id == seed.Child);
         Assert.Equal(TopologyGraphResultStatus.Found, (await seed.Query.GetTopologyPathAsync(
             new(seed.Parent, seed.Child, seed.ReadClock), seed.ScopeAB, Ct)).Status);
+        var ancestorAB = await seed.Query.GetTopologyCommonAncestorAsync(new(
+            [seed.Parent, seed.Child], seed.ReadClock), seed.ScopeAB, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, ancestorAB.Status);
+        Assert.Equal(seed.Root, ancestorAB.NodeId);
+        Assert.Equal(new[] { seed.Parent, seed.Child }.Order(StringComparer.Ordinal),
+            ancestorAB.Paths.Select(path => path.TargetNodeId).Order(StringComparer.Ordinal));
+        Assert.All(ancestorAB.Paths, proof =>
+        {
+            Assert.Equal(seed.Root, proof.Nodes[0]);
+            Assert.Equal(proof.TargetNodeId, proof.Nodes[^1]);
+            Assert.Equal(proof.Nodes.Count - 1, proof.EdgeIds.Count);
+        });
 
         foreach (var scope in new[] { seed.ScopeA, seed.ScopeB, seed.ScopeC })
         {
@@ -157,7 +169,7 @@ public sealed class TopologyFinalScopeOracleIntegrationTests(DevStackFixture sta
     }
 
     private sealed record Seed(IScopedQuery Query, AccessScope ScopeA, AccessScope ScopeB,
-        AccessScope ScopeAB, AccessScope ScopeC, string Parent, string Child, string TraceId,
+        AccessScope ScopeAB, AccessScope ScopeC, string Root, string Parent, string Child, string TraceId,
         decimal ReadClock);
 
     private static async Task<Seed> SeedAsync(TelemetryDbFixture fixture, bool declaredDependency = true)
@@ -178,6 +190,10 @@ public sealed class TopologyFinalScopeOracleIntegrationTests(DevStackFixture sta
         var child = (await registry.CreateAsync(scopeAB, true,
             new(TopologyNodeKind.Service, "scope-child-" + suffix, "B", true,
                 [new(sourceB, "n", "scope-child")]), Ct)).Node!.Id;
+        var root = (await registry.CreateAsync(scopeAB, true,
+            new(TopologyNodeKind.Service, "scope-root-" + suffix, "A", true, []), Ct)).Node!.Id;
+        Assert.Equal(201, (await new TopologyEdgeRegistry(fixture.Factory).CreateAsync(scopeAB, true,
+            new(root, parent, "depends_on"), Ct)).Status);
         if (declaredDependency)
             Assert.Equal(201, (await new TopologyEdgeRegistry(fixture.Factory).CreateAsync(scopeAB, true,
                 new(parent, child, "depends_on"), Ct)).Status);
@@ -201,7 +217,7 @@ public sealed class TopologyFinalScopeOracleIntegrationTests(DevStackFixture sta
             new TopologyObservedSnapshotReader(fixture.Storage), fence));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
             new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph);
-        return new(query, scopeA, scopeB, scopeAB, scopeC, parent, child, trace,
+        return new(query, scopeA, scopeB, scopeAB, scopeC, root, parent, child, trace,
             TopologyIdentity.Nano(DateTimeOffset.UtcNow.AddSeconds(5)));
     }
 
