@@ -141,8 +141,10 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var path = FindPath(query.FromNodeId, query.ToNodeId, edges);
         if (path.Nodes.Count == 0)
         {
-            var partial = HasHiddenIncident(query.FromNodeId, snapshot, scope, query.ReadClockUnixNano, window)
-                || HasHiddenIncident(query.ToNodeId, snapshot, scope, query.ReadClockUnixNano, window);
+            var partial = HasHiddenIncident(query.FromNodeId, snapshot, scope, query.ReadClockUnixNano,
+                    window, query.DeclaredStateClockUnixNano)
+                || HasHiddenIncident(query.ToNodeId, snapshot, scope, query.ReadClockUnixNano,
+                    window, query.DeclaredStateClockUnixNano);
             return new(partial ? TopologyGraphResultStatus.NotVerified
                     : TopologyGraphResultStatus.Unreachable,
                 [], [], null, snapshot.PublishedSequence, partial ? "HiddenBoundary" : null);
@@ -257,7 +259,7 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             return new(TopologyGraphResultStatus.Found, match.Node, match.Paths, snapshot.PublishedSequence);
         var upstream = Reachable(edges, allTargets, reverse: true);
         var partial = upstream.Any(node => HasHiddenIncident(node, snapshot, scope,
-            query.ReadClockUnixNano, window));
+            query.ReadClockUnixNano, window, query.DeclaredStateClockUnixNano));
         return new(partial ? TopologyGraphResultStatus.NotVerified : TopologyGraphResultStatus.Unreachable,
             null, [], snapshot.PublishedSequence, partial ? "HiddenBoundary" : null);
     }
@@ -538,7 +540,9 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         .DistinctBy(static next => next.Node, StringComparer.Ordinal);
 
     private static bool HasHiddenIncident(string node, TopologyGraphSnapshot snapshot, AccessScope scope,
-        decimal readClockUnixNano, (decimal From, decimal To) window) => ActiveEdges(snapshot, readClockUnixNano, window)
+        decimal readClockUnixNano, (decimal From, decimal To) window,
+        decimal? declaredStateClockUnixNano = null) => ActiveEdges(snapshot, readClockUnixNano,
+            window, declaredStateClockUnixNano)
         .Any(edge => ExternalNeighbor(node, edge, scope) is not null);
 
     private static IEnumerable<TopologyNeighbor> Neighbors(string node, TopologyEdgeProjection edge)

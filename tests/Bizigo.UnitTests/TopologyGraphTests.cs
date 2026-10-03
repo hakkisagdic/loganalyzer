@@ -289,6 +289,14 @@ public sealed class TopologyGraphTests
         var expired = Query([observed with { EffectiveExpiry = 2000 }]);
         Assert.Equal(TopologyGraphResultStatus.Unreachable,
             (await expired.PathAsync(beforeTo, ScopeA, Ct)).Status);
+
+        var hiddenOpening = Query([Edge("hidden-start-at-to", R, D, "A", "B")
+            with { FirstSeenUnixNano = 2000 }]);
+        Assert.Equal(TopologyGraphResultStatus.Unreachable,
+            (await hiddenOpening.PathAsync(beforeTo with { ToNodeId = C }, ScopeA, Ct)).Status);
+        Assert.Equal(TopologyGraphResultStatus.NotVerified,
+            (await hiddenOpening.PathAsync(beforeTo with
+            { ToNodeId = C, DeclaredStateClockUnixNano = null }, ScopeA, Ct)).Status);
     }
 
     private static TopologyGraphQueryService Query(IReadOnlyList<TopologyEdgeProjection> edges) =>
