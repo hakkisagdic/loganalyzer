@@ -117,7 +117,17 @@ public static class TopologyCanonicalIdentity
     }
 }
 
-public sealed record TopologySpanConflict(string Anchor, string FirstFingerprint, string ConflictingFingerprint);
+/// <summary>Admission-captured context; never reconstructed from current inventory.</summary>
+public sealed record TopologyConflictCandidate(string Fingerprint, string OwnerGroup, string SourceId,
+    string? NodeId, ulong EventTimeNano, decimal TraceExpiryNano, decimal ObservedExpiryNano,
+    string ParentAnchor, bool IsConflictedAnchor);
+
+public sealed record TopologySpanConflict(string Anchor, string FirstFingerprint, string ConflictingFingerprint)
+{
+    // Includes all fingerprint histories and children referencing this anchor.
+    // An old manifest without this property remains explicitly unattributed.
+    public IReadOnlyList<TopologyConflictCandidate> Candidates { get; init; } = [];
+}
 
 public sealed record TopologyObservedEvent(
     string EdgeId, string TraceId, string ParentSpanId, string ChildSpanId,
@@ -150,7 +160,22 @@ public static class TopologyObservation
                 .Order(StringComparer.Ordinal).ToArray();
             if (fingerprints.Length > 1)
             {
-                conflicts.Add(new(anchor.Key, fingerprints[0], fingerprints[1]));
+                var related = candidates.Where(candidate => candidate.Anchor == anchor.Key
+                    || candidate.ParentSpanId.Length != 0 &&
+                    TopologyCanonicalIdentity.Hash("trace-span-v1", candidate.TraceId, candidate.ParentSpanId) == anchor.Key);
+                var contexts = related.GroupBy(candidate => candidate.Fingerprint, StringComparer.Ordinal)
+                    .Select(group =>
+                    {
+                        var candidate = group.OrderBy(x => x.Record.LogicalId, StringComparer.Ordinal).First();
+                        var binding = candidate.Record.Topology!;
+                        return new TopologyConflictCandidate(candidate.Fingerprint, binding.OwnerGroup,
+                            binding.SourceId, binding.NodeId, candidate.StartNano,
+                            group.Min(x => x.TraceExpiryNano), group.Min(x => x.ObservedExpiryNano),
+                            candidate.ParentSpanId.Length == 0 ? string.Empty :
+                                TopologyCanonicalIdentity.Hash("trace-span-v1", candidate.TraceId, candidate.ParentSpanId),
+                            candidate.Anchor == anchor.Key);
+                    }).OrderBy(x => x.Fingerprint, StringComparer.Ordinal).ToArray();
+                conflicts.Add(new(anchor.Key, fingerprints[0], fingerprints[1]) { Candidates = contexts });
                 continue;
             }
             var ordered = anchor.OrderBy(x => x.Record.LogicalId, StringComparer.Ordinal).ToArray();
@@ -183,7 +208,9 @@ public static class TopologyObservation
 
         edges.Sort((a, b) => string.CompareOrdinal(a.EdgeId, b.EdgeId));
         conflicts.Sort((a, b) => string.CompareOrdinal(a.Anchor, b.Anchor));
-        var parts = new List<string> { "topology-publication-v1" };
+        // A new publication version avoids reusing an immutable v1 manifest
+        // whose conflict row lacked admission-captured context.
+        var parts = new List<string> { "topology-publication-v2" };
         foreach (var candidate in candidates.DistinctBy(x => (x.Anchor, x.Fingerprint, x.Record.LogicalId))
                      .OrderBy(x => x.Anchor, StringComparer.Ordinal)
                      .ThenBy(x => x.Fingerprint, StringComparer.Ordinal).ThenBy(x => x.Record.LogicalId, StringComparer.Ordinal))

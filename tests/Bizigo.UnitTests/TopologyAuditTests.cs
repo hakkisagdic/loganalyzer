@@ -36,6 +36,28 @@ public sealed class TopologyAuditTests
         Assert.True(record.Succeeded);
     }
 
+    [Fact]
+    public async Task Unrelated_owner_conflict_keeps_healthy_audit_success_and_related_failure()
+    {
+        var audit = new FakeAudit();
+        var a = NodeId;
+        var b = TopologyIdentity.Node(TopologyNodeKind.Service,
+            Guid.Parse("00000000-0000-0000-0000-000000000062"));
+        var snapshot = new TopologyGraphSnapshot(0,
+            [new TopologyEdgeProjection("healthy", a, a, TopologyRelation.DependsOn,
+                TopologyProvenance.Observed, true, 0.5m, "A", "A", TopologyEdgeVisibility.SameOwner,
+                0, 1000, 2000, 0, 1, false)])
+        { ConflictCandidates = [new TopologyConflictProjection("B", b, 1000, 2000)] };
+        using var fixture = new Fixture(audit, snapshot);
+        Assert.Single((await fixture.Query.SearchTopologyEdgesAsync(new(1001),
+            AccessScope.ForGroups("actor-A", ["A"]), TestContext.Current.CancellationToken)).Items);
+        await Assert.ThrowsAsync<TopologyConflictException>(() => fixture.Query.SearchTopologyEdgesAsync(new(1001),
+            AccessScope.ForGroups("actor-B", ["B"]), TestContext.Current.CancellationToken));
+        Assert.Collection(audit.Records,
+            record => { Assert.Equal("topology.edges.list", record.Action); Assert.True(record.Succeeded); Assert.Equal(1, record.RowCount); },
+            record => { Assert.Equal("topology.edges.list", record.Action); Assert.False(record.Succeeded); Assert.Equal(0, record.RowCount); });
+    }
+
     private sealed class FakeAudit : IAuditSink
     {
         public bool Fail { get; init; }
@@ -54,9 +76,9 @@ public sealed class TopologyAuditTests
             .UseInMemoryDatabase("topology-audit-" + Guid.NewGuid()).Options);
         public ScopedQuery Query { get; }
 
-        public Fixture(IAuditSink audit)
+        public Fixture(IAuditSink audit, TopologyGraphSnapshot? snapshot = null)
         {
-            var graph = new TopologyGraphQueryService(new MemorySource());
+            var graph = new TopologyGraphQueryService(new MemorySource(snapshot));
             Query = new ScopedQuery(new EventReader(_storage), new ChangeEventReader(_storage),
                 new CorrelationReader(_storage), new EventWriter(_storage), _controlPlane, audit,
                 topology: graph);
@@ -65,10 +87,10 @@ public sealed class TopologyAuditTests
         public void Dispose() { _controlPlane.Dispose(); _storage.Dispose(); }
     }
 
-    private sealed class MemorySource : ITopologyGraphSnapshotSource
+    private sealed class MemorySource(TopologyGraphSnapshot? snapshot) : ITopologyGraphSnapshotSource
     {
         public Task<TopologyGraphSnapshot> ReadAsync(long? publishedSequence, CancellationToken cancellationToken) =>
-            Task.FromResult(new TopologyGraphSnapshot(0, [])
+            Task.FromResult(snapshot ?? new TopologyGraphSnapshot(0, [])
             {
                 Nodes = [new TopologyNodeProjection(NodeId, TopologyNodeKind.Service, "visible", "A", true,
                     false, 1, 0, null)],

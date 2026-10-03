@@ -1,9 +1,19 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using Bizigo.Contracts;
 using ClickHouse.Driver.Utility;
 
 namespace Bizigo.Storage.ClickHouse;
+
+public sealed record TopologyObservedConflictRow(string Anchor,
+    IReadOnlyList<TopologyConflictCandidate> Candidates, bool Unattributed);
+
+public sealed record TopologyObservedSnapshot(IReadOnlyList<TopologyObservedSnapshotRow> Rows,
+    IReadOnlyList<TopologyObservedConflictRow> Conflicts);
+
+/// <summary>Operational preflight only; never serialize marker counts to public topology responses.</summary>
+public sealed record TopologyObservedReadiness(ulong Watermark, bool Usable, int UnattributedMarkers);
 
 public sealed record TopologyObservedSnapshotRow(
     string Id, string FromNodeId, string ToNodeId, string Relation, string Provenance,
@@ -12,7 +22,12 @@ public sealed record TopologyObservedSnapshotRow(
     ulong PublicationSequence, string ParentSemanticAnchor, string ChildSemanticAnchor,
     IReadOnlyList<string> EvidenceOccurrenceIds, string TraceLogicalId, string SpanLogicalId,
     decimal EventTimeUnixNano, string ParentSpanLogicalId, decimal ParentEventTimeUnixNano,
-    IReadOnlyList<string> ParentOccurrenceIds, IReadOnlyList<string> ChildOccurrenceIds);
+    IReadOnlyList<string> ParentOccurrenceIds, IReadOnlyList<string> ChildOccurrenceIds)
+{
+    /// <summary>A committed anchor conflict invalidates this row as proof, but
+    /// authorization and query-window decisions belong to the scoped reader.</summary>
+    public bool HasPublishedConflict { get; init; }
+}
 
 /// <summary>
 /// Reads only published observed projections. The watermark predicate is
@@ -21,10 +36,23 @@ public sealed record TopologyObservedSnapshotRow(
 /// </summary>
 public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
 {
-    public async Task<IReadOnlyList<TopologyObservedSnapshotRow>> ReadAsync(ulong watermark,
+    public async Task<TopologyObservedReadiness> CheckReadinessAsync(ulong watermark,
         CancellationToken cancellationToken = default)
     {
         var conflicts = await ReadConflictsAsync(watermark, cancellationToken);
+        var missing = conflicts.Count(static conflict => conflict.Unattributed);
+        return new(watermark, missing == 0, missing);
+    }
+
+    public async Task<IReadOnlyList<TopologyObservedSnapshotRow>> ReadAsync(ulong watermark,
+        CancellationToken cancellationToken = default) =>
+        (await ReadSnapshotAsync(watermark, cancellationToken)).Rows;
+
+    public async Task<TopologyObservedSnapshot> ReadSnapshotAsync(ulong watermark,
+        CancellationToken cancellationToken = default)
+    {
+        var conflicts = await ReadConflictsAsync(watermark, cancellationToken);
+        var conflictedAnchors = conflicts.Select(static conflict => conflict.Anchor).ToHashSet(StringComparer.Ordinal);
         await using var connection = context.CreateConnection();
         await connection.OpenAsync(cancellationToken);
         using var command = connection.CreateCommand();
@@ -65,8 +93,7 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
         {
             var parent = ReadString(reader.GetValue(13));
             var child = ReadString(reader.GetValue(14));
-            if (conflicts.Contains(parent) || conflicts.Contains(child))
-                throw new InvalidDataException("Conflicting published topology span anchor.");
+            var hasConflict = conflictedAnchors.Contains(parent) || conflictedAnchors.Contains(child);
             var evidenceJson = ReadString(reader.GetValue(15));
             var evidence = JsonSerializer.Deserialize<string[]>(evidenceJson)
                 ?? throw new InvalidDataException("Invalid topology evidence occurrence vector.");
@@ -87,27 +114,51 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
                 evidence, ReadString(reader.GetValue(16)), ReadString(reader.GetValue(17)),
                 Convert.ToDecimal(reader.GetValue(18), CultureInfo.InvariantCulture),
                 ReadString(reader.GetValue(19)), Convert.ToDecimal(reader.GetValue(20), CultureInfo.InvariantCulture),
-                parentOccurrences, childOccurrences));
+                parentOccurrences, childOccurrences) { HasPublishedConflict = hasConflict });
         }
-        return rows;
+        return new(rows, conflicts);
     }
 
-    private async Task<HashSet<string>> ReadConflictsAsync(ulong watermark, CancellationToken token)
+    private async Task<IReadOnlyList<TopologyObservedConflictRow>> ReadConflictsAsync(ulong watermark, CancellationToken token)
     {
         await using var connection = context.CreateConnection();
         await connection.OpenAsync(token);
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT semantic_anchor FROM topology_span_conflicts
+            SELECT semantic_anchor, candidate_context_json FROM topology_span_conflicts
             WHERE publication_seq <= {watermark:UInt64}
-            GROUP BY semantic_anchor
+            ORDER BY semantic_anchor, publication_seq
             """;
         command.AddParameter("watermark", watermark);
         command.CommandTimeout = Math.Clamp(context.Options.QueryTimeoutSeconds, 1, 300);
-        var result = new HashSet<string>(StringComparer.Ordinal);
+        var result = new Dictionary<string, List<TopologyConflictCandidate>>(StringComparer.Ordinal);
+        var legacy = new HashSet<string>(StringComparer.Ordinal);
         await using var reader = await command.ExecuteReaderAsync(token);
-        while (await reader.ReadAsync(token)) result.Add(ReadString(reader.GetValue(0)));
-        return result;
+        while (await reader.ReadAsync(token))
+        {
+            var anchor = ReadString(reader.GetValue(0));
+            if (!result.TryGetValue(anchor, out var candidates)) result.Add(anchor, candidates = []);
+            var context = ReadString(reader.GetValue(1));
+            if (context.Length == 0) { legacy.Add(anchor); continue; }
+            var parsed = JsonSerializer.Deserialize<TopologyConflictCandidate[]>(context, RawSignalCodec.Json)
+                ?? throw new InvalidDataException("Published topology conflict context is missing.");
+            if (parsed.Length == 0 || parsed.Any(candidate => string.IsNullOrWhiteSpace(candidate.OwnerGroup)
+                    || string.IsNullOrWhiteSpace(candidate.SourceId)))
+                throw new InvalidDataException("Published topology conflict context is invalid.");
+            candidates.AddRange(parsed);
+        }
+        return result.OrderBy(static pair => pair.Key, StringComparer.Ordinal)
+            .Select(pair => new TopologyObservedConflictRow(pair.Key,
+                pair.Value.GroupBy(candidate => (candidate.Fingerprint, candidate.OwnerGroup,
+                        candidate.SourceId, candidate.NodeId, candidate.EventTimeNano,
+                        candidate.ParentAnchor, candidate.IsConflictedAnchor))
+                    .Select(group => group.First() with
+                    {
+                        TraceExpiryNano = group.Min(static candidate => candidate.TraceExpiryNano),
+                        ObservedExpiryNano = group.Min(static candidate => candidate.ObservedExpiryNano),
+                    })
+                    .OrderBy(static candidate => candidate.Fingerprint, StringComparer.Ordinal).ToArray(),
+                legacy.Contains(pair.Key))).ToArray();
     }
 
     private static string ReadString(object value) => value switch
