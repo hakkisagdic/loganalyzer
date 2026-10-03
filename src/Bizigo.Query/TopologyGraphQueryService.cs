@@ -263,7 +263,7 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
     {
         var upstream = Reachable(edges, targets, reverse: true);
         return snapshot.UnresolvedParents
-            .Where(item => upstream.Contains(item.ChildNodeId)
+            .Where(item => item.ChildNodeId is not null && upstream.Contains(item.ChildNodeId)
                 && TopologyIdentity.CanReadOwner(scope, item.OwnerGroup)
                 && item.ChildEventTimeUnixNano >= window.From && item.ChildEventTimeUnixNano < window.To
                 && clock < item.ChildExpiryUnixNano)
