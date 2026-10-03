@@ -126,8 +126,7 @@ public sealed partial class ScopedQuery
     private static string Summary(decimal readClock, int limit, bool continuation) =>
         string.Create(CultureInfo.InvariantCulture, $"as_of_nano={readClock};limit={limit};cursor={continuation}");
 
-    private decimal TopologyNowNano() => checked((decimal)_topologyClock.GetUtcNow().Ticks * 100m
-        - 62135596800000000000m);
+    private decimal TopologyNowNano() => _topologyExpiryClock.NowUnixNano();
 
     private async Task<T> AuditedTopologyAsync<T>(string action, AccessScope scope, string summary,
         Func<Task<T>> operation, Func<T, int> count, Func<T, bool>? isComplete = null)

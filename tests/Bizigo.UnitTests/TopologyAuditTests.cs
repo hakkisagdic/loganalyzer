@@ -121,6 +121,29 @@ public sealed class TopologyAuditTests
         }
     }
 
+    [Theory]
+    [InlineData(1999, true)]
+    [InlineData(2000, false)]
+    [InlineData(2001, false)]
+    public async Task Scoped_server_nano_clock_enforces_exact_expiry_boundary(
+        int serverNano, bool expectedVisible)
+    {
+        var other = TopologyIdentity.Node(TopologyNodeKind.Service,
+            Guid.Parse("00000000-0000-0000-0000-000000000064"));
+        var edge = new TopologyEdgeProjection("exact-expiry", NodeId, other,
+            TopologyRelation.DependsOn, TopologyProvenance.Observed, true, 0.5m,
+            "A", "A", TopologyEdgeVisibility.SameOwner, 0, 900, 2000, 0, 1, false);
+        using var fixture = new Fixture(new FakeAudit(), new TopologyGraphSnapshot(0, [edge]),
+            fixedExpiryNano: serverNano);
+        var scope = AccessScope.ForGroups("actor-A", ["A"]);
+        var detail = await fixture.Query.GetTopologyEdgeAsync(edge.Id, 1000, scope,
+            TestContext.Current.CancellationToken);
+        var list = await fixture.Query.SearchTopologyEdgesAsync(new TopologyEdgeQuery(1000)
+        { ExpiryReadClockUnixNano = 1 }, scope, TestContext.Current.CancellationToken);
+        Assert.Equal(expectedVisible, detail is not null);
+        Assert.Equal(expectedVisible, list.Items.Any(candidate => candidate.Id == edge.Id));
+    }
+
     private sealed class DriverUnavailableException : DbException { }
 
     private sealed class FakeAudit : IAuditSink
@@ -142,12 +165,15 @@ public sealed class TopologyAuditTests
         public ScopedQuery Query { get; }
 
         public Fixture(IAuditSink audit, TopologyGraphSnapshot? snapshot = null,
-            Exception? readFailure = null, long fixedNowNano = 1500)
+            Exception? readFailure = null, long fixedNowNano = 1500,
+            decimal? fixedExpiryNano = null)
         {
             var graph = new TopologyGraphQueryService(new MemorySource(snapshot, readFailure));
             Query = new ScopedQuery(new EventReader(_storage), new ChangeEventReader(_storage),
                 new CorrelationReader(_storage), new EventWriter(_storage), _controlPlane, audit,
-                topology: graph, topologyClock: new FixedTimeProvider(fixedNowNano));
+                topology: graph, topologyClock: new FixedTimeProvider(fixedNowNano),
+                expiryNanoClock: fixedExpiryNano is decimal exact
+                    ? new FixedExpiryNanoClock(exact) : null);
         }
 
         public void Dispose() { _controlPlane.Dispose(); _storage.Dispose(); }
@@ -156,6 +182,11 @@ public sealed class TopologyAuditTests
     private sealed class FixedTimeProvider(long unixNano) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => DateTimeOffset.UnixEpoch.AddTicks(unixNano / 100);
+    }
+
+    private sealed class FixedExpiryNanoClock(decimal unixNano) : ITopologyExpiryNanoClock
+    {
+        public decimal NowUnixNano() => unixNano;
     }
 
     private sealed class MemorySource(TopologyGraphSnapshot? snapshot, Exception? readFailure) : ITopologyGraphSnapshotSource
