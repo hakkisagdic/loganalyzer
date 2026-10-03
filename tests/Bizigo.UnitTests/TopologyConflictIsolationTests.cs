@@ -65,6 +65,49 @@ public sealed class TopologyConflictIsolationTests
         await Assert.ThrowsAsync<TopologyObservedMigrationRequiredException>(() => graph.PathAsync(new(A1, A2, 2000), ScopeA, Ct));
     }
 
+    [Fact]
+    public async Task First_publication_child_conflict_blocks_parent_neighborhood_and_count()
+    {
+        var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9, [])
+        {
+            ConflictCandidates = [new("A", A1, 1000, 5000)],
+            ConflictArcs = [new(A1, A2, "A", "A", 2000, 5000)],
+        }));
+        await Assert.ThrowsAsync<TopologyConflictException>(() => graph.NeighborhoodAsync(new(A1, 3000,
+            FromUnixNano: 1500, ToUnixNano: 2500), ScopeA, Ct));
+        var count = await graph.CountExternalNeighborsAsync(new(A1, 3000,
+            FromUnixNano: 1500, ToUnixNano: 2500), ScopeA, Ct);
+        Assert.Null(count.Count);
+        Assert.Equal("QueryUnavailable", count.Reason);
+    }
+
+    [Fact]
+    public async Task Directed_path_ignores_weakly_connected_conflict_branch()
+    {
+        var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9,
+            [Edge("x-s", A1, A2, "A"), Edge("s-t", A2, B1, "A"), Edge("x-c", A1, B2, "A")])
+        {
+            ConflictCandidates = [new("A", B2, 1500, 3000)],
+        }));
+        var path = await graph.PathAsync(new(A2, B1, 2000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, path.Status);
+        Assert.Equal(new[] { "s-t" }, path.EdgeIds);
+    }
+
+    [Fact]
+    public async Task Known_negative_binding_cannot_fail_unrelated_same_owner_path()
+    {
+        var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9,
+            [Edge("healthy", A1, A2, "A")])
+        {
+            ConflictCandidates = [new("A", null, 1500, 3000)
+                { SourceId = "unbound-U", ResolutionReason = "Unresolved" }],
+        }));
+        Assert.Equal(TopologyGraphResultStatus.Found,
+            (await graph.PathAsync(new(A1, A2, 2000), ScopeA, Ct)).Status);
+        Assert.Single((await graph.SearchEdgesAsync(new(2000), ScopeA, Ct)).Items);
+    }
+
     private static TopologyGraphQueryService Graph() => new(new MemorySource(new TopologyGraphSnapshot(9,
         [Edge("healthy", A1, A2, "A")])
     {

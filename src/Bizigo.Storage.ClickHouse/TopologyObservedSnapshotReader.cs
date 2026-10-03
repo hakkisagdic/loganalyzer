@@ -145,13 +145,18 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
             if (parsed.Length == 0 || parsed.Any(candidate => string.IsNullOrWhiteSpace(candidate.OwnerGroup)
                     || string.IsNullOrWhiteSpace(candidate.SourceId)))
                 throw new InvalidDataException("Published topology conflict context is invalid.");
+            if (parsed.Any(candidate => candidate.ContextVersion != 3
+                    || string.IsNullOrWhiteSpace(candidate.Anchor)
+                    || string.IsNullOrWhiteSpace(candidate.ResolutionReason)))
+                legacy.Add(anchor);
             candidates.AddRange(parsed);
         }
         return result.OrderBy(static pair => pair.Key, StringComparer.Ordinal)
             .Select(pair => new TopologyObservedConflictRow(pair.Key,
                 pair.Value.GroupBy(candidate => (candidate.Fingerprint, candidate.OwnerGroup,
                         candidate.SourceId, candidate.NodeId, candidate.EventTimeNano,
-                        candidate.ParentAnchor, candidate.IsConflictedAnchor))
+                        candidate.ParentAnchor, candidate.IsConflictedAnchor, candidate.Anchor,
+                        candidate.ResolutionReason, candidate.ContextVersion))
                     .Select(group => group.First() with
                     {
                         TraceExpiryNano = group.Min(static candidate => candidate.TraceExpiryNano),

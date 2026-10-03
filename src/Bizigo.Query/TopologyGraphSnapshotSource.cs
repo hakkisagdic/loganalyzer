@@ -68,8 +68,26 @@ public sealed class TopologyGraphSnapshotSource(
             var conflictCandidates = observedSnapshot.Conflicts.SelectMany(marker => marker.Candidates)
                 .Select(candidate => new TopologyConflictProjection(candidate.OwnerGroup, candidate.NodeId,
                     candidate.EventTimeNano, candidate.IsConflictedAnchor ? candidate.TraceExpiryNano
-                        : decimal.Min(candidate.TraceExpiryNano, candidate.ObservedExpiryNano)))
+                        : decimal.Min(candidate.TraceExpiryNano, candidate.ObservedExpiryNano))
+                {
+                    SourceId = candidate.SourceId,
+                    ResolutionReason = candidate.ResolutionReason,
+                })
                 .Distinct().ToArray();
+            var conflictArcs = observedSnapshot.Conflicts.SelectMany(marker =>
+            {
+                var captured = marker.Candidates;
+                return from child in captured
+                       where child.ParentAnchor.Length != 0 && child.NodeId is not null
+                           && child.ResolutionReason == "Resolved"
+                       from parent in captured
+                       where parent.Anchor == child.ParentAnchor && parent.NodeId is not null
+                           && parent.ResolutionReason == "Resolved"
+                       select new TopologyConflictArc(parent.NodeId!, child.NodeId!,
+                           parent.OwnerGroup, child.OwnerGroup, child.EventTimeNano,
+                           decimal.Min(parent.TraceExpiryNano,
+                               decimal.Min(child.TraceExpiryNano, child.ObservedExpiryNano)));
+            }).Distinct().ToArray();
             // A historical edge can identify its own published endpoint, but
             // cannot identify every alternative fingerprint/owner behind an
             // old context-free marker. No scoped readiness is claimed for it.
@@ -80,6 +98,7 @@ public sealed class TopologyGraphSnapshotSource(
                 Evidence = evidence,
                 ConflictedEdges = conflictedEdges,
                 ConflictCandidates = conflictCandidates,
+                ConflictArcs = conflictArcs,
                 ObservedMigrationRequired = unattributed,
             };
         }, cancellationToken);

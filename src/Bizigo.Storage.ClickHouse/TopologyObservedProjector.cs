@@ -94,12 +94,20 @@ public sealed class TopologyObservedProjector(
         foreach (var conflict in conflicts)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT count() FROM topology_span_conflicts "
-                + "WHERE semantic_anchor = {anchor:String} AND candidate_context_json = ''";
+            command.CommandText = "SELECT candidate_context_json FROM topology_span_conflicts "
+                + "WHERE semantic_anchor = {anchor:String}";
             command.AddParameter("anchor", conflict.Anchor);
             command.CommandTimeout = Math.Clamp(context.Options.QueryTimeoutSeconds, 1, 300);
-            if (Convert.ToUInt64(await command.ExecuteScalarAsync(token), CultureInfo.InvariantCulture) != 0)
-                throw new InvalidDataException("Legacy topology conflict requires explicit attribution repair before republishing.");
+            await using var reader = await command.ExecuteReaderAsync(token);
+            while (await reader.ReadAsync(token))
+            {
+                var context = reader.GetString(0);
+                var captured = context.Length == 0 ? null :
+                    JsonSerializer.Deserialize<TopologyConflictCandidate[]>(context, RawSignalCodec.Json);
+                if (captured is null || captured.Length == 0
+                    || captured.Any(static candidate => candidate.ContextVersion != 3))
+                    throw new InvalidDataException("Legacy topology conflict requires explicit attribution repair before republishing.");
+            }
         }
     }
 

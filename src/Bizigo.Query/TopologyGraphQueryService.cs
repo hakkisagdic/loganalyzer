@@ -86,8 +86,8 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var (snapshot, cursor) = await ReadAsync(query.Cursor, fingerprint, cancellationToken);
         var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window)
             .Where(static edge => edge.Relation == TopologyRelation.DependsOn).ToArray();
-        EnsureTraversalReady(snapshot, scope, query.ReadClockUnixNano, window, edges,
-            [query.FromNodeId, query.ToNodeId]);
+        EnsurePathReady(snapshot, scope, query.ReadClockUnixNano, window, edges,
+            query.FromNodeId, query.ToNodeId);
         var path = FindPath(query.FromNodeId, query.ToNodeId, edges);
         if (path.Nodes.Count == 0)
         {
@@ -130,7 +130,7 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var snapshot = await _source.ReadAsync(null, cancellationToken);
         var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window)
             .Where(static edge => edge.Relation == TopologyRelation.DependsOn).ToArray();
-        EnsureTraversalReady(snapshot, scope, query.ReadClockUnixNano, window, edges, query.NodeIds);
+        EnsureAncestorReady(snapshot, scope, query.ReadClockUnixNano, window, edges, query.NodeIds);
         var targets = query.NodeIds.ToHashSet(StringComparer.Ordinal);
         var matches = new List<(string Node, TopologyPathProof[] Paths)>();
         foreach (var candidate in edges.SelectMany(static edge => new[] { edge.FromNode, edge.ToNode })
@@ -228,9 +228,14 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
 
     private static bool CandidateActive(TopologyConflictProjection candidate, AccessScope scope, decimal clock,
         (decimal From, decimal To) window) =>
-        TopologyIdentity.CanReadOwner(scope, candidate.OwnerGroup)
+        candidate.NodeId is not null && TopologyIdentity.CanReadOwner(scope, candidate.OwnerGroup)
         && candidate.EventTimeUnixNano >= window.From && candidate.EventTimeUnixNano < window.To
         && clock < candidate.ExpiresUnixNano;
+
+    private static IEnumerable<TopologyConflictArc> ActiveConflictArcs(TopologyGraphSnapshot snapshot,
+        decimal clock, (decimal From, decimal To) window) => snapshot.ConflictArcs.Where(arc =>
+            arc.ChildEventTimeUnixNano >= window.From && arc.ChildEventTimeUnixNano < window.To
+            && clock < arc.EffectiveExpiryUnixNano);
 
     private static TopologyEdgeProjection[] ConflictedActiveEdges(TopologyGraphSnapshot snapshot, decimal clock,
         (decimal From, decimal To) window) => ActiveEdges(
@@ -242,6 +247,8 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         if (provenance == TopologyProvenance.Declared || relation is not null and not TopologyRelation.DependsOn) return;
         EnsureObservedReady(snapshot);
         if (snapshot.ConflictCandidates.Any(candidate => CandidateActive(candidate, scope, clock, window))
+            || ActiveConflictArcs(snapshot, clock, window).Any(arc =>
+                TopologyIdentity.CanReadEdge(scope, arc.FromOwnerGroup, arc.ToOwnerGroup))
             || ConflictedActiveEdges(snapshot, clock, window).Any(edge =>
                 TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup)))
             throw new TopologyConflictException();
@@ -264,36 +271,65 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         EnsureObservedReady(snapshot);
         if (snapshot.ConflictCandidates.Any(candidate => candidate.NodeId == nodeId
                 && CandidateActive(candidate, scope, clock, window))
+            || ActiveConflictArcs(snapshot, clock, window).Any(arc =>
+                (arc.FromNode == nodeId && TopologyIdentity.CanReadOwner(scope, arc.FromOwnerGroup))
+                || (arc.ToNode == nodeId && TopologyIdentity.CanReadOwner(scope, arc.ToOwnerGroup)))
             || ConflictedActiveEdges(snapshot, clock, window).Any(edge =>
                 (edge.FromNode == nodeId && TopologyIdentity.CanReadOwner(scope, edge.FromOwnerGroup))
                 || (edge.ToNode == nodeId && TopologyIdentity.CanReadOwner(scope, edge.ToOwnerGroup))))
             throw new TopologyConflictException();
     }
 
-    private static void EnsureTraversalReady(TopologyGraphSnapshot snapshot, AccessScope scope, decimal clock,
-        (decimal From, decimal To) window, IReadOnlyList<TopologyEdgeProjection> edges,
-        IReadOnlyList<string> endpoints)
+    private static HashSet<string> Reachable(IReadOnlyList<TopologyEdgeProjection> edges,
+        IEnumerable<string> endpoints, bool reverse)
     {
-        EnsureObservedReady(snapshot);
         var reachable = new HashSet<string>(endpoints, StringComparer.Ordinal);
-        // Reachability is deliberately undirected here: a conflicted candidate
-        // on either frontier may change a shortest/ancestor proof, even when
-        // its original directed row has already been invalidated.
         var queue = new Queue<string>(reachable);
         while (queue.Count != 0)
         {
             var node = queue.Dequeue();
-            foreach (var edge in edges.Where(edge => edge.FromNode == node || edge.ToNode == node))
+            foreach (var edge in edges.Where(edge => reverse ? edge.ToNode == node || !edge.Directed && edge.FromNode == node
+                : edge.FromNode == node || !edge.Directed && edge.ToNode == node))
             {
-                var other = edge.FromNode == node ? edge.ToNode : edge.FromNode;
+                var other = reverse ? edge.FromNode == node && !edge.Directed ? edge.ToNode : edge.FromNode
+                    : edge.FromNode == node ? edge.ToNode : edge.FromNode;
                 if (reachable.Add(other)) queue.Enqueue(other);
             }
         }
+        return reachable;
+    }
+
+    private static void EnsurePathReady(TopologyGraphSnapshot snapshot, AccessScope scope, decimal clock,
+        (decimal From, decimal To) window, IReadOnlyList<TopologyEdgeProjection> edges,
+        string from, string to)
+    {
+        EnsureObservedReady(snapshot);
+        var forward = Reachable(edges, [from], reverse: false);
         if (snapshot.ConflictCandidates.Any(candidate => CandidateActive(candidate, scope, clock, window)
-                && (candidate.NodeId is null || reachable.Contains(candidate.NodeId)))
+                && (forward.Contains(candidate.NodeId!) || candidate.NodeId == to))
+            || ActiveConflictArcs(snapshot, clock, window).Any(arc =>
+                TopologyIdentity.CanReadEdge(scope, arc.FromOwnerGroup, arc.ToOwnerGroup)
+                && (forward.Contains(arc.FromNode) || arc.ToNode == to))
             || ConflictedActiveEdges(snapshot, clock, window).Any(edge => edge.Relation == TopologyRelation.DependsOn
                 && TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup)
-                && (reachable.Contains(edge.FromNode) || reachable.Contains(edge.ToNode))))
+                && (forward.Contains(edge.FromNode) || edge.ToNode == to)))
+            throw new TopologyConflictException();
+    }
+
+    private static void EnsureAncestorReady(TopologyGraphSnapshot snapshot, AccessScope scope, decimal clock,
+        (decimal From, decimal To) window, IReadOnlyList<TopologyEdgeProjection> edges,
+        IReadOnlyList<string> targets)
+    {
+        EnsureObservedReady(snapshot);
+        var upstream = Reachable(edges, targets, reverse: true);
+        if (snapshot.ConflictCandidates.Any(candidate => CandidateActive(candidate, scope, clock, window)
+                && upstream.Contains(candidate.NodeId!))
+            || ActiveConflictArcs(snapshot, clock, window).Any(arc =>
+                TopologyIdentity.CanReadEdge(scope, arc.FromOwnerGroup, arc.ToOwnerGroup)
+                && (upstream.Contains(arc.FromNode) || upstream.Contains(arc.ToNode)))
+            || ConflictedActiveEdges(snapshot, clock, window).Any(edge => edge.Relation == TopologyRelation.DependsOn
+                && TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup)
+                && (upstream.Contains(edge.FromNode) || upstream.Contains(edge.ToNode))))
             throw new TopologyConflictException();
     }
 
