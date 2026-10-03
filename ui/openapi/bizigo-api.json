@@ -1548,6 +1548,80 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": [
+          "topology-read"
+        ],
+        "operationId": "ListTopologyNodes",
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyNodePageDto"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/topology/nodes/{nodeId}": {
@@ -1740,6 +1814,777 @@
                 }
               }
             }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "topology-read"
+        ],
+        "operationId": "GetTopologyNode",
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyNodeDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/v1/topology/edges": {
+      "post": {
+        "tags": [
+          "topology"
+        ],
+        "operationId": "CreateTopologyDeclaredEdge",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopologyDeclaredEdgeInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeVersion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeResult"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeResult"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeResult"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeResult"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeResult"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "topology-read"
+        ],
+        "operationId": "ListTopologyEdges",
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyEdgePageDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/topology/edges/{edgeId}": {
+      "put": {
+        "tags": [
+          "topology"
+        ],
+        "operationId": "UpdateTopologyDeclaredEdge",
+        "parameters": [
+          {
+            "name": "edgeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopologyDeclaredEdgeInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeVersion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeResult"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeResult"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeResult"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeResult"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeResult"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "topology"
+        ],
+        "operationId": "DeleteTopologyDeclaredEdge",
+        "parameters": [
+          {
+            "name": "edgeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeResult"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeResult"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeResult"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeResult"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyDeclaredEdgeResult"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "topology-read"
+        ],
+        "operationId": "GetTopologyEdge",
+        "parameters": [
+          {
+            "name": "edgeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyEdgeDetailDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/v1/topology/nodes/{nodeId}/neighbors": {
+      "get": {
+        "tags": [
+          "topology-read"
+        ],
+        "operationId": "GetTopologyNeighbors",
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyNeighborhoodDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/v1/topology/path": {
+      "get": {
+        "tags": [
+          "topology-read"
+        ],
+        "operationId": "GetTopologyPath",
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyPathDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/v1/topology/ancestors": {
+      "get": {
+        "tags": [
+          "topology-read"
+        ],
+        "operationId": "GetTopologyAncestors",
+        "responses": {
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Gateway Timeout",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyProblemDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopologyAncestorsDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -9311,6 +10156,481 @@
           }
         }
       },
+      "TopologyAncestorsDto": {
+        "required": [
+          "status",
+          "node_id",
+          "paths",
+          "partial",
+          "reason",
+          "published_sequence"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "node_id": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TopologyPathProofDto"
+            }
+          },
+          "partial": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "published_sequence": {
+            "type": "string"
+          }
+        }
+      },
+      "TopologyDeclaredEdgeInput": {
+        "required": [
+          "fromNodeId",
+          "toNodeId",
+          "relation"
+        ],
+        "type": "object",
+        "properties": {
+          "fromNodeId": {
+            "type": "string"
+          },
+          "toNodeId": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          },
+          "version": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "provenance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "TopologyDeclaredEdgeResult": {
+        "required": [
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "edge": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TopologyDeclaredEdgeVersion"
+              }
+            ]
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "TopologyDeclaredEdgeVersion": {
+        "required": [
+          "id",
+          "fromNodeId",
+          "toNodeId",
+          "relation",
+          "fromOwnerGroup",
+          "toOwnerGroup",
+          "directed",
+          "provenance",
+          "confidence",
+          "version",
+          "deletedAt",
+          "validFromUnixNano",
+          "createdAt",
+          "updatedAt",
+          "createdBy",
+          "updatedBy"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fromNodeId": {
+            "type": "string"
+          },
+          "toNodeId": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          },
+          "fromOwnerGroup": {
+            "type": "string"
+          },
+          "toOwnerGroup": {
+            "type": "string"
+          },
+          "directed": {
+            "type": "boolean"
+          },
+          "provenance": {
+            "type": "string"
+          },
+          "confidence": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "version": {
+            "type": "string"
+          },
+          "deletedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "validFromUnixNano": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "updatedBy": {
+            "type": "string"
+          }
+        }
+      },
+      "TopologyEdgeDetailDto": {
+        "required": [
+          "edge",
+          "evidence",
+          "evidence_cursor"
+        ],
+        "type": "object",
+        "properties": {
+          "edge": {
+            "$ref": "#/components/schemas/TopologyEdgeDto"
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TopologyEvidenceDto"
+            }
+          },
+          "evidence_cursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "TopologyEdgeDto": {
+        "required": [
+          "id",
+          "from_node_id",
+          "to_node_id",
+          "relation",
+          "provenance",
+          "directed",
+          "confidence",
+          "from_owner_group",
+          "to_owner_group",
+          "visibility",
+          "first_seen_unix_nano",
+          "last_seen_unix_nano",
+          "effective_expiry_unix_nano",
+          "publication_sequence",
+          "version"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "from_node_id": {
+            "type": "string"
+          },
+          "to_node_id": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          },
+          "provenance": {
+            "type": "string"
+          },
+          "directed": {
+            "type": "boolean"
+          },
+          "confidence": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "from_owner_group": {
+            "type": "string"
+          },
+          "to_owner_group": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string"
+          },
+          "first_seen_unix_nano": {
+            "type": "string"
+          },
+          "last_seen_unix_nano": {
+            "type": "string"
+          },
+          "effective_expiry_unix_nano": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "publication_sequence": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "TopologyEdgePageDto": {
+        "required": [
+          "edges",
+          "cursor",
+          "partial",
+          "reason",
+          "published_sequence"
+        ],
+        "type": "object",
+        "properties": {
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TopologyEdgeDto"
+            }
+          },
+          "cursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "partial": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "published_sequence": {
+            "type": "string"
+          }
+        }
+      },
+      "TopologyEvidenceDto": {
+        "required": [
+          "id",
+          "trace_logical_id",
+          "span_logical_id",
+          "event_time_unix_nano"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "trace_logical_id": {
+            "type": "string"
+          },
+          "span_logical_id": {
+            "type": "string"
+          },
+          "event_time_unix_nano": {
+            "type": "string"
+          }
+        }
+      },
+      "TopologyNeighborDto": {
+        "required": [
+          "node_id",
+          "edge_id",
+          "relation",
+          "provenance",
+          "direction"
+        ],
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string"
+          },
+          "edge_id": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          },
+          "provenance": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string"
+          }
+        }
+      },
+      "TopologyNeighborhoodDto": {
+        "required": [
+          "neighbors",
+          "outside_neighbor_count",
+          "outside_neighbor_reason",
+          "cursor",
+          "partial",
+          "reason",
+          "published_sequence"
+        ],
+        "type": "object",
+        "properties": {
+          "neighbors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TopologyNeighborDto"
+            }
+          },
+          "outside_neighbor_count": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "outside_neighbor_reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "partial": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "published_sequence": {
+            "type": "string"
+          }
+        }
+      },
+      "TopologyNodeDetailDto": {
+        "required": [
+          "node"
+        ],
+        "type": "object",
+        "properties": {
+          "node": {
+            "$ref": "#/components/schemas/TopologyNodeDto"
+          }
+        }
+      },
+      "TopologyNodeDto": {
+        "required": [
+          "id",
+          "kind",
+          "display_name",
+          "owner_group",
+          "enabled",
+          "version",
+          "valid_from_unix_nano",
+          "valid_to_unix_nano"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "owner_group": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "string"
+          },
+          "valid_from_unix_nano": {
+            "type": "string"
+          },
+          "valid_to_unix_nano": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "TopologyNodeInput": {
         "required": [
           "kind",
@@ -9358,6 +10678,42 @@
       },
       "TopologyNodeKind": {
         "type": "integer"
+      },
+      "TopologyNodePageDto": {
+        "required": [
+          "nodes",
+          "cursor",
+          "partial",
+          "reason",
+          "published_sequence"
+        ],
+        "type": "object",
+        "properties": {
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TopologyNodeDto"
+            }
+          },
+          "cursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "partial": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "published_sequence": {
+            "type": "string"
+          }
+        }
       },
       "TopologyNodeVersion": {
         "required": [
@@ -9442,6 +10798,93 @@
           }
         }
       },
+      "TopologyPathDto": {
+        "required": [
+          "status",
+          "nodes",
+          "edge_ids",
+          "cursor",
+          "partial",
+          "reason",
+          "published_sequence"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "edge_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cursor": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "partial": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "published_sequence": {
+            "type": "string"
+          }
+        }
+      },
+      "TopologyPathProofDto": {
+        "required": [
+          "target_node_id",
+          "nodes",
+          "edge_ids"
+        ],
+        "type": "object",
+        "properties": {
+          "target_node_id": {
+            "type": "string"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "edge_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "TopologyProblemDto": {
+        "required": [
+          "reason",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
       "TopologyRegistryResult": {
         "required": [
           "status"
@@ -9512,6 +10955,9 @@
     },
     {
       "name": "topology"
+    },
+    {
+      "name": "topology-read"
     }
   ]
 }

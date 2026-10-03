@@ -577,7 +577,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["ListTopologyNodes"];
         put?: never;
         post: operations["CreateTopologyNode"];
         delete?: never;
@@ -593,10 +593,90 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["GetTopologyNode"];
         put: operations["UpdateTopologyNode"];
         post?: never;
         delete: operations["DeleteTopologyNode"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/topology/edges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ListTopologyEdges"];
+        put?: never;
+        post: operations["CreateTopologyDeclaredEdge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/topology/edges/{edgeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetTopologyEdge"];
+        put: operations["UpdateTopologyDeclaredEdge"];
+        post?: never;
+        delete: operations["DeleteTopologyDeclaredEdge"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/topology/nodes/{nodeId}/neighbors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetTopologyNeighbors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/topology/path": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetTopologyPath"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/topology/ancestors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetTopologyAncestors"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2496,6 +2576,115 @@ export interface components {
             serviceNodeId?: null | string;
             instanceId?: null | string;
         };
+        TopologyAncestorsDto: {
+            status: string;
+            node_id: null | string;
+            paths: components["schemas"]["TopologyPathProofDto"][];
+            partial: boolean;
+            reason: null | string;
+            published_sequence: string;
+        };
+        TopologyDeclaredEdgeInput: {
+            fromNodeId: string;
+            toNodeId: string;
+            relation: string;
+            version?: null | string;
+            provenance?: null | string;
+        };
+        TopologyDeclaredEdgeResult: {
+            /** Format: int32 */
+            status: number | string;
+            edge?: null | components["schemas"]["TopologyDeclaredEdgeVersion"];
+            error?: null | string;
+        };
+        TopologyDeclaredEdgeVersion: {
+            /** Format: uuid */
+            id: string;
+            fromNodeId: string;
+            toNodeId: string;
+            relation: string;
+            fromOwnerGroup: string;
+            toOwnerGroup: string;
+            directed: boolean;
+            provenance: string;
+            /** Format: double */
+            confidence: number | string;
+            version: string;
+            /** Format: date-time */
+            deletedAt: null | string;
+            validFromUnixNano: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            createdBy: string;
+            updatedBy: string;
+        };
+        TopologyEdgeDetailDto: {
+            edge: components["schemas"]["TopologyEdgeDto"];
+            evidence: components["schemas"]["TopologyEvidenceDto"][];
+            evidence_cursor: null | string;
+        };
+        TopologyEdgeDto: {
+            id: string;
+            from_node_id: string;
+            to_node_id: string;
+            relation: string;
+            provenance: string;
+            directed: boolean;
+            /** Format: double */
+            confidence: number | string;
+            from_owner_group: string;
+            to_owner_group: string;
+            visibility: string;
+            first_seen_unix_nano: string;
+            last_seen_unix_nano: string;
+            effective_expiry_unix_nano: null | string;
+            publication_sequence: string;
+            version: string;
+        };
+        TopologyEdgePageDto: {
+            edges: components["schemas"]["TopologyEdgeDto"][];
+            cursor: null | string;
+            partial: boolean;
+            reason: null | string;
+            published_sequence: string;
+        };
+        TopologyEvidenceDto: {
+            id: string;
+            trace_logical_id: string;
+            span_logical_id: string;
+            event_time_unix_nano: string;
+        };
+        TopologyNeighborDto: {
+            node_id: string;
+            edge_id: string;
+            relation: string;
+            provenance: string;
+            direction: string;
+        };
+        TopologyNeighborhoodDto: {
+            neighbors: components["schemas"]["TopologyNeighborDto"][];
+            outside_neighbor_count: null | string;
+            outside_neighbor_reason: null | string;
+            cursor: null | string;
+            partial: boolean;
+            reason: null | string;
+            published_sequence: string;
+        };
+        TopologyNodeDetailDto: {
+            node: components["schemas"]["TopologyNodeDto"];
+        };
+        TopologyNodeDto: {
+            id: string;
+            kind: string;
+            display_name: string;
+            owner_group: string;
+            enabled: boolean;
+            version: string;
+            valid_from_unix_nano: string;
+            valid_to_unix_nano: null | string;
+        };
         TopologyNodeInput: {
             kind: components["schemas"]["TopologyNodeKind"];
             displayName: string;
@@ -2507,6 +2696,13 @@ export interface components {
             version?: null | number | string;
         };
         TopologyNodeKind: number;
+        TopologyNodePageDto: {
+            nodes: components["schemas"]["TopologyNodeDto"][];
+            cursor: null | string;
+            partial: boolean;
+            reason: null | string;
+            published_sequence: string;
+        };
         TopologyNodeVersion: {
             id: string;
             kind: components["schemas"]["TopologyNodeKind"];
@@ -2527,6 +2723,24 @@ export interface components {
             deleted: boolean;
             version: string;
             validFromUnixNano: string;
+        };
+        TopologyPathDto: {
+            status: string;
+            nodes: string[];
+            edge_ids: string[];
+            cursor: null | string;
+            partial: boolean;
+            reason: null | string;
+            published_sequence: string;
+        };
+        TopologyPathProofDto: {
+            target_node_id: string;
+            nodes: string[];
+            edge_ids: string[];
+        };
+        TopologyProblemDto: {
+            reason: string;
+            message: string;
         };
         TopologyRegistryResult: {
             /** Format: int32 */
@@ -3857,6 +4071,85 @@ export interface operations {
             };
         };
     };
+    ListTopologyNodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyNodePageDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+        };
+    };
     CreateTopologyNode: {
         parameters: {
             query?: never;
@@ -3922,6 +4215,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TopologyRegistryResult"];
+                };
+            };
+        };
+    };
+    GetTopologyNode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                nodeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyNodeDetailDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
                 };
             };
         };
@@ -4078,6 +4459,658 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TopologyRegistryResult"];
+                };
+            };
+        };
+    };
+    ListTopologyEdges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyEdgePageDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+        };
+    };
+    CreateTopologyDeclaredEdge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TopologyDeclaredEdgeInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeVersion"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeResult"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeResult"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeResult"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeResult"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeResult"];
+                };
+            };
+        };
+    };
+    GetTopologyEdge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                edgeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyEdgeDetailDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+        };
+    };
+    UpdateTopologyDeclaredEdge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                edgeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TopologyDeclaredEdgeInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeVersion"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeResult"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeResult"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeResult"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeResult"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeResult"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeResult"];
+                };
+            };
+        };
+    };
+    DeleteTopologyDeclaredEdge: {
+        parameters: {
+            query: {
+                version: number | string;
+            };
+            header?: never;
+            path: {
+                edgeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeResult"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeResult"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeResult"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeResult"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeResult"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyDeclaredEdgeResult"];
+                };
+            };
+        };
+    };
+    GetTopologyNeighbors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                nodeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyNeighborhoodDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+        };
+    };
+    GetTopologyPath: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyPathDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+        };
+    };
+    GetTopologyAncestors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyAncestorsDto"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
+                };
+            };
+            /** @description Gateway Timeout */
+            504: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TopologyProblemDto"];
                 };
             };
         };
