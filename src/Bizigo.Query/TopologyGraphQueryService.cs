@@ -93,8 +93,8 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         {
             var partial = HasHiddenIncident(query.FromNodeId, snapshot, scope, query.ReadClockUnixNano, window)
                 || HasHiddenIncident(query.ToNodeId, snapshot, scope, query.ReadClockUnixNano, window);
-            var unresolved = UnresolvedForNode(snapshot, scope, query.ReadClockUnixNano, window,
-                query.ToNodeId);
+            var unresolved = UnresolvedForUpstream(snapshot, scope, query.ReadClockUnixNano, window,
+                edges, [query.ToNodeId]);
             return new(partial || unresolved is not null ? TopologyGraphResultStatus.NotVerified
                     : TopologyGraphResultStatus.Unreachable,
                 [], [], null, snapshot.PublishedSequence, partial ? "HiddenBoundary" : unresolved);
@@ -134,8 +134,8 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window)
             .Where(static edge => edge.Relation == TopologyRelation.DependsOn).ToArray();
         EnsureAncestorReady(snapshot, scope, query.ReadClockUnixNano, window, edges, query.NodeIds);
-        var unresolvedTarget = query.NodeIds.Select(node => UnresolvedForNode(snapshot, scope,
-            query.ReadClockUnixNano, window, node)).FirstOrDefault(static reason => reason is not null);
+        var unresolvedTarget = UnresolvedForUpstream(snapshot, scope, query.ReadClockUnixNano,
+            window, edges, query.NodeIds);
         if (unresolvedTarget is not null)
             return new(TopologyGraphResultStatus.NotVerified, null, [], snapshot.PublishedSequence,
                 unresolvedTarget);
@@ -179,7 +179,9 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             .ThenBy(static neighbor => neighbor.Direction).ToArray();
         var externalCount = active.Select(edge => ExternalNeighbor(query.NodeId, edge, scope))
             .Where(static node => node is not null).Distinct(StringComparer.Ordinal).Count();
-        var unresolved = UnresolvedForNode(snapshot, scope, query.ReadClockUnixNano, window, query.NodeId);
+        var unresolved = query.Relation is null or TopologyRelation.DependsOn
+            ? UnresolvedForNode(snapshot, scope, query.ReadClockUnixNano, window, query.NodeId)
+            : null;
         var page = Page(neighbors, query.PageSize, cursor?.LastKey, NeighborKey, snapshot.PublishedSequence, fingerprint);
         return new TopologyNeighborhoodResult(page.Items, unresolved is null ? externalCount : null,
             unresolved, page.Cursor, page.PublishedSequence)
@@ -248,6 +250,19 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             && item.ChildEventTimeUnixNano >= window.From && item.ChildEventTimeUnixNano < window.To
             && clock < item.ChildExpiryUnixNano)
         .Select(static item => item.Reason).Order(StringComparer.Ordinal).FirstOrDefault();
+
+    private static string? UnresolvedForUpstream(TopologyGraphSnapshot snapshot, AccessScope scope, decimal clock,
+        (decimal From, decimal To) window, IReadOnlyList<TopologyEdgeProjection> edges,
+        IEnumerable<string> targets)
+    {
+        var upstream = Reachable(edges, targets, reverse: true);
+        return snapshot.UnresolvedParents
+            .Where(item => upstream.Contains(item.ChildNodeId)
+                && TopologyIdentity.CanReadOwner(scope, item.OwnerGroup)
+                && item.ChildEventTimeUnixNano >= window.From && item.ChildEventTimeUnixNano < window.To
+                && clock < item.ChildExpiryUnixNano)
+            .Select(static item => item.Reason).Order(StringComparer.Ordinal).FirstOrDefault();
+    }
 
     private static IEnumerable<TopologyConflictArc> ActiveConflictArcs(TopologyGraphSnapshot snapshot,
         decimal clock, (decimal From, decimal To) window) => snapshot.ConflictArcs.Where(arc =>
@@ -360,15 +375,21 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         IReadOnlyList<string> targets)
     {
         EnsureObservedReady(snapshot);
-        var upstream = Reachable(edges, targets, reverse: true);
+        var conflicted = ActiveConflictArcs(snapshot, clock, window)
+            .Where(arc => TopologyIdentity.CanReadEdge(scope, arc.FromOwnerGroup, arc.ToOwnerGroup))
+            .Select(static arc => (From: arc.FromNode, To: arc.ToNode))
+            .Concat(ConflictedActiveEdges(snapshot, clock, window)
+                .Where(edge => edge.Relation == TopologyRelation.DependsOn
+                    && TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup))
+                .Select(static edge => (From: edge.FromNode, To: edge.ToNode))).ToArray();
+        var possible = edges.Select(static edge => (From: edge.FromNode, To: edge.ToNode))
+            .Concat(conflicted).ToArray();
+        var upstream = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var target in targets)
+            upstream.UnionWith(ReachableDirected(possible, target, reverse: true));
         if (snapshot.ConflictCandidates.Any(candidate => CandidateActive(candidate, scope, clock, window)
                 && upstream.Contains(candidate.NodeId!))
-            || ActiveConflictArcs(snapshot, clock, window).Any(arc =>
-                TopologyIdentity.CanReadEdge(scope, arc.FromOwnerGroup, arc.ToOwnerGroup)
-                && (upstream.Contains(arc.FromNode) || upstream.Contains(arc.ToNode)))
-            || ConflictedActiveEdges(snapshot, clock, window).Any(edge => edge.Relation == TopologyRelation.DependsOn
-                && TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup)
-                && (upstream.Contains(edge.FromNode) || upstream.Contains(edge.ToNode))))
+            || conflicted.Any(arc => upstream.Contains(arc.To)))
             throw new TopologyConflictException();
     }
 

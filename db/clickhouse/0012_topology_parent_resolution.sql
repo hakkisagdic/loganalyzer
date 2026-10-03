@@ -9,5 +9,8 @@ CREATE TABLE IF NOT EXISTS topology_parent_resolution
     captured_context_json String,
     publication_seq UInt64
 )
-ENGINE = ReplacingMergeTree(publication_seq)
-ORDER BY (child_anchor, child_fingerprint);
+-- Never replace a committed decision with a still-unpublished retry. The
+-- reader filters by watermark before argMax; physical merges must retain every
+-- publication sequence so an older committed decision remains recoverable.
+ENGINE = MergeTree
+ORDER BY (child_anchor, child_fingerprint, publication_seq);

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using System.Text.Json;
 using Bizigo.Contracts;
 using Bizigo.ControlPlane;
@@ -105,8 +106,167 @@ public sealed class TopologyConflictIsolationIntegrationTests(DevStackFixture st
             new(seed.BService1, seed.ReadClock, FromUnixNano: from, ToUnixNano: to), seed.ScopeB, Ct);
         Assert.Null(outside.Count);
         Assert.Equal("QueryUnavailable", outside.Reason);
+        // The earlier parent is admission context for the child conflict, not
+        // an independently conflicted point in its own disjoint time window.
+        var parentFrom = seed.ReadClock - 2_500_000_000m;
+        var parentTo = seed.ReadClock - 1_500_000_000m;
+        var parentOnly = await seed.Query.GetTopologyNeighborhoodAsync(new(seed.BService1, seed.ReadClock,
+            FromUnixNano: parentFrom, ToUnixNano: parentTo), seed.ScopeB, Ct);
+        Assert.Equal(0, parentOnly.ExternalNeighborCount);
+        Assert.Null(parentOnly.ExternalNeighborReason);
+        Assert.Empty((await seed.Query.SearchTopologyEdgesAsync(new(seed.ReadClock,
+            Provenance: TopologyProvenance.Observed, FromUnixNano: parentFrom,
+            ToUnixNano: parentTo), seed.ScopeB, Ct)).Items);
         Assert.NotEmpty((await seed.Query.SearchTopologyEdgesAsync(new(seed.ReadClock,
             Provenance: TopologyProvenance.Observed), seed.ScopeA, Ct)).Items);
+    }
+
+    [Fact, Trait("Category", "Integration")]
+    public async Task Expired_conflicted_child_does_not_extend_impact_to_live_parent()
+    {
+        await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var seed = await SeedAsync(fixture);
+        var trace = Guid.NewGuid().ToString("N");
+        var childTime = checked((ulong)(seed.ReadClock - 1_000_000_000m));
+        var owner = seed.ScopeB.OwnerGroups.Single();
+        var parent = Span(Guid.NewGuid(), trace, "abababababababab", "", "expiry-parent",
+            seed.BSource, owner, seed.BService1, childTime - 1000)
+            with { RetentionDays = 3 };
+        var child = Span(Guid.NewGuid(), trace, "cdcdcdcdcdcdcdcd", "abababababababab",
+            "expiry-child", seed.BSource, owner, seed.BService2, childTime)
+            with { RetentionDays = 1, ObservedRetentionDays = 1 };
+        await seed.Writer.WriteAsync([parent, child, Reenvelope(child) with
+        { Topology = child.Topology! with { ServiceNodeId = seed.BAlternate } }], Ct);
+        var expiredClock = (decimal)childTime + TopologyExpiry.NanosecondsPerDay + 1;
+        var parentOnly = await seed.Query.GetTopologyNeighborhoodAsync(new(seed.BService1,
+            expiredClock, FromUnixNano: childTime - 2000, ToUnixNano: childTime + 2000), seed.ScopeB, Ct);
+        Assert.Equal(0, parentOnly.ExternalNeighborCount);
+        Assert.Null(parentOnly.ExternalNeighborReason);
+        Assert.Empty((await seed.Query.SearchTopologyEdgesAsync(new(expiredClock,
+            Provenance: TopologyProvenance.Observed,
+            FromUnixNano: childTime - 2000, ToUnixNano: childTime + 2000), seed.ScopeB, Ct)).Items);
+    }
+
+    [Fact, Trait("Category", "Integration")]
+    public async Task Pending_parent_resolution_keeps_committed_missing_decision_after_merge()
+    {
+        await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var seed = await SeedAsync(fixture);
+        var registry = new TopologyRegistry(fixture.Factory);
+        var owner = seed.ScopeB.OwnerGroups.Single();
+        var parentNode = (await registry.CreateAsync(seed.ScopeB, true,
+            new(TopologyNodeKind.Service, "pending-parent", owner, true, []), Ct)).Node!.Id;
+        var childNode = (await registry.CreateAsync(seed.ScopeB, true,
+            new(TopologyNodeKind.Service, "pending-child", owner, true, []), Ct)).Node!.Id;
+        var trace = Guid.NewGuid().ToString("N");
+        var parentTime = checked((ulong)(seed.ReadClock - 2_000_000_000m));
+        var child = Span(Guid.NewGuid(), trace, "eeeeeeeeeeeeeeee", "ffffffffffffffff",
+            "pending-child", seed.BSource, owner, childNode, parentTime + 1000);
+        var parent = Span(Guid.NewGuid(), trace, "ffffffffffffffff", "",
+            "pending-parent", seed.BSource, owner, parentNode, parentTime);
+        await seed.Writer.WriteAsync([child], Ct);
+        var before = await seed.Query.GetTopologyPathAsync(new(parentNode, childNode, seed.ReadClock), seed.ScopeB, Ct);
+        Assert.Equal(TopologyGraphResultStatus.NotVerified, before.Status);
+        Assert.Equal("MissingParent", before.Reason);
+
+        var publisher = Publisher(fixture);
+        var crashed = new TelemetryWriter(fixture.Storage, fixture.Owners,
+            new TopologyObservedProjector(fixture.Storage, publisher.PublishAsync,
+                new StopAfterObservedInsert(), publisher.ReadPendingKeyAsync));
+        await Assert.ThrowsAsync<IOException>(() => crashed.WriteAsync([parent], Ct));
+        Assert.NotNull(await publisher.ReadPendingKeyAsync(Ct));
+        await fixture.SqlAsync("OPTIMIZE TABLE topology_parent_resolution FINAL");
+        var stillCommitted = await seed.Query.GetTopologyPathAsync(new(parentNode, childNode,
+            seed.ReadClock), seed.ScopeB, Ct);
+        Assert.Equal(before.Status, stillCommitted.Status);
+        Assert.Equal(before.Reason, stillCommitted.Reason);
+        var count = await seed.Query.CountExternalTopologyNeighborsAsync(new(childNode, seed.ReadClock), seed.ScopeB, Ct);
+        Assert.Null(count.Count);
+        Assert.Equal("MissingParent", count.Reason);
+
+        var recovered = new TopologyObservedProjector(fixture.Storage, publisher.PublishAsync,
+            readPendingKey: publisher.ReadPendingKeyAsync);
+        await recovered.ProjectAsync([parent], Ct);
+        Assert.Null(await publisher.ReadPendingKeyAsync(Ct));
+        var after = await seed.Query.GetTopologyPathAsync(new(parentNode, childNode, seed.ReadClock), seed.ScopeB, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, after.Status);
+        Assert.Single(after.EdgeIds);
+    }
+
+    [Fact, Trait("Category", "Integration")]
+    public async Task Frozen_v2_conflict_manifest_replays_exact_old_rowset_then_requires_migration()
+    {
+        await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var publisher = Publisher(fixture);
+        var key = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
+        var anchor = new string('a', 64);
+        var first = new string('b', 64);
+        var second = new string('c', 64);
+        // Frozen d32b3be v2 candidate/batch shape. Do not serialize the
+        // current TopologyConflictCandidate: its new fields change row bytes.
+        var candidate = new
+        {
+            Fingerprint = first, OwnerGroup = "legacy-owner", SourceId = "legacy-source",
+            NodeId = (string?)null, EventTimeNano = 1000UL,
+            TraceExpiryNano = 3000m, ObservedExpiryNano = 3000m,
+            ParentAnchor = string.Empty, IsConflictedAnchor = true,
+        };
+        var context = JsonSerializer.Serialize(new[] { candidate }, RawSignalCodec.Json);
+        var payload = JsonSerializer.Serialize(new
+        {
+            PublicationKey = key, Edges = Array.Empty<object>(),
+            Conflicts = new[] { new
+            {
+                Anchor = anchor, FirstFingerprint = first, ConflictingFingerprint = second,
+                Candidates = new[] { candidate },
+            } },
+        }, RawSignalCodec.Json);
+        var edgeColumns = new[]
+        {
+            "owner_group", "child_owner_group", "parent_owner_group", "from_node_id", "to_node_id",
+            "relation", "directed", "provenance", "confidence", "edge_id", "trace_logical_id",
+            "parent_span_logical_id", "span_logical_id", "parent_semantic_anchor", "child_semantic_anchor",
+            "parent_fingerprint", "child_fingerprint", "parent_source_id", "child_source_id",
+            "parent_node_binding_revision", "child_node_binding_revision", "parent_owner_history_revision",
+            "child_owner_history_revision", "parent_node_history_revision", "child_node_history_revision",
+            "parent_event_time_nano", "child_event_time_nano", "first_seen", "last_seen",
+            "parent_occurrence_ids", "child_occurrence_ids", "evidence_occurrence_ids",
+            "parent_trace_expiry", "child_trace_expiry", "observed_expiry", "expires_nano",
+            "fingerprint", "publication_seq", "ttl_at", "ttl_supported",
+        };
+        var conflictColumns = new[]
+        {
+            "semantic_anchor", "first_fingerprint", "conflicting_fingerprint",
+            "candidate_context_json", "publication_seq",
+        };
+        var oldRowset = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            EdgeColumns = edgeColumns, Edges = Array.Empty<object[]>(),
+            ConflictColumns = conflictColumns,
+            Conflicts = new[] { new object[] { anchor, first, second, context, 0UL } },
+        }, RawSignalCodec.Json);
+        var rowsetHash = RawSignalEnvelope.Hash(oldRowset);
+        var payloadHash = RawSignalEnvelope.Hash(Encoding.UTF8.GetBytes(payload));
+        await Assert.ThrowsAsync<IOException>(() => publisher.PublishAsync(key,
+            (_, _) => throw new IOException("Reserved legacy pending publication."), Ct));
+        Assert.Equal(key, await publisher.ReadPendingKeyAsync(Ct));
+        await fixture.SqlAsync("INSERT INTO topology_projection_batches "
+            + "(publication_key,payload_sha256,rowset_sha256,edge_count,conflict_count,payload_json) VALUES ('"
+            + key + "','" + payloadHash + "','" + rowsetHash + "',0,1,'" + payload + "')");
+
+        var restarted = new TopologyObservedProjector(fixture.Storage, publisher.PublishAsync,
+            readPendingKey: publisher.ReadPendingKeyAsync);
+        await restarted.ProjectAsync([], Ct);
+        Assert.Null(await publisher.ReadPendingKeyAsync(Ct));
+        Assert.Equal("1", (await fixture.SqlAsync("SELECT count() FROM topology_span_conflicts "
+            + "WHERE semantic_anchor = '" + anchor + "'")).Trim());
+        var stored = (await fixture.SqlAsync("SELECT candidate_context_json FROM topology_span_conflicts "
+            + "WHERE semantic_anchor = '" + anchor + "' FORMAT TSVRaw")).Trim();
+        Assert.Equal(context, stored);
+        var watermark = (await new TopologyPublicationRevisionSource(fixture.Factory,
+            new TopologyPublicationWatermarkReader(fixture.Storage)).ReadAsync(Ct)).ClickHouseWatermark;
+        Assert.False((await new TopologyObservedSnapshotReader(fixture.Storage)
+            .CheckReadinessAsync(watermark, Ct)).Usable);
     }
 
     [Fact, Trait("Category", "Integration")]
@@ -335,6 +495,15 @@ public sealed class TopologyConflictIsolationIntegrationTests(DevStackFixture st
     {
         var watermark = new TopologyPublicationWatermarkReader(fixture.Storage);
         return new(fixture.Factory, watermark, new TopologyPublicationWatermarkWriter(watermark, fixture.Storage));
+    }
+
+    private sealed class StopAfterObservedInsert : ITopologyProjectionCheckpoints
+    {
+        public Task ReachAsync(string stage, CancellationToken cancellationToken)
+        {
+            Assert.Equal("after-observed-db-before-publish", stage);
+            throw new IOException("Simulated crash before PG publication commit.");
+        }
     }
 
     private static TelemetryRecord Reenvelope(TelemetryRecord record)

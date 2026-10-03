@@ -66,9 +66,9 @@ public sealed class TopologyGraphSnapshotSource(
             }
 
             var conflictCandidates = observedSnapshot.Conflicts.SelectMany(marker => marker.Candidates)
+                .Where(static candidate => candidate.IsConflictedAnchor)
                 .Select(candidate => new TopologyConflictProjection(candidate.OwnerGroup, candidate.NodeId,
-                    candidate.EventTimeNano, candidate.IsConflictedAnchor ? candidate.TraceExpiryNano
-                        : decimal.Min(candidate.TraceExpiryNano, candidate.ObservedExpiryNano))
+                    candidate.EventTimeNano, candidate.TraceExpiryNano)
                 {
                     SourceId = candidate.SourceId,
                     ResolutionReason = candidate.ResolutionReason,

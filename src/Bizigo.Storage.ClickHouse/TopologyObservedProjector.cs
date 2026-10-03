@@ -60,6 +60,13 @@ public sealed class TopologyObservedProjector(
     private sealed record Manifest(TopologyProjectionBatch Batch, string Payload, string PayloadHash,
         string RowsetHash, uint EdgeCount, uint ConflictCount);
 
+    // Frozen d32b3be physical context layout. A pending v2 manifest is
+    // deserialized into the expanded candidate type, but its row bytes must
+    // remain the exact v2 shape when its immutable rowset is resumed.
+    private sealed record ConflictCandidateV2(string Fingerprint, string OwnerGroup, string SourceId,
+        string? NodeId, ulong EventTimeNano, decimal TraceExpiryNano, decimal ObservedExpiryNano,
+        string ParentAnchor, bool IsConflictedAnchor);
+
     public async Task ProjectAsync(IReadOnlyList<TelemetryRecord> records, CancellationToken cancellationToken)
     {
         // A previous process may have inserted only part of an older A batch.
@@ -307,8 +314,18 @@ public sealed class TopologyObservedProjector(
         if (legacy) return [conflict.Anchor, conflict.FirstFingerprint, conflict.ConflictingFingerprint, sequence];
         if (conflict.Candidates.Count == 0)
             throw new InvalidDataException("A topology conflict needs admission-captured candidate context.");
+        var version = conflict.Candidates[0].ContextVersion;
+        if (conflict.Candidates.Any(candidate => candidate.ContextVersion != version)
+            || version is not (0 or 3))
+            throw new InvalidDataException("Mixed or unknown topology conflict context version.");
+        var context = version == 0
+            ? JsonSerializer.Serialize(conflict.Candidates.Select(candidate => new ConflictCandidateV2(
+                candidate.Fingerprint, candidate.OwnerGroup, candidate.SourceId, candidate.NodeId,
+                candidate.EventTimeNano, candidate.TraceExpiryNano, candidate.ObservedExpiryNano,
+                candidate.ParentAnchor, candidate.IsConflictedAnchor)).ToArray(), RawSignalCodec.Json)
+            : JsonSerializer.Serialize(conflict.Candidates, RawSignalCodec.Json);
         return [conflict.Anchor, conflict.FirstFingerprint, conflict.ConflictingFingerprint,
-            JsonSerializer.Serialize(conflict.Candidates, RawSignalCodec.Json), sequence];
+            context, sequence];
     }
 
     private static object[] ParentResolutionRow(TopologyParentResolution item, ulong sequence) =>
