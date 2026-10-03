@@ -219,6 +219,30 @@ public sealed class TopologyGraphTests
             999, 1001, ScopeA, Ct))?.Edge.Id);
     }
 
+    [Fact]
+    public async Task Explicit_window_evidence_cursor_continues_and_rejects_window_change()
+    {
+        var edge = Edge("old-window-evidence", R, A, provenance: TopologyProvenance.Observed);
+        var asOf = 3m * TopologyExpiry.NanosecondsPerDay;
+        var evidence = new[]
+        {
+            new TopologyEvidenceReference(edge.Id, "occ-1", "trace", "parent", 999),
+            new TopologyEvidenceReference(edge.Id, "occ-2", "trace", "child", 1000),
+        };
+        var query = new TopologyGraphQueryService(new MemorySource(new(9, [edge]) { Evidence = evidence }));
+        var first = await query.GetEdgeAsync(edge.Id, asOf, 999, 1001, ScopeA, null, 1, Ct);
+        Assert.NotNull(first);
+        Assert.Equal("occ-1", Assert.Single(first.Evidence).Id);
+        Assert.NotNull(first.EvidenceCursor);
+        var second = await query.GetEdgeAsync(edge.Id, asOf, 999, 1001, ScopeA,
+            first.EvidenceCursor, 1, Ct);
+        Assert.NotNull(second);
+        Assert.Equal("occ-2", Assert.Single(second.Evidence).Id);
+        Assert.Null(second.EvidenceCursor);
+        await Assert.ThrowsAsync<TopologyCursorException>(() => query.GetEdgeAsync(
+            edge.Id, asOf, 998, 1001, ScopeA, first.EvidenceCursor, 1, Ct));
+    }
+
     private static TopologyGraphQueryService Query(IReadOnlyList<TopologyEdgeProjection> edges) =>
         new(new MemorySource(new(9, edges)));
 

@@ -77,6 +77,12 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         => GetEdgeCoreAsync(edgeId, readClockUnixNano, scope, null, MaxPageSize,
             fromUnixNano, toUnixNano, cancellationToken);
 
+    public Task<TopologyEdgeDetail?> GetEdgeAsync(string edgeId, decimal readClockUnixNano,
+        decimal fromUnixNano, decimal toUnixNano, AccessScope scope,
+        string? evidenceCursor, int evidencePageSize, CancellationToken cancellationToken = default)
+        => GetEdgeCoreAsync(edgeId, readClockUnixNano, scope, evidenceCursor, evidencePageSize,
+            fromUnixNano, toUnixNano, cancellationToken);
+
     private async Task<TopologyEdgeDetail?> GetEdgeCoreAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
         string? evidenceCursor, int evidencePageSize, decimal? fromUnixNano, decimal? toUnixNano,
         CancellationToken cancellationToken)

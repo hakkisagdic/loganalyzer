@@ -21,6 +21,11 @@ public partial interface IScopedQuery
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("Topology graph scoped evidence window is not configured.");
 
+    Task<TopologyEdgeDetail?> GetTopologyEdgeAsync(string edgeId, decimal readClockUnixNano,
+        decimal fromUnixNano, decimal toUnixNano, AccessScope scope,
+        string? evidenceCursor, int evidencePageSize, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Topology graph scoped evidence paging is not configured.");
+
     Task<IReadOnlyList<TopologySourceNode>> ResolveTopologySourceNodesAsync(
         IReadOnlyList<string> sourceIds,
         AccessScope scope,
