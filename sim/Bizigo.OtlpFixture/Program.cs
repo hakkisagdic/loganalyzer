@@ -12,6 +12,11 @@ using Microsoft.Extensions.Options;
 
 // Explicit test executable. No fault gates or filesystem object adapters are
 // registered by the production API. All addresses bind only to loopback.
+if (args.Length == 2 && args[0] == "--topology-crash")
+{
+    await TopologyCrashHost.RunAsync(args[1]);
+    return;
+}
 if (args.Length == 2 && args[0] == "--evidence-summary")
 {
     var bundle = Bizigo.Evidence.BundleSerializer.Deserialize(await File.ReadAllTextAsync(args[1]));

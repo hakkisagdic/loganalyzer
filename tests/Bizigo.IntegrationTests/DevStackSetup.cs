@@ -87,6 +87,14 @@ public static class DevStackSetup
         await using var db = await factory.CreateDbContextAsync(cancellationToken);
         await db.Database.MigrateAsync(cancellationToken);
 
+        await using var reset = await db.Database.BeginTransactionAsync(cancellationToken);
+        // PG is shared, while every test gets a fresh CH database. Receipts and
+        // pending reservations belong to that same derived publication epoch;
+        // retaining either while resetting sequence zero contaminates the next test.
+        await db.Database.ExecuteSqlRawAsync("""
+            DELETE FROM bizigo.topology_publication_pending;
+            DELETE FROM bizigo.topology_publication_receipts;
+            """, cancellationToken);
         await db.RawManifest.ExecuteDeleteAsync(cancellationToken);
         await db.Sources.ExecuteDeleteAsync(cancellationToken);
         await db.SourceOwnershipHistory.ExecuteDeleteAsync(cancellationToken);
@@ -98,6 +106,7 @@ public static class DevStackSetup
         await db.TopologyNodeHistory.ExecuteDeleteAsync(cancellationToken);
         await db.TopologyNodes.ExecuteDeleteAsync(cancellationToken);
         await db.TopologyReadState.ExecuteDeleteAsync(cancellationToken);
+        await reset.CommitAsync(cancellationToken);
 
         return factory;
     }
