@@ -33,6 +33,12 @@ public sealed partial class ScopedQuery
             Summary(readClockUnixNano, evidencePageSize, evidenceCursor is not null),
             () => Topology.GetEdgeAsync(edgeId, readClockUnixNano, scope, evidenceCursor, evidencePageSize, cancellationToken),
             result => result?.Evidence.Count ?? 0);
+    public Task<TopologyEdgeDetail?> GetTopologyEdgeAsync(string edgeId, decimal readClockUnixNano,
+        decimal fromUnixNano, decimal toUnixNano, AccessScope scope,
+        CancellationToken cancellationToken = default) => AuditedTopologyAsync("edges.detail", scope,
+            Summary(readClockUnixNano, 1, false),
+            () => Topology.GetEdgeAsync(edgeId, readClockUnixNano, fromUnixNano, toUnixNano,
+                scope, cancellationToken), result => result?.Evidence.Count ?? 0);
 
     public async Task<IReadOnlyList<TopologySourceNode>> ResolveTopologySourceNodesAsync(
         IReadOnlyList<string> sourceIds,

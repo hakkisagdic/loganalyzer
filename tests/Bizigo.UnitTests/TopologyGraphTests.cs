@@ -205,6 +205,20 @@ public sealed class TopologyGraphTests
             query.GetEdgeAsync(edge.Id, 1000, AccessScope.ForGroups("other", ["A"]), first.EvidenceCursor, 200, Ct));
     }
 
+    [Fact]
+    public async Task Scoped_edge_detail_uses_same_explicit_window_as_found_path()
+    {
+        var edge = Edge("old-observed", R, A, provenance: TopologyProvenance.Observed);
+        var query = Query([edge]);
+        var asOf = 3m * TopologyExpiry.NanosecondsPerDay;
+        var path = await query.PathAsync(new(R, A, asOf,
+            FromUnixNano: 999, ToUnixNano: 1001), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, path.Status);
+        Assert.Null(await query.GetEdgeAsync(edge.Id, asOf, ScopeA, Ct));
+        Assert.Equal(edge.Id, (await query.GetEdgeAsync(edge.Id, asOf,
+            999, 1001, ScopeA, Ct))?.Edge.Id);
+    }
+
     private static TopologyGraphQueryService Query(IReadOnlyList<TopologyEdgeProjection> edges) =>
         new(new MemorySource(new(9, edges)));
 

@@ -9,6 +9,16 @@ namespace Bizigo.Query;
 public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource source)
 {
     private const int MaxPageSize = 200;
+    private static readonly IComparer<IReadOnlyList<string>> OrdinalSequence =
+        Comparer<IReadOnlyList<string>>.Create((left, right) =>
+        {
+            for (var index = 0; index < Math.Min(left.Count, right.Count); index++)
+            {
+                var comparison = string.CompareOrdinal(left[index], right[index]);
+                if (comparison != 0) return comparison;
+            }
+            return left.Count.CompareTo(right.Count);
+        });
     private readonly ITopologyGraphSnapshotSource _source = source ?? throw new ArgumentNullException(nameof(source));
 
     public async Task<TopologyGraphPage<TopologyNodeProjection>> SearchNodesAsync(TopologyNodeQuery query, AccessScope scope,
@@ -53,19 +63,31 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
 
     public Task<TopologyEdgeDetail?> GetEdgeAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
         CancellationToken cancellationToken = default) =>
-        GetEdgeAsync(edgeId, readClockUnixNano, scope, null, MaxPageSize, cancellationToken);
+        GetEdgeCoreAsync(edgeId, readClockUnixNano, scope, null, MaxPageSize, null, null, cancellationToken);
 
-    public async Task<TopologyEdgeDetail?> GetEdgeAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
+    public Task<TopologyEdgeDetail?> GetEdgeAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
         string? evidenceCursor, int evidencePageSize, CancellationToken cancellationToken = default)
+        => GetEdgeCoreAsync(edgeId, readClockUnixNano, scope, evidenceCursor, evidencePageSize,
+            null, null, cancellationToken);
+
+    public Task<TopologyEdgeDetail?> GetEdgeAsync(string edgeId, decimal readClockUnixNano,
+        decimal fromUnixNano, decimal toUnixNano, AccessScope scope,
+        CancellationToken cancellationToken = default)
+        => GetEdgeCoreAsync(edgeId, readClockUnixNano, scope, null, MaxPageSize,
+            fromUnixNano, toUnixNano, cancellationToken);
+
+    private async Task<TopologyEdgeDetail?> GetEdgeCoreAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
+        string? evidenceCursor, int evidencePageSize, decimal? fromUnixNano, decimal? toUnixNano,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(edgeId); ValidateScopeAndPage(scope, evidencePageSize);
+        var window = ResolveWindow(readClockUnixNano, fromUnixNano, toUnixNano);
         var fingerprint = Fingerprint("edge-evidence", scope, edgeId,
-            readClockUnixNano.ToString(CultureInfo.InvariantCulture));
+            readClockUnixNano.ToString(CultureInfo.InvariantCulture), WindowPart(window));
         var (snapshot, cursor) = await ReadAsync(evidenceCursor, fingerprint, cancellationToken);
-        var window = ResolveWindow(readClockUnixNano, null, null);
         var visible = VisibleActiveEdges(snapshot, scope, readClockUnixNano, window).ToArray();
         if (!visible.Any(candidate => candidate.Id == edgeId && candidate.Provenance == TopologyProvenance.Declared))
-            EnsureEdgeDetailReady(snapshot, edgeId, scope, readClockUnixNano);
+            EnsureEdgeDetailReady(snapshot, edgeId, scope, readClockUnixNano, window);
         var edge = visible
             .SingleOrDefault(candidate => candidate.Id == edgeId);
         if (edge is null) return null;
@@ -198,8 +220,8 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
                 var best = group.Select(target => (Target: target, Path: FindPath(candidate, target, edges)))
                     .Where(static item => item.Path.EdgeIds.Count > 0)
                     .OrderBy(static item => item.Path.EdgeIds.Count)
-                    .ThenBy(static item => item.Target, StringComparer.Ordinal)
-                    .ThenBy(static item => string.Join("\0", item.Path.EdgeIds), StringComparer.Ordinal)
+                    .ThenBy(static item => item.Path.Nodes, OrdinalSequence)
+                    .ThenBy(static item => item.Path.EdgeIds, OrdinalSequence)
                     .FirstOrDefault();
                 if (best.Target is null) break;
                 witnesses.Add(new(best.Target, best.Path.Nodes, best.Path.EdgeIds));
@@ -346,10 +368,9 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
     }
 
     private static void EnsureEdgeDetailReady(TopologyGraphSnapshot snapshot, string edgeId,
-        AccessScope scope, decimal clock)
+        AccessScope scope, decimal clock, (decimal From, decimal To) window)
     {
         EnsureObservedReady(snapshot);
-        var window = ResolveWindow(clock, null, null);
         if (ConflictedActiveEdges(snapshot, clock, window).Any(edge => edge.Id == edgeId
             && TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup)))
             throw new TopologyConflictException();

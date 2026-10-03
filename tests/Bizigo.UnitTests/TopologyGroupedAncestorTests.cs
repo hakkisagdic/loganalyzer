@@ -46,6 +46,25 @@ public sealed class TopologyGroupedAncestorTests
             result.Paths.SelectMany(static path => path.EdgeIds));
     }
 
+    [Fact]
+    public async Task Equal_hop_witness_uses_full_node_sequence_before_target_id()
+    {
+        var root = Node(TopologyNodeKind.Source, 1);
+        var a1 = Node(TopologyNodeKind.Service, 1);
+        var a2 = Node(TopologyNodeKind.Service, 2);
+        var b = Node(TopologyNodeKind.Service, 3);
+        var z = Node(TopologyNodeKind.Service, 4);
+        var other = Node(TopologyNodeKind.Service, 5);
+        var graph = Graph([Depends("root-z", root, z), Depends("z-a1", z, a1),
+            Depends("root-b", root, b), Depends("b-a2", b, a2),
+            Depends("root-other", root, other)]);
+        var result = await graph.GroupedCommonAncestorAsync(new([[a1, a2], [other]], 1500), Scope, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, result.Status);
+        Assert.Equal(root, result.NodeId);
+        Assert.Equal(a2, result.Paths[0].TargetNodeId); // root,b,a2 < root,z,a1
+        Assert.Equal(new[] { "root-b", "b-a2" }, result.Paths[0].EdgeIds);
+    }
+
     private static TopologyGraphQueryService Graph(IReadOnlyList<TopologyEdgeProjection> edges) =>
         new(new MemorySource(new TopologyGraphSnapshot(9, edges)));
 
