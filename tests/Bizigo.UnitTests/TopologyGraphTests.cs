@@ -106,6 +106,24 @@ public sealed class TopologyGraphTests
     }
 
     [Fact]
+    public async Task Hidden_outside_count_carries_its_expiry_without_exposing_the_neighbor()
+    {
+        var hidden = Edge("hidden-expiring", R, C, "A", "B", TopologyProvenance.Observed)
+            with { LastSeenUnixNano = 900, EffectiveExpiry = 1100 };
+        var query = Query([hidden]);
+        var before = await query.NeighborhoodAsync(new(R, 1000), ScopeA, Ct);
+        Assert.Empty(before.Neighbors);
+        Assert.Equal(1, before.ExternalNeighborCount);
+        Assert.Equal(1100, before.EarliestEvidenceExpiryUnixNano);
+        Assert.DoesNotContain(C, before.ToString(), StringComparison.Ordinal);
+
+        var atExpiry = await query.NeighborhoodAsync(new(R, 1100), ScopeA, Ct);
+        Assert.Empty(atExpiry.Neighbors);
+        Assert.Equal(0, atExpiry.ExternalNeighborCount);
+        Assert.Null(atExpiry.EarliestEvidenceExpiryUnixNano);
+    }
+
+    [Fact]
     public async Task Cursor_is_stable_and_partial_cursor_never_restarts()
     {
         var query = Query([Edge("1", R, A), Edge("2", R, B), Edge("3", R, C)]);

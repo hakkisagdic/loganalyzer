@@ -325,8 +325,9 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             .OrderBy(static neighbor => neighbor.NodeId, StringComparer.Ordinal)
             .ThenBy(static neighbor => neighbor.EdgeId, StringComparer.Ordinal)
             .ThenBy(static neighbor => neighbor.Direction).ToArray();
-        var externalCount = active.Select(edge => ExternalNeighbor(query.NodeId, edge, scope))
-            .Where(static node => node is not null).Distinct(StringComparer.Ordinal).Count();
+        var externalIncident = active.Where(edge => ExternalNeighbor(query.NodeId, edge, scope) is not null).ToArray();
+        var externalCount = externalIncident.Select(edge => ExternalNeighbor(query.NodeId, edge, scope))
+            .Distinct(StringComparer.Ordinal).Count();
         var unresolved = query.Relation is null or TopologyRelation.DependsOn
             ? UnresolvedForNode(snapshot, scope, expiryClock, window, query.NodeId)
             : null;
@@ -334,7 +335,10 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         return new TopologyNeighborhoodResult(page.Items, unresolved is null ? externalCount : null,
             unresolved, page.Cursor, page.PublishedSequence)
         {
-            EarliestEvidenceExpiryUnixNano = MinExpiry(visibleIncident),
+            // A hidden endpoint never appears in the response, but its edge can
+            // contribute to the outside count. The final response/cursor gate
+            // must expire that aggregate at the same logical deadline.
+            EarliestEvidenceExpiryUnixNano = MinExpiry(visibleIncident.Concat(externalIncident)),
         };
     }
 
