@@ -285,6 +285,37 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
         Assert.Equal(HttpStatusCode.NotFound, onlyA.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, onlyB.StatusCode);
 
+        // The public wire gate and ScopedQuery must consume the same
+        // server-owned decimal-nanosecond clock. The asOf parameter is still
+        // only a historical state selector, never an expiry override.
+        var serverClock = new MutableTopologyExpiryNanoClock(expiry - 1);
+        await using (var exactApi = await TopologyHttpOracleHost.StartAsync(fixture, Ct, serverClock))
+        {
+            foreach (var clock in new[] { expiry - 1, expiry, expiry + 1 })
+            {
+                serverClock.Set(clock);
+                var exactRoute = "/v1/topology/edges/" + edge.Id + "?asOf="
+                    + Uri.EscapeDataString(Utc(clock)) + "&from="
+                    + Uri.EscapeDataString(Utc(from)) + "&to=" + Uri.EscapeDataString(Utc(to));
+                using var response = await GetAsBothAsync(exactApi, exactRoute);
+                Assert.Equal(clock < expiry ? HttpStatusCode.OK : HttpStatusCode.NotFound,
+                    response.StatusCode);
+                if (clock < expiry)
+                {
+                    using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Ct));
+                    Assert.Equal(edge.Id, body.RootElement.GetProperty("edge").GetProperty("id").GetString());
+                }
+            }
+            // A historical asOf before E cannot reopen a row after the
+            // authoritative server clock has advanced beyond E.
+            serverClock.Set(expiry + 1);
+            var historicalRoute = "/v1/topology/edges/" + edge.Id + "?asOf="
+                + Uri.EscapeDataString(Utc(expiry - 1)) + "&from="
+                + Uri.EscapeDataString(Utc(from)) + "&to=" + Uri.EscapeDataString(Utc(to));
+            using var historicalDetail = await GetAsBothAsync(exactApi, historicalRoute);
+            Assert.Equal(HttpStatusCode.NotFound, historicalDetail.StatusCode);
+        }
+
         await VerifyFreshProcessReplayAsync(fixture, ingestRoot, rawParent, rawChild,
             edge.Id, expiry, from, to, scopeAB);
     }
