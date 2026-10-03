@@ -53,7 +53,11 @@ public sealed record TopologyPathQuery(
     int PageSize = 100,
     string? Cursor = null,
     decimal? FromUnixNano = null,
-    decimal? ToUnixNano = null);
+    decimal? ToUnixNano = null)
+{
+    /// <summary>Internal RCA declared-state cutoff; observed expiry still uses ReadClockUnixNano.</summary>
+    public decimal? DeclaredStateClockUnixNano { get; init; }
+}
 
 public sealed record TopologyNodeQuery(decimal ReadClockUnixNano, int PageSize = 100, string? Cursor = null,
     TopologyNodeKind? Kind = null);
@@ -82,7 +86,11 @@ public sealed record TopologyGroupedAncestorQuery(
     IReadOnlyList<IReadOnlyList<string>> TargetGroups,
     decimal ReadClockUnixNano,
     decimal? FromUnixNano = null,
-    decimal? ToUnixNano = null);
+    decimal? ToUnixNano = null)
+{
+    /// <summary>Internal RCA declared-state cutoff; observed expiry still uses ReadClockUnixNano.</summary>
+    public decimal? DeclaredStateClockUnixNano { get; init; }
+}
 
 public sealed record TopologyNeighborhoodQuery(
     string NodeId,
