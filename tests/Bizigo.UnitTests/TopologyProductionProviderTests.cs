@@ -350,13 +350,13 @@ public sealed class TopologyProductionProviderTests
         using var provider = services.BuildServiceProvider();
         var gathering = provider.GetRequiredService<TopologyCommonAncestorProvider>().GatherAsync(
             Window, Scope, GatherBudget.Default, caller.Token);
-        await inFlight.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await inFlight.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         var cancelClock = Stopwatch.StartNew();
         caller.Cancel();
-        await tokenObserved.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        await tokenObserved.Task.WaitAsync(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
         var tokenObservedAfter = cancelClock.Elapsed;
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            gathering.WaitAsync(TimeSpan.FromSeconds(2)));
+            gathering.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
         var completedAfter = cancelClock.Elapsed;
         Assert.True(tokenObservedAfter <= TimeSpan.FromSeconds(1),
             $"Ancestor query token observed cancellation after {tokenObservedAfter}.");
