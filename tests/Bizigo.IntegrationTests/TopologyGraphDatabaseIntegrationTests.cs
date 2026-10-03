@@ -63,7 +63,9 @@ public sealed class TopologyGraphDatabaseIntegrationTests(DevStackFixture stack)
         };
         limits[dimension] = (dimension switch
         {
-            "node" => 3, "edge" => 2, "page" => 3, _ => itemBytes,
+            "node" => 3, "edge" => 2,
+            "page" => providerId == "topology.graph-path" ? 4 : 3,
+            _ => itemBytes,
         }) + delta;
         var budget = new TopologyProviderBudget(limits["node"], limits["edge"], limits["page"], limits["byte"]);
         var result = await Provider(providerId, query, budget).GatherAsync(window, scope, GatherBudget.Default, token);

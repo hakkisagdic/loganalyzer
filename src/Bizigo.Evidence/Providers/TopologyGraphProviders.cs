@@ -9,10 +9,16 @@ public sealed class TopologyGraphPathProvider : IEvidenceProvider
 {
     private readonly IScopedQuery _query;
     private readonly TopologyProviderBudget _topologyBudget;
+    private readonly TopologyPublicationFence? _publicationFence;
 
-    public TopologyGraphPathProvider(IScopedQuery query) : this(query, TopologyProviderBudget.Default) { }
+    public TopologyGraphPathProvider(IScopedQuery query) : this(query, TopologyProviderBudget.Default, null) { }
     public TopologyGraphPathProvider(IScopedQuery query, TopologyProviderBudget topologyBudget)
-    { _query = query; _topologyBudget = topologyBudget; }
+        : this(query, topologyBudget, null) { }
+    public TopologyGraphPathProvider(IScopedQuery query, TopologyPublicationFence publicationFence)
+        : this(query, TopologyProviderBudget.Default, publicationFence) { }
+    public TopologyGraphPathProvider(IScopedQuery query, TopologyProviderBudget topologyBudget,
+        TopologyPublicationFence? publicationFence)
+    { _query = query; _topologyBudget = topologyBudget; _publicationFence = publicationFence; }
 
     public string Id => "topology.graph-path";
     public EvidenceKind Kind => EvidenceKind.Topology;
@@ -20,7 +26,8 @@ public sealed class TopologyGraphPathProvider : IEvidenceProvider
 
     public Task<EvidenceSlice> GatherAsync(RcaWindow window, AccessScope scope, GatherBudget budget,
         CancellationToken cancellationToken) =>
-        TopologyGraphEvidence.GatherAsync(_query, false, Id, window, scope, budget, _topologyBudget, cancellationToken);
+        TopologyGraphEvidence.GatherAsync(_query, false, Id, window, scope, budget, _topologyBudget,
+            _publicationFence, cancellationToken);
 }
 
 public sealed class TopologyCommonAncestorProvider : IEvidenceProvider
@@ -38,14 +45,15 @@ public sealed class TopologyCommonAncestorProvider : IEvidenceProvider
 
     public Task<EvidenceSlice> GatherAsync(RcaWindow window, AccessScope scope, GatherBudget budget,
         CancellationToken cancellationToken) =>
-        TopologyGraphEvidence.GatherAsync(_query, true, Id, window, scope, budget, _topologyBudget, cancellationToken);
+        TopologyGraphEvidence.GatherAsync(_query, true, Id, window, scope, budget, _topologyBudget,
+            null, cancellationToken);
 }
 
 internal static class TopologyGraphEvidence
 {
     internal static async Task<EvidenceSlice> GatherAsync(IScopedQuery query, bool ancestor, string providerId,
         RcaWindow window, AccessScope scope, GatherBudget budget, TopologyProviderBudget topologyBudget,
-        CancellationToken callerToken)
+        TopologyPublicationFence? publicationFence, CancellationToken callerToken)
     {
         ArgumentNullException.ThrowIfNull(window); ArgumentNullException.ThrowIfNull(scope); ArgumentNullException.ThrowIfNull(budget);
         ArgumentNullException.ThrowIfNull(topologyBudget); topologyBudget.Validate();
@@ -80,14 +88,19 @@ internal static class TopologyGraphEvidence
                     "Affected source topology mapping is absent or outside scope; identity was not guessed.", "NotComparable");
             var usage = new TopologyProviderUsage(topologyBudget);
             RequireBudget(usage.IncludeNodes(nodes));
-            return ancestor
-                ? await AncestorAsync(query, providerId, nodes, window, scope, usage, timeout.Token)
-                : await PathsAsync(query, providerId, nodes, window, scope, budget, usage, timeout.Token);
+            if (ancestor)
+                return await AncestorAsync(query, providerId, nodes, window, scope, usage, timeout.Token);
+            return publicationFence is null
+                ? await PathsAsync(query, providerId, nodes, window, scope, budget, usage, timeout.Token)
+                : await publicationFence.ExecuteAsync((_, token) =>
+                    PathsAsync(query, providerId, nodes, window, scope, budget, usage, token), timeout.Token);
         }
         catch (TopologyBudgetExceededException)
         { return Slice(providerId, EvidenceStatus.Unavailable, "BudgetExceeded: topology proof is incomplete.", "NotComparable", true); }
         catch (TopologyProofUnavailableException ex)
         { return Slice(providerId, EvidenceStatus.Unavailable, ex.Message, "NotComparable", true); }
+        catch (TopologyRestartRequiredException)
+        { return Slice(providerId, EvidenceStatus.Unavailable, "Graph publication changed during path evaluation.", "NotComparable", true); }
         catch (OperationCanceledException) when (!callerToken.IsCancellationRequested)
         { return Slice(providerId, EvidenceStatus.Failed, "Timeout", "Failed", true); }
         catch (OperationCanceledException) { throw; }
@@ -99,55 +112,40 @@ internal static class TopologyGraphEvidence
         RcaWindow window, AccessScope scope, GatherBudget budget, TopologyProviderUsage usage,
         CancellationToken token)
     {
-        var items = new List<EvidenceItem>(); var partial = false;
+        var items = new List<EvidenceItem>();
         var clock = TopologyIdentity.Nano(window.To);
+        long? publishedSequence = null;
         for (var i = 0; i < nodes.Length; i++)
         for (var j = i + 1; j < nodes.Length; j++)
         {
             if (items.Count >= budget.MaxItems) throw new TopologyBudgetExceededException();
-            var proofNodes = new List<string>();
-            var proofEdgeIds = new List<string>();
-            var seenCursors = new HashSet<string>(StringComparer.Ordinal);
-            string? cursor = null;
-            TopologyPathResult? first = null;
-            do
+            // Affected sources are a set. An opaque node ID must not choose
+            // which directed relationship is evaluated. Both directions share
+            // one usage counter and one published graph revision.
+            var forward = await ReadPathAsync(query, nodes[i], nodes[j], clock, scope, usage,
+                publishedSequence, token);
+            publishedSequence ??= forward.PublishedSequence;
+            var reverse = await ReadPathAsync(query, nodes[j], nodes[i], clock, scope, usage,
+                publishedSequence, token);
+            if (forward.NotVerified || reverse.NotVerified)
+                return Slice(providerId, EvidenceStatus.Unavailable,
+                    PartialReason(forward.NotVerified ? forward.Reason : reverse.Reason) + "; graph path not verified.",
+                    "NotComparable", true);
+
+            var candidates = new List<(TraversalProof Proof, EvidenceItem Item)>(2);
+            foreach (var proof in new[] { forward.Proof, reverse.Proof })
             {
-                var result = await query.GetTopologyPathAsync(new(nodes[i], nodes[j], clock, 200, cursor), scope, token);
-                RequireBudget(usage.NextPage());
-                if (result.Status == TopologyGraphResultStatus.NotVerified)
-                {
-                    if (first is not null) throw new TopologyProofUnavailableException("Graph path changed during paging.");
-                    partial = true; break;
-                }
-                if (result.Status != TopologyGraphResultStatus.Found)
-                {
-                    if (first is not null) throw new TopologyProofUnavailableException("Graph path changed during paging.");
-                    break;
-                }
-                if (result.Nodes.Count == 0 || result.EdgeIds.Count != result.Nodes.Count - 1 || first is not null &&
-                    (result.PublishedSequence != first.PublishedSequence || result.Nodes[0] != proofNodes[^1]))
-                    throw new TopologyProofUnavailableException("Graph path page is inconsistent.");
-                first ??= result;
-                RequireBudget(usage.IncludeNodes(result.Nodes));
-                RequireBudget(usage.IncludeEdges(result.EdgeIds));
-                proofNodes.AddRange(proofNodes.Count == 0 ? result.Nodes : result.Nodes.Skip(1));
-                proofEdgeIds.AddRange(result.EdgeIds);
-                cursor = result.Cursor;
-                if (cursor is not null && !seenCursors.Add(cursor))
-                    throw new TopologyProofUnavailableException("Graph path cursor repeated.");
-            } while (cursor is not null);
-            if (first is null) continue;
-            if (proofEdgeIds.Count != proofNodes.Count - 1 ||
-                proofNodes[0] != nodes[i] || proofNodes[^1] != nodes[j])
-                throw new TopologyProofUnavailableException("Graph path proof is incomplete.");
-            var details = await ReadProofEdgesAsync(query, proofEdgeIds, clock, scope, usage, token);
-            VerifyDirectedProof(proofNodes, proofEdgeIds, details);
-            var item = Item(providerId, proofEdgeIds, proofNodes, null, details, window);
-            RequireBudget(usage.IncludeSerializedBytes(JsonSerializer.SerializeToUtf8Bytes(item, BundleSerializer.Options).Length));
-            items.Add(item);
+                if (proof is null) continue;
+                var details = await ReadProofEdgesAsync(query, proof.EdgeIds, clock, scope, usage, token);
+                VerifyDirectedProof(proof.Nodes, proof.EdgeIds, details);
+                var item = Item(providerId, proof.EdgeIds, proof.Nodes, null, details, window);
+                RequireBudget(usage.IncludeSerializedBytes(JsonSerializer.SerializeToUtf8Bytes(item, BundleSerializer.Options).Length));
+                candidates.Add((proof, item));
+            }
+            if (candidates.Count > 0)
+                items.Add(candidates.OrderBy(static candidate => candidate.Proof, TraversalProofComparer.Instance)
+                    .First().Item);
         }
-        if (partial) return Slice(providerId, EvidenceStatus.Unavailable, "HiddenBoundary; graph path not verified.",
-            "NotComparable", true);
         var status = items.Count > 0 ? EvidenceStatus.Gathered : EvidenceStatus.Empty;
         return new EvidenceSlice
         {
@@ -156,6 +154,82 @@ internal static class TopologyGraphEvidence
                 "Shortest directed depends_on paths; observed edges are correlation, not causal proof.",
             Telemetry = new(TelemetryResultStatus.Data, "Evaluated", []),
         };
+    }
+
+    private sealed record TraversalProof(IReadOnlyList<string> Nodes, IReadOnlyList<string> EdgeIds);
+    private sealed record PathRead(TraversalProof? Proof, bool NotVerified, long PublishedSequence, string? Reason = null);
+
+    private static string PartialReason(string? reason) => reason is "HiddenBoundary" or "BudgetExceeded" or "QueryPartial"
+        ? reason : "QueryPartial";
+
+    private static async Task<PathRead> ReadPathAsync(IScopedQuery query, string from, string to, decimal clock,
+        AccessScope scope, TopologyProviderUsage usage, long? expectedSequence, CancellationToken token)
+    {
+        var proofNodes = new List<string>();
+        var proofEdgeIds = new List<string>();
+        var seenCursors = new HashSet<string>(StringComparer.Ordinal);
+        string? cursor = null;
+        long? sequence = null;
+        do
+        {
+            RequireBudget(usage.NextPage());
+            var result = await query.GetTopologyPathAsync(new(from, to, clock, 200, cursor), scope, token);
+            if (expectedSequence is not null && result.PublishedSequence != expectedSequence ||
+                sequence is not null && result.PublishedSequence != sequence)
+                throw new TopologyProofUnavailableException("Graph publication changed during path evaluation.");
+            sequence ??= result.PublishedSequence;
+            if (result.Status == TopologyGraphResultStatus.NotVerified)
+            {
+                if (proofNodes.Count != 0) throw new TopologyProofUnavailableException("Graph path changed during paging.");
+                return new(null, true, sequence.Value, result.Reason);
+            }
+            if (result.Status == TopologyGraphResultStatus.Unreachable)
+            {
+                if (proofNodes.Count != 0 || result.Cursor is not null || result.Nodes.Count != 0 || result.EdgeIds.Count != 0)
+                    throw new TopologyProofUnavailableException("Graph path changed during paging.");
+                return new(null, false, sequence.Value);
+            }
+            if (result.Status != TopologyGraphResultStatus.Found || result.Nodes.Count < 2 ||
+                result.EdgeIds.Count != result.Nodes.Count - 1 ||
+                (proofNodes.Count != 0 && result.Nodes[0] != proofNodes[^1]))
+                throw new TopologyProofUnavailableException("Graph path page is inconsistent.");
+            RequireBudget(usage.IncludeNodes(result.Nodes));
+            RequireBudget(usage.IncludeEdges(result.EdgeIds));
+            proofNodes.AddRange(proofNodes.Count == 0 ? result.Nodes : result.Nodes.Skip(1));
+            proofEdgeIds.AddRange(result.EdgeIds);
+            cursor = result.Cursor;
+            if (cursor is not null && !seenCursors.Add(cursor))
+                throw new TopologyProofUnavailableException("Graph path cursor repeated.");
+        } while (cursor is not null);
+        if (proofEdgeIds.Count != proofNodes.Count - 1 || proofNodes[0] != from || proofNodes[^1] != to)
+            throw new TopologyProofUnavailableException("Graph path proof is incomplete.");
+        return new(new(proofNodes, proofEdgeIds), false, sequence!.Value);
+    }
+
+    private sealed class TraversalProofComparer : IComparer<TraversalProof>
+    {
+        public static TraversalProofComparer Instance { get; } = new();
+
+        public int Compare(TraversalProof? left, TraversalProof? right)
+        {
+            if (ReferenceEquals(left, right)) return 0;
+            if (left is null) return -1;
+            if (right is null) return 1;
+            var byHop = left.EdgeIds.Count.CompareTo(right.EdgeIds.Count);
+            if (byHop != 0) return byHop;
+            var byNode = CompareKeys(left.Nodes, right.Nodes);
+            return byNode != 0 ? byNode : CompareKeys(left.EdgeIds, right.EdgeIds);
+        }
+
+        private static int CompareKeys(IReadOnlyList<string> left, IReadOnlyList<string> right)
+        {
+            for (var index = 0; index < Math.Min(left.Count, right.Count); index++)
+            {
+                var compare = string.CompareOrdinal(left[index], right[index]);
+                if (compare != 0) return compare;
+            }
+            return left.Count.CompareTo(right.Count);
+        }
     }
 
     private static async Task<EvidenceSlice> AncestorAsync(IScopedQuery query, string providerId, string[] nodes,
