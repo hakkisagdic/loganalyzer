@@ -39,6 +39,10 @@ public sealed class TelemetryScopeTests
         Assert.Equal(4, intervals.Length);
         for (var i = 0; i < 3; i++) Assert.Equal(intervals[i + 1].EffectiveFromNano, intervals[i].EffectiveToNano);
         Assert.Null(intervals[^1].EffectiveToNano);
+        var transfer = await check.TopologyOwnerHistory.SingleAsync(token);
+        Assert.Equal("A", transfer.OldOwner);
+        Assert.Equal("B", transfer.NewOwner);
+        Assert.Equal("inventory", transfer.ChangedBy);
     }
 
     [Fact]

@@ -32,6 +32,18 @@ public sealed class TopologyNodeHistoryEntity
     public decimal? ToNano { get; set; }
 }
 
+[Table("topology_owner_history")]
+public sealed class TopologyOwnerHistoryEntity
+{
+    [Key] public long Revision { get; set; }
+    [MaxLength(64)] public required string NodeId { get; set; }
+    [MaxLength(64)] public required string OldOwner { get; set; }
+    [MaxLength(64)] public required string NewOwner { get; set; }
+    public long NodeVersion { get; set; }
+    [MaxLength(256)] public required string ChangedBy { get; set; }
+    public DateTimeOffset ChangedAt { get; set; }
+}
+
 [Table("topology_bindings")]
 public sealed class TopologyBindingEntity
 {
@@ -73,6 +85,11 @@ internal static class TopologyModel
             e.Property(x => x.ToNano).HasPrecision(20, 0);
             e.HasIndex(x => new { x.NodeId, x.FromNano }).IsUnique();
             e.HasIndex(x => x.NodeId).IsUnique().HasFilter("to_nano IS NULL");
+        });
+        model.Entity<TopologyOwnerHistoryEntity>(e =>
+        {
+            e.HasIndex(x => new { x.NodeId, x.Revision }).IsUnique();
+            e.HasIndex(x => x.ChangedAt);
         });
         model.Entity<TopologyBindingEntity>(e =>
         {

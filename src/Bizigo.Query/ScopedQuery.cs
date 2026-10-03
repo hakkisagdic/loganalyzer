@@ -18,7 +18,8 @@ public sealed partial class ScopedQuery(
     EventWriter writer,
     ControlPlaneDbContext controlPlane,
     IAuditSink audit,
-    TelemetryReader? telemetry = null) : IScopedQuery
+    TelemetryReader? telemetry = null,
+    TopologyGraphQueryService? topology = null) : IScopedQuery
 {
     public async Task<IReadOnlyList<SourceSummary>> SearchSourcesAsync(
         AccessScope scope,

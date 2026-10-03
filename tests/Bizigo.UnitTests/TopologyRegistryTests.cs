@@ -38,6 +38,13 @@ public sealed class TopologyRegistryTests
     }
 
     [Fact]
+    public void Unassigned_is_a_negative_resolution_bucket_not_an_authoritative_owner()
+    {
+        Assert.NotNull(TopologyRegistry.Validate(Service(OwnerGroups.Unassigned)));
+        Assert.Null(TopologyRegistry.Validate(Service("A")));
+    }
+
+    [Fact]
     public async Task Versioned_registry_keeps_identity_and_audits_each_committed_change()
     {
         using var factory = new InMemoryControlPlaneFactory();
@@ -94,5 +101,39 @@ public sealed class TopologyRegistryTests
         await using var check = factory.CreateDbContext();
         Assert.True((await check.TopologyNodes.SingleAsync(Ct)).Deleted);
         Assert.False((await check.TopologyNodeHistory.SingleAsync(h => h.ToNano == null, Ct)).Enabled);
+    }
+
+    [Fact]
+    public async Task Source_transfer_preserves_old_history_and_rechecks_old_authority()
+    {
+        using var factory = new InMemoryControlPlaneFactory();
+        await using (var db = factory.CreateDbContext())
+        {
+            db.Sources.Add(new() { SourceId = "SA", OwnerGroup = "A" });
+            await db.SaveChangesAsync(Ct);
+        }
+        var registry = new TopologyRegistry(factory);
+        var node = (await registry.CreateAsync(AccessScope.ForGroups("admin-A", ["A"]), true, Service(), Ct)).Node!;
+        await using (var db = factory.CreateDbContext())
+        {
+            (await db.Sources.SingleAsync(Ct)).OwnerGroup = "B";
+            await db.SaveChangesAsync(Ct);
+        }
+
+        Assert.Equal(403, (await registry.UpdateAsync(AccessScope.ForGroups("stale-A", ["A"]), true,
+            node.Id, Service() with { Version = 1, DisplayName = "stale" }, Ct)).Status);
+        Assert.Equal(200, (await registry.UpdateAsync(AccessScope.ForGroups("admin-AB", ["A", "B"]), true,
+            node.Id, Service("B") with { Version = 1, DisplayName = "transferred" }, Ct)).Status);
+
+        await using var check = factory.CreateDbContext();
+        var history = await check.TopologyNodeHistory.Where(h => h.NodeId == node.Id).OrderBy(h => h.FromNano).ToArrayAsync(Ct);
+        Assert.Equal(new[] { "A", "B" }, history.Select(h => h.OwnerGroup));
+        Assert.Equal(history[0].ToNano, history[1].FromNano);
+        Assert.Equal("transferred", (await check.TopologyNodes.SingleAsync(n => n.Id == node.Id, Ct)).DisplayName);
+        var transfer = await check.TopologyOwnerHistory.SingleAsync(h => h.NodeId == node.Id, Ct);
+        Assert.Equal("A", transfer.OldOwner);
+        Assert.Equal("B", transfer.NewOwner);
+        Assert.Equal(2, transfer.NodeVersion);
+        Assert.Equal("admin-AB", transfer.ChangedBy);
     }
 }

@@ -228,4 +228,55 @@ public sealed class EvidenceBundleStorageTests(DevStackFixture stack) : IAsyncLi
         Assert.Equal(2, rows.Count);
         Assert.Single(rows.Select(r => r.ContentHash).Distinct(StringComparer.Ordinal));
     }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [Trait("Category", "Integration")]
+    public async Task Topology_bundle_roundtrip_and_legacy(int schemaVersion)
+    {
+        var proof = "[{\"id\":\"edge-a\",\"from_node\":\"source-a\",\"to_node\":\"service-root\",\"provenance\":\"observed\",\"confidence\":0.75,\"evidence_cursor\":\"next-proof\"}]";
+        var item = new EvidenceItem("topology-path-a", "topology.graph-path", EvidenceKind.Topology,
+            Now, 1, "Directed topology path", new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["edge_ids"] = "[\"edge-a\"]",
+                ["node_ids"] = "[\"source-a\",\"service-root\"]",
+                ["proof_edges"] = proof,
+            });
+        var path = new EvidenceSlice
+        {
+            ProviderId = "topology.graph-path", Kind = EvidenceKind.Topology,
+            Status = EvidenceStatus.Gathered, Items = [item],
+        };
+        var ancestor = new EvidenceSlice
+        {
+            ProviderId = "topology.common-ancestor", Kind = EvidenceKind.Topology,
+            Status = EvidenceStatus.Empty, Detail = "No strict common ancestor",
+        };
+        var original = Bundle() with
+        {
+            Id = Guid.CreateVersion7(Now.AddSeconds(schemaVersion)), SchemaVersion = schemaVersion,
+            Slices = [path, ancestor, .. Bundle().Slices],
+        };
+        await Store().SaveAsync(original, TestContext.Current.CancellationToken);
+
+        // A new store/context exercises PostgreSQL jsonb deserialization rather than an EF tracked entity.
+        var reopened = await new EvidenceBundleStore(new ControlPlaneFactory(stack.PostgresConnectionString))
+            .GetAsync(original.Id, TestContext.Current.CancellationToken);
+        Assert.NotNull(reopened);
+        Assert.Equal(original.ContentHash, reopened.ContentHash);
+        Assert.Equal(original.Slices.Select(static slice => slice.ProviderId),
+            reopened.Slices.Select(static slice => slice.ProviderId));
+        var reopenedPath = Assert.Single(reopened.Slices, static slice => slice.ProviderId == "topology.graph-path");
+        Assert.Equal(proof, Assert.Single(reopenedPath.Items).Payload["proof_edges"]);
+        Assert.Equal(schemaVersion == 1 ? "LegacySemantics" : null,
+            reopened.ExcludedInputRecords.Reason);
+
+        await using var db = await _factory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var row = await db.EvidenceBundles.AsNoTracking().SingleAsync(
+            value => value.Id == original.Id, TestContext.Current.CancellationToken);
+        Assert.Equal(schemaVersion, row.SchemaVersion);
+        Assert.Equal(original.ContentHash, row.ContentHash);
+        Assert.Contains("proof_edges", row.Payload, StringComparison.Ordinal);
+    }
 }

@@ -7,6 +7,7 @@ public partial class ControlPlaneDbContext
 {
     public DbSet<TopologyNodeEntity> TopologyNodes => Set<TopologyNodeEntity>();
     public DbSet<TopologyNodeHistoryEntity> TopologyNodeHistory => Set<TopologyNodeHistoryEntity>();
+    public DbSet<TopologyOwnerHistoryEntity> TopologyOwnerHistory => Set<TopologyOwnerHistoryEntity>();
     public DbSet<TopologyBindingEntity> TopologyBindings => Set<TopologyBindingEntity>();
     public DbSet<TopologyReadStateEntity> TopologyReadState => Set<TopologyReadStateEntity>();
 
@@ -20,6 +21,7 @@ public partial class ControlPlaneDbContext
         foreach (var source in histories)
         {
             var node = nodes.SingleOrDefault(n => n.SourceId == source.SourceId);
+            var oldOwner = node?.OwnerGroup;
             if (node is null)
             {
                 node = new()
@@ -44,6 +46,13 @@ public partial class ControlPlaneDbContext
             node.DisplayName = source.Hostname ?? source.SourceId;
             node.Enabled = source.Enabled && !node.Deleted;
             node.Version++;
+            if (oldOwner is not null && oldOwner != node.OwnerGroup)
+                TopologyOwnerHistory.Add(new()
+                {
+                    NodeId = node.Id, OldOwner = oldOwner, NewOwner = node.OwnerGroup,
+                    NodeVersion = node.Version, ChangedBy = "inventory",
+                    ChangedAt = new DateTimeOffset(checked((long)(effective / 100)) + DateTimeOffset.UnixEpoch.UtcTicks, TimeSpan.Zero),
+                });
             TopologyNodeHistory.Add(new()
             {
                 NodeId = node.Id, OwnerGroup = node.OwnerGroup, DisplayName = node.DisplayName, NodeVersion = node.Version,

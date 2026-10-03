@@ -144,6 +144,34 @@ public sealed class TopologyRegistryIntegrationTests(DevStackFixture stack)
     }
 
     [Fact]
+    public async Task Concurrent_owner_transfer_and_mutation_have_one_retryable_loser()
+    {
+        var factory = await Setup();
+        var registry = new TopologyRegistry(factory);
+        var input = new TopologyNodeInput(TopologyNodeKind.Network, "network", "A", true, []);
+        var node = (await registry.CreateAsync(AB, true, input, Ct)).Node!;
+
+        var results = await Task.WhenAll(
+            registry.UpdateAsync(AB, true, node.Id, input with { OwnerGroup = "B", Version = 1 }, Ct),
+            registry.UpdateAsync(A, true, node.Id, input with { DisplayName = "stale-name", Version = 1 }, Ct));
+
+        Assert.Equal(new[] { 200, 409 }, results.Select(r => r.Status).Order());
+        await using var check = await factory.CreateDbContextAsync(Ct);
+        var current = await check.TopologyNodes.SingleAsync(n => n.Id == node.Id, Ct);
+        Assert.Equal(2, current.Version);
+        Assert.Equal(2, await check.TopologyNodeHistory.CountAsync(h => h.NodeId == node.Id, Ct));
+        Assert.Equal(2, await check.AuditLog.CountAsync(a => a.Resource == node.Id, Ct));
+        var transfers = await check.TopologyOwnerHistory.Where(h => h.NodeId == node.Id).ToArrayAsync(Ct);
+        Assert.Equal(current.OwnerGroup == "B" ? 1 : 0, transfers.Length);
+        if (transfers.Length == 1)
+        {
+            Assert.Equal("A", transfers[0].OldOwner);
+            Assert.Equal("B", transfers[0].NewOwner);
+            Assert.Equal("admin-AB", transfers[0].ChangedBy);
+        }
+    }
+
+    [Fact]
     public async Task Scope_and_owner_transfer_recheck_authoritative_sources()
     {
         var factory = await Setup(); var registry = new TopologyRegistry(factory);

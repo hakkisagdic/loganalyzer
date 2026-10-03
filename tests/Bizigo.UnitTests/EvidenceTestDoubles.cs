@@ -27,7 +27,34 @@ internal class RecordingScopedQuery : IScopedQuery
     public Task<TelemetryCount> CountExcludedTelemetryInputsAsync(TelemetryInputWindow window, AccessScope scope, CancellationToken cancellationToken = default) =>
         ExcludedTelemetryCount?.Invoke(window, scope, cancellationToken) ?? throw new NotSupportedException();
     public Task<TelemetrySummaryPage> SummarizeTelemetryAsync(TelemetryQuery query, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-    public Task<TelemetryCount> GetTelemetryFeedAsync(TelemetrySignal signal, string? resourceId, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Func<TelemetrySignal, string?, AccessScope, CancellationToken, Task<TelemetryCount>>? TelemetryFeed { get; set; }
+    public Task<TelemetryCount> GetTelemetryFeedAsync(TelemetrySignal signal, string? resourceId, AccessScope scope, CancellationToken cancellationToken = default) =>
+        TelemetryFeed?.Invoke(signal, resourceId, scope, cancellationToken) ?? throw new NotSupportedException();
+    public List<TopologySourceNode> TopologySourceNodes { get; } = [];
+    public Func<IReadOnlyList<string>, AccessScope, CancellationToken, Task<IReadOnlyList<TopologySourceNode>>>?
+        TopologySourceNodesResponse { get; set; }
+    public TopologyPathResult? TopologyPath { get; set; }
+    public TopologyCommonAncestorResult? TopologyAncestor { get; set; }
+    public Func<TopologyPathQuery, AccessScope, CancellationToken, Task<TopologyPathResult>>? TopologyPathResponse { get; set; }
+    public Func<TopologyCommonAncestorQuery, AccessScope, CancellationToken, Task<TopologyCommonAncestorResult>>? TopologyAncestorResponse { get; set; }
+    public Func<string, decimal, AccessScope, CancellationToken, Task<TopologyEdgeDetail?>>? TopologyEdgeResponse { get; set; }
+    public Dictionary<string, TopologyEdgeDetail> TopologyEdges { get; } = new(StringComparer.Ordinal);
+    public Task<IReadOnlyList<TopologySourceNode>> ResolveTopologySourceNodesAsync(IReadOnlyList<string> sourceIds, AccessScope scope,
+        CancellationToken cancellationToken = default) => TopologySourceNodesResponse?.Invoke(sourceIds, scope, cancellationToken)
+            ?? Task.FromResult<IReadOnlyList<TopologySourceNode>>(
+                [.. TopologySourceNodes.Where(node => sourceIds.Contains(node.SourceId, StringComparer.Ordinal))]);
+    public Task<TopologyPathResult> GetTopologyPathAsync(TopologyPathQuery query, AccessScope scope,
+        CancellationToken cancellationToken = default) => TopologyPathResponse?.Invoke(query, scope, cancellationToken)
+            ?? Task.FromResult(TopologyPath ?? throw new NotSupportedException());
+    public Task<TopologyCommonAncestorResult> GetTopologyCommonAncestorAsync(TopologyCommonAncestorQuery query, AccessScope scope,
+        CancellationToken cancellationToken = default) => TopologyAncestorResponse?.Invoke(query, scope, cancellationToken)
+            ?? Task.FromResult(TopologyAncestor ?? throw new NotSupportedException());
+    public Task<TopologyEdgeDetail?> GetTopologyEdgeAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
+        CancellationToken cancellationToken = default) => TopologyEdgeResponse?.Invoke(edgeId, readClockUnixNano, scope, cancellationToken)
+            ?? Task.FromResult(TopologyEdges.TryGetValue(edgeId, out var detail) ? detail : null);
+    public Task<TopologyEdgeDetail?> GetTopologyEdgeAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
+        string? evidenceCursor, int evidencePageSize, CancellationToken cancellationToken = default) =>
+        GetTopologyEdgeAsync(edgeId, readClockUnixNano, scope, cancellationToken);
     public List<EventQuery> EventQueries { get; } = [];
 
     public List<ChangeQuery> ChangeQueries { get; } = [];

@@ -1519,6 +1519,192 @@ namespace Bizigo.ControlPlane.Migrations
                     b.ToTable("topology_bindings", "bizigo");
                 });
 
+            modelBuilder.Entity("Bizigo.ControlPlane.TopologyDeclaredEdgeEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Confidence")
+                        .HasPrecision(3, 2)
+                        .HasColumnType("numeric(3,2)")
+                        .HasColumnName("confidence");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("Directed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("directed");
+
+                    b.Property<string>("FromNodeId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("from_node_id");
+
+                    b.Property<string>("FromOwnerGroup")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("from_owner_group");
+
+                    b.Property<string>("Provenance")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("provenance");
+
+                    b.Property<string>("Relation")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("relation");
+
+                    b.Property<string>("ToNodeId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("to_node_id");
+
+                    b.Property<string>("ToOwnerGroup")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("to_owner_group");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_topology_edges_declared");
+
+                    b.HasIndex("FromNodeId", "ToNodeId", "Relation")
+                        .IsUnique()
+                        .HasDatabaseName("ix_topology_edges_declared_from_node_id_to_node_id_relation")
+                        .HasFilter("deleted_at IS NULL");
+
+                    b.HasIndex("FromOwnerGroup", "ToOwnerGroup", "Id")
+                        .HasDatabaseName("ix_topology_edges_declared_from_owner_group_to_owner_group_id");
+
+                    b.ToTable("topology_edges_declared", "bizigo");
+                });
+
+            modelBuilder.Entity("Bizigo.ControlPlane.TopologyDeclaredEdgeHistoryEntity", b =>
+                {
+                    b.Property<long>("Revision")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("revision");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Revision"));
+
+                    b.Property<decimal>("Confidence")
+                        .HasPrecision(3, 2)
+                        .HasColumnType("numeric(3,2)")
+                        .HasColumnName("confidence");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<bool>("Directed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("directed");
+
+                    b.Property<Guid>("EdgeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("edge_id");
+
+                    b.Property<long>("EdgeVersion")
+                        .HasColumnType("bigint")
+                        .HasColumnName("edge_version");
+
+                    b.Property<decimal>("FromNano")
+                        .HasPrecision(20)
+                        .HasColumnType("numeric(20,0)")
+                        .HasColumnName("from_nano");
+
+                    b.Property<string>("FromNodeId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("from_node_id");
+
+                    b.Property<string>("FromOwnerGroup")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("from_owner_group");
+
+                    b.Property<string>("Provenance")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("provenance");
+
+                    b.Property<string>("Relation")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("relation");
+
+                    b.Property<decimal?>("ToNano")
+                        .HasPrecision(20)
+                        .HasColumnType("numeric(20,0)")
+                        .HasColumnName("to_nano");
+
+                    b.Property<string>("ToNodeId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("to_node_id");
+
+                    b.Property<string>("ToOwnerGroup")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("to_owner_group");
+
+                    b.HasKey("Revision")
+                        .HasName("pk_topology_edge_declared_history");
+
+                    b.HasIndex("EdgeId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_topology_edge_declared_history_edge_id")
+                        .HasFilter("to_nano IS NULL");
+
+                    b.HasIndex("EdgeId", "FromNano")
+                        .IsUnique()
+                        .HasDatabaseName("ix_topology_edge_declared_history_edge_id_from_nano");
+
+                    b.ToTable("topology_edge_declared_history", "bizigo");
+                });
+
             modelBuilder.Entity("Bizigo.ControlPlane.TopologyNodeEntity", b =>
                 {
                     b.Property<string>("Id")
@@ -1638,6 +1824,60 @@ namespace Bizigo.ControlPlane.Migrations
                     b.ToTable("topology_node_history", "bizigo");
                 });
 
+            modelBuilder.Entity("Bizigo.ControlPlane.TopologyOwnerHistoryEntity", b =>
+                {
+                    b.Property<long>("Revision")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("revision");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Revision"));
+
+                    b.Property<DateTimeOffset>("ChangedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("changed_at");
+
+                    b.Property<string>("ChangedBy")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("changed_by");
+
+                    b.Property<string>("NewOwner")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("new_owner");
+
+                    b.Property<string>("NodeId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("node_id");
+
+                    b.Property<long>("NodeVersion")
+                        .HasColumnType("bigint")
+                        .HasColumnName("node_version");
+
+                    b.Property<string>("OldOwner")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("old_owner");
+
+                    b.HasKey("Revision")
+                        .HasName("pk_topology_owner_history");
+
+                    b.HasIndex("ChangedAt")
+                        .HasDatabaseName("ix_topology_owner_history_changed_at");
+
+                    b.HasIndex("NodeId", "Revision")
+                        .IsUnique()
+                        .HasDatabaseName("ix_topology_owner_history_node_id_revision");
+
+                    b.ToTable("topology_owner_history", "bizigo");
+                });
+
             modelBuilder.Entity("Bizigo.ControlPlane.TopologyReadStateEntity", b =>
                 {
                     b.Property<int>("Id")
@@ -1660,6 +1900,16 @@ namespace Bizigo.ControlPlane.Migrations
                         .HasName("pk_topology_read_state");
 
                     b.ToTable("topology_read_state", "bizigo");
+                });
+
+            modelBuilder.Entity("Bizigo.ControlPlane.TopologyDeclaredEdgeHistoryEntity", b =>
+                {
+                    b.HasOne("Bizigo.ControlPlane.TopologyDeclaredEdgeEntity", null)
+                        .WithMany()
+                        .HasForeignKey("EdgeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_topology_edge_declared_history_edge");
                 });
 #pragma warning restore 612, 618
         }

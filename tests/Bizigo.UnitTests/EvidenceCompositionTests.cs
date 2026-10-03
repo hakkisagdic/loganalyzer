@@ -54,11 +54,11 @@ public sealed class EvidenceCompositionTests
 
         var collector = scope.ServiceProvider.GetRequiredService<EvidenceCollector>();
 
-        // Önceki sekiz sağlayıcıya iki metrik ve iki trace sağlayıcısı eklendi.
+        // Önceki sekiz sağlayıcıya iki metrik, iki trace ve iki graph sağlayıcısı eklendi.
         // Sayının burada yazılı olması bilinçli: bir
         // sağlayıcı sessizce düşerse rapor onu hiç aramaz ve eksikliği
         // yalnızca bir RCA raporunun zayıflığı olarak, aylar sonra görünür.
-        Assert.Equal(12, collector.Providers.Count);
+        Assert.Equal(14, collector.Providers.Count);
     }
 
     /// <summary>
@@ -108,6 +108,8 @@ public sealed class EvidenceCompositionTests
                 "logs.window",
                 "metrics.baseline",
                 "metrics.threshold",
+                "topology.common-ancestor",
+                "topology.graph-path",
                 "topology.shared-attribute",
                 "traces.error-propagation",
                 "traces.service-dependency",

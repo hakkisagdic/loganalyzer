@@ -23,7 +23,8 @@ public sealed class TopologyRegistry(IDbContextFactory<ControlPlaneDbContext> fa
     public static string? Validate(TopologyNodeInput input)
     {
         if (!Enum.IsDefined(input.Kind) || string.IsNullOrWhiteSpace(input.DisplayName) || input.DisplayName.Length > 256
-            || string.IsNullOrWhiteSpace(input.OwnerGroup) || input.OwnerGroup.Length > 64 || input.Version is <= 0
+            || string.IsNullOrWhiteSpace(input.OwnerGroup) || input.OwnerGroup.Length > 64
+            || input.OwnerGroup == OwnerGroups.Unassigned || input.Version is <= 0
             || input.Bindings is null || input.Bindings.Length > 64) return "Invalid topology node.";
         if (input.Kind == TopologyNodeKind.Source)
         {
@@ -104,6 +105,7 @@ public sealed class TopologyRegistry(IDbContextFactory<ControlPlaneDbContext> fa
             var created = node is null;
             node ??= new() { Id = TopologyIdentity.Node(input!.Kind, Guid.NewGuid()), Kind = input.Kind,
                 SourceId = input.SourceId, DisplayName = input.DisplayName, OwnerGroup = input.OwnerGroup };
+            var oldOwner = created ? null : node.OwnerGroup;
             var prior = created ? null : await db.TopologyNodeHistory.SingleOrDefaultAsync(h => h.NodeId == node.Id && h.ToNano == null, token);
             if (!created && prior is null) return new(503, Error: "Authoritative node history is unavailable.");
             var oldBindings = await db.TopologyBindings.Where(b => b.TargetNodeId == node.Id && b.ToNano == null).ToArrayAsync(token);
@@ -170,6 +172,12 @@ public sealed class TopologyRegistry(IDbContextFactory<ControlPlaneDbContext> fa
             node.OwnerGroup = input?.OwnerGroup ?? node.OwnerGroup;
             node.Enabled = !deleting && input!.Enabled;
             node.Deleted = deleting;
+            if (oldOwner is not null && oldOwner != node.OwnerGroup)
+                db.TopologyOwnerHistory.Add(new()
+                {
+                    NodeId = node.Id, OldOwner = oldOwner, NewOwner = node.OwnerGroup,
+                    NodeVersion = node.Version, ChangedBy = scope.Subject, ChangedAt = time.GetUtcNow(),
+                });
             db.TopologyNodeHistory.Add(new() { NodeId = node.Id, OwnerGroup = node.OwnerGroup, DisplayName = node.DisplayName,
                 NodeVersion = node.Version, Enabled = node.Enabled, FromNano = now,
                 SourceHistoryRevision = node.SourceId is not null ? sourceHistory[node.SourceId].Revision : null });
