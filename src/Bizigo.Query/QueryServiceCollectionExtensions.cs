@@ -51,6 +51,7 @@ public static class QueryServiceCollectionExtensions
         services.AddSingleton<TopologyObservedSnapshotReader>();
         services.AddScoped<ITopologyGraphSnapshotSource, TopologyGraphSnapshotSource>();
         services.AddScoped<TopologyGraphQueryService>();
+        services.AddScoped<TopologySourceTargetPageReader>();
         services.AddSingleton(new TelemetryRetentionPolicy(options.TelemetryRetentionDays));
         services.AddSingleton<ITelemetrySink, TelemetryWriter>();
 

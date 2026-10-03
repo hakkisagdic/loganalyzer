@@ -38,6 +38,11 @@ public partial interface IScopedQuery
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException("Topology graph is not configured.");
 
+    /// <summary>Internal, fail-closed mapped-source stream. Every source needs a terminal chunk.</summary>
+    Task<TopologySourceTargetsPage> ResolveTopologySourceTargetsPageAsync(
+        IReadOnlyList<string> sourceIds, decimal asOfUnixNano, AccessScope scope,
+        int pageSize = 100, string? cursor = null, CancellationToken cancellationToken = default);
+
     Task<TopologyPathResult> GetTopologyPathAsync(
         TopologyPathQuery query,
         AccessScope scope,

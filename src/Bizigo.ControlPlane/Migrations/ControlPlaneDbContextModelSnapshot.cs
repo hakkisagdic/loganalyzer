@@ -1702,6 +1702,9 @@ namespace Bizigo.ControlPlane.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_topology_edge_declared_history_edge_id_from_nano");
 
+                    b.HasIndex("FromNodeId", "Relation", "Revision")
+                        .HasDatabaseName("ix_topology_edge_hist_from_relation_revision");
+
                     b.ToTable("topology_edge_declared_history", "bizigo");
                 });
 

@@ -63,6 +63,9 @@ internal static class TopologyEdgeModel
             e.Property(x => x.ToNano).HasPrecision(20, 0);
             e.HasIndex(x => new { x.EdgeId, x.FromNano }).IsUnique();
             e.HasIndex(x => x.EdgeId).IsUnique().HasFilter("to_nano IS NULL");
+            // Historical Contains keyset: one bounded next revision per parent.
+            e.HasIndex(x => new { x.FromNodeId, x.Relation, x.Revision })
+                .HasDatabaseName("ix_topology_edge_hist_from_relation_revision");
         });
     }
 }

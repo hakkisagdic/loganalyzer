@@ -21,7 +21,8 @@ public sealed partial class ScopedQuery(
     TelemetryReader? telemetry = null,
     TopologyGraphQueryService? topology = null,
     TimeProvider? topologyClock = null,
-    ITopologyExpiryNanoClock? expiryNanoClock = null) : IScopedQuery
+    ITopologyExpiryNanoClock? expiryNanoClock = null,
+    TopologySourceTargetPageReader? sourceTargetPages = null) : IScopedQuery
 {
     public async Task<IReadOnlyList<SourceSummary>> SearchSourcesAsync(
         AccessScope scope,

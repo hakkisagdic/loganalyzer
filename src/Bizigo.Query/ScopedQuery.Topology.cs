@@ -83,6 +83,17 @@ public sealed partial class ScopedQuery
             }, result => result.Length);
     }
 
+    public Task<TopologySourceTargetsPage> ResolveTopologySourceTargetsPageAsync(
+        IReadOnlyList<string> sourceIds, decimal asOfUnixNano, AccessScope scope,
+        int pageSize = 100, string? cursor = null, CancellationToken cancellationToken = default) =>
+        AuditedTopologyAsync("source-targets", scope,
+            Summary(asOfUnixNano, pageSize, cursor is not null),
+            () => (sourceTargetPages ?? throw new InvalidOperationException(
+                "Topology source-target paging is not configured."))
+                .ReadPageAsync(sourceIds, asOfUnixNano, scope, pageSize, cursor, cancellationToken),
+            result => result.Items.Count,
+            result => result.Items.All(static item => item.FinalStatus is null or TopologySourceTargetStatus.Complete));
+
     public Task<TopologyPathResult> GetTopologyPathAsync(
         TopologyPathQuery query,
         AccessScope scope,

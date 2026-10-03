@@ -175,13 +175,34 @@ public sealed record TopologyOutsideNeighborCount(int? Count, string? Reason);
 
 public sealed record TopologySourceNode(string SourceId, string NodeId, string OwnerGroup);
 
-public enum TopologySourceTargetStatus { Complete = 1, Missing = 2, Hidden = 3, Ambiguous = 4 }
+public enum TopologySourceTargetStatus { Complete = 1, Missing = 2, Hidden = 3, Ambiguous = 4, Truncated = 5 }
 
-/// <summary>Declared Contains proof chain; never includes observed dependency proof IDs.</summary>
-public sealed record TopologySourceTarget(string NodeId, IReadOnlyList<string> MappingEdgeIds);
+/// <summary>
+/// One raw authorized Contains chain, including Source root and target in
+/// MappingNodeIds. The provider charges every raw visited node/edge before
+/// deduplicating by target NodeId; canonical choice compares full node-ID
+/// sequence, then edge-ID sequence, ordinally.
+/// </summary>
+public sealed record TopologySourceTarget(string NodeId, IReadOnlyList<string> MappingEdgeIds,
+    IReadOnlyList<string> MappingNodeIds);
 
 public sealed record TopologySourceTargets(string SourceId, string SourceNodeId,
     IReadOnlyList<TopologySourceTarget> Targets, TopologySourceTargetStatus Status, string? Reason);
+
+/// <summary>
+/// One bounded mapping slot. Target chunks are provisional until the source's
+/// separate targetless terminal chunk is read. A full target page must never
+/// masquerade as a complete source; its terminal occupies the next page.
+/// </summary>
+public sealed record TopologySourceTargetChunk(string SourceId, string SourceNodeId,
+    TopologySourceTarget? Target, TopologySourceTargetStatus? FinalStatus, string? Reason);
+
+/// <summary>
+/// Internal RCA continuation bound to the same PostgreSQL epoch and committed
+/// ClickHouse watermark as the dependency proof it is later combined with.
+/// </summary>
+public sealed record TopologySourceTargetsPage(IReadOnlyList<TopologySourceTargetChunk> Items,
+    string? Cursor, long PostgresEpoch, ulong ClickHouseWatermark);
 
 
 
