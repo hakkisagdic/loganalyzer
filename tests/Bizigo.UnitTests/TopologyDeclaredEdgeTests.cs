@@ -78,6 +78,58 @@ public sealed class TopologyDeclaredEdgeTests
     }
 
     [Fact]
+    public async Task Int64_max_edge_update_conflicts_without_state_audit_or_epoch_change_but_delete_succeeds()
+    {
+        using var factory = new InMemoryControlPlaneFactory();
+        await using (var db = factory.CreateDbContext())
+        {
+            db.Sources.AddRange(new SourceEntity { SourceId = "SA", OwnerGroup = "A" },
+                new SourceEntity { SourceId = "SB", OwnerGroup = "A" });
+            await db.SaveChangesAsync(Ct);
+        }
+        string from, to;
+        await using (var db = factory.CreateDbContext())
+        {
+            from = (await db.TopologyNodes.SingleAsync(n => n.SourceId == "SA", Ct)).Id;
+            to = (await db.TopologyNodes.SingleAsync(n => n.SourceId == "SB", Ct)).Id;
+        }
+        var registry = new TopologyEdgeRegistry(factory);
+        var scope = AccessScope.ForGroups("admin-A", ["A"]);
+        var input = new TopologyDeclaredEdgeInput(from, to, TopologyEdgeRelations.DependsOn);
+        var created = (await registry.CreateAsync(scope, true, input, Ct)).Edge!;
+        long epoch;
+        await using (var db = factory.CreateDbContext())
+        {
+            (await db.TopologyDeclaredEdges.SingleAsync(e => e.Id == created.Id, Ct)).Version = long.MaxValue;
+            (await db.TopologyDeclaredEdgeHistory.SingleAsync(h => h.EdgeId == created.Id && h.ToNano == null, Ct))
+                .EdgeVersion = long.MaxValue;
+            await db.SaveChangesAsync(Ct);
+            epoch = (await db.TopologyReadState.SingleAsync(Ct)).Epoch;
+        }
+
+        var rejected = await registry.UpdateAsync(scope, true, created.Id,
+            input with { Version = long.MaxValue.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                Relation = TopologyEdgeRelations.ConnectsTo }, Ct);
+        Assert.Equal(409, rejected.Status);
+        await using (var db = factory.CreateDbContext())
+        {
+            Assert.Equal(TopologyEdgeRelations.DependsOn,
+                (await db.TopologyDeclaredEdges.SingleAsync(e => e.Id == created.Id, Ct)).Relation);
+            Assert.Single(await db.TopologyDeclaredEdgeHistory.Where(h => h.EdgeId == created.Id).ToArrayAsync(Ct));
+            Assert.Single(await db.AuditLog.ToArrayAsync(Ct));
+            Assert.Equal(epoch, (await db.TopologyReadState.SingleAsync(Ct)).Epoch);
+        }
+
+        Assert.Equal(204, (await registry.DeleteAsync(scope, true, created.Id, long.MaxValue, Ct)).Status);
+        await using var deleted = factory.CreateDbContext();
+        var edge = await deleted.TopologyDeclaredEdges.SingleAsync(e => e.Id == created.Id, Ct);
+        Assert.NotNull(edge.DeletedAt);
+        Assert.Equal(long.MaxValue, edge.Version);
+        Assert.Equal(2, await deleted.TopologyDeclaredEdgeHistory.CountAsync(h => h.EdgeId == created.Id, Ct));
+        Assert.Equal(2, await deleted.AuditLog.CountAsync(Ct));
+    }
+
+    [Fact]
     public async Task Both_endpoint_owners_are_required_for_create_and_update()
     {
         using var factory = new InMemoryControlPlaneFactory();

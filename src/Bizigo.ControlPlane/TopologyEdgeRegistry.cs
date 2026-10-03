@@ -71,6 +71,8 @@ public sealed class TopologyEdgeRegistry(IDbContextFactory<ControlPlaneDbContext
             if (nodes.Values.Any(n => !scope.Allows(n.OwnerGroup))
                 || edge is not null && (!scope.Allows(edge.FromOwnerGroup) || !scope.Allows(edge.ToOwnerGroup)))
                 return new(403, Error: "Endpoint outside authorized scope.");
+            if (input is not null && edge is { Version: long.MaxValue })
+                return new(409, Error: "Edge version is exhausted.");
             if (input is not null && (nodes[input.FromNodeId].Kind != TopologyIdentity.Kind(input.FromNodeId)
                 || nodes[input.ToNodeId].Kind != TopologyIdentity.Kind(input.ToNodeId)))
                 return new(409, Error: "Endpoint type changed.");
@@ -113,7 +115,9 @@ public sealed class TopologyEdgeRegistry(IDbContextFactory<ControlPlaneDbContext
                 edge.FromOwnerGroup = nodes[input.FromNodeId].OwnerGroup;
                 edge.ToOwnerGroup = nodes[input.ToNodeId].OwnerGroup;
             }
-            edge.Version++;
+            // A terminal tombstone can keep MaxValue; updates fail above and
+            // deleted edges cannot be mutated again.
+            if (edge.Version < long.MaxValue) edge.Version++;
             edge.UpdatedAt = nowTime; edge.UpdatedBy = scope.Subject;
             if (input is null) edge.DeletedAt = nowTime;
             db.TopologyDeclaredEdgeHistory.Add(new()

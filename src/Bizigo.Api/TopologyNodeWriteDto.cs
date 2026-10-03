@@ -10,3 +10,6 @@ public sealed record TopologyNodeWriteDto(string Id, TopologyNodeKind Kind, stri
     public static TopologyNodeWriteDto From(TopologyNodeVersion node) => new(node.Id, node.Kind, node.DisplayName,
         node.OwnerGroup, node.Enabled, node.Deleted, node.Version.ToString(CultureInfo.InvariantCulture), node.ValidFromUnixNano);
 }
+
+/// <summary>Errors cannot reintroduce a numeric domain version in OpenAPI or JSON.</summary>
+public sealed record TopologyNodeWriteResultDto(int Status, TopologyNodeWriteDto? Node, string? Error);
