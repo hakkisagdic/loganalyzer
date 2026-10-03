@@ -101,6 +101,9 @@ public sealed class TopologyEvidenceTests
         query.Onsets.Add(new("A", "source-2", Window.From.AddSeconds(1), 1, 0));
         query.TopologySourceNodes.Add(new("source-1", one, "A"));
         query.TopologySourceNodes.Add(new("source-2", two, "A"));
+        query.TopologyPathResponse = (request, _, _) => Task.FromResult(request.FromNodeId == one
+            ? query.TopologyPath!
+            : new TopologyPathResult(TopologyGraphResultStatus.Unreachable, [], [], null, 1));
         query.TopologyEdges["edge-1"] = Detail("edge-1", one, two);
         query.TopologyEdges["ancestor-1"] = Detail("ancestor-1", root, one);
         query.TopologyEdges["ancestor-2"] = Detail("ancestor-2", root, two);
