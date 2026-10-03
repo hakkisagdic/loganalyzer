@@ -225,6 +225,55 @@ public sealed class TopologyExactHttpNanoIntegrationTests(DevStackFixture stack)
             + seed.CompetingEdgeId + "'")).Trim());
     }
 
+    [Fact]
+    public async Task B04_Hidden_counted_neighbor_expiry_invalidates_uncursored_midread_without_leaking_identity()
+    {
+        await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var seed = await SeedAsync(fixture);
+        var asOf = seed.Expiry - 1;
+        var clock = new MutableTopologyExpiryNanoClock(asOf);
+        var armed = 0;
+        await using var api = await TopologyHttpOracleHost.StartAsync(fixture, Ct, clock,
+            afterAudit: record =>
+            {
+                if (record.Action == "topology.neighbors" &&
+                    Interlocked.CompareExchange(ref armed, 2, 1) == 1)
+                    clock.Set(seed.Expiry);
+            });
+        var route = "/v1/topology/nodes/" + seed.Parent + "/neighbors?"
+            + Window(asOf, seed.NarrowFrom, seed.NarrowTo);
+        using (var before = await api.GetAsync(route, "A"))
+        {
+            Assert.Equal(HttpStatusCode.OK, before.StatusCode);
+            using var body = await BodyAsync(before);
+            Assert.Equal("1", body.RootElement.GetProperty("outside_neighbor_count").GetString());
+            Assert.Null(body.RootElement.GetProperty("cursor").GetString());
+            var json = body.RootElement.GetRawText();
+            Assert.DoesNotContain(seed.Child, json, StringComparison.Ordinal);
+            Assert.DoesNotContain(seed.EdgeId, json, StringComparison.Ordinal);
+        }
+        Volatile.Write(ref armed, 1);
+        using (var inflight = await api.GetAsync(route, "A"))
+        {
+            Assert.Equal(HttpStatusCode.Conflict, inflight.StatusCode);
+            Assert.Equal(2, Volatile.Read(ref armed));
+            using var problem = await BodyAsync(inflight);
+            Assert.Equal("SnapshotChanged", problem.RootElement.GetProperty("reason").GetString());
+        }
+        // The original physical row persists, but a fresh E read no longer
+        // reports a hidden outside neighbor, even with historical asOf fixed.
+        using (var fresh = await api.GetAsync(route, "A"))
+        {
+            Assert.Equal(HttpStatusCode.OK, fresh.StatusCode);
+            using var body = await BodyAsync(fresh);
+            Assert.Equal("0", body.RootElement.GetProperty("outside_neighbor_count").GetString());
+            Assert.Null(body.RootElement.GetProperty("cursor").GetString());
+            Assert.DoesNotContain(seed.EdgeId, body.RootElement.GetRawText(), StringComparison.Ordinal);
+        }
+        Assert.Equal("1", (await fixture.SqlAsync("SELECT count() FROM topology_edges_observed WHERE edge_id = '"
+            + seed.EdgeId + "'")).Trim());
+    }
+
     private static async Task<Seed> SeedAsync(TelemetryDbFixture fixture)
     {
         var at = DateTimeOffset.UtcNow.AddHours(2).AddDays(-10);
