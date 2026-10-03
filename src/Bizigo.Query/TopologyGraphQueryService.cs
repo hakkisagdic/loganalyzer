@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -280,7 +281,7 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             return new(result.ExternalNeighborCount, result.ExternalNeighborReason);
         }
         catch (OperationCanceledException) { throw; }
-        catch (Exception ex) when (ex is TimeoutException or IOException)
+        catch (Exception ex) when (ex is TimeoutException or IOException or DbException or HttpRequestException)
         { return new(null, ex is TimeoutException ? "Timeout" : "QueryUnavailable"); }
     }
 
