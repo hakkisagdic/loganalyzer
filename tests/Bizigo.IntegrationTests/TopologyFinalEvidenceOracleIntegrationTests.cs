@@ -57,10 +57,20 @@ public sealed class TopologyFinalEvidenceOracleIntegrationTests(DevStackFixture 
     public async Task R05_RCA_window_excludes_old_observed_but_keeps_declared_state_at_window_end()
     {
         await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
-        var seed = await SeedAsync(fixture, parallelDeclared: true);
+        var seed = await SeedAsync(fixture);
+        var owner = seed.Scope.OwnerGroups.Single();
+        var middle = (await new TopologyRegistry(fixture.Factory).CreateAsync(seed.Scope, true,
+            new(TopologyNodeKind.Service, "declared-window-middle", owner, true, []), Ct)).Node!.Id;
+        var edges = new TopologyEdgeRegistry(fixture.Factory);
+        Assert.Equal(201, (await edges.CreateAsync(seed.Scope, true,
+            new(seed.Parent, middle, "depends_on"), Ct)).Status);
+        Assert.Equal(201, (await edges.CreateAsync(seed.Scope, true,
+            new(middle, seed.Child, "depends_on"), Ct)).Status);
         // The trace is near the original From; both degraded Source onsets are
         // later. A narrow RCA window still has two affected sources, but the
-        // observed edge is outside [From,To). Declared as-of state remains.
+        // observed one-hop edge is outside [From,To). The current declared
+        // two-hop path remains. A missing window filter would choose the stale
+        // one-hop edge regardless of randomized edge-ID lexical ordering.
         var narrow = seed.Window with
         {
             From = seed.Window.From.AddSeconds(30),
@@ -70,12 +80,21 @@ public sealed class TopologyFinalEvidenceOracleIntegrationTests(DevStackFixture 
         var graph = await seed.Query.SearchTopologyEdgesAsync(new(clock,
             Relation: TopologyRelation.DependsOn,
             FromUnixNano: TopologyIdentity.Nano(narrow.From), ToUnixNano: clock), seed.Scope, Ct);
-        var pair = graph.Items.Where(edge => edge.FromNode == seed.Parent && edge.ToNode == seed.Child).ToArray();
-        Assert.Equal(TopologyProvenance.Declared, Assert.Single(pair).Provenance);
+        Assert.DoesNotContain(graph.Items, edge => edge.Provenance == TopologyProvenance.Observed);
+        Assert.Equal(2, graph.Items.Count(edge => edge.Provenance == TopologyProvenance.Declared
+            && edge.Relation == TopologyRelation.DependsOn));
+        var direct = await seed.Query.GetTopologyPathAsync(new(seed.Parent, seed.Child, clock,
+            FromUnixNano: TopologyIdentity.Nano(narrow.From), ToUnixNano: clock), seed.Scope, Ct);
+        Assert.Equal(new[] { seed.Parent, middle, seed.Child }, direct.Nodes);
         var slice = await new TopologyGraphPathProvider(seed.Query).GatherAsync(narrow,
             seed.Scope, GatherBudget.Default, Ct);
         Assert.Equal(EvidenceStatus.Gathered, slice.Status);
-        using var proof = JsonDocument.Parse(Assert.Single(slice.Items).Payload["proof_edges"]);
+        var item = Assert.Single(slice.Items);
+        using var nodeProof = JsonDocument.Parse(item.Payload["node_ids"]);
+        Assert.Equal(new[] { seed.Parent, middle, seed.Child }, nodeProof.RootElement.EnumerateArray()
+            .Select(static node => node.GetString()!).ToArray());
+        using var proof = JsonDocument.Parse(item.Payload["proof_edges"]);
+        Assert.Equal(2, proof.RootElement.GetArrayLength());
         Assert.All(proof.RootElement.EnumerateArray().ToArray(), edge =>
             Assert.Equal("declared", edge.GetProperty("provenance").GetString()));
     }
