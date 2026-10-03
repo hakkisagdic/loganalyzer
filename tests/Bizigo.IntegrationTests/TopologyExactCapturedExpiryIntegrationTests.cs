@@ -163,9 +163,9 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
             Assert.Equal(eligible ? 1 : 0, outside.Count);
             Assert.Null(outside.Reason);
         }
-        // Audited production reads use the injected server clock. At DateTime
-        // precision the adjacent representable samples are E-100ns/E/E+100ns.
-        foreach (var clock in new[] { expiry - 100, expiry, expiry + 100 })
+        // Scoped production reads get the exact server-authoritative decimal
+        // clock from DI; historical asOf cannot override observed expiry.
+        foreach (var clock in new[] { expiry - 1, expiry, expiry + 1 })
         {
             var query = ScopedAt(fixture, fixture.Storage, graph, clock);
             var eligible = clock < expiry;
@@ -189,8 +189,8 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
             Assert.Equal(eligible ? 1 : 0, outside.Count);
             Assert.Null(outside.Reason);
         }
-        var afterExpiry = ScopedAt(fixture, fixture.Storage, graph, expiry + 100);
-        Assert.Empty((await afterExpiry.SearchTopologyEdgesAsync(new(expiry - 100,
+        var afterExpiry = ScopedAt(fixture, fixture.Storage, graph, expiry + 1);
+        Assert.Empty((await afterExpiry.SearchTopologyEdgesAsync(new(expiry - 1,
             Provenance: TopologyProvenance.Observed, FromUnixNano: from, ToUnixNano: to), scopeAB, Ct)).Items);
         Assert.Equal("1", (await fixture.SqlAsync("SELECT count() FROM topology_edges_observed "
             + "WHERE edge_id = '" + edge.Id + "'")).Trim());
@@ -394,7 +394,7 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
                     await graph.GetEdgeAtExpiryAsync(originalEdgeId, clock, from, to,
                         null, clock, scope, null, 200, Ct) is not null);
             }
-            foreach (var clock in new[] { expiry - 100, expiry, expiry + 100 })
+            foreach (var clock in new[] { expiry - 1, expiry, expiry + 1 })
             {
                 var scoped = ScopedAt(fixture, fresh, graph, clock);
                 var page = await scoped.SearchTopologyEdgesAsync(new(clock,
@@ -403,8 +403,8 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
                 Assert.Equal(clock < expiry,
                     await WindowDetailAsync(scoped, originalEdgeId, clock, from, to, scope) is not null);
             }
-            var afterExpiry = ScopedAt(fixture, fresh, graph, expiry + 100);
-            Assert.Empty((await afterExpiry.SearchTopologyEdgesAsync(new(expiry - 100,
+            var afterExpiry = ScopedAt(fixture, fresh, graph, expiry + 1);
+            Assert.Empty((await afterExpiry.SearchTopologyEdgesAsync(new(expiry - 1,
                 Provenance: TopologyProvenance.Observed, FromUnixNano: from, ToUnixNano: to), scope, Ct)).Items);
             var persisted = await SqlAsync(fresh, "SELECT toString(expires_nano) FROM topology_edges_observed "
                 + "WHERE edge_id = '" + originalEdgeId + "' ORDER BY publication_seq DESC LIMIT 1");
@@ -448,7 +448,8 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
         TopologyGraphQueryService graph, decimal expiryClock) =>
         new ScopedQuery(new(storage), new(storage), new(storage), new(storage), fixture.Db,
             new ControlPlaneAuditSink(fixture.Factory), new TelemetryReader(storage, fixture.Clock), graph,
-            topologyClock: new FakeTimeProvider(ClockDate(expiryClock)));
+            topologyClock: new FakeTimeProvider(ClockDate(expiryClock)),
+            expiryNanoClock: new FixedTopologyExpiryNanoClock(expiryClock));
 
     private async Task<string> SqlAsync(ClickHouseContext storage, string sql)
     {
