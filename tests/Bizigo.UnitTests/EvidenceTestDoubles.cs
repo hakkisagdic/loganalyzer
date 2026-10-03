@@ -37,6 +37,8 @@ internal class RecordingScopedQuery : IScopedQuery
     public TopologyCommonAncestorResult? TopologyAncestor { get; set; }
     public Func<TopologyPathQuery, AccessScope, CancellationToken, Task<TopologyPathResult>>? TopologyPathResponse { get; set; }
     public Func<TopologyCommonAncestorQuery, AccessScope, CancellationToken, Task<TopologyCommonAncestorResult>>? TopologyAncestorResponse { get; set; }
+    public Func<TopologyGroupedAncestorQuery, AccessScope, CancellationToken, Task<TopologyCommonAncestorResult>>?
+        TopologyGroupedAncestorResponse { get; set; }
     public Func<string, decimal, AccessScope, CancellationToken, Task<TopologyEdgeDetail?>>? TopologyEdgeResponse { get; set; }
     public Dictionary<string, TopologyEdgeDetail> TopologyEdges { get; } = new(StringComparer.Ordinal);
     public Task<IReadOnlyList<TopologySourceNode>> ResolveTopologySourceNodesAsync(IReadOnlyList<string> sourceIds, AccessScope scope,
@@ -49,6 +51,12 @@ internal class RecordingScopedQuery : IScopedQuery
     public Task<TopologyCommonAncestorResult> GetTopologyCommonAncestorAsync(TopologyCommonAncestorQuery query, AccessScope scope,
         CancellationToken cancellationToken = default) => TopologyAncestorResponse?.Invoke(query, scope, cancellationToken)
             ?? Task.FromResult(TopologyAncestor ?? throw new NotSupportedException());
+    public Task<TopologyCommonAncestorResult> GetTopologyGroupedCommonAncestorAsync(TopologyGroupedAncestorQuery query,
+        AccessScope scope, CancellationToken cancellationToken = default) =>
+        TopologyGroupedAncestorResponse?.Invoke(query, scope, cancellationToken)
+        ?? TopologyAncestorResponse?.Invoke(new(query.TargetGroups.Select(static group => group[0]).ToArray(),
+                query.ReadClockUnixNano, query.FromUnixNano, query.ToUnixNano), scope, cancellationToken)
+        ?? Task.FromResult(TopologyAncestor ?? throw new NotSupportedException());
     public Task<TopologyEdgeDetail?> GetTopologyEdgeAsync(string edgeId, decimal readClockUnixNano, AccessScope scope,
         CancellationToken cancellationToken = default) => TopologyEdgeResponse?.Invoke(edgeId, readClockUnixNano, scope, cancellationToken)
             ?? Task.FromResult(TopologyEdges.TryGetValue(edgeId, out var detail) ? detail : null);
