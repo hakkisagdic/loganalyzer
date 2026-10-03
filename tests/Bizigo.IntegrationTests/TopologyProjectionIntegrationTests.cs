@@ -30,12 +30,51 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
             "\"links\":[{\"traceId\":\"" + Trace + "\",\"spanId\":\"deadbeefdeadbeef\"}]");
         await writer.WriteAsync([child], Ct);
         Assert.Equal("0", (await f.SqlAsync("SELECT count() FROM topology_edges_observed")).Trim());
+        var unresolvedReader = new TopologyObservedSnapshotReader(f.Storage);
+        var missing = await unresolvedReader.ReadSnapshotAsync(1, Ct);
+        Assert.Equal("MissingParent", Assert.Single(missing.ParentResolutions).Reason);
         await writer.WriteAsync([parent], Ct);
         var edge = Assert.Single(TopologyObservation.Reduce([parent, child]).Edges);
         Assert.Equal("1", (await f.SqlAsync("SELECT count() FROM topology_edges_observed FINAL")).Trim());
         Assert.Equal(ParentNode + "\t" + ChildNode + "\t" + edge.EdgeId,
             (await f.SqlAsync("SELECT from_node_id,to_node_id,edge_id FROM topology_edges_observed FINAL FORMAT TSV")).Trim());
-        Assert.Single(published.Keys);
+        Assert.Equal(2, published.Keys.Count);
+        var resolved = await unresolvedReader.ReadSnapshotAsync(2, Ct);
+        Assert.Equal("Resolved", Assert.Single(resolved.ParentResolutions).Reason);
+    }
+
+    [Fact, Trait("Category", "Integration")]
+    public async Task Unresolved_and_query_failure()
+    {
+        await using var f = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var published = new Publication();
+        var projector = new TopologyObservedProjector(f.Storage, published.PublishAsync);
+        var writer = new TelemetryWriter(f.Storage, f.Owners, projector);
+        var child = Span(Guid.NewGuid(), "missing", ChildSpan, ParentSpan, ChildNode, f.Now);
+        await writer.WriteAsync([child], Ct);
+        var reader = new TopologyObservedSnapshotReader(f.Storage);
+        var first = await reader.ReadSnapshotAsync(1, Ct);
+        Assert.Equal("MissingParent", Assert.Single(first.ParentResolutions).Reason);
+        Assert.Equal("1", (await f.SqlAsync("SELECT count() FROM topology_parent_resolution")).Trim());
+
+        var failed = new TopologyObservedProjector(f.Storage, published.PublishAsync,
+            readPendingKey: _ => throw new TimeoutException("simulated storage timeout"));
+        await Assert.ThrowsAsync<TimeoutException>(() => failed.ProjectAsync([child], Ct));
+        Assert.Equal("1", (await f.SqlAsync("SELECT count() FROM topology_parent_resolution")).Trim());
+
+        var parent = Span(Guid.NewGuid(), "later", ParentSpan, string.Empty, ParentNode, f.Now - 1000);
+        await writer.WriteAsync([parent], Ct);
+        var final = await reader.ReadSnapshotAsync(2, Ct);
+        Assert.Equal("Resolved", Assert.Single(final.ParentResolutions).Reason);
+        Assert.Single(final.Rows);
+
+        var alternate = Reenvelope(parent) with
+        { Topology = parent.Topology! with { ServiceNodeId = ChildNode } };
+        await writer.WriteAsync([alternate], Ct);
+        var ambiguous = await reader.ReadSnapshotAsync(3, Ct);
+        Assert.Equal("AmbiguousParent", Assert.Single(ambiguous.ParentResolutions).Reason);
+        Assert.Single(ambiguous.Conflicts);
+        Assert.True(Assert.Single(ambiguous.Rows).HasPublishedConflict);
     }
 
     [Fact, Trait("Category", "Integration")]

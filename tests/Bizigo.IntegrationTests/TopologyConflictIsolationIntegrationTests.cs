@@ -82,6 +82,86 @@ public sealed class TopologyConflictIsolationIntegrationTests(DevStackFixture st
     }
 
     [Fact, Trait("Category", "Integration")]
+    public async Task First_publication_child_conflict_blocks_parent_in_child_window()
+    {
+        await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var seed = await SeedAsync(fixture);
+        var trace = Guid.NewGuid().ToString("N");
+        var parentTime = checked((ulong)(seed.ReadClock - 2_000_000_000m));
+        var childTime = checked((ulong)(seed.ReadClock - 1_000_000_000m));
+        var owner = seed.ScopeB.OwnerGroups.Single();
+        var parent = Span(Guid.NewGuid(), trace, "aaaaaaaaaaaaaaaa", "", "conflict-parent",
+            seed.BSource, owner, seed.BService1, parentTime);
+        var child = Span(Guid.NewGuid(), trace, "bbbbbbbbbbbbbbbb", "aaaaaaaaaaaaaaaa",
+            "conflict-child", seed.BSource, owner, seed.BService2, childTime);
+        var alternate = Reenvelope(child) with
+        { Topology = child.Topology! with { ServiceNodeId = seed.BAlternate } };
+        await seed.Writer.WriteAsync([parent, child, alternate], Ct);
+        var from = seed.ReadClock - 1_500_000_000m;
+        var to = seed.ReadClock - 500_000_000m;
+        await Assert.ThrowsAsync<TopologyConflictException>(() => seed.Query.GetTopologyNeighborhoodAsync(
+            new(seed.BService1, seed.ReadClock, FromUnixNano: from, ToUnixNano: to), seed.ScopeB, Ct));
+        var outside = await seed.Query.CountExternalTopologyNeighborsAsync(
+            new(seed.BService1, seed.ReadClock, FromUnixNano: from, ToUnixNano: to), seed.ScopeB, Ct);
+        Assert.Null(outside.Count);
+        Assert.Equal("QueryUnavailable", outside.Reason);
+        Assert.NotEmpty((await seed.Query.SearchTopologyEdgesAsync(new(seed.ReadClock,
+            Provenance: TopologyProvenance.Observed), seed.ScopeA, Ct)).Items);
+    }
+
+    [Fact, Trait("Category", "Integration")]
+    public async Task Directed_path_ignores_same_owner_weak_conflict_branch()
+    {
+        await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var seed = await SeedAsync(fixture);
+        var owner = seed.ScopeA.OwnerGroups.Single();
+        var registry = new TopologyRegistry(fixture.Factory);
+        var x = (await registry.CreateAsync(seed.ScopeA, true,
+            new(TopologyNodeKind.Service, "X", owner, true, []), Ct)).Node!.Id;
+        var c = (await registry.CreateAsync(seed.ScopeA, true,
+            new(TopologyNodeKind.Service, "C", owner, true, []), Ct)).Node!.Id;
+        var alternate = (await registry.CreateAsync(seed.ScopeA, true,
+            new(TopologyNodeKind.Service, "C-alt", owner, true, []), Ct)).Node!.Id;
+        var edges = new TopologyEdgeRegistry(fixture.Factory);
+        Assert.Equal(201, (await edges.CreateAsync(seed.ScopeA, true,
+            new(x, seed.AService1, "depends_on"), Ct)).Status);
+        Assert.Equal(201, (await edges.CreateAsync(seed.ScopeA, true,
+            new(x, c, "depends_on"), Ct)).Status);
+        var trace = Guid.NewGuid().ToString("N");
+        var root = Span(Guid.NewGuid(), trace, "cccccccccccccccc", "", "conflict-root",
+            seed.AParent.Owner.SourceId, owner, c, checked((ulong)(seed.ReadClock - 1_000_000_000m)));
+        await seed.Writer.WriteAsync([root, Reenvelope(root) with
+        { Topology = root.Topology! with { ServiceNodeId = alternate } }], Ct);
+        var path = await seed.Query.GetTopologyPathAsync(
+            new(seed.AService1, seed.AService2, seed.ReadClock), seed.ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, path.Status);
+        Assert.Single(path.EdgeIds);
+    }
+
+    [Fact, Trait("Category", "Integration")]
+    public async Task Negative_binding_conflict_does_not_fail_unrelated_same_owner_proof()
+    {
+        await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var seed = await SeedAsync(fixture);
+        var trace = Guid.NewGuid().ToString("N");
+        var root = Span(Guid.NewGuid(), trace, "dddddddddddddddd", "", "negative-root",
+            seed.AParent.Owner.SourceId, seed.ScopeA.OwnerGroups.Single(), seed.AService1,
+            checked((ulong)(seed.ReadClock - 1_000_000_000m)));
+        var negative = root with
+        {
+            Topology = root.Topology! with
+            { ServiceNodeId = null, ServiceBindingRevision = null, NodeHistoryRevision = null, Reason = "Unresolved" },
+        };
+        await seed.Writer.WriteAsync([negative, Reenvelope(negative) with { Kind = "Server" }], Ct);
+        var path = await seed.Query.GetTopologyPathAsync(
+            new(seed.AService1, seed.AService2, seed.ReadClock), seed.ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, path.Status);
+        var rca = await new TopologyGraphPathProvider(seed.Query).GatherAsync(seed.Window, seed.ScopeA,
+            GatherBudget.Default, Ct);
+        Assert.Equal(EvidenceStatus.Gathered, rca.Status);
+    }
+
+    [Fact, Trait("Category", "Integration")]
     public async Task Legacy_orphan_marker_requires_explicit_migration_but_declared_only_reads_work()
     {
         await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);

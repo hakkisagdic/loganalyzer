@@ -30,7 +30,28 @@ public sealed class TopologyObservationTests
         Assert.Equal(edge.EdgeId, Assert.Single(replay.Edges).EdgeId);
         Assert.Equal(first.PublicationKey, replay.PublicationKey);
         Assert.Empty(first.Conflicts);
-        Assert.Empty(TopologyObservation.Reduce([child]).Edges);
+        var missing = TopologyObservation.Reduce([child]);
+        Assert.Empty(missing.Edges);
+        Assert.Equal("MissingParent", Assert.Single(missing.ParentResolutions).Reason);
+        Assert.Equal("Resolved", Assert.Single(first.ParentResolutions).Reason);
+        Assert.NotEqual(missing.PublicationKey, first.PublicationKey);
+    }
+
+    [Fact]
+    public void Ambiguous_parent_has_explicit_durable_reason_without_edge()
+    {
+        var parent = Span(Guid.NewGuid(), "p", ParentSpan, string.Empty, ParentNode, 1000);
+        var alternate = parent with
+        {
+            EnvelopeId = Guid.NewGuid(), LogicalId = Guid.NewGuid().ToString("N") + "/p",
+            Topology = parent.Topology! with { ServiceNodeId = ChildNode },
+        };
+        var child = Span(Guid.NewGuid(), "c", ChildSpan, ParentSpan, ChildNode, 2000);
+        var batch = TopologyObservation.Reduce([parent, child, alternate]);
+        Assert.Empty(batch.Edges);
+        Assert.Equal("AmbiguousParent", Assert.Single(batch.ParentResolutions).Reason);
+        Assert.Single(batch.Conflicts);
+        Assert.Equal(4, batch.ProjectionVersion);
     }
 
     [Fact]

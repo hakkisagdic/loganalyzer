@@ -93,8 +93,11 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         {
             var partial = HasHiddenIncident(query.FromNodeId, snapshot, scope, query.ReadClockUnixNano, window)
                 || HasHiddenIncident(query.ToNodeId, snapshot, scope, query.ReadClockUnixNano, window);
-            return new(partial ? TopologyGraphResultStatus.NotVerified : TopologyGraphResultStatus.Unreachable,
-                [], [], null, snapshot.PublishedSequence, partial ? "HiddenBoundary" : null);
+            var unresolved = UnresolvedForNode(snapshot, scope, query.ReadClockUnixNano, window,
+                query.ToNodeId);
+            return new(partial || unresolved is not null ? TopologyGraphResultStatus.NotVerified
+                    : TopologyGraphResultStatus.Unreachable,
+                [], [], null, snapshot.PublishedSequence, partial ? "HiddenBoundary" : unresolved);
         }
         // Page complete hops, not independent node/edge arrays. The boundary
         // node is repeated on the next page so every returned edge has both
@@ -131,6 +134,11 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window)
             .Where(static edge => edge.Relation == TopologyRelation.DependsOn).ToArray();
         EnsureAncestorReady(snapshot, scope, query.ReadClockUnixNano, window, edges, query.NodeIds);
+        var unresolvedTarget = query.NodeIds.Select(node => UnresolvedForNode(snapshot, scope,
+            query.ReadClockUnixNano, window, node)).FirstOrDefault(static reason => reason is not null);
+        if (unresolvedTarget is not null)
+            return new(TopologyGraphResultStatus.NotVerified, null, [], snapshot.PublishedSequence,
+                unresolvedTarget);
         var targets = query.NodeIds.ToHashSet(StringComparer.Ordinal);
         var matches = new List<(string Node, TopologyPathProof[] Paths)>();
         foreach (var candidate in edges.SelectMany(static edge => new[] { edge.FromNode, edge.ToNode })
@@ -171,8 +179,10 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             .ThenBy(static neighbor => neighbor.Direction).ToArray();
         var externalCount = active.Select(edge => ExternalNeighbor(query.NodeId, edge, scope))
             .Where(static node => node is not null).Distinct(StringComparer.Ordinal).Count();
+        var unresolved = UnresolvedForNode(snapshot, scope, query.ReadClockUnixNano, window, query.NodeId);
         var page = Page(neighbors, query.PageSize, cursor?.LastKey, NeighborKey, snapshot.PublishedSequence, fingerprint);
-        return new TopologyNeighborhoodResult(page.Items, externalCount, null, page.Cursor, page.PublishedSequence)
+        return new TopologyNeighborhoodResult(page.Items, unresolved is null ? externalCount : null,
+            unresolved, page.Cursor, page.PublishedSequence)
         {
             EarliestEvidenceExpiryUnixNano = MinExpiry(visibleIncident),
         };
@@ -231,6 +241,13 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         candidate.NodeId is not null && TopologyIdentity.CanReadOwner(scope, candidate.OwnerGroup)
         && candidate.EventTimeUnixNano >= window.From && candidate.EventTimeUnixNano < window.To
         && clock < candidate.ExpiresUnixNano;
+
+    private static string? UnresolvedForNode(TopologyGraphSnapshot snapshot, AccessScope scope, decimal clock,
+        (decimal From, decimal To) window, string nodeId) => snapshot.UnresolvedParents
+        .Where(item => item.ChildNodeId == nodeId && TopologyIdentity.CanReadOwner(scope, item.OwnerGroup)
+            && item.ChildEventTimeUnixNano >= window.From && item.ChildEventTimeUnixNano < window.To
+            && clock < item.ChildExpiryUnixNano)
+        .Select(static item => item.Reason).Order(StringComparer.Ordinal).FirstOrDefault();
 
     private static IEnumerable<TopologyConflictArc> ActiveConflictArcs(TopologyGraphSnapshot snapshot,
         decimal clock, (decimal From, decimal To) window) => snapshot.ConflictArcs.Where(arc =>

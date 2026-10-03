@@ -99,6 +99,11 @@ public sealed class TopologyGraphSnapshotSource(
                 ConflictedEdges = conflictedEdges,
                 ConflictCandidates = conflictCandidates,
                 ConflictArcs = conflictArcs,
+                UnresolvedParents = observedSnapshot.ParentResolutions
+                    .Where(static item => item.Reason != "Resolved")
+                    .Select(item => new TopologyUnresolvedParentProjection(item.OwnerGroup, item.SourceId,
+                        item.NodeId, item.Reason, item.ChildEventTimeNano, item.ChildExpiryNano))
+                    .ToArray(),
                 ObservedMigrationRequired = unattributed,
             };
         }, cancellationToken);

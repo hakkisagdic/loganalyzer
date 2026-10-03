@@ -108,6 +108,23 @@ public sealed class TopologyConflictIsolationTests
         Assert.Single((await graph.SearchEdgesAsync(new(2000), ScopeA, Ct)).Items);
     }
 
+    [Fact]
+    public async Task Missing_parent_is_scoped_not_verified_not_a_measured_zero()
+    {
+        var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9, [])
+        {
+            UnresolvedParents = [new("A", "source-A", A2, "MissingParent", 1500, 3000)],
+        }));
+        var neighborhood = await graph.NeighborhoodAsync(new(A2, 2000), ScopeA, Ct);
+        Assert.Null(neighborhood.ExternalNeighborCount);
+        Assert.Equal("MissingParent", neighborhood.ExternalNeighborReason);
+        var path = await graph.PathAsync(new(A1, A2, 2000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.NotVerified, path.Status);
+        Assert.Equal("MissingParent", path.Reason);
+        Assert.Equal(TopologyGraphResultStatus.Unreachable,
+            (await graph.PathAsync(new(A1, A2, 2000), ScopeB, Ct)).Status);
+    }
+
     private static TopologyGraphQueryService Graph() => new(new MemorySource(new TopologyGraphSnapshot(9,
         [Edge("healthy", A1, A2, "A")])
     {

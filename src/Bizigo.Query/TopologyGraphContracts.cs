@@ -9,6 +9,7 @@ public sealed record TopologyGraphSnapshot(long PublishedSequence, IReadOnlyList
     public IReadOnlyList<TopologyEdgeProjection> ConflictedEdges { get; init; } = [];
     public IReadOnlyList<TopologyConflictProjection> ConflictCandidates { get; init; } = [];
     public IReadOnlyList<TopologyConflictArc> ConflictArcs { get; init; } = [];
+    public IReadOnlyList<TopologyUnresolvedParentProjection> UnresolvedParents { get; init; } = [];
     public bool ObservedMigrationRequired { get; init; }
 }
 
@@ -24,6 +25,10 @@ public sealed record TopologyConflictProjection(string OwnerGroup, string? NodeI
 public sealed record TopologyConflictArc(string FromNode, string ToNode,
     string FromOwnerGroup, string ToOwnerGroup, decimal ChildEventTimeUnixNano,
     decimal EffectiveExpiryUnixNano);
+
+/// <summary>Captured negative parent decision; parent identity is never public.</summary>
+public sealed record TopologyUnresolvedParentProjection(string OwnerGroup, string SourceId,
+    string? ChildNodeId, string Reason, decimal ChildEventTimeUnixNano, decimal ChildExpiryUnixNano);
 
 public sealed class TopologyObservedMigrationRequiredException()
     : IOException("Observed topology conflict attribution requires an explicit durable migration.");

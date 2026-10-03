@@ -52,6 +52,8 @@ public sealed class TopologyObservedProjector(
         ["semantic_anchor", "first_fingerprint", "conflicting_fingerprint", "candidate_context_json", "publication_seq"];
     private static readonly string[] LegacyConflictColumns =
         ["semantic_anchor", "first_fingerprint", "conflicting_fingerprint", "publication_seq"];
+    private static readonly string[] ParentResolutionColumns =
+        ["child_anchor", "child_fingerprint", "reason", "captured_context_json", "publication_seq"];
     private static readonly string[] ManifestColumns =
         ["publication_key", "payload_sha256", "rowset_sha256", "edge_count", "conflict_count", "payload_json"];
 
@@ -78,7 +80,8 @@ public sealed class TopologyObservedProjector(
         {
             var persisted = await ReadTraceAsync(traceId, cancellationToken);
             var batch = TopologyObservation.Reduce(persisted);
-            if (batch.Edges.Count == 0 && batch.Conflicts.Count == 0) continue;
+            if (batch.Edges.Count == 0 && batch.Conflicts.Count == 0
+                && batch.ParentResolutions.Count == 0) continue;
             await RejectLegacyConflictOverwriteAsync(batch.Conflicts, cancellationToken);
             var manifest = await EnsureManifestAsync(batch, cancellationToken);
             await PublishManifestAsync(manifest, cancellationToken);
@@ -137,6 +140,14 @@ public sealed class TopologyObservedProjector(
                     new InsertOptions { BatchSize = context.Options.BulkBatchSize, MaxDegreeOfParallelism = 1 }, token);
                 if (written != rows.Length) throw new IOException("Incomplete topology conflict insert.");
             }
+            if (batch.ProjectionVersion >= 4 && batch.ParentResolutions.Count != 0)
+            {
+                var rows = batch.ParentResolutions.Select(item => ParentResolutionRow(item, sequence)).ToArray();
+                var written = await context.Client.InsertBinaryAsync("topology_parent_resolution",
+                    ParentResolutionColumns, rows,
+                    new InsertOptions { BatchSize = context.Options.BulkBatchSize, MaxDegreeOfParallelism = 1 }, token);
+                if (written != rows.Length) throw new IOException("Incomplete parent-resolution insert.");
+            }
             await (checkpoints ?? new NoTopologyProjectionCheckpoints())
                 .ReachAsync("after-observed-db-before-publish", token);
         }, cancellationToken);
@@ -181,13 +192,23 @@ public sealed class TopologyObservedProjector(
     {
         var legacy = legacyFormat || batch.Conflicts.Count != 0
             && batch.Conflicts.All(static conflict => conflict.Candidates.Count == 0);
-        var rows = JsonSerializer.SerializeToUtf8Bytes(new
-        {
-            EdgeColumns,
-            Edges = batch.Edges.Select(e => EdgeRow(e, 0)).ToArray(),
-            ConflictColumns = legacy ? LegacyConflictColumns : ConflictColumns,
-            Conflicts = batch.Conflicts.Select(c => ConflictRow(c, 0, legacy)).ToArray(),
-        }, RawSignalCodec.Json);
+        var rows = batch.ProjectionVersion >= 4
+            ? JsonSerializer.SerializeToUtf8Bytes(new
+            {
+                EdgeColumns,
+                Edges = batch.Edges.Select(e => EdgeRow(e, 0)).ToArray(),
+                ConflictColumns = legacy ? LegacyConflictColumns : ConflictColumns,
+                Conflicts = batch.Conflicts.Select(c => ConflictRow(c, 0, legacy)).ToArray(),
+                ParentResolutionColumns,
+                ParentResolutions = batch.ParentResolutions.Select(item => ParentResolutionRow(item, 0)).ToArray(),
+            }, RawSignalCodec.Json)
+            : JsonSerializer.SerializeToUtf8Bytes(new
+            {
+                EdgeColumns,
+                Edges = batch.Edges.Select(e => EdgeRow(e, 0)).ToArray(),
+                ConflictColumns = legacy ? LegacyConflictColumns : ConflictColumns,
+                Conflicts = batch.Conflicts.Select(c => ConflictRow(c, 0, legacy)).ToArray(),
+            }, RawSignalCodec.Json);
         return RawSignalEnvelope.Hash(rows);
     }
 
@@ -289,4 +310,8 @@ public sealed class TopologyObservedProjector(
         return [conflict.Anchor, conflict.FirstFingerprint, conflict.ConflictingFingerprint,
             JsonSerializer.Serialize(conflict.Candidates, RawSignalCodec.Json), sequence];
     }
+
+    private static object[] ParentResolutionRow(TopologyParentResolution item, ulong sequence) =>
+        [item.ChildAnchor, item.ChildFingerprint, item.Reason,
+            JsonSerializer.Serialize(item, RawSignalCodec.Json), sequence];
 }
