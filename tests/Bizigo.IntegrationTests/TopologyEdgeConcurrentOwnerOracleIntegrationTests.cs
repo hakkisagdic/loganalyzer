@@ -77,15 +77,16 @@ public sealed class TopologyEdgeConcurrentOwnerOracleIntegrationTests(DevStackFi
             await gateTransaction.RollbackAsync(CancellationToken.None);
         }
         await Task.WhenAll(transfer, update);
+        var updateResult = await update;
         Assert.Equal(2, blocked);
-        Assert.Contains(update.Result.Status, new[] { 200, 403 });
+        Assert.Contains(updateResult.Status, new[] { 200, 403 });
 
         await using (var check = await factory.CreateDbContextAsync(token))
         {
             var current = await check.TopologyDeclaredEdges.AsNoTracking().SingleAsync(e => e.Id == edgeId, token);
-            var expectedVersion = update.Result.Status == 200 ? 2 : 1;
+            var expectedVersion = updateResult.Status == 200 ? 2 : 1;
             Assert.Equal((long)expectedVersion, current.Version);
-            Assert.Equal(update.Result.Status == 200 ? TopologyEdgeRelations.ConnectsTo : TopologyEdgeRelations.DependsOn,
+            Assert.Equal(updateResult.Status == 200 ? TopologyEdgeRelations.ConnectsTo : TopologyEdgeRelations.DependsOn,
                 current.Relation);
             Assert.Equal(expectedVersion, await check.TopologyDeclaredEdgeHistory.CountAsync(h => h.EdgeId == edgeId, token));
             Assert.Equal(expectedVersion, await check.AuditLog.CountAsync(a => a.Resource == edgeId.ToString() &&
@@ -94,8 +95,8 @@ public sealed class TopologyEdgeConcurrentOwnerOracleIntegrationTests(DevStackFi
         }
 
         // Regardless of which contender won, A-only authority is now stale.
-        var version = update.Result.Status == 200 ? "2" : "1";
-        var nextRelation = update.Result.Status == 200
+        var version = updateResult.Status == 200 ? "2" : "1";
+        var nextRelation = updateResult.Status == 200
             ? TopologyEdgeRelations.DependsOn : TopologyEdgeRelations.ConnectsTo;
         Assert.Equal(403, (await registry.UpdateAsync(scopeA, true, edgeId,
             input with { Version = version }, token)).Status);
