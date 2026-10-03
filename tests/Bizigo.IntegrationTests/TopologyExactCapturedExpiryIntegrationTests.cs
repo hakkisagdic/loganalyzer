@@ -203,15 +203,38 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
         using var first = await GetAsBothAsync(api, route + "&evidencePageSize=1");
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
         using var firstJson = JsonDocument.Parse(await first.Content.ReadAsStringAsync(Ct));
-        Assert.Single(firstJson.RootElement.GetProperty("evidence").EnumerateArray().ToArray());
+        Assert.Equal(edge.Id, firstJson.RootElement.GetProperty("edge").GetProperty("id").GetString());
+        var firstEvidence = Assert.Single(firstJson.RootElement.GetProperty("evidence").EnumerateArray().ToArray());
         var cursor = firstJson.RootElement.GetProperty("evidence_cursor").GetString();
         Assert.NotNull(cursor);
         using var second = await GetAsBothAsync(api, route + "&evidencePageSize=1&evidenceCursor="
             + Uri.EscapeDataString(cursor));
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
         using var secondJson = JsonDocument.Parse(await second.Content.ReadAsStringAsync(Ct));
-        Assert.Single(secondJson.RootElement.GetProperty("evidence").EnumerateArray().ToArray());
+        Assert.Equal(edge.Id, secondJson.RootElement.GetProperty("edge").GetProperty("id").GetString());
+        var secondEvidence = Assert.Single(secondJson.RootElement.GetProperty("evidence").EnumerateArray().ToArray());
         Assert.Null(secondJson.RootElement.GetProperty("evidence_cursor").GetString());
+        var traceId = Convert.ToHexStringLower(parentSpan.TraceId.Span);
+        var expectedOccurrences = new Dictionary<string, (string SpanId, decimal EventTime)>(StringComparer.Ordinal)
+        {
+            [rawParent.EnvelopeId.ToString("N") + "/" + Assert.Single(rawParent.AcceptedKeys)] =
+                (Convert.ToHexStringLower(parentSpan.SpanId.Span), parentStart),
+            [rawChild.EnvelopeId.ToString("N") + "/" + Assert.Single(rawChild.AcceptedKeys)] =
+                (Convert.ToHexStringLower(childSpan.SpanId.Span), childStart),
+        };
+        var pageEvidence = new[] { firstEvidence, secondEvidence };
+        Assert.Equal(expectedOccurrences.Keys.Order(StringComparer.Ordinal), pageEvidence
+            .Select(reference => reference.GetProperty("id").GetString()!).Order(StringComparer.Ordinal));
+        foreach (var reference in pageEvidence)
+        {
+            var occurrence = reference.GetProperty("id").GetString()!;
+            Assert.Equal(traceId, reference.GetProperty("trace_logical_id").GetString());
+            Assert.Equal(expectedOccurrences[occurrence].SpanId,
+                reference.GetProperty("span_logical_id").GetString());
+            Assert.Equal(expectedOccurrences[occurrence].EventTime,
+                decimal.Parse(reference.GetProperty("event_time_unix_nano").GetString()!,
+                    CultureInfo.InvariantCulture));
+        }
         var changed = route[..route.LastIndexOf("&to=", StringComparison.Ordinal)]
             + "&to=" + Uri.EscapeDataString(Utc(to - 1));
         using var altered = await GetAsBothAsync(api, changed + "&evidencePageSize=1&evidenceCursor="

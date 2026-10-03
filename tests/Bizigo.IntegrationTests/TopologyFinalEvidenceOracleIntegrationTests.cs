@@ -100,8 +100,11 @@ public sealed class TopologyFinalEvidenceOracleIntegrationTests(DevStackFixture 
             Assert.Equal("declared", edge.GetProperty("provenance").GetString()));
     }
 
-    [Fact]
-    public async Task D07_Declared_edge_created_exactly_at_Window_To_is_visible_only_in_next_snapshot()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task D07_Declared_edge_start_and_end_exactly_at_Window_To_use_prior_state(
+        bool deleteAtTo)
     {
         await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
         var suffix = Guid.NewGuid().ToString("N")[..12];
@@ -128,22 +131,30 @@ public sealed class TopologyFinalEvidenceOracleIntegrationTests(DevStackFixture 
             Degraded(owner, sourceA, from.AddMinutes(1)),
             Degraded(owner, sourceB, from.AddMinutes(2)),
         ], Ct);
-        var edge = await new TopologyEdgeRegistry(fixture.Factory, new FakeTimeProvider(to))
+        var createdAt = deleteAtTo ? from.AddMinutes(5) : to;
+        var edge = await new TopologyEdgeRegistry(fixture.Factory, new FakeTimeProvider(createdAt))
             .CreateAsync(scope, true, new(roots[sourceA].Id, roots[sourceB].Id, "depends_on"), Ct);
         Assert.Equal(201, edge.Status);
         var edgeId = edge.Edge!.Id.ToString("D");
+        if (deleteAtTo)
+            Assert.Equal(204, (await new TopologyEdgeRegistry(fixture.Factory, new FakeTimeProvider(to))
+                .DeleteAsync(scope, true, edge.Edge.Id, long.Parse(edge.Edge.Version,
+                    CultureInfo.InvariantCulture), Ct)).Status);
         var fence = new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
             new TopologyPublicationWatermarkReader(fixture.Storage)));
         var graph = new TopologyGraphQueryService(new TopologyGraphSnapshotSource(fixture.Factory,
             new TopologyObservedSnapshotReader(fixture.Storage), fence));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
             new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph);
-        var boundary = decimal.Parse(edge.Edge.ValidFromUnixNano, CultureInfo.InvariantCulture);
-        Assert.Equal(TopologyIdentity.Nano(to), boundary);
-        Assert.DoesNotContain((await query.SearchTopologyEdgesAsync(new(boundary - 1,
-            Relation: TopologyRelation.DependsOn), scope, Ct)).Items, row => row.Id == edgeId);
-        Assert.Contains((await query.SearchTopologyEdgesAsync(new(boundary,
-            Relation: TopologyRelation.DependsOn), scope, Ct)).Items, row => row.Id == edgeId);
+        var boundary = TopologyIdentity.Nano(to);
+        if (!deleteAtTo) Assert.Equal(boundary,
+            decimal.Parse(edge.Edge.ValidFromUnixNano, CultureInfo.InvariantCulture));
+        var prior = await query.SearchTopologyEdgesAsync(new(boundary - 1,
+            Relation: TopologyRelation.DependsOn), scope, Ct);
+        var afterBoundary = await query.SearchTopologyEdgesAsync(new(boundary,
+            Relation: TopologyRelation.DependsOn), scope, Ct);
+        Assert.Equal(deleteAtTo, prior.Items.Any(row => row.Id == edgeId));
+        Assert.Equal(!deleteAtTo, afterBoundary.Items.Any(row => row.Id == edgeId));
         var atTo = new RcaWindow
         {
             BaselineFrom = from.AddDays(-1), BaselineTo = from.AddMinutes(-1),
@@ -151,13 +162,22 @@ public sealed class TopologyFinalEvidenceOracleIntegrationTests(DevStackFixture 
         };
         var next = atTo with { To = to.AddTicks(10) };
         var provider = new TopologyGraphPathProvider(query);
-        Assert.Equal(EvidenceStatus.Empty, (await provider.GatherAsync(atTo, scope,
-            GatherBudget.Default, Ct)).Status);
+        var priorSlice = await provider.GatherAsync(atTo, scope, GatherBudget.Default, Ct);
+        Assert.Equal(deleteAtTo ? EvidenceStatus.Gathered : EvidenceStatus.Empty, priorSlice.Status);
+        if (deleteAtTo)
+        {
+            using var proof = JsonDocument.Parse(Assert.Single(priorSlice.Items).Payload["proof_edges"]);
+            Assert.Equal(edgeId, Assert.Single(proof.RootElement.EnumerateArray().ToArray())
+                .GetProperty("id").GetString());
+        }
         var after = await provider.GatherAsync(next, scope, GatherBudget.Default, Ct);
-        Assert.Equal(EvidenceStatus.Gathered, after.Status);
-        using var proof = JsonDocument.Parse(Assert.Single(after.Items).Payload["proof_edges"]);
-        Assert.Equal(edgeId, Assert.Single(proof.RootElement.EnumerateArray().ToArray())
-            .GetProperty("id").GetString());
+        Assert.Equal(deleteAtTo ? EvidenceStatus.Empty : EvidenceStatus.Gathered, after.Status);
+        if (!deleteAtTo)
+        {
+            using var proof = JsonDocument.Parse(Assert.Single(after.Items).Payload["proof_edges"]);
+            Assert.Equal(edgeId, Assert.Single(proof.RootElement.EnumerateArray().ToArray())
+                .GetProperty("id").GetString());
+        }
     }
 
     [Fact]
