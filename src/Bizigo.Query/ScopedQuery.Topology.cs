@@ -102,13 +102,14 @@ public sealed partial class ScopedQuery
         AccessScope scope,
         CancellationToken cancellationToken = default) =>
         AuditedTopologyAsync("neighbors.outside", scope, Summary(query.ReadClockUnixNano, 1, false),
-            () => Topology.CountExternalNeighborsAsync(query, scope, cancellationToken), result => result.Count ?? 0);
+            () => Topology.CountExternalNeighborsAsync(query, scope, cancellationToken),
+            result => result.Count ?? 0, result => result.Count is not null);
 
     private static string Summary(decimal readClock, int limit, bool continuation) =>
         string.Create(CultureInfo.InvariantCulture, $"as_of_nano={readClock};limit={limit};cursor={continuation}");
 
     private async Task<T> AuditedTopologyAsync<T>(string action, AccessScope scope, string summary,
-        Func<Task<T>> operation, Func<T, int> count)
+        Func<Task<T>> operation, Func<T, int> count, Func<T, bool>? isComplete = null)
     {
         ArgumentNullException.ThrowIfNull(scope);
         var watch = Stopwatch.StartNew();
@@ -119,8 +120,8 @@ public sealed partial class ScopedQuery
         {
             var result = await operation();
             rows = count(result);
-            succeeded = true;
-            outcome = "Success";
+            succeeded = isComplete?.Invoke(result) ?? true;
+            outcome = succeeded ? "Success" : "Failed";
             return result;
         }
         catch (OperationCanceledException) { outcome = "Cancelled"; throw; }

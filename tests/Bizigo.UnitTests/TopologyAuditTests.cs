@@ -1,3 +1,4 @@
+using System.Data.Common;
 using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Bizigo.Query;
@@ -58,6 +59,40 @@ public sealed class TopologyAuditTests
             record => { Assert.Equal("topology.edges.list", record.Action); Assert.False(record.Succeeded); Assert.Equal(0, record.RowCount); });
     }
 
+    [Fact]
+    public async Task Unknown_outside_count_audits_failure_while_measured_zero_audits_success()
+    {
+        var scope = AccessScope.ForGroups("actor-A", ["A"]);
+        var query = new TopologyNeighborhoodQuery(NodeId, 1000);
+        var failureAudit = new FakeAudit();
+        using (var failed = new Fixture(failureAudit, readFailure: new DriverUnavailableException()))
+        {
+            var unavailable = await failed.Query.CountExternalTopologyNeighborsAsync(query, scope,
+                TestContext.Current.CancellationToken);
+            Assert.Null(unavailable.Count);
+            Assert.Equal("QueryUnavailable", unavailable.Reason);
+        }
+        var failedRecord = Assert.Single(failureAudit.Records);
+        Assert.Equal("topology.neighbors.outside", failedRecord.Action);
+        Assert.False(failedRecord.Succeeded);
+        Assert.Contains("outcome=Failed", failedRecord.Details, StringComparison.Ordinal);
+        Assert.Equal(0, failedRecord.RowCount);
+
+        var successAudit = new FakeAudit();
+        using (var healthy = new Fixture(successAudit))
+        {
+            var measured = await healthy.Query.CountExternalTopologyNeighborsAsync(query, scope,
+                TestContext.Current.CancellationToken);
+            Assert.Equal(0, measured.Count);
+            Assert.Null(measured.Reason);
+        }
+        var successRecord = Assert.Single(successAudit.Records);
+        Assert.True(successRecord.Succeeded);
+        Assert.Contains("outcome=Success", successRecord.Details, StringComparison.Ordinal);
+    }
+
+    private sealed class DriverUnavailableException : DbException { }
+
     private sealed class FakeAudit : IAuditSink
     {
         public bool Fail { get; init; }
@@ -76,9 +111,9 @@ public sealed class TopologyAuditTests
             .UseInMemoryDatabase("topology-audit-" + Guid.NewGuid()).Options);
         public ScopedQuery Query { get; }
 
-        public Fixture(IAuditSink audit, TopologyGraphSnapshot? snapshot = null)
+        public Fixture(IAuditSink audit, TopologyGraphSnapshot? snapshot = null, Exception? readFailure = null)
         {
-            var graph = new TopologyGraphQueryService(new MemorySource(snapshot));
+            var graph = new TopologyGraphQueryService(new MemorySource(snapshot, readFailure));
             Query = new ScopedQuery(new EventReader(_storage), new ChangeEventReader(_storage),
                 new CorrelationReader(_storage), new EventWriter(_storage), _controlPlane, audit,
                 topology: graph);
@@ -87,9 +122,10 @@ public sealed class TopologyAuditTests
         public void Dispose() { _controlPlane.Dispose(); _storage.Dispose(); }
     }
 
-    private sealed class MemorySource(TopologyGraphSnapshot? snapshot) : ITopologyGraphSnapshotSource
+    private sealed class MemorySource(TopologyGraphSnapshot? snapshot, Exception? readFailure) : ITopologyGraphSnapshotSource
     {
         public Task<TopologyGraphSnapshot> ReadAsync(long? publishedSequence, CancellationToken cancellationToken) =>
+            readFailure is not null ? Task.FromException<TopologyGraphSnapshot>(readFailure) :
             Task.FromResult(snapshot ?? new TopologyGraphSnapshot(0, [])
             {
                 Nodes = [new TopologyNodeProjection(NodeId, TopologyNodeKind.Service, "visible", "A", true,
