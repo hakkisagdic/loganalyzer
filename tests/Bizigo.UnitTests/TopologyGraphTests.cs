@@ -54,6 +54,25 @@ public sealed class TopologyGraphTests
     }
 
     [Fact]
+    public async Task Ancestor_expiry_uses_only_selected_observed_proof_at_exact_boundary()
+    {
+        var selected = Edge("ra-observed", R, A, provenance: TopologyProvenance.Observed)
+            with { LastSeenUnixNano = 900, EffectiveExpiry = 1500 };
+        var declared = Edge("rb-declared", R, B) with { EffectiveExpiry = 1200 };
+        var unused = Edge("rc-unused", R, C, provenance: TopologyProvenance.Observed)
+            with { LastSeenUnixNano = 900, EffectiveExpiry = 1100 };
+        var query = Query([selected, declared, unused]);
+        var flat = await query.CommonAncestorAsync(new([A, B], 1000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, flat.Status);
+        Assert.Equal(1500, flat.EarliestEvidenceExpiryUnixNano);
+        var grouped = await query.GroupedCommonAncestorAsync(new([[A], [B]], 1000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, grouped.Status);
+        Assert.Equal(1500, grouped.EarliestEvidenceExpiryUnixNano);
+        Assert.Null((await query.CommonAncestorAsync(new([A, B], 1500), ScopeA, Ct))
+            .EarliestEvidenceExpiryUnixNano);
+    }
+
+    [Fact]
     public async Task Cycle_selfloop_and_order()
     {
         var expected = await Query(OracleEdges()).PathAsync(new(R, D, 1000), ScopeA, Ct);

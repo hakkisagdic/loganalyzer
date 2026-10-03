@@ -137,7 +137,10 @@ public sealed record TopologyCommonAncestorResult(
     string? NodeId,
     IReadOnlyList<TopologyPathProof> Paths,
     long PublishedSequence,
-    string? Reason = null);
+    string? Reason = null)
+{
+    public decimal? EarliestEvidenceExpiryUnixNano { get; init; }
+}
 
 public enum TopologyGraphResultStatus { Found = 1, Unreachable = 2, NotVerified = 3 }
 
@@ -176,6 +179,7 @@ public sealed record TopologySourceTarget(string NodeId, IReadOnlyList<string> M
 
 public sealed record TopologySourceTargets(string SourceId, string SourceNodeId,
     IReadOnlyList<TopologySourceTarget> Targets, TopologySourceTargetStatus Status, string? Reason);
+
 
 public sealed class TopologyCursorException : ArgumentException
 {

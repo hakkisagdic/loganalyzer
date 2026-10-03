@@ -220,7 +220,9 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             .ThenBy(static item => item.Paths.Sum(path => path.EdgeIds.Count))
             .ThenBy(static item => item.Node, StringComparer.Ordinal).FirstOrDefault();
         if (match.Node is not null)
-            return new(TopologyGraphResultStatus.Found, match.Node, match.Paths, snapshot.PublishedSequence);
+            return new TopologyCommonAncestorResult(TopologyGraphResultStatus.Found, match.Node,
+                match.Paths, snapshot.PublishedSequence)
+            { EarliestEvidenceExpiryUnixNano = ProofExpiry(edges, match.Paths) };
         var partial = query.NodeIds.Any(node => HasHiddenIncident(node, snapshot, scope,
             query.ReadClockUnixNano, expiryClock, window));
         return new(partial ? TopologyGraphResultStatus.NotVerified : TopologyGraphResultStatus.Unreachable,
@@ -275,7 +277,9 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             .ThenBy(static item => item.Paths.Sum(path => path.EdgeIds.Count))
             .ThenBy(static item => item.Node, StringComparer.Ordinal).FirstOrDefault();
         if (match.Node is not null)
-            return new(TopologyGraphResultStatus.Found, match.Node, match.Paths, snapshot.PublishedSequence);
+            return new TopologyCommonAncestorResult(TopologyGraphResultStatus.Found, match.Node,
+                match.Paths, snapshot.PublishedSequence)
+            { EarliestEvidenceExpiryUnixNano = ProofExpiry(edges, match.Paths) };
         var upstream = Reachable(edges, allTargets, reverse: true);
         var partial = upstream.Any(node => HasHiddenIncident(node, snapshot, scope,
             query.ReadClockUnixNano, expiryClock, window, query.DeclaredStateClockUnixNano));
@@ -667,6 +671,14 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             .Select(static edge => edge.EffectiveExpiry).Where(static expiry => expiry.HasValue))
             minimum = minimum is null ? expiry : decimal.Min(minimum.Value, expiry!.Value);
         return minimum;
+    }
+
+    private static decimal? ProofExpiry(IEnumerable<TopologyEdgeProjection> edges,
+        IEnumerable<TopologyPathProof> paths)
+    {
+        var chosenIds = paths.SelectMany(static path => path.EdgeIds)
+            .ToHashSet(StringComparer.Ordinal);
+        return MinExpiry(edges.Where(edge => chosenIds.Contains(edge.Id)));
     }
 
     private static void ValidateScopeAndPage(AccessScope scope, int pageSize)
