@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Bizigo.Api;
 using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Microsoft.EntityFrameworkCore;
@@ -240,7 +241,8 @@ public sealed class TopologyRegistryIntegrationTests(DevStackFixture stack)
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         var node = (await created.Content.ReadFromJsonAsync<TopologyNodeVersion>(Ct))!;
         using var updated = await api.PutAsync("/v1/topology/nodes/" + node.Id,
-            JsonSerializer.Serialize(input with { Version = node.Version, DisplayName = "HTTP rename" }), role: "admin");
+            JsonSerializer.Serialize(new TopologyNodeMutationDto(input.Kind, "HTTP rename", input.OwnerGroup,
+                input.Enabled, input.Bindings, input.SourceId, node.Version.ToString(CultureInfo.InvariantCulture))), role: "admin");
         Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
         using var stale = await api.DeleteAsync("/v1/topology/nodes/" + node.Id + "?version=1", role: "admin");
         Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
@@ -249,5 +251,56 @@ public sealed class TopologyRegistryIntegrationTests(DevStackFixture stack)
         await using var check = await factory.CreateDbContextAsync(Ct);
         Assert.Equal(3, await check.AuditLog.CountAsync(Ct));
         Assert.All(await check.AuditLog.ToArrayAsync(Ct), row => Assert.Equal(api.Subject("A"), row.Subject));
+    }
+
+    [Fact]
+    public async Task Real_http_node_mutation_versions_are_string_only_and_int64_max_delete_is_lossless()
+    {
+        var factory = await Setup();
+        await using var api = await TelemetryApiHost.StartTopologyAsync(factory, Ct);
+        var input = Service();
+        using var created = await api.PostAsync("/v1/topology/nodes", JsonSerializer.Serialize(input), role: "admin");
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        using var createdJson = JsonDocument.Parse(await created.Content.ReadAsStringAsync(Ct));
+        Assert.Equal(JsonValueKind.String, createdJson.RootElement.GetProperty("version").ValueKind);
+        var node = (await created.Content.ReadFromJsonAsync<TopologyNodeVersion>(Ct))!;
+        string Wire(string version) => JsonSerializer.Serialize(new TopologyNodeMutationDto(input.Kind, "changed",
+            input.OwnerGroup, input.Enabled, input.Bindings, input.SourceId, version));
+
+        using var numeric = await api.PutAsync("/v1/topology/nodes/" + node.Id,
+            JsonSerializer.Serialize(input with { Version = long.MaxValue }), role: "admin");
+        Assert.Equal(HttpStatusCode.BadRequest, numeric.StatusCode);
+        using var outOfRange = await api.PutAsync("/v1/topology/nodes/" + node.Id,
+            Wire("9223372036854775808"), role: "admin");
+        Assert.Equal(HttpStatusCode.BadRequest, outOfRange.StatusCode);
+        using var staleMax = await api.PutAsync("/v1/topology/nodes/" + node.Id,
+            Wire("9223372036854775807"), role: "admin");
+        Assert.Equal(HttpStatusCode.Conflict, staleMax.StatusCode);
+        using var updated = await api.PutAsync("/v1/topology/nodes/" + node.Id, Wire("1"), role: "admin");
+        Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+        using var updatedJson = JsonDocument.Parse(await updated.Content.ReadAsStringAsync(Ct));
+        Assert.Equal("2", updatedJson.RootElement.GetProperty("version").GetString());
+
+        using var malformedDelete = await api.DeleteAsync("/v1/topology/nodes/" + node.Id + "?version=01", role: "admin");
+        Assert.Equal(HttpStatusCode.BadRequest, malformedDelete.StatusCode);
+        using var outOfRangeDelete = await api.DeleteAsync("/v1/topology/nodes/" + node.Id + "?version=9223372036854775808", role: "admin");
+        Assert.Equal(HttpStatusCode.BadRequest, outOfRangeDelete.StatusCode);
+        using var staleDelete = await api.DeleteAsync("/v1/topology/nodes/" + node.Id + "?version=9223372036854775807", role: "admin");
+        Assert.Equal(HttpStatusCode.Conflict, staleDelete.StatusCode);
+
+        await using (var db = await factory.CreateDbContextAsync(Ct))
+        {
+            (await db.TopologyNodes.SingleAsync(n => n.Id == node.Id, Ct)).Version = long.MaxValue;
+            (await db.TopologyNodeHistory.SingleAsync(h => h.NodeId == node.Id && h.ToNano == null, Ct))
+                .NodeVersion = long.MaxValue;
+            await db.SaveChangesAsync(Ct);
+        }
+        using var deleted = await api.DeleteAsync("/v1/topology/nodes/" + node.Id + "?version=9223372036854775807", role: "admin");
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+        await using var check = await factory.CreateDbContextAsync(Ct);
+        var stored = await check.TopologyNodes.SingleAsync(n => n.Id == node.Id, Ct);
+        Assert.True(stored.Deleted);
+        Assert.Equal(long.MaxValue, stored.Version);
+        Assert.Equal(3, await check.AuditLog.CountAsync(Ct));
     }
 }

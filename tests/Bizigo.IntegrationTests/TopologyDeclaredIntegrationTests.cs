@@ -134,4 +134,50 @@ public sealed class TopologyDeclaredIntegrationTests(DevStackFixture stack)
         using var deleted = await api.DeleteAsync("/v1/topology/edges/" + edge.Id + "?version=2", role: "admin");
         Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
     }
+
+    [Fact]
+    public async Task Real_http_edge_mutation_and_delete_keep_int64_max_as_decimal_text()
+    {
+        var (factory, from, to) = await Setup();
+        await using var api = await TelemetryApiHost.StartTopologyAsync(factory, Ct);
+        var body = JsonSerializer.Serialize(new TopologyDeclaredEdgeInput(from, to, TopologyEdgeRelations.DependsOn));
+        using var created = await api.PostAsync("/v1/topology/edges", body, role: "admin");
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        using var createdJson = JsonDocument.Parse(await created.Content.ReadAsStringAsync(Ct));
+        Assert.Equal(JsonValueKind.String, createdJson.RootElement.GetProperty("version").ValueKind);
+        var edge = (await created.Content.ReadFromJsonAsync<TopologyDeclaredEdgeVersion>(Ct))!;
+        using var staleMax = await api.PutAsync("/v1/topology/edges/" + edge.Id,
+            JsonSerializer.Serialize(new TopologyDeclaredEdgeInput(from, to, TopologyEdgeRelations.ConnectsTo,
+                "9223372036854775807")), role: "admin");
+        Assert.Equal(HttpStatusCode.Conflict, staleMax.StatusCode);
+        using var outOfRange = await api.PutAsync("/v1/topology/edges/" + edge.Id,
+            JsonSerializer.Serialize(new TopologyDeclaredEdgeInput(from, to, TopologyEdgeRelations.ConnectsTo,
+                "9223372036854775808")), role: "admin");
+        Assert.Equal(HttpStatusCode.BadRequest, outOfRange.StatusCode);
+        using var nonCanonical = await api.PutAsync("/v1/topology/edges/" + edge.Id,
+            JsonSerializer.Serialize(new TopologyDeclaredEdgeInput(from, to, TopologyEdgeRelations.ConnectsTo,
+                "01")), role: "admin");
+        Assert.Equal(HttpStatusCode.BadRequest, nonCanonical.StatusCode);
+        using var badDelete = await api.DeleteAsync("/v1/topology/edges/" + edge.Id + "?version=01", role: "admin");
+        Assert.Equal(HttpStatusCode.BadRequest, badDelete.StatusCode);
+        using var outOfRangeDelete = await api.DeleteAsync("/v1/topology/edges/" + edge.Id + "?version=9223372036854775808", role: "admin");
+        Assert.Equal(HttpStatusCode.BadRequest, outOfRangeDelete.StatusCode);
+        using var staleDelete = await api.DeleteAsync("/v1/topology/edges/" + edge.Id + "?version=9223372036854775807", role: "admin");
+        Assert.Equal(HttpStatusCode.Conflict, staleDelete.StatusCode);
+
+        await using (var db = await factory.CreateDbContextAsync(Ct))
+        {
+            (await db.TopologyDeclaredEdges.SingleAsync(e => e.Id == edge.Id, Ct)).Version = long.MaxValue;
+            (await db.TopologyDeclaredEdgeHistory.SingleAsync(h => h.EdgeId == edge.Id && h.ToNano == null, Ct))
+                .EdgeVersion = long.MaxValue;
+            await db.SaveChangesAsync(Ct);
+        }
+        using var deleted = await api.DeleteAsync("/v1/topology/edges/" + edge.Id + "?version=9223372036854775807", role: "admin");
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+        await using var check = await factory.CreateDbContextAsync(Ct);
+        var stored = await check.TopologyDeclaredEdges.SingleAsync(e => e.Id == edge.Id, Ct);
+        Assert.NotNull(stored.DeletedAt);
+        Assert.Equal(long.MaxValue, stored.Version);
+        Assert.Equal(2, await check.AuditLog.CountAsync(Ct));
+    }
 }

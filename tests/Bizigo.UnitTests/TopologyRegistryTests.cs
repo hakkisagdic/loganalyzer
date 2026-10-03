@@ -69,6 +69,45 @@ public sealed class TopologyRegistryTests
         Assert.All(await check.AuditLog.ToArrayAsync(Ct), a => Assert.Equal("admin-A", a.Subject));
     }
 
+    [Fact]
+    public async Task Int64_max_node_update_conflicts_without_state_audit_or_epoch_change_but_delete_succeeds()
+    {
+        using var factory = new InMemoryControlPlaneFactory();
+        await using (var db = factory.CreateDbContext())
+        { db.Sources.Add(new() { SourceId = "SA", OwnerGroup = "A" }); await db.SaveChangesAsync(Ct); }
+        var registry = new TopologyRegistry(factory);
+        var scope = AccessScope.ForGroups("admin-A", ["A"]);
+        var created = (await registry.CreateAsync(scope, true, Service(), Ct)).Node!;
+        long epoch;
+        await using (var db = factory.CreateDbContext())
+        {
+            (await db.TopologyNodes.SingleAsync(n => n.Id == created.Id, Ct)).Version = long.MaxValue;
+            (await db.TopologyNodeHistory.SingleAsync(h => h.NodeId == created.Id && h.ToNano == null, Ct))
+                .NodeVersion = long.MaxValue;
+            await db.SaveChangesAsync(Ct);
+            epoch = (await db.TopologyReadState.SingleAsync(Ct)).Epoch;
+        }
+
+        var rejected = await registry.UpdateAsync(scope, true, created.Id,
+            Service() with { Version = long.MaxValue, DisplayName = "must-not-commit" }, Ct);
+        Assert.Equal(409, rejected.Status);
+        await using (var db = factory.CreateDbContext())
+        {
+            Assert.Equal("checkout", (await db.TopologyNodes.SingleAsync(n => n.Id == created.Id, Ct)).DisplayName);
+            Assert.Single(await db.TopologyNodeHistory.Where(h => h.NodeId == created.Id).ToArrayAsync(Ct));
+            Assert.Single(await db.AuditLog.ToArrayAsync(Ct));
+            Assert.Equal(epoch, (await db.TopologyReadState.SingleAsync(Ct)).Epoch);
+        }
+
+        Assert.Equal(204, (await registry.DeleteAsync(scope, true, created.Id, long.MaxValue, Ct)).Status);
+        await using var deleted = factory.CreateDbContext();
+        var node = await deleted.TopologyNodes.SingleAsync(n => n.Id == created.Id, Ct);
+        Assert.True(node.Deleted);
+        Assert.Equal(long.MaxValue, node.Version);
+        Assert.Equal(2, await deleted.TopologyNodeHistory.CountAsync(h => h.NodeId == created.Id, Ct));
+        Assert.Equal(2, await deleted.AuditLog.CountAsync(Ct));
+    }
+
     [Theory]
     [InlineData(false, "A", "A", "SA")]
     [InlineData(true, "A", "B", "SB")]

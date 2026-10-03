@@ -114,6 +114,8 @@ public sealed class TopologyRegistry(IDbContextFactory<ControlPlaneDbContext> fa
             var oldOwners = await db.Sources.Where(s => oldSources.Contains(s.SourceId)).ToArrayAsync(token);
             if (oldOwners.Length != oldSources.Length) return new(409, Error: "Binding source disappeared.");
             if (oldOwners.Any(s => !scope.Allows(s.OwnerGroup))) return new(403, Error: "Existing alias source outside authorized scope.");
+            if (!deleting && node is { Version: long.MaxValue })
+                return new(409, Error: "Node version is exhausted.");
             var now = decimal.Floor(TopologyIdentity.Nano(time.GetUtcNow()) / 1000) * 1000;
             if (prior is not null) now = Math.Max(now, prior.FromNano + 1000);
             if (oldBindings.Length != 0) now = Math.Max(now, oldBindings.Max(b => b.FromNano) + 1000);
@@ -167,7 +169,9 @@ public sealed class TopologyRegistry(IDbContextFactory<ControlPlaneDbContext> fa
                     SourceHistoryRevision = sourceHistory[alias.SourceId].Revision, FromNano = now });
             }
             if (created) db.TopologyNodes.Add(node);
-            node.Version++;
+            // A terminal tombstone may retain MaxValue; no representable next
+            // version exists, and a deleted node cannot be mutated again.
+            if (node.Version < long.MaxValue) node.Version++;
             node.DisplayName = input?.DisplayName ?? node.DisplayName;
             node.OwnerGroup = input?.OwnerGroup ?? node.OwnerGroup;
             node.Enabled = !deleting && input!.Enabled;
