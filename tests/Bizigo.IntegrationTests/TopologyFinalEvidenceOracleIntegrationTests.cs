@@ -9,6 +9,7 @@ using Bizigo.Query;
 using Bizigo.Storage.ClickHouse;
 using Google.Protobuf;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Time.Testing;
 using OpenTelemetry.Proto.Common.V1;
 
 namespace Bizigo.IntegrationTests;
@@ -97,6 +98,66 @@ public sealed class TopologyFinalEvidenceOracleIntegrationTests(DevStackFixture 
         Assert.Equal(2, proof.RootElement.GetArrayLength());
         Assert.All(proof.RootElement.EnumerateArray().ToArray(), edge =>
             Assert.Equal("declared", edge.GetProperty("provenance").GetString()));
+    }
+
+    [Fact]
+    public async Task D07_Declared_edge_created_exactly_at_Window_To_is_visible_only_in_next_snapshot()
+    {
+        await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var suffix = Guid.NewGuid().ToString("N")[..12];
+        var sourceA = "to-boundary-a-" + suffix;
+        var sourceB = "to-boundary-b-" + suffix;
+        var owner = "to-boundary-" + suffix;
+        var scope = AccessScope.ForGroups("to-boundary-actor-" + suffix, [owner]);
+        await fixture.SourceAsync(sourceA, owner);
+        await fixture.SourceAsync(sourceB, owner);
+        await using var db = await fixture.Factory.CreateDbContextAsync(Ct);
+        var roots = await db.TopologyNodes.Where(node => node.SourceId == sourceA || node.SourceId == sourceB)
+            .ToDictionaryAsync(node => node.SourceId!, Ct);
+        var from = fixture.Clock.GetUtcNow();
+        // Registry history is rounded to microseconds; use an aligned To so
+        // the write lands exactly on the half-open snapshot boundary.
+        var to = DateTimeOffset.FromUnixTimeMilliseconds(from.ToUnixTimeMilliseconds() + 10 * 60 * 1000);
+        using (var ingest = fixture.Open())
+        {
+            await ingest.RecoverAsync(Ct);
+            await fixture.EmitAsync(ingest, TelemetryDbFixture.Traces(sourceA, fixture.Now), TelemetrySignal.Traces);
+            await fixture.EmitAsync(ingest, TelemetryDbFixture.Traces(sourceB, fixture.Now + 1000), TelemetrySignal.Traces);
+        }
+        await new EventWriter(fixture.Storage).WriteEventsAsync([
+            Degraded(owner, sourceA, from.AddMinutes(1)),
+            Degraded(owner, sourceB, from.AddMinutes(2)),
+        ], Ct);
+        var edge = await new TopologyEdgeRegistry(fixture.Factory, new FakeTimeProvider(to))
+            .CreateAsync(scope, true, new(roots[sourceA].Id, roots[sourceB].Id, "depends_on"), Ct);
+        Assert.Equal(201, edge.Status);
+        var edgeId = edge.Edge!.Id.ToString("D");
+        var fence = new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
+            new TopologyPublicationWatermarkReader(fixture.Storage)));
+        var graph = new TopologyGraphQueryService(new TopologyGraphSnapshotSource(fixture.Factory,
+            new TopologyObservedSnapshotReader(fixture.Storage), fence));
+        var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
+            new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph);
+        var boundary = decimal.Parse(edge.Edge.ValidFromUnixNano, CultureInfo.InvariantCulture);
+        Assert.Equal(TopologyIdentity.Nano(to), boundary);
+        Assert.DoesNotContain((await query.SearchTopologyEdgesAsync(new(boundary - 1,
+            Relation: TopologyRelation.DependsOn), scope, Ct)).Items, row => row.Id == edgeId);
+        Assert.Contains((await query.SearchTopologyEdgesAsync(new(boundary,
+            Relation: TopologyRelation.DependsOn), scope, Ct)).Items, row => row.Id == edgeId);
+        var atTo = new RcaWindow
+        {
+            BaselineFrom = from.AddDays(-1), BaselineTo = from.AddMinutes(-1),
+            From = from, To = to, OwnerGroups = [owner],
+        };
+        var next = atTo with { To = to.AddTicks(10) };
+        var provider = new TopologyGraphPathProvider(query);
+        Assert.Equal(EvidenceStatus.Empty, (await provider.GatherAsync(atTo, scope,
+            GatherBudget.Default, Ct)).Status);
+        var after = await provider.GatherAsync(next, scope, GatherBudget.Default, Ct);
+        Assert.Equal(EvidenceStatus.Gathered, after.Status);
+        using var proof = JsonDocument.Parse(Assert.Single(after.Items).Payload["proof_edges"]);
+        Assert.Equal(edgeId, Assert.Single(proof.RootElement.EnumerateArray().ToArray())
+            .GetProperty("id").GetString());
     }
 
     [Fact]
