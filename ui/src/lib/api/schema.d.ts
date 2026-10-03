@@ -2685,34 +2685,22 @@ export interface components {
             valid_from_unix_nano: string;
             valid_to_unix_nano: null | string;
         };
-        TopologyNodeInput: {
+        TopologyNodeKind: number;
+        TopologyNodeMutationDto: {
             kind: components["schemas"]["TopologyNodeKind"];
             displayName: string;
             ownerGroup: string;
             enabled: boolean;
             bindings: components["schemas"]["TopologyAliasInput"][];
             sourceId?: null | string;
-            /** Format: int64 */
-            version?: null | number | string;
+            version?: null | string;
         };
-        TopologyNodeKind: number;
         TopologyNodePageDto: {
             nodes: components["schemas"]["TopologyNodeDto"][];
             cursor: null | string;
             partial: boolean;
             reason: null | string;
             published_sequence: string;
-        };
-        TopologyNodeVersion: {
-            id: string;
-            kind: components["schemas"]["TopologyNodeKind"];
-            displayName: string;
-            ownerGroup: string;
-            enabled: boolean;
-            deleted: boolean;
-            /** Format: int64 */
-            version: number | string;
-            validFromUnixNano: string;
         };
         TopologyNodeWriteDto: {
             id: string;
@@ -2723,6 +2711,12 @@ export interface components {
             deleted: boolean;
             version: string;
             validFromUnixNano: string;
+        };
+        TopologyNodeWriteResultDto: {
+            /** Format: int32 */
+            status: number | string;
+            node: null | components["schemas"]["TopologyNodeWriteDto"];
+            error: null | string;
         };
         TopologyPathDto: {
             status: string;
@@ -2741,12 +2735,6 @@ export interface components {
         TopologyProblemDto: {
             reason: string;
             message: string;
-        };
-        TopologyRegistryResult: {
-            /** Format: int32 */
-            status: number | string;
-            node?: null | components["schemas"]["TopologyNodeVersion"];
-            error?: null | string;
         };
     };
     responses: never;
@@ -4159,7 +4147,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TopologyNodeInput"];
+                "application/json": components["schemas"]["TopologyNodeMutationDto"];
             };
         };
         responses: {
@@ -4178,7 +4166,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyRegistryResult"];
+                    "application/json": components["schemas"]["TopologyNodeWriteResultDto"];
                 };
             };
             /** @description Forbidden */
@@ -4187,7 +4175,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyRegistryResult"];
+                    "application/json": components["schemas"]["TopologyNodeWriteResultDto"];
                 };
             };
             /** @description Conflict */
@@ -4196,7 +4184,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyRegistryResult"];
+                    "application/json": components["schemas"]["TopologyNodeWriteResultDto"];
                 };
             };
             /** @description Service Unavailable */
@@ -4205,7 +4193,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyRegistryResult"];
+                    "application/json": components["schemas"]["TopologyNodeWriteResultDto"];
                 };
             };
             /** @description Gateway Timeout */
@@ -4214,7 +4202,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyRegistryResult"];
+                    "application/json": components["schemas"]["TopologyNodeWriteResultDto"];
                 };
             };
         };
@@ -4318,7 +4306,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TopologyNodeInput"];
+                "application/json": components["schemas"]["TopologyNodeMutationDto"];
             };
         };
         responses: {
@@ -4337,7 +4325,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyRegistryResult"];
+                    "application/json": components["schemas"]["TopologyNodeWriteResultDto"];
                 };
             };
             /** @description Forbidden */
@@ -4346,7 +4334,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyRegistryResult"];
+                    "application/json": components["schemas"]["TopologyNodeWriteResultDto"];
                 };
             };
             /** @description Not Found */
@@ -4355,7 +4343,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyRegistryResult"];
+                    "application/json": components["schemas"]["TopologyNodeWriteResultDto"];
                 };
             };
             /** @description Conflict */
@@ -4364,7 +4352,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyRegistryResult"];
+                    "application/json": components["schemas"]["TopologyNodeWriteResultDto"];
                 };
             };
             /** @description Service Unavailable */
@@ -4373,7 +4361,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyRegistryResult"];
+                    "application/json": components["schemas"]["TopologyNodeWriteResultDto"];
                 };
             };
             /** @description Gateway Timeout */
@@ -4382,7 +4370,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyRegistryResult"];
+                    "application/json": components["schemas"]["TopologyNodeWriteResultDto"];
                 };
             };
         };
@@ -4390,7 +4378,7 @@ export interface operations {
     DeleteTopologyNode: {
         parameters: {
             query: {
-                version: number | string;
+                version: string;
             };
             header?: never;
             path: {
@@ -4413,7 +4401,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyRegistryResult"];
+                    "application/json": components["schemas"]["TopologyNodeWriteResultDto"];
                 };
             };
             /** @description Forbidden */
@@ -4422,7 +4410,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyRegistryResult"];
+                    "application/json": components["schemas"]["TopologyNodeWriteResultDto"];
                 };
             };
             /** @description Not Found */
@@ -4431,7 +4419,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyRegistryResult"];
+                    "application/json": components["schemas"]["TopologyNodeWriteResultDto"];
                 };
             };
             /** @description Conflict */
@@ -4440,7 +4428,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyRegistryResult"];
+                    "application/json": components["schemas"]["TopologyNodeWriteResultDto"];
                 };
             };
             /** @description Service Unavailable */
@@ -4449,7 +4437,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyRegistryResult"];
+                    "application/json": components["schemas"]["TopologyNodeWriteResultDto"];
                 };
             };
             /** @description Gateway Timeout */
@@ -4458,7 +4446,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TopologyRegistryResult"];
+                    "application/json": components["schemas"]["TopologyNodeWriteResultDto"];
                 };
             };
         };
@@ -4782,7 +4770,7 @@ export interface operations {
     DeleteTopologyDeclaredEdge: {
         parameters: {
             query: {
-                version: number | string;
+                version: string;
             };
             header?: never;
             path: {

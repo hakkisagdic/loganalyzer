@@ -1480,7 +1480,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TopologyNodeInput"
+                "$ref": "#/components/schemas/TopologyNodeMutationDto"
               }
             }
           },
@@ -1502,7 +1502,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyRegistryResult"
+                  "$ref": "#/components/schemas/TopologyNodeWriteResultDto"
                 }
               }
             }
@@ -1512,7 +1512,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyRegistryResult"
+                  "$ref": "#/components/schemas/TopologyNodeWriteResultDto"
                 }
               }
             }
@@ -1522,7 +1522,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyRegistryResult"
+                  "$ref": "#/components/schemas/TopologyNodeWriteResultDto"
                 }
               }
             }
@@ -1532,7 +1532,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyRegistryResult"
+                  "$ref": "#/components/schemas/TopologyNodeWriteResultDto"
                 }
               }
             }
@@ -1542,7 +1542,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyRegistryResult"
+                  "$ref": "#/components/schemas/TopologyNodeWriteResultDto"
                 }
               }
             }
@@ -1644,7 +1644,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TopologyNodeInput"
+                "$ref": "#/components/schemas/TopologyNodeMutationDto"
               }
             }
           },
@@ -1666,7 +1666,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyRegistryResult"
+                  "$ref": "#/components/schemas/TopologyNodeWriteResultDto"
                 }
               }
             }
@@ -1676,7 +1676,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyRegistryResult"
+                  "$ref": "#/components/schemas/TopologyNodeWriteResultDto"
                 }
               }
             }
@@ -1686,7 +1686,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyRegistryResult"
+                  "$ref": "#/components/schemas/TopologyNodeWriteResultDto"
                 }
               }
             }
@@ -1696,7 +1696,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyRegistryResult"
+                  "$ref": "#/components/schemas/TopologyNodeWriteResultDto"
                 }
               }
             }
@@ -1706,7 +1706,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyRegistryResult"
+                  "$ref": "#/components/schemas/TopologyNodeWriteResultDto"
                 }
               }
             }
@@ -1716,7 +1716,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyRegistryResult"
+                  "$ref": "#/components/schemas/TopologyNodeWriteResultDto"
                 }
               }
             }
@@ -1742,12 +1742,7 @@
             "in": "query",
             "required": true,
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -1760,7 +1755,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyRegistryResult"
+                  "$ref": "#/components/schemas/TopologyNodeWriteResultDto"
                 }
               }
             }
@@ -1770,7 +1765,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyRegistryResult"
+                  "$ref": "#/components/schemas/TopologyNodeWriteResultDto"
                 }
               }
             }
@@ -1780,7 +1775,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyRegistryResult"
+                  "$ref": "#/components/schemas/TopologyNodeWriteResultDto"
                 }
               }
             }
@@ -1790,7 +1785,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyRegistryResult"
+                  "$ref": "#/components/schemas/TopologyNodeWriteResultDto"
                 }
               }
             }
@@ -1800,7 +1795,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyRegistryResult"
+                  "$ref": "#/components/schemas/TopologyNodeWriteResultDto"
                 }
               }
             }
@@ -1810,7 +1805,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TopologyRegistryResult"
+                  "$ref": "#/components/schemas/TopologyNodeWriteResultDto"
                 }
               }
             }
@@ -2179,12 +2174,7 @@
             "in": "query",
             "required": true,
             "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
@@ -10631,7 +10621,10 @@
           }
         }
       },
-      "TopologyNodeInput": {
+      "TopologyNodeKind": {
+        "type": "integer"
+      },
+      "TopologyNodeMutationDto": {
         "required": [
           "kind",
           "displayName",
@@ -10666,18 +10659,12 @@
             ]
           },
           "version": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
-              "integer",
               "string"
-            ],
-            "format": "int64"
+            ]
           }
         }
-      },
-      "TopologyNodeKind": {
-        "type": "integer"
       },
       "TopologyNodePageDto": {
         "required": [
@@ -10711,50 +10698,6 @@
             ]
           },
           "published_sequence": {
-            "type": "string"
-          }
-        }
-      },
-      "TopologyNodeVersion": {
-        "required": [
-          "id",
-          "kind",
-          "displayName",
-          "ownerGroup",
-          "enabled",
-          "deleted",
-          "version",
-          "validFromUnixNano"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "kind": {
-            "$ref": "#/components/schemas/TopologyNodeKind"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "ownerGroup": {
-            "type": "string"
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "deleted": {
-            "type": "boolean"
-          },
-          "version": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int64"
-          },
-          "validFromUnixNano": {
             "type": "string"
           }
         }
@@ -10795,6 +10738,40 @@
           },
           "validFromUnixNano": {
             "type": "string"
+          }
+        }
+      },
+      "TopologyNodeWriteResultDto": {
+        "required": [
+          "status",
+          "node",
+          "error"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "node": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TopologyNodeWriteDto"
+              }
+            ]
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -10882,38 +10859,6 @@
           },
           "message": {
             "type": "string"
-          }
-        }
-      },
-      "TopologyRegistryResult": {
-        "required": [
-          "status"
-        ],
-        "type": "object",
-        "properties": {
-          "status": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "node": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/TopologyNodeVersion"
-              }
-            ]
-          },
-          "error": {
-            "type": [
-              "null",
-              "string"
-            ]
           }
         }
       }
