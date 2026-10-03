@@ -22,7 +22,7 @@ public sealed class TopologyAncestorScoringTests
         ]).CommonAncestorAsync(new([First, Second], 1000), Scope, Ct);
         Assert.Equal(TopologyGraphResultStatus.Found, result.Status);
         Assert.Equal(shorterMaximum, result.NodeId);
-        Assert.Equal([2, 2], result.Paths.Select(static path => path.EdgeIds.Count));
+        Assert.Equal([2, 2], result.Paths.Select(static path => path.EdgeIds.Count).ToArray());
     }
 
     [Fact]
@@ -38,7 +38,7 @@ public sealed class TopologyAncestorScoringTests
         ]).CommonAncestorAsync(new([First, Second], 1000), Scope, Ct);
         Assert.Equal(TopologyGraphResultStatus.Found, result.Status);
         Assert.Equal(shorterTotal, result.NodeId);
-        Assert.Equal([1, 2], result.Paths.Select(static path => path.EdgeIds.Count));
+        Assert.Equal([1, 2], result.Paths.Select(static path => path.EdgeIds.Count).ToArray());
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public sealed class TopologyAncestorScoringTests
         ]).CommonAncestorAsync(new([First, Second], 1000), Scope, Ct);
         Assert.Equal(TopologyGraphResultStatus.Found, result.Status);
         Assert.Equal(ordinalFirst, result.NodeId);
-        Assert.Equal([1, 2], result.Paths.Select(static path => path.EdgeIds.Count));
+        Assert.Equal([1, 2], result.Paths.Select(static path => path.EdgeIds.Count).ToArray());
     }
 
     private static TopologyGraphQueryService Query(IReadOnlyList<TopologyEdgeProjection> edges) =>

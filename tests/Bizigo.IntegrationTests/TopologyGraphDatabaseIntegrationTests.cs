@@ -77,10 +77,15 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests(DevStackFixtur
         Assert.Equal(delta < 0 ? "NotComparable" : "Evaluated", result.Telemetry!.Evaluation);
 
         await using var auditDb = await fixture.Factory.CreateDbContextAsync(token);
-        var actions = await auditDb.AuditLog.Where(row => row.Subject == scope.Subject)
-            .Select(row => row.Action).ToArrayAsync(token);
-        Assert.Contains("rca.propagation", actions);
-        Assert.Contains(actions, action => action.Contains("feed", StringComparison.Ordinal));
+        var audits = await auditDb.AuditLog.Where(row => row.Subject == scope.Subject).ToArrayAsync(token);
+        Assert.Contains(audits, row => row.Action == "rca.propagation");
+        Assert.Contains(audits, row => row.Action.Contains("feed", StringComparison.Ordinal));
+        Assert.Contains(audits, row => row.Action == (providerId == "topology.graph-path"
+            ? "topology.path" : "topology.ancestors") && row.Succeeded &&
+            row.Details.Contains("outcome=Success", StringComparison.Ordinal));
+        Assert.Contains(audits, row => row.Action == "topology.edges.detail" && row.Succeeded &&
+            row.Details.Contains("outcome=Success", StringComparison.Ordinal));
+        Assert.DoesNotContain(audits, row => row.Action.StartsWith("topology.", StringComparison.Ordinal) && !row.Succeeded);
     }
 
     [Fact]
