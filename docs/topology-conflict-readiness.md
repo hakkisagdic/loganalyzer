@@ -2,8 +2,9 @@
 
 `topology_span_conflicts` is arbitrated before any owner-scope selection. New
 markers include `candidate_context_json`: every distinct authoritative typed
-fingerprint (plus children referring to the conflicted anchor) carries the
-admission-captured owner, source, node, event time and captured expiry. The
+fingerprint (plus parents referenced by conflicted children and children
+referring to conflicted parents) carries the admission-captured owner, source,
+node, binding reason, event time and captured expiry. The
 durable `topology_projection_batches` manifest freezes the same row mapping for
 crash/replay. Public readers never reconstruct this from payload claims or
 current inventory. A published conflict removes prior observed edges from the
@@ -14,7 +15,8 @@ anchor, fingerprint, hidden owner, source or node.
 
 ## Preflight before serving observed topology
 
-Apply `0011_topology_conflict_context.sql` before starting the new projector.
+Apply `0011_topology_conflict_context.sql` and
+`0012_topology_parent_resolution.sql` before starting the new projector.
 At the committed publication watermark call
 `TopologyObservedSnapshotReader.CheckReadinessAsync(watermark)`. `Usable=false`
 means at least one published context-free legacy marker remains. The public
@@ -22,6 +24,20 @@ observed read path then fails generically (REST 503, RCA Failed); declared-only
 list/detail and node reads remain available. This is an explicit migration
 readiness state, **not** a scoped conflict result. The count is operational
 metadata only and must not appear in public responses or audit summaries.
+Version-2 conflict context also lacks complete parent/child potential-edge
+attribution and is treated as migration-required; the normal projector does
+not overwrite it with a new partial guess.
+
+O03 parent decisions are separate from conflict readiness. A child whose
+admitted parent is absent publishes `MissingParent` with captured child
+owner/source/node/time/expiry. A conflicted parent publishes
+`AmbiguousParent`; no graph edge is emitted. A later admitted parent publishes
+`Resolved` for the same child fingerprint at a new committed watermark,
+including after replay/restart. Normal readers take the latest committed
+decision, never current inventory or a payload owner claim. Scoped child
+neighborhood/count and unproven path/ancestor results surface a generic
+reason without exposing the parent anchor or hidden identity. A timeout or
+storage failure propagates as failure, never as `MissingParent`.
 
 A preexisting observed edge identifies that edge's published endpoints/time
 and can invalidate its own proof. It does not reveal the alternative

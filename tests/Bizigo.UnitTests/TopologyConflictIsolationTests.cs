@@ -65,6 +65,159 @@ public sealed class TopologyConflictIsolationTests
         await Assert.ThrowsAsync<TopologyObservedMigrationRequiredException>(() => graph.PathAsync(new(A1, A2, 2000), ScopeA, Ct));
     }
 
+    [Fact]
+    public async Task First_publication_child_conflict_blocks_parent_neighborhood_and_count()
+    {
+        var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9, [])
+        {
+            ConflictCandidates = [new("A", A1, 1000, 5000)],
+            ConflictArcs = [new(A1, A2, "A", "A", 2000, 5000)],
+        }));
+        await Assert.ThrowsAsync<TopologyConflictException>(() => graph.NeighborhoodAsync(new(A1, 3000,
+            FromUnixNano: 1500, ToUnixNano: 2500), ScopeA, Ct));
+        var count = await graph.CountExternalNeighborsAsync(new(A1, 3000,
+            FromUnixNano: 1500, ToUnixNano: 2500), ScopeA, Ct);
+        Assert.Null(count.Count);
+        Assert.Equal("QueryUnavailable", count.Reason);
+    }
+
+    [Fact]
+    public async Task Directed_path_ignores_weakly_connected_conflict_branch()
+    {
+        var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9,
+            [Edge("x-s", A1, A2, "A"), Edge("s-t", A2, B1, "A"), Edge("x-c", A1, B2, "A")])
+        {
+            ConflictCandidates = [new("A", B2, 1500, 3000)],
+        }));
+        var path = await graph.PathAsync(new(A2, B1, 2000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, path.Status);
+        Assert.Equal(new[] { "s-t" }, path.EdgeIds);
+    }
+
+    [Fact]
+    public async Task Directed_path_ignores_forward_conflict_branch_that_cannot_reach_target()
+    {
+        var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9,
+            [Edge("s-t", A1, A2, "A"), Edge("s-c", A1, B1, "A")])
+        {
+            ConflictArcs = [new(B1, B2, "A", "A", 1500, 3000)],
+            ConflictCandidates = [new("A", B1, 1500, 3000)],
+        }));
+        var path = await graph.PathAsync(new(A1, A2, 2000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, path.Status);
+        Assert.Equal(new[] { "s-t" }, path.EdgeIds);
+    }
+
+    [Fact]
+    public async Task Known_negative_binding_cannot_fail_unrelated_same_owner_path()
+    {
+        var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9,
+            [Edge("healthy", A1, A2, "A")])
+        {
+            ConflictCandidates = [new("A", null, 1500, 3000)
+                { SourceId = "unbound-U", ResolutionReason = "Unresolved" }],
+        }));
+        Assert.Equal(TopologyGraphResultStatus.Found,
+            (await graph.PathAsync(new(A1, A2, 2000), ScopeA, Ct)).Status);
+        Assert.Single((await graph.SearchEdgesAsync(new(2000), ScopeA, Ct)).Items);
+    }
+
+    [Fact]
+    public async Task Missing_parent_is_scoped_not_verified_not_a_measured_zero()
+    {
+        var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9, [])
+        {
+            UnresolvedParents = [new("A", "source-A", A2, "MissingParent", 1500, 3000)],
+        }));
+        var neighborhood = await graph.NeighborhoodAsync(new(A2, 2000), ScopeA, Ct);
+        Assert.Null(neighborhood.ExternalNeighborCount);
+        Assert.Equal("MissingParent", neighborhood.ExternalNeighborReason);
+        var path = await graph.PathAsync(new(A1, A2, 2000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.NotVerified, path.Status);
+        Assert.Equal("MissingParent", path.Reason);
+        Assert.Equal(TopologyGraphResultStatus.Unreachable,
+            (await graph.PathAsync(new(A1, A2, 2000), ScopeB, Ct)).Status);
+    }
+
+    [Fact]
+    public async Task Missing_parent_on_directed_intermediate_makes_path_not_verified()
+    {
+        var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9,
+            [Edge("c-t", A2, B1, "A"), Edge("other", B2, Node(5), "A")])
+        {
+            UnresolvedParents = [new("A", "source-C", A2, "MissingParent", 1500, 3000),
+                new("A", "source-other", B2, "MissingParent", 1500, 3000)],
+        }));
+        var result = await graph.PathAsync(new(A1, B1, 2000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.NotVerified, result.Status);
+        Assert.Equal("MissingParent", result.Reason);
+        Assert.Equal(TopologyGraphResultStatus.Unreachable,
+            (await graph.PathAsync(new(A1, Node(6), 2000), ScopeA, Ct)).Status);
+    }
+
+    [Fact]
+    public async Task Missing_parent_upstream_can_shorten_an_existing_path()
+    {
+        var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9,
+            [Edge("s-x", A1, A2, "A"), Edge("x-y", A2, B1, "A"),
+                Edge("y-t", B1, B2, "A"), Edge("c-t", Node(5), B2, "A")])
+        {
+            UnresolvedParents = [new("A", "source-C", Node(5), "MissingParent", 1500, 3000)],
+        }));
+        var result = await graph.PathAsync(new(A1, B2, 2000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.NotVerified, result.Status);
+        Assert.Equal("MissingParent", result.Reason);
+        Assert.Empty(result.EdgeIds);
+    }
+
+    [Fact]
+    public async Task Missing_parent_on_common_ancestor_intermediates_is_not_verified()
+    {
+        var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9,
+            [Edge("c-t1", A2, B1, "A"), Edge("d-t2", B2, Node(5), "A")])
+        {
+            UnresolvedParents = [new("A", "source-C", A2, "MissingParent", 1500, 3000),
+                new("A", "source-D", B2, "AmbiguousParent", 1500, 3000)],
+        }));
+        var result = await graph.CommonAncestorAsync(new([B1, Node(5)], 2000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.NotVerified, result.Status);
+        Assert.Equal("AmbiguousParent", result.Reason);
+    }
+
+    [Fact]
+    public async Task Ancestor_ignores_conflicted_directed_dead_end_branch()
+    {
+        var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9,
+            [Edge("r-t1", A1, A2, "A"), Edge("r-t2", A1, B1, "A")])
+        {
+            ConflictCandidates = [new("A", B2, 1500, 3000)],
+            ConflictArcs = [new(A1, B2, "A", "A", 1500, 3000)],
+        }));
+        var result = await graph.CommonAncestorAsync(new([A2, B1], 2000,
+            FromUnixNano: 1200, ToUnixNano: 2000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, result.Status);
+        Assert.Equal(A1, result.NodeId);
+        Assert.Equal(new[] { "r-t1", "r-t2" }, result.Paths.SelectMany(path => path.EdgeIds));
+    }
+
+    [Theory]
+    [InlineData(TopologyRelation.Contains)]
+    [InlineData(TopologyRelation.ConnectsTo)]
+    public async Task Missing_depends_on_parent_does_not_poison_declared_relation_count(TopologyRelation relation)
+    {
+        var graph = new TopologyGraphQueryService(new MemorySource(new TopologyGraphSnapshot(9,
+            [Edge("declared", A1, A2, "A", TopologyProvenance.Declared) with { Relation = relation }])
+        {
+            UnresolvedParents = [new("A", "source-A", A1, "MissingParent", 1500, 3000)],
+        }));
+        var filtered = await graph.NeighborhoodAsync(new(A1, 2000, Relation: relation), ScopeA, Ct);
+        Assert.Equal(0, filtered.ExternalNeighborCount);
+        Assert.Null(filtered.ExternalNeighborReason);
+        Assert.Equal("declared", Assert.Single(filtered.Neighbors).EdgeId);
+        Assert.Equal(0, (await graph.CountExternalNeighborsAsync(new(A1, 2000, Relation: relation), ScopeA, Ct)).Count);
+        Assert.Equal("MissingParent", (await graph.NeighborhoodAsync(new(A1, 2000), ScopeA, Ct)).ExternalNeighborReason);
+    }
+
     private static TopologyGraphQueryService Graph() => new(new MemorySource(new TopologyGraphSnapshot(9,
         [Edge("healthy", A1, A2, "A")])
     {

@@ -10,10 +10,16 @@ public sealed record TopologyObservedConflictRow(string Anchor,
     IReadOnlyList<TopologyConflictCandidate> Candidates, bool Unattributed);
 
 public sealed record TopologyObservedSnapshot(IReadOnlyList<TopologyObservedSnapshotRow> Rows,
-    IReadOnlyList<TopologyObservedConflictRow> Conflicts);
+    IReadOnlyList<TopologyObservedConflictRow> Conflicts)
+{
+    public IReadOnlyList<TopologyParentResolution> ParentResolutions { get; init; } = [];
+}
 
 /// <summary>Operational preflight only; never serialize marker counts to public topology responses.</summary>
 public sealed record TopologyObservedReadiness(ulong Watermark, bool Usable, int UnattributedMarkers);
+
+/// <summary>Diagnostic SQL shape only; bound values and hidden owner identities are never observed.</summary>
+public sealed record TopologySqlPlan(string Route, string Sql, IReadOnlyList<string> BoundParameterNames);
 
 public sealed record TopologyObservedSnapshotRow(
     string Id, string FromNodeId, string ToNodeId, string Relation, string Provenance,
@@ -36,6 +42,8 @@ public sealed record TopologyObservedSnapshotRow(
 /// </summary>
 public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
 {
+    public Action<TopologySqlPlan>? ObserveQuery { get; set; }
+
     public async Task<TopologyObservedReadiness> CheckReadinessAsync(ulong watermark,
         CancellationToken cancellationToken = default)
     {
@@ -86,6 +94,7 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
             ORDER BY edge_id
             """;
         command.AddParameter("watermark", watermark);
+        ObserveQuery?.Invoke(new("observed-edges", command.CommandText, ["watermark"]));
         command.CommandTimeout = Math.Clamp(context.Options.QueryTimeoutSeconds, 1, 300);
         var rows = new List<TopologyObservedSnapshotRow>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -116,7 +125,47 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
                 ReadString(reader.GetValue(19)), Convert.ToDecimal(reader.GetValue(20), CultureInfo.InvariantCulture),
                 parentOccurrences, childOccurrences) { HasPublishedConflict = hasConflict });
         }
-        return new(rows, conflicts);
+        return new(rows, conflicts)
+        {
+            ParentResolutions = await ReadParentResolutionsAsync(watermark, cancellationToken),
+        };
+    }
+
+    private async Task<IReadOnlyList<TopologyParentResolution>> ReadParentResolutionsAsync(
+        ulong watermark, CancellationToken token)
+    {
+        await using var connection = context.CreateConnection();
+        await connection.OpenAsync(token);
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT child_anchor, child_fingerprint,
+                argMax(reason, publication_seq),
+                argMax(captured_context_json, publication_seq)
+            FROM topology_parent_resolution
+            WHERE publication_seq <= {watermark:UInt64}
+            GROUP BY child_anchor, child_fingerprint
+            ORDER BY child_anchor, child_fingerprint
+            """;
+        command.AddParameter("watermark", watermark);
+        ObserveQuery?.Invoke(new("parent-resolution", command.CommandText, ["watermark"]));
+        command.CommandTimeout = Math.Clamp(context.Options.QueryTimeoutSeconds, 1, 300);
+        var result = new List<TopologyParentResolution>();
+        await using var reader = await command.ExecuteReaderAsync(token);
+        while (await reader.ReadAsync(token))
+        {
+            var childAnchor = ReadString(reader.GetValue(0));
+            var fingerprint = ReadString(reader.GetValue(1));
+            var reason = ReadString(reader.GetValue(2));
+            var captured = JsonSerializer.Deserialize<TopologyParentResolution>(
+                ReadString(reader.GetValue(3)), RawSignalCodec.Json)
+                ?? throw new InvalidDataException("Published parent decision lacks captured context.");
+            if (captured.ChildAnchor != childAnchor || captured.ChildFingerprint != fingerprint
+                || captured.Reason != reason || string.IsNullOrWhiteSpace(captured.SourceId)
+                || string.IsNullOrWhiteSpace(captured.OwnerGroup))
+                throw new InvalidDataException("Published parent decision context is invalid.");
+            result.Add(captured);
+        }
+        return result;
     }
 
     private async Task<IReadOnlyList<TopologyObservedConflictRow>> ReadConflictsAsync(ulong watermark, CancellationToken token)
@@ -130,6 +179,7 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
             ORDER BY semantic_anchor, publication_seq
             """;
         command.AddParameter("watermark", watermark);
+        ObserveQuery?.Invoke(new("conflicts", command.CommandText, ["watermark"]));
         command.CommandTimeout = Math.Clamp(context.Options.QueryTimeoutSeconds, 1, 300);
         var result = new Dictionary<string, List<TopologyConflictCandidate>>(StringComparer.Ordinal);
         var legacy = new HashSet<string>(StringComparer.Ordinal);
@@ -145,13 +195,18 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
             if (parsed.Length == 0 || parsed.Any(candidate => string.IsNullOrWhiteSpace(candidate.OwnerGroup)
                     || string.IsNullOrWhiteSpace(candidate.SourceId)))
                 throw new InvalidDataException("Published topology conflict context is invalid.");
+            if (parsed.Any(candidate => candidate.ContextVersion != 3
+                    || string.IsNullOrWhiteSpace(candidate.Anchor)
+                    || string.IsNullOrWhiteSpace(candidate.ResolutionReason)))
+                legacy.Add(anchor);
             candidates.AddRange(parsed);
         }
         return result.OrderBy(static pair => pair.Key, StringComparer.Ordinal)
             .Select(pair => new TopologyObservedConflictRow(pair.Key,
                 pair.Value.GroupBy(candidate => (candidate.Fingerprint, candidate.OwnerGroup,
                         candidate.SourceId, candidate.NodeId, candidate.EventTimeNano,
-                        candidate.ParentAnchor, candidate.IsConflictedAnchor))
+                        candidate.ParentAnchor, candidate.IsConflictedAnchor, candidate.Anchor,
+                        candidate.ResolutionReason, candidate.ContextVersion))
                     .Select(group => group.First() with
                     {
                         TraceExpiryNano = group.Min(static candidate => candidate.TraceExpiryNano),

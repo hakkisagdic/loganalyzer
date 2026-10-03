@@ -8,12 +8,27 @@ public sealed record TopologyGraphSnapshot(long PublishedSequence, IReadOnlyList
     public IReadOnlyList<TopologyEvidenceReference> Evidence { get; init; } = [];
     public IReadOnlyList<TopologyEdgeProjection> ConflictedEdges { get; init; } = [];
     public IReadOnlyList<TopologyConflictProjection> ConflictCandidates { get; init; } = [];
+    public IReadOnlyList<TopologyConflictArc> ConflictArcs { get; init; } = [];
+    public IReadOnlyList<TopologyUnresolvedParentProjection> UnresolvedParents { get; init; } = [];
     public bool ObservedMigrationRequired { get; init; }
 }
 
 /// <summary>Internal admission-captured conflict impact, never returned on public wire.</summary>
 public sealed record TopologyConflictProjection(string OwnerGroup, string? NodeId,
-    decimal EventTimeUnixNano, decimal ExpiresUnixNano);
+    decimal EventTimeUnixNano, decimal ExpiresUnixNano)
+{
+    public string SourceId { get; init; } = string.Empty;
+    public string ResolutionReason { get; init; } = string.Empty;
+}
+
+/// <summary>Admission-captured possible edge impact; it is never public proof.</summary>
+public sealed record TopologyConflictArc(string FromNode, string ToNode,
+    string FromOwnerGroup, string ToOwnerGroup, decimal ChildEventTimeUnixNano,
+    decimal EffectiveExpiryUnixNano);
+
+/// <summary>Captured negative parent decision; parent identity is never public.</summary>
+public sealed record TopologyUnresolvedParentProjection(string OwnerGroup, string SourceId,
+    string? ChildNodeId, string Reason, decimal ChildEventTimeUnixNano, decimal ChildExpiryUnixNano);
 
 public sealed class TopologyObservedMigrationRequiredException()
     : IOException("Observed topology conflict attribution requires an explicit durable migration.");
