@@ -288,12 +288,26 @@ public sealed class TopologyRegistryIntegrationTests(DevStackFixture stack)
         using var staleDelete = await api.DeleteAsync("/v1/topology/nodes/" + node.Id + "?version=9223372036854775807", role: "admin");
         Assert.Equal(HttpStatusCode.Conflict, staleDelete.StatusCode);
 
+        long epochBeforeExhaustedUpdate;
         await using (var db = await factory.CreateDbContextAsync(Ct))
         {
             (await db.TopologyNodes.SingleAsync(n => n.Id == node.Id, Ct)).Version = long.MaxValue;
             (await db.TopologyNodeHistory.SingleAsync(h => h.NodeId == node.Id && h.ToNano == null, Ct))
                 .NodeVersion = long.MaxValue;
             await db.SaveChangesAsync(Ct);
+            epochBeforeExhaustedUpdate = (await db.TopologyReadState.SingleAsync(Ct)).Epoch;
+        }
+        using var exhausted = await api.PutAsync("/v1/topology/nodes/" + node.Id,
+            Wire("9223372036854775807"), role: "admin");
+        Assert.Equal(HttpStatusCode.Conflict, exhausted.StatusCode);
+        using (var exhaustedJson = JsonDocument.Parse(await exhausted.Content.ReadAsStringAsync(Ct)))
+            Assert.Equal("Node version is exhausted.", exhaustedJson.RootElement.GetProperty("error").GetString());
+        await using (var unchanged = await factory.CreateDbContextAsync(Ct))
+        {
+            Assert.Equal("changed", (await unchanged.TopologyNodes.SingleAsync(n => n.Id == node.Id, Ct)).DisplayName);
+            Assert.Equal(2, await unchanged.TopologyNodeHistory.CountAsync(h => h.NodeId == node.Id, Ct));
+            Assert.Equal(2, await unchanged.AuditLog.CountAsync(Ct));
+            Assert.Equal(epochBeforeExhaustedUpdate, (await unchanged.TopologyReadState.SingleAsync(Ct)).Epoch);
         }
         using var deleted = await api.DeleteAsync("/v1/topology/nodes/" + node.Id + "?version=9223372036854775807", role: "admin");
         Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);

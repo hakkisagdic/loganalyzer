@@ -165,12 +165,28 @@ public sealed class TopologyDeclaredIntegrationTests(DevStackFixture stack)
         using var staleDelete = await api.DeleteAsync("/v1/topology/edges/" + edge.Id + "?version=9223372036854775807", role: "admin");
         Assert.Equal(HttpStatusCode.Conflict, staleDelete.StatusCode);
 
+        long epochBeforeExhaustedUpdate;
         await using (var db = await factory.CreateDbContextAsync(Ct))
         {
             (await db.TopologyDeclaredEdges.SingleAsync(e => e.Id == edge.Id, Ct)).Version = long.MaxValue;
             (await db.TopologyDeclaredEdgeHistory.SingleAsync(h => h.EdgeId == edge.Id && h.ToNano == null, Ct))
                 .EdgeVersion = long.MaxValue;
             await db.SaveChangesAsync(Ct);
+            epochBeforeExhaustedUpdate = (await db.TopologyReadState.SingleAsync(Ct)).Epoch;
+        }
+        using var exhausted = await api.PutAsync("/v1/topology/edges/" + edge.Id,
+            JsonSerializer.Serialize(new TopologyDeclaredEdgeInput(from, to, TopologyEdgeRelations.ConnectsTo,
+                "9223372036854775807")), role: "admin");
+        Assert.Equal(HttpStatusCode.Conflict, exhausted.StatusCode);
+        using (var exhaustedJson = JsonDocument.Parse(await exhausted.Content.ReadAsStringAsync(Ct)))
+            Assert.Equal("Edge version is exhausted.", exhaustedJson.RootElement.GetProperty("error").GetString());
+        await using (var unchanged = await factory.CreateDbContextAsync(Ct))
+        {
+            Assert.Equal(TopologyEdgeRelations.DependsOn,
+                (await unchanged.TopologyDeclaredEdges.SingleAsync(e => e.Id == edge.Id, Ct)).Relation);
+            Assert.Single(await unchanged.TopologyDeclaredEdgeHistory.Where(h => h.EdgeId == edge.Id).ToArrayAsync(Ct));
+            Assert.Single(await unchanged.AuditLog.ToArrayAsync(Ct));
+            Assert.Equal(epochBeforeExhaustedUpdate, (await unchanged.TopologyReadState.SingleAsync(Ct)).Epoch);
         }
         using var deleted = await api.DeleteAsync("/v1/topology/edges/" + edge.Id + "?version=9223372036854775807", role: "admin");
         Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
