@@ -130,6 +130,8 @@ public sealed record TopologyPathResult(
     string? Reason = null)
 {
     public decimal? EarliestEvidenceExpiryUnixNano { get; init; }
+    /// <summary>Internal snapshot lifetime, including unchosen eligible competitors.</summary>
+    public decimal? EarliestEligibleExpiryUnixNano { get; init; }
 }
 
 public sealed record TopologyCommonAncestorResult(
@@ -140,6 +142,7 @@ public sealed record TopologyCommonAncestorResult(
     string? Reason = null)
 {
     public decimal? EarliestEvidenceExpiryUnixNano { get; init; }
+    public decimal? EarliestEligibleExpiryUnixNano { get; init; }
 }
 
 public enum TopologyGraphResultStatus { Found = 1, Unreachable = 2, NotVerified = 3 }
@@ -179,6 +182,7 @@ public sealed record TopologySourceTarget(string NodeId, IReadOnlyList<string> M
 
 public sealed record TopologySourceTargets(string SourceId, string SourceNodeId,
     IReadOnlyList<TopologySourceTarget> Targets, TopologySourceTargetStatus Status, string? Reason);
+
 
 
 public sealed class TopologyCursorException : ArgumentException

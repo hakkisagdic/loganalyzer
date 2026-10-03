@@ -143,6 +143,7 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window,
                 query.DeclaredStateClockUnixNano, expiryClock)
             .Where(static edge => edge.Relation == TopologyRelation.DependsOn).ToArray();
+        var earliestEligibleExpiry = MinExpiry(edges);
         EnsurePathReady(snapshot, scope, query.ReadClockUnixNano, expiryClock, window, edges,
             query.FromNodeId, query.ToNodeId);
         // A missing parent anywhere upstream of the destination can create a
@@ -152,7 +153,8 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
                 edges, [query.ToNodeId]);
         if (unresolved is not null)
             return new(TopologyGraphResultStatus.NotVerified, [], [], null,
-                snapshot.PublishedSequence, unresolved);
+                snapshot.PublishedSequence, unresolved)
+            { EarliestEligibleExpiryUnixNano = earliestEligibleExpiry };
         var path = FindPath(query.FromNodeId, query.ToNodeId, edges);
         if (path.Nodes.Count == 0)
         {
@@ -162,7 +164,8 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
                     expiryClock, window, query.DeclaredStateClockUnixNano);
             return new(partial ? TopologyGraphResultStatus.NotVerified
                     : TopologyGraphResultStatus.Unreachable,
-                [], [], null, snapshot.PublishedSequence, partial ? "HiddenBoundary" : null);
+                [], [], null, snapshot.PublishedSequence, partial ? "HiddenBoundary" : null)
+            { EarliestEligibleExpiryUnixNano = earliestEligibleExpiry };
         }
         // Page complete hops, not independent node/edge arrays. The boundary
         // node is repeated on the next page so every returned edge has both
@@ -183,6 +186,7 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         return new TopologyPathResult(TopologyGraphResultStatus.Found, pageNodes, pageEdges, nextCursor, snapshot.PublishedSequence)
         {
             EarliestEvidenceExpiryUnixNano = MinExpiry(edges.Where(edge => path.EdgeIds.Contains(edge.Id, StringComparer.Ordinal))),
+            EarliestEligibleExpiryUnixNano = earliestEligibleExpiry,
         };
     }
 
@@ -200,12 +204,14 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window,
                 expiryReadClockUnixNano: expiryClock)
             .Where(static edge => edge.Relation == TopologyRelation.DependsOn).ToArray();
+        var earliestEligibleExpiry = MinExpiry(edges);
         EnsureAncestorReady(snapshot, scope, query.ReadClockUnixNano, expiryClock, window, edges, query.NodeIds);
         var unresolvedTarget = UnresolvedForUpstream(snapshot, scope, expiryClock,
             window, edges, query.NodeIds);
         if (unresolvedTarget is not null)
             return new(TopologyGraphResultStatus.NotVerified, null, [], snapshot.PublishedSequence,
-                unresolvedTarget);
+                unresolvedTarget)
+            { EarliestEligibleExpiryUnixNano = earliestEligibleExpiry };
         var targets = query.NodeIds.ToHashSet(StringComparer.Ordinal);
         var matches = new List<(string Node, TopologyPathProof[] Paths)>();
         foreach (var candidate in edges.SelectMany(static edge => new[] { edge.FromNode, edge.ToNode })
@@ -222,11 +228,15 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         if (match.Node is not null)
             return new TopologyCommonAncestorResult(TopologyGraphResultStatus.Found, match.Node,
                 match.Paths, snapshot.PublishedSequence)
-            { EarliestEvidenceExpiryUnixNano = ProofExpiry(edges, match.Paths) };
+            {
+                EarliestEvidenceExpiryUnixNano = ProofExpiry(edges, match.Paths),
+                EarliestEligibleExpiryUnixNano = earliestEligibleExpiry,
+            };
         var partial = query.NodeIds.Any(node => HasHiddenIncident(node, snapshot, scope,
             query.ReadClockUnixNano, expiryClock, window));
         return new(partial ? TopologyGraphResultStatus.NotVerified : TopologyGraphResultStatus.Unreachable,
-            null, [], snapshot.PublishedSequence, partial ? "HiddenBoundary" : null);
+            null, [], snapshot.PublishedSequence, partial ? "HiddenBoundary" : null)
+        { EarliestEligibleExpiryUnixNano = earliestEligibleExpiry };
     }
 
     public async Task<TopologyCommonAncestorResult> GroupedCommonAncestorAsync(
@@ -248,12 +258,15 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window,
                 query.DeclaredStateClockUnixNano, expiryClock)
             .Where(static edge => edge.Relation == TopologyRelation.DependsOn).ToArray();
+        var earliestEligibleExpiry = MinExpiry(edges);
         var allTargets = groups.SelectMany(static group => group).Distinct(StringComparer.Ordinal).ToArray();
         EnsureAncestorReady(snapshot, scope, query.ReadClockUnixNano, expiryClock, window, edges, allTargets);
         var unresolved = UnresolvedForUpstream(snapshot, scope, expiryClock, window,
             edges, allTargets);
         if (unresolved is not null)
-            return new(TopologyGraphResultStatus.NotVerified, null, [], snapshot.PublishedSequence, unresolved);
+            return new TopologyCommonAncestorResult(TopologyGraphResultStatus.NotVerified, null,
+                [], snapshot.PublishedSequence, unresolved)
+            { EarliestEligibleExpiryUnixNano = earliestEligibleExpiry };
 
         var matches = new List<(string Node, TopologyPathProof[] Paths)>();
         foreach (var candidate in edges.SelectMany(static edge => new[] { edge.FromNode, edge.ToNode })
@@ -279,12 +292,16 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         if (match.Node is not null)
             return new TopologyCommonAncestorResult(TopologyGraphResultStatus.Found, match.Node,
                 match.Paths, snapshot.PublishedSequence)
-            { EarliestEvidenceExpiryUnixNano = ProofExpiry(edges, match.Paths) };
+            {
+                EarliestEvidenceExpiryUnixNano = ProofExpiry(edges, match.Paths),
+                EarliestEligibleExpiryUnixNano = earliestEligibleExpiry,
+            };
         var upstream = Reachable(edges, allTargets, reverse: true);
         var partial = upstream.Any(node => HasHiddenIncident(node, snapshot, scope,
             query.ReadClockUnixNano, expiryClock, window, query.DeclaredStateClockUnixNano));
         return new(partial ? TopologyGraphResultStatus.NotVerified : TopologyGraphResultStatus.Unreachable,
-            null, [], snapshot.PublishedSequence, partial ? "HiddenBoundary" : null);
+            null, [], snapshot.PublishedSequence, partial ? "HiddenBoundary" : null)
+        { EarliestEligibleExpiryUnixNano = earliestEligibleExpiry };
     }
 
     public async Task<TopologyNeighborhoodResult> NeighborhoodAsync(TopologyNeighborhoodQuery query,

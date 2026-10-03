@@ -54,7 +54,7 @@ public sealed class TopologyGraphTests
     }
 
     [Fact]
-    public async Task Ancestor_expiry_uses_only_selected_observed_proof_at_exact_boundary()
+    public async Task Competing_eligible_expiry_bounds_path_and_ancestor_before_proof_expiry()
     {
         var selected = Edge("ra-observed", R, A, provenance: TopologyProvenance.Observed)
             with { LastSeenUnixNano = 900, EffectiveExpiry = 1500 };
@@ -65,9 +65,17 @@ public sealed class TopologyGraphTests
         var flat = await query.CommonAncestorAsync(new([A, B], 1000), ScopeA, Ct);
         Assert.Equal(TopologyGraphResultStatus.Found, flat.Status);
         Assert.Equal(1500, flat.EarliestEvidenceExpiryUnixNano);
+        Assert.Equal(1100, flat.EarliestEligibleExpiryUnixNano);
         var grouped = await query.GroupedCommonAncestorAsync(new([[A], [B]], 1000), ScopeA, Ct);
         Assert.Equal(TopologyGraphResultStatus.Found, grouped.Status);
         Assert.Equal(1500, grouped.EarliestEvidenceExpiryUnixNano);
+        Assert.Equal(1100, grouped.EarliestEligibleExpiryUnixNano);
+        var path = await query.PathAsync(new(R, A, 1000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, path.Status);
+        Assert.Equal(1500, path.EarliestEvidenceExpiryUnixNano);
+        Assert.Equal(1100, path.EarliestEligibleExpiryUnixNano);
+        Assert.Equal(1500, (await query.PathAsync(new(R, A, 1100), ScopeA, Ct))
+            .EarliestEligibleExpiryUnixNano);
         Assert.Null((await query.CommonAncestorAsync(new([A, B], 1500), ScopeA, Ct))
             .EarliestEvidenceExpiryUnixNano);
     }
