@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Bizigo.Contracts;
 using Bizigo.Query;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Bizigo.Api;
 
@@ -38,9 +39,11 @@ public static partial class TopologyReadEndpoints
             TopologyPublicationFence fence, TopologyReadCursorCodec cursors) => HandleAsync(http, query, user.Scope, fence, cursors, "edges"));
         Errors(edges); edges.WithName("ListTopologyEdges").Produces<TopologyEdgePageDto>();
 
-        var edge = group.MapGet("/edges/{edgeId}", (string edgeId, HttpContext http, IScopedQuery query,
-            ICurrentUser user, TopologyPublicationFence fence, TopologyReadCursorCodec cursors) =>
-            HandleAsync(http, query, user.Scope, fence, cursors, "edge", edgeId));
+        var edge = group.MapGet("/edges/{edgeId}", (string edgeId,
+            [FromQuery(Name = "from")] string? from, [FromQuery(Name = "to")] string? to,
+            HttpContext http, IScopedQuery query, ICurrentUser user,
+            TopologyPublicationFence fence, TopologyReadCursorCodec cursors) =>
+            HandleEdgeAsync(http, query, user.Scope, fence, cursors, edgeId, from, to));
         Errors(edge); edge.WithName("GetTopologyEdge").Produces<TopologyEdgeDetailDto>().Produces(404);
 
         var neighbors = group.MapGet("/nodes/{nodeId}/neighbors", (string nodeId, HttpContext http, IScopedQuery query,
@@ -56,6 +59,17 @@ public static partial class TopologyReadEndpoints
             TopologyPublicationFence fence, TopologyReadCursorCodec cursors) => HandleAsync(http, query, user.Scope, fence, cursors, "ancestors"));
         Errors(ancestors); ancestors.WithName("GetTopologyAncestors").Produces<TopologyAncestorsDto>().Produces(404);
         return routes;
+    }
+
+    private static Task<IResult> HandleEdgeAsync(HttpContext http, IScopedQuery query, AccessScope scope,
+        TopologyPublicationFence fence, TopologyReadCursorCodec cursors, string edgeId,
+        string? from, string? to)
+    {
+        // These typed parameters expose the optional pair in OpenAPI; Parse
+        // remains the strict source of truth for duplicates, UTC nanos and
+        // cursor-bound windows.
+        if ((from is null) != (to is null)) return Task.FromResult(Problem(400, "InvalidQuery"));
+        return HandleAsync(http, query, scope, fence, cursors, "edge", edgeId);
     }
 
     private static async Task<IResult> HandleAsync(HttpContext http, IScopedQuery query, AccessScope scope,
@@ -107,8 +121,12 @@ public static partial class TopologyReadEndpoints
                     {
                         var body = await TopologyResponseBudget.FitPageAsync(request.Limit, async size =>
                         {
-                            var found = await query.GetTopologyEdgeAsync(RequiredId(routeId), request.AsOfNano, scope,
-                                request.Cursor, size, token);
+                            var edgeId = RequiredId(routeId);
+                            var found = request.FromNano is decimal from && request.ToNano is decimal to
+                                ? await query.GetTopologyEdgeAsync(edgeId, request.AsOfNano, from, to, scope,
+                                    request.Cursor, size, token)
+                                : await query.GetTopologyEdgeAsync(edgeId, request.AsOfNano, scope,
+                                    request.Cursor, size, token);
                             if (found is null) return null;
                             return new TopologyEdgeDetailDto(Edge(found.Edge),
                                 found.Evidence.Select(Evidence).ToArray(),
@@ -240,7 +258,7 @@ public static partial class TopologyReadEndpoints
         if (route == "edges") allowed.Add("provenance");
         if (route == "path") allowed.UnionWith(["fromNode", "toNode"]);
         if (route == "ancestors") allowed.Add("nodeId");
-        if (route is "edges" or "neighbors" or "path" or "ancestors") allowed.UnionWith(["from", "to"]);
+        if (route is "edge" or "edges" or "neighbors" or "path" or "ancestors") allowed.UnionWith(["from", "to"]);
         if (input.Any(p => !allowed.Contains(p.Key) || (p.Key != "nodeId" && p.Value.Count != 1)))
             throw new ArgumentException("Unknown or repeated topology query parameter.");
 
