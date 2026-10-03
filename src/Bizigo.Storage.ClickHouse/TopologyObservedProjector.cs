@@ -49,6 +49,8 @@ public sealed class TopologyObservedProjector(
         "fingerprint", "publication_seq", "ttl_at", "ttl_supported",
     ];
     private static readonly string[] ConflictColumns =
+        ["semantic_anchor", "first_fingerprint", "conflicting_fingerprint", "candidate_context_json", "publication_seq"];
+    private static readonly string[] LegacyConflictColumns =
         ["semantic_anchor", "first_fingerprint", "conflicting_fingerprint", "publication_seq"];
     private static readonly string[] ManifestColumns =
         ["publication_key", "payload_sha256", "rowset_sha256", "edge_count", "conflict_count", "payload_json"];
@@ -77,8 +79,27 @@ public sealed class TopologyObservedProjector(
             var persisted = await ReadTraceAsync(traceId, cancellationToken);
             var batch = TopologyObservation.Reduce(persisted);
             if (batch.Edges.Count == 0 && batch.Conflicts.Count == 0) continue;
+            await RejectLegacyConflictOverwriteAsync(batch.Conflicts, cancellationToken);
             var manifest = await EnsureManifestAsync(batch, cancellationToken);
             await PublishManifestAsync(manifest, cancellationToken);
+        }
+    }
+
+    private async Task RejectLegacyConflictOverwriteAsync(IReadOnlyList<TopologySpanConflict> conflicts,
+        CancellationToken token)
+    {
+        if (conflicts.Count == 0) return;
+        await using var connection = context.CreateConnection();
+        await connection.OpenAsync(token);
+        foreach (var conflict in conflicts)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT count() FROM topology_span_conflicts "
+                + "WHERE semantic_anchor = {anchor:String} AND candidate_context_json = ''";
+            command.AddParameter("anchor", conflict.Anchor);
+            command.CommandTimeout = Math.Clamp(context.Options.QueryTimeoutSeconds, 1, 300);
+            if (Convert.ToUInt64(await command.ExecuteScalarAsync(token), CultureInfo.InvariantCulture) != 0)
+                throw new InvalidDataException("Legacy topology conflict requires explicit attribution repair before republishing.");
         }
     }
 
@@ -86,7 +107,8 @@ public sealed class TopologyObservedProjector(
     {
         // Recheck the row mapping, not only the semantic JSON: a software
         // upgrade cannot silently change an unfinished physical publication.
-        if (RowsetHash(manifest.Batch) != manifest.RowsetHash)
+        if (RowsetHash(manifest.Batch) != manifest.RowsetHash
+            && RowsetHash(manifest.Batch, legacyFormat: true) != manifest.RowsetHash)
             throw new InvalidDataException("Topology batch row set changed since its durable manifest was written.");
         await publish(manifest.Batch.PublicationKey, async (sequence, token) =>
         {
@@ -100,9 +122,10 @@ public sealed class TopologyObservedProjector(
             }
             if (batch.Conflicts.Count != 0)
             {
-                var rows = batch.Conflicts.Select(c => new object[]
-                    { c.Anchor, c.FirstFingerprint, c.ConflictingFingerprint, sequence }).ToArray();
-                var written = await context.Client.InsertBinaryAsync("topology_span_conflicts", ConflictColumns, rows,
+                var legacy = batch.Conflicts.All(static conflict => conflict.Candidates.Count == 0);
+                var rows = batch.Conflicts.Select(c => ConflictRow(c, sequence, legacy)).ToArray();
+                var written = await context.Client.InsertBinaryAsync("topology_span_conflicts",
+                    legacy ? LegacyConflictColumns : ConflictColumns, rows,
                     new InsertOptions { BatchSize = context.Options.BulkBatchSize, MaxDegreeOfParallelism = 1 }, token);
                 if (written != rows.Length) throw new IOException("Incomplete topology conflict insert.");
             }
@@ -146,15 +169,16 @@ public sealed class TopologyObservedProjector(
             throw new InvalidDataException("Conflicting immutable topology batch manifest for the same publication key.");
     }
 
-    private static string RowsetHash(TopologyProjectionBatch batch)
+    private static string RowsetHash(TopologyProjectionBatch batch, bool legacyFormat = false)
     {
+        var legacy = legacyFormat || batch.Conflicts.Count != 0
+            && batch.Conflicts.All(static conflict => conflict.Candidates.Count == 0);
         var rows = JsonSerializer.SerializeToUtf8Bytes(new
         {
             EdgeColumns,
             Edges = batch.Edges.Select(e => EdgeRow(e, 0)).ToArray(),
-            ConflictColumns,
-            Conflicts = batch.Conflicts.Select(c => new object[]
-                { c.Anchor, c.FirstFingerprint, c.ConflictingFingerprint, (ulong)0 }).ToArray(),
+            ConflictColumns = legacy ? LegacyConflictColumns : ConflictColumns,
+            Conflicts = batch.Conflicts.Select(c => ConflictRow(c, 0, legacy)).ToArray(),
         }, RawSignalCodec.Json);
         return RawSignalEnvelope.Hash(rows);
     }
@@ -186,7 +210,7 @@ public sealed class TopologyObservedProjector(
         var batch = JsonSerializer.Deserialize<TopologyProjectionBatch>(payload, RawSignalCodec.Json)
             ?? throw new InvalidDataException("Durable topology batch manifest is empty.");
         if (batch.PublicationKey != key || batch.Edges.Count != edgeCount || batch.Conflicts.Count != conflictCount
-            || RowsetHash(batch) != rowsetHash)
+            || RowsetHash(batch) != rowsetHash && RowsetHash(batch, legacyFormat: true) != rowsetHash)
             throw new InvalidDataException("Durable topology batch manifest row count or payload mismatch.");
         return new(batch, payload, payloadHash, rowsetHash, edgeCount, conflictCount);
     }
@@ -247,5 +271,14 @@ public sealed class TopologyObservedProjector(
             edge.ParentTraceExpiry, edge.ChildTraceExpiry, edge.ObservedExpiry, edge.EffectiveExpiry,
             edge.EdgeId, sequence, ttlAt, (byte)(ttlSupported ? 1 : 0),
         ];
+    }
+
+    private static object[] ConflictRow(TopologySpanConflict conflict, ulong sequence, bool legacy)
+    {
+        if (legacy) return [conflict.Anchor, conflict.FirstFingerprint, conflict.ConflictingFingerprint, sequence];
+        if (conflict.Candidates.Count == 0)
+            throw new InvalidDataException("A topology conflict needs admission-captured candidate context.");
+        return [conflict.Anchor, conflict.FirstFingerprint, conflict.ConflictingFingerprint,
+            JsonSerializer.Serialize(conflict.Candidates, RawSignalCodec.Json), sequence];
     }
 }

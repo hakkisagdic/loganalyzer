@@ -6,7 +6,20 @@ public sealed record TopologyGraphSnapshot(long PublishedSequence, IReadOnlyList
 {
     public IReadOnlyList<TopologyNodeProjection> Nodes { get; init; } = [];
     public IReadOnlyList<TopologyEvidenceReference> Evidence { get; init; } = [];
+    public IReadOnlyList<TopologyEdgeProjection> ConflictedEdges { get; init; } = [];
+    public IReadOnlyList<TopologyConflictProjection> ConflictCandidates { get; init; } = [];
+    public bool ObservedMigrationRequired { get; init; }
 }
+
+/// <summary>Internal admission-captured conflict impact, never returned on public wire.</summary>
+public sealed record TopologyConflictProjection(string OwnerGroup, string? NodeId,
+    decimal EventTimeUnixNano, decimal ExpiresUnixNano);
+
+public sealed class TopologyObservedMigrationRequiredException()
+    : IOException("Observed topology conflict attribution requires an explicit durable migration.");
+
+public sealed class TopologyConflictException()
+    : IOException("A related published topology identity is conflicted.");
 
 /// <summary>
 /// İlk okuma <paramref name="publishedSequence"/> olmadan en son tamamlanmış

@@ -29,7 +29,8 @@ public sealed class TopologyGraphSnapshotSource(
             var currentNodes = await db.TopologyNodes.AsNoTracking().ToDictionaryAsync(n => n.Id, token);
             var nodeHistory = await db.TopologyNodeHistory.AsNoTracking().ToArrayAsync(token);
             var declaredEdges = await ReadDeclaredHistoryAsync(db, committed, token);
-            var observedRows = await observed.ReadAsync(revision.ClickHouseWatermark, token);
+            var observedSnapshot = await observed.ReadSnapshotAsync(revision.ClickHouseWatermark, token);
+            var observedRows = observedSnapshot.Rows;
 
             var nodes = new List<TopologyNodeProjection>(nodeHistory.Length);
             foreach (var history in nodeHistory)
@@ -42,17 +43,20 @@ public sealed class TopologyGraphSnapshotSource(
 
             var edges = new List<TopologyEdgeProjection>(declaredEdges.Count + observedRows.Count);
             edges.AddRange(declaredEdges);
+            var conflictedEdges = new List<TopologyEdgeProjection>();
 
             var evidence = new List<TopologyEvidenceReference>();
             foreach (var row in observedRows)
             {
                 if (row.PublicationSequence > revision.ClickHouseWatermark)
                     throw new InvalidDataException("Uncommitted topology projection entered the public snapshot.");
-                edges.Add(new(row.Id, row.FromNodeId, row.ToNodeId, Relation(row.Relation),
+                var projected = new TopologyEdgeProjection(row.Id, row.FromNodeId, row.ToNodeId, Relation(row.Relation),
                     Provenance(row.Provenance), row.Directed, row.Confidence, row.FromOwnerGroup, row.ToOwnerGroup,
                     Visibility(row.FromOwnerGroup, row.ToOwnerGroup), row.FirstSeenUnixNano, row.LastSeenUnixNano,
                     row.ExpiresUnixNano, checked((long)row.PublicationSequence),
-                    checked((long)row.PublicationSequence), false));
+                    checked((long)row.PublicationSequence), false);
+                if (row.HasPublishedConflict) { conflictedEdges.Add(projected); continue; }
+                edges.Add(projected);
                 foreach (var occurrence in row.ParentOccurrenceIds.Distinct(StringComparer.Ordinal))
                     evidence.Add(new(row.Id, occurrence, row.TraceLogicalId, row.ParentSpanLogicalId,
                         row.ParentEventTimeUnixNano));
@@ -61,10 +65,22 @@ public sealed class TopologyGraphSnapshotSource(
                         row.EventTimeUnixNano));
             }
 
+            var conflictCandidates = observedSnapshot.Conflicts.SelectMany(marker => marker.Candidates)
+                .Select(candidate => new TopologyConflictProjection(candidate.OwnerGroup, candidate.NodeId,
+                    candidate.EventTimeNano, candidate.IsConflictedAnchor ? candidate.TraceExpiryNano
+                        : decimal.Min(candidate.TraceExpiryNano, candidate.ObservedExpiryNano)))
+                .Distinct().ToArray();
+            // A historical edge can identify its own published endpoint, but
+            // cannot identify every alternative fingerprint/owner behind an
+            // old context-free marker. No scoped readiness is claimed for it.
+            var unattributed = observedSnapshot.Conflicts.Any(static marker => marker.Unattributed);
             return new TopologyGraphSnapshot(committed, edges)
             {
                 Nodes = nodes,
                 Evidence = evidence,
+                ConflictedEdges = conflictedEdges,
+                ConflictCandidates = conflictCandidates,
+                ObservedMigrationRequired = unattributed,
             };
         }, cancellationToken);
 

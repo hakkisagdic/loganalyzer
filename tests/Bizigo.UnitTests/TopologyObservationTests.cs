@@ -80,6 +80,29 @@ public sealed class TopologyObservationTests
         Assert.Equal(TopologySpanCandidate.FromRecord(parent)!.Anchor, Assert.Single(reduced.Conflicts).Anchor);
     }
 
+    [Fact]
+    public void Conflict_context_covers_every_captured_history_and_dependent_child()
+    {
+        var parent = Span(Guid.NewGuid(), "p", ParentSpan, string.Empty, ParentNode, 1000);
+        var child = Span(Guid.NewGuid(), "c", ChildSpan, ParentSpan, ChildNode, 2000);
+        var alternate = parent with
+        {
+            EnvelopeId = Guid.NewGuid(), LogicalId = Guid.NewGuid().ToString("N") + "/p",
+            Topology = parent.Topology! with { OwnerGroup = "B", SourceId = "source-B", ServiceNodeId = ChildNode },
+            Owner = parent.Owner with { OwnerGroup = "B", SourceId = "source-B" },
+        };
+        var third = parent with
+        {
+            EnvelopeId = Guid.NewGuid(), LogicalId = Guid.NewGuid().ToString("N") + "/p",
+            Topology = parent.Topology! with { ServiceNodeId = ChildNode },
+        };
+        var conflict = Assert.Single(TopologyObservation.Reduce([child, third, parent, alternate]).Conflicts);
+        Assert.Equal(4, conflict.Candidates.Count);
+        Assert.Contains(conflict.Candidates, item => item.OwnerGroup == "B" && item.IsConflictedAnchor);
+        Assert.Contains(conflict.Candidates, item => item.NodeId == ChildNode && !item.IsConflictedAnchor);
+        Assert.Equal(3, conflict.Candidates.Count(item => item.IsConflictedAnchor));
+    }
+
     [Theory]
     [InlineData(30, 90, 90, 30)]
     [InlineData(90, 30, 90, 30)]
