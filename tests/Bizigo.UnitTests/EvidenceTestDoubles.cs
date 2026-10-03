@@ -42,6 +42,8 @@ internal class RecordingScopedQuery : IScopedQuery
     public Func<string, decimal, AccessScope, CancellationToken, Task<TopologyEdgeDetail?>>? TopologyEdgeResponse { get; set; }
     public Func<string, decimal, decimal, decimal, AccessScope, CancellationToken, Task<TopologyEdgeDetail?>>?
         TopologyEdgeWindowResponse { get; set; }
+    public Func<string, decimal, decimal, decimal, decimal, AccessScope, CancellationToken,
+        Task<TopologyEdgeDetail?>>? TopologyEdgeRcaWindowResponse { get; set; }
     public Dictionary<string, TopologyEdgeDetail> TopologyEdges { get; } = new(StringComparer.Ordinal);
     public Task<IReadOnlyList<TopologySourceNode>> ResolveTopologySourceNodesAsync(IReadOnlyList<string> sourceIds, AccessScope scope,
         CancellationToken cancellationToken = default) => TopologySourceNodesResponse?.Invoke(sourceIds, scope, cancellationToken)
@@ -70,6 +72,13 @@ internal class RecordingScopedQuery : IScopedQuery
         CancellationToken cancellationToken = default) =>
         TopologyEdgeWindowResponse?.Invoke(edgeId, readClockUnixNano, fromUnixNano, toUnixNano, scope,
             cancellationToken) ?? GetTopologyEdgeAsync(edgeId, readClockUnixNano, scope, cancellationToken);
+    public Task<TopologyEdgeDetail?> GetTopologyEdgeAsync(string edgeId, decimal readClockUnixNano,
+        decimal fromUnixNano, decimal toUnixNano, decimal declaredStateClockUnixNano,
+        AccessScope scope, string? evidenceCursor, int evidencePageSize,
+        CancellationToken cancellationToken = default) =>
+        TopologyEdgeRcaWindowResponse?.Invoke(edgeId, readClockUnixNano, fromUnixNano, toUnixNano,
+            declaredStateClockUnixNano, scope, cancellationToken)
+        ?? GetTopologyEdgeAsync(edgeId, readClockUnixNano, fromUnixNano, toUnixNano, scope, cancellationToken);
     public List<EventQuery> EventQueries { get; } = [];
 
     public List<ChangeQuery> ChangeQueries { get; } = [];
