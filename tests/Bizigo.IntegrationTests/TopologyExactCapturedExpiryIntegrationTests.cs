@@ -199,17 +199,21 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
         // RCA must use captured edge expiry, not turn feed presence into proof.
         Assert.Equal(TelemetryResultStatus.Data,
             (await afterExpiry.GetTelemetryFeedAsync(TelemetrySignal.Traces, null, scopeAB, Ct)).Status);
-        foreach (var clock in new[] { expiry - 100, expiry, expiry + 100 })
+        // The RCA event window is fixed and historical. Only the trusted
+        // expiry clock moves: DateTimeOffset's 100ns precision must not turn
+        // this into an approximate expiry-boundary assertion.
+        var rcaWindow = new RcaWindow
+        {
+            BaselineFrom = eventAt.AddDays(-7), BaselineTo = eventAt.AddMinutes(-2),
+            From = eventAt.AddMinutes(-1), To = eventAt.AddMinutes(10), OwnerGroups = ["A", "B"],
+        };
+        Assert.True(TopologyIdentity.Nano(rcaWindow.To) <= expiry - 1);
+        foreach (var clock in new[] { expiry - 1, expiry, expiry + 1 })
         {
             var query = ScopedAt(fixture, fixture.Storage, graph, clock);
-            var window = new RcaWindow
-            {
-                BaselineFrom = eventAt.AddDays(-7), BaselineTo = eventAt.AddMinutes(-2),
-                From = eventAt.AddMinutes(-1), To = ClockDate(clock), OwnerGroups = ["A", "B"],
-            };
-            var path = await new TopologyGraphPathProvider(query).GatherAsync(window,
+            var path = await new TopologyGraphPathProvider(query).GatherAsync(rcaWindow,
                 scopeAB, GatherBudget.Default, Ct);
-            var ancestorProof = await new TopologyCommonAncestorProvider(query).GatherAsync(window,
+            var ancestorProof = await new TopologyCommonAncestorProvider(query).GatherAsync(rcaWindow,
                 scopeAB, GatherBudget.Default, Ct);
             var expected = clock < expiry ? EvidenceStatus.Gathered : EvidenceStatus.Empty;
             Assert.Equal(expected, path.Status);
@@ -217,9 +221,15 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
             if (clock < expiry)
             {
                 using var pathProof = JsonDocument.Parse(Assert.Single(path.Items).Payload["proof_edges"]);
-                Assert.Equal(edge.Id, Assert.Single(pathProof.RootElement.EnumerateArray().ToArray())
-                    .GetProperty("id").GetString());
-                Assert.Equal(root, Assert.Single(ancestorProof.Items).Payload["ancestor_node_id"]);
+                var observedPathEdge = Assert.Single(pathProof.RootElement.EnumerateArray().ToArray());
+                Assert.Equal(edge.Id, observedPathEdge.GetProperty("id").GetString());
+                Assert.Equal("observed", observedPathEdge.GetProperty("provenance").GetString());
+                var ancestorItem = Assert.Single(ancestorProof.Items);
+                Assert.Equal(root, ancestorItem.Payload["ancestor_node_id"]);
+                using var ancestorEdges = JsonDocument.Parse(ancestorItem.Payload["proof_edges"]);
+                Assert.Contains(ancestorEdges.RootElement.EnumerateArray().ToArray(), proof =>
+                    proof.GetProperty("id").GetString() == edge.Id &&
+                    proof.GetProperty("provenance").GetString() == "observed");
             }
             else
             {
