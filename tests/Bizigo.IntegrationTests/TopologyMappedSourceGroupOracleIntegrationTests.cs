@@ -9,6 +9,7 @@ using Bizigo.Query;
 using Bizigo.Storage.ClickHouse;
 using Google.Protobuf;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Time.Testing;
 using OpenTelemetry.Proto.Common.V1;
 
 namespace Bizigo.IntegrationTests;
@@ -156,7 +157,8 @@ public sealed class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixt
         var graph = new TopologyGraphQueryService(new TopologyGraphSnapshotSource(fixture.Factory,
             new TopologyObservedSnapshotReader(fixture.Storage), fence));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
-            new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph);
+            new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph,
+            topologyClock: new FakeTimeProvider(now.AddMinutes(20)));
         var window = new RcaWindow
         {
             BaselineFrom = now.AddDays(-7), BaselineTo = now.AddMinutes(-1),
@@ -242,7 +244,8 @@ public sealed class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixt
         var graph = new TopologyGraphQueryService(new TopologyGraphSnapshotSource(fixture.Factory,
             new TopologyObservedSnapshotReader(fixture.Storage), fence));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
-            new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph);
+            new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph,
+            topologyClock: new FakeTimeProvider(now.AddMinutes(20)));
         var window = new RcaWindow
         {
             BaselineFrom = now.AddDays(-7), BaselineTo = now.AddMinutes(-1),

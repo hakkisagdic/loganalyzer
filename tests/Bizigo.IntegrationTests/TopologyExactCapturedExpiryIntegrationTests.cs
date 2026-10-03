@@ -115,10 +115,12 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
         var from = parentStart - 1;
         var to = childStart + 1;
         var graph = Graph(fixture);
-        var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
-            new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph);
-        var before = await query.SearchTopologyEdgesAsync(new(expiry - 1,
-            Provenance: TopologyProvenance.Observed, FromUnixNano: from, ToUnixNano: to), scopeAB, Ct);
+        // The graph engine accepts an exact decimal-nanosecond expiry clock.
+        // ScopedQuery derives its production expiry clock from TimeProvider,
+        // whose DateTimeOffset precision is 100ns; keep these distinct.
+        var before = await graph.SearchEdgesAsync(new TopologyEdgeQuery(expiry - 1,
+            Provenance: TopologyProvenance.Observed, FromUnixNano: from, ToUnixNano: to)
+            { ExpiryReadClockUnixNano = expiry - 1 }, scopeAB, Ct);
         var edge = Assert.Single(before.Items);
         Assert.Equal(expiry, edge.EffectiveExpiry!.Value);
         var physical = await fixture.SqlAsync("SELECT toString(parent_trace_expiry), "
@@ -135,6 +137,37 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
         ], Ct);
         foreach (var clock in new[] { expiry - 1, expiry, expiry + 1 })
         {
+            var eligible = clock < expiry;
+            var page = await graph.SearchEdgesAsync(new TopologyEdgeQuery(clock,
+                Provenance: TopologyProvenance.Observed, FromUnixNano: from, ToUnixNano: to)
+                { ExpiryReadClockUnixNano = clock }, scopeAB, Ct);
+            Assert.Equal(eligible, page.Items.Any(row => row.Id == edge.Id));
+            Assert.Equal(eligible, await graph.GetEdgeAtExpiryAsync(edge.Id, clock, from, to,
+                null, clock, scopeAB, null, 200, Ct) is not null);
+            var neighbors = await graph.NeighborhoodAsync(new TopologyNeighborhoodQuery(parent, clock,
+                FromUnixNano: from, ToUnixNano: to)
+                { ExpiryReadClockUnixNano = clock }, scopeAB, Ct);
+            Assert.Equal(eligible, neighbors.Neighbors.Any(row => row.EdgeId == edge.Id));
+            Assert.Equal(eligible ? TopologyGraphResultStatus.Found : TopologyGraphResultStatus.Unreachable,
+                (await graph.PathAsync(new TopologyPathQuery(parent, child, clock,
+                    FromUnixNano: from, ToUnixNano: to)
+                    { ExpiryReadClockUnixNano = clock }, scopeAB, Ct)).Status);
+            var ancestor = await graph.CommonAncestorAsync(new TopologyCommonAncestorQuery([parent, child], clock,
+                from, to) { ExpiryReadClockUnixNano = clock }, scopeAB, Ct);
+            Assert.Equal(eligible ? TopologyGraphResultStatus.Found : TopologyGraphResultStatus.Unreachable,
+                ancestor.Status);
+            if (eligible) Assert.Equal(root, ancestor.NodeId);
+            var outside = await graph.CountExternalNeighborsAsync(new TopologyNeighborhoodQuery(parent, clock,
+                FromUnixNano: from, ToUnixNano: to)
+                { ExpiryReadClockUnixNano = clock }, scopeA, Ct);
+            Assert.Equal(eligible ? 1 : 0, outside.Count);
+            Assert.Null(outside.Reason);
+        }
+        // Audited production reads use the injected server clock. At DateTime
+        // precision the adjacent representable samples are E-100ns/E/E+100ns.
+        foreach (var clock in new[] { expiry - 100, expiry, expiry + 100 })
+        {
+            var query = ScopedAt(fixture, fixture.Storage, graph, clock);
             var eligible = clock < expiry;
             var page = await query.SearchTopologyEdgesAsync(new(clock,
                 Provenance: TopologyProvenance.Observed, FromUnixNano: from, ToUnixNano: to), scopeAB, Ct);
@@ -156,15 +189,19 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
             Assert.Equal(eligible ? 1 : 0, outside.Count);
             Assert.Null(outside.Reason);
         }
+        var afterExpiry = ScopedAt(fixture, fixture.Storage, graph, expiry + 100);
+        Assert.Empty((await afterExpiry.SearchTopologyEdgesAsync(new(expiry - 100,
+            Provenance: TopologyProvenance.Observed, FromUnixNano: from, ToUnixNano: to), scopeAB, Ct)).Items);
         Assert.Equal("1", (await fixture.SqlAsync("SELECT count() FROM topology_edges_observed "
             + "WHERE edge_id = '" + edge.Id + "'")).Trim());
 
         // The trace feed remains physically present at all three read clocks.
         // RCA must use captured edge expiry, not turn feed presence into proof.
         Assert.Equal(TelemetryResultStatus.Data,
-            (await query.GetTelemetryFeedAsync(TelemetrySignal.Traces, null, scopeAB, Ct)).Status);
+            (await afterExpiry.GetTelemetryFeedAsync(TelemetrySignal.Traces, null, scopeAB, Ct)).Status);
         foreach (var clock in new[] { expiry - 100, expiry, expiry + 100 })
         {
+            var query = ScopedAt(fixture, fixture.Storage, graph, clock);
             var window = new RcaWindow
             {
                 BaselineFrom = eventAt.AddDays(-7), BaselineTo = eventAt.AddMinutes(-2),
@@ -346,17 +383,29 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
             var graph = new TopologyGraphQueryService(new TopologyGraphSnapshotSource(fixture.Factory,
                 new TopologyObservedSnapshotReader(fresh), new TopologyPublicationFence(
                     new TopologyPublicationRevisionSource(fixture.Factory, watermark))));
-            var query = new ScopedQuery(new(fresh), new(fresh), new(fresh), new(fresh),
-                fixture.Db, new ControlPlaneAuditSink(fixture.Factory), new TelemetryReader(fresh, fixture.Clock), graph);
             foreach (var clock in new[] { expiry - 1, expiry, expiry + 1 })
             {
-                var page = await query.SearchTopologyEdgesAsync(new(clock,
-                    Provenance: TopologyProvenance.Observed, FromUnixNano: from, ToUnixNano: to), scope, Ct);
+                var page = await graph.SearchEdgesAsync(new TopologyEdgeQuery(clock,
+                    Provenance: TopologyProvenance.Observed, FromUnixNano: from, ToUnixNano: to)
+                    { ExpiryReadClockUnixNano = clock }, scope, Ct);
                 Assert.Equal(clock < expiry, page.Items.Any(edge => edge.Id == originalEdgeId));
                 if (clock < expiry) Assert.Equal(originalEdgeId, Assert.Single(page.Items).Id);
                 Assert.Equal(clock < expiry,
-                    await WindowDetailAsync(query, originalEdgeId, clock, from, to, scope) is not null);
+                    await graph.GetEdgeAtExpiryAsync(originalEdgeId, clock, from, to,
+                        null, clock, scope, null, 200, Ct) is not null);
             }
+            foreach (var clock in new[] { expiry - 100, expiry, expiry + 100 })
+            {
+                var scoped = ScopedAt(fixture, fresh, graph, clock);
+                var page = await scoped.SearchTopologyEdgesAsync(new(clock,
+                    Provenance: TopologyProvenance.Observed, FromUnixNano: from, ToUnixNano: to), scope, Ct);
+                Assert.Equal(clock < expiry, page.Items.Any(edge => edge.Id == originalEdgeId));
+                Assert.Equal(clock < expiry,
+                    await WindowDetailAsync(scoped, originalEdgeId, clock, from, to, scope) is not null);
+            }
+            var afterExpiry = ScopedAt(fixture, fresh, graph, expiry + 100);
+            Assert.Empty((await afterExpiry.SearchTopologyEdgesAsync(new(expiry - 100,
+                Provenance: TopologyProvenance.Observed, FromUnixNano: from, ToUnixNano: to), scope, Ct)).Items);
             var persisted = await SqlAsync(fresh, "SELECT toString(expires_nano) FROM topology_edges_observed "
                 + "WHERE edge_id = '" + originalEdgeId + "' ORDER BY publication_seq DESC LIMIT 1");
             Assert.Equal(expiry, decimal.Parse(persisted.Trim(), CultureInfo.InvariantCulture));
@@ -394,6 +443,12 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
         return new(new TopologyGraphSnapshotSource(fixture.Factory,
             new TopologyObservedSnapshotReader(fixture.Storage), fence));
     }
+
+    private static IScopedQuery ScopedAt(TelemetryDbFixture fixture, ClickHouseContext storage,
+        TopologyGraphQueryService graph, decimal expiryClock) =>
+        new ScopedQuery(new(storage), new(storage), new(storage), new(storage), fixture.Db,
+            new ControlPlaneAuditSink(fixture.Factory), new TelemetryReader(storage, fixture.Clock), graph,
+            topologyClock: new FakeTimeProvider(ClockDate(expiryClock)));
 
     private async Task<string> SqlAsync(ClickHouseContext storage, string sql)
     {
