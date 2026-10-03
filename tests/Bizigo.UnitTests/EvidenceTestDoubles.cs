@@ -33,6 +33,8 @@ internal class RecordingScopedQuery : IScopedQuery
     public List<TopologySourceNode> TopologySourceNodes { get; } = [];
     public Func<IReadOnlyList<string>, AccessScope, CancellationToken, Task<IReadOnlyList<TopologySourceNode>>>?
         TopologySourceNodesResponse { get; set; }
+    public Func<IReadOnlyList<string>, decimal, AccessScope, int, string?, CancellationToken,
+        Task<TopologySourceTargetsPage>>? TopologySourceTargetPageResponse { get; set; }
     public TopologyPathResult? TopologyPath { get; set; }
     public TopologyCommonAncestorResult? TopologyAncestor { get; set; }
     public Func<TopologyPathQuery, AccessScope, CancellationToken, Task<TopologyPathResult>>? TopologyPathResponse { get; set; }
@@ -49,6 +51,17 @@ internal class RecordingScopedQuery : IScopedQuery
         CancellationToken cancellationToken = default) => TopologySourceNodesResponse?.Invoke(sourceIds, scope, cancellationToken)
             ?? Task.FromResult<IReadOnlyList<TopologySourceNode>>(
                 [.. TopologySourceNodes.Where(node => sourceIds.Contains(node.SourceId, StringComparer.Ordinal))]);
+    public async Task<TopologySourceTargetsPage> ResolveTopologySourceTargetsPageAsync(
+        IReadOnlyList<string> sourceIds, decimal asOfUnixNano, AccessScope scope, int pageSize = 100,
+        string? cursor = null, CancellationToken cancellationToken = default)
+    {
+        if (TopologySourceTargetPageResponse is not null)
+            return await TopologySourceTargetPageResponse(sourceIds, asOfUnixNano, scope, pageSize, cursor,
+                cancellationToken);
+        var sources = await ResolveTopologySourceNodesAsync(sourceIds, scope, cancellationToken);
+        return new(sources.Select(static source => new TopologySourceTargetChunk(source.SourceId, source.NodeId,
+            null, TopologySourceTargetStatus.Complete, null)).ToArray(), null, 7, 1);
+    }
     public Task<TopologyPathResult> GetTopologyPathAsync(TopologyPathQuery query, AccessScope scope,
         CancellationToken cancellationToken = default) => TopologyPathResponse?.Invoke(query, scope, cancellationToken)
             ?? Task.FromResult(TopologyPath ?? throw new NotSupportedException());

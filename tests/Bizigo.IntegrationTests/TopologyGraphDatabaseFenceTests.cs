@@ -31,12 +31,12 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests
         await using var db = await fixture.Factory.CreateDbContextAsync(token);
         var audits = await db.AuditLog.Where(row => row.Subject == scope.Subject &&
             (row.Action == "topology.path" || row.Action == "topology.ancestors" ||
-             row.Action == "topology.edges.detail" || row.Action == "topology.sources.resolve"))
+             row.Action == "topology.edges.detail" || row.Action == "topology.source-targets"))
             .ToArrayAsync(token);
         Assert.Equal(2, audits.Count(row => row.Action == "topology.path"));
         Assert.Equal(1, audits.Count(row => row.Action == "topology.ancestors"));
         Assert.Equal(4, audits.Count(row => row.Action == "topology.edges.detail"));
-        Assert.Equal(2, audits.Count(row => row.Action == "topology.sources.resolve"));
+        Assert.Equal(2, audits.Count(row => row.Action == "topology.source-targets"));
         Assert.Equal([0L, 2L], audits.Where(row => row.Action == "topology.path")
             .Select(row => row.RowCount).Order().ToArray());
         Assert.All(audits, row =>
@@ -62,7 +62,10 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests
             mutationToken => ChangeRevisionAsync(changedStore, fixture, scope, mutationToken), "topology.path");
         var graph = new TopologyGraphQueryService(RealSnapshotSource(fixture.Factory, fixture.Storage));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
-            new(fixture.Storage), fixture.Db, audit, fixture.Reader, graph);
+            new(fixture.Storage), fixture.Db, audit, fixture.Reader, graph,
+            topologyClock: TopologyClock(window),
+            sourceTargetPages: new TopologySourceTargetPageReader(fixture.Factory,
+                new TopologyPublicationFence(revisions)));
         using var services = Services(query, new TopologyPublicationFence(revisions)).BuildServiceProvider();
         var result = await services.GetRequiredService<TopologyGraphPathProvider>()
             .GatherAsync(window, scope, GatherBudget.Default, token);
@@ -98,7 +101,10 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests
             mutationToken => ChangeRevisionAsync(changedStore, fixture, scope, mutationToken), "topology.ancestors");
         var graph = new TopologyGraphQueryService(RealSnapshotSource(fixture.Factory, fixture.Storage));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
-            new(fixture.Storage), fixture.Db, audit, fixture.Reader, graph);
+            new(fixture.Storage), fixture.Db, audit, fixture.Reader, graph,
+            topologyClock: TopologyClock(window),
+            sourceTargetPages: new TopologySourceTargetPageReader(fixture.Factory,
+                new TopologyPublicationFence(revisions)));
         using var services = Services(query, new TopologyPublicationFence(revisions)).BuildServiceProvider();
         var result = await services.GetRequiredService<TopologyCommonAncestorProvider>()
             .GatherAsync(window, scope, GatherBudget.Default, token);

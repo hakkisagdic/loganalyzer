@@ -70,7 +70,7 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests(DevStackFixtur
         limits[dimension] = (dimension switch
         {
             "node" => 3, "edge" => 2,
-            "page" => providerId == "topology.graph-path" ? 4 : 3,
+            "page" => providerId == "topology.graph-path" ? 5 : 4,
             _ => itemBytes,
         }) + delta;
         var budget = new TopologyProviderBudget(limits["node"], limits["edge"], limits["page"], limits["byte"]);
@@ -87,6 +87,7 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests(DevStackFixtur
             .ToArrayAsync(token);
         Assert.Contains(audits, row => row.Action == "rca.propagation");
         Assert.Contains(audits, row => row.Action.Contains("feed", StringComparison.Ordinal));
+        Assert.Single(audits.Where(row => row.Action == "topology.source-targets"));
         var graphAction = providerId == "topology.graph-path" ? "topology.path" : "topology.ancestors";
         var expectedGraphReads = providerId == "topology.graph-path" && delta < 0 &&
             (dimension is "node" or "edge") ? 1 : providerId == "topology.graph-path" ? 2 : 1;
@@ -217,21 +218,20 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests(DevStackFixtur
         }
         await new EventWriter(fixture.Storage).WriteEventsAsync(
             [Degraded(owner, sourceA, now.AddMinutes(1)), Degraded(owner, sourceB, now.AddMinutes(2))], token);
-        var graph = new TopologyGraphQueryService(RealSnapshotSource(fixture.Factory, fixture.Storage));
-        // The RCA window is deliberately in the fixture's future. Keep the
-        // production scoped expiry gate on a controlled server clock at To;
-        // passing a historical caller clock must never revive observed proof.
-        var queryClock = new Microsoft.Extensions.Time.Testing.FakeTimeProvider(now.AddMinutes(15));
-        var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
-            new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph,
-            queryClock);
         var window = new RcaWindow
         {
             BaselineFrom = now.AddDays(-7), BaselineTo = now.AddMinutes(-1),
             From = now, To = now.AddMinutes(15), OwnerGroups = [owner],
         };
+        var graph = new TopologyGraphQueryService(RealSnapshotSource(fixture.Factory, fixture.Storage));
+        var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
+            new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph,
+            topologyClock: TopologyClock(window),
+            sourceTargetPages: new TopologySourceTargetPageReader(fixture.Factory, Fence(fixture)));
         return (query, window, scope);
     }
+
+    private static TimeProvider TopologyClock(RcaWindow window) => new FakeTime(window.To.AddMinutes(1));
 
     private static IEvidenceProvider Provider(string id, IScopedQuery query, TopologyProviderBudget budget,
         TelemetryDbFixture fixture) =>

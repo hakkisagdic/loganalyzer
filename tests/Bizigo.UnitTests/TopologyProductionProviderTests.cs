@@ -43,7 +43,7 @@ public sealed class TopologyProductionProviderTests
         {
             "node" => 3 + delta,
             "edge" => 2 + delta,
-            "page" => (provider == "topology.graph-path" ? 4 : 3) + delta,
+            "page" => (provider == "topology.graph-path" ? 5 : 4) + delta,
             _ => itemBytes + delta,
         };
         var budget = new TopologyProviderBudget(limits["node"], limits["edge"], limits["page"], limits["byte"]);
@@ -165,6 +165,530 @@ public sealed class TopologyProductionProviderTests
         var payload = Assert.Single(result.Items).Payload;
         Assert.Equal(JsonSerializer.Serialize(new[] { SourceA, Root, SourceB }, BundleSerializer.Options), payload["node_ids"]);
         Assert.Equal("[\"edge-1\",\"edge-2\"]", payload["edge_ids"]);
+    }
+
+    [Theory]
+    [InlineData("topology.graph-path")]
+    [InlineData("topology.common-ancestor")]
+    public async Task Production_graph_queries_use_exact_rca_observed_window(string providerId)
+    {
+        var query = Ready();
+        var pathRequests = new List<TopologyPathQuery>();
+        var detailWindows = new List<(decimal ReadClock, decimal From, decimal To, decimal DeclaredStateClock)>();
+        TopologyGroupedAncestorQuery? ancestorRequest = null;
+        var pathResponse = query.TopologyPathResponse!;
+        query.TopologyPathResponse = async (request, scope, token) =>
+        {
+            pathRequests.Add(request);
+            return await pathResponse(request, scope, token);
+        };
+        query.TopologyGroupedAncestorResponse = (request, _, _) =>
+        {
+            ancestorRequest = request;
+            return Task.FromResult(query.TopologyAncestor!);
+        };
+        query.TopologyEdgeRcaWindowResponse = (edgeId, readClock, from, to, declaredStateClock, scope, token) =>
+        {
+            detailWindows.Add((readClock, from, to, declaredStateClock));
+            return Task.FromResult<TopologyEdgeDetail?>(query.TopologyEdges[edgeId]);
+        };
+        var result = await Provider(providerId, query, TopologyProviderBudget.Default).GatherAsync(
+            Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+        Assert.Equal(EvidenceStatus.Gathered, result.Status);
+        var from = TopologyIdentity.Nano(Window.From);
+        var to = TopologyIdentity.Nano(Window.To);
+        Assert.Equal(2, detailWindows.Count);
+        Assert.All(detailWindows, actual =>
+        {
+            Assert.Equal(to, actual.ReadClock);
+            Assert.Equal(from, actual.From);
+            Assert.Equal(to, actual.To);
+            Assert.Equal(to - 1m, actual.DeclaredStateClock);
+        });
+        if (providerId == "topology.graph-path")
+        {
+            Assert.Equal(2, pathRequests.Count);
+            Assert.All(pathRequests, request =>
+            {
+                Assert.Equal(from, request.FromUnixNano);
+                Assert.Equal(to, request.ToUnixNano);
+                Assert.Equal(to, request.ReadClockUnixNano);
+                Assert.Equal(to - 1m, request.DeclaredStateClockUnixNano);
+            });
+        }
+        else
+        {
+            Assert.NotNull(ancestorRequest);
+            Assert.Equal(from, ancestorRequest.FromUnixNano);
+            Assert.Equal(to, ancestorRequest.ToUnixNano);
+            Assert.Equal(to, ancestorRequest.ReadClockUnixNano);
+            Assert.Equal(to - 1m, ancestorRequest.DeclaredStateClockUnixNano);
+        }
+    }
+
+    [Fact]
+    public async Task Declared_contains_at_exact_window_end_is_excluded_but_pre_end_proof_remains()
+    {
+        var startingAtEnd = GraphNode(TopologyNodeKind.Service, 21);
+        var endingAtEnd = GraphNode(TopologyNodeKind.Service, 22);
+        var to = TopologyIdentity.Nano(Window.To);
+        var from = TopologyIdentity.Nano(Window.From);
+        var query = Ready();
+        var mappingClocks = new List<decimal>();
+        var pathRequests = new List<TopologyPathQuery>();
+        query.TopologySourceTargetPageResponse = (_, asOf, _, _, _, _) =>
+        {
+            mappingClocks.Add(asOf);
+            // Simulate half-open declared validity at the exact RCA endpoint.
+            var chunks = new List<TopologySourceTargetChunk>();
+            if (asOf >= to)
+                chunks.Add(new("source-1", SourceA,
+                    new TopologySourceTarget(startingAtEnd, ["starts-at-to"], [SourceA, startingAtEnd]), null, null));
+            chunks.Add(new("source-1", SourceA, null, TopologySourceTargetStatus.Complete, null));
+            if (asOf < to)
+                chunks.Add(new("source-2", SourceB,
+                    new TopologySourceTarget(endingAtEnd, ["ends-at-to"], [SourceB, endingAtEnd]), null, null));
+            chunks.Add(new("source-2", SourceB, null, TopologySourceTargetStatus.Complete, null));
+            return Task.FromResult(new TopologySourceTargetsPage(chunks, null, 7, 1));
+        };
+        query.TopologyPathResponse = (request, _, _) =>
+        {
+            pathRequests.Add(request);
+            return Task.FromResult(request.FromNodeId == endingAtEnd && request.ToNodeId == SourceA
+                ? new TopologyPathResult(TopologyGraphResultStatus.Found,
+                    [endingAtEnd, SourceA], ["observed-at-to-minus-one"], null, 1)
+                : new TopologyPathResult(TopologyGraphResultStatus.Unreachable, [], [], null, 1));
+        };
+        query.TopologyEdges["observed-at-to-minus-one"] = Detail("observed-at-to-minus-one", endingAtEnd, SourceA);
+
+        var result = await Provider("topology.graph-path", query, TopologyProviderBudget.Default).GatherAsync(
+            Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+
+        Assert.Equal(EvidenceStatus.Gathered, result.Status);
+        Assert.Equal(new[] { to - 1m }, mappingClocks);
+        Assert.All(pathRequests, request =>
+        {
+            Assert.Equal(to, request.ReadClockUnixNano);
+            Assert.Equal(from, request.FromUnixNano);
+            Assert.Equal(to, request.ToUnixNano);
+        });
+        var payload = Assert.Single(result.Items).Payload;
+        Assert.Equal("[\"observed-at-to-minus-one\"]", payload["edge_ids"]);
+        using var witnesses = JsonDocument.Parse(payload["source_witnesses"]);
+        var rows = witnesses.RootElement.EnumerateArray().ToArray();
+        Assert.Equal(SourceA, rows[0].GetProperty("target_node_id").GetString());
+        Assert.Equal(endingAtEnd, rows[1].GetProperty("target_node_id").GetString());
+        Assert.Equal("ends-at-to", Assert.Single(rows[1].GetProperty("mapping_edge_ids").EnumerateArray())
+            .GetString());
+    }
+
+    [Theory]
+    [InlineData("topology.graph-path")]
+    [InlineData("topology.common-ancestor")]
+    public async Task Production_root_witnesses_keep_authorized_source_identity_separate_from_dependency_proof(
+        string providerId)
+    {
+        var result = await Provider(providerId, Ready(), TopologyProviderBudget.Default).GatherAsync(
+            Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+        Assert.Equal(EvidenceStatus.Gathered, result.Status);
+        var payload = Assert.Single(result.Items).Payload;
+        using var witnesses = JsonDocument.Parse(payload["source_witnesses"]);
+        var rows = witnesses.RootElement.EnumerateArray().ToArray();
+        Assert.Equal(2, rows.Length);
+        Assert.Equal("source-1", rows[0].GetProperty("source_id").GetString());
+        Assert.Equal(SourceA, rows[0].GetProperty("target_node_id").GetString());
+        Assert.Equal("source-2", rows[1].GetProperty("source_id").GetString());
+        Assert.Equal(SourceB, rows[1].GetProperty("target_node_id").GetString());
+        Assert.All(rows, row => Assert.Equal(0, row.GetProperty("mapping_edge_ids").GetArrayLength()));
+        using var dependencyEdges = JsonDocument.Parse(payload["proof_edges"]);
+        Assert.All(dependencyEdges.RootElement.EnumerateArray().ToArray(), edge =>
+            Assert.Equal("depends_on", edge.GetProperty("relation").GetString()));
+    }
+
+    [Theory]
+    [InlineData("topology.graph-path")]
+    [InlineData("topology.common-ancestor")]
+    public async Task Complete_root_only_mapping_can_prove_empty_graph_without_guessing_service_names(
+        string providerId)
+    {
+        var query = Ready();
+        query.TopologyPathResponse = (_, _, _) => Task.FromResult(
+            new TopologyPathResult(TopologyGraphResultStatus.Unreachable, [], [], null, 1));
+        query.TopologyGroupedAncestorResponse = (_, _, _) => Task.FromResult(
+            new TopologyCommonAncestorResult(TopologyGraphResultStatus.Unreachable, null, [], 1));
+        var result = await Provider(providerId, query, TopologyProviderBudget.Default).GatherAsync(
+            Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+        Assert.Equal(EvidenceStatus.Empty, result.Status);
+        Assert.Empty(result.Items);
+        Assert.Equal("Evaluated", result.Telemetry!.Evaluation);
+    }
+
+    [Theory]
+    [InlineData("topology.graph-path")]
+    [InlineData("topology.common-ancestor")]
+    public async Task Missing_source_identity_never_uses_a_visible_other_source_as_a_guess(string providerId)
+    {
+        var query = Ready();
+        var graphCalls = 0;
+        query.TopologySourceTargetPageResponse = (_, _, _, _, _, _) => Task.FromResult(
+            new TopologySourceTargetsPage([
+                new("source-1", SourceA, null, TopologySourceTargetStatus.Complete, null),
+                new("source-2", "", null, TopologySourceTargetStatus.Missing, null),
+            ], null, 7, 1));
+        query.TopologyPathResponse = (_, _, _) =>
+        { graphCalls++; throw new InvalidOperationException("No graph traversal after missing identity."); };
+        query.TopologyGroupedAncestorResponse = (_, _, _) =>
+        { graphCalls++; throw new InvalidOperationException("No grouped ancestor after missing identity."); };
+        var result = await Provider(providerId, query, TopologyProviderBudget.Default).GatherAsync(
+            Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+        Assert.Equal(EvidenceStatus.Unavailable, result.Status);
+        Assert.Empty(result.Items);
+        Assert.Equal("NotComparable", result.Telemetry!.Evaluation);
+        Assert.Contains("not guessed", result.Detail, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, graphCalls);
+    }
+
+    [Fact]
+    public async Task Mapping_second_page_reserves_shared_budget_before_io_and_empty_requires_all_finals()
+    {
+        var query = Ready();
+        var mappingCalls = 0;
+        var graphCalls = 0;
+        query.TopologySourceTargetPageResponse = (_, _, _, _, cursor, _) =>
+        {
+            mappingCalls++;
+            return Task.FromResult(cursor is null
+                ? new TopologySourceTargetsPage([
+                    new("source-1", SourceA, null, TopologySourceTargetStatus.Complete, null),
+                ], "next", 7, 1)
+                : new TopologySourceTargetsPage([
+                    new("source-2", SourceB, null, TopologySourceTargetStatus.Complete, null),
+                ], null, 7, 1));
+        };
+        query.TopologyPathResponse = (_, _, _) =>
+        {
+            graphCalls++;
+            return Task.FromResult(new TopologyPathResult(TopologyGraphResultStatus.Unreachable, [], [], null, 1));
+        };
+        var blocked = await Provider("topology.graph-path", query,
+            new TopologyProviderBudget(100, 100, 1, 1024 * 1024)).GatherAsync(
+                Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+        Assert.Equal(EvidenceStatus.Unavailable, blocked.Status);
+        Assert.Contains("BudgetExceeded", blocked.Detail, StringComparison.Ordinal);
+        Assert.Equal(1, mappingCalls);
+        Assert.Equal(0, graphCalls);
+
+        mappingCalls = 0;
+        var complete = await Provider("topology.graph-path", query,
+            new TopologyProviderBudget(100, 100, 4, 1024 * 1024)).GatherAsync(
+                Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+        Assert.Equal(EvidenceStatus.Empty, complete.Status);
+        Assert.Equal(2, mappingCalls);
+        Assert.Equal(2, graphCalls);
+    }
+
+    [Fact]
+    public async Task Full_mapping_target_page_requires_a_separate_terminal_page_and_shared_budget()
+    {
+        var query = Ready();
+        var targets = Enumerable.Range(0, 100).Select(index =>
+            new TopologySourceTargetChunk("source-1", SourceA,
+                new TopologySourceTarget(GraphNode(TopologyNodeKind.Service, 1000 + index),
+                    [$"contains-{index}"], [SourceA, GraphNode(TopologyNodeKind.Service, 1000 + index)]),
+                null, null)).ToArray();
+        var mappingCalls = 0;
+        var graphCalls = 0;
+        query.TopologySourceTargetPageResponse = (_, _, _, pageSize, cursor, _) =>
+        {
+            mappingCalls++;
+            Assert.Equal(100, pageSize);
+            return Task.FromResult(cursor is null
+                ? new TopologySourceTargetsPage(targets, "terminal-page", 7, 1)
+                : new TopologySourceTargetsPage([
+                    new("source-1", SourceA, null, TopologySourceTargetStatus.Complete, null),
+                    new("source-2", SourceB, null, TopologySourceTargetStatus.Complete, null),
+                ], null, 7, 1));
+        };
+        query.TopologyPathResponse = (_, _, _) =>
+        {
+            graphCalls++;
+            return Task.FromResult(new TopologyPathResult(TopologyGraphResultStatus.Unreachable,
+                [], [], null, 1));
+        };
+        var blocked = await Provider("topology.graph-path", query,
+            new TopologyProviderBudget(102, 100, 1, 1024 * 1024)).GatherAsync(
+                Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+        Assert.Equal(EvidenceStatus.Unavailable, blocked.Status);
+        Assert.Contains("BudgetExceeded", blocked.Detail, StringComparison.Ordinal);
+        Assert.Equal(1, mappingCalls);
+        Assert.Equal(0, graphCalls);
+
+        mappingCalls = 0;
+        var complete = await Provider("topology.graph-path", query,
+            new TopologyProviderBudget(102, 100, 204, 1024 * 1024)).GatherAsync(
+                Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+        Assert.Equal(EvidenceStatus.Empty, complete.Status);
+        Assert.Equal("Evaluated", complete.Telemetry!.Evaluation);
+        Assert.Equal(2, mappingCalls);
+        Assert.Equal(202, graphCalls);
+    }
+
+    [Fact]
+    public async Task Mapping_target_cannot_claim_complete_without_a_separate_terminal_chunk()
+    {
+        var query = Ready();
+        var graphCalls = 0;
+        query.TopologySourceTargetPageResponse = (_, _, _, _, _, _) => Task.FromResult(
+            new TopologySourceTargetsPage([
+                new("source-1", SourceA,
+                    new TopologySourceTarget(GraphNode(TopologyNodeKind.Service, 1101), ["contains"],
+                        [SourceA, GraphNode(TopologyNodeKind.Service, 1101)]),
+                    TopologySourceTargetStatus.Complete, null),
+                new("source-2", SourceB, null, TopologySourceTargetStatus.Complete, null),
+            ], null, 7, 1));
+        query.TopologyPathResponse = (_, _, _) =>
+        {
+            graphCalls++;
+            throw new InvalidOperationException("A target is not an exhaustion marker.");
+        };
+        var result = await Provider("topology.graph-path", query, TopologyProviderBudget.Default).GatherAsync(
+            Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+        Assert.Equal(EvidenceStatus.Unavailable, result.Status);
+        Assert.Empty(result.Items);
+        Assert.Equal("NotComparable", result.Telemetry!.Evaluation);
+        Assert.Equal(0, graphCalls);
+    }
+
+    [Fact]
+    public async Task Hidden_source_mapping_never_falls_back_to_root_dependency_or_leaks_target_identity()
+    {
+        var query = Ready();
+        var graphCalls = 0;
+        query.TopologySourceTargetPageResponse = (_, _, _, _, _, _) => Task.FromResult(
+            new TopologySourceTargetsPage([
+                new("source-1", SourceA, null, TopologySourceTargetStatus.Complete, null),
+                new("source-2", SourceB, null, TopologySourceTargetStatus.Hidden, null),
+            ], null, 7, 1));
+        query.TopologyPathResponse = (_, _, _) =>
+        { graphCalls++; return Task.FromResult(query.TopologyPath!); };
+        var result = await Provider("topology.graph-path", query, TopologyProviderBudget.Default).GatherAsync(
+            Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+        Assert.Equal(EvidenceStatus.Unavailable, result.Status);
+        Assert.Empty(result.Items);
+        Assert.Equal("NotComparable", result.Telemetry!.Evaluation);
+        Assert.DoesNotContain(SourceB, result.Detail, StringComparison.Ordinal);
+        Assert.Equal(0, graphCalls);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Diamond_mapping_keeps_one_canonical_target_after_all_raw_pages_and_charges_both_chains(
+        bool reverseArrival)
+    {
+        var serviceA = GraphNode(TopologyNodeKind.Service, 31);
+        var serviceB = GraphNode(TopologyNodeKind.Service, 32);
+        var instance = GraphNode(TopologyNodeKind.ServiceInstance, 33);
+        var query = Ready();
+        var mappingCalls = 0;
+        var graphCalls = 0;
+        TopologySourceTargetChunk[] Chain(string service, string firstEdge, string secondEdge) =>
+        [
+            new("source-1", SourceA, new TopologySourceTarget(service, [firstEdge],
+                [SourceA, service]), null, null),
+            new("source-1", SourceA, new TopologySourceTarget(instance, [firstEdge, secondEdge],
+                [SourceA, service, instance]), null, null),
+        ];
+        var first = reverseArrival ? Chain(serviceB, "contains-b0", "contains-b1") :
+            Chain(serviceA, "contains-a0", "contains-a1");
+        var second = reverseArrival ? Chain(serviceA, "contains-a0", "contains-a1") :
+            Chain(serviceB, "contains-b0", "contains-b1");
+        query.TopologySourceTargetPageResponse = (_, _, _, _, cursor, _) =>
+        {
+            mappingCalls++;
+            return Task.FromResult(cursor is null
+                ? new TopologySourceTargetsPage(first, "diamond-next", 7, 1)
+                : new TopologySourceTargetsPage([
+                    .. second,
+                    new("source-1", SourceA, null, TopologySourceTargetStatus.Complete, null),
+                    new("source-2", SourceB, null, TopologySourceTargetStatus.Complete, null),
+                ], null, 7, 1));
+        };
+        query.TopologyPathResponse = (request, _, _) =>
+        {
+            graphCalls++;
+            return Task.FromResult(request.FromNodeId == instance && request.ToNodeId == SourceB
+                ? new TopologyPathResult(TopologyGraphResultStatus.Found,
+                    [instance, SourceB], ["observed-diamond"], null, 1)
+                : new TopologyPathResult(TopologyGraphResultStatus.Unreachable, [], [], null, 1));
+        };
+        query.TopologyEdges["observed-diamond"] = Detail("observed-diamond", instance, SourceB);
+
+        var exact = await Provider("topology.graph-path", query,
+            new TopologyProviderBudget(5, 5, 11, 1024 * 1024)).GatherAsync(
+                Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+        Assert.Equal(EvidenceStatus.Gathered, exact.Status);
+        Assert.Equal(2, mappingCalls);
+        Assert.Equal(8, graphCalls);
+        using (var witnessJson = JsonDocument.Parse(Assert.Single(exact.Items).Payload["source_witnesses"]))
+        {
+            var witness = witnessJson.RootElement[0];
+            Assert.Equal("source-1", witness.GetProperty("source_id").GetString());
+            Assert.Equal(instance, witness.GetProperty("target_node_id").GetString());
+            Assert.Equal(new[] { "contains-a0", "contains-a1" },
+                witness.GetProperty("mapping_edge_ids").EnumerateArray()
+                    .Select(static value => value.GetString()!));
+        }
+
+        mappingCalls = 0;
+        graphCalls = 0;
+        var over = await Provider("topology.graph-path", query,
+            new TopologyProviderBudget(5, 3, 11, 1024 * 1024)).GatherAsync(
+                Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+        Assert.Equal(EvidenceStatus.Unavailable, over.Status);
+        Assert.Equal("NotComparable", over.Telemetry!.Evaluation);
+        Assert.Empty(over.Items);
+        Assert.Contains("BudgetExceeded", over.Detail, StringComparison.Ordinal);
+        Assert.Equal(2, mappingCalls);
+        Assert.Equal(0, graphCalls);
+    }
+
+    [Fact]
+    public async Task Diamond_hidden_terminal_after_raw_chains_never_emits_a_finding()
+    {
+        var service = GraphNode(TopologyNodeKind.Service, 34);
+        var query = Ready();
+        var graphCalls = 0;
+        query.TopologySourceTargetPageResponse = (_, _, _, _, cursor, _) => Task.FromResult(cursor is null
+            ? new TopologySourceTargetsPage([
+                new("source-1", SourceA, new TopologySourceTarget(service, ["contains-visible"],
+                    [SourceA, service]), null, null),
+            ], "hidden-next", 7, 1)
+            : new TopologySourceTargetsPage([
+                new("source-1", SourceA, null, TopologySourceTargetStatus.Hidden, null),
+                new("source-2", SourceB, null, TopologySourceTargetStatus.Complete, null),
+            ], null, 7, 1));
+        query.TopologyPathResponse = (_, _, _) =>
+        {
+            graphCalls++;
+            throw new InvalidOperationException("Hidden mapping must not reach graph traversal.");
+        };
+        var result = await Provider("topology.graph-path", query, TopologyProviderBudget.Default).GatherAsync(
+            Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+        Assert.Equal(EvidenceStatus.Unavailable, result.Status);
+        Assert.Equal("NotComparable", result.Telemetry!.Evaluation);
+        Assert.Empty(result.Items);
+        Assert.Equal(0, graphCalls);
+        Assert.DoesNotContain(service, result.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Production_mapping_page_revision_change_restarts_before_traversal()
+    {
+        var query = Ready();
+        var graphCalls = 0;
+        query.TopologySourceTargetPageResponse = (_, _, _, _, cursor, _) => Task.FromResult(cursor is null
+            ? new TopologySourceTargetsPage([
+                new("source-1", SourceA, null, TopologySourceTargetStatus.Complete, null),
+            ], "next", 7, 1)
+            : new TopologySourceTargetsPage([
+                new("source-2", SourceB, null, TopologySourceTargetStatus.Complete, null),
+            ], null, 8, 1));
+        query.TopologyPathResponse = (_, _, _) =>
+        { graphCalls++; return Task.FromResult(query.TopologyPath!); };
+        var revisions = new MutableRevisionSource(new(7, 1));
+        var provider = new TopologyGraphPathProvider(query, TopologyProviderBudget.Default,
+            new TopologyPublicationFence(revisions));
+        var result = await provider.GatherAsync(Window, Scope, GatherBudget.Default,
+            TestContext.Current.CancellationToken);
+        Assert.Equal(EvidenceStatus.Unavailable, result.Status);
+        Assert.True(result.Truncated);
+        Assert.Empty(result.Items);
+        Assert.Equal("NotComparable", result.Telemetry!.Evaluation);
+        Assert.Equal(0, graphCalls);
+    }
+
+    [Fact]
+    public async Task Service_and_instance_are_both_candidates_and_shorter_observed_proof_wins()
+    {
+        var serviceA = GraphNode(TopologyNodeKind.Service, 11);
+        var instanceA = GraphNode(TopologyNodeKind.ServiceInstance, 12);
+        var serviceB = GraphNode(TopologyNodeKind.Service, 13);
+        var middle = GraphNode(TopologyNodeKind.Service, 14);
+        var query = Ready();
+        query.TopologySourceTargetPageResponse = (_, _, _, _, _, _) => Task.FromResult(
+            new TopologySourceTargetsPage([
+                new("source-1", SourceA, new TopologySourceTarget(serviceA, ["contains-a"],
+                    [SourceA, serviceA]), null, null),
+                new("source-1", SourceA, new TopologySourceTarget(instanceA, ["contains-a", "contains-i"],
+                    [SourceA, serviceA, instanceA]),
+                    null, null),
+                new("source-1", SourceA, null, TopologySourceTargetStatus.Complete, null),
+                new("source-2", SourceB, new TopologySourceTarget(serviceB, ["contains-b"],
+                    [SourceB, serviceB]),
+                    null, null),
+                new("source-2", SourceB, null, TopologySourceTargetStatus.Complete, null),
+            ], null, 7, 1));
+        query.TopologyPathResponse = (request, _, _) => Task.FromResult(
+            request.FromNodeId == instanceA && request.ToNodeId == serviceB
+                ? new TopologyPathResult(TopologyGraphResultStatus.Found,
+                    [instanceA, serviceB], ["observed-fast"], null, 1)
+                : request.FromNodeId == serviceA && request.ToNodeId == serviceB
+                    ? new TopologyPathResult(TopologyGraphResultStatus.Found,
+                        [serviceA, middle, serviceB], ["observed-slow-1", "observed-slow-2"], null, 1)
+                    : new TopologyPathResult(TopologyGraphResultStatus.Unreachable, [], [], null, 1));
+        query.TopologyEdges["observed-fast"] = Detail("observed-fast", instanceA, serviceB);
+        query.TopologyEdges["observed-slow-1"] = Detail("observed-slow-1", serviceA, middle);
+        query.TopologyEdges["observed-slow-2"] = Detail("observed-slow-2", middle, serviceB);
+        var result = await Provider("topology.graph-path", query,
+            new TopologyProviderBudget(6, 6, 20, 1024 * 1024)).GatherAsync(
+                Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+        Assert.Equal(EvidenceStatus.Gathered, result.Status);
+        var payload = Assert.Single(result.Items).Payload;
+        Assert.Equal(JsonSerializer.Serialize(new[] { instanceA, serviceB }, BundleSerializer.Options),
+            payload["node_ids"]);
+        Assert.Equal("[\"observed-fast\"]", payload["edge_ids"]);
+        using var witnesses = JsonDocument.Parse(payload["source_witnesses"]);
+        var rows = witnesses.RootElement.EnumerateArray().ToArray();
+        Assert.Equal("source-1", rows[0].GetProperty("source_id").GetString());
+        Assert.Equal(instanceA, rows[0].GetProperty("target_node_id").GetString());
+        Assert.Equal(new[] { "contains-a", "contains-i" }, rows[0].GetProperty("mapping_edge_ids")
+            .EnumerateArray().Select(static value => value.GetString()!));
+        Assert.Equal("source-2", rows[1].GetProperty("source_id").GetString());
+        Assert.Equal(serviceB, rows[1].GetProperty("target_node_id").GetString());
+        using var proof = JsonDocument.Parse(payload["proof_edges"]);
+        Assert.Equal("observed-fast", Assert.Single(proof.RootElement.EnumerateArray().ToArray())
+            .GetProperty("id").GetString());
+    }
+
+    [Fact]
+    public async Task Instance_mapping_without_intermediate_service_is_not_treated_as_complete_or_budget_free()
+    {
+        var instance = GraphNode(TopologyNodeKind.ServiceInstance, 15);
+        var query = Ready();
+        var traversals = 0;
+        query.TopologySourceTargetPageResponse = (_, _, _, _, _, _) => Task.FromResult(
+            new TopologySourceTargetsPage([
+                new("source-1", SourceA, new TopologySourceTarget(instance, ["contains-service", "contains-instance"],
+                    [SourceA, GraphNode(TopologyNodeKind.Service, 16), instance]),
+                    null, null),
+                new("source-1", SourceA, null, TopologySourceTargetStatus.Complete, null),
+                new("source-2", SourceB, null, TopologySourceTargetStatus.Complete, null),
+            ], null, 7, 1));
+        query.TopologyPathResponse = (_, _, _) =>
+        {
+            traversals++;
+            throw new InvalidOperationException("Incomplete Contains chain must not reach traversal.");
+        };
+
+        var result = await Provider("topology.graph-path", query, TopologyProviderBudget.Default).GatherAsync(
+            Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+
+        Assert.Equal(EvidenceStatus.Unavailable, result.Status);
+        Assert.Empty(result.Items);
+        Assert.Equal("NotComparable", result.Telemetry!.Evaluation);
+        Assert.Contains("mapping proof is incomplete", result.Detail, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, traversals);
     }
 
     [Fact]
@@ -379,7 +903,7 @@ public sealed class TopologyProductionProviderTests
                 ? new TopologyPathResult(TopologyGraphResultStatus.Found, [SourceA, Root], ["edge-1"], "next", 1)
                 : new TopologyPathResult(TopologyGraphResultStatus.Unreachable, [], [], null, 1));
         };
-        var budget = new TopologyProviderBudget(100, 100, 1, 1024 * 1024);
+        var budget = new TopologyProviderBudget(100, 100, 2, 1024 * 1024);
         var result = await Provider("topology.graph-path", query, budget).GatherAsync(
             Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
         Assert.Equal(EvidenceStatus.Unavailable, result.Status);
@@ -431,7 +955,7 @@ public sealed class TopologyProductionProviderTests
         var limits = new Dictionary<string, int> { ["node"] = 1000, ["edge"] = 4000, ["page"] = 20, ["byte"] = 1024 * 1024 };
         limits[dimension] = (dimension switch
         {
-            "node" => 4, "edge" => 4, "page" => 6, _ => serializedBytes,
+            "node" => 4, "edge" => 4, "page" => 7, _ => serializedBytes,
         }) + delta;
         var budget = new TopologyProviderBudget(limits["node"], limits["edge"], limits["page"], limits["byte"]);
         var actual = await Provider("topology.graph-path", BidirectionalReady(), budget).GatherAsync(
@@ -555,6 +1079,9 @@ public sealed class TopologyProductionProviderTests
         [new(id, "proof-1", "trace-logical-1", "span-logical-1", 1000)], "more-proof");
 
     private static string Node(int value) => TopologyIdentity.Node(TopologyNodeKind.Source,
+        Guid.Parse($"00000000-0000-0000-0000-{value:D12}"));
+
+    private static string GraphNode(TopologyNodeKind kind, int value) => TopologyIdentity.Node(kind,
         Guid.Parse($"00000000-0000-0000-0000-{value:D12}"));
 
     private sealed class MutableRevisionSource(TopologyPublicationRevision initial)
