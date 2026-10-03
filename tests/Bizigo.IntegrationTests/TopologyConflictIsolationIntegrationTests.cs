@@ -138,6 +138,10 @@ public sealed class TopologyConflictIsolationIntegrationTests(DevStackFixture st
         await seed.Writer.WriteAsync([parent, child, Reenvelope(child) with
         { Topology = child.Topology! with { ServiceNodeId = seed.BAlternate } }], Ct);
         var expiredClock = (decimal)childTime + TopologyExpiry.NanosecondsPerDay + 1;
+        // TimeProvider advances in 100 ns ticks. The historical as-of remains
+        // E+1 ns; the server TTL clock must be at or beyond that instant.
+        seed.QueryClock.SetUtcNow(DateTimeOffset.UnixEpoch.AddTicks(
+            checked((long)decimal.Ceiling(expiredClock / 100m))));
         var parentOnly = await seed.Query.GetTopologyNeighborhoodAsync(new(seed.BService1,
             expiredClock, FromUnixNano: childTime - 2000, ToUnixNano: childTime + 2000), seed.ScopeB, Ct);
         Assert.Equal(0, parentOnly.ExternalNeighborCount);
@@ -421,7 +425,7 @@ public sealed class TopologyConflictIsolationIntegrationTests(DevStackFixture st
     private sealed record Seed(IScopedQuery Query, TelemetryWriter Writer, AccessScope ScopeA, AccessScope ScopeB,
         string AService1, string AService2, string BService1, string BService2, string BAlternate,
         string BSource, TelemetryRecord AParent, TelemetryRecord AChild, TelemetryRecord BParent,
-        decimal ReadClock, RcaWindow Window);
+        decimal ReadClock, RcaWindow Window, Microsoft.Extensions.Time.Testing.FakeTimeProvider QueryClock);
 
     private static async Task<Seed> SeedAsync(TelemetryDbFixture fixture)
     {
@@ -490,7 +494,8 @@ public sealed class TopologyConflictIsolationIntegrationTests(DevStackFixture st
             From = now, To = now.AddMinutes(15), OwnerGroups = [ownerA],
         };
         return new(query, writer, scopeA, scopeB, serviceA1, serviceA2, serviceB1, serviceB2,
-            alternate, sourceB, aParent, aChild, bParent, TopologyIdentity.Nano(window.To), window);
+            alternate, sourceB, aParent, aChild, bParent, TopologyIdentity.Nano(window.To), window,
+            queryClock);
     }
 
     private static TopologyPublicationCoordinator Publisher(TelemetryDbFixture fixture)
