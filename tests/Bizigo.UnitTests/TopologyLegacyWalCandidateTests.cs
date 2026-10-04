@@ -52,9 +52,12 @@ public sealed class TopologyLegacyWalCandidateTests
                 paths, archive, claims, maxRosterBytes: 100_000, maxFrames: 1));
             Assert.Throws<InvalidDataException>(() => TopologyLegacyWalCandidateVerifier.VerifyCandidate(
                 paths, archive, claims, maxRosterBytes: 1, maxFrames: 2));
-            await using var stream = new FileStream(paths[0], FileMode.Append, FileAccess.Write);
-            await stream.WriteAsync(new byte[] { 0x42, 0x5a, 0x47 });
-            await stream.FlushAsync();
+            var token = TestContext.Current.CancellationToken;
+            await using (var stream = new FileStream(paths[0], FileMode.Append, FileAccess.Write))
+            {
+                await stream.WriteAsync(new byte[] { 0x42, 0x5a, 0x47 }, token);
+                await stream.FlushAsync(token);
+            }
             Assert.Throws<InvalidDataException>(() => TopologyLegacyWalCandidateVerifier.VerifyCandidate(
                 paths, archive, claims, maxRosterBytes: 100_000, maxFrames: 3));
         });
@@ -111,8 +114,9 @@ public sealed class TopologyLegacyWalCandidateTests
             using (var wal = new WriteAheadLog(Options.Create(new WalOptions { Directory = root }),
                 NullLogger<WriteAheadLog>.Instance))
             {
-                foreach (var frame in frames) await wal.AppendAsync(frame);
-                await wal.SealAsync();
+                var token = TestContext.Current.CancellationToken;
+                foreach (var frame in frames) await wal.AppendAsync(frame, token);
+                await wal.SealAsync(token);
             }
             var paths = Directory.GetFiles(root, "wal-*.log").Order(StringComparer.Ordinal).ToArray();
             await check(paths);
