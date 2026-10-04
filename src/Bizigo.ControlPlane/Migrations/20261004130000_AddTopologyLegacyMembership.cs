@@ -240,10 +240,7 @@ public sealed class AddTopologyLegacyMembership : Migration
         LANGUAGE plpgsql AS $$
         DECLARE header record; actual bytea;
         BEGIN
-            IF NEW.phase <> 'Ready' OR (OLD.phase = 'Ready'
-                AND NEW.certificate_json IS NOT DISTINCT FROM OLD.certificate_json
-                AND NEW.certificate_member_set_id IS NOT DISTINCT FROM OLD.certificate_member_set_id)
-            THEN RETURN NEW; END IF;
+            IF NEW.phase <> 'Ready' THEN RETURN NEW; END IF;
             IF NEW.certificate_json ->> 'FormatVersion' IS DISTINCT FROM '2'
             THEN RETURN NEW; END IF; -- Frozen format-1 certificates retain their old gate.
             IF NOT pg_try_advisory_xact_lock(735032)
@@ -251,15 +248,15 @@ public sealed class AddTopologyLegacyMembership : Migration
             SELECT * INTO header FROM bizigo.topology_repair_member_sets
                 WHERE member_set_id = NEW.certificate_member_set_id FOR UPDATE;
             IF header.member_set_id IS NULL OR header.sealed_at IS NULL
-               OR NEW.sidecar_revision <> OLD.sidecar_revision
-               OR header.generation <> NEW.generation
-               OR header.copy_attempt_id <> NEW.copy_attempt_id
-               OR header.pg_database_identity <> NEW.pg_database_identity
-               OR header.clickhouse_database_uuid <> NEW.clickhouse_database_uuid
-               OR header.sampled_sidecar_revision <> NEW.sidecar_revision
-               OR header.receipt_prefix_sequence <> NEW.receipt_prefix_sequence
-               OR header.receipt_prefix_sha256 <> NEW.receipt_prefix_sha256
-               OR header.member_count <> 0
+               OR NEW.sidecar_revision IS DISTINCT FROM OLD.sidecar_revision
+               OR header.generation IS DISTINCT FROM NEW.generation
+               OR header.copy_attempt_id IS DISTINCT FROM NEW.copy_attempt_id
+               OR header.pg_database_identity IS DISTINCT FROM NEW.pg_database_identity
+               OR header.clickhouse_database_uuid IS DISTINCT FROM NEW.clickhouse_database_uuid
+               OR header.sampled_sidecar_revision IS DISTINCT FROM NEW.sidecar_revision
+               OR header.receipt_prefix_sequence IS DISTINCT FROM NEW.receipt_prefix_sequence
+               OR header.receipt_prefix_sha256 IS DISTINCT FROM NEW.receipt_prefix_sha256
+               OR header.member_count IS DISTINCT FROM 0
                OR NEW.certificate_json ->> 'MemberSetId' IS DISTINCT FROM header.member_set_id::text
                OR (NEW.certificate_json ->> 'Generation')::bigint IS DISTINCT FROM NEW.generation
                OR NEW.certificate_json ->> 'PostgresDatabaseIdentity'

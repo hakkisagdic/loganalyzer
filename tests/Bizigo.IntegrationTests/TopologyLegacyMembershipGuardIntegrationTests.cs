@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Bizigo.ControlPlane;
 using Bizigo.Query;
+using Bizigo.Storage.ClickHouse;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -124,33 +125,117 @@ public sealed class TopologyLegacyMembershipGuardIntegrationTests(DevStackFixtur
     }
 
     [Fact]
+    public async Task Null_state_binding_with_valid_format2_certificate_never_opens_ready()
+    {
+        var factory = await DevStackSetup.ControlPlaneAsync(stack, Ct);
+        using var storage = await DevStackSetup.ClickHouseAsync(stack, Ct);
+        var gate = new TopologyObservedRepairReadiness(factory, storage);
+        Assert.Equal(TopologyRepairInitializationStatus.Ready,
+            (await new TopologyPublicationRepairRunner(factory, storage, gate)
+                .InitializeAsync(TopologyRepairStartMode.Startup, Ct)).Status);
+        await using var db = await factory.CreateDbContextAsync(Ct);
+        var setId = await db.Database.SqlQueryRaw<Guid>(
+            "SELECT certificate_member_set_id AS \"Value\" FROM bizigo.topology_repair_state WHERE id=1")
+            .SingleAsync(Ct);
+        var originalJson = await db.Database.SqlQueryRaw<string>(
+            "SELECT certificate_json::text AS \"Value\" FROM bizigo.topology_repair_state WHERE id=1")
+            .SingleAsync(Ct);
+        var originalDigest = await db.Database.SqlQueryRaw<string>(
+            "SELECT certificate_digest AS \"Value\" FROM bizigo.topology_repair_state WHERE id=1")
+            .SingleAsync(Ct);
+        await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlRawAsync(
+            "UPDATE bizigo.topology_repair_state SET copy_attempt_id=NULL WHERE id=1 AND phase='Ready'", Ct));
+        Assert.Equal("Ready", await db.Database.SqlQueryRaw<string>(
+            "SELECT phase AS \"Value\" FROM bizigo.topology_repair_state WHERE id=1")
+            .SingleAsync(Ct));
+        Assert.Equal(1L, (await gate.RequireReadyAsync(Ct)).Generation);
+        Assert.Equal(1, await db.Database.ExecuteSqlRawAsync("""
+            UPDATE bizigo.topology_repair_state
+            SET phase='Repairing', certificate_digest=NULL, certificate_json=NULL,
+                certificate_member_set_id=NULL WHERE id=1
+            """, Ct));
+        await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE bizigo.topology_repair_state SET phase='Ready', copy_attempt_id=NULL,
+                certificate_member_set_id={setId}, certificate_json=CAST({originalJson} AS jsonb),
+                certificate_digest={originalDigest} WHERE id=1
+            """, Ct));
+        await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE bizigo.topology_repair_state SET phase='Ready', clickhouse_database_uuid=NULL,
+                certificate_member_set_id={setId}, certificate_json=CAST({originalJson} AS jsonb),
+                certificate_digest={originalDigest} WHERE id=1
+            """, Ct));
+        await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE bizigo.topology_repair_state SET phase='Ready', receipt_prefix_sha256=NULL,
+                certificate_member_set_id={setId}, certificate_json=CAST({originalJson} AS jsonb),
+                certificate_digest={originalDigest} WHERE id=1
+            """, Ct));
+        Assert.Equal("Repairing", await db.Database.SqlQueryRaw<string>(
+            "SELECT phase AS \"Value\" FROM bizigo.topology_repair_state WHERE id=1")
+            .SingleAsync(Ct));
+    }
+
+    [Fact]
     public async Task Direct_ready_update_rejects_busy_publication_lock_before_header_lock()
     {
         var factory = await DevStackSetup.ControlPlaneAsync(stack, Ct);
-        await PrepareRepairingAsync(factory);
+        using var storage = await DevStackSetup.ClickHouseAsync(stack, Ct);
+        var gate = new TopologyObservedRepairReadiness(factory, storage);
+        Assert.Equal(TopologyRepairInitializationStatus.Ready,
+            (await new TopologyPublicationRepairRunner(factory, storage, gate)
+                .InitializeAsync(TopologyRepairStartMode.Startup, Ct)).Status);
+        await using var control = await factory.CreateDbContextAsync(Ct);
+        var setId = await control.Database.SqlQueryRaw<Guid>(
+            "SELECT certificate_member_set_id AS \"Value\" FROM bizigo.topology_repair_state WHERE id=1")
+            .SingleAsync(Ct);
+        var certificateJson = await control.Database.SqlQueryRaw<string>(
+            "SELECT certificate_json::text AS \"Value\" FROM bizigo.topology_repair_state WHERE id=1")
+            .SingleAsync(Ct);
+        var certificateDigest = await control.Database.SqlQueryRaw<string>(
+            "SELECT certificate_digest AS \"Value\" FROM bizigo.topology_repair_state WHERE id=1")
+            .SingleAsync(Ct);
+        Assert.Equal(1, await control.Database.ExecuteSqlRawAsync("""
+            UPDATE bizigo.topology_repair_state
+            SET phase='Repairing', certificate_digest=NULL, certificate_json=NULL,
+                certificate_member_set_id=NULL WHERE id=1
+            """, Ct));
         await using var blocker = await factory.CreateDbContextAsync(Ct);
         await using var held = await blocker.Database.BeginTransactionAsync(Ct);
         Assert.True(await blocker.Database.SqlQueryRaw<bool>(
             "SELECT pg_try_advisory_xact_lock(735032) AS \"Value\"").SingleAsync(Ct));
+        await blocker.Database.ExecuteSqlInterpolatedAsync($"""
+            SELECT member_set_id FROM bizigo.topology_repair_member_sets
+            WHERE member_set_id={setId} FOR UPDATE
+            """, Ct);
         await using var contender = await factory.CreateDbContextAsync(Ct);
-        var setId = Guid.NewGuid();
-        var attempt = JsonSerializer.Serialize(new { FormatVersion = 2, MemberSetId = setId });
+        await contender.Database.OpenConnectionAsync(Ct);
+        await contender.Database.ExecuteSqlRawAsync("SET statement_timeout = '750ms'", Ct);
         var failure = await Assert.ThrowsAsync<PostgresException>(() =>
             contender.Database.ExecuteSqlInterpolatedAsync($"""
                 UPDATE bizigo.topology_repair_state SET phase='Ready',
                     certificate_member_set_id={setId},
-                    certificate_json=CAST({attempt} AS jsonb),
-                    certificate_digest={new string('0', 64)} WHERE id=1
+                    certificate_json=CAST({certificateJson} AS jsonb),
+                    certificate_digest={certificateDigest} WHERE id=1
                 """, Ct));
         Assert.Contains("publication lock is busy", failure.MessageText, StringComparison.Ordinal);
         await held.RollbackAsync(Ct);
+        await contender.Database.ExecuteSqlRawAsync("SET statement_timeout = 0", Ct);
+        Assert.Equal(1, await contender.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE bizigo.topology_repair_state SET phase='Ready',
+                certificate_member_set_id={setId},
+                certificate_json=CAST({certificateJson} AS jsonb),
+                certificate_digest={certificateDigest} WHERE id=1
+            """, Ct));
+        Assert.Equal(1L, (await gate.RequireReadyAsync(Ct)).Generation);
     }
 
     [Fact]
     public async Task Incomplete_or_stale_member_set_cannot_seal_or_activate_legacy_ready()
     {
         var factory = await DevStackSetup.ControlPlaneAsync(stack, Ct);
-        var (pg, ch, attempt) = await PrepareRepairingAsync(factory);
+        using var storage = await DevStackSetup.ClickHouseAsync(stack, Ct);
+        var inspector = new TopologyRepairSchemaInspector(storage);
+        var ch = Guid.Parse(await inspector.ReadDatabaseUuidAsync(Ct));
+        var (pg, _, attempt) = await PrepareRepairingAsync(factory, ch);
         await using var db = await factory.CreateDbContextAsync(Ct);
         Assert.Equal(1, await InsertSidecarAsync(db, pg, ch, Key, Digest, new string('c', 64)));
         var candidate = TopologyRepairMembershipBuilder.Build(
@@ -186,16 +271,16 @@ public sealed class TopologyLegacyMembershipGuardIntegrationTests(DevStackFixtur
             UPDATE bizigo.topology_repair_state SET receipt_prefix_sequence = 1,
                 receipt_prefix_sha256 = {prefix} WHERE id = 1 AND phase = 'Repairing'
             """, Ct));
-        var attemptedCertificate = JsonSerializer.Serialize(new
-        {
-            FormatVersion = 2, MemberSetId = setId, SidecarRevision = 1,
-            MemberCount = 1, MembershipSha256 = candidate.CanonicalSha256,
-        });
+        var certificate = new TopologyRepairCertificateV2(2, 1, pg, ch, 1, prefix,
+            null, null, new string('7', 64), new string('8', 64),
+            await inspector.ReadCanonicalAsync(Ct), setId, 1, 1, candidate.CanonicalSha256);
+        var attemptedCertificate = JsonSerializer.Serialize(certificate);
+        var attemptedDigest = TopologyObservedRepairReadiness.Digest(certificate);
         await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync($"""
             UPDATE bizigo.topology_repair_state SET phase = 'Ready',
                 certificate_member_set_id = {setId},
                 certificate_json = CAST({attemptedCertificate} AS jsonb),
-                certificate_digest = {new string('2', 64)} WHERE id = 1
+                certificate_digest = {attemptedDigest} WHERE id = 1
             """, Ct));
     }
 
@@ -253,13 +338,13 @@ public sealed class TopologyLegacyMembershipGuardIntegrationTests(DevStackFixtur
     }
 
     private static async Task<(Guid Pg, Guid Ch, Guid Attempt)> PrepareRepairingAsync(
-        IDbContextFactory<ControlPlaneDbContext> factory)
+        IDbContextFactory<ControlPlaneDbContext> factory, Guid? clickHouseIdentity = null)
     {
         await using var db = await factory.CreateDbContextAsync(Ct);
         var pg = await db.Database.SqlQueryRaw<Guid>(
             "SELECT pg_database_identity AS \"Value\" FROM bizigo.topology_repair_state WHERE id=1")
             .SingleAsync(Ct);
-        var ch = Guid.NewGuid();
+        var ch = clickHouseIdentity ?? Guid.NewGuid();
         var attempt = Guid.NewGuid();
         const string emptyAllowedCopies = "{}";
         Assert.Equal(1, await db.Database.ExecuteSqlInterpolatedAsync($"""
