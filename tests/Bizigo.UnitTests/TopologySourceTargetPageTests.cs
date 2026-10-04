@@ -75,7 +75,7 @@ public sealed class TopologySourceTargetPageTests
             1001, ScopeA, 1, first.Cursor, Ct));
         await Assert.ThrowsAsync<TopologyCursorException>(() => reader.ReadPageAsync(["source"],
             1000, AccessScope.ForGroups("mapping-B", ["B"]), 1, first.Cursor, Ct));
-        revision.Current = new(2, 3);
+        revision.Current = new(2, 3) { RepairStamp = new(1, "mapping-test-certificate") };
         await Assert.ThrowsAsync<TopologyRestartRequiredException>(() => reader.ReadPageAsync(["source"],
             1000, ScopeA, 1, first.Cursor, Ct));
     }
@@ -141,7 +141,7 @@ public sealed class TopologySourceTargetPageTests
     private static async Task SeedAsync(MemoryFactory factory, bool includeService,
         bool includeInstance, string serviceOwner = "A")
     {
-        await using var db = await factory.CreateDbContextAsync(Ct);
+        await using var db = factory.CreateDbContext();
         db.TopologyNodes.Add(new() { Id = "root", Kind = TopologyNodeKind.Source,
             SourceId = "source", OwnerGroup = "A", DisplayName = "root" });
         db.TopologyNodeHistory.Add(new() { Revision = 1, NodeId = "root", OwnerGroup = "A",
@@ -179,7 +179,7 @@ public sealed class TopologySourceTargetPageTests
 
     private static async Task SeedDiamondAsync(MemoryFactory factory, bool reverse)
     {
-        await using var db = await factory.CreateDbContextAsync(Ct);
+        await using var db = factory.CreateDbContext();
         var nodes = new[]
         {
             (Id: "root", Kind: TopologyNodeKind.Source),
@@ -204,7 +204,10 @@ public sealed class TopologySourceTargetPageTests
 
     private sealed class MutableRevision : ITopologyPublicationRevisionSource
     {
-        public TopologyPublicationRevision Current { get; set; } = new(1, 3);
+        public TopologyPublicationRevision Current { get; set; } = new(1, 3)
+        {
+            RepairStamp = new(1, "mapping-test-certificate"),
+        };
         public Task<TopologyPublicationRevision> ReadAsync(CancellationToken cancellationToken) =>
             Task.FromResult(Current);
     }
