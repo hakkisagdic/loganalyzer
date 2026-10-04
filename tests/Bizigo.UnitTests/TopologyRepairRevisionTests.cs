@@ -23,10 +23,10 @@ public sealed class TopologyRepairRevisionTests
     public async Task Declared_revision_during_repair_uses_only_PG_and_observed_requires_certificate()
     {
         var factory = new MemoryFactory();
-        await using (var db = await factory.CreateDbContextAsync())
+        await using (var db = factory.CreateDbContext())
         {
             db.TopologyReadState.Add(new() { Id = 1, Epoch = 7, PublishedSequence = 11 });
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         // No server listens here. A declared read must not ask ClickHouse for
