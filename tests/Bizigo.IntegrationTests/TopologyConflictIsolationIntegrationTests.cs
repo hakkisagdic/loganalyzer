@@ -268,7 +268,9 @@ public sealed class TopologyConflictIsolationIntegrationTests(DevStackFixture st
             + "WHERE semantic_anchor = '" + anchor + "' FORMAT TSVRaw")).Trim();
         Assert.Equal(context, stored);
         var watermark = (await new TopologyPublicationRevisionSource(fixture.Factory,
-            new TopologyPublicationWatermarkReader(fixture.Storage)).ReadAsync(Ct)).ClickHouseWatermark;
+            new TopologyPublicationWatermarkReader(fixture.Storage),
+            new TopologyObservedRepairReadiness(fixture.Factory, fixture.Storage))
+            .ReadAsync(TopologyReadMode.DeclaredOnly, Ct)).ClickHouseWatermark;
         Assert.False((await new TopologyObservedSnapshotReader(fixture.Storage)
             .CheckReadinessAsync(watermark, Ct)).Usable);
     }
@@ -340,7 +342,9 @@ public sealed class TopologyConflictIsolationIntegrationTests(DevStackFixture st
         }, Ct);
         var reader = new TopologyObservedSnapshotReader(fixture.Storage);
         var watermark = (await new TopologyPublicationRevisionSource(fixture.Factory,
-            new TopologyPublicationWatermarkReader(fixture.Storage)).ReadAsync(Ct)).ClickHouseWatermark;
+            new TopologyPublicationWatermarkReader(fixture.Storage),
+            new TopologyObservedRepairReadiness(fixture.Factory, fixture.Storage))
+            .ReadAsync(TopologyReadMode.DeclaredOnly, Ct)).ClickHouseWatermark;
         var observed = await reader.ReadSnapshotAsync(watermark, Ct);
         Assert.Contains(observed.Conflicts, conflict => conflict.Anchor == anchor && conflict.Unattributed);
         var readiness = await reader.CheckReadinessAsync(watermark, Ct);
@@ -370,7 +374,9 @@ public sealed class TopologyConflictIsolationIntegrationTests(DevStackFixture st
         }, Ct);
         var reader = new TopologyObservedSnapshotReader(fixture.Storage);
         var watermark = (await new TopologyPublicationRevisionSource(fixture.Factory,
-            new TopologyPublicationWatermarkReader(fixture.Storage)).ReadAsync(Ct)).ClickHouseWatermark;
+            new TopologyPublicationWatermarkReader(fixture.Storage),
+            new TopologyObservedRepairReadiness(fixture.Factory, fixture.Storage))
+            .ReadAsync(TopologyReadMode.DeclaredOnly, Ct)).ClickHouseWatermark;
         var snapshot = await reader.ReadSnapshotAsync(watermark, Ct);
         Assert.Contains(snapshot.Rows, row => row.ParentSemanticAnchor == anchor && row.HasPublishedConflict);
         Assert.False((await reader.CheckReadinessAsync(watermark, Ct)).Usable);
@@ -480,7 +486,8 @@ public sealed class TopologyConflictIsolationIntegrationTests(DevStackFixture st
         await new EventWriter(fixture.Storage).WriteEventsAsync(
             [Degraded(ownerA, sourceA1, now.AddMinutes(1)), Degraded(ownerA, sourceA2, now.AddMinutes(2))], Ct);
         var fence = new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
-            new TopologyPublicationWatermarkReader(fixture.Storage)));
+            new TopologyPublicationWatermarkReader(fixture.Storage),
+            new TopologyObservedRepairReadiness(fixture.Factory, fixture.Storage)));
         var source = new TopologyGraphSnapshotSource(fixture.Factory,
             new TopologyObservedSnapshotReader(fixture.Storage), fence);
         var graph = new TopologyGraphQueryService(source);

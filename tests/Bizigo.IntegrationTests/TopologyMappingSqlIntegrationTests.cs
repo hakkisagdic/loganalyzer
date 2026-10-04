@@ -47,7 +47,8 @@ public sealed class TopologyMappingSqlIntegrationTests(DevStackFixture stack)
         var commands = new MappingCommandCapture();
         var readerFactory = new InterceptedFactory(stack.PostgresConnectionString, commands);
         var revisions = new TopologyPublicationRevisionSource(fixture.Factory,
-            new TopologyPublicationWatermarkReader(fixture.Storage));
+            new TopologyPublicationWatermarkReader(fixture.Storage),
+            new TopologyObservedRepairReadiness(fixture.Factory, fixture.Storage));
         var reader = new TopologySourceTargetPageReader(readerFactory,
             new TopologyPublicationFence(revisions));
         var asOf = TopologyIdentity.Nano(DateTimeOffset.UtcNow.AddMinutes(1));
