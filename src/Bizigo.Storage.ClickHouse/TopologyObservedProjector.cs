@@ -81,6 +81,8 @@ public sealed class TopologyObservedProjector(
     internal static IReadOnlyList<string> DerivedPhysicalEdgeColumns => PhysicalEdgeColumns;
     internal static IReadOnlyList<string> EdgeLifecycleColumns => LifecycleColumns;
     internal static IReadOnlyList<string> FrozenConflictColumns => ConflictColumns;
+    /// <summary>The immutable v2/v4 manifest rowset encoding; never include 0014's derived digest.</summary>
+    public static string ComputeFrozenRowsetHash(TopologyProjectionBatch batch) => RowsetHash(batch);
     public static object[] ReconstructEdgeRow(TopologyObservedEvent edge, ulong sequence) => EdgeRow(edge, sequence);
     internal static object[] ReconstructLifecycleRow(object[] frozenEdgeRow, string physicalDigest) =>
     [
