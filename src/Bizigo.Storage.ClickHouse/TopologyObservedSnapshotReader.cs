@@ -62,6 +62,11 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
     private const string ScopedReadSettings =
         " SETTINGS max_rows_to_read = 131072, max_bytes_to_read = 134217728, read_overflow_mode = 'throw'";
 
+    private sealed record LifecycleVersion(string EdgeId, ulong Sequence, string FromNodeId,
+        string ToNodeId, string ChildOwnerGroup, string ParentOwnerGroup, ulong FirstSeen,
+        ulong LastSeen, ulong ParentEventTimeNano, ulong ChildEventTimeNano,
+        decimal ExpiresNano, string PhysicalRowSha256);
+
     public Action<TopologySqlPlan>? ObserveQuery { get; set; }
 
     public async Task<TopologyObservedReadiness> CheckReadinessAsync(ulong watermark,
@@ -87,112 +92,13 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
     private async Task<TopologyObservedSnapshot> ReadSnapshotCoreAsync(ulong watermark,
         TopologyObservedReadScope? scope, CancellationToken cancellationToken)
     {
-        // Reduce every committed version of each physically selected edge ID
-        // before applying the final owner/window/expiry eligibility predicate.
+        // The non-TTL ledger is authoritative even when ClickHouse has already
+        // removed the latest physical row. Discovery from the TTL table would
+        // silently resurrect an older version or produce a false Empty.
         var candidateIds = scope is null ? null : await ReadCandidateIdsAsync(watermark, scope, cancellationToken);
-        await using var connection = context.CreateConnection();
-        await connection.OpenAsync(cancellationToken);
-        using var command = connection.CreateCommand();
-        command.CommandText = """
-            SELECT edge_id,
-                argMax(from_node_id, publication_seq),
-                argMax(to_node_id, publication_seq),
-                argMax(relation, publication_seq),
-                argMax(provenance, publication_seq),
-                argMax(directed, publication_seq),
-                argMax(confidence, publication_seq),
-                argMax(parent_owner_group, publication_seq),
-                argMax(child_owner_group, publication_seq),
-                argMax(first_seen, publication_seq),
-                argMax(last_seen, publication_seq),
-                argMax(expires_nano, publication_seq),
-                max(publication_seq),
-                argMax(parent_semantic_anchor, publication_seq),
-                argMax(child_semantic_anchor, publication_seq),
-                argMax(toJSONString(evidence_occurrence_ids), publication_seq),
-                argMax(trace_logical_id, publication_seq),
-                argMax(span_logical_id, publication_seq),
-                argMax(child_event_time_nano, publication_seq),
-                argMax(parent_span_logical_id, publication_seq),
-                argMax(parent_event_time_nano, publication_seq),
-                argMax(toJSONString(parent_occurrence_ids), publication_seq),
-                argMax(toJSONString(child_occurrence_ids), publication_seq)
-            FROM topology_edges_observed
-            WHERE publication_seq <= {watermark:UInt64}
-            """ + (scope is null ? string.Empty : "\n" + """
-                AND edge_id IN ({candidate_ids:Array(String)})
-            """) + "\n" + """
-            GROUP BY edge_id
-            """ + (scope is not null && !scope.Scope.IsUnrestricted ? "\n" + """
-            HAVING (argMax(parent_owner_group, publication_seq) IN ({scope_groups:Array(String)})
-                OR argMax(child_owner_group, publication_seq) IN ({scope_groups:Array(String)}))
-            """ : scope is null ? string.Empty : "\n HAVING 1")
-                + (scope is null ? string.Empty : "\n" + """
-                AND argMax(last_seen, publication_seq) >= {window_from:Decimal(21,0)}
-                AND argMax(last_seen, publication_seq) < {window_to:Decimal(21,0)}
-                AND argMax(expires_nano, publication_seq) > {expiry_clock:Decimal(21,0)}
-            """) + (scope?.NodeId is null ? string.Empty : "\n" + """
-                AND (argMax(from_node_id, publication_seq) = {node_id:String}
-                    OR argMax(to_node_id, publication_seq) = {node_id:String})
-            """) + (scope?.EdgeId is null ? string.Empty : "\n" + """
-                AND edge_id = {edge_id:String}
-            """) + "\n" + """
-            ORDER BY edge_id
-            """ + (scope is null ? string.Empty : " LIMIT {read_limit:UInt32}" + ScopedReadSettings);
-        command.AddParameter("watermark", watermark);
-        if (scope is not null)
-        {
-            command.AddParameter("candidate_ids", candidateIds!.ToArray());
-            if (!scope.Scope.IsUnrestricted)
-                command.AddParameter("scope_groups", scope.Scope.OwnerGroups
-                    .Where(static group => group != "_unassigned").ToArray());
-            command.AddParameter("window_from", scope.WindowFromUnixNano);
-            command.AddParameter("window_to", scope.WindowToUnixNano);
-            command.AddParameter("expiry_clock", scope.ExpiryReadClockUnixNano);
-            command.AddParameter("read_limit", checked((uint)scope.MaxCandidates + 1));
-            if (scope.NodeId is not null) command.AddParameter("node_id", scope.NodeId);
-            if (scope.EdgeId is not null) command.AddParameter("edge_id", scope.EdgeId);
-        }
-        var bound = new List<string> { "watermark" };
-        if (scope is not null)
-        {
-            bound.AddRange(["candidate_ids", "window_from", "window_to", "expiry_clock", "read_limit"]);
-            if (!scope.Scope.IsUnrestricted) bound.Add("scope_groups");
-            if (scope.NodeId is not null) bound.Add("node_id");
-            if (scope.EdgeId is not null) bound.Add("edge_id");
-        }
-        Observe("observed-edges", command, bound);
-        command.CommandTimeout = Math.Clamp(context.Options.QueryTimeoutSeconds, 1, 300);
-        var rows = new List<TopologyObservedSnapshotRow>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            var parent = ReadString(reader.GetValue(13));
-            var child = ReadString(reader.GetValue(14));
-            var evidenceJson = ReadString(reader.GetValue(15));
-            var evidence = JsonSerializer.Deserialize<string[]>(evidenceJson)
-                ?? throw new InvalidDataException("Invalid topology evidence occurrence vector.");
-            var parentOccurrences = JsonSerializer.Deserialize<string[]>(ReadString(reader.GetValue(21)))
-                ?? throw new InvalidDataException("Invalid parent topology evidence occurrence vector.");
-            var childOccurrences = JsonSerializer.Deserialize<string[]>(ReadString(reader.GetValue(22)))
-                ?? throw new InvalidDataException("Invalid child topology evidence occurrence vector.");
-            rows.Add(new(
-                ReadString(reader.GetValue(0)), ReadString(reader.GetValue(1)), ReadString(reader.GetValue(2)),
-                ReadString(reader.GetValue(3)), ReadString(reader.GetValue(4)),
-                Convert.ToByte(reader.GetValue(5), CultureInfo.InvariantCulture) != 0,
-                Convert.ToDecimal(reader.GetValue(6), CultureInfo.InvariantCulture),
-                ReadString(reader.GetValue(7)), ReadString(reader.GetValue(8)),
-                Convert.ToDecimal(reader.GetValue(9), CultureInfo.InvariantCulture),
-                Convert.ToDecimal(reader.GetValue(10), CultureInfo.InvariantCulture),
-                Convert.ToDecimal(reader.GetValue(11), CultureInfo.InvariantCulture),
-                Convert.ToUInt64(reader.GetValue(12), CultureInfo.InvariantCulture), parent, child,
-                evidence, ReadString(reader.GetValue(16)), ReadString(reader.GetValue(17)),
-                Convert.ToDecimal(reader.GetValue(18), CultureInfo.InvariantCulture),
-                ReadString(reader.GetValue(19)), Convert.ToDecimal(reader.GetValue(20), CultureInfo.InvariantCulture),
-                parentOccurrences, childOccurrences));
-            if (scope is not null && rows.Count > scope.MaxCandidates)
-                throw new IOException("Observed topology read exceeds its physical capacity.");
-        }
+        var eligible = await ReadEligibleLifecycleAsync(watermark, scope, candidateIds,
+            cancellationToken);
+        var rows = await ReadPhysicalRowsAsync(watermark, scope, eligible, cancellationToken);
         var anchors = rows.SelectMany(static row => new[] { row.ParentSemanticAnchor, row.ChildSemanticAnchor })
             .Distinct(StringComparer.Ordinal).ToArray();
         var conflicts = scope is null
@@ -212,6 +118,177 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
         };
     }
 
+    private async Task<IReadOnlyList<LifecycleVersion>> ReadEligibleLifecycleAsync(ulong watermark,
+        TopologyObservedReadScope? scope, IReadOnlyList<string>? candidateIds,
+        CancellationToken token)
+    {
+        if (scope is not null && candidateIds!.Count == 0) return [];
+        await using var connection = context.CreateConnection();
+        await connection.OpenAsync(token);
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT child_owner_group, parent_owner_group, from_node_id, to_node_id,
+                first_seen, last_seen, parent_event_time_nano, child_event_time_nano,
+                edge_id, publication_seq, expires_nano, physical_row_sha256
+            FROM topology_edge_lifecycle
+            WHERE publication_seq <= {watermark:UInt64}
+            """ + (scope is null ? string.Empty : "\n AND edge_id IN ({candidate_ids:Array(String)})")
+                + "\n ORDER BY edge_id, publication_seq"
+                + (scope is null ? string.Empty : " LIMIT {read_limit:UInt32}" + ScopedReadSettings);
+        command.AddParameter("watermark", watermark);
+        if (scope is not null)
+        {
+            command.AddParameter("candidate_ids", candidateIds!.ToArray());
+            command.AddParameter("read_limit", checked((uint)scope.MaxCandidates + 1));
+        }
+        Observe("observed-lifecycle", command,
+            scope is null ? ["watermark"] : ["watermark", "candidate_ids", "read_limit"]);
+        command.CommandTimeout = Math.Clamp(context.Options.QueryTimeoutSeconds, 1, 300);
+        var versions = new Dictionary<(string EdgeId, ulong Sequence), LifecycleVersion>();
+        var latest = new Dictionary<string, LifecycleVersion>(StringComparer.Ordinal);
+        var physicalRows = 0;
+        await using var reader = await command.ExecuteReaderAsync(token);
+        while (await reader.ReadAsync(token))
+        {
+            if (scope is not null && ++physicalRows > scope.MaxCandidates)
+                throw new IOException("Observed lifecycle read exceeds its physical capacity.");
+            LifecycleVersion version;
+            try
+            {
+                version = new LifecycleVersion(
+                    ReadExactField(reader.GetValue(8)),
+                    Convert.ToUInt64(reader.GetValue(9), CultureInfo.InvariantCulture),
+                    ReadExactField(reader.GetValue(2)), ReadExactField(reader.GetValue(3)),
+                    ReadExactField(reader.GetValue(0)), ReadExactField(reader.GetValue(1)),
+                    Convert.ToUInt64(reader.GetValue(4), CultureInfo.InvariantCulture),
+                    Convert.ToUInt64(reader.GetValue(5), CultureInfo.InvariantCulture),
+                    Convert.ToUInt64(reader.GetValue(6), CultureInfo.InvariantCulture),
+                    Convert.ToUInt64(reader.GetValue(7), CultureInfo.InvariantCulture),
+                    Convert.ToDecimal(reader.GetValue(10), CultureInfo.InvariantCulture),
+                    ReadExactField(reader.GetValue(11)));
+            }
+            catch (Exception exception) when (exception is InvalidDataException or FormatException
+                or InvalidCastException or OverflowException)
+            {
+                throw new TopologyObservedRepairUnavailableException();
+            }
+            if (versions.TryGetValue((version.EdgeId, version.Sequence), out var previous))
+            {
+                if (previous != version) throw new TopologyObservedRepairUnavailableException();
+                continue;
+            }
+            versions.Add((version.EdgeId, version.Sequence), version);
+            if (!latest.TryGetValue(version.EdgeId, out var current)
+                || version.Sequence > current.Sequence)
+                latest[version.EdgeId] = version;
+        }
+        return latest.Values.Where(version =>
+                scope is null || (scope.ExpiryReadClockUnixNano < version.ExpiresNano
+                    && version.LastSeen >= scope.WindowFromUnixNano
+                    && version.LastSeen < scope.WindowToUnixNano
+                    && (scope.Scope.IsUnrestricted
+                        || (scope.Scope.OwnerGroups.Contains(version.ParentOwnerGroup)
+                            && version.ParentOwnerGroup != "_unassigned")
+                        || (scope.Scope.OwnerGroups.Contains(version.ChildOwnerGroup)
+                            && version.ChildOwnerGroup != "_unassigned"))
+                    && (scope.NodeId is null || version.FromNodeId == scope.NodeId
+                        || version.ToNodeId == scope.NodeId)
+                    && (scope.EdgeId is null || version.EdgeId == scope.EdgeId)))
+            .OrderBy(static version => version.EdgeId, StringComparer.Ordinal).ToArray();
+    }
+
+    private async Task<IReadOnlyList<TopologyObservedSnapshotRow>> ReadPhysicalRowsAsync(ulong watermark,
+        TopologyObservedReadScope? scope, IReadOnlyList<LifecycleVersion> eligible,
+        CancellationToken token)
+    {
+        if (eligible.Count == 0) return [];
+        await using var connection = context.CreateConnection();
+        await connection.OpenAsync(token);
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT " + TopologyObservedRowHydration.SelectList
+            + ", physical_row_sha256 FROM topology_edges_observed "
+            + "WHERE publication_seq <= {watermark:UInt64} "
+            + "AND edge_id IN ({candidate_ids:Array(String)}) "
+            + "ORDER BY edge_id, publication_seq"
+            + (scope is null ? string.Empty : " LIMIT {read_limit:UInt32}" + ScopedReadSettings);
+        command.AddParameter("watermark", watermark);
+        command.AddParameter("candidate_ids", eligible.Select(static row => row.EdgeId).ToArray());
+        if (scope is not null)
+            command.AddParameter("read_limit", checked((uint)scope.MaxCandidates + 1));
+        Observe("observed-edges", command, scope is null
+            ? ["watermark", "candidate_ids"] : ["watermark", "candidate_ids", "read_limit"]);
+        command.CommandTimeout = Math.Clamp(context.Options.QueryTimeoutSeconds, 1, 300);
+        var required = eligible.ToDictionary(static row => row.EdgeId, StringComparer.Ordinal);
+        var found = new HashSet<string>(StringComparer.Ordinal);
+        var rows = new List<TopologyObservedSnapshotRow>(eligible.Count);
+        var physicalRows = 0;
+        await using var reader = await command.ExecuteReaderAsync(token);
+        while (await reader.ReadAsync(token))
+        {
+            if (scope is not null && ++physicalRows > scope.MaxCandidates)
+                throw new IOException("Observed physical read exceeds its physical capacity.");
+            string edgeId;
+            ulong sequence;
+            try
+            {
+                edgeId = ReadExactField(reader.GetValue(9));
+                sequence = Convert.ToUInt64(reader.GetValue(37), CultureInfo.InvariantCulture);
+            }
+            catch (Exception exception) when (exception is InvalidDataException or FormatException
+                or InvalidCastException or OverflowException)
+            {
+                throw new TopologyObservedRepairUnavailableException();
+            }
+            if (!required.TryGetValue(edgeId, out var authority) || sequence != authority.Sequence)
+                continue;
+            object?[] values;
+            string storedHash;
+            string computedHash;
+            try
+            {
+                values = TopologyObservedRowHydration.ReadValues(reader);
+                storedHash = ReadExactField(reader.GetValue(40));
+                computedHash = TopologyObservedRowDigest.Compute(values);
+            }
+            catch (Exception exception) when (exception is InvalidDataException or JsonException
+                or FormatException or InvalidCastException or OverflowException)
+            {
+                throw new TopologyObservedRepairUnavailableException();
+            }
+            if (storedHash != computedHash || storedHash != authority.PhysicalRowSha256
+                || !PhysicalMatchesLifecycle(values, authority))
+                throw new TopologyObservedRepairUnavailableException();
+            if (found.Add(edgeId)) rows.Add(ProjectPhysical(values));
+        }
+        if (found.Count != required.Count)
+            throw new TopologyObservedRepairUnavailableException();
+        return rows;
+    }
+
+    private static bool PhysicalMatchesLifecycle(object?[] values, LifecycleVersion authority) =>
+        (string)values[9]! == authority.EdgeId
+        && (ulong)values[37]! == authority.Sequence
+        && (string)values[3]! == authority.FromNodeId
+        && (string)values[4]! == authority.ToNodeId
+        && (string)values[1]! == authority.ChildOwnerGroup
+        && (string)values[2]! == authority.ParentOwnerGroup
+        && (ulong)values[27]! == authority.FirstSeen
+        && (ulong)values[28]! == authority.LastSeen
+        && (ulong)values[25]! == authority.ParentEventTimeNano
+        && (ulong)values[26]! == authority.ChildEventTimeNano
+        && (decimal)values[35]! == authority.ExpiresNano;
+
+    private static TopologyObservedSnapshotRow ProjectPhysical(object?[] values) => new(
+        (string)values[9]!, (string)values[3]!, (string)values[4]!,
+        (string)values[5]!, (string)values[7]!, (byte)values[6]! != 0,
+        (decimal)(float)values[8]!,
+        (string)values[2]!, (string)values[1]!,
+        (ulong)values[27]!, (ulong)values[28]!, (decimal)values[35]!,
+        (ulong)values[37]!, (string)values[13]!, (string)values[14]!,
+        (string[])values[31]!, (string)values[10]!, (string)values[12]!,
+        (ulong)values[26]!, (string)values[11]!, (ulong)values[25]!,
+        (string[])values[29]!, (string[])values[30]!);
+
     private async Task<IReadOnlyList<string>> ReadCandidateIdsAsync(ulong watermark,
         TopologyObservedReadScope scope, CancellationToken token)
     {
@@ -222,7 +299,7 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
         using var command = connection.CreateCommand();
         var restricted = !scope.Scope.IsUnrestricted;
         command.CommandText = """
-            SELECT DISTINCT edge_id FROM topology_edges_observed
+            SELECT DISTINCT edge_id FROM topology_edge_lifecycle
             WHERE publication_seq <= {watermark:UInt64}
                 AND last_seen >= {window_from:Decimal(21,0)}
                 AND last_seen < {window_to:Decimal(21,0)}

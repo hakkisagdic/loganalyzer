@@ -58,18 +58,19 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
         var reader = new TopologyObservedSnapshotReader(f.Storage);
         Assert.Single((await reader.ReadScopedSnapshotAsync(1, scope, Ct)).Rows);
 
-        // Same logical ID, newer committed version outside the event window.
-        // Filtering the raw rows before argMax would resurrect publication 1.
-        await f.SqlAsync("INSERT INTO topology_edges_observed "
+        // The non-TTL authority must select the latest committed version before
+        // applying the event window. The synthetic later version is deliberately
+        // ledger-only: a filtered-out version needs no physical proof hydration.
+        await f.SqlAsync("INSERT INTO topology_edge_lifecycle "
             + "SELECT * REPLACE (last_seen + 100000 AS last_seen, 2 AS publication_seq) "
-            + "FROM topology_edges_observed WHERE publication_seq = 1");
+            + "FROM topology_edge_lifecycle WHERE publication_seq = 1");
         Assert.Empty((await reader.ReadScopedSnapshotAsync(2, scope, Ct)).Rows);
 
         // An unpublished later owner transfer cannot suppress the committed
         // view at watermark 1, even when it has the same edge identity.
-        await f.SqlAsync("INSERT INTO topology_edges_observed "
-            + "SELECT * REPLACE ('B' AS owner_group, 'B' AS parent_owner_group, 'B' AS child_owner_group, "
-            + "3 AS publication_seq) FROM topology_edges_observed WHERE publication_seq = 1");
+        await f.SqlAsync("INSERT INTO topology_edge_lifecycle "
+            + "SELECT * REPLACE ('B' AS parent_owner_group, 'B' AS child_owner_group, "
+            + "3 AS publication_seq) FROM topology_edge_lifecycle WHERE publication_seq = 1");
         Assert.Single((await reader.ReadScopedSnapshotAsync(1, scope, Ct)).Rows);
         Assert.Empty((await reader.ReadScopedSnapshotAsync(3, scope, Ct)).Rows);
     }
@@ -177,10 +178,15 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
         Assert.Contains("parent_owner_group IN ({scope_groups:Array(String)})", candidates.Sql,
             StringComparison.Ordinal);
         var reduced = Assert.Single(plans, static plan => plan.Route == "observed-edges");
-        Assert.Contains("argMax(parent_owner_group, publication_seq) IN ({scope_groups:Array(String)})",
-            reduced.Sql, StringComparison.Ordinal);
-        Assert.Contains("argMax(last_seen, publication_seq) < {window_to:Decimal(21,0)}",
-            reduced.Sql, StringComparison.Ordinal);
+        var lifecycle = Assert.Single(plans, static plan => plan.Route == "observed-lifecycle");
+        Assert.Contains("FROM topology_edge_lifecycle", lifecycle.Sql, StringComparison.Ordinal);
+        Assert.Contains("edge_id IN ({candidate_ids:Array(String)})", lifecycle.Sql,
+            StringComparison.Ordinal);
+        Assert.Contains("publication_seq <= {watermark:UInt64}", lifecycle.Sql,
+            StringComparison.Ordinal);
+        Assert.Contains("physical_row_sha256", reduced.Sql, StringComparison.Ordinal);
+        Assert.Contains("edge_id IN ({candidate_ids:Array(String)})", reduced.Sql,
+            StringComparison.Ordinal);
     }
 
     [Fact, Trait("Category", "Integration")]
@@ -469,6 +475,67 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
         await f.SqlAsync("OPTIMIZE TABLE topology_edges_observed FINAL");
         Assert.Equal("0", (await f.SqlAsync("SELECT count() FROM topology_edges_observed WHERE edge_id = '"
             + proof.Id + "'")).Trim());
+        await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(() =>
+            reader.ReadScopedSnapshotAsync(1, scope, Ct));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    [Trait("Category", "Integration")]
+    public async Task Same_sequence_lifecycle_duplicate_is_idempotent_but_divergence_unavailable(
+        bool changeDigest)
+    {
+        await using var f = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var writer = new TelemetryWriter(f.Storage, f.Owners,
+            new TopologyObservedProjector(f.Storage, new Publication().PublishAsync));
+        var parent = Span(Guid.NewGuid(), "parent", ParentSpan, string.Empty, ParentNode, f.Now);
+        var child = Span(Guid.NewGuid(), "child", ChildSpan, ParentSpan, ChildNode, f.Now + 1000);
+        await writer.WriteAsync([parent, child], Ct);
+        var scope = new TopologyObservedReadScope(AccessScope.ForGroups("scope-A", ["A"]),
+            f.Now, (decimal)f.Now + 2000, (decimal)f.Now + 2000, 64);
+        var reader = new TopologyObservedSnapshotReader(f.Storage);
+        var proof = Assert.Single((await reader.ReadScopedSnapshotAsync(1, scope, Ct)).Rows);
+
+        await f.SqlAsync("INSERT INTO topology_edge_lifecycle SELECT * FROM "
+            + "topology_edge_lifecycle WHERE publication_seq = 1");
+        await f.SqlAsync("OPTIMIZE TABLE topology_edge_lifecycle FINAL");
+        Assert.Equal("2", (await f.SqlAsync("SELECT count() FROM topology_edge_lifecycle "
+            + "WHERE edge_id = '" + proof.Id + "' AND publication_seq = 1")).Trim());
+        Assert.Equal(proof.Id, Assert.Single((await reader.ReadScopedSnapshotAsync(1, scope, Ct)).Rows).Id);
+
+        var replacement = changeDigest
+            ? "'" + new string('e', 64) + "' AS physical_row_sha256"
+            : "expires_nano + 1 AS expires_nano";
+        await f.SqlAsync("INSERT INTO topology_edge_lifecycle SELECT * REPLACE (" + replacement
+            + ") FROM topology_edge_lifecycle WHERE edge_id = '" + proof.Id
+            + "' AND publication_seq = 1 LIMIT 1");
+        await f.SqlAsync("OPTIMIZE TABLE topology_edge_lifecycle FINAL");
+        Assert.Equal("3", (await f.SqlAsync("SELECT count() FROM topology_edge_lifecycle "
+            + "WHERE edge_id = '" + proof.Id + "' AND publication_seq = 1")).Trim());
+        await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(() =>
+            reader.ReadScopedSnapshotAsync(1, scope, Ct));
+    }
+
+    [Fact, Trait("Category", "Integration")]
+    public async Task Live_lifecycle_requires_exact_canonical_physical_digest()
+    {
+        await using var f = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var writer = new TelemetryWriter(f.Storage, f.Owners,
+            new TopologyObservedProjector(f.Storage, new Publication().PublishAsync));
+        var parent = Span(Guid.NewGuid(), "parent", ParentSpan, string.Empty, ParentNode, f.Now);
+        var child = Span(Guid.NewGuid(), "child", ChildSpan, ParentSpan, ChildNode, f.Now + 1000);
+        await writer.WriteAsync([parent, child], Ct);
+        var scope = new TopologyObservedReadScope(AccessScope.ForGroups("scope-A", ["A"]),
+            f.Now, (decimal)f.Now + 2000, (decimal)f.Now + 2000, 64);
+        var reader = new TopologyObservedSnapshotReader(f.Storage);
+        var proof = Assert.Single((await reader.ReadScopedSnapshotAsync(1, scope, Ct)).Rows);
+
+        // An attested ledger row does not make a corrupted physical proof valid.
+        // This mutates only the derived hash, not the immutable v4 manifest.
+        await f.SqlAsync("ALTER TABLE topology_edges_observed UPDATE physical_row_sha256 = '"
+            + new string('e', 64) + "' WHERE edge_id = '" + proof.Id
+            + "' SETTINGS mutations_sync = 2");
         await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(() =>
             reader.ReadScopedSnapshotAsync(1, scope, Ct));
     }

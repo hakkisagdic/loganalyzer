@@ -84,7 +84,8 @@ public sealed class TopologyQueryIntegrationTests(DevStackFixture stack)
         var plans = new List<TopologySqlPlan>();
         var observed = new TopologyObservedSnapshotReader(fixture.Storage) { ObserveQuery = plans.Add };
         var revisions = new TopologyPublicationRevisionSource(fixture.Factory,
-            new TopologyPublicationWatermarkReader(fixture.Storage));
+            new TopologyPublicationWatermarkReader(fixture.Storage),
+            new TopologyObservedRepairReadiness(fixture.Factory, fixture.Storage));
         var source = new TopologyGraphSnapshotSource(fixture.Factory, observed,
             new TopologyPublicationFence(revisions)) { ObserveQuery = plans.Add };
         var scope = AccessScope.ForGroups("topology-plan-reader", ["topology-plan-owner"]);
@@ -172,17 +173,21 @@ public sealed class TopologyQueryIntegrationTests(DevStackFixture stack)
         });
         var edges = Assert.Single(plans, static plan => plan.Route == "observed-edges");
         var candidates = Assert.Single(plans, static plan => plan.Route == "observed-candidates");
+        var lifecycle = Assert.Single(plans, static plan => plan.Route == "observed-lifecycle");
         Assert.Contains("watermark", edges.BoundParameterNames);
-        Assert.Contains("scope_groups", edges.BoundParameterNames);
-        Assert.Contains("window_from", edges.BoundParameterNames);
-        Assert.Contains("window_to", edges.BoundParameterNames);
+        Assert.Contains("candidate_ids", edges.BoundParameterNames);
+        Assert.Contains("physical_row_sha256", edges.Sql, StringComparison.Ordinal);
         Assert.Contains("scope_groups", candidates.BoundParameterNames);
         Assert.Contains("candidate_limit", candidates.BoundParameterNames);
+        Assert.Contains("watermark", lifecycle.BoundParameterNames);
+        Assert.Contains("candidate_ids", lifecycle.BoundParameterNames);
+        Assert.Contains("read_limit", lifecycle.BoundParameterNames);
         Assert.Contains("scope_groups", declared.BoundParameterNames);
         Assert.Contains("state_clock", declared.BoundParameterNames);
         Assert.Contains("read_limit", declared.BoundParameterNames);
         Assert.NotEmpty(clickhouse);
         Assert.True(clickhouse["observed-candidates"]);
+        Assert.True(clickhouse["observed-lifecycle"]);
         Assert.True(clickhouse["observed-edges"]);
         // A conflict-free corpus legitimately explains the conflicts route
         // as an empty plan when its bound anchors vector is empty. The exact
