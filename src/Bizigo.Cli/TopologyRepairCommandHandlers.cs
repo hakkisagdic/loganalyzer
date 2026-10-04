@@ -1,3 +1,4 @@
+using System.Globalization;
 using Bizigo.ControlPlane;
 using Bizigo.Query;
 using Bizigo.Storage.ClickHouse;
@@ -41,7 +42,7 @@ internal static class TopologyRepairCommandHandlers
         using (storage)
         {
             var result = await runner.InitializeAsync(TopologyRepairStartMode.OperatorResume, cancellationToken);
-            Console.WriteLine($"topology repair: {result.Status}; generation={result.Generation?.ToString() ?? "none"}; "
+            Console.WriteLine($"topology repair: {result.Status}; generation={result.Generation?.ToString(CultureInfo.InvariantCulture) ?? "none"}; "
                 + $"code={result.DiagnosticCode ?? "none"}");
             return result.Status switch
             {

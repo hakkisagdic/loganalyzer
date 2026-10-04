@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Bizigo.Contracts;
+using Bizigo.Query;
 using Microsoft.AspNetCore.DataProtection;
 
 namespace Bizigo.Api;
