@@ -82,7 +82,60 @@ public sealed partial class TopologyMappedSourceGroupOracleIntegrationTests
         }
     }
 
-    private static async Task<(int Mapping, int Path, int Detail)> AuditCountsAsync(
+    [Fact]
+    public async Task R08_Real_grouped_ancestor_mapped_witness_charges_exact_node_edge_page_budget()
+    {
+        await using var fixture = await TelemetryDbFixture.CreateAsync(Stack, Ct);
+        var seed = await SeedAsync(fixture, admitInstance: true, projectDependency: true);
+        var ancestor = await NodeAsync(fixture, seed.Scope, "budget-strict-ancestor");
+        var toInstance = await EdgeAsync(fixture, seed.Scope, ancestor, seed.I1);
+        var toService = await EdgeAsync(fixture, seed.Scope, ancestor, seed.B1);
+        var before = await AuditCountsAsync(fixture, seed.Scope.Subject);
+        var baseline = await new TopologyCommonAncestorProvider(seed.Query, MappedGraphBudget)
+            .GatherAsync(seed.Window, seed.Scope, GatherBudget.Default, Ct);
+        Assert.Equal(EvidenceStatus.Gathered, baseline.Status);
+        var item = Assert.Single(baseline.Items);
+        Assert.Equal(ancestor, item.Payload["ancestor_node_id"]);
+        using (var proof = JsonDocument.Parse(item.Payload["proof_edges"]))
+        {
+            var ids = proof.RootElement.EnumerateArray()
+                .Select(edge => edge.GetProperty("id").GetString()!).Order(StringComparer.Ordinal).ToArray();
+            Assert.Equal(new[] { toInstance, toService }.Order(StringComparer.Ordinal), ids);
+            Assert.All(proof.RootElement.EnumerateArray().ToArray(), edge =>
+                Assert.Equal("declared", edge.GetProperty("provenance").GetString()));
+        }
+        AssertWitnesses(item.Payload["source_witnesses"],
+            new(seed.SourceA, seed.I1, [seed.ContainsA1, seed.ContainsI1],
+                [ancestor, seed.I1], [toInstance]),
+            new(seed.SourceB, seed.B1, [seed.ContainsB1],
+                [ancestor, seed.B1], [toService]));
+        var after = await AuditCountsAsync(fixture, seed.Scope.Subject);
+        Assert.Equal(1, after.Mapping - before.Mapping);
+        Assert.Equal(1, after.Ancestor - before.Ancestor);
+        Assert.Equal(2, after.Detail - before.Detail);
+
+        // Mapping charged seven nodes/five Contains edges. The selected strict
+        // witness adds ancestor X and two declared dependency edges; the
+        // observed I1→B1 edge exists but is not a chosen proof edge.
+        foreach (var (dimension, exact) in new[] { ("node", 8), ("edge", 7), ("page", 4) })
+        foreach (var delta in new[] { -1, 0, 1 })
+        {
+            var budget = new TopologyProviderBudget(
+                dimension == "node" ? exact + delta : 1000,
+                dimension == "edge" ? exact + delta : 4000,
+                dimension == "page" ? exact + delta : 100,
+                1024 * 1024);
+            var result = await new TopologyCommonAncestorProvider(seed.Query, budget).GatherAsync(
+                seed.Window, seed.Scope, GatherBudget.Default, Ct);
+            Assert.Equal(delta < 0 ? EvidenceStatus.Unavailable : EvidenceStatus.Gathered, result.Status);
+            Assert.Equal(delta < 0, result.Truncated);
+            Assert.Equal(delta < 0 ? "NotComparable" : "Evaluated", result.Telemetry!.Evaluation);
+            if (delta < 0) Assert.Empty(result.Items);
+            else Assert.Equal(item.Id, Assert.Single(result.Items).Id);
+        }
+    }
+
+    private static async Task<(int Mapping, int Path, int Ancestor, int Detail)> AuditCountsAsync(
         TelemetryDbFixture fixture, string subject)
     {
         await using var db = await fixture.Factory.CreateDbContextAsync(Ct);
@@ -90,6 +143,7 @@ public sealed partial class TopologyMappedSourceGroupOracleIntegrationTests
             .Select(row => row.Action).ToArrayAsync(Ct);
         return (actions.Count(action => action == "topology.source-targets"),
             actions.Count(action => action == "topology.path"),
+            actions.Count(action => action == "topology.ancestors"),
             actions.Count(action => action == "topology.edges.detail"));
     }
 }
