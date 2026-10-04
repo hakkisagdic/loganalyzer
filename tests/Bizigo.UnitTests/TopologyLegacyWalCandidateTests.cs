@@ -40,6 +40,38 @@ public sealed class TopologyLegacyWalCandidateTests
     }
 
     [Fact]
+    public async Task Exact_decompressed_archive_body_must_match_the_single_original_wal_frame()
+    {
+        var original = Envelope(Guid.NewGuid(), observedDays: 1);
+        var alternative = original with { ObservedRetentionDays = 90 };
+        alternative = alternative with { TopologyBindingsSha256 = alternative.ComputeTopologyBindingsHash() };
+        var originalBytes = RawSignalCodec.Encode(original);
+        var alternativeBytes = RawSignalCodec.Encode(alternative);
+        Assert.Equal(original.EnvelopeId, alternative.EnvelopeId);
+        Assert.Equal(original.PayloadSha256, alternative.PayloadSha256);
+        Assert.Equal(original.OwnerBindingsSha256, alternative.OwnerBindingsSha256);
+        Assert.NotEqual(original.TopologyBindingsSha256, alternative.TopologyBindingsSha256);
+        Assert.Equal(90, RawSignalCodec.Decode(alternativeBytes).ObservedRetentionDays);
+
+        await WithWalAsync([originalBytes], paths =>
+        {
+            var archive = Archives(alternative);
+            var error = Assert.Throws<InvalidDataException>(() =>
+                TopologyLegacyWalCandidateVerifier.VerifyCandidate(paths, archive, Claims(original), 100_000, 1));
+            Assert.Contains("WAL frame and decompressed archive bytes differ", error.Message, StringComparison.Ordinal);
+
+            var whitespaceCopy = new byte[originalBytes.Length + 1];
+            originalBytes.CopyTo(whitespaceCopy, 0);
+            whitespaceCopy[^1] = (byte)'\n';
+            Assert.Equal(original.EnvelopeId, RawSignalCodec.Decode(whitespaceCopy).EnvelopeId);
+            archive[original.EnvelopeId] = whitespaceCopy;
+            Assert.Throws<InvalidDataException>(() =>
+                TopologyLegacyWalCandidateVerifier.VerifyCandidate(paths, archive, Claims(original), 100_000, 1));
+            return Task.CompletedTask;
+        });
+    }
+
+    [Fact]
     public async Task Corrupt_tail_and_exhausted_complete_scan_cap_never_yield_partial_candidate()
     {
         var first = Envelope(Guid.NewGuid(), observedDays: 90);
