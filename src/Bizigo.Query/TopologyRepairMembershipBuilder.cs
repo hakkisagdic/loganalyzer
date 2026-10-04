@@ -56,11 +56,13 @@ public static class TopologyRepairMembershipBuilder
             throw new InvalidDataException("Verified publication prefix is incomplete.");
 
         var bySequence = new Dictionary<long, TopologyRepairMembershipPublication>();
+        var publicationKeys = new HashSet<string>(StringComparer.Ordinal);
         foreach (var publication in completeVerifiedPrefix)
         {
             if (publication.Sequence is <= 0 || publication.Sequence > publishedSequence
-                || !bySequence.TryAdd(publication.Sequence, publication))
-                throw new InvalidDataException("Publication prefix contains a gap, duplicate or invalid sequence.");
+                || !bySequence.TryAdd(publication.Sequence, publication)
+                || !publicationKeys.Add(publication.PublicationKey))
+                throw new InvalidDataException("Publication prefix contains a gap, reused key or invalid sequence.");
             Validate(publication.PublicationKey, publication.RequiresLegacyConversion, publication.ConversionDigest);
         }
 
@@ -85,6 +87,8 @@ public static class TopologyRepairMembershipBuilder
             }
             else if (capturedPending.Sequence == checked(publishedSequence + 1))
             {
+                if (!publicationKeys.Add(capturedPending.PublicationKey))
+                    throw new InvalidDataException("Pending publication reuses a receipted key.");
                 if (capturedPending.RequiresLegacyConversion)
                     members.Add(new(capturedPending.Sequence, capturedPending.PublicationKey,
                         capturedPending.ConversionDigest!));

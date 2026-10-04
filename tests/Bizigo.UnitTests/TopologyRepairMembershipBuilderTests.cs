@@ -50,6 +50,10 @@ public sealed class TopologyRepairMembershipBuilderTests
             new TopologyRepairMembershipPending(1, Hash('a'), true, Hash('c'))));
         Assert.Throws<InvalidDataException>(() => TopologyRepairMembershipBuilder.Build([receipt], 1,
             new TopologyRepairMembershipPending(3, Hash('a'), true, Hash('b'))));
+        Assert.Throws<InvalidDataException>(() => TopologyRepairMembershipBuilder.Build([receipt], 1,
+            new TopologyRepairMembershipPending(2, Hash('a'), true, Hash('b'))));
+        Assert.Throws<InvalidDataException>(() => TopologyRepairMembershipBuilder.Build([receipt], 1,
+            new TopologyRepairMembershipPending(2, Hash('a'), false, null)));
     }
 
     [Fact]
@@ -58,6 +62,8 @@ public sealed class TopologyRepairMembershipBuilderTests
         Assert.Throws<InvalidDataException>(() => TopologyRepairMembershipBuilder.Build([Native(1, 'a')], 2, null));
         Assert.Throws<InvalidDataException>(() => TopologyRepairMembershipBuilder.Build(
             [Native(1, 'a'), Native(1, 'b')], 2, null));
+        Assert.Throws<InvalidDataException>(() => TopologyRepairMembershipBuilder.Build(
+            [Native(1, 'a'), Native(2, 'a')], 2, null));
         Assert.Throws<InvalidDataException>(() => TopologyRepairMembershipBuilder.Build(
             [Native(1, 'a'), new TopologyRepairMembershipPublication(2, Hash('b'), true, null)], 2, null));
     }
@@ -121,6 +127,26 @@ public sealed class TopologyRepairMembershipBuilderTests
             [candidate.Members[0], candidate.Members[0]]));
         Assert.Throws<InvalidDataException>(() => TopologyRepairMembershipBuilder.VerifyExactUnion(candidate,
             [candidate.Members[0], candidate.Members[1] with { ConversionDigest = Hash('e') }]));
+    }
+
+    [Fact]
+    public void Canonical_empty_and_single_member_vectors_pin_framing_and_all_tuple_fields()
+    {
+        var empty = TopologyRepairMembershipBuilder.Build([], 0, null);
+        Assert.Equal(38, empty.CanonicalByteLength);
+        Assert.Equal("b6a5b92ca43644af56ec18f4a3fb31b6d6e758c2e81a5ad35a832ae6abab3d5d",
+            empty.CanonicalSha256);
+        var single = TopologyRepairMembershipBuilder.Build([Legacy(1, 'a', 'b')], 1, null);
+        Assert.Equal(182, single.CanonicalByteLength);
+        Assert.Equal("e3c433227139131fd6b2475c1fc82c2be0e019f36e276d33fca0669619b5e967",
+            single.CanonicalSha256);
+        Assert.NotEqual(single.CanonicalSha256,
+            TopologyRepairMembershipBuilder.Build([Legacy(1, 'c', 'b')], 1, null).CanonicalSha256);
+        Assert.NotEqual(single.CanonicalSha256,
+            TopologyRepairMembershipBuilder.Build([Legacy(1, 'a', 'c')], 1, null).CanonicalSha256);
+        Assert.NotEqual(single.CanonicalSha256,
+            TopologyRepairMembershipBuilder.Build([Native(1, 'd'), Legacy(2, 'a', 'b')], 2, null)
+                .CanonicalSha256);
     }
 
     private static TopologyRepairMembershipPublication Native(long sequence, char key) =>
