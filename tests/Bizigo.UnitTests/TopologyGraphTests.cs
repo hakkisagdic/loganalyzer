@@ -206,7 +206,7 @@ public sealed class TopologyGraphTests
     }
 
     [Fact]
-    public async Task Cursor_expiry_includes_later_visible_pages_but_excludes_hidden_and_filtered_edges()
+    public async Task Cursor_expiry_tracks_visible_pages_and_hidden_outside_count_separately()
     {
         var edges = new[]
         {
@@ -230,7 +230,16 @@ public sealed class TopologyGraphTests
         var neighborhood = await query.NeighborhoodAsync(new(R, 1001, 1,
             Relation: TopologyRelation.DependsOn), ScopeA, Ct);
         Assert.Equal(A, Assert.Single(neighborhood.Neighbors).NodeId);
-        Assert.Equal(1050, neighborhood.EarliestEvidenceExpiryUnixNano);
+        Assert.Equal(1, neighborhood.ExternalNeighborCount);
+        // The hidden edge is excluded from list pages, but contributes to the
+        // anonymous outside count. Its earlier expiry must invalidate a
+        // mid-flight neighborhood response before that count changes.
+        Assert.Equal(1020, neighborhood.EarliestEvidenceExpiryUnixNano);
+        var contains = await query.NeighborhoodAsync(new(R, 1001,
+            Relation: TopologyRelation.Contains), ScopeA, Ct);
+        Assert.Equal(D, Assert.Single(contains.Neighbors).NodeId);
+        Assert.Equal(0, contains.ExternalNeighborCount);
+        Assert.Equal(1030, contains.EarliestEvidenceExpiryUnixNano);
     }
 
     [Fact]
