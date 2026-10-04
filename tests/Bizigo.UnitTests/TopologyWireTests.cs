@@ -1,8 +1,12 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Reflection;
 using Bizigo.Api;
 using Bizigo.Contracts;
 using Bizigo.Query;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Primitives;
 
 namespace Bizigo.UnitTests;
 
@@ -53,6 +57,83 @@ public sealed class TopologyWireTests
     }
 
     [Fact]
+    public void Valid_legacy_cursor_without_repair_stamp_restarts_but_scope_and_tamper_stay_400()
+    {
+        var protection = new EphemeralDataProtectionProvider();
+        var codec = new TopologyReadCursorCodec(protection);
+        var scope = AccessScope.ForGroups("reader-A", ["A"]);
+        var oldState = JsonSerializer.SerializeToNode(State(scope))!.AsObject();
+        oldState.Remove(nameof(TopologyReadCursorState.ReadMode));
+        oldState.Remove(nameof(TopologyReadCursorState.RepairStamp));
+        var payload = new JsonObject { ["Version"] = 1, ["State"] = oldState };
+        var protectedBytes = protection.CreateProtector("Bizigo.Topology.Cursor.v1")
+            .Protect(JsonSerializer.SerializeToUtf8Bytes(payload));
+        var legacy = Convert.ToBase64String(protectedBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        Assert.Throws<TopologyRestartRequiredException>(() => codec.Decode(legacy));
+
+        var current = codec.Decode(codec.Encode(State(scope)));
+        Assert.Throws<TopologyCursorWireException>(() => TopologyReadCursorCodec.EnsureBound(
+            current, "nodes", null, AccessScope.ForGroups("reader-B", ["A"])));
+        Assert.Throws<TopologyCursorWireException>(() => codec.Decode(legacy[..^1] + "!"));
+    }
+
+    [Fact]
+    public void Observed_cursor_requires_a_repair_stamp_and_revision_match()
+    {
+        var codec = new TopologyReadCursorCodec(new EphemeralDataProtectionProvider());
+        var scope = AccessScope.ForGroups("reader-A", ["A"]);
+        var observed = State(scope) with { ReadMode = TopologyReadMode.ObservedOrMixed };
+        Assert.Throws<ArgumentException>(() => codec.Encode(observed));
+
+        observed = observed with { RepairStamp = new(2, "ready-a") };
+        var decoded = codec.Decode(codec.Encode(observed));
+        var cursor = new TopologyCursorRevision(decoded.PostgresEpoch, decoded.ClickHouseWatermark,
+            DateTimeOffset.MaxValue)
+        {
+            ReadMode = decoded.ReadMode,
+            RepairStamp = decoded.RepairStamp,
+            ExactValidUntilUnixNano = decoded.ValidUntilUnixNano,
+        };
+        TopologyCursorFence.EnsureCurrent(cursor, new(7, 11) { RepairStamp = new(2, "ready-a") },
+            decoded.ValidUntilUnixNano - 1);
+        Assert.Throws<TopologyRestartRequiredException>(() => TopologyCursorFence.EnsureCurrent(cursor,
+            new(7, 11) { RepairStamp = new(3, "ready-b") }, decoded.ValidUntilUnixNano - 1));
+    }
+
+    [Fact]
+    public void Declared_only_route_requires_explicit_provenance_and_unknown_detail_remains_mixed()
+    {
+        var classifier = typeof(TopologyReadEndpoints).GetMethod("ReadMode",
+            BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.NotNull(classifier);
+        static QueryCollection Query(string? provenance = null) => new(provenance is null
+            ? new Dictionary<string, StringValues>()
+            : new Dictionary<string, StringValues> { ["provenance"] = provenance });
+        TopologyReadMode Mode(string route, QueryCollection query, TopologyReadCursorState? cursor = null) =>
+            (TopologyReadMode)classifier!.Invoke(null, [route, query, cursor])!;
+
+        Assert.Equal(TopologyReadMode.DeclaredOnly, Mode("nodes", Query()));
+        Assert.Equal(TopologyReadMode.DeclaredOnly, Mode("node", Query()));
+        Assert.Equal(TopologyReadMode.DeclaredOnly, Mode("edges", Query("declared")));
+        Assert.Equal(TopologyReadMode.ObservedOrMixed, Mode("edges", Query()));
+        Assert.Equal(TopologyReadMode.ObservedOrMixed, Mode("edges", Query("observed")));
+        Assert.Equal(TopologyReadMode.ObservedOrMixed, Mode("edge", Query("declared")));
+        Assert.Equal(TopologyReadMode.ObservedOrMixed, Mode("path", Query()));
+        Assert.Equal(TopologyReadMode.ObservedOrMixed, Mode("ancestors", Query()));
+        Assert.Equal(TopologyReadMode.ObservedOrMixed, Mode("neighbors", Query()));
+
+        var scope = AccessScope.ForGroups("reader-A", ["A"]);
+        Assert.Equal(TopologyReadMode.DeclaredOnly, Mode("edges", Query(), State(scope) with
+        {
+            Route = "edges", Provenance = "declared",
+        }));
+        Assert.Equal(TopologyReadMode.ObservedOrMixed, Mode("edges", Query(), State(scope) with
+        {
+            Route = "edges", Provenance = null,
+        }));
+    }
+
+    [Fact]
     public void Historical_declared_detail_continuation_ignores_valid_to_but_observed_ttl_expires()
     {
         const decimal now = 3000m;
@@ -70,20 +151,29 @@ public sealed class TopologyWireTests
         TopologyReadCursorState State(decimal validUntil) => new("edge",
             TopologyReadCursorCodec.ScopeBinding("edge", declared.Id, scope.Subject,
                 scope.IsUnrestricted, scope.OwnerGroups), "next-evidence", 7, 11,
-            1999m, validUntil, 1, null, null, null, null, null, [], 1000m, 1999m);
+            1999m, validUntil, 1, null, null, null, null, null, [], 1000m, 1999m)
+        {
+            RepairStamp = new(2, "ready-a"),
+        };
         var declaredCursor = codec.Decode(codec.Encode(State(
             Math.Min(normalCursorExpiry, TopologyReadCursorCodec.EvidenceExpiry(declared)
                 ?? normalCursorExpiry))));
         TopologyReadCursorCodec.EnsureBound(declaredCursor, "edge", declared.Id, scope);
         TopologyCursorFence.EnsureCurrent(new(declaredCursor.PostgresEpoch,
             declaredCursor.ClickHouseWatermark, DateTimeOffset.MaxValue)
-        { ExactValidUntilUnixNano = declaredCursor.ValidUntilUnixNano }, new(7, 11), now);
+        {
+            RepairStamp = declaredCursor.RepairStamp,
+            ExactValidUntilUnixNano = declaredCursor.ValidUntilUnixNano,
+        }, new(7, 11) { RepairStamp = new(2, "ready-a") }, now);
 
         var observedCursor = codec.Decode(codec.Encode(State(
             Math.Min(normalCursorExpiry, TopologyReadCursorCodec.EvidenceExpiry(observed)!.Value))));
         Assert.Throws<TopologyRestartRequiredException>(() => TopologyCursorFence.EnsureCurrent(
             new(observedCursor.PostgresEpoch, observedCursor.ClickHouseWatermark, DateTimeOffset.MaxValue)
-            { ExactValidUntilUnixNano = observedCursor.ValidUntilUnixNano }, new(7, 11), now));
+            {
+                RepairStamp = observedCursor.RepairStamp,
+                ExactValidUntilUnixNano = observedCursor.ValidUntilUnixNano,
+            }, new(7, 11) { RepairStamp = new(2, "ready-a") }, now));
     }
 
     [Fact]
@@ -108,14 +198,23 @@ public sealed class TopologyWireTests
         }));
         TopologyCursorFence.EnsureCurrent(new(cursor.PostgresEpoch,
             cursor.ClickHouseWatermark, DateTimeOffset.MaxValue)
-        { ExactValidUntilUnixNano = cursor.ValidUntilUnixNano }, new(7, 11), 1099m);
+        {
+            ReadMode = cursor.ReadMode,
+            ExactValidUntilUnixNano = cursor.ValidUntilUnixNano,
+        }, new(7, 11), 1099m);
         Assert.Throws<TopologyRestartRequiredException>(() => TopologyCursorFence.EnsureCurrent(
             new(cursor.PostgresEpoch, cursor.ClickHouseWatermark, DateTimeOffset.MaxValue)
-            { ExactValidUntilUnixNano = cursor.ValidUntilUnixNano }, new(7, 11), competingEligibleExpiry));
+            {
+                ReadMode = cursor.ReadMode,
+                ExactValidUntilUnixNano = cursor.ValidUntilUnixNano,
+            }, new(7, 11), competingEligibleExpiry));
     }
 
     private static TopologyReadCursorState State(AccessScope scope) => new("nodes",
         TopologyReadCursorCodec.ScopeBinding("nodes", null, scope.Subject, scope.IsUnrestricted, scope.OwnerGroups),
         "inner", 7, 11, 1760000000000000000m, 1760000000000001000m, 2,
-        null, null, null, null, null, [], null, null);
+        null, null, null, null, null, [], null, null)
+    {
+        ReadMode = TopologyReadMode.DeclaredOnly,
+    };
 }

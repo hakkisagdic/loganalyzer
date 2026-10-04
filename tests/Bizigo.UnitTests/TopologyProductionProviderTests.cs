@@ -1125,8 +1125,16 @@ public sealed class TopologyProductionProviderTests
     private sealed class MutableRevisionSource(TopologyPublicationRevision initial)
         : ITopologyPublicationRevisionSource
     {
-        public TopologyPublicationRevision Current { get; set; } = initial;
+        private TopologyPublicationRevision _current = Ready(initial);
+        public TopologyPublicationRevision Current
+        {
+            get => _current;
+            set => _current = Ready(value);
+        }
         public int Reads { get; private set; }
+
+        private static TopologyPublicationRevision Ready(TopologyPublicationRevision revision) =>
+            revision.RepairStamp is null ? revision with { RepairStamp = new(1, "provider-test-ready") } : revision;
 
         public Task<TopologyPublicationRevision> ReadAsync(CancellationToken cancellationToken)
         {

@@ -88,9 +88,11 @@ public static partial class TopologyReadEndpoints
         deadline.CancelAfter(TimeSpan.FromSeconds(10));
         try
         {
+            var cursor = PreflightCursor(http.Request.Query, route, routeId, scope, cursors);
+            var mode = ReadMode(route, http.Request.Query, cursor);
             return await fence.ExecuteAsync(async (revision, token) =>
             {
-                var request = Parse(http.Request.Query, route, routeId, scope, revision, cursors, clock);
+                var request = Parse(http.Request.Query, route, routeId, scope, revision, cursor, cursors, clock);
                 switch (route)
                 {
                     case "nodes":
@@ -198,7 +200,7 @@ public static partial class TopologyReadEndpoints
                     }
                     default: throw new InvalidOperationException("Unknown topology read route.");
                 }
-            }, deadline.Token);
+            }, mode, deadline.Token);
         }
         catch (OperationCanceledException) when (http.RequestAborted.IsCancellationRequested) { throw; }
         catch (OperationCanceledException) { return Problem(504, "Timeout"); }
@@ -207,6 +209,7 @@ public static partial class TopologyReadEndpoints
         catch (TopologySnapshotUnavailableException) { return Problem(409, "SnapshotChanged"); }
         catch (TopologyCursorException) { return Problem(400, "InvalidCursor"); }
         catch (TopologyCursorWireException) { return Problem(400, "InvalidCursor"); }
+        catch (TopologyObservedRepairUnavailableException) { return Problem(503, "QueryUnavailable"); }
         catch (TopologyRecordTooLargeException) { return Problem(422, "RecordTooLarge"); }
         catch (ArgumentException) { return Problem(400, "InvalidQuery"); }
         catch (Exception ex) when (ex is not OutOfMemoryException) { return Problem(503, "QueryUnavailable"); }
@@ -241,7 +244,11 @@ public static partial class TopologyReadEndpoints
             request.Limit, request.Kind is null ? null : KindWire(request.Kind.Value),
             request.Relation is null ? null : RelationWire(request.Relation.Value),
             request.Provenance is null ? null : ProvenanceWire(request.Provenance.Value),
-            request.FromNode, request.ToNode, request.Targets, request.FromNano, request.ToNano));
+            request.FromNode, request.ToNode, request.Targets, request.FromNano, request.ToNano)
+        {
+            ReadMode = revision.RepairStamp is null ? TopologyReadMode.DeclaredOnly : TopologyReadMode.ObservedOrMixed,
+            RepairStamp = revision.RepairStamp,
+        });
     }
 
     private static void EnsureEvidenceCurrent(decimal? expiry, decimal now)
@@ -268,8 +275,36 @@ public static partial class TopologyReadEndpoints
         TopologyRelation? Relation, TopologyProvenance? Provenance, string? FromNode, string? ToNode,
         IReadOnlyList<string> Targets, decimal? FromNano, decimal? ToNano);
 
+    private static TopologyReadCursorState? PreflightCursor(IQueryCollection input, string route,
+        string? routeId, AccessScope scope, TopologyReadCursorCodec cursors)
+    {
+        if (route is "node" or "ancestors") return null;
+        var key = route == "edge" ? "evidenceCursor" : "cursor";
+        if (!input.TryGetValue(key, out var values)) return null;
+        if (values.Count != 1 || string.IsNullOrWhiteSpace(values[0]))
+            throw new TopologyCursorWireException();
+        var state = cursors.Decode(values[0]!);
+        TopologyReadCursorCodec.EnsureBound(state, route, routeId, scope);
+        return state;
+    }
+
+    private static TopologyReadMode ReadMode(string route, IQueryCollection input,
+        TopologyReadCursorState? cursor)
+    {
+        if (route is "nodes" or "node") return TopologyReadMode.DeclaredOnly;
+        if (route != "edges") return TopologyReadMode.ObservedOrMixed;
+        if (cursor is not null)
+            return cursor.ReadMode == TopologyReadMode.DeclaredOnly
+                && string.Equals(cursor.Provenance, "declared", StringComparison.Ordinal)
+                ? TopologyReadMode.DeclaredOnly : TopologyReadMode.ObservedOrMixed;
+        return input.TryGetValue("provenance", out var values) && values.Count == 1
+            && string.Equals(values[0], "declared", StringComparison.Ordinal)
+            ? TopologyReadMode.DeclaredOnly : TopologyReadMode.ObservedOrMixed;
+    }
+
     private static ReadRequest Parse(IQueryCollection input, string route, string? routeId, AccessScope scope,
-        TopologyPublicationRevision revision, TopologyReadCursorCodec cursors, ITopologyExpiryNanoClock clock)
+        TopologyPublicationRevision revision, TopologyReadCursorState? state,
+        TopologyReadCursorCodec cursors, ITopologyExpiryNanoClock clock)
     {
         var now = clock.NowUnixNano();
         var allowed = new HashSet<string>(["asOf"], StringComparer.Ordinal);
@@ -285,14 +320,17 @@ public static partial class TopologyReadEndpoints
             throw new ArgumentException("Unknown or repeated topology query parameter.");
 
         string? Get(string key) => input.TryGetValue(key, out var values) ? values[0] : null;
-        var cursorKey = route == "edge" ? "evidenceCursor" : "cursor";
         var limitKey = route == "edge" ? "evidencePageSize" : "limit";
-        var state = Get(cursorKey) is string encoded ? cursors.Decode(encoded) : null;
         if (state is not null)
         {
             TopologyReadCursorCodec.EnsureBound(state, route, routeId, scope);
             TopologyCursorFence.EnsureCurrent(new(state.PostgresEpoch, state.ClickHouseWatermark,
-                DateTimeOffset.MaxValue) { ExactValidUntilUnixNano = state.ValidUntilUnixNano }, revision, now);
+                DateTimeOffset.MaxValue)
+            {
+                ReadMode = state.ReadMode,
+                RepairStamp = state.RepairStamp,
+                ExactValidUntilUnixNano = state.ValidUntilUnixNano,
+            }, revision, now);
         }
 
         string? Bound(string key, string? stored)

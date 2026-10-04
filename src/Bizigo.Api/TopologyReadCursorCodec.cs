@@ -13,7 +13,10 @@ namespace Bizigo.Api;
 /// </summary>
 public sealed class TopologyReadCursorCodec(IDataProtectionProvider protection)
 {
-    private const int Version = 1;
+    private const int LegacyVersion = 1;
+    private const int Version = 2;
+    // Keep the existing protector purpose so a valid v1 envelope can be
+    // distinguished from tampering and reported as a revision restart.
     private readonly IDataProtector _protector = protection.CreateProtector("Bizigo.Topology.Cursor.v1");
 
     /// <summary>
@@ -39,6 +42,7 @@ public sealed class TopologyReadCursorCodec(IDataProtectionProvider protection)
     {
         ArgumentNullException.ThrowIfNull(state);
         if (string.IsNullOrWhiteSpace(state.Inner)) throw new ArgumentException("Missing inner topology cursor.");
+        if (!ValidStamp(state)) throw new ArgumentException("Invalid topology cursor repair revision.");
         var payload = JsonSerializer.SerializeToUtf8Bytes(new Payload(Version, state));
         return Convert.ToBase64String(_protector.Protect(payload)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
     }
@@ -52,8 +56,11 @@ public sealed class TopologyReadCursorCodec(IDataProtectionProvider protection)
             var base64 = encoded.Replace('-', '+').Replace('_', '/');
             var bytes = Convert.FromBase64String(base64.PadRight((base64.Length + 3) / 4 * 4, '='));
             var payload = JsonSerializer.Deserialize<Payload>(_protector.Unprotect(bytes));
-            if (payload is null || payload.Version != Version || payload.State is null
+            if (payload is null || payload.State is null
                 || string.IsNullOrWhiteSpace(payload.State.Inner)) throw new TopologyCursorWireException();
+            if (payload.Version == LegacyVersion || (payload.Version == Version && !ValidStamp(payload.State)))
+                throw new TopologyRestartRequiredException("Topology cursor predates the current repair revision.");
+            if (payload.Version != Version) throw new TopologyCursorWireException();
             return payload.State;
         }
         catch (Exception ex) when (ex is FormatException or CryptographicException or JsonException)
@@ -80,6 +87,14 @@ public sealed class TopologyReadCursorCodec(IDataProtectionProvider protection)
     }
 
     private sealed record Payload(int Version, TopologyReadCursorState State);
+
+    private static bool ValidStamp(TopologyReadCursorState state) => state.ReadMode switch
+    {
+        TopologyReadMode.DeclaredOnly => state.RepairStamp is null,
+        TopologyReadMode.ObservedOrMixed => state.RepairStamp is { Generation: >= 0 } stamp
+            && !string.IsNullOrWhiteSpace(stamp.CertificateDigest),
+        _ => false,
+    };
 }
 
 public sealed record TopologyReadCursorState(
@@ -98,7 +113,11 @@ public sealed record TopologyReadCursorState(
     string? ToNode,
     IReadOnlyList<string> Targets,
     decimal? FromUnixNano,
-    decimal? ToUnixNano);
+    decimal? ToUnixNano)
+{
+    public TopologyReadMode ReadMode { get; init; } = TopologyReadMode.ObservedOrMixed;
+    public TopologyRepairReadStamp? RepairStamp { get; init; }
+}
 
 public sealed class TopologyCursorWireException : ArgumentException
 {
