@@ -50,9 +50,10 @@ public sealed record TopologyObservedSnapshotRow(
 }
 
 /// <summary>
-/// Reads only published observed projections. The watermark predicate is
-/// applied before argMax, so a newer unacknowledged retry cannot hide an older
-/// committed row with the same logical edge ID.
+/// Reads only published observed projections. The non-TTL lifecycle ledger
+/// chooses the latest committed edge version before owner/window/expiry tests;
+/// an unacknowledged retry cannot hide the older committed version, and TTL
+/// cleanup cannot resurrect an older physical proof.
 /// </summary>
 public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
 {
