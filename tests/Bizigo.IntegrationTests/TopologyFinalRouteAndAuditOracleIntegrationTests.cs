@@ -131,14 +131,14 @@ public sealed class TopologyFinalRouteAndAuditOracleIntegrationTests(DevStackFix
             await command.ExecuteNonQueryAsync(Ct);
         }
         await ExecuteDdlAsync("CREATE FUNCTION bizigo." + function + "() RETURNS trigger "
-            + "LANGUAGE plpgsql AS $$ BEGIN IF NEW.subject = '" + subjectLiteral + "' "
+            + "LANGUAGE plpgsql AS $$ BEGIN IF NEW.subject = TG_ARGV[0] "
             + "AND NEW.action LIKE 'topology.%' THEN RAISE EXCEPTION 'forced audit outage'; "
             + "END IF; RETURN NEW; END $$");
         try
         {
             await ExecuteDdlAsync("CREATE TRIGGER " + trigger
                 + " BEFORE INSERT ON bizigo.audit_log FOR EACH ROW EXECUTE FUNCTION bizigo."
-                + function + "()");
+                + function + "('" + subjectLiteral + "')");
             try
             {
                 using var response = await api.GetAsync("/v1/topology/nodes");
