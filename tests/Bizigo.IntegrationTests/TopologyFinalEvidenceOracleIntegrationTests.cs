@@ -146,7 +146,8 @@ public sealed class TopologyFinalEvidenceOracleIntegrationTests(DevStackFixture 
             new TopologyObservedSnapshotReader(fixture.Storage), fence));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
             new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph,
-            topologyClock: new FakeTimeProvider(to.AddTicks(10)));
+            topologyClock: new FakeTimeProvider(to.AddTicks(10)),
+            sourceTargetPages: new TopologySourceTargetPageReader(fixture.Factory, fence));
         var boundary = TopologyIdentity.Nano(to);
         if (!deleteAtTo) Assert.Equal(boundary,
             decimal.Parse(edge.Edge.ValidFromUnixNano, CultureInfo.InvariantCulture));
@@ -400,7 +401,8 @@ public sealed class TopologyFinalEvidenceOracleIntegrationTests(DevStackFixture 
             new TopologyObservedSnapshotReader(fixture.Storage), fence));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
             new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph,
-            topologyClock: new FakeTimeProvider(now.AddDays(3)));
+            topologyClock: new FakeTimeProvider(now.AddDays(3)),
+            sourceTargetPages: new TopologySourceTargetPageReader(fixture.Factory, fence));
         var window = new RcaWindow
         {
             BaselineFrom = now.AddDays(-7), BaselineTo = now.AddMinutes(-1),
