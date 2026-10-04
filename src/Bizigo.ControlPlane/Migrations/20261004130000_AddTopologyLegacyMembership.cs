@@ -110,20 +110,47 @@ public sealed class AddTopologyLegacyMembership : Migration
 
         CREATE FUNCTION bizigo.topology_repair_sidecar_before_insert() RETURNS trigger
         LANGUAGE plpgsql AS $$
-        DECLARE state record; previous record;
+        DECLARE state record; previous record; published bigint; receipt_pair boolean; pending_pair boolean;
         BEGIN
             PERFORM pg_advisory_xact_lock(735032);
             SELECT * INTO state FROM bizigo.topology_repair_state WHERE id = 1 FOR UPDATE;
-            IF state.phase <> 'Repairing' OR state.generation <> NEW.created_generation
+            IF state.id IS NULL OR state.phase <> 'Repairing'
                OR state.pg_database_identity <> NEW.pg_database_identity
                OR state.clickhouse_database_uuid <> NEW.clickhouse_database_uuid
             THEN RAISE EXCEPTION 'topology sidecar admission is not in the active repair generation'; END IF;
+            SELECT published_sequence INTO published FROM bizigo.topology_read_state WHERE id = 1;
+            SELECT EXISTS (SELECT 1 FROM bizigo.topology_publication_receipts
+                           WHERE publication_key = NEW.original_publication_key
+                             AND publication_sequence = NEW.original_sequence)
+              INTO receipt_pair;
+            SELECT EXISTS (SELECT 1 FROM bizigo.topology_publication_pending
+                           WHERE publication_key = NEW.original_publication_key
+                             AND publication_sequence = NEW.original_sequence)
+              INTO pending_pair;
+            IF published IS NULL
+               OR EXISTS (SELECT 1 FROM bizigo.topology_publication_receipts
+                          WHERE publication_key = NEW.original_publication_key
+                            AND publication_sequence <> NEW.original_sequence)
+               OR EXISTS (SELECT 1 FROM bizigo.topology_publication_pending
+                          WHERE publication_key = NEW.original_publication_key
+                            AND publication_sequence <> NEW.original_sequence)
+               OR NOT (receipt_pair AND NEW.original_sequence <= published
+                       OR pending_pair AND (NEW.original_sequence = published + 1
+                           AND NOT EXISTS (SELECT 1 FROM bizigo.topology_publication_receipts
+                                           WHERE publication_key = NEW.original_publication_key)
+                           OR NEW.original_sequence = published AND receipt_pair))
+            THEN RAISE EXCEPTION 'topology sidecar has no exact published or captured pending pair'; END IF;
             SELECT * INTO previous FROM bizigo.topology_legacy_conversion_sidecars
                 WHERE original_publication_key = NEW.original_publication_key
                   AND original_sequence = NEW.original_sequence;
-            IF previous.original_publication_key IS NOT NULL
-               AND (to_jsonb(previous) - 'created_at') <> (to_jsonb(NEW) - 'created_at')
-            THEN RAISE EXCEPTION 'divergent topology conversion sidecar retry'; END IF;
+            IF previous.original_publication_key IS NOT NULL THEN
+                IF NEW.created_generation NOT IN (previous.created_generation, state.generation)
+                   OR (to_jsonb(previous) - 'created_at' - 'created_generation')
+                      <> (to_jsonb(NEW) - 'created_at' - 'created_generation')
+                THEN RAISE EXCEPTION 'divergent topology conversion sidecar retry'; END IF;
+            ELSIF state.generation <> NEW.created_generation THEN
+                RAISE EXCEPTION 'new topology sidecar creation generation is stale';
+            END IF;
             RETURN NEW;
         END $$;
         CREATE FUNCTION bizigo.topology_repair_sidecar_after_insert() RETURNS trigger
@@ -219,6 +246,8 @@ public sealed class AddTopologyLegacyMembership : Migration
             THEN RETURN NEW; END IF;
             IF NEW.certificate_json ->> 'FormatVersion' IS DISTINCT FROM '2'
             THEN RETURN NEW; END IF; -- Frozen format-1 certificates retain their old gate.
+            IF NOT pg_try_advisory_xact_lock(735032)
+            THEN RAISE EXCEPTION 'topology repair publication lock is busy'; END IF;
             SELECT * INTO header FROM bizigo.topology_repair_member_sets
                 WHERE member_set_id = NEW.certificate_member_set_id FOR UPDATE;
             IF header.member_set_id IS NULL OR header.sealed_at IS NULL
@@ -231,10 +260,32 @@ public sealed class AddTopologyLegacyMembership : Migration
                OR header.receipt_prefix_sequence <> NEW.receipt_prefix_sequence
                OR header.receipt_prefix_sha256 <> NEW.receipt_prefix_sha256
                OR header.member_count <> 0
-               OR NEW.certificate_json ->> 'MemberSetId' <> header.member_set_id::text
-               OR (NEW.certificate_json ->> 'SidecarRevision')::bigint <> NEW.sidecar_revision
-               OR (NEW.certificate_json ->> 'MemberCount')::integer <> header.member_count
-               OR NEW.certificate_json ->> 'MembershipSha256' <> header.canonical_sha256
+               OR NEW.certificate_json ->> 'MemberSetId' IS DISTINCT FROM header.member_set_id::text
+               OR (NEW.certificate_json ->> 'Generation')::bigint IS DISTINCT FROM NEW.generation
+               OR NEW.certificate_json ->> 'PostgresDatabaseIdentity'
+                    IS DISTINCT FROM NEW.pg_database_identity::text
+               OR NEW.certificate_json ->> 'ClickHouseDatabaseUuid'
+                    IS DISTINCT FROM NEW.clickhouse_database_uuid::text
+               OR (NEW.certificate_json ->> 'ReceiptPrefixSequence')::bigint
+                    IS DISTINCT FROM NEW.receipt_prefix_sequence
+               OR NEW.certificate_json ->> 'ReceiptPrefixSha256'
+                    IS DISTINCT FROM NEW.receipt_prefix_sha256
+               OR NEW.certificate_json ->> 'PendingPublicationKey'
+                    IS DISTINCT FROM header.pending_publication_key
+               OR NEW.certificate_json ->> 'PendingPayloadSha256'
+                    IS DISTINCT FROM header.pending_payload_sha256
+               OR (NEW.certificate_json ->> 'SidecarRevision')::bigint
+                    IS DISTINCT FROM NEW.sidecar_revision
+               OR (NEW.certificate_json ->> 'MemberCount')::integer
+                    IS DISTINCT FROM header.member_count
+               OR NEW.certificate_json ->> 'MembershipSha256'
+                    IS DISTINCT FROM header.canonical_sha256
+               OR (NEW.certificate_json ->> 'ParentDecisionSha256' ~ '^[0-9a-f]{64}$')
+                    IS DISTINCT FROM true
+               OR (NEW.certificate_json ->> 'LifecycleSha256' ~ '^[0-9a-f]{64}$')
+                    IS DISTINCT FROM true
+               OR jsonb_typeof(NEW.certificate_json -> 'Tables') IS DISTINCT FROM 'array'
+               OR jsonb_array_length(NEW.certificate_json -> 'Tables') IS DISTINCT FROM 4
             THEN RAISE EXCEPTION 'topology format-2 certificate has no sealed authority'; END IF;
             actual := bizigo.topology_repair_member_bytes(header.member_set_id);
             IF octet_length(actual) <> header.canonical_byte_length

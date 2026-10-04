@@ -59,14 +59,91 @@ public sealed class TopologyLegacyMembershipGuardIntegrationTests(DevStackFixtur
         Assert.Equal(1, await InsertSidecarAsync(db, pg, ch, Key, Digest, new string('c', 64)));
         Assert.Equal(0, await InsertSidecarAsync(db, pg, ch, Key, Digest, new string('c', 64)));
         Assert.Equal(1L, await SidecarRevisionAsync(db));
+        await Assert.ThrowsAsync<PostgresException>(() => InsertSidecarAsync(db, pg, ch,
+            new string('9', 64), Digest, new string('c', 64), 9));
+        await Assert.ThrowsAsync<PostgresException>(() => InsertSidecarAsync(db, pg, ch,
+            new string('9', 64), Digest, new string('c', 64)));
+        await InsertPendingAsync(db, Key, 2);
+        await Assert.ThrowsAsync<PostgresException>(() => InsertSidecarAsync(db, pg, ch,
+            Key, Digest, new string('c', 64), 2));
+        Assert.Equal(1, await db.Database.ExecuteSqlRawAsync(
+            "DELETE FROM bizigo.topology_publication_pending WHERE id=1", Ct));
+        await InsertReceiptAsync(db, new string('9', 64), 2);
+        await Assert.ThrowsAsync<PostgresException>(() => InsertSidecarAsync(db, pg, ch,
+            new string('9', 64), Digest, new string('c', 64), 2));
+        Assert.Equal(1L, await SidecarRevisionAsync(db));
         await Assert.ThrowsAsync<PostgresException>(() =>
             InsertSidecarAsync(db, pg, ch, Key, Digest, new string('d', 64)));
         Assert.Equal(1L, await SidecarRevisionAsync(db));
+        Assert.Equal(1, await db.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE bizigo.topology_repair_state SET generation = 2, copy_attempt_id = {Guid.NewGuid()}
+            WHERE id = 1 AND phase = 'Repairing'
+            """, Ct));
+        Assert.Equal(0, await InsertSidecarAsync(db, pg, ch, Key, Digest,
+            new string('c', 64), createdGeneration: 2));
+        await Assert.ThrowsAsync<PostgresException>(() => InsertSidecarAsync(db, pg, ch,
+            Key, new string('6', 64), new string('c', 64), createdGeneration: 2));
+        Assert.Equal(1L, await SidecarRevisionAsync(db));
+        Assert.Equal(1L, await db.Database.SqlQueryRaw<long>(
+            "SELECT created_generation AS \"Value\" FROM bizigo.topology_legacy_conversion_sidecars "
+            + "WHERE original_sequence=1").SingleAsync(Ct));
         await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync($"""
             UPDATE bizigo.topology_legacy_conversion_sidecars
             SET original_payload_sha256 = {new string('e', 64)}
             WHERE original_publication_key = {Key} AND original_sequence = 1
             """, Ct));
+    }
+
+    [Fact]
+    public async Task Missing_format2_certificate_binding_cannot_open_ready_phase()
+    {
+        var factory = await DevStackSetup.ControlPlaneAsync(stack, Ct);
+        using var storage = await DevStackSetup.ClickHouseAsync(stack, Ct);
+        var gate = new TopologyObservedRepairReadiness(factory, storage);
+        Assert.Equal(TopologyRepairInitializationStatus.Ready,
+            (await new TopologyPublicationRepairRunner(factory, storage, gate)
+                .InitializeAsync(TopologyRepairStartMode.Startup, Ct)).Status);
+        await using var db = await factory.CreateDbContextAsync(Ct);
+        var setId = await db.Database.SqlQueryRaw<Guid>(
+            "SELECT certificate_member_set_id AS \"Value\" FROM bizigo.topology_repair_state WHERE id=1")
+            .SingleAsync(Ct);
+        Assert.Equal(1, await db.Database.ExecuteSqlRawAsync("""
+            UPDATE bizigo.topology_repair_state
+            SET phase='Repairing', certificate_digest=NULL, certificate_json=NULL,
+                certificate_member_set_id=NULL WHERE id=1
+            """, Ct));
+        var malformed = JsonSerializer.Serialize(new { FormatVersion = 2, MemberSetId = setId });
+        await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE bizigo.topology_repair_state SET phase='Ready',
+                certificate_member_set_id={setId}, certificate_json=CAST({malformed} AS jsonb),
+                certificate_digest={new string('0', 64)} WHERE id=1
+            """, Ct));
+        Assert.Equal("Repairing", await db.Database.SqlQueryRaw<string>(
+            "SELECT phase AS \"Value\" FROM bizigo.topology_repair_state WHERE id=1")
+            .SingleAsync(Ct));
+    }
+
+    [Fact]
+    public async Task Direct_ready_update_rejects_busy_publication_lock_before_header_lock()
+    {
+        var factory = await DevStackSetup.ControlPlaneAsync(stack, Ct);
+        await PrepareRepairingAsync(factory);
+        await using var blocker = await factory.CreateDbContextAsync(Ct);
+        await using var held = await blocker.Database.BeginTransactionAsync(Ct);
+        Assert.True(await blocker.Database.SqlQueryRaw<bool>(
+            "SELECT pg_try_advisory_xact_lock(735032) AS \"Value\"").SingleAsync(Ct));
+        await using var contender = await factory.CreateDbContextAsync(Ct);
+        var setId = Guid.NewGuid();
+        var attempt = JsonSerializer.Serialize(new { FormatVersion = 2, MemberSetId = setId });
+        var failure = await Assert.ThrowsAsync<PostgresException>(() =>
+            contender.Database.ExecuteSqlInterpolatedAsync($"""
+                UPDATE bizigo.topology_repair_state SET phase='Ready',
+                    certificate_member_set_id={setId},
+                    certificate_json=CAST({attempt} AS jsonb),
+                    certificate_digest={new string('0', 64)} WHERE id=1
+                """, Ct));
+        Assert.Contains("publication lock is busy", failure.MessageText, StringComparison.Ordinal);
+        await held.RollbackAsync(Ct);
     }
 
     [Fact]
@@ -133,6 +210,7 @@ public sealed class TopologyLegacyMembershipGuardIntegrationTests(DevStackFixtur
         var empty = TopologyRepairMembershipBuilder.Build(
             Array.Empty<TopologyRepairMembershipPublication>(), 0, null);
         await InsertSetAsync(db, setId, pg, ch, attempt, 1, empty);
+        await InsertPendingAsync(db, new string('3', 64), 2);
         Assert.Equal(1, await InsertSidecarAsync(db, pg, ch, new string('3', 64),
             new string('4', 64), new string('5', 64), 2));
         Assert.Equal(2L, await SidecarRevisionAsync(db));
@@ -151,6 +229,7 @@ public sealed class TopologyLegacyMembershipGuardIntegrationTests(DevStackFixtur
         var secondKey = new string('3', 64);
         var secondDigest = new string('4', 64);
         Assert.Equal(1, await InsertSidecarAsync(db, pg, ch, Key, Digest, new string('c', 64)));
+        await InsertPendingAsync(db, secondKey, 2);
         Assert.Equal(1, await InsertSidecarAsync(db, pg, ch, secondKey, secondDigest,
             new string('5', 64), 2));
         var candidate = TopologyRepairMembershipBuilder.Build(
@@ -192,11 +271,14 @@ public sealed class TopologyLegacyMembershipGuardIntegrationTests(DevStackFixtur
                 certificate_member_set_id = NULL
             WHERE id = 1 AND phase = 'Uninitialized'
             """, Ct));
+        await InsertReceiptAsync(db, Key, 1);
+        Assert.Equal(1, await db.Database.ExecuteSqlRawAsync(
+            "UPDATE bizigo.topology_read_state SET published_sequence=1 WHERE id=1", Ct));
         return (pg, ch, attempt);
     }
 
     private static Task<int> InsertSidecarAsync(ControlPlaneDbContext db, Guid pg, Guid ch,
-        string key, string digest, string payload, long sequence = 1) =>
+        string key, string digest, string payload, long sequence = 1, long createdGeneration = 1) =>
         db.Database.ExecuteSqlInterpolatedAsync($"""
         INSERT INTO bizigo.topology_legacy_conversion_sidecars
           (original_publication_key, original_sequence, conversion_digest,
@@ -204,9 +286,22 @@ public sealed class TopologyLegacyMembershipGuardIntegrationTests(DevStackFixtur
            upgraded_rowset_sha256, original_catalog_sha256, created_generation,
            pg_database_identity, clickhouse_database_uuid)
         VALUES ({key}, {sequence}, {digest}, {payload}, {new string('d', 64)},
-                {new string('e', 64)}, {new string('f', 64)}, {new string('0', 64)}, 1, {pg}, {ch})
+                {new string('e', 64)}, {new string('f', 64)}, {new string('0', 64)},
+                {createdGeneration}, {pg}, {ch})
         ON CONFLICT (original_publication_key, original_sequence) DO NOTHING
         """, Ct);
+
+    private static Task<int> InsertReceiptAsync(ControlPlaneDbContext db, string key, long sequence) =>
+        db.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO bizigo.topology_publication_receipts(publication_key, publication_sequence)
+            VALUES ({key}, {sequence})
+            """, Ct);
+
+    private static Task<int> InsertPendingAsync(ControlPlaneDbContext db, string key, long sequence) =>
+        db.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO bizigo.topology_publication_pending(id, publication_key, publication_sequence)
+            VALUES (1, {key}, {sequence})
+            """, Ct);
 
     private static Task<int> InsertSetAsync(ControlPlaneDbContext db, Guid setId, Guid pg, Guid ch,
         Guid attempt, long revision, TopologyRepairMemberSetCandidate candidate) =>
