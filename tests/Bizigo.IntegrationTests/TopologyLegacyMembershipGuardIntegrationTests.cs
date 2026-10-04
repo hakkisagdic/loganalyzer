@@ -182,11 +182,12 @@ public sealed class TopologyLegacyMembershipGuardIntegrationTests(DevStackFixtur
             .SingleAsync(Ct);
         var ch = Guid.NewGuid();
         var attempt = Guid.NewGuid();
+        const string emptyAllowedCopies = "{}";
         Assert.Equal(1, await db.Database.ExecuteSqlInterpolatedAsync($"""
             UPDATE bizigo.topology_repair_state
             SET phase = 'Repairing', generation = 1, copy_attempt_id = {attempt},
                 clickhouse_database_uuid = {ch}, old_canonical_identity_json = '[]'::jsonb,
-                allowed_copy_identity_json = '{{}}'::jsonb,
+                allowed_copy_identity_json = CAST({emptyAllowedCopies} AS jsonb),
                 certificate_json = NULL, certificate_digest = NULL,
                 certificate_member_set_id = NULL
             WHERE id = 1 AND phase = 'Uninitialized'
