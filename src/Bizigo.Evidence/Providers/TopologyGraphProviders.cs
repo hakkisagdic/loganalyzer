@@ -151,7 +151,7 @@ internal static class TopologyGraphEvidence
             static sourceId => new SourceGroupBuilder(sourceId), StringComparer.Ordinal);
         var seenCursors = new HashSet<string>(StringComparer.Ordinal);
         string? cursor = null;
-        TopologyPublicationRevision? pageRevision = null;
+        (long PostgresEpoch, ulong ClickHouseWatermark)? pageRevision = null;
         do
         {
             // Reserve each mapping page before I/O. A full final page needs no
@@ -159,11 +159,16 @@ internal static class TopologyGraphEvidence
             RequireBudget(usage.NextPage());
             var page = await query.ResolveTopologySourceTargetsPageAsync(affectedSourceIds, readClock,
                 scope, MappingPageSize, cursor, token);
-            var current = new TopologyPublicationRevision(page.PostgresEpoch, page.ClickHouseWatermark);
+            var current = (page.PostgresEpoch, page.ClickHouseWatermark);
             if (page.Items.Count > MappingPageSize || current.PostgresEpoch < 0)
                 throw new TopologyProofUnavailableException("Source mapping page is inconsistent.");
-            if (pageRevision is not null && current != pageRevision ||
-                expectedRevision is not null && current != expectedRevision)
+            // The page DTO carries the two-store publication position, not the
+            // repair certificate. The outer fence verifies the full stamp on
+            // both sides of mapping, traversal and proof-detail reads.
+            if ((pageRevision is { } prior && current != prior) ||
+                (expectedRevision is { } expected &&
+                 (current.PostgresEpoch != expected.PostgresEpoch ||
+                  current.ClickHouseWatermark != expected.ClickHouseWatermark)))
                 throw new TopologyRestartRequiredException("Source mapping publication changed during paging.");
             pageRevision ??= current;
             foreach (var chunk in page.Items)

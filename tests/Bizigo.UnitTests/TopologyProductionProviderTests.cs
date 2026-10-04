@@ -866,6 +866,71 @@ public sealed class TopologyProductionProviderTests
     }
 
     [Theory]
+    [InlineData("topology.graph-path")]
+    [InlineData("topology.common-ancestor")]
+    public async Task Production_ready_repair_stamp_allows_mapping_and_proof_before_outer_fence(string providerId)
+    {
+        var query = Ready();
+        var revisions = new MutableRevisionSource(new(7, 1)
+        {
+            RepairStamp = new(17, "ready-certificate-digest"),
+        });
+        var fence = new TopologyPublicationFence(revisions);
+        IEvidenceProvider provider = providerId == "topology.graph-path"
+            ? new TopologyGraphPathProvider(query, TopologyProviderBudget.Default, fence)
+            : new TopologyCommonAncestorProvider(query, TopologyProviderBudget.Default, fence);
+
+        var result = await provider.GatherAsync(Window, Scope, GatherBudget.Default,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(EvidenceStatus.Gathered, result.Status);
+        Assert.Single(result.Items);
+        Assert.Equal(2, revisions.Reads);
+        Assert.Equal(new TopologyRepairReadStamp(17, "ready-certificate-digest"), revisions.Current.RepairStamp);
+    }
+
+    [Theory]
+    [InlineData("topology.graph-path", false)]
+    [InlineData("topology.graph-path", true)]
+    [InlineData("topology.common-ancestor", false)]
+    [InlineData("topology.common-ancestor", true)]
+    public async Task Production_repair_stamp_change_during_proof_restarts_outer_fence(
+        string providerId, bool changeGeneration)
+    {
+        var query = Ready();
+        var revisions = new MutableRevisionSource(new(7, 1)
+        {
+            RepairStamp = new(17, "ready-certificate-digest"),
+        });
+        var proofReads = 0;
+        query.TopologyEdgeResponse = (edgeId, _, _, _) =>
+        {
+            proofReads++;
+            revisions.Current = new(7, 1)
+            {
+                RepairStamp = changeGeneration
+                    ? new(18, "ready-certificate-digest")
+                    : new(17, "different-certificate-digest"),
+            };
+            return Task.FromResult<TopologyEdgeDetail?>(query.TopologyEdges[edgeId]);
+        };
+        var fence = new TopologyPublicationFence(revisions);
+        IEvidenceProvider provider = providerId == "topology.graph-path"
+            ? new TopologyGraphPathProvider(query, TopologyProviderBudget.Default, fence)
+            : new TopologyCommonAncestorProvider(query, TopologyProviderBudget.Default, fence);
+
+        var result = await provider.GatherAsync(Window, Scope, GatherBudget.Default,
+            TestContext.Current.CancellationToken);
+
+        Assert.True(proofReads > 0, "Repair drift must be injected after a real proof-detail read.");
+        Assert.Equal(EvidenceStatus.Unavailable, result.Status);
+        Assert.True(result.Truncated);
+        Assert.Empty(result.Items);
+        Assert.Equal("NotComparable", result.Telemetry!.Evaluation);
+        Assert.Equal(2, revisions.Reads);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task Production_ancestor_proof_restarts_on_pg_epoch_or_ch_watermark_change(bool changeWatermark)
