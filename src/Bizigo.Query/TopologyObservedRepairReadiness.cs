@@ -77,7 +77,18 @@ public sealed class TopologyObservedRepairReadiness(
                            encode(sha256(bizigo.topology_repair_member_bytes(h.member_set_id)), 'hex') END,
                        r.copy_attempt_id, h.copy_attempt_id,
                        h.pending_publication_key, h.pending_sequence, h.pending_conversion_digest,
-                       h.pending_payload_sha256
+                       h.pending_payload_sha256,
+                       (SELECT count(*) = 9 FROM pg_trigger t WHERE t.tgenabled = 'O'
+                         AND ((t.tgrelid = 'bizigo.topology_legacy_conversion_sidecars'::regclass
+                               AND t.tgname IN ('topology_sidecar_admit', 'topology_sidecar_revision',
+                                                'topology_sidecar_immutable'))
+                           OR (t.tgrelid = 'bizigo.topology_repair_member_sets'::regclass
+                               AND t.tgname IN ('topology_set_admit', 'topology_set_seal',
+                                                'topology_set_no_delete'))
+                           OR (t.tgrelid = 'bizigo.topology_repair_members'::regclass
+                               AND t.tgname IN ('topology_member_admit', 'topology_member_immutable'))
+                           OR (t.tgrelid = 'bizigo.topology_repair_state'::regclass
+                               AND t.tgname = 'topology_format2_ready_guard')))
                 FROM bizigo.topology_repair_state r
                 LEFT JOIN bizigo.topology_repair_member_sets h
                     ON h.member_set_id = r.certificate_member_set_id
@@ -144,6 +155,7 @@ public sealed class TopologyObservedRepairReadiness(
                     || !reader.IsDBNull(26)
                     || (reader.IsDBNull(27) ? null : reader.GetString(27)) !=
                         certificateV2.PendingPayloadSha256
+                    || !reader.GetBoolean(28)
                     || reader.GetInt32(15) != certificateV2.MemberCount
                     || reader.GetString(17) != certificateV2.MembershipSha256
                     || reader.GetInt64(19) != certificateV2.MemberCount
