@@ -252,6 +252,58 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
         Assert.False(committed.Unattributed);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    [Trait("Category", "Integration")]
+    public async Task Same_sequence_divergent_conflict_marker_fails_after_merge(bool changeContext)
+    {
+        await using var f = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var anchor = new string('a', 64);
+        var candidate = new TopologyConflictCandidate(new string('b', 64), "A", "SA", ParentNode,
+            f.Now + 1000, (decimal)f.Now + 100_000, (decimal)f.Now + 100_000,
+            string.Empty, true)
+        {
+            ContextVersion = 3, Anchor = anchor, ResolutionReason = "Resolved",
+        };
+        var context = JsonSerializer.Serialize(new[] { candidate }, RawSignalCodec.Json);
+        async Task InsertAsync(string secondFingerprint, string capturedContext)
+        {
+            var row = JsonSerializer.Serialize(new
+            {
+                semantic_anchor = anchor,
+                first_fingerprint = candidate.Fingerprint,
+                conflicting_fingerprint = secondFingerprint,
+                candidate_context_json = capturedContext,
+                publication_seq = 1,
+            });
+            await f.SqlAsync("INSERT INTO topology_span_conflicts FORMAT JSONEachRow\n" + row);
+        }
+
+        await InsertAsync(new string('c', 64), context);
+        await InsertAsync(new string('c', 64), context);
+        await f.SqlAsync("OPTIMIZE TABLE topology_span_conflicts FINAL");
+        Assert.Equal("2", (await f.SqlAsync("SELECT count() FROM topology_span_conflicts "
+            + "WHERE semantic_anchor = '" + anchor + "' AND publication_seq = 1")).Trim());
+        var reader = new TopologyObservedSnapshotReader(f.Storage);
+        Assert.Single(Assert.Single((await reader.ReadSnapshotAsync(1, Ct)).Conflicts).Candidates);
+
+        // Same anchor and sequence but different bytes are not an arbitrary
+        // ReplacingMergeTree winner. Both fingerprint and context matter.
+        await InsertAsync(changeContext ? new string('c', 64) : new string('d', 64),
+            changeContext ? JsonSerializer.Serialize(new[] { candidate with
+            { ResolutionReason = "AmbiguousParent" } }, RawSignalCodec.Json) : context);
+        await f.SqlAsync("OPTIMIZE TABLE topology_span_conflicts FINAL");
+        Assert.Equal("3", (await f.SqlAsync("SELECT count() FROM topology_span_conflicts "
+            + "WHERE semantic_anchor = '" + anchor + "' AND publication_seq = 1")).Trim());
+        await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(() =>
+            reader.ReadSnapshotAsync(1, Ct));
+        var scope = new TopologyObservedReadScope(AccessScope.ForGroups("scope-A", ["A"]),
+            f.Now, (decimal)f.Now + 2000, (decimal)f.Now + 2000, 64);
+        await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(() =>
+            reader.ReadScopedSnapshotAsync(1, scope, Ct));
+    }
+
     [Fact, Trait("Category", "Integration")]
     public async Task Expired_latest_version_cannot_resurrect_older_observed_proof_after_cleanup()
     {

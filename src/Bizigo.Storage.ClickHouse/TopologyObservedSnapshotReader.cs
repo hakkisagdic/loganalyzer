@@ -435,7 +435,9 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
         await connection.OpenAsync(token);
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT semantic_anchor, candidate_context_json FROM topology_span_conflicts
+            SELECT semantic_anchor, publication_seq, first_fingerprint,
+                conflicting_fingerprint, candidate_context_json
+            FROM topology_span_conflicts
             WHERE publication_seq <= {watermark:UInt64}
             """ + (anchors is null ? string.Empty : "\n AND semantic_anchor IN ({anchors:Array(String)})")
             + "\n" + """
@@ -448,6 +450,8 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
             : ["watermark", "anchors", "read_limit"]);
         command.CommandTimeout = Math.Clamp(context.Options.QueryTimeoutSeconds, 1, 300);
         var result = new Dictionary<string, List<TopologyConflictCandidate>>(StringComparer.Ordinal);
+        var seenVersions = new Dictionary<(string Anchor, ulong Sequence),
+            (string First, string Conflicting, string Context)>();
         var legacy = new HashSet<string>(StringComparer.Ordinal);
         var rows = 0;
         var expandedCandidates = 0;
@@ -457,8 +461,21 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
             if (maxRows is not null && ++rows > maxRows.Value)
                 throw new IOException("Topology conflict read exceeds its physical capacity.");
             var anchor = ReadString(reader.GetValue(0));
+            var sequence = Convert.ToUInt64(reader.GetValue(1), CultureInfo.InvariantCulture);
+            var version = (First: ReadConflictField(reader.GetValue(2)),
+                Conflicting: ReadConflictField(reader.GetValue(3)),
+                Context: ReadConflictField(reader.GetValue(4)));
+            if (seenVersions.TryGetValue((anchor, sequence), out var previous))
+            {
+                if (previous != version)
+                    throw new TopologyObservedRepairUnavailableException();
+                // Physical duplicate retries still count against the bounded
+                // read, but contribute only one logical marker/context.
+                continue;
+            }
+            seenVersions.Add((anchor, sequence), version);
             if (!result.TryGetValue(anchor, out var candidates)) result.Add(anchor, candidates = []);
-            var context = ReadString(reader.GetValue(1));
+            var context = version.Context;
             if (context.Length == 0) { legacy.Add(anchor); continue; }
             var parsed = JsonSerializer.Deserialize<TopologyConflictCandidate[]>(context, RawSignalCodec.Json)
                 ?? throw new InvalidDataException("Published topology conflict context is missing.");
@@ -524,5 +541,12 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
         byte[] bytes => Encoding.UTF8.GetString(bytes).TrimEnd('\0'),
         _ => Convert.ToString(value, CultureInfo.InvariantCulture)?.TrimEnd('\0')
             ?? throw new InvalidDataException("Missing topology projection string."),
+    };
+
+    private static string ReadConflictField(object value) => value switch
+    {
+        string text => text,
+        byte[] bytes => new UTF8Encoding(false, true).GetString(bytes),
+        _ => throw new InvalidDataException("Invalid topology conflict field type."),
     };
 }
