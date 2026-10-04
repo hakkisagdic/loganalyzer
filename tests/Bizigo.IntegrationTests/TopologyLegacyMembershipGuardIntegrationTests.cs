@@ -124,6 +124,70 @@ public sealed class TopologyLegacyMembershipGuardIntegrationTests(DevStackFixtur
             .SingleAsync(Ct));
     }
 
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"FormatVersion\":null}")]
+    [InlineData("{\"FormatVersion\":3}")]
+    [InlineData("{\"FormatVersion\":\"1\"}")]
+    public async Task Unknown_or_missing_certificate_format_cannot_open_ready_phase(string certificateJson)
+    {
+        var factory = await DevStackSetup.ControlPlaneAsync(stack, Ct);
+        using var storage = await DevStackSetup.ClickHouseAsync(stack, Ct);
+        var gate = new TopologyObservedRepairReadiness(factory, storage);
+        Assert.Equal(TopologyRepairInitializationStatus.Ready,
+            (await new TopologyPublicationRepairRunner(factory, storage, gate)
+                .InitializeAsync(TopologyRepairStartMode.Startup, Ct)).Status);
+        await using var db = await factory.CreateDbContextAsync(Ct);
+        Assert.Equal(1, await db.Database.ExecuteSqlRawAsync("""
+            UPDATE bizigo.topology_repair_state
+            SET phase='Repairing', certificate_digest=NULL, certificate_json=NULL,
+                certificate_member_set_id=NULL WHERE id=1
+            """, Ct));
+        await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE bizigo.topology_repair_state SET phase='Ready',
+                certificate_json=CAST({certificateJson} AS jsonb),
+                certificate_digest={new string('0', 64)} WHERE id=1
+            """, Ct));
+        Assert.Equal("Repairing", await db.Database.SqlQueryRaw<string>(
+            "SELECT phase AS \"Value\" FROM bizigo.topology_repair_state WHERE id=1")
+            .SingleAsync(Ct));
+    }
+
+    [Fact]
+    public async Task Frozen_format1_certificate_still_opens_ready_with_its_original_digest()
+    {
+        var factory = await DevStackSetup.ControlPlaneAsync(stack, Ct);
+        using var storage = await DevStackSetup.ClickHouseAsync(stack, Ct);
+        var gate = new TopologyObservedRepairReadiness(factory, storage);
+        Assert.Equal(TopologyRepairInitializationStatus.Ready,
+            (await new TopologyPublicationRepairRunner(factory, storage, gate)
+                .InitializeAsync(TopologyRepairStartMode.Startup, Ct)).Status);
+        await using var db = await factory.CreateDbContextAsync(Ct);
+        var certificateJson = await db.Database.SqlQueryRaw<string>(
+            "SELECT certificate_json::text AS \"Value\" FROM bizigo.topology_repair_state WHERE id=1")
+            .SingleAsync(Ct);
+        var current = JsonSerializer.Deserialize<TopologyRepairCertificateV2>(certificateJson);
+        Assert.NotNull(current);
+        var frozen = new TopologyRepairCertificate(1, current.Generation,
+            current.PostgresDatabaseIdentity, current.ClickHouseDatabaseUuid,
+            current.ReceiptPrefixSequence, current.ReceiptPrefixSha256,
+            current.PendingPublicationKey, current.PendingPayloadSha256,
+            current.ParentDecisionSha256, current.LifecycleSha256, current.Tables);
+        var frozenJson = JsonSerializer.Serialize(frozen);
+        var frozenDigest = TopologyObservedRepairReadiness.Digest(frozen);
+        Assert.Equal(1, await db.Database.ExecuteSqlRawAsync("""
+            UPDATE bizigo.topology_repair_state
+            SET phase='Repairing', certificate_digest=NULL, certificate_json=NULL,
+                certificate_member_set_id=NULL WHERE id=1
+            """, Ct));
+        Assert.Equal(1, await db.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE bizigo.topology_repair_state SET phase='Ready',
+                certificate_json=CAST({frozenJson} AS jsonb),
+                certificate_digest={frozenDigest} WHERE id=1
+            """, Ct));
+        Assert.Equal(current.Generation, (await gate.RequireReadyAsync(Ct)).Generation);
+    }
+
     [Fact]
     public async Task Null_state_binding_with_valid_format2_certificate_never_opens_ready()
     {

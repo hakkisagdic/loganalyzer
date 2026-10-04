@@ -241,8 +241,12 @@ public sealed class AddTopologyLegacyMembership : Migration
         DECLARE header record; actual bytea;
         BEGIN
             IF NEW.phase <> 'Ready' THEN RETURN NEW; END IF;
-            IF NEW.certificate_json ->> 'FormatVersion' IS DISTINCT FROM '2'
-            THEN RETURN NEW; END IF; -- Frozen format-1 certificates retain their old gate.
+            IF jsonb_typeof(NEW.certificate_json -> 'FormatVersion') = 'number'
+               AND NEW.certificate_json ->> 'FormatVersion' = '1'
+            THEN RETURN NEW; END IF; -- Only the frozen format-1 certificate retains its old gate.
+            IF jsonb_typeof(NEW.certificate_json -> 'FormatVersion') IS DISTINCT FROM 'number'
+               OR NEW.certificate_json ->> 'FormatVersion' IS DISTINCT FROM '2'
+            THEN RAISE EXCEPTION 'unsupported topology repair certificate format'; END IF;
             IF NOT pg_try_advisory_xact_lock(735032)
             THEN RAISE EXCEPTION 'topology repair publication lock is busy'; END IF;
             SELECT * INTO header FROM bizigo.topology_repair_member_sets
