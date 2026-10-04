@@ -150,7 +150,8 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests
     }
 
     private static TopologyPublicationRevisionSource Revisions(TelemetryDbFixture fixture) =>
-        new(fixture.Factory, new TopologyPublicationWatermarkReader(fixture.Storage));
+        new(fixture.Factory, new TopologyPublicationWatermarkReader(fixture.Storage),
+            new TopologyObservedRepairReadiness(fixture.Factory, fixture.Storage));
 
     private static TopologyPublicationFence Fence(TelemetryDbFixture fixture) => new(Revisions(fixture));
 

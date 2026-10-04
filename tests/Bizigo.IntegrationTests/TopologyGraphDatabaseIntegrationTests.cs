@@ -236,11 +236,9 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests(DevStackFixtur
     private static IEvidenceProvider Provider(string id, IScopedQuery query, TopologyProviderBudget budget,
         TelemetryDbFixture fixture) =>
         id == "topology.graph-path" ? new TopologyGraphPathProvider(query, budget,
-            new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
-                new TopologyPublicationWatermarkReader(fixture.Storage)))) :
+            Fence(fixture)) :
         new TopologyCommonAncestorProvider(query, budget,
-            new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
-                new TopologyPublicationWatermarkReader(fixture.Storage))));
+            Fence(fixture));
 
     private static LogEvent Degraded(string owner, string source, DateTimeOffset timestamp) => new()
     {
@@ -269,7 +267,8 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests(DevStackFixtur
     {
         var observed = Construct("Bizigo.Storage.ClickHouse.TopologyObservedSnapshotReader, Bizigo.Storage.ClickHouse", clickHouse);
         var watermark = Construct("Bizigo.Storage.ClickHouse.TopologyPublicationWatermarkReader, Bizigo.Storage.ClickHouse", clickHouse);
-        var revisions = Construct("Bizigo.Query.TopologyPublicationRevisionSource, Bizigo.Query", factory, watermark);
+        var readiness = Construct("Bizigo.Query.TopologyObservedRepairReadiness, Bizigo.Query", factory, clickHouse);
+        var revisions = Construct("Bizigo.Query.TopologyPublicationRevisionSource, Bizigo.Query", factory, watermark, readiness);
         var fence = Construct("Bizigo.Query.TopologyPublicationFence, Bizigo.Query", revisions);
         return (ITopologyGraphSnapshotSource)Construct("Bizigo.Query.TopologyGraphSnapshotSource, Bizigo.Query",
             factory, observed, fence);

@@ -19,10 +19,13 @@ public sealed class TopologyPublicationIntegrationTests(DevStackFixture stack)
         using var storage = await DevStackSetup.ClickHouseAsync(stack, Ct);
         var watermarkReader = new TopologyPublicationWatermarkReader(storage);
         var watermarkWriter = new TopologyPublicationWatermarkWriter(watermarkReader, storage);
-        var revisions = new TopologyPublicationRevisionSource(factory, watermarkReader);
+        var readiness = await InitializeReadyAsync(factory, storage);
+        var revisions = new TopologyPublicationRevisionSource(factory, watermarkReader, readiness);
         var publisher = new TopologyPublicationCoordinator(factory, watermarkReader, watermarkWriter);
 
-        Assert.Equal(new TopologyPublicationRevision(0, 0), await revisions.ReadAsync(Ct));
+        var initial = await revisions.ReadAsync(Ct);
+        Assert.Equal(0UL, initial.ClickHouseWatermark);
+        Assert.NotNull(initial.RepairStamp);
         ulong insertedSequence = 0;
         var published = await publisher.PublishAsync(new string('a', 64), async (sequence, token) =>
         {
@@ -35,7 +38,10 @@ public sealed class TopologyPublicationIntegrationTests(DevStackFixture stack)
 
         Assert.Equal(1UL, insertedSequence);
         Assert.Equal(1UL, published);
-        Assert.Equal(new TopologyPublicationRevision(1, 1), await revisions.ReadAsync(Ct));
+        var afterFirstPublication = await revisions.ReadAsync(Ct);
+        Assert.Equal(initial.PostgresEpoch + 1, afterFirstPublication.PostgresEpoch);
+        Assert.Equal(1UL, afterFirstPublication.ClickHouseWatermark);
+        Assert.Equal(initial.RepairStamp, afterFirstPublication.RepairStamp);
         Assert.Equal(1UL, await publisher.PublishAsync(new string('a', 64), (_, _) =>
             throw new InvalidOperationException("A committed identity must not replay its callback."), Ct));
 
@@ -54,7 +60,10 @@ public sealed class TopologyPublicationIntegrationTests(DevStackFixture stack)
             Assert.Equal(3UL, sequence);
             return Task.CompletedTask;
         }, Ct));
-        Assert.Equal(new TopologyPublicationRevision(3, 3), await revisions.ReadAsync(Ct));
+        var afterRecovery = await revisions.ReadAsync(Ct);
+        Assert.Equal(initial.PostgresEpoch + 3, afterRecovery.PostgresEpoch);
+        Assert.Equal(3UL, afterRecovery.ClickHouseWatermark);
+        Assert.Equal(initial.RepairStamp, afterRecovery.RepairStamp);
         Assert.Equal(1UL, await publisher.PublishAsync(new string('a', 64), (_, _) =>
             throw new InvalidOperationException("A late duplicate must retain its original receipt."), Ct));
     }
@@ -64,6 +73,7 @@ public sealed class TopologyPublicationIntegrationTests(DevStackFixture stack)
     {
         var factory = await DevStackSetup.ControlPlaneAsync(stack, Ct);
         using var storage = await DevStackSetup.ClickHouseAsync(stack, Ct);
+        await InitializeReadyAsync(factory, storage);
         var watermarkReader = new TopologyPublicationWatermarkReader(storage);
         var publisher = new TopologyPublicationCoordinator(factory, watermarkReader,
             new TopologyPublicationWatermarkWriter(watermarkReader, storage));
@@ -87,5 +97,15 @@ public sealed class TopologyPublicationIntegrationTests(DevStackFixture stack)
         }, Ct));
         Assert.Equal(1UL, await watermarkReader.ReadAsync(Ct));
         Assert.Null(await publisher.ReadPendingKeyAsync(Ct));
+    }
+
+    private static async Task<ITopologyObservedRepairReadiness> InitializeReadyAsync(
+        IDbContextFactory<ControlPlaneDbContext> factory, ClickHouseContext storage)
+    {
+        var initialized = await DevStackSetup.InitializeTopologyPublicationAsync(factory, storage, Ct);
+        Assert.Equal(TopologyRepairInitializationStatus.Ready, initialized.Status);
+        ITopologyObservedRepairReadiness readiness = new TopologyObservedRepairReadiness(factory, storage);
+        Assert.NotNull(await readiness.RequireReadyAsync(Ct));
+        return readiness;
     }
 }
