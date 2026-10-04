@@ -122,6 +122,44 @@ migrateCommand.SetAction(async (parse, cancellationToken) =>
 var schemaCommand = new Command("schema", "Depolama şeması işlemleri.");
 schemaCommand.Subcommands.Add(migrateCommand);
 
+// 0014 existing-data cutover is an explicit, quiesced operator workflow.
+// Neither option has a default drain assertion. `resume` revalidates the
+// generation-bound PG/CH identities and immutable manifest authority.
+var repairPgOption = new Option<string?>("--postgres")
+{ Description = "ControlPlane bağlantısı (yoksa BIZIGO_CONTROLPLANE)." };
+var repairChOption = new Option<string?>("--clickhouse")
+{ Description = "ClickHouse bağlantısı (yoksa BIZIGO_CLICKHOUSE)." };
+var repairSubjectOption = new Option<string>("--operator-subject")
+{ Description = "Eski yayıncıları durduran operatörün açık kimliği.", Required = true };
+var repairStatementOption = new Option<string>("--drain-statement")
+{ Description = "Eski yayıncıların onarım süresince duracağına dair açık beyan.", Required = true };
+var repairUntilOption = new Option<DateTimeOffset>("--valid-until")
+{ Description = "Beyanın UTC bitiş anı; sınırsız beyan kabul edilmez.", Required = true };
+var repairAttestCommand = new Command("attest", "Generation'a bağlı operatör drain beyanını kaydeder.");
+repairAttestCommand.Options.Add(repairSubjectOption);
+repairAttestCommand.Options.Add(repairStatementOption);
+repairAttestCommand.Options.Add(repairUntilOption);
+repairAttestCommand.Options.Add(repairPgOption);
+repairAttestCommand.Options.Add(repairChOption);
+repairAttestCommand.SetAction((parse, token) => TopologyRepairCommandHandlers.AttestAsync(
+    parse.GetValue(repairSubjectOption)!, parse.GetValue(repairStatementOption)!,
+    parse.GetValue(repairUntilOption), parse.GetValue(repairPgOption),
+    parse.GetValue(repairChOption), token));
+var repairResumeCommand = new Command("resume", "Doğrulanmış 0014 onarımını başlatır veya sürdürür.");
+var resumePgOption = new Option<string?>("--postgres")
+{ Description = "ControlPlane bağlantısı (yoksa BIZIGO_CONTROLPLANE)." };
+var resumeChOption = new Option<string?>("--clickhouse")
+{ Description = "ClickHouse bağlantısı (yoksa BIZIGO_CLICKHOUSE)." };
+repairResumeCommand.Options.Add(resumePgOption);
+repairResumeCommand.Options.Add(resumeChOption);
+repairResumeCommand.SetAction((parse, token) => TopologyRepairCommandHandlers.ResumeAsync(
+    parse.GetValue(resumePgOption), parse.GetValue(resumeChOption), token));
+var topologyRepairCommand = new Command("repair", "Observed publication sürüm onarımı.");
+topologyRepairCommand.Subcommands.Add(repairAttestCommand);
+topologyRepairCommand.Subcommands.Add(repairResumeCommand);
+var topologyCommand = new Command("topology", "Topology bakım işlemleri.");
+topologyCommand.Subcommands.Add(topologyRepairCommand);
+
 // ── fleet apply (S05) ───────────────────────────────────────────────────────
 // Uçtan uca harness kapsam eşlemesini ve kaynak envanterini ELLE SQL ile
 // kuruyordu; yani ekran görüntüsü koşumunun gördüğü envanter ürünün ürettiği
@@ -499,6 +537,7 @@ mcpCommand.Subcommands.Add(mcpServeCommand);
 var root = new RootCommand("bizigo — log analyzer CLI");
 root.Subcommands.Add(parserCommand);
 root.Subcommands.Add(schemaCommand);
+root.Subcommands.Add(topologyCommand);
 root.Subcommands.Add(fleetCommand);
 root.Subcommands.Add(seedCommand);
 root.Subcommands.Add(fieldsCommand);

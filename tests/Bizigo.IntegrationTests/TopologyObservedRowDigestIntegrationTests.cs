@@ -48,16 +48,13 @@ public sealed class TopologyObservedRowDigestIntegrationTests(DevStackFixture st
         using var connection = new ClickHouseConnection(fixture.Storage.Options.ConnectionString);
         await connection.OpenAsync(ct);
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT " + string.Join(", ", TopologyObservedRowDigest.FrozenColumns.Select(
-            (column, ordinal) => ordinal is >= 29 and <= 31 ? $"toJSONString({column})"
-                : ordinal == 38 ? "toInt64(toUnixTimestamp(ttl_at))" : column))
+        command.CommandText = "SELECT " + TopologyObservedRowHydration.SelectList
             + " FROM topology_edges_observed WHERE edge_id = '" + edge.EdgeId + "'"
             + " AND publication_seq = 1 LIMIT 2";
         await using var reader = await command.ExecuteReaderAsync(ct);
         Assert.True(await reader.ReadAsync(ct));
         Assert.Equal(TopologyObservedRowDigest.FrozenColumnCount, reader.FieldCount);
-        var hydrated = Enumerable.Range(0, reader.FieldCount)
-            .Select(ordinal => Hydrate(reader.GetValue(ordinal), ordinal)).ToArray();
+        var hydrated = TopologyObservedRowHydration.ReadValues(reader);
         Assert.False(await reader.ReadAsync(ct));
         Assert.Equal(expectedDigest, TopologyObservedRowDigest.Compute(hydrated));
 
@@ -67,20 +64,6 @@ public sealed class TopologyObservedRowDigestIntegrationTests(DevStackFixture st
         Assert.Equal(edge.EdgeId, hydrated[9]);
         Assert.Equal(edge.ParentOccurrences, Assert.IsType<string[]>(hydrated[29]));
         Assert.Equal(edge.ChildOccurrences, Assert.IsType<string[]>(hydrated[30]));
-    }
-
-    private static object? Hydrate(object value, int ordinal)
-    {
-        if (ordinal is 6 or 39) return checked((byte)Convert.ToInt32(value, CultureInfo.InvariantCulture));
-        if (ordinal == 8) return Convert.ToSingle(value, CultureInfo.InvariantCulture);
-        if (ordinal is >= 19 and <= 24) return Convert.ToInt64(value, CultureInfo.InvariantCulture);
-        if (ordinal is >= 25 and <= 28 or 37) return Convert.ToUInt64(value, CultureInfo.InvariantCulture);
-        if (ordinal is >= 29 and <= 31)
-            return JsonSerializer.Deserialize<string[]>(Assert.IsType<string>(value))
-                ?? throw new InvalidDataException("ClickHouse returned a null occurrence vector.");
-        if (ordinal is >= 32 and <= 35) return Convert.ToDecimal(value, CultureInfo.InvariantCulture);
-        if (ordinal == 38) return Convert.ToInt64(value, CultureInfo.InvariantCulture);
-        return Assert.IsType<string>(value);
     }
 
     private static TelemetryRecord Span(Guid envelopeId, string leaf, string spanId, string parentSpanId,

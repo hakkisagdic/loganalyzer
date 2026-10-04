@@ -69,6 +69,11 @@ public sealed class TopologyPublicationCoordinator(
     private async Task<ulong> PublishLockedAsync(ControlPlaneDbContext db, string key,
         Func<ulong, CancellationToken, Task> writeProjection, CancellationToken cancellationToken)
     {
+        // The repair runner takes this same advisory lock and persists
+        // Repairing before copying or swapping any ClickHouse table. Checking
+        // its durable phase *inside* the lock prevents a queued publisher from
+        // resuming after a crashed repair process releases its session lock.
+        await RequireReadyRepairPhaseAsync(db.Database.GetDbConnection(), cancellationToken);
         var committed = await watermarkReader.ReadAsync(cancellationToken);
         var state = await db.TopologyReadState.AsNoTracking().Where(s => s.Id == 1)
             .Select(s => s.PublishedSequence).SingleOrDefaultAsync(cancellationToken);
@@ -163,6 +168,18 @@ public sealed class TopologyPublicationCoordinator(
         if (await reader.ReadAsync(cancellationToken))
             throw new InvalidDataException("Ambiguous pending topology publication.");
         return result;
+    }
+
+    private static async Task RequireReadyRepairPhaseAsync(DbConnection connection,
+        CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT phase FROM bizigo.topology_repair_state WHERE id = 1";
+        object? phase;
+        try { phase = await command.ExecuteScalarAsync(cancellationToken); }
+        catch (DbException) { throw new TopologyObservedRepairUnavailableException(); }
+        if (!string.Equals(phase as string, "Ready", StringComparison.Ordinal))
+            throw new TopologyObservedRepairUnavailableException();
     }
 
     private static async Task<ulong?> ReadReceiptAsync(DbConnection connection, string key,

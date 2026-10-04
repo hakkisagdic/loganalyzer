@@ -1,4 +1,3 @@
-using System.Data.Common;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -22,6 +21,9 @@ public sealed class NoTopologyProjectionCheckpoints : ITopologyProjectionCheckpo
 {
     public Task ReachAsync(string stage, CancellationToken cancellationToken) => Task.CompletedTask;
 }
+
+public sealed record TopologyVerifiedManifest(TopologyProjectionBatch Batch,
+    string PayloadSha256, string RowsetSha256);
 
 /// <summary>
 /// Re-reads durable typed trace rows after each raw insert, so child-first and
@@ -48,15 +50,65 @@ public sealed class TopologyObservedProjector(
         "parent_trace_expiry", "child_trace_expiry", "observed_expiry", "expires_nano",
         "fingerprint", "publication_seq", "ttl_at", "ttl_supported",
     ];
+    private static readonly string[] PhysicalEdgeColumns = [.. EdgeColumns, "physical_row_sha256"];
+    private static readonly string[] LifecycleColumns =
+    [
+        "child_owner_group", "parent_owner_group", "from_node_id", "to_node_id",
+        "first_seen", "last_seen", "parent_event_time_nano", "child_event_time_nano",
+        "edge_id", "publication_seq", "expires_nano", "physical_row_sha256",
+    ];
     private static readonly string[] ConflictColumns =
         ["semantic_anchor", "first_fingerprint", "conflicting_fingerprint", "candidate_context_json", "publication_seq"];
     private static readonly string[] LegacyConflictColumns =
         ["semantic_anchor", "first_fingerprint", "conflicting_fingerprint", "publication_seq"];
+    private static readonly string[] ParentResolutionColumns =
+        ["child_anchor", "child_fingerprint", "reason", "captured_context_json", "publication_seq"];
     private static readonly string[] ManifestColumns =
         ["publication_key", "payload_sha256", "rowset_sha256", "edge_count", "conflict_count", "payload_json"];
 
     private sealed record Manifest(TopologyProjectionBatch Batch, string Payload, string PayloadHash,
         string RowsetHash, uint EdgeCount, uint ConflictCount);
+
+    // Exact frozen v2 conflict context layout for immutable pending manifests.
+    private sealed record ConflictCandidateV2(string Fingerprint, string OwnerGroup, string SourceId,
+        string? NodeId, ulong EventTimeNano, decimal TraceExpiryNano, decimal ObservedExpiryNano,
+        string ParentAnchor, bool IsConflictedAnchor);
+
+    // Repair may only reconstruct from the same immutable manifest verifier
+    // and physical row mapping as normal projector replay. These narrow
+    // internal seams do not alter frozen EdgeColumns or RowsetHash inputs.
+    internal static IReadOnlyList<string> FrozenEdgeColumns => EdgeColumns;
+    internal static IReadOnlyList<string> DerivedPhysicalEdgeColumns => PhysicalEdgeColumns;
+    internal static IReadOnlyList<string> EdgeLifecycleColumns => LifecycleColumns;
+    internal static IReadOnlyList<string> FrozenConflictColumns => ConflictColumns;
+    public static object[] ReconstructEdgeRow(TopologyObservedEvent edge, ulong sequence) => EdgeRow(edge, sequence);
+    internal static object[] ReconstructLifecycleRow(object[] frozenEdgeRow, string physicalDigest) =>
+    [
+        frozenEdgeRow[1], frozenEdgeRow[2], frozenEdgeRow[3], frozenEdgeRow[4],
+        frozenEdgeRow[27], frozenEdgeRow[28], frozenEdgeRow[25], frozenEdgeRow[26],
+        frozenEdgeRow[9], frozenEdgeRow[37], frozenEdgeRow[35], physicalDigest,
+    ];
+    internal static object[] ReconstructConflictRow(TopologySpanConflict conflict, ulong sequence) =>
+        ConflictRow(conflict, sequence, conflict.Candidates.Count == 0);
+    internal static bool HasAttributedConflict(TopologySpanConflict conflict) =>
+        conflict.Candidates.Count != 0 && conflict.Candidates.All(candidate =>
+            candidate.ContextVersion == 3
+            && candidate.Anchor.Length == 64
+            && candidate.Anchor.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f')
+            && !string.IsNullOrWhiteSpace(candidate.ResolutionReason)
+            && !string.IsNullOrWhiteSpace(candidate.SourceId)
+            && !string.IsNullOrWhiteSpace(candidate.OwnerGroup));
+    internal static object[] ReconstructParentResolutionRow(TopologyParentResolution decision, ulong sequence) =>
+        ParentResolutionRow(decision, sequence);
+
+    public static async Task<TopologyVerifiedManifest?> LoadVerifiedManifestBatchAsync(ClickHouseContext storage,
+        string key, CancellationToken cancellationToken)
+    {
+        var verifier = new TopologyObservedProjector(storage,
+            static (_, _, _) => throw new NotSupportedException("A repair verifier cannot publish."));
+        var manifest = await verifier.ReadManifestAsync(key, cancellationToken);
+        return manifest is null ? null : new(manifest.Batch, manifest.PayloadHash, manifest.RowsetHash);
+    }
 
     public async Task ProjectAsync(IReadOnlyList<TelemetryRecord> records, CancellationToken cancellationToken)
     {
@@ -78,7 +130,8 @@ public sealed class TopologyObservedProjector(
         {
             var persisted = await ReadTraceAsync(traceId, cancellationToken);
             var batch = TopologyObservation.Reduce(persisted);
-            if (batch.Edges.Count == 0 && batch.Conflicts.Count == 0) continue;
+            if (batch.Edges.Count == 0 && batch.Conflicts.Count == 0
+                && batch.ParentResolutions.Count == 0) continue;
             await RejectLegacyConflictOverwriteAsync(batch.Conflicts, cancellationToken);
             var manifest = await EnsureManifestAsync(batch, cancellationToken);
             await PublishManifestAsync(manifest, cancellationToken);
@@ -94,12 +147,19 @@ public sealed class TopologyObservedProjector(
         foreach (var conflict in conflicts)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = "SELECT count() FROM topology_span_conflicts "
-                + "WHERE semantic_anchor = {anchor:String} AND candidate_context_json = ''";
+            command.CommandText = "SELECT candidate_context_json FROM topology_span_conflicts "
+                + "WHERE semantic_anchor = {anchor:String}";
             command.AddParameter("anchor", conflict.Anchor);
             command.CommandTimeout = Math.Clamp(context.Options.QueryTimeoutSeconds, 1, 300);
-            if (Convert.ToUInt64(await command.ExecuteScalarAsync(token), CultureInfo.InvariantCulture) != 0)
-                throw new InvalidDataException("Legacy topology conflict requires explicit attribution repair before republishing.");
+            await using var reader = await command.ExecuteReaderAsync(token);
+            while (await reader.ReadAsync(token))
+            {
+                var captured = reader.GetString(0);
+                var candidates = captured.Length == 0 ? null :
+                    JsonSerializer.Deserialize<TopologyConflictCandidate[]>(captured, RawSignalCodec.Json);
+                if (candidates is null || !HasAttributedConflict(conflict with { Candidates = candidates }))
+                    throw new InvalidDataException("Legacy topology conflict requires explicit attribution repair before republishing.");
+            }
         }
     }
 
@@ -113,22 +173,51 @@ public sealed class TopologyObservedProjector(
         await publish(manifest.Batch.PublicationKey, async (sequence, token) =>
         {
             var batch = manifest.Batch;
+            if (batch.ProjectionVersion < 4)
+                throw new InvalidDataException("A pre-v4 publication lacks authoritative parent-resolution decisions.");
             if (batch.Edges.Count != 0)
             {
-                var rows = batch.Edges.Select(e => EdgeRow(e, sequence)).ToArray();
-                var written = await context.Client.InsertBinaryAsync("topology_edges_observed", EdgeColumns, rows,
+                var frozenRows = batch.Edges.Select(e => EdgeRow(e, sequence)).ToArray();
+                var hashes = frozenRows.Select(TopologyObservedRowDigest.Compute).ToArray();
+                var rows = frozenRows.Select((row, index) =>
+                {
+                    object[] physical = [.. row, hashes[index]];
+                    return physical;
+                }).ToArray();
+                var written = await context.Client.InsertBinaryAsync("topology_edges_observed", PhysicalEdgeColumns, rows,
                     new InsertOptions { BatchSize = context.Options.BulkBatchSize, MaxDegreeOfParallelism = 1 }, token);
                 if (written != rows.Length) throw new IOException("Incomplete observed topology insert.");
+                var lifecycleRows = frozenRows.Select((row, index) => ReconstructLifecycleRow(row, hashes[index]))
+                    .ToArray();
+                written = await context.Client.InsertBinaryAsync("topology_edge_lifecycle", LifecycleColumns,
+                    lifecycleRows, new InsertOptions
+                    { BatchSize = context.Options.BulkBatchSize, MaxDegreeOfParallelism = 1 }, token);
+                if (written != lifecycleRows.Length) throw new IOException("Incomplete topology lifecycle insert.");
             }
             if (batch.Conflicts.Count != 0)
             {
                 var legacy = batch.Conflicts.All(static conflict => conflict.Candidates.Count == 0);
+                if (legacy || batch.Conflicts.Any(conflict => !HasAttributedConflict(conflict)))
+                    throw new InvalidDataException("Unattributed legacy conflict cannot be republished.");
                 var rows = batch.Conflicts.Select(c => ConflictRow(c, sequence, legacy)).ToArray();
                 var written = await context.Client.InsertBinaryAsync("topology_span_conflicts",
                     legacy ? LegacyConflictColumns : ConflictColumns, rows,
                     new InsertOptions { BatchSize = context.Options.BulkBatchSize, MaxDegreeOfParallelism = 1 }, token);
                 if (written != rows.Length) throw new IOException("Incomplete topology conflict insert.");
             }
+            if (batch.ProjectionVersion >= 4 && batch.ParentResolutions.Count != 0)
+            {
+                var rows = batch.ParentResolutions.Select(item => ParentResolutionRow(item, sequence)).ToArray();
+                var written = await context.Client.InsertBinaryAsync("topology_parent_resolution",
+                    ParentResolutionColumns, rows,
+                    new InsertOptions { BatchSize = context.Options.BulkBatchSize, MaxDegreeOfParallelism = 1 }, token);
+                if (written != rows.Length) throw new IOException("Incomplete parent-resolution insert.");
+            }
+            // The immutable manifest, every physical proof, non-TTL lifecycle
+            // decision, conflict variant, and parent state are re-read before
+            // the PG receipt and CH watermark may advance.
+            await new TopologyPublicationRepairStorage(context)
+                .VerifyCanonicalBatchAsync(batch, sequence, token);
             await (checkpoints ?? new NoTopologyProjectionCheckpoints())
                 .ReachAsync("after-observed-db-before-publish", token);
         }, cancellationToken);
@@ -173,13 +262,23 @@ public sealed class TopologyObservedProjector(
     {
         var legacy = legacyFormat || batch.Conflicts.Count != 0
             && batch.Conflicts.All(static conflict => conflict.Candidates.Count == 0);
-        var rows = JsonSerializer.SerializeToUtf8Bytes(new
-        {
-            EdgeColumns,
-            Edges = batch.Edges.Select(e => EdgeRow(e, 0)).ToArray(),
-            ConflictColumns = legacy ? LegacyConflictColumns : ConflictColumns,
-            Conflicts = batch.Conflicts.Select(c => ConflictRow(c, 0, legacy)).ToArray(),
-        }, RawSignalCodec.Json);
+        var rows = batch.ProjectionVersion >= 4
+            ? JsonSerializer.SerializeToUtf8Bytes(new
+            {
+                EdgeColumns,
+                Edges = batch.Edges.Select(e => EdgeRow(e, 0)).ToArray(),
+                ConflictColumns = legacy ? LegacyConflictColumns : ConflictColumns,
+                Conflicts = batch.Conflicts.Select(c => ConflictRow(c, 0, legacy)).ToArray(),
+                ParentResolutionColumns,
+                ParentResolutions = batch.ParentResolutions.Select(item => ParentResolutionRow(item, 0)).ToArray(),
+            }, RawSignalCodec.Json)
+            : JsonSerializer.SerializeToUtf8Bytes(new
+            {
+                EdgeColumns,
+                Edges = batch.Edges.Select(e => EdgeRow(e, 0)).ToArray(),
+                ConflictColumns = legacy ? LegacyConflictColumns : ConflictColumns,
+                Conflicts = batch.Conflicts.Select(c => ConflictRow(c, 0, legacy)).ToArray(),
+            }, RawSignalCodec.Json);
         return RawSignalEnvelope.Hash(rows);
     }
 
@@ -278,7 +377,21 @@ public sealed class TopologyObservedProjector(
         if (legacy) return [conflict.Anchor, conflict.FirstFingerprint, conflict.ConflictingFingerprint, sequence];
         if (conflict.Candidates.Count == 0)
             throw new InvalidDataException("A topology conflict needs admission-captured candidate context.");
+        var version = conflict.Candidates[0].ContextVersion;
+        if (conflict.Candidates.Any(candidate => candidate.ContextVersion != version)
+            || version is not (0 or 3))
+            throw new InvalidDataException("Mixed or unknown topology conflict context version.");
+        var context = version == 0
+            ? JsonSerializer.Serialize(conflict.Candidates.Select(candidate => new ConflictCandidateV2(
+                candidate.Fingerprint, candidate.OwnerGroup, candidate.SourceId, candidate.NodeId,
+                candidate.EventTimeNano, candidate.TraceExpiryNano, candidate.ObservedExpiryNano,
+                candidate.ParentAnchor, candidate.IsConflictedAnchor)).ToArray(), RawSignalCodec.Json)
+            : JsonSerializer.Serialize(conflict.Candidates, RawSignalCodec.Json);
         return [conflict.Anchor, conflict.FirstFingerprint, conflict.ConflictingFingerprint,
-            JsonSerializer.Serialize(conflict.Candidates, RawSignalCodec.Json), sequence];
+            context, sequence];
     }
+
+    private static object[] ParentResolutionRow(TopologyParentResolution item, ulong sequence) =>
+        [item.ChildAnchor, item.ChildFingerprint, item.Reason,
+            JsonSerializer.Serialize(item, RawSignalCodec.Json), sequence];
 }
