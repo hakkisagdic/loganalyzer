@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Bizigo.Contracts;
 using Bizigo.Query;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Bizigo.Api;
 
@@ -26,40 +27,61 @@ public static partial class TopologyReadEndpoints
             .Produces(401).Produces(403);
 
         var nodes = group.MapGet("/nodes", (HttpContext http, IScopedQuery query, ICurrentUser user,
-            TopologyPublicationFence fence, TopologyReadCursorCodec cursors) => HandleAsync(http, query, user.Scope, fence, cursors, "nodes"));
+            TopologyPublicationFence fence, TopologyReadCursorCodec cursors, ITopologyExpiryNanoClock clock) =>
+            HandleAsync(http, query, user.Scope, fence, cursors, clock, "nodes"));
         Errors(nodes); nodes.WithName("ListTopologyNodes").Produces<TopologyNodePageDto>();
 
         var node = group.MapGet("/nodes/{nodeId}", (string nodeId, HttpContext http, IScopedQuery query,
-            ICurrentUser user, TopologyPublicationFence fence, TopologyReadCursorCodec cursors) =>
-            HandleAsync(http, query, user.Scope, fence, cursors, "node", nodeId));
+            ICurrentUser user, TopologyPublicationFence fence, TopologyReadCursorCodec cursors,
+            ITopologyExpiryNanoClock clock) =>
+            HandleAsync(http, query, user.Scope, fence, cursors, clock, "node", nodeId));
         Errors(node); node.WithName("GetTopologyNode").Produces<TopologyNodeDetailDto>().Produces(404);
 
         var edges = group.MapGet("/edges", (HttpContext http, IScopedQuery query, ICurrentUser user,
-            TopologyPublicationFence fence, TopologyReadCursorCodec cursors) => HandleAsync(http, query, user.Scope, fence, cursors, "edges"));
+            TopologyPublicationFence fence, TopologyReadCursorCodec cursors, ITopologyExpiryNanoClock clock) =>
+            HandleAsync(http, query, user.Scope, fence, cursors, clock, "edges"));
         Errors(edges); edges.WithName("ListTopologyEdges").Produces<TopologyEdgePageDto>();
 
-        var edge = group.MapGet("/edges/{edgeId}", (string edgeId, HttpContext http, IScopedQuery query,
-            ICurrentUser user, TopologyPublicationFence fence, TopologyReadCursorCodec cursors) =>
-            HandleAsync(http, query, user.Scope, fence, cursors, "edge", edgeId));
+        var edge = group.MapGet("/edges/{edgeId}", (string edgeId,
+            [FromQuery(Name = "from")] string? from, [FromQuery(Name = "to")] string? to,
+            HttpContext http, IScopedQuery query, ICurrentUser user,
+            TopologyPublicationFence fence, TopologyReadCursorCodec cursors,
+            ITopologyExpiryNanoClock clock) =>
+            HandleEdgeAsync(http, query, user.Scope, fence, cursors, clock, edgeId, from, to));
         Errors(edge); edge.WithName("GetTopologyEdge").Produces<TopologyEdgeDetailDto>().Produces(404);
 
         var neighbors = group.MapGet("/nodes/{nodeId}/neighbors", (string nodeId, HttpContext http, IScopedQuery query,
-            ICurrentUser user, TopologyPublicationFence fence, TopologyReadCursorCodec cursors) =>
-            HandleAsync(http, query, user.Scope, fence, cursors, "neighbors", nodeId));
+            ICurrentUser user, TopologyPublicationFence fence, TopologyReadCursorCodec cursors,
+            ITopologyExpiryNanoClock clock) =>
+            HandleAsync(http, query, user.Scope, fence, cursors, clock, "neighbors", nodeId));
         Errors(neighbors); neighbors.WithName("GetTopologyNeighbors").Produces<TopologyNeighborhoodDto>().Produces(404);
 
         var path = group.MapGet("/path", (HttpContext http, IScopedQuery query, ICurrentUser user,
-            TopologyPublicationFence fence, TopologyReadCursorCodec cursors) => HandleAsync(http, query, user.Scope, fence, cursors, "path"));
+            TopologyPublicationFence fence, TopologyReadCursorCodec cursors, ITopologyExpiryNanoClock clock) =>
+            HandleAsync(http, query, user.Scope, fence, cursors, clock, "path"));
         Errors(path); path.WithName("GetTopologyPath").Produces<TopologyPathDto>().Produces(404);
 
         var ancestors = group.MapGet("/ancestors", (HttpContext http, IScopedQuery query, ICurrentUser user,
-            TopologyPublicationFence fence, TopologyReadCursorCodec cursors) => HandleAsync(http, query, user.Scope, fence, cursors, "ancestors"));
+            TopologyPublicationFence fence, TopologyReadCursorCodec cursors, ITopologyExpiryNanoClock clock) =>
+            HandleAsync(http, query, user.Scope, fence, cursors, clock, "ancestors"));
         Errors(ancestors); ancestors.WithName("GetTopologyAncestors").Produces<TopologyAncestorsDto>().Produces(404);
         return routes;
     }
 
+    private static Task<IResult> HandleEdgeAsync(HttpContext http, IScopedQuery query, AccessScope scope,
+        TopologyPublicationFence fence, TopologyReadCursorCodec cursors, ITopologyExpiryNanoClock clock, string edgeId,
+        string? from, string? to)
+    {
+        // These typed parameters expose the optional pair in OpenAPI; Parse
+        // remains the strict source of truth for duplicates, UTC nanos and
+        // cursor-bound windows.
+        if ((from is null) != (to is null)) return Task.FromResult(Problem(400, "InvalidQuery"));
+        return HandleAsync(http, query, scope, fence, cursors, clock, "edge", edgeId);
+    }
+
     private static async Task<IResult> HandleAsync(HttpContext http, IScopedQuery query, AccessScope scope,
-        TopologyPublicationFence fence, TopologyReadCursorCodec cursors, string route, string? routeId = null)
+        TopologyPublicationFence fence, TopologyReadCursorCodec cursors, ITopologyExpiryNanoClock clock,
+        string route, string? routeId = null)
     {
         if (scope.IsEmpty) return Results.Forbid();
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(http.RequestAborted);
@@ -68,7 +90,7 @@ public static partial class TopologyReadEndpoints
         {
             return await fence.ExecuteAsync(async (revision, token) =>
             {
-                var request = Parse(http.Request.Query, route, routeId, scope, revision, cursors);
+                var request = Parse(http.Request.Query, route, routeId, scope, revision, cursors, clock);
                 switch (route)
                 {
                     case "nodes":
@@ -79,7 +101,7 @@ public static partial class TopologyReadEndpoints
                                 request.Cursor, request.Kind), scope, token);
                             EnsurePublished(page.PublishedSequence, revision);
                             return new TopologyNodePageDto(page.Items.Select(Node).ToArray(),
-                                Wrap(page.Cursor, route, routeId, scope, revision, request, cursors, null),
+                                Wrap(page.Cursor, route, routeId, scope, revision, request, cursors, clock, null),
                                 page.Cursor is not null, null, Number(page.PublishedSequence));
                         }, WireOptions);
                         return Json(body);
@@ -97,7 +119,7 @@ public static partial class TopologyReadEndpoints
                                 request.Cursor, request.Relation, request.Provenance, request.FromNano, request.ToNano), scope, token);
                             EnsurePublished(page.PublishedSequence, revision);
                             return new TopologyEdgePageDto(page.Items.Select(Edge).ToArray(),
-                                Wrap(page.Cursor, route, routeId, scope, revision, request, cursors,
+                                Wrap(page.Cursor, route, routeId, scope, revision, request, cursors, clock,
                                     page.EarliestEvidenceExpiryUnixNano),
                                 page.Cursor is not null, null, Number(page.PublishedSequence));
                         }, WireOptions);
@@ -107,13 +129,17 @@ public static partial class TopologyReadEndpoints
                     {
                         var body = await TopologyResponseBudget.FitPageAsync(request.Limit, async size =>
                         {
-                            var found = await query.GetTopologyEdgeAsync(RequiredId(routeId), request.AsOfNano, scope,
-                                request.Cursor, size, token);
+                            var edgeId = RequiredId(routeId);
+                            var found = request.FromNano is decimal from && request.ToNano is decimal to
+                                ? await query.GetTopologyEdgeAsync(edgeId, request.AsOfNano, from, to, scope,
+                                    request.Cursor, size, token)
+                                : await query.GetTopologyEdgeAsync(edgeId, request.AsOfNano, scope,
+                                    request.Cursor, size, token);
                             if (found is null) return null;
                             return new TopologyEdgeDetailDto(Edge(found.Edge),
                                 found.Evidence.Select(Evidence).ToArray(),
-                                Wrap(found.EvidenceCursor, route, routeId, scope, revision, request, cursors,
-                                    found.Edge.EffectiveExpiry));
+                                Wrap(found.EvidenceCursor, route, routeId, scope, revision, request, cursors, clock,
+                                    TopologyReadCursorCodec.EvidenceExpiry(found.Edge)));
                         }, WireOptions);
                         return body is null ? Results.NotFound() : Json(body);
                     }
@@ -131,7 +157,7 @@ public static partial class TopologyReadEndpoints
                                 n.NodeId, n.EdgeId, RelationWire(n.Relation), ProvenanceWire(n.Provenance),
                                 n.Direction == TopologyNeighborDirection.Incoming ? "incoming" : "outgoing")).ToArray(),
                                 result.ExternalNeighborCount?.ToString(CultureInfo.InvariantCulture), result.ExternalNeighborReason,
-                                Wrap(result.Cursor, route, routeId, scope, revision, request, cursors,
+                                Wrap(result.Cursor, route, routeId, scope, revision, request, cursors, clock,
                                     result.EarliestEvidenceExpiryUnixNano),
                                 result.Cursor is not null, result.ExternalNeighborReason, Number(result.PublishedSequence));
                         }, WireOptions);
@@ -148,8 +174,9 @@ public static partial class TopologyReadEndpoints
                             request.Limit, request.Cursor, request.FromNano, request.ToNano), scope, token);
                         EnsurePublished(result.PublishedSequence, revision);
                         return Json(new TopologyPathDto(result.Status.ToString(), result.Nodes, result.EdgeIds,
-                            Wrap(result.Cursor, route, routeId, scope, revision, request, cursors,
-                                result.EarliestEvidenceExpiryUnixNano),
+                            Wrap(result.Cursor, route, routeId, scope, revision, request, cursors, clock,
+                                TopologyReadCursorCodec.EarliestExpiry(result.EarliestEvidenceExpiryUnixNano,
+                                    result.EarliestEligibleExpiryUnixNano)),
                             result.Cursor is not null, result.Reason, Number(result.PublishedSequence)));
                     }
                     case "ancestors":
@@ -161,6 +188,9 @@ public static partial class TopologyReadEndpoints
                                 request.FromNano, request.ToNano),
                             scope, token);
                         EnsurePublished(result.PublishedSequence, revision);
+                        EnsureEvidenceCurrent(TopologyReadCursorCodec.EarliestExpiry(
+                            result.EarliestEvidenceExpiryUnixNano, result.EarliestEligibleExpiryUnixNano),
+                            clock.NowUnixNano());
                         return Json(new TopologyAncestorsDto(result.Status.ToString(), result.NodeId,
                             result.Paths.Select(p => new TopologyPathProofDto(p.TargetNodeId, p.Nodes, p.EdgeIds)).ToArray(),
                             result.Status == TopologyGraphResultStatus.NotVerified, result.Reason,
@@ -196,10 +226,13 @@ public static partial class TopologyReadEndpoints
 
     private static string? Wrap(string? inner, string route, string? routeId, AccessScope scope,
         TopologyPublicationRevision revision, ReadRequest request, TopologyReadCursorCodec cursors,
+        ITopologyExpiryNanoClock clock,
         decimal? earliestEvidenceExpiry)
     {
+        var now = clock.NowUnixNano();
+        EnsureEvidenceCurrent(earliestEvidenceExpiry, now);
         if (inner is null) return null;
-        var normalExpiry = checked(NowNano() + 300_000_000_000m);
+        var normalExpiry = checked(now + 300_000_000_000m);
         var validUntil = earliestEvidenceExpiry is decimal evidenceExpiry
             ? Math.Min(normalExpiry, evidenceExpiry) : normalExpiry;
         return cursors.Encode(new TopologyReadCursorState(route,
@@ -209,6 +242,12 @@ public static partial class TopologyReadEndpoints
             request.Relation is null ? null : RelationWire(request.Relation.Value),
             request.Provenance is null ? null : ProvenanceWire(request.Provenance.Value),
             request.FromNode, request.ToNode, request.Targets, request.FromNano, request.ToNano));
+    }
+
+    private static void EnsureEvidenceCurrent(decimal? expiry, decimal now)
+    {
+        if (expiry is decimal deadline && now >= deadline)
+            throw new TopologyRestartRequiredException("Topology evidence expired while building the response.");
     }
     private static string RequiredId(string? id) => !string.IsNullOrWhiteSpace(id) && !id.Contains(',', StringComparison.Ordinal)
         ? id : throw new ArgumentException("Missing or invalid topology node/edge ID.");
@@ -230,8 +269,9 @@ public static partial class TopologyReadEndpoints
         IReadOnlyList<string> Targets, decimal? FromNano, decimal? ToNano);
 
     private static ReadRequest Parse(IQueryCollection input, string route, string? routeId, AccessScope scope,
-        TopologyPublicationRevision revision, TopologyReadCursorCodec cursors)
+        TopologyPublicationRevision revision, TopologyReadCursorCodec cursors, ITopologyExpiryNanoClock clock)
     {
+        var now = clock.NowUnixNano();
         var allowed = new HashSet<string>(["asOf"], StringComparer.Ordinal);
         if (route is "nodes" or "edges" or "neighbors" or "path") allowed.UnionWith(["limit", "cursor"]);
         if (route == "edge") allowed.UnionWith(["evidenceCursor", "evidencePageSize"]);
@@ -240,7 +280,7 @@ public static partial class TopologyReadEndpoints
         if (route == "edges") allowed.Add("provenance");
         if (route == "path") allowed.UnionWith(["fromNode", "toNode"]);
         if (route == "ancestors") allowed.Add("nodeId");
-        if (route is "edges" or "neighbors" or "path" or "ancestors") allowed.UnionWith(["from", "to"]);
+        if (route is "edge" or "edges" or "neighbors" or "path" or "ancestors") allowed.UnionWith(["from", "to"]);
         if (input.Any(p => !allowed.Contains(p.Key) || (p.Key != "nodeId" && p.Value.Count != 1)))
             throw new ArgumentException("Unknown or repeated topology query parameter.");
 
@@ -252,7 +292,7 @@ public static partial class TopologyReadEndpoints
         {
             TopologyReadCursorCodec.EnsureBound(state, route, routeId, scope);
             TopologyCursorFence.EnsureCurrent(new(state.PostgresEpoch, state.ClickHouseWatermark,
-                DateTimeOffset.MaxValue) { ExactValidUntilUnixNano = state.ValidUntilUnixNano }, revision, NowNano());
+                DateTimeOffset.MaxValue) { ExactValidUntilUnixNano = state.ValidUntilUnixNano }, revision, now);
         }
 
         string? Bound(string key, string? stored)
@@ -263,9 +303,9 @@ public static partial class TopologyReadEndpoints
             return supplied ?? stored;
         }
 
-        var asOf = Get("asOf") is string supplied ? ParseUtcNano(supplied) : state?.AsOfUnixNano ?? NowNano();
+        var asOf = Get("asOf") is string supplied ? ParseUtcNano(supplied) : state?.AsOfUnixNano ?? now;
         if (state is not null && asOf != state.AsOfUnixNano) throw new TopologyCursorWireException();
-        if (asOf > NowNano()) throw new ArgumentException("Future asOf is not allowed.");
+        if (asOf > now) throw new ArgumentException("Future asOf is not allowed.");
         var hasFrom = Get("from") is string;
         var hasTo = Get("to") is string;
         if (hasFrom != hasTo) throw new ArgumentException("Topology from and to must be supplied together.");
@@ -361,6 +401,4 @@ public static partial class TopologyReadEndpoints
             + (fractional.Length == 0 ? 0m : decimal.Parse(fractional.PadRight(9, '0'), CultureInfo.InvariantCulture)));
     }
 
-    private static decimal NowNano() => checked((decimal)DateTimeOffset.UtcNow.Ticks * 100m
-        - 62135596800000000000m);
 }

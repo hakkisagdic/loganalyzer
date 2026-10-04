@@ -4,6 +4,7 @@
     <!-- Private restart probe dispatches after CLR module initialization;
          ordinary invocations retain the generated xUnit entry point. -->
     <StartupObject>Bizigo.IntegrationTests.IntegrationTestEntryPoint</StartupObject>
+    <InterceptorsNamespaces>$(InterceptorsNamespaces);Microsoft.AspNetCore.OpenApi.Generated</InterceptorsNamespaces>
   </PropertyGroup>
 
   <ItemGroup>

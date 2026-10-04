@@ -19,7 +19,10 @@ public sealed partial class ScopedQuery(
     ControlPlaneDbContext controlPlane,
     IAuditSink audit,
     TelemetryReader? telemetry = null,
-    TopologyGraphQueryService? topology = null) : IScopedQuery
+    TopologyGraphQueryService? topology = null,
+    TimeProvider? topologyClock = null,
+    ITopologyExpiryNanoClock? expiryNanoClock = null,
+    TopologySourceTargetPageReader? sourceTargetPages = null) : IScopedQuery
 {
     public async Task<IReadOnlyList<SourceSummary>> SearchSourcesAsync(
         AccessScope scope,
@@ -56,6 +59,8 @@ public sealed partial class ScopedQuery(
     private readonly ChangeEventReader _changes = changes ?? throw new ArgumentNullException(nameof(changes));
     private readonly EventWriter _writer = writer ?? throw new ArgumentNullException(nameof(writer));
     private readonly IAuditSink _audit = audit ?? throw new ArgumentNullException(nameof(audit));
+    private readonly ITopologyExpiryNanoClock _topologyExpiryClock = expiryNanoClock
+        ?? new TimeProviderTopologyExpiryNanoClock(topologyClock ?? TimeProvider.System);
 
     public async Task WriteChangeAsync(
         ChangeEvent change,

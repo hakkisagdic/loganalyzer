@@ -37,6 +37,11 @@ public sealed class SignalIngest : IDisposable
     private long acceptedBatches, acceptedLeaves, rejectedFull, rejectedInvalid;
     private volatile bool ready;
     private string? lastFailure;
+    // Archive integrity is separate from transient operational failures. Only a
+    // complete successful archive verification/replay clears this latch, never
+    // successful processing of an unrelated queued envelope. Recovery verifies
+    // the archive before opening admission, including in a new process.
+    private string? archiveIntegrityFailure;
 
     public SignalIngest(OtlpTelemetryDecoder decoder, SourceDirectory sources, IRawObjectStore objects,
         IOptions<SignalOptions> options, IOptions<WalOptions> walOptions, IOptions<RawStoreOptions> rawOptions,
@@ -84,8 +89,8 @@ public sealed class SignalIngest : IDisposable
     public WriteAheadLog Wal { get; }
     public SignalArchive Archive { get; }
     public ChannelReader<SignalWork> Reader => queue.Reader;
-    public bool Ready => ready && Wal.Failure is null;
-    public string? LastFailure => Wal.Failure ?? Volatile.Read(ref lastFailure);
+    public bool Ready => ready && Wal.Failure is null && Volatile.Read(ref archiveIntegrityFailure) is null;
+    public string? LastFailure => Wal.Failure ?? Volatile.Read(ref archiveIntegrityFailure) ?? Volatile.Read(ref lastFailure);
     public long AcceptedBatches => Interlocked.Read(ref acceptedBatches);
     public long AcceptedLeaves => Interlocked.Read(ref acceptedLeaves);
     public long RejectedFull => Interlocked.Read(ref rejectedFull);
@@ -174,8 +179,20 @@ public sealed class SignalIngest : IDisposable
             foreach (var segment in Wal.ListSealedSegments())
                 foreach (var bytes in WriteAheadLog.ReadFrames(segment.Path, strict: true))
                     await ProcessAsync(new(RawSignalCodec.Decode(bytes.Span), segment.Path), token);
-            ready = true;
+            // A fresh process has no in-memory integrity latch. Verify every
+            // retained manifest and required admission snapshot before readiness,
+            // rather than treating an empty WAL as proof that restore data is safe.
+            foreach (var manifest in Archive.Manifests())
+            {
+                var envelope = await Archive.ReadAsync(manifest, token);
+                // Hashes alone do not prove AcceptedKeys/RejectedCount match
+                // the captured payload. Reuse replay validation without binding,
+                // writing typed rows or changing the archived admission decision.
+                _ = decoder.Replay(envelope);
+            }
+            Volatile.Write(ref archiveIntegrityFailure, null);
             Volatile.Write(ref lastFailure, null);
+            ready = true;
         }
         catch (Exception ex) { SetFailure(ex); throw; }
     }
@@ -218,8 +235,15 @@ public sealed class SignalIngest : IDisposable
                 await WriteResultAsync(bound, decoded, token);
             }
             Volatile.Write(ref lastFailure, null);
+            Volatile.Write(ref archiveIntegrityFailure, null);
         }
-        catch (Exception ex) { SetFailure(ex); throw; }
+        catch (Exception ex)
+        {
+            if (ex is InvalidDataException or JsonException or OtlpDecodeException)
+                Volatile.Write(ref archiveIntegrityFailure, ex.GetType().Name + ": " + ex.Message);
+            SetFailure(ex);
+            throw;
+        }
         finally { if (acquired) processing.Release(); }
     }
 

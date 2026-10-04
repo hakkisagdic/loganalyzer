@@ -54,6 +54,33 @@ public sealed class TopologyGraphTests
     }
 
     [Fact]
+    public async Task Competing_eligible_expiry_bounds_path_and_ancestor_before_proof_expiry()
+    {
+        var selected = Edge("ra-observed", R, A, provenance: TopologyProvenance.Observed)
+            with { LastSeenUnixNano = 900, EffectiveExpiry = 1500 };
+        var declared = Edge("rb-declared", R, B) with { EffectiveExpiry = 1200 };
+        var unused = Edge("rc-unused", R, C, provenance: TopologyProvenance.Observed)
+            with { LastSeenUnixNano = 900, EffectiveExpiry = 1100 };
+        var query = Query([selected, declared, unused]);
+        var flat = await query.CommonAncestorAsync(new([A, B], 1000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, flat.Status);
+        Assert.Equal(1500, flat.EarliestEvidenceExpiryUnixNano);
+        Assert.Equal(1100, flat.EarliestEligibleExpiryUnixNano);
+        var grouped = await query.GroupedCommonAncestorAsync(new([[A], [B]], 1000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, grouped.Status);
+        Assert.Equal(1500, grouped.EarliestEvidenceExpiryUnixNano);
+        Assert.Equal(1100, grouped.EarliestEligibleExpiryUnixNano);
+        var path = await query.PathAsync(new(R, A, 1000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, path.Status);
+        Assert.Equal(1500, path.EarliestEvidenceExpiryUnixNano);
+        Assert.Equal(1100, path.EarliestEligibleExpiryUnixNano);
+        Assert.Equal(1500, (await query.PathAsync(new(R, A, 1100), ScopeA, Ct))
+            .EarliestEligibleExpiryUnixNano);
+        Assert.Null((await query.CommonAncestorAsync(new([A, B], 1500), ScopeA, Ct))
+            .EarliestEvidenceExpiryUnixNano);
+    }
+
+    [Fact]
     public async Task Cycle_selfloop_and_order()
     {
         var expected = await Query(OracleEdges()).PathAsync(new(R, D, 1000), ScopeA, Ct);
@@ -79,6 +106,24 @@ public sealed class TopologyGraphTests
     }
 
     [Fact]
+    public async Task Hidden_outside_count_carries_its_expiry_without_exposing_the_neighbor()
+    {
+        var hidden = Edge("hidden-expiring", R, C, "A", "B", TopologyProvenance.Observed)
+            with { LastSeenUnixNano = 900, EffectiveExpiry = 1100 };
+        var query = Query([hidden]);
+        var before = await query.NeighborhoodAsync(new(R, 1000), ScopeA, Ct);
+        Assert.Empty(before.Neighbors);
+        Assert.Equal(1, before.ExternalNeighborCount);
+        Assert.Equal(1100, before.EarliestEvidenceExpiryUnixNano);
+        Assert.DoesNotContain(C, before.ToString(), StringComparison.Ordinal);
+
+        var atExpiry = await query.NeighborhoodAsync(new(R, 1100), ScopeA, Ct);
+        Assert.Empty(atExpiry.Neighbors);
+        Assert.Equal(0, atExpiry.ExternalNeighborCount);
+        Assert.Null(atExpiry.EarliestEvidenceExpiryUnixNano);
+    }
+
+    [Fact]
     public async Task Cursor_is_stable_and_partial_cursor_never_restarts()
     {
         var query = Query([Edge("1", R, A), Edge("2", R, B), Edge("3", R, C)]);
@@ -95,7 +140,8 @@ public sealed class TopologyGraphTests
     [Fact]
     public async Task Logical_expiry_hides_physical_edge_at_deadline()
     {
-        var edge = Edge("ttl", R, A) with { EffectiveExpiry = 500 };
+        var edge = Edge("ttl", R, A, provenance: TopologyProvenance.Observed)
+            with { LastSeenUnixNano = 400, EffectiveExpiry = 500 };
         var service = Query([edge]);
         var before = await service.PathAsync(new(R, A, 499), ScopeA, Ct);
         Assert.Equal(TopologyGraphResultStatus.Found, before.Status);
@@ -203,6 +249,99 @@ public sealed class TopologyGraphTests
         Assert.Null(second.EvidenceCursor);
         await Assert.ThrowsAsync<TopologyCursorException>(() =>
             query.GetEdgeAsync(edge.Id, 1000, AccessScope.ForGroups("other", ["A"]), first.EvidenceCursor, 200, Ct));
+    }
+
+    [Fact]
+    public async Task Scoped_edge_detail_uses_same_explicit_window_as_found_path()
+    {
+        var edge = Edge("old-observed", R, A, provenance: TopologyProvenance.Observed);
+        var query = Query([edge]);
+        var asOf = 3m * TopologyExpiry.NanosecondsPerDay;
+        var path = await query.PathAsync(new(R, A, asOf,
+            FromUnixNano: 999, ToUnixNano: 1001), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, path.Status);
+        Assert.Null(await query.GetEdgeAsync(edge.Id, asOf, ScopeA, Ct));
+        Assert.Equal(edge.Id, (await query.GetEdgeAsync(edge.Id, asOf,
+            999, 1001, ScopeA, Ct))?.Edge.Id);
+    }
+
+    [Fact]
+    public async Task Explicit_window_evidence_cursor_continues_and_rejects_window_change()
+    {
+        var edge = Edge("old-window-evidence", R, A, provenance: TopologyProvenance.Observed);
+        var asOf = 3m * TopologyExpiry.NanosecondsPerDay;
+        var evidence = new[]
+        {
+            new TopologyEvidenceReference(edge.Id, "occ-1", "trace", "parent", 999),
+            new TopologyEvidenceReference(edge.Id, "occ-2", "trace", "child", 1000),
+        };
+        var query = new TopologyGraphQueryService(new MemorySource(new(9, [edge]) { Evidence = evidence }));
+        var first = await query.GetEdgeAsync(edge.Id, asOf, 999, 1001, ScopeA, null, 1, Ct);
+        Assert.NotNull(first);
+        Assert.Equal("occ-1", Assert.Single(first.Evidence).Id);
+        Assert.NotNull(first.EvidenceCursor);
+        var second = await query.GetEdgeAsync(edge.Id, asOf, 999, 1001, ScopeA,
+            first.EvidenceCursor, 1, Ct);
+        Assert.NotNull(second);
+        Assert.Equal("occ-2", Assert.Single(second.Evidence).Id);
+        Assert.Null(second.EvidenceCursor);
+        await Assert.ThrowsAsync<TopologyCursorException>(() => query.GetEdgeAsync(
+            edge.Id, asOf, 998, 1001, ScopeA, first.EvidenceCursor, 1, Ct));
+    }
+
+    [Fact]
+    public async Task Long_window_detail_uses_current_read_clock_at_expiry_boundary()
+    {
+        var expiry = 1000m + 10m * TopologyExpiry.NanosecondsPerDay;
+        var edge = Edge("ten-day-observed", R, A, provenance: TopologyProvenance.Observed)
+            with { EffectiveExpiry = expiry };
+        var query = Query([edge]);
+        Assert.Null(await query.GetEdgeAsync(edge.Id, expiry - 1, ScopeA, Ct));
+        Assert.Equal(edge.Id, (await query.GetEdgeAsync(edge.Id, expiry - 1,
+            999, 1001, ScopeA, Ct))?.Edge.Id);
+        Assert.Null(await query.GetEdgeAsync(edge.Id, expiry, 999, 1001, ScopeA, Ct));
+        Assert.Null(await query.GetEdgeAsync(edge.Id, expiry + 1, 999, 1001, ScopeA, Ct));
+    }
+
+    [Fact]
+    public async Task Rca_declared_cutoff_excludes_exact_to_mutation_without_rewinding_observed_expiry()
+    {
+        var closing = Edge("closing-at-to", R, A) with { FirstSeenUnixNano = 1000, EffectiveExpiry = 2000 };
+        var stable = Edge("stable", R, B) with { FirstSeenUnixNano = 1000 };
+        var opening = Edge("opening-at-to", R, C) with { FirstSeenUnixNano = 2000 };
+        var query = Query([closing, stable, opening]);
+        var beforeTo = new TopologyPathQuery(R, A, 2000, FromUnixNano: 1500, ToUnixNano: 2000)
+        { DeclaredStateClockUnixNano = 1999 };
+        var historicalPath = await query.PathAsync(beforeTo, ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, historicalPath.Status);
+        Assert.Null(historicalPath.EarliestEvidenceExpiryUnixNano);
+        Assert.Equal(TopologyGraphResultStatus.Unreachable,
+            (await query.PathAsync(beforeTo with { ToNodeId = C }, ScopeA, Ct)).Status);
+        Assert.Equal(TopologyGraphResultStatus.Unreachable,
+            (await query.PathAsync(beforeTo with { DeclaredStateClockUnixNano = null }, ScopeA, Ct)).Status);
+        var grouped = await query.GroupedCommonAncestorAsync(new([[A], [B]], 2000, 1500, 2000)
+            { DeclaredStateClockUnixNano = 1999 }, ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, grouped.Status);
+        Assert.Equal(R, grouped.NodeId);
+        Assert.Null(await query.GetEdgeAsync(closing.Id, 2000, 1500, 2000, ScopeA, Ct));
+        Assert.Equal(closing.Id, (await query.GetEdgeAsync(closing.Id, 2000, 1500, 2000,
+            1999, ScopeA, null, 200, Ct))?.Edge.Id);
+
+        var observed = Edge("observed-before-to", R, A, provenance: TopologyProvenance.Observed)
+            with { LastSeenUnixNano = 1999, EffectiveExpiry = 2001 };
+        var observedQuery = Query([observed]);
+        Assert.Equal(TopologyGraphResultStatus.Found, (await observedQuery.PathAsync(beforeTo, ScopeA, Ct)).Status);
+        var expired = Query([observed with { EffectiveExpiry = 2000 }]);
+        Assert.Equal(TopologyGraphResultStatus.Unreachable,
+            (await expired.PathAsync(beforeTo, ScopeA, Ct)).Status);
+
+        var hiddenOpening = Query([Edge("hidden-start-at-to", R, D, "A", "B")
+            with { FirstSeenUnixNano = 2000 }]);
+        Assert.Equal(TopologyGraphResultStatus.Unreachable,
+            (await hiddenOpening.PathAsync(beforeTo with { ToNodeId = C }, ScopeA, Ct)).Status);
+        Assert.Equal(TopologyGraphResultStatus.NotVerified,
+            (await hiddenOpening.PathAsync(beforeTo with
+            { ToNodeId = C, DeclaredStateClockUnixNano = null }, ScopeA, Ct)).Status);
     }
 
     private static TopologyGraphQueryService Query(IReadOnlyList<TopologyEdgeProjection> edges) =>

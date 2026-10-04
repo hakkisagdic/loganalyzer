@@ -11,7 +11,8 @@ using Bizigo.Storage.Raw;
 /// checkpoint; WAL, S3, typed writer, publication coordinator and projector are production code.</summary>
 internal static class TopologyCrashHost
 {
-    internal sealed record Configuration(string Root, string Stage, bool Recover, string First, string Second);
+    internal sealed record Configuration(string Root, string Stage, bool Recover, string First, string Second,
+        int TelemetryRetentionDays = 90, int ObservedRetentionDays = 90);
 
     public static async Task RunAsync(string path)
     {
@@ -20,17 +21,21 @@ internal static class TopologyCrashHost
         var allowed = new[] { "after-wal-before-ack", "archive-before-manifest",
             "after-observed-db-before-publish", "after-telemetry-db-before-checkpoint" };
         if (!allowed.Contains(config.Stage, StringComparer.Ordinal)) throw new InvalidDataException("Unknown crash gate.");
+        if (config.TelemetryRetentionDays is < 1 or > 36500 || config.ObservedRetentionDays is < 1 or > 36500)
+            throw new InvalidDataException("Invalid fixture retention configuration.");
         Directory.CreateDirectory(config.Root);
         using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(90));
         var ct = deadline.Token;
         var builder = WebApplication.CreateSlimBuilder();
         builder.Services.AddControlPlane(builder.Configuration.GetConnectionString("ControlPlane")!);
         builder.Services.AddBizigoDataPlane(new ClickHouseOptions
-        { ConnectionString = builder.Configuration.GetConnectionString("ClickHouse")!, MigrationsDirectory = "db/clickhouse" });
+        { ConnectionString = builder.Configuration.GetConnectionString("ClickHouse")!, MigrationsDirectory = "db/clickhouse",
+            TelemetryRetentionDays = config.TelemetryRetentionDays });
         builder.Services.Configure<RawStoreOptions>(builder.Configuration.GetSection(RawStoreOptions.SectionName));
         builder.Services.AddSingleton<IRawObjectStore, S3RawObjectStore>();
         builder.Services.AddSingleton<OtlpTelemetryDecoder>();
-        builder.Services.Configure<SignalOptions>(o => o.Directory = config.Root);
+        builder.Services.Configure<SignalOptions>(o =>
+        { o.Directory = config.Root; o.ObservedRetentionDays = config.ObservedRetentionDays; });
         builder.Services.Configure<WalOptions>(o => { o.Directory = config.Root; o.FlushToDisk = true; });
         var gate = new KillGate(config.Root, config.Stage);
         builder.Services.AddSingleton<ISignalCheckpoints>(gate);
@@ -49,6 +54,9 @@ internal static class TopologyCrashHost
         if (!ingest.Ready) throw new InvalidOperationException("Recovery did not become ready: " + ingest.LastFailure);
         if (config.Recover)
         {
+            // Distinguish startup admission readiness from later archive replay.
+            // Corrupt required restore metadata must prevent this receipt entirely.
+            await Save(config.Root, "recovery-ready.json", new { pid = Environment.ProcessId, ready = ingest.Ready }, ct);
             // Also exercise archive replay after WAL recovery; repeated replay must not multiply proof.
             await ingest.ReplayArchiveAsync(ct);
             await ingest.ReplayArchiveAsync(ct);
@@ -60,7 +68,9 @@ internal static class TopologyCrashHost
                     envelope.OwnerBindingsSha256, envelope.TopologyBindingsSha256, envelope.TopologyBindings });
             }
             await Save(config.Root, "recovered.json", new { pid = Environment.ProcessId,
-                verified, replayCount = 2, ready = ingest.Ready }, ct);
+                verified, replayCount = 2, verifiedReplayCount = 2, ready = ingest.Ready,
+                configuredTelemetryRetentionDays = app.Services.GetRequiredService<TelemetryRetentionPolicy>().Days,
+                configuredObservedRetentionDays = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<SignalOptions>>().Value.ObservedRetentionDays }, ct);
             return;
         }
         await Send(config.First, "first", ingest, config.Root, ct);

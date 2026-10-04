@@ -8,12 +8,27 @@ public sealed record TopologyGraphSnapshot(long PublishedSequence, IReadOnlyList
     public IReadOnlyList<TopologyEvidenceReference> Evidence { get; init; } = [];
     public IReadOnlyList<TopologyEdgeProjection> ConflictedEdges { get; init; } = [];
     public IReadOnlyList<TopologyConflictProjection> ConflictCandidates { get; init; } = [];
+    public IReadOnlyList<TopologyConflictArc> ConflictArcs { get; init; } = [];
+    public IReadOnlyList<TopologyUnresolvedParentProjection> UnresolvedParents { get; init; } = [];
     public bool ObservedMigrationRequired { get; init; }
 }
 
 /// <summary>Internal admission-captured conflict impact, never returned on public wire.</summary>
 public sealed record TopologyConflictProjection(string OwnerGroup, string? NodeId,
-    decimal EventTimeUnixNano, decimal ExpiresUnixNano);
+    decimal EventTimeUnixNano, decimal ExpiresUnixNano)
+{
+    public string SourceId { get; init; } = string.Empty;
+    public string ResolutionReason { get; init; } = string.Empty;
+}
+
+/// <summary>Admission-captured possible edge impact; it is never public proof.</summary>
+public sealed record TopologyConflictArc(string FromNode, string ToNode,
+    string FromOwnerGroup, string ToOwnerGroup, decimal ChildEventTimeUnixNano,
+    decimal EffectiveExpiryUnixNano);
+
+/// <summary>Captured negative parent decision; parent identity is never public.</summary>
+public sealed record TopologyUnresolvedParentProjection(string OwnerGroup, string SourceId,
+    string? ChildNodeId, string Reason, decimal ChildEventTimeUnixNano, decimal ChildExpiryUnixNano);
 
 public sealed class TopologyObservedMigrationRequiredException()
     : IOException("Observed topology conflict attribution requires an explicit durable migration.");
@@ -38,14 +53,23 @@ public sealed record TopologyPathQuery(
     int PageSize = 100,
     string? Cursor = null,
     decimal? FromUnixNano = null,
-    decimal? ToUnixNano = null);
+    decimal? ToUnixNano = null)
+{
+    /// <summary>Internal RCA declared-state cutoff; observed expiry uses the current expiry clock.</summary>
+    public decimal? DeclaredStateClockUnixNano { get; init; }
+    /// <summary>Current server read clock for observed TTL, independent of historical as-of.</summary>
+    public decimal? ExpiryReadClockUnixNano { get; init; }
+}
 
 public sealed record TopologyNodeQuery(decimal ReadClockUnixNano, int PageSize = 100, string? Cursor = null,
     TopologyNodeKind? Kind = null);
 
 public sealed record TopologyEdgeQuery(decimal ReadClockUnixNano, int PageSize = 100, string? Cursor = null,
     TopologyRelation? Relation = null, TopologyProvenance? Provenance = null,
-    decimal? FromUnixNano = null, decimal? ToUnixNano = null);
+    decimal? FromUnixNano = null, decimal? ToUnixNano = null)
+{
+    public decimal? ExpiryReadClockUnixNano { get; init; }
+}
 
 public sealed record TopologyNodeProjection(string Id, TopologyNodeKind Kind, string DisplayName, string OwnerGroup,
     bool Enabled, bool Deleted, long Version, decimal ValidFromUnixNano, decimal? ValidToUnixNano);
@@ -60,7 +84,22 @@ public sealed record TopologyCommonAncestorQuery(
     IReadOnlyList<string> NodeIds,
     decimal ReadClockUnixNano,
     decimal? FromUnixNano = null,
-    decimal? ToUnixNano = null);
+    decimal? ToUnixNano = null)
+{
+    public decimal? ExpiryReadClockUnixNano { get; init; }
+}
+
+/// <summary>Internal RCA group candidates; public REST keeps the flat ancestor contract.</summary>
+public sealed record TopologyGroupedAncestorQuery(
+    IReadOnlyList<IReadOnlyList<string>> TargetGroups,
+    decimal ReadClockUnixNano,
+    decimal? FromUnixNano = null,
+    decimal? ToUnixNano = null)
+{
+    /// <summary>Internal RCA declared-state cutoff; observed expiry uses the current expiry clock.</summary>
+    public decimal? DeclaredStateClockUnixNano { get; init; }
+    public decimal? ExpiryReadClockUnixNano { get; init; }
+}
 
 public sealed record TopologyNeighborhoodQuery(
     string NodeId,
@@ -69,7 +108,10 @@ public sealed record TopologyNeighborhoodQuery(
     string? Cursor = null,
     TopologyRelation? Relation = null,
     decimal? FromUnixNano = null,
-    decimal? ToUnixNano = null);
+    decimal? ToUnixNano = null)
+{
+    public decimal? ExpiryReadClockUnixNano { get; init; }
+}
 
 public sealed record TopologyGraphPage<T>(
     IReadOnlyList<T> Items,
@@ -88,6 +130,8 @@ public sealed record TopologyPathResult(
     string? Reason = null)
 {
     public decimal? EarliestEvidenceExpiryUnixNano { get; init; }
+    /// <summary>Internal snapshot lifetime, including unchosen eligible competitors.</summary>
+    public decimal? EarliestEligibleExpiryUnixNano { get; init; }
 }
 
 public sealed record TopologyCommonAncestorResult(
@@ -95,7 +139,11 @@ public sealed record TopologyCommonAncestorResult(
     string? NodeId,
     IReadOnlyList<TopologyPathProof> Paths,
     long PublishedSequence,
-    string? Reason = null);
+    string? Reason = null)
+{
+    public decimal? EarliestEvidenceExpiryUnixNano { get; init; }
+    public decimal? EarliestEligibleExpiryUnixNano { get; init; }
+}
 
 public enum TopologyGraphResultStatus { Found = 1, Unreachable = 2, NotVerified = 3 }
 
@@ -126,6 +174,37 @@ public sealed record TopologyNeighborhoodResult(
 public sealed record TopologyOutsideNeighborCount(int? Count, string? Reason);
 
 public sealed record TopologySourceNode(string SourceId, string NodeId, string OwnerGroup);
+
+public enum TopologySourceTargetStatus { Complete = 1, Missing = 2, Hidden = 3, Ambiguous = 4, Truncated = 5 }
+
+/// <summary>
+/// One raw authorized Contains chain, including Source root and target in
+/// MappingNodeIds. The provider charges every raw visited node/edge before
+/// deduplicating by target NodeId; canonical choice compares full node-ID
+/// sequence, then edge-ID sequence, ordinally.
+/// </summary>
+public sealed record TopologySourceTarget(string NodeId, IReadOnlyList<string> MappingEdgeIds,
+    IReadOnlyList<string> MappingNodeIds);
+
+public sealed record TopologySourceTargets(string SourceId, string SourceNodeId,
+    IReadOnlyList<TopologySourceTarget> Targets, TopologySourceTargetStatus Status, string? Reason);
+
+/// <summary>
+/// One bounded mapping slot. Target chunks are provisional until the source's
+/// separate targetless terminal chunk is read. A full target page must never
+/// masquerade as a complete source; its terminal occupies the next page.
+/// </summary>
+public sealed record TopologySourceTargetChunk(string SourceId, string SourceNodeId,
+    TopologySourceTarget? Target, TopologySourceTargetStatus? FinalStatus, string? Reason);
+
+/// <summary>
+/// Internal RCA continuation bound to the same PostgreSQL epoch and committed
+/// ClickHouse watermark as the dependency proof it is later combined with.
+/// </summary>
+public sealed record TopologySourceTargetsPage(IReadOnlyList<TopologySourceTargetChunk> Items,
+    string? Cursor, long PostgresEpoch, ulong ClickHouseWatermark);
+
+
 
 public sealed class TopologyCursorException : ArgumentException
 {

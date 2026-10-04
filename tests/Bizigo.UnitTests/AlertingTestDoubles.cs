@@ -42,6 +42,16 @@ internal sealed record FakeEvent(
 /// </summary>
 internal sealed class FakeScopedQuery : IScopedQuery, IAlertQuerySource
 {
+    public Task<TopologySourceTargetsPage> ResolveTopologySourceTargetsPageAsync(
+        IReadOnlyList<string> sourceIds, decimal asOfUnixNano, AccessScope scope,
+        int pageSize = 100, string? cursor = null, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+    public Task<IReadOnlyList<TopologySourceTargets>> ResolveTopologySourceTargetsAsync(
+        IReadOnlyList<string> sourceIds, decimal asOfUnixNano, AccessScope scope,
+        CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    public Task<TopologyCommonAncestorResult> GetTopologyGroupedCommonAncestorAsync(
+        TopologyGroupedAncestorQuery query, AccessScope scope,
+        CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<TelemetryPage> SearchTelemetryAsync(TelemetryQuery query, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<TelemetryPage> GetMetricPointAsync(string logicalId, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     public Task<TelemetryPage> GetTraceAsync(TelemetryQuery query, AccessScope scope, CancellationToken cancellationToken = default) => throw new NotSupportedException();

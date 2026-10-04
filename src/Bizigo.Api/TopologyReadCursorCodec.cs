@@ -16,6 +16,25 @@ public sealed class TopologyReadCursorCodec(IDataProtectionProvider protection)
     private const int Version = 1;
     private readonly IDataProtector _protector = protection.CreateProtector("Bizigo.Topology.Cursor.v1");
 
+    /// <summary>
+    /// A declared edge's effective end is its historical validTo, not an
+    /// observed-evidence TTL. Only observed expiry can shorten a continuation.
+    /// </summary>
+    public static decimal? EvidenceExpiry(TopologyEdgeProjection edge)
+    {
+        ArgumentNullException.ThrowIfNull(edge);
+        return edge.Provenance == TopologyProvenance.Observed ? edge.EffectiveExpiry : null;
+    }
+
+    /// <summary>
+    /// A competing eligible observed edge can change the answer before the
+    /// selected proof expires. Neither deadline is exposed on the wire.
+    /// </summary>
+    public static decimal? EarliestExpiry(decimal? selectedProof, decimal? eligibleSnapshot) =>
+        selectedProof is decimal proof
+            ? eligibleSnapshot is decimal eligible ? Math.Min(proof, eligible) : proof
+            : eligibleSnapshot;
+
     public string Encode(TopologyReadCursorState state)
     {
         ArgumentNullException.ThrowIfNull(state);

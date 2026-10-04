@@ -34,10 +34,16 @@ public sealed class TopologyCommonAncestorProvider : IEvidenceProvider
 {
     private readonly IScopedQuery _query;
     private readonly TopologyProviderBudget _topologyBudget;
+    private readonly TopologyPublicationFence? _publicationFence;
 
-    public TopologyCommonAncestorProvider(IScopedQuery query) : this(query, TopologyProviderBudget.Default) { }
+    public TopologyCommonAncestorProvider(IScopedQuery query) : this(query, TopologyProviderBudget.Default, null) { }
     public TopologyCommonAncestorProvider(IScopedQuery query, TopologyProviderBudget topologyBudget)
-    { _query = query; _topologyBudget = topologyBudget; }
+        : this(query, topologyBudget, null) { }
+    public TopologyCommonAncestorProvider(IScopedQuery query, TopologyPublicationFence publicationFence)
+        : this(query, TopologyProviderBudget.Default, publicationFence) { }
+    public TopologyCommonAncestorProvider(IScopedQuery query, TopologyProviderBudget topologyBudget,
+        TopologyPublicationFence? publicationFence)
+    { _query = query; _topologyBudget = topologyBudget; _publicationFence = publicationFence; }
 
     public string Id => "topology.common-ancestor";
     public EvidenceKind Kind => EvidenceKind.Topology;
@@ -46,11 +52,26 @@ public sealed class TopologyCommonAncestorProvider : IEvidenceProvider
     public Task<EvidenceSlice> GatherAsync(RcaWindow window, AccessScope scope, GatherBudget budget,
         CancellationToken cancellationToken) =>
         TopologyGraphEvidence.GatherAsync(_query, true, Id, window, scope, budget, _topologyBudget,
-            null, cancellationToken);
+            _publicationFence, cancellationToken);
 }
 
 internal static class TopologyGraphEvidence
 {
+    private const int MappingPageSize = 100;
+    private sealed record SourceCandidate(string NodeId, IReadOnlyList<string> MappingEdgeIds,
+        IReadOnlyList<string> MappingNodeIds);
+    private sealed record SourceCandidateGroup(string SourceId, string SourceNodeId,
+        IReadOnlyList<SourceCandidate> Candidates);
+    private sealed record SourceWitness(string SourceId, string TargetNodeId,
+        IReadOnlyList<string> MappingEdgeIds, IReadOnlyList<string> Nodes, IReadOnlyList<string> EdgeIds);
+    private sealed class SourceGroupBuilder(string sourceId)
+    {
+        public string SourceId { get; } = sourceId;
+        public string? SourceNodeId { get; set; }
+        public Dictionary<string, SourceCandidate> Targets { get; } = new(StringComparer.Ordinal);
+        public bool Complete { get; set; }
+    }
+
     internal static async Task<EvidenceSlice> GatherAsync(IScopedQuery query, bool ancestor, string providerId,
         RcaWindow window, AccessScope scope, GatherBudget budget, TopologyProviderBudget topologyBudget,
         TopologyPublicationFence? publicationFence, CancellationToken callerToken)
@@ -81,19 +102,14 @@ internal static class TopologyGraphEvidence
                 return Slice(providerId, EvidenceStatus.Empty, "Ortak graph değerlendirmesi için en az iki etkilenen kaynak gerekir.", "Evaluated");
             if (affectedSourceIds.Length > 20)
                 return Slice(providerId, EvidenceStatus.Unavailable, "BudgetExceeded: affected source count exceeds 20.", "NotComparable", true);
-            var resolved = await query.ResolveTopologySourceNodesAsync(affectedSourceIds, scope, timeout.Token);
-            var nodes = resolved.Select(static node => node.NodeId).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
-            if (nodes.Length != affectedSourceIds.Length)
-                return Slice(providerId, EvidenceStatus.Unavailable,
-                    "Affected source topology mapping is absent or outside scope; identity was not guessed.", "NotComparable");
             var usage = new TopologyProviderUsage(topologyBudget);
-            RequireBudget(usage.IncludeNodes(nodes));
-            if (ancestor)
-                return await AncestorAsync(query, providerId, nodes, window, scope, usage, timeout.Token);
             return publicationFence is null
-                ? await PathsAsync(query, providerId, nodes, window, scope, budget, usage, timeout.Token)
-                : await publicationFence.ExecuteAsync((_, token) =>
-                    PathsAsync(query, providerId, nodes, window, scope, budget, usage, token), timeout.Token);
+                ? await EvaluateAsync(query, ancestor, providerId, affectedSourceIds, window, scope, budget, usage,
+                    null, timeout.Token)
+                : await publicationFence.ExecuteAsync((revision, token) =>
+                    EvaluateAsync(query, ancestor, providerId, affectedSourceIds, window, scope, budget, usage,
+                        revision, token),
+                    timeout.Token);
         }
         catch (TopologyBudgetExceededException)
         { return Slice(providerId, EvidenceStatus.Unavailable, "BudgetExceeded: topology proof is incomplete.", "NotComparable", true); }
@@ -104,43 +120,195 @@ internal static class TopologyGraphEvidence
         catch (OperationCanceledException) when (!callerToken.IsCancellationRequested)
         { return Slice(providerId, EvidenceStatus.Failed, "Timeout", "Failed", true); }
         catch (OperationCanceledException) { throw; }
-        catch (Exception ex) when (ex is InvalidOperationException or IOException or TimeoutException)
+        catch (Exception ex) when (ex is InvalidOperationException or IOException or TimeoutException or ArgumentException)
         { return Slice(providerId, EvidenceStatus.Failed, "QueryUnavailable", "Failed", true); }
     }
 
-    private static async Task<EvidenceSlice> PathsAsync(IScopedQuery query, string providerId, string[] nodes,
+    private static async Task<EvidenceSlice> EvaluateAsync(IScopedQuery query, bool ancestor, string providerId,
+        string[] affectedSourceIds, RcaWindow window, AccessScope scope, GatherBudget budget,
+        TopologyProviderUsage usage, TopologyPublicationRevision? expectedRevision, CancellationToken token)
+    {
+        var declaredStateClock = TopologyIdentity.Nano(window.To) - 1m;
+        if (declaredStateClock < 0)
+            throw new ArgumentOutOfRangeException(nameof(window), "RCA end must have a preceding graph instant.");
+        var sourceGroups = await ResolveSourceGroupsAsync(query, affectedSourceIds,
+            declaredStateClock, scope, usage, expectedRevision, token);
+        if (expectedRevision?.ClickHouseWatermark > long.MaxValue)
+            throw new TopologyProofUnavailableException("Graph publication cannot be represented by the query.");
+        long? expectedSequence = expectedRevision is null ? null : checked((long)expectedRevision.ClickHouseWatermark);
+        if (ancestor)
+            return await AncestorAsync(query, providerId, sourceGroups, window, scope, usage,
+                expectedSequence, token);
+        return await PathsAsync(query, providerId, sourceGroups, window, scope, budget, usage,
+            expectedSequence, token);
+    }
+
+    private static async Task<SourceCandidateGroup[]> ResolveSourceGroupsAsync(IScopedQuery query,
+        string[] affectedSourceIds, decimal readClock, AccessScope scope, TopologyProviderUsage usage,
+        TopologyPublicationRevision? expectedRevision, CancellationToken token)
+    {
+        var builders = affectedSourceIds.ToDictionary(static sourceId => sourceId,
+            static sourceId => new SourceGroupBuilder(sourceId), StringComparer.Ordinal);
+        var seenCursors = new HashSet<string>(StringComparer.Ordinal);
+        string? cursor = null;
+        TopologyPublicationRevision? pageRevision = null;
+        do
+        {
+            // Reserve each mapping page before I/O. A full final page needs no
+            // speculative extra read; an explicit continuation does.
+            RequireBudget(usage.NextPage());
+            var page = await query.ResolveTopologySourceTargetsPageAsync(affectedSourceIds, readClock,
+                scope, MappingPageSize, cursor, token);
+            var current = new TopologyPublicationRevision(page.PostgresEpoch, page.ClickHouseWatermark);
+            if (page.Items.Count > MappingPageSize || current.PostgresEpoch < 0)
+                throw new TopologyProofUnavailableException("Source mapping page is inconsistent.");
+            if (pageRevision is not null && current != pageRevision ||
+                expectedRevision is not null && current != expectedRevision)
+                throw new TopologyRestartRequiredException("Source mapping publication changed during paging.");
+            pageRevision ??= current;
+            foreach (var chunk in page.Items)
+            {
+                if (!builders.TryGetValue(chunk.SourceId, out var builder) || builder.Complete)
+                    throw new TopologyProofUnavailableException("Source mapping page is inconsistent.");
+                if (chunk.FinalStatus is TopologySourceTargetStatus.Missing or TopologySourceTargetStatus.Hidden
+                    or TopologySourceTargetStatus.Ambiguous)
+                    throw new TopologyProofUnavailableException(
+                        "Affected source topology mapping is incomplete or outside scope; identity was not guessed.");
+                if ((chunk.Target is null) == (chunk.FinalStatus is null) ||
+                    chunk.FinalStatus is not null and not TopologySourceTargetStatus.Complete ||
+                    !HasKind(chunk.SourceNodeId, TopologyNodeKind.Source) ||
+                    builder.SourceNodeId is not null && builder.SourceNodeId != chunk.SourceNodeId)
+                    throw new TopologyProofUnavailableException("Source mapping identity is inconsistent.");
+                builder.SourceNodeId = chunk.SourceNodeId;
+                RequireBudget(usage.IncludeNodes([chunk.SourceNodeId]));
+                if (chunk.Target is { } target)
+                {
+                    var kind = KindOrNull(target.NodeId);
+                    var expectedLength = kind == TopologyNodeKind.Service ? 1 :
+                        kind == TopologyNodeKind.ServiceInstance ? 2 : 0;
+                    if (expectedLength == 0 || target.MappingEdgeIds.Count != expectedLength ||
+                        target.MappingNodeIds.Count != expectedLength + 1 ||
+                        target.MappingNodeIds[0] != chunk.SourceNodeId ||
+                        target.MappingNodeIds[^1] != target.NodeId ||
+                        expectedLength == 2 && !HasKind(target.MappingNodeIds[1], TopologyNodeKind.Service) ||
+                        target.MappingEdgeIds.Any(string.IsNullOrWhiteSpace) ||
+                        target.MappingEdgeIds.Distinct(StringComparer.Ordinal).Count() != expectedLength ||
+                        target.MappingNodeIds.Distinct(StringComparer.Ordinal).Count() != expectedLength + 1)
+                        throw new TopologyProofUnavailableException("Source mapping proof is inconsistent.");
+                    // Charge every raw authorized chain before deduplicating a
+                    // target. Distinct intermediate nodes and Contains edges
+                    // still count even when two chains end at one Instance.
+                    RequireBudget(usage.IncludeNodes(target.MappingNodeIds));
+                    RequireBudget(usage.IncludeEdges(target.MappingEdgeIds));
+                    var candidate = new SourceCandidate(target.NodeId, target.MappingEdgeIds,
+                        target.MappingNodeIds);
+                    if (!builder.Targets.TryAdd(target.NodeId, candidate) &&
+                        CompareMapping(candidate, builder.Targets[target.NodeId]) < 0)
+                        builder.Targets[target.NodeId] = candidate;
+                }
+                else if (chunk.FinalStatus is null)
+                    throw new TopologyProofUnavailableException("Source mapping page is incomplete.");
+                if (chunk.FinalStatus == TopologySourceTargetStatus.Complete) builder.Complete = true;
+            }
+            cursor = page.Cursor;
+            if (cursor is not null && !seenCursors.Add(cursor))
+                throw new TopologyProofUnavailableException("Source mapping cursor repeated.");
+        } while (cursor is not null);
+        if (builders.Values.Any(static builder => !builder.Complete || builder.SourceNodeId is null))
+            throw new TopologyProofUnavailableException(
+                "Affected source topology mapping is incomplete or outside scope; identity was not guessed.");
+        foreach (var builder in builders.Values)
+        foreach (var instance in builder.Targets.Values.Where(static target =>
+                     KindOrNull(target.NodeId) == TopologyNodeKind.ServiceInstance))
+        {
+            // An instance proof traverses Source→Service→Instance. The service
+            // must be an authorized candidate too, so that the intermediate
+            // node is charged to the shared graph budget before traversal.
+            if (!builder.Targets.Values.Any(service =>
+                    KindOrNull(service.NodeId) == TopologyNodeKind.Service &&
+                    service.NodeId == instance.MappingNodeIds[1] &&
+                    service.MappingEdgeIds[0] == instance.MappingEdgeIds[0]))
+                throw new TopologyProofUnavailableException("Source mapping proof is incomplete.");
+        }
+        return affectedSourceIds.Select(sourceId =>
+        {
+            var builder = builders[sourceId];
+            return new SourceCandidateGroup(builder.SourceId, builder.SourceNodeId!,
+                [new SourceCandidate(builder.SourceNodeId!, [], [builder.SourceNodeId!]),
+                    .. builder.Targets.Values.OrderBy(static target => target.NodeId, StringComparer.Ordinal)]);
+        }).ToArray();
+    }
+
+    private static int CompareMapping(SourceCandidate left, SourceCandidate right)
+    {
+        static int CompareKeys(IReadOnlyList<string> first, IReadOnlyList<string> second)
+        {
+            for (var index = 0; index < Math.Min(first.Count, second.Count); index++)
+            {
+                var compare = string.CompareOrdinal(first[index], second[index]);
+                if (compare != 0) return compare;
+            }
+            return first.Count.CompareTo(second.Count);
+        }
+        var nodes = CompareKeys(left.MappingNodeIds, right.MappingNodeIds);
+        return nodes != 0 ? nodes : CompareKeys(left.MappingEdgeIds, right.MappingEdgeIds);
+    }
+
+    private static TopologyNodeKind? KindOrNull(string nodeId)
+    {
+        try { return TopologyIdentity.Kind(nodeId); }
+        catch (ArgumentException) { return null; }
+    }
+
+    private static bool HasKind(string nodeId, TopologyNodeKind kind) => KindOrNull(nodeId) == kind;
+
+    private static async Task<EvidenceSlice> PathsAsync(IScopedQuery query, string providerId,
+        IReadOnlyList<SourceCandidateGroup> sourceGroups,
         RcaWindow window, AccessScope scope, GatherBudget budget, TopologyProviderUsage usage,
-        CancellationToken token)
+        long? expectedSequence, CancellationToken token)
     {
         var items = new List<EvidenceItem>();
         var clock = TopologyIdentity.Nano(window.To);
-        long? publishedSequence = null;
-        for (var i = 0; i < nodes.Length; i++)
-        for (var j = i + 1; j < nodes.Length; j++)
+        var fromClock = TopologyIdentity.Nano(window.From);
+        long? publishedSequence = expectedSequence;
+        for (var i = 0; i < sourceGroups.Count; i++)
+        for (var j = i + 1; j < sourceGroups.Count; j++)
         {
             if (items.Count >= budget.MaxItems) throw new TopologyBudgetExceededException();
-            // Affected sources are a set. An opaque node ID must not choose
-            // which directed relationship is evaluated. Both directions share
-            // one usage counter and one published graph revision.
-            var forward = await ReadPathAsync(query, nodes[i], nodes[j], clock, scope, usage,
-                publishedSequence, token);
-            publishedSequence ??= forward.PublishedSequence;
-            var reverse = await ReadPathAsync(query, nodes[j], nodes[i], clock, scope, usage,
-                publishedSequence, token);
-            if (forward.NotVerified || reverse.NotVerified)
-                return Slice(providerId, EvidenceStatus.Unavailable,
-                    PartialReason(forward.NotVerified ? forward.Reason : reverse.Reason) + "; graph path not verified.",
-                    "NotComparable", true);
-
-            var candidates = new List<(TraversalProof Proof, EvidenceItem Item)>(2);
-            foreach (var proof in new[] { forward.Proof, reverse.Proof })
+            var candidates = new List<(TraversalProof Proof, EvidenceItem Item)>();
+            foreach (var from in sourceGroups[i].Candidates)
+            foreach (var to in sourceGroups[j].Candidates)
             {
-                if (proof is null) continue;
-                var details = await ReadProofEdgesAsync(query, proof.EdgeIds, clock, scope, usage, token);
-                VerifyDirectedProof(proof.Nodes, proof.EdgeIds, details);
-                var item = Item(providerId, proof.EdgeIds, proof.Nodes, null, details, window);
-                RequireBudget(usage.IncludeSerializedBytes(JsonSerializer.SerializeToUtf8Bytes(item, BundleSerializer.Options).Length));
-                candidates.Add((proof, item));
+                // Affected sources are groups, not opaque node-ID ordering.
+                // Every authorized cross-group candidate and both directed
+                // orientations share one revision and one usage counter.
+                // One canonical node may legitimately belong to both groups.
+                // Its zero-hop identity is not a dependency proof, so it
+                // cannot invalidate other complete candidate-pair proofs.
+                if (from.NodeId == to.NodeId) continue;
+                var forward = await ReadPathAsync(query, from.NodeId, to.NodeId, clock, fromClock, scope, usage,
+                    publishedSequence, token);
+                publishedSequence ??= forward.PublishedSequence;
+                var reverse = await ReadPathAsync(query, to.NodeId, from.NodeId, clock, fromClock, scope, usage,
+                    publishedSequence, token);
+                if (forward.NotVerified || reverse.NotVerified)
+                    return Slice(providerId, EvidenceStatus.Unavailable,
+                        PartialReason(forward.NotVerified ? forward.Reason : reverse.Reason) + "; graph path not verified.",
+                        "NotComparable", true);
+                foreach (var proof in new[] { forward.Proof, reverse.Proof })
+                {
+                    if (proof is null) continue;
+                    var details = await ReadProofEdgesAsync(query, proof.EdgeIds, window, scope, usage, token);
+                    VerifyDirectedProof(proof.Nodes, proof.EdgeIds, details);
+                    var witnesses = new[]
+                    {
+                        new SourceWitness(sourceGroups[i].SourceId, from.NodeId, from.MappingEdgeIds, [], []),
+                        new SourceWitness(sourceGroups[j].SourceId, to.NodeId, to.MappingEdgeIds, [], []),
+                    };
+                    var item = Item(providerId, proof.EdgeIds, proof.Nodes, null, details, window, witnesses);
+                    RequireBudget(usage.IncludeSerializedBytes(JsonSerializer.SerializeToUtf8Bytes(item, BundleSerializer.Options).Length));
+                    candidates.Add((proof, item));
+                }
             }
             if (candidates.Count > 0)
                 items.Add(candidates.OrderBy(static candidate => candidate.Proof, TraversalProofComparer.Instance)
@@ -163,6 +331,7 @@ internal static class TopologyGraphEvidence
         ? reason : "QueryPartial";
 
     private static async Task<PathRead> ReadPathAsync(IScopedQuery query, string from, string to, decimal clock,
+        decimal fromClock,
         AccessScope scope, TopologyProviderUsage usage, long? expectedSequence, CancellationToken token)
     {
         var proofNodes = new List<string>();
@@ -173,7 +342,9 @@ internal static class TopologyGraphEvidence
         do
         {
             RequireBudget(usage.NextPage());
-            var result = await query.GetTopologyPathAsync(new(from, to, clock, 200, cursor), scope, token);
+            var result = await query.GetTopologyPathAsync(
+                new TopologyPathQuery(from, to, clock, 200, cursor, fromClock, clock)
+                { DeclaredStateClockUnixNano = clock - 1m }, scope, token);
             if (expectedSequence is not null && result.PublishedSequence != expectedSequence ||
                 sequence is not null && result.PublishedSequence != sequence)
                 throw new TopologyProofUnavailableException("Graph publication changed during path evaluation.");
@@ -232,27 +403,45 @@ internal static class TopologyGraphEvidence
         }
     }
 
-    private static async Task<EvidenceSlice> AncestorAsync(IScopedQuery query, string providerId, string[] nodes,
-        RcaWindow window, AccessScope scope, TopologyProviderUsage usage, CancellationToken token)
+    private static async Task<EvidenceSlice> AncestorAsync(IScopedQuery query, string providerId,
+        IReadOnlyList<SourceCandidateGroup> sourceGroups,
+        RcaWindow window, AccessScope scope, TopologyProviderUsage usage, long? expectedSequence,
+        CancellationToken token)
     {
-        var result = await query.GetTopologyCommonAncestorAsync(new(nodes, TopologyIdentity.Nano(window.To)), scope, token);
         RequireBudget(usage.NextPage());
+        var targetGroups = sourceGroups.Select(static group => (IReadOnlyList<string>)group.Candidates
+            .Select(static candidate => candidate.NodeId).ToArray()).ToArray();
+        var clock = TopologyIdentity.Nano(window.To);
+        var result = await query.GetTopologyGroupedCommonAncestorAsync(
+            new TopologyGroupedAncestorQuery(targetGroups, clock, TopologyIdentity.Nano(window.From), clock)
+            { DeclaredStateClockUnixNano = clock - 1m }, scope, token);
+        if (expectedSequence is not null && result.PublishedSequence != expectedSequence)
+            throw new TopologyRestartRequiredException("Graph publication changed during ancestor evaluation.");
         if (result.Status == TopologyGraphResultStatus.NotVerified)
             return Slice(providerId, EvidenceStatus.Unavailable, result.Reason ?? "HiddenBoundary", "NotComparable", true);
         if (result.Status != TopologyGraphResultStatus.Found || result.NodeId is null)
             return Slice(providerId, EvidenceStatus.Empty, "Visible strict common ancestor not found.", "Evaluated");
         var edgeIds = result.Paths.SelectMany(static path => path.EdgeIds).Distinct(StringComparer.Ordinal).ToArray();
         var nodesInProof = result.Paths.SelectMany(static path => path.Nodes).Distinct(StringComparer.Ordinal).ToArray();
-        if (result.Paths.Count != nodes.Length ||
-            !result.Paths.Select(static path => path.TargetNodeId).Order(StringComparer.Ordinal).SequenceEqual(nodes) ||
+        if (result.Paths.Count != sourceGroups.Count ||
+            result.Paths.Where((path, index) => !sourceGroups[index].Candidates
+                    .Any(candidate => candidate.NodeId == path.TargetNodeId))
+                .Any() ||
             result.Paths.Any(path => path.Nodes.Count < 2 || path.Nodes[0] != result.NodeId ||
                 path.Nodes[^1] != path.TargetNodeId || path.EdgeIds.Count != path.Nodes.Count - 1))
             throw new TopologyProofUnavailableException("Common ancestor proof is incomplete.");
         RequireBudget(usage.IncludeNodes(nodesInProof));
         RequireBudget(usage.IncludeEdges(edgeIds));
-        var details = await ReadProofEdgesAsync(query, edgeIds, TopologyIdentity.Nano(window.To), scope, usage, token);
+        var details = await ReadProofEdgesAsync(query, edgeIds, window, scope, usage, token);
         foreach (var path in result.Paths) VerifyDirectedProof(path.Nodes, path.EdgeIds, details);
-        var item = Item(providerId, edgeIds, nodesInProof, result.NodeId, details, window);
+        var witnesses = result.Paths.Select((path, index) =>
+        {
+            var group = sourceGroups[index];
+            var candidate = group.Candidates.Single(candidate => candidate.NodeId == path.TargetNodeId);
+            return new SourceWitness(group.SourceId, candidate.NodeId, candidate.MappingEdgeIds,
+                path.Nodes, path.EdgeIds);
+        }).ToArray();
+        var item = Item(providerId, edgeIds, nodesInProof, result.NodeId, details, window, witnesses);
         RequireBudget(usage.IncludeSerializedBytes(JsonSerializer.SerializeToUtf8Bytes(item, BundleSerializer.Options).Length));
         return new EvidenceSlice
         {
@@ -264,14 +453,17 @@ internal static class TopologyGraphEvidence
     }
 
     private static async Task<IReadOnlyList<TopologyEdgeDetail>> ReadProofEdgesAsync(IScopedQuery query,
-        IReadOnlyList<string> edgeIds, decimal readClock, AccessScope scope, TopologyProviderUsage usage,
+        IReadOnlyList<string> edgeIds, RcaWindow window, AccessScope scope, TopologyProviderUsage usage,
         CancellationToken token)
     {
         var details = new List<TopologyEdgeDetail>(edgeIds.Count);
+        var fromClock = TopologyIdentity.Nano(window.From);
+        var toClock = TopologyIdentity.Nano(window.To);
         foreach (var edgeId in edgeIds)
         {
             RequireBudget(usage.NextPage());
-            var detail = await query.GetTopologyEdgeAsync(edgeId, readClock, scope, token);
+            var detail = await query.GetTopologyEdgeAsync(edgeId, toClock, fromClock, toClock,
+                toClock - 1m, scope, null, 200, token);
             if (detail is null || detail.Edge.Id != edgeId ||
                 !TopologyIdentity.CanReadEdge(scope, detail.Edge.FromOwnerGroup, detail.Edge.ToOwnerGroup))
                 throw new TopologyProofUnavailableException("Scoped edge proof is unavailable.");
@@ -295,7 +487,8 @@ internal static class TopologyGraphEvidence
     }
 
     private static EvidenceItem Item(string providerId, IReadOnlyList<string> edgeIds, IReadOnlyList<string> nodes,
-        string? ancestor, IReadOnlyList<TopologyEdgeDetail> details, RcaWindow window)
+        string? ancestor, IReadOnlyList<TopologyEdgeDetail> details, RcaWindow window,
+        IReadOnlyList<SourceWitness> sourceWitnesses)
     {
         var proofs = details.Select(detail => new
         {
@@ -309,11 +502,13 @@ internal static class TopologyGraphEvidence
             ["edge_ids"] = JsonSerializer.Serialize(edgeIds, BundleSerializer.Options),
             ["node_ids"] = JsonSerializer.Serialize(nodes, BundleSerializer.Options),
             ["proof_edges"] = JsonSerializer.Serialize(proofs, BundleSerializer.Options),
+            ["source_witnesses"] = JsonSerializer.Serialize(sourceWitnesses, BundleSerializer.Options),
             ["window_from"] = window.From.ToString("O", CultureInfo.InvariantCulture),
             ["window_to"] = window.To.ToString("O", CultureInfo.InvariantCulture),
         };
         if (ancestor is not null) payload["ancestor_node_id"] = ancestor;
-        var canonical = providerId + "|" + string.Join('|', edgeIds) + "|" + string.Join('|', nodes) + "|" + ancestor;
+        var canonical = providerId + "|" + string.Join('|', edgeIds) + "|" + string.Join('|', nodes) + "|" + ancestor
+            + "|" + payload["source_witnesses"];
         return new(RawSignalEnvelope.Hash(System.Text.Encoding.UTF8.GetBytes(canonical)), providerId,
             EvidenceKind.Topology, window.To, 1, ancestor is null ? "Directed topology path" : "Strict common topology ancestor", payload);
     }

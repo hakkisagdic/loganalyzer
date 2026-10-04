@@ -16,6 +16,8 @@ public sealed class TopologyGraphSnapshotSource(
     TopologyObservedSnapshotReader observed,
     TopologyPublicationFence fence) : ITopologyGraphSnapshotSource
 {
+    public Action<TopologySqlPlan>? ObserveQuery { get; set; }
+
     public Task<TopologyGraphSnapshot> ReadAsync(long? publishedSequence, CancellationToken cancellationToken) =>
         fence.ExecuteAsync(async (revision, token) =>
         {
@@ -66,10 +68,28 @@ public sealed class TopologyGraphSnapshotSource(
             }
 
             var conflictCandidates = observedSnapshot.Conflicts.SelectMany(marker => marker.Candidates)
+                .Where(static candidate => candidate.IsConflictedAnchor)
                 .Select(candidate => new TopologyConflictProjection(candidate.OwnerGroup, candidate.NodeId,
-                    candidate.EventTimeNano, candidate.IsConflictedAnchor ? candidate.TraceExpiryNano
-                        : decimal.Min(candidate.TraceExpiryNano, candidate.ObservedExpiryNano)))
+                    candidate.EventTimeNano, candidate.TraceExpiryNano)
+                {
+                    SourceId = candidate.SourceId,
+                    ResolutionReason = candidate.ResolutionReason,
+                })
                 .Distinct().ToArray();
+            var conflictArcs = observedSnapshot.Conflicts.SelectMany(marker =>
+            {
+                var captured = marker.Candidates;
+                return from child in captured
+                       where child.ParentAnchor.Length != 0 && child.NodeId is not null
+                           && child.ResolutionReason == "Resolved"
+                       from parent in captured
+                       where parent.Anchor == child.ParentAnchor && parent.NodeId is not null
+                           && parent.ResolutionReason == "Resolved"
+                       select new TopologyConflictArc(parent.NodeId!, child.NodeId!,
+                           parent.OwnerGroup, child.OwnerGroup, child.EventTimeNano,
+                           decimal.Min(parent.TraceExpiryNano,
+                               decimal.Min(child.TraceExpiryNano, child.ObservedExpiryNano)));
+            }).Distinct().ToArray();
             // A historical edge can identify its own published endpoint, but
             // cannot identify every alternative fingerprint/owner behind an
             // old context-free marker. No scoped readiness is claimed for it.
@@ -80,11 +100,17 @@ public sealed class TopologyGraphSnapshotSource(
                 Evidence = evidence,
                 ConflictedEdges = conflictedEdges,
                 ConflictCandidates = conflictCandidates,
+                ConflictArcs = conflictArcs,
+                UnresolvedParents = observedSnapshot.ParentResolutions
+                    .Where(static item => item.Reason != "Resolved")
+                    .Select(item => new TopologyUnresolvedParentProjection(item.OwnerGroup, item.SourceId,
+                        item.NodeId, item.Reason, item.ChildEventTimeNano, item.ChildExpiryNano))
+                    .ToArray(),
                 ObservedMigrationRequired = unattributed,
             };
         }, cancellationToken);
 
-    private static async Task<IReadOnlyList<TopologyEdgeProjection>> ReadDeclaredHistoryAsync(
+    private async Task<IReadOnlyList<TopologyEdgeProjection>> ReadDeclaredHistoryAsync(
         ControlPlaneDbContext db, long committed, CancellationToken token)
     {
         await db.Database.OpenConnectionAsync(token);
@@ -98,6 +124,7 @@ public sealed class TopologyGraphSnapshotSource(
                 FROM bizigo.topology_edge_declared_history
                 ORDER BY edge_id, from_nano
                 """;
+            ObserveQuery?.Invoke(new("declared-edges", command.CommandText, []));
             var result = new List<TopologyEdgeProjection>();
             await using var reader = await command.ExecuteReaderAsync(token);
             while (await reader.ReadAsync(token))

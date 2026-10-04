@@ -13,7 +13,7 @@ namespace Bizigo.IntegrationTests;
 public sealed class TopologyApiOracleIntegrationTests(DevStackFixture stack)
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
-    private sealed record Seed(string Root, string Left, string Right, string Hidden, string Edge, string AsOf)
+    private sealed record Seed(string Root, string Left, string Right, string Hidden, string Edge, string RightEdge, string AsOf)
     {
         public string Route(string name) => name switch
         {
@@ -96,6 +96,7 @@ public sealed class TopologyApiOracleIntegrationTests(DevStackFixture stack)
         using var success = await api.GetAsync(route);
         Assert.Equal(HttpStatusCode.OK, success.StatusCode);
         var body = await success.Content.ReadAsStringAsync(Ct);
+        AssertTypedRead(name, body, seed);
         Assert.DoesNotContain(seed.Hidden, body, StringComparison.Ordinal);
         Assert.DoesNotContain("FOREIGN-B-MARKER", body, StringComparison.Ordinal);
         var before = await f.Db.AuditLog.CountAsync(a => a.Subject == api.Subject("A"), Ct);
@@ -252,6 +253,118 @@ public sealed class TopologyApiOracleIntegrationTests(DevStackFixture stack)
         return Convert.ToInt64(await command.ExecuteScalarAsync(ct), CultureInfo.InvariantCulture);
     }
 
+    private static void AssertTypedRead(string route, string body, Seed seed)
+    {
+        using var json = JsonDocument.Parse(body);
+        var root = json.RootElement;
+        static void Shape(JsonElement value, params string[] keys) =>
+            Assert.Equal(keys.Order(StringComparer.Ordinal),
+                value.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
+        static string Text(JsonElement value, string key)
+        {
+            var field = value.GetProperty(key);
+            Assert.Equal(JsonValueKind.String, field.ValueKind);
+            return field.GetString()!;
+        }
+        static void DecimalText(JsonElement value, string key)
+        {
+            var text = Text(value, key);
+            Assert.NotEmpty(text);
+            Assert.All(text, c => Assert.InRange(c, '0', '9'));
+            Assert.True(decimal.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out _));
+        }
+        static void Null(JsonElement value, string key) => Assert.Equal(JsonValueKind.Null, value.GetProperty(key).ValueKind);
+        static void Complete(JsonElement value, bool cursor)
+        {
+            Assert.False(value.GetProperty("partial").GetBoolean());
+            Null(value, "reason");
+            DecimalText(value, "published_sequence");
+            if (cursor) Null(value, "cursor");
+        }
+        void Node(JsonElement node, string id, string display)
+        {
+            Shape(node, "id", "kind", "display_name", "owner_group", "enabled", "version",
+                "valid_from_unix_nano", "valid_to_unix_nano");
+            Assert.Equal(id, Text(node, "id")); Assert.Equal("service", Text(node, "kind"));
+            Assert.Equal(display, Text(node, "display_name")); Assert.Equal("A", Text(node, "owner_group"));
+            Assert.True(node.GetProperty("enabled").GetBoolean()); Assert.Equal("1", Text(node, "version"));
+            DecimalText(node, "valid_from_unix_nano"); Null(node, "valid_to_unix_nano");
+        }
+        void Edge(JsonElement edge, string id, string target)
+        {
+            Shape(edge, "id", "from_node_id", "to_node_id", "relation", "provenance", "directed", "confidence",
+                "from_owner_group", "to_owner_group", "visibility", "first_seen_unix_nano", "last_seen_unix_nano",
+                "effective_expiry_unix_nano", "publication_sequence", "version");
+            Assert.Equal(id, Text(edge, "id")); Assert.Equal(seed.Root, Text(edge, "from_node_id"));
+            Assert.Equal(target, Text(edge, "to_node_id")); Assert.Equal("depends_on", Text(edge, "relation"));
+            Assert.Equal("declared", Text(edge, "provenance")); Assert.True(edge.GetProperty("directed").GetBoolean());
+            Assert.Equal(1d, edge.GetProperty("confidence").GetDouble());
+            Assert.Equal("A", Text(edge, "from_owner_group")); Assert.Equal("A", Text(edge, "to_owner_group"));
+            Assert.Equal("same_owner", Text(edge, "visibility")); Assert.Equal("1", Text(edge, "version"));
+            DecimalText(edge, "first_seen_unix_nano"); DecimalText(edge, "last_seen_unix_nano");
+            DecimalText(edge, "publication_sequence"); Null(edge, "effective_expiry_unix_nano");
+        }
+        switch (route)
+        {
+            case "nodes":
+                Shape(root, "nodes", "cursor", "partial", "reason", "published_sequence"); Complete(root, true);
+                var nodes = root.GetProperty("nodes").EnumerateArray().ToArray();
+                Assert.Equal(new[] { seed.Root, seed.Left, seed.Right }.Order(StringComparer.Ordinal),
+                    nodes.Select(n => Text(n, "id")).Order(StringComparer.Ordinal));
+                Node(Assert.Single(nodes, n => Text(n, "id") == seed.Root), seed.Root, "root");
+                Node(Assert.Single(nodes, n => Text(n, "id") == seed.Left), seed.Left, "left");
+                Node(Assert.Single(nodes, n => Text(n, "id") == seed.Right), seed.Right, "right");
+                break;
+            case "node":
+                Shape(root, "node"); Node(root.GetProperty("node"), seed.Root, "root"); break;
+            case "edges":
+                Shape(root, "edges", "cursor", "partial", "reason", "published_sequence"); Complete(root, true);
+                var edges = root.GetProperty("edges").EnumerateArray().ToArray();
+                Assert.Equal(new[] { seed.Edge, seed.RightEdge }.Order(StringComparer.Ordinal),
+                    edges.Select(e => Text(e, "id")).Order(StringComparer.Ordinal));
+                Edge(Assert.Single(edges, e => Text(e, "id") == seed.Edge), seed.Edge, seed.Left);
+                Edge(Assert.Single(edges, e => Text(e, "id") == seed.RightEdge), seed.RightEdge, seed.Right);
+                break;
+            case "edge":
+                Shape(root, "edge", "evidence", "evidence_cursor");
+                Edge(root.GetProperty("edge"), seed.Edge, seed.Left);
+                Assert.Empty(root.GetProperty("evidence").EnumerateArray()); Null(root, "evidence_cursor"); break;
+            case "neighbors":
+                Shape(root, "neighbors", "outside_neighbor_count", "outside_neighbor_reason", "cursor", "partial", "reason", "published_sequence");
+                Complete(root, true); Assert.Equal("0", Text(root, "outside_neighbor_count")); Null(root, "outside_neighbor_reason");
+                var neighbors = root.GetProperty("neighbors").EnumerateArray().ToArray();
+                Assert.Equal(new[] { seed.Left, seed.Right }.Order(StringComparer.Ordinal),
+                    neighbors.Select(v => Text(v, "node_id")).Order(StringComparer.Ordinal));
+                foreach (var row in neighbors)
+                {
+                    Shape(row, "node_id", "edge_id", "relation", "provenance", "direction");
+                    Assert.Equal(Text(row, "node_id") == seed.Left ? seed.Edge : seed.RightEdge, Text(row, "edge_id"));
+                    Assert.Equal("depends_on", Text(row, "relation")); Assert.Equal("declared", Text(row, "provenance"));
+                    Assert.Equal("outgoing", Text(row, "direction"));
+                }
+                break;
+            case "path":
+                Shape(root, "status", "nodes", "edge_ids", "cursor", "partial", "reason", "published_sequence"); Complete(root, true);
+                Assert.Equal("Found", Text(root, "status"));
+                Assert.Equal(new[] { seed.Root, seed.Left }, root.GetProperty("nodes").EnumerateArray().Select(x => x.GetString()));
+                Assert.Equal(new[] { seed.Edge }, root.GetProperty("edge_ids").EnumerateArray().Select(x => x.GetString())); break;
+            case "ancestors":
+                Shape(root, "status", "node_id", "paths", "partial", "reason", "published_sequence"); Complete(root, false);
+                Assert.Equal("Found", Text(root, "status")); Assert.Equal(seed.Root, Text(root, "node_id"));
+                var paths = root.GetProperty("paths").EnumerateArray().ToArray();
+                Assert.Equal(new[] { seed.Left, seed.Right }.Order(StringComparer.Ordinal),
+                    paths.Select(v => Text(v, "target_node_id")).Order(StringComparer.Ordinal));
+                foreach (var path in paths)
+                {
+                    Shape(path, "target_node_id", "nodes", "edge_ids"); var target = Text(path, "target_node_id");
+                    Assert.Equal(new[] { seed.Root, target }, path.GetProperty("nodes").EnumerateArray().Select(x => x.GetString()));
+                    Assert.Equal(new[] { target == seed.Left ? seed.Edge : seed.RightEdge }, path.GetProperty("edge_ids").EnumerateArray().Select(x => x.GetString()));
+                }
+                break;
+            default: throw new ArgumentOutOfRangeException(nameof(route));
+        }
+    }
+
     private static void Sweep(string body, Seed seed)
     {
         foreach (var marker in new[] { "FOREIGN-B-MARKER", seed.Hidden, "topology_fault_driver_marker", "ClickHouse", "Npgsql", "SELECT ", "Exception", "secret" })
@@ -276,7 +389,7 @@ public sealed class TopologyApiOracleIntegrationTests(DevStackFixture stack)
         var first = await edgeRegistry.CreateAsync(scope, true, new(ids[0], ids[1], "depends_on"), Ct);
         var second = await edgeRegistry.CreateAsync(scope, true, new(ids[0], ids[2], "depends_on"), Ct);
         Assert.Equal(201, first.Status); Assert.Equal(201, second.Status);
-        return new(ids[0], ids[1], ids[2], ids[3], first.Edge!.Id.ToString("D"),
+        return new(ids[0], ids[1], ids[2], ids[3], first.Edge!.Id.ToString("D"), second.Edge!.Id.ToString("D"),
             DateTimeOffset.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss.fffffff'Z'", CultureInfo.InvariantCulture));
     }
 }

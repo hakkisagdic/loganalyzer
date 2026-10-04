@@ -46,9 +46,12 @@ public static class QueryServiceCollectionExtensions
                 coordinator.PublishAsync, readPendingKey: coordinator.ReadPendingKeyAsync);
         });
         services.AddSingleton<TopologyPublicationFence>();
+        services.AddSingleton<ITopologyExpiryNanoClock>(sp =>
+            new TimeProviderTopologyExpiryNanoClock(sp.GetService<TimeProvider>() ?? TimeProvider.System));
         services.AddSingleton<TopologyObservedSnapshotReader>();
         services.AddScoped<ITopologyGraphSnapshotSource, TopologyGraphSnapshotSource>();
         services.AddScoped<TopologyGraphQueryService>();
+        services.AddScoped<TopologySourceTargetPageReader>();
         services.AddSingleton(new TelemetryRetentionPolicy(options.TelemetryRetentionDays));
         services.AddSingleton<ITelemetrySink, TelemetryWriter>();
 

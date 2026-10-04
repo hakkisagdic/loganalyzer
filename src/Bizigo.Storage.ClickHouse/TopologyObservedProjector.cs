@@ -69,7 +69,7 @@ public sealed class TopologyObservedProjector(
     private sealed record Manifest(TopologyProjectionBatch Batch, string Payload, string PayloadHash,
         string RowsetHash, uint EdgeCount, uint ConflictCount);
 
-    // Exact frozen v2 conflict context layout for immutable pending manifests.
+    // Frozen v2 physical context layout: pending manifests retain exact row bytes.
     private sealed record ConflictCandidateV2(string Fingerprint, string OwnerGroup, string SourceId,
         string? NodeId, ulong EventTimeNano, decimal TraceExpiryNano, decimal ObservedExpiryNano,
         string ParentAnchor, bool IsConflictedAnchor);
