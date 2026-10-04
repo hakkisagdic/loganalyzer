@@ -206,7 +206,7 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
                             && version.ChildOwnerGroup != "_unassigned"))
                     && (scope.NodeId is null || version.FromNodeId == scope.NodeId
                         || version.ToNodeId == scope.NodeId)
-                    && (scope.EdgeId is null || version.EdgeId == scope.EdgeId)))
+                    && (scope.EdgeId is null || version.EdgeId == scope.EdgeId))))
             .OrderBy(static version => version.EdgeId, StringComparer.Ordinal).ToArray();
     }
 
