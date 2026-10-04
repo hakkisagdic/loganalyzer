@@ -43,7 +43,8 @@ public sealed class SignalDurabilityTests : IDisposable
         using var ingest = new SignalIngest(new(), new(factory), objects, options,
             Options.Create(new WalOptions { MaxTotalBytes = 1500 }),
             Options.Create(new RawStoreOptions { SegmentRetention = retention }), NullLogger<WriteAheadLog>.Instance);
-        using var service = new SignalIngestService(ingest, options, NullLogger<SignalIngestService>.Instance);
+        using var service = new SignalIngestService(ingest, options, NullLogger<SignalIngestService>.Instance,
+            new NonTopologyDurabilityGate());
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(Ct);
         timeout.CancelAfter(TimeSpan.FromSeconds(10));
         async Task UntilAsync(Func<bool> predicate)
@@ -319,6 +320,17 @@ public sealed class SignalDurabilityTests : IDisposable
         await ingest.ReplayArchiveAsync(Ct);
         Assert.Null(ingest.LastFailure);
         Assert.Equal(original, await File.ReadAllBytesAsync(path, Ct));
+    }
+
+    // This metrics-only WAL retention smoke does not certify topology storage.
+    // It supplies an explicit test dependency; production has no absent-gate fallback.
+    private sealed class NonTopologyDurabilityGate : ITopologyObservedRepairReadiness
+    {
+        public Task<TopologyRepairReadStamp> RequireReadyAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(new TopologyRepairReadStamp(0, "non-topology-durability-test-only"));
+        }
     }
 
     private sealed class FailSecondPut(IRawObjectStore inner) : IRawObjectStore

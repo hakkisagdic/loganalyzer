@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Bizigo.Api;
+using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Bizigo.Ingest.Otlp;
 using Bizigo.Ingest.Pipeline;
@@ -61,6 +62,10 @@ builder.Services.AddSingleton<OtlpTelemetryDecoder>();
 builder.Services.AddSingleton<ISignalCheckpoints>(new Gates(root, gate));
 builder.Services.AddSingleton<IWalDurability>(new Flush(root, gate));
 builder.Services.AddSingleton<SignalIngest>();
+// Only the default metrics/WAL process fixture has no topology data plane.
+// The --topology-crash and --telemetry-query modes returned above and retain
+// their production readiness composition; this is not a production fallback.
+builder.Services.AddSingleton<ITopologyObservedRepairReadiness, NonTopologyProcessFixtureReadiness>();
 builder.Services.AddHostedService<SignalIngestService>();
 builder.Services.AddAuthentication("fixture").AddScheme<AuthenticationSchemeOptions, FixtureAuth>("fixture", _ => { });
 builder.Services.AddAuthorization(o => o.AddPolicy(BizigoAuthPolicies.Ingest, p => p.RequireAuthenticatedUser().RequireRole("ingest")));
@@ -117,4 +122,13 @@ sealed class FileObjects(string root) : IRawObjectStore
         File.Exists(Path.Combine(root, key)) ? await File.ReadAllBytesAsync(Path.Combine(root, key), cancellationToken) : null;
     public Task<RawObjectInfo?> HeadAsync(string key, CancellationToken cancellationToken = default) =>
         Task.FromResult(File.Exists(Path.Combine(root, key)) ? new RawObjectInfo(key, new FileInfo(Path.Combine(root, key)).Length) : null);
+}
+
+sealed class NonTopologyProcessFixtureReadiness : ITopologyObservedRepairReadiness
+{
+    public Task<TopologyRepairReadStamp> RequireReadyAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(new TopologyRepairReadStamp(0, "non-topology-process-fixture-only"));
+    }
 }

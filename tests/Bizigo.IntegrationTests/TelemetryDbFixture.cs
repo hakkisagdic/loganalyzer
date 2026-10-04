@@ -53,7 +53,13 @@ internal sealed class TelemetryDbFixture : IAsyncDisposable
     public static async Task<TelemetryDbFixture> CreateAsync(DevStackFixture stack, CancellationToken token)
     {
         var factory = await DevStackSetup.ControlPlaneAsync(stack, token);
-        return new(stack, await DevStackSetup.ClickHouseAsync(stack, token), factory);
+        var storage = await DevStackSetup.ClickHouseAsync(stack, token);
+        var repair = await DevStackSetup.InitializeTopologyPublicationAsync(factory, storage, token);
+        Assert.Equal(TopologyRepairInitializationStatus.Ready, repair.Status);
+        // Fresh setup must prove readiness through the production gate. No
+        // certificate, attestation or success state is manufactured by the fixture.
+        await new TopologyObservedRepairReadiness(factory, storage).RequireReadyAsync(token);
+        return new(stack, storage, factory);
     }
 
     public SignalIngest Open(string? root = null, ITelemetrySink? sink = null, ISignalCheckpoints? checkpoints = null) =>

@@ -1,4 +1,5 @@
 using Bizigo.ControlPlane;
+using Bizigo.Query;
 using Bizigo.Storage.ClickHouse;
 using Bizigo.Storage.Raw;
 using Microsoft.EntityFrameworkCore;
@@ -66,6 +67,80 @@ public static class DevStackSetup
     }
 
     /// <summary>
+    /// Runs the real publication initializer after both stores have been set up.
+    /// Returns its status unchanged; negative migration fixtures call the runner
+    /// directly so setup cannot mask their pre-repair state.
+    /// </summary>
+    public static Task<TopologyRepairInitializationResult> InitializeTopologyPublicationAsync(
+        IDbContextFactory<ControlPlaneDbContext> factory,
+        ClickHouseContext storage,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        ArgumentNullException.ThrowIfNull(storage);
+
+        var readiness = new TopologyObservedRepairReadiness(factory, storage);
+        var runner = new TopologyPublicationRepairRunner(factory, storage, readiness);
+        return runner.InitializeAsync(TopologyRepairStartMode.Startup, cancellationToken);
+    }
+
+    /// <summary>
+    /// Explicit test-only fresh-store restore boundary. The caller must have
+    /// stopped all writers and provisioned a different, migrated CH database.
+    /// Resets only derived publication/repair state; preserves captured source
+    /// history, binding, declared history and archive authority for replay.
+    /// Does not initialize or certify the new target.
+    /// </summary>
+    public static async Task ResetTopologyPublicationForFreshStoreAsync(
+        IDbContextFactory<ControlPlaneDbContext> factory,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+        await using var reset = await db.Database.BeginTransactionAsync(cancellationToken);
+        await ResetTopologyPublicationStateAsync(db, cancellationToken);
+        await reset.CommitAsync(cancellationToken);
+    }
+
+    private static async Task ResetTopologyPublicationStateAsync(
+        ControlPlaneDbContext db, CancellationToken cancellationToken)
+    {
+        // This owned fixture reset starts a new PG/CH test identity. It never
+        // certifies Ready: positive setup calls the real runner afterward,
+        // while migration/repair-negative tests retain Uninitialized state.
+        await db.Database.ExecuteSqlRawAsync(
+            "DELETE FROM bizigo.topology_repair_attestations;", cancellationToken);
+        var repairReset = await db.Database.ExecuteSqlRawAsync("""
+            UPDATE bizigo.topology_repair_state
+            SET pg_database_identity = gen_random_uuid(),
+                phase = 'Uninitialized', generation = 0, copy_attempt_id = NULL,
+                clickhouse_database_uuid = NULL, old_canonical_identity_json = NULL,
+                allowed_copy_identity_json = NULL, automatic_empty_init = false,
+                certificate_digest = NULL, certificate_json = NULL,
+                receipt_prefix_sequence = 0, receipt_prefix_sha256 = NULL,
+                updated_at = now()
+            WHERE id = 1;
+            """, cancellationToken);
+        Assert.Equal(1, repairReset);
+
+        // PG is shared, while every test gets a fresh CH database. Receipts and
+        // pending reservations belong to that same derived publication epoch;
+        // retaining either while resetting sequence zero contaminates the next test.
+        await db.Database.ExecuteSqlRawAsync("""
+            DELETE FROM bizigo.topology_publication_pending;
+            DELETE FROM bizigo.topology_publication_receipts;
+            """, cancellationToken);
+        await db.TopologyReadState.ExecuteDeleteAsync(cancellationToken);
+        // Publication initialization requires the authoritative zero state;
+        // absence is not a successful empty-state certificate.
+        var seeded = await db.Database.ExecuteSqlRawAsync("""
+            INSERT INTO bizigo.topology_read_state (id, epoch, published_sequence)
+            VALUES (1, 0, 0);
+            """, cancellationToken);
+        Assert.Equal(1, seeded);
+    }
+
+    /// <summary>
     /// Kontrol düzlemi fabrikası: göçler uygulanmış ve testin dokunduğu tablolar
     /// boşaltılmış.
     ///
@@ -88,13 +163,7 @@ public static class DevStackSetup
         await db.Database.MigrateAsync(cancellationToken);
 
         await using var reset = await db.Database.BeginTransactionAsync(cancellationToken);
-        // PG is shared, while every test gets a fresh CH database. Receipts and
-        // pending reservations belong to that same derived publication epoch;
-        // retaining either while resetting sequence zero contaminates the next test.
-        await db.Database.ExecuteSqlRawAsync("""
-            DELETE FROM bizigo.topology_publication_pending;
-            DELETE FROM bizigo.topology_publication_receipts;
-            """, cancellationToken);
+        await ResetTopologyPublicationStateAsync(db, cancellationToken);
         await db.RawManifest.ExecuteDeleteAsync(cancellationToken);
         await db.Sources.ExecuteDeleteAsync(cancellationToken);
         await db.SourceOwnershipHistory.ExecuteDeleteAsync(cancellationToken);
@@ -105,7 +174,6 @@ public static class DevStackSetup
         await db.TopologyOwnerHistory.ExecuteDeleteAsync(cancellationToken);
         await db.TopologyNodeHistory.ExecuteDeleteAsync(cancellationToken);
         await db.TopologyNodes.ExecuteDeleteAsync(cancellationToken);
-        await db.TopologyReadState.ExecuteDeleteAsync(cancellationToken);
         await reset.CommitAsync(cancellationToken);
 
         return factory;

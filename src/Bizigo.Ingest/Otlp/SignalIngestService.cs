@@ -1,3 +1,4 @@
+using Bizigo.Contracts;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -5,10 +6,17 @@ using Microsoft.Extensions.Options;
 namespace Bizigo.Ingest.Otlp;
 
 public sealed class SignalIngestService(SignalIngest ingest, IOptions<SignalOptions> options,
-    ILogger<SignalIngestService> logger) : BackgroundService
+    ILogger<SignalIngestService> logger, ITopologyObservedRepairReadiness readiness) : BackgroundService
 {
+    private readonly ITopologyObservedRepairReadiness repairReadiness =
+        readiness ?? throw new ArgumentNullException(nameof(readiness));
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // The HTTP host may serve declared-only reads during maintenance, but
+        // no observed recovery/consumer starts before the durable repair gate.
+        // This startup wait does not replace per-publication phase/lock checks.
+        await RetryAsync(async ct => { await repairReadiness.RequireReadyAsync(ct); }, stoppingToken);
         await RetryAsync(ingest.RecoverAsync, stoppingToken);
         await Task.WhenAll(ConsumeAsync(stoppingToken), RetainAsync(stoppingToken));
     }

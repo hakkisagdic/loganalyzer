@@ -49,6 +49,20 @@ internal static class TopologyCrashHost
         builder.Services.AddSingleton<SignalIngest>(sp =>
             ActivatorUtilities.CreateInstance<SignalIngest>(sp, sp.GetRequiredService<ITelemetrySink>()));
         await using var app = builder.Build();
+        // Parent setup owns migrations. The child validates/resumes the real
+        // publication initialization before it can recover any WAL/archive work.
+        // A normal interrupted publication retains its Ready certificate and
+        // is completed by RecoverAsync; no attestation is fabricated here.
+        await using (var repairScope = app.Services.CreateAsyncScope())
+        {
+            var repair = repairScope.ServiceProvider.GetRequiredService<TopologyPublicationRepairRunner>();
+            var initialization = await repair.InitializeAsync(TopologyRepairStartMode.Startup, ct);
+            if (initialization.Status != TopologyRepairInitializationStatus.Ready)
+                throw new TopologyObservedRepairUnavailableException();
+            await repairScope.ServiceProvider.GetRequiredService<ITopologyObservedRepairReadiness>()
+                .RequireReadyAsync(ct);
+        }
+
         var ingest = app.Services.GetRequiredService<SignalIngest>();
         await ingest.RecoverAsync(ct);
         if (!ingest.Ready) throw new InvalidOperationException("Recovery did not become ready: " + ingest.LastFailure);

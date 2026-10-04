@@ -26,6 +26,10 @@ public static class QueryServiceCollectionExtensions
         services.AddSingleton(options);
         services.AddSingleton<ClickHouseContext>();
         services.AddSingleton<ClickHouseMigrator>();
+        services.AddSingleton<TopologyObservedRepairReadiness>();
+        services.AddSingleton<ITopologyObservedRepairReadiness>(sp =>
+            sp.GetRequiredService<TopologyObservedRepairReadiness>());
+        services.AddScoped<TopologyPublicationRepairRunner>();
         services.AddSingleton<EventWriter>();
 
         // Sink arayüz üstünden alıyor (sınanabilirlik); tekil örnek aynı kalsın
@@ -78,6 +82,14 @@ public static class QueryServiceCollectionExtensions
         var options = services.GetRequiredService<ClickHouseOptions>();
         var migrator = services.GetRequiredService<ClickHouseMigrator>();
         var result = await migrator.MigrateAsync(options.MigrationsDirectory, cancellationToken);
+
+        // The repair runner owns its PG publisher lock, durable attestation and
+        // observed-readiness gate. MaintenanceRequired/RepairIncomplete/Busy
+        // must leave the host available for declared-only requests. Migration
+        // failures and cancellation propagate; no local Ready override exists.
+        await using var repairScope = services.CreateAsyncScope();
+        var repair = repairScope.ServiceProvider.GetRequiredService<TopologyPublicationRepairRunner>();
+        await repair.InitializeAsync(TopologyRepairStartMode.Startup, cancellationToken);
 
         return (result.Applied.Count, result.AlreadyApplied.Count);
     }
