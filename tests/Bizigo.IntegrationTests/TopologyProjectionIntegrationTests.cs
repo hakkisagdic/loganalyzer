@@ -304,6 +304,67 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
             reader.ReadScopedSnapshotAsync(1, scope, Ct));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    [Trait("Category", "Integration")]
+    public async Task Same_sequence_divergent_parent_decision_fails_without_mixing_reason_and_context(
+        bool changeContext)
+    {
+        await using var f = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var anchor = new string('a', 64);
+        var fingerprint = new string('b', 64);
+        var decision = new TopologyParentResolution(anchor, fingerprint, new string('c', 64),
+            "MissingParent", "A", "SA", ChildNode, f.Now + 1000, (decimal)f.Now + 100_000);
+        var context = JsonSerializer.Serialize(decision, RawSignalCodec.Json);
+        async Task InsertAsync(string reason, string capturedContext, ulong sequence = 1)
+        {
+            var row = JsonSerializer.Serialize(new
+            {
+                child_anchor = anchor,
+                child_fingerprint = fingerprint,
+                reason,
+                captured_context_json = capturedContext,
+                publication_seq = sequence,
+            });
+            await f.SqlAsync("INSERT INTO topology_parent_resolution FORMAT JSONEachRow\n" + row);
+        }
+
+        await InsertAsync("MissingParent", context);
+        await InsertAsync("MissingParent", context);
+        await f.SqlAsync("OPTIMIZE TABLE topology_parent_resolution FINAL");
+        Assert.Equal("2", (await f.SqlAsync("SELECT count() FROM topology_parent_resolution "
+            + "WHERE child_anchor = '" + anchor + "' AND publication_seq = 1")).Trim());
+        var reader = new TopologyObservedSnapshotReader(f.Storage);
+        Assert.Equal("MissingParent", Assert.Single((await reader.ReadSnapshotAsync(1, Ct))
+            .ParentResolutions).Reason);
+        var scope = new TopologyObservedReadScope(AccessScope.ForGroups("scope-A", ["A"]),
+            f.Now, (decimal)f.Now + 2000, (decimal)f.Now + 2000, 64);
+        Assert.Equal("MissingParent", Assert.Single((await reader.ReadScopedSnapshotAsync(1, scope, Ct))
+            .ParentResolutions).Reason);
+        await Assert.ThrowsAsync<IOException>(() => reader.ReadScopedSnapshotAsync(1,
+            scope with { MaxCandidates = 1 }, Ct)); // raw rows count before duplicate reduction
+
+        await InsertAsync("Resolved", JsonSerializer.Serialize(decision with { Reason = "Resolved" },
+            RawSignalCodec.Json), 2);
+        await f.SqlAsync("OPTIMIZE TABLE topology_parent_resolution FINAL");
+        Assert.Equal("MissingParent", Assert.Single((await reader.ReadSnapshotAsync(1, Ct))
+            .ParentResolutions).Reason); // pending seq2 cannot rewrite watermark1
+        Assert.Equal("Resolved", Assert.Single((await reader.ReadSnapshotAsync(2, Ct))
+            .ParentResolutions).Reason);
+
+        await InsertAsync(changeContext ? "MissingParent" : "Resolved",
+            changeContext ? JsonSerializer.Serialize(decision with { SourceId = "other-source" },
+                RawSignalCodec.Json) : context);
+        await f.SqlAsync("OPTIMIZE TABLE topology_parent_resolution FINAL");
+        Assert.Equal("3", (await f.SqlAsync("SELECT count() FROM topology_parent_resolution "
+            + "WHERE child_anchor = '" + anchor + "' AND publication_seq = 1")).Trim());
+        await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(() =>
+            reader.ReadSnapshotAsync(1, Ct));
+        await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(() =>
+            reader.ReadScopedSnapshotAsync(1, scope, Ct));
+    }
+
     [Fact, Trait("Category", "Integration")]
     public async Task Expired_latest_version_cannot_resurrect_older_observed_proof_after_cleanup()
     {

@@ -315,15 +315,13 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
         await connection.OpenAsync(token);
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT child_anchor, child_fingerprint,
-                argMax(reason, publication_seq),
-                argMax(captured_context_json, publication_seq)
+            SELECT child_anchor, child_fingerprint, publication_seq,
+                reason, captured_context_json
             FROM topology_parent_resolution
             WHERE publication_seq <= {watermark:UInt64}
             """ + (anchors is null ? string.Empty : "\n AND child_anchor IN ({anchors:Array(String)})")
             + "\n" + """
-            GROUP BY child_anchor, child_fingerprint
-            ORDER BY child_anchor, child_fingerprint
+            ORDER BY child_anchor, child_fingerprint, publication_seq
             """ + (maxRows is null ? string.Empty : " LIMIT {read_limit:UInt32}" + ScopedReadSettings);
         command.AddParameter("watermark", watermark);
         if (anchors is not null) command.AddParameter("anchors", anchors.ToArray());
@@ -331,23 +329,46 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
         Observe("parent-resolution", command,
             anchors is null ? ["watermark"] : ["watermark", "anchors", "read_limit"]);
         command.CommandTimeout = Math.Clamp(context.Options.QueryTimeoutSeconds, 1, 300);
-        var result = new List<TopologyParentResolution>();
+        var seenVersions = new Dictionary<(string Anchor, string Fingerprint, ulong Sequence),
+            (string Reason, string Context)>();
+        var latest = new Dictionary<(string Anchor, string Fingerprint),
+            (ulong Sequence, string Reason, string Context)>();
+        var physicalRows = 0;
         await using var reader = await command.ExecuteReaderAsync(token);
         while (await reader.ReadAsync(token))
         {
-            var childAnchor = ReadString(reader.GetValue(0));
-            var fingerprint = ReadString(reader.GetValue(1));
-            var reason = ReadString(reader.GetValue(2));
+            if (maxRows is not null && ++physicalRows > maxRows.Value)
+                throw new IOException("Parent decision read exceeds its physical capacity.");
+            var childAnchor = ReadExactField(reader.GetValue(0));
+            var fingerprint = ReadExactField(reader.GetValue(1));
+            var sequence = Convert.ToUInt64(reader.GetValue(2), CultureInfo.InvariantCulture);
+            var version = (Reason: ReadExactField(reader.GetValue(3)),
+                Context: ReadExactField(reader.GetValue(4)));
+            if (seenVersions.TryGetValue((childAnchor, fingerprint, sequence), out var previous))
+            {
+                if (previous != version)
+                    throw new TopologyObservedRepairUnavailableException();
+                continue;
+            }
+            seenVersions.Add((childAnchor, fingerprint, sequence), version);
+            if (!latest.TryGetValue((childAnchor, fingerprint), out var current)
+                || sequence > current.Sequence)
+                latest[(childAnchor, fingerprint)] = (sequence, version.Reason, version.Context);
+        }
+        var result = new List<TopologyParentResolution>(latest.Count);
+        foreach (var row in latest.OrderBy(static item => item.Key.Anchor, StringComparer.Ordinal)
+                     .ThenBy(static item => item.Key.Fingerprint, StringComparer.Ordinal))
+        {
+            var (childAnchor, fingerprint) = row.Key;
+            var (_, reason, context) = row.Value;
             var captured = JsonSerializer.Deserialize<TopologyParentResolution>(
-                ReadString(reader.GetValue(3)), RawSignalCodec.Json)
+                context, RawSignalCodec.Json)
                 ?? throw new InvalidDataException("Published parent decision lacks captured context.");
             if (captured.ChildAnchor != childAnchor || captured.ChildFingerprint != fingerprint
                 || captured.Reason != reason || string.IsNullOrWhiteSpace(captured.SourceId)
                 || string.IsNullOrWhiteSpace(captured.OwnerGroup))
                 throw new InvalidDataException("Published parent decision context is invalid.");
             result.Add(captured);
-            if (maxRows is not null && result.Count > maxRows.Value)
-                throw new IOException("Parent decision read exceeds its physical capacity.");
         }
         return result;
     }
@@ -462,9 +483,9 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
                 throw new IOException("Topology conflict read exceeds its physical capacity.");
             var anchor = ReadString(reader.GetValue(0));
             var sequence = Convert.ToUInt64(reader.GetValue(1), CultureInfo.InvariantCulture);
-            var version = (First: ReadConflictField(reader.GetValue(2)),
-                Conflicting: ReadConflictField(reader.GetValue(3)),
-                Context: ReadConflictField(reader.GetValue(4)));
+            var version = (First: ReadExactField(reader.GetValue(2)),
+                Conflicting: ReadExactField(reader.GetValue(3)),
+                Context: ReadExactField(reader.GetValue(4)));
             if (seenVersions.TryGetValue((anchor, sequence), out var previous))
             {
                 if (previous != version)
@@ -543,7 +564,7 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
             ?? throw new InvalidDataException("Missing topology projection string."),
     };
 
-    private static string ReadConflictField(object value) => value switch
+    private static string ReadExactField(object value) => value switch
     {
         string text => text,
         byte[] bytes => new UTF8Encoding(false, true).GetString(bytes),
