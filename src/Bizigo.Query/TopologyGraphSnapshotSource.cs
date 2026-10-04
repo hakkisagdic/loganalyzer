@@ -1,3 +1,5 @@
+using System.Data.Common;
+using System.Text;
 using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Bizigo.Storage.ClickHouse;
@@ -14,11 +16,20 @@ namespace Bizigo.Query;
 public sealed class TopologyGraphSnapshotSource(
     IDbContextFactory<ControlPlaneDbContext> factory,
     TopologyObservedSnapshotReader observed,
-    TopologyPublicationFence fence) : ITopologyGraphSnapshotSource
+    TopologyPublicationFence fence) : ITopologyScopedGraphSnapshotSource
 {
+    private const int MaxPhysicalRows = 4096;
     public Action<TopologySqlPlan>? ObserveQuery { get; set; }
 
     public Task<TopologyGraphSnapshot> ReadAsync(long? publishedSequence, CancellationToken cancellationToken) =>
+        ReadCoreAsync(publishedSequence, null, cancellationToken);
+
+    public Task<TopologyGraphSnapshot> ReadScopedAsync(long? publishedSequence,
+        TopologyGraphSnapshotReadRequest request, CancellationToken cancellationToken) =>
+        ReadCoreAsync(publishedSequence, request ?? throw new ArgumentNullException(nameof(request)), cancellationToken);
+
+    private Task<TopologyGraphSnapshot> ReadCoreAsync(long? publishedSequence,
+        TopologyGraphSnapshotReadRequest? request, CancellationToken cancellationToken) =>
         fence.ExecuteAsync(async (revision, token) =>
         {
             if (revision.ClickHouseWatermark > long.MaxValue)
@@ -28,10 +39,25 @@ public sealed class TopologyGraphSnapshotSource(
                 throw new TopologySnapshotUnavailableException(publishedSequence.Value);
 
             await using var db = await factory.CreateDbContextAsync(token);
-            var currentNodes = await db.TopologyNodes.AsNoTracking().ToDictionaryAsync(n => n.Id, token);
-            var nodeHistory = await db.TopologyNodeHistory.AsNoTracking().ToArrayAsync(token);
-            var declaredEdges = await ReadDeclaredHistoryAsync(db, committed, token);
-            var observedSnapshot = await observed.ReadSnapshotAsync(revision.ClickHouseWatermark, token);
+            var nodeHistory = request is null
+                ? await db.TopologyNodeHistory.AsNoTracking().ToArrayAsync(token)
+                : await ReadScopedNodeHistoryAsync(db, request, token);
+            var nodeIds = nodeHistory.Select(static history => history.NodeId).Distinct(StringComparer.Ordinal).ToArray();
+            var currentNodes = request is null
+                ? await db.TopologyNodes.AsNoTracking().ToDictionaryAsync(n => n.Id, token)
+                : await db.TopologyNodes.AsNoTracking().Where(node => nodeIds.Contains(node.Id))
+                    .ToDictionaryAsync(n => n.Id, token);
+            IReadOnlyList<TopologyEdgeProjection> declaredEdges = request is not null
+                && (request.IncludeNodes || request.Provenance == TopologyProvenance.Observed)
+                ? [] : await ReadDeclaredHistoryAsync(db, committed, request, token);
+            var observedSnapshot = request is not null && !request.IncludeObserved
+                ? new TopologyObservedSnapshot([], [])
+                : request is null
+                    ? await observed.ReadSnapshotAsync(revision.ClickHouseWatermark, token)
+                    : await observed.ReadScopedSnapshotAsync(revision.ClickHouseWatermark,
+                        new TopologyObservedReadScope(request.Scope, request.WindowFromUnixNano,
+                            request.WindowToUnixNano, request.ExpiryReadClockUnixNano,
+                            MaxPhysicalRows, request.NodeId, request.EdgeId), token);
             var observedRows = observedSnapshot.Rows;
 
             var nodes = new List<TopologyNodeProjection>(nodeHistory.Length);
@@ -111,20 +137,55 @@ public sealed class TopologyGraphSnapshotSource(
         }, cancellationToken);
 
     private async Task<IReadOnlyList<TopologyEdgeProjection>> ReadDeclaredHistoryAsync(
-        ControlPlaneDbContext db, long committed, CancellationToken token)
+        ControlPlaneDbContext db, long committed, TopologyGraphSnapshotReadRequest? request,
+        CancellationToken token)
     {
         await db.Database.OpenConnectionAsync(token);
         try
         {
             using var command = db.Database.GetDbConnection().CreateCommand();
+            var scoped = request is not null;
+            var restricted = scoped && !request!.Scope.IsUnrestricted;
             command.CommandText = """
                 SELECT edge_id, from_node_id, to_node_id, relation, directed, provenance,
                     confidence, from_owner_group, to_owner_group, from_nano, to_nano,
                     edge_version, deleted_at
                 FROM bizigo.topology_edge_declared_history
+                """ + (scoped ? "\n" + """
+                WHERE from_nano <= @state_clock
+                    AND (to_nano IS NULL OR @state_clock < to_nano)
+                """ : string.Empty)
+                + (restricted ? "\n" + """
+                    AND (from_owner_group = ANY(@scope_groups) OR to_owner_group = ANY(@scope_groups))
+                """ : string.Empty)
+                + (request?.Relation is null ? string.Empty : "\n AND relation = @relation")
+                + (request?.NodeId is null ? string.Empty : "\n AND (from_node_id = @node_id OR to_node_id = @node_id)")
+                + (request?.EdgeId is null ? string.Empty : Guid.TryParse(request.EdgeId, out _)
+                    ? "\n AND edge_id = @edge_id" : "\n AND FALSE")
+                + "\n" + """
                 ORDER BY edge_id, from_nano
-                """;
-            ObserveQuery?.Invoke(new("declared-edges", command.CommandText, []));
+                """ + (scoped ? " LIMIT @read_limit" : string.Empty);
+            if (request is not null)
+            {
+                if (restricted) AddParameter("scope_groups",
+                    request.Scope.OwnerGroups.Where(static group => group != "_unassigned").ToArray());
+                AddParameter("state_clock", request.DeclaredStateClockUnixNano ?? request.AsOfUnixNano);
+                AddParameter("read_limit", MaxPhysicalRows + 1);
+                if (request.Relation is not null) AddParameter("relation", RelationWire(request.Relation.Value));
+                if (request.NodeId is not null) AddParameter("node_id", request.NodeId);
+                if (request.EdgeId is not null && Guid.TryParse(request.EdgeId, out var edgeId))
+                    AddParameter("edge_id", edgeId);
+            }
+            var bound = new List<string>();
+            if (request is not null)
+            {
+                bound.AddRange(["state_clock", "read_limit"]);
+                if (restricted) bound.Add("scope_groups");
+                if (request.Relation is not null) bound.Add("relation");
+                if (request.NodeId is not null) bound.Add("node_id");
+                if (request.EdgeId is not null && Guid.TryParse(request.EdgeId, out _)) bound.Add("edge_id");
+            }
+            ObserveDeclared(command, bound);
             var result = new List<TopologyEdgeProjection>();
             await using var reader = await command.ExecuteReaderAsync(token);
             while (await reader.ReadAsync(token))
@@ -137,10 +198,78 @@ public sealed class TopologyGraphSnapshotSource(
                     reader.GetDecimal(6), fromOwner, toOwner, Visibility(fromOwner, toOwner),
                     fromNano, fromNano, reader.IsDBNull(10) ? null : reader.GetDecimal(10),
                     committed, reader.GetInt64(11), !reader.IsDBNull(12)));
+                if (scoped && result.Count > MaxPhysicalRows)
+                    throw new IOException("Topology declared read exceeds its physical capacity.");
             }
             return result;
+
+            void AddParameter(string name, object value)
+            {
+                var parameter = command.CreateParameter();
+                parameter.ParameterName = name;
+                parameter.Value = value;
+                command.Parameters.Add(parameter);
+            }
         }
         finally { await db.Database.CloseConnectionAsync(); }
+    }
+
+    private void ObserveDeclared(DbCommand command, IReadOnlyList<string> names)
+    {
+        if (ObserveQuery is null) return;
+        var sql = command.CommandText;
+        var bound = names.Select(name =>
+        {
+            var parameter = command.Parameters.Cast<DbParameter>()
+                .Single(candidate => candidate.ParameterName == name);
+            return (Name: name, Value: parameter.Value
+                ?? throw new InvalidDataException("Topology SQL parameter is missing."));
+        }).ToArray();
+        ObserveQuery(new TopologySqlPlan("declared-edges", sql, names)
+        {
+            ExplainAsync = async cancellationToken =>
+            {
+                await using var db = await factory.CreateDbContextAsync(cancellationToken);
+                await db.Database.OpenConnectionAsync(cancellationToken);
+                try
+                {
+                    using var explain = db.Database.GetDbConnection().CreateCommand();
+                    explain.CommandText = "EXPLAIN (FORMAT TEXT) " + sql;
+                    foreach (var parameter in bound)
+                    {
+                        var replay = explain.CreateParameter();
+                        replay.ParameterName = parameter.Name;
+                        replay.Value = parameter.Value;
+                        explain.Parameters.Add(replay);
+                    }
+                    var output = new StringBuilder();
+                    await using var reader = await explain.ExecuteReaderAsync(cancellationToken);
+                    while (await reader.ReadAsync(cancellationToken))
+                        output.AppendLine(reader.GetString(0));
+                    return output.ToString();
+                }
+                finally { await db.Database.CloseConnectionAsync(); }
+            },
+        });
+    }
+
+    private static async Task<TopologyNodeHistoryEntity[]> ReadScopedNodeHistoryAsync(
+        ControlPlaneDbContext db, TopologyGraphSnapshotReadRequest request, CancellationToken token)
+    {
+        if (!request.IncludeNodes) return [];
+        var query = db.TopologyNodeHistory.AsNoTracking().Where(history =>
+            history.FromNano <= request.AsOfUnixNano
+            && (history.ToNano == null || request.AsOfUnixNano < history.ToNano));
+        if (!request.Scope.IsUnrestricted)
+        {
+            var owners = request.Scope.OwnerGroups.Where(static owner => owner != "_unassigned").ToArray();
+            query = query.Where(history => owners.Contains(history.OwnerGroup));
+        }
+        if (request.NodeId is not null) query = query.Where(history => history.NodeId == request.NodeId);
+        var rows = await query.OrderBy(history => history.NodeId).Take(MaxPhysicalRows + 1).ToArrayAsync(token);
+        if (rows.Length > MaxPhysicalRows)
+            throw new IOException("Topology node read exceeds its physical capacity.");
+        return rows;
     }
 
     private static TopologyRelation Relation(string value) => value switch
@@ -149,6 +278,14 @@ public sealed class TopologyGraphSnapshotSource(
         "contains" => TopologyRelation.Contains,
         "connects_to" => TopologyRelation.ConnectsTo,
         _ => throw new InvalidDataException("Unknown topology relation in persisted graph."),
+    };
+
+    private static string RelationWire(TopologyRelation relation) => relation switch
+    {
+        TopologyRelation.DependsOn => "depends_on",
+        TopologyRelation.Contains => "contains",
+        TopologyRelation.ConnectsTo => "connects_to",
+        _ => throw new InvalidDataException("Unknown topology relation filter."),
     };
 
     private static TopologyProvenance Provenance(string value) => value switch

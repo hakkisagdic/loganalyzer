@@ -46,6 +46,27 @@ public interface ITopologyGraphSnapshotSource
     Task<TopologyGraphSnapshot> ReadAsync(long? publishedSequence, CancellationToken cancellationToken);
 }
 
+/// <summary>
+/// Physical read envelope. The historical graph state and observed event window
+/// are independent of the current server clock used for logical evidence TTL.
+/// A source must either return the complete relevant set or fail; truncation
+/// must never become an apparently complete graph.
+/// </summary>
+public sealed record TopologyGraphSnapshotReadRequest(AccessScope Scope,
+    decimal AsOfUnixNano, decimal ExpiryReadClockUnixNano,
+    decimal WindowFromUnixNano, decimal WindowToUnixNano,
+    decimal? DeclaredStateClockUnixNano = null,
+    TopologyRelation? Relation = null, TopologyProvenance? Provenance = null,
+    bool IncludeNodes = false, bool IncludeObserved = true,
+    string? NodeId = null, string? EdgeId = null);
+
+/// <summary>Production source capability; memory oracles retain the plain source interface.</summary>
+public interface ITopologyScopedGraphSnapshotSource : ITopologyGraphSnapshotSource
+{
+    Task<TopologyGraphSnapshot> ReadScopedAsync(long? publishedSequence,
+        TopologyGraphSnapshotReadRequest request, CancellationToken cancellationToken);
+}
+
 public sealed record TopologyPathQuery(
     string FromNodeId,
     string ToNodeId,

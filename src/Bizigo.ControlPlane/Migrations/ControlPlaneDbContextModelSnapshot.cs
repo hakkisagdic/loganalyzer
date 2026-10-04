@@ -1705,6 +1705,12 @@ namespace Bizigo.ControlPlane.Migrations
                     b.HasIndex("FromNodeId", "Relation", "Revision")
                         .HasDatabaseName("ix_topology_edge_hist_from_relation_revision");
 
+                    b.HasIndex("FromOwnerGroup", "FromNano")
+                        .HasDatabaseName("ix_topology_edge_hist_from_owner_clock");
+
+                    b.HasIndex("ToOwnerGroup", "FromNano")
+                        .HasDatabaseName("ix_topology_edge_hist_to_owner_clock");
+
                     b.ToTable("topology_edge_declared_history", "bizigo");
                 });
 
@@ -1823,6 +1829,9 @@ namespace Bizigo.ControlPlane.Migrations
                     b.HasIndex("NodeId", "FromNano")
                         .IsUnique()
                         .HasDatabaseName("ix_topology_node_history_node_id_from_nano");
+
+                    b.HasIndex("OwnerGroup", "FromNano")
+                        .HasDatabaseName("ix_topology_node_hist_owner_clock");
 
                     b.ToTable("topology_node_history", "bizigo");
                 });

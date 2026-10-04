@@ -124,6 +124,33 @@ public sealed class TopologyGraphTests
     }
 
     [Fact]
+    public async Task Scoped_snapshot_receives_scope_window_declared_state_and_independent_expiry_clock()
+    {
+        var source = new ScopedMemorySource(new(9,
+            [Edge("observed", R, A, provenance: TopologyProvenance.Observed)
+                with { LastSeenUnixNano = 950, EffectiveExpiry = 1100 }]));
+        var graph = new TopologyGraphQueryService(source);
+        var path = await graph.PathAsync(new(R, A, 1000, FromUnixNano: 900, ToUnixNano: 1000)
+        {
+            DeclaredStateClockUnixNano = 999,
+            ExpiryReadClockUnixNano = 1050,
+        }, ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, path.Status);
+        Assert.NotNull(source.LastRequest);
+        Assert.Same(ScopeA, source.LastRequest.Scope);
+        Assert.Equal((900m, 1000m), (source.LastRequest.WindowFromUnixNano,
+            source.LastRequest.WindowToUnixNano));
+        Assert.Equal(999, source.LastRequest.DeclaredStateClockUnixNano);
+        Assert.Equal(1050, source.LastRequest.ExpiryReadClockUnixNano);
+        Assert.Equal(TopologyRelation.DependsOn, source.LastRequest.Relation);
+        Assert.False(source.LastRequest.IncludeNodes);
+
+        _ = await graph.SearchNodesAsync(new(1000), ScopeA, Ct);
+        Assert.True(source.LastRequest.IncludeNodes);
+        Assert.False(source.LastRequest.IncludeObserved);
+    }
+
+    [Fact]
     public async Task Cursor_is_stable_and_partial_cursor_never_restarts()
     {
         var query = Query([Edge("1", R, A), Edge("2", R, B), Edge("3", R, C)]);
@@ -371,5 +398,22 @@ public sealed class TopologyGraphTests
                 throw new TopologySnapshotUnavailableException(publishedSequence.Value);
             return Task.FromResult(snapshot);
         }
+    }
+
+    private sealed class ScopedMemorySource(TopologyGraphSnapshot snapshot) : ITopologyScopedGraphSnapshotSource
+    {
+        public TopologyGraphSnapshotReadRequest LastRequest { get; private set; } = null!;
+
+        public Task<TopologyGraphSnapshot> ReadScopedAsync(long? publishedSequence,
+            TopologyGraphSnapshotReadRequest request, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            LastRequest = request;
+            return Task.FromResult(snapshot);
+        }
+
+        public Task<TopologyGraphSnapshot> ReadAsync(long? publishedSequence,
+            CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Graph service bypassed the scoped snapshot capability.");
     }
 }

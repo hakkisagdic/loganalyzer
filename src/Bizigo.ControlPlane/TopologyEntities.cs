@@ -85,6 +85,8 @@ internal static class TopologyModel
             e.Property(x => x.ToNano).HasPrecision(20, 0);
             e.HasIndex(x => new { x.NodeId, x.FromNano }).IsUnique();
             e.HasIndex(x => x.NodeId).IsUnique().HasFilter("to_nano IS NULL");
+            e.HasIndex(x => new { x.OwnerGroup, x.FromNano })
+                .HasDatabaseName("ix_topology_node_hist_owner_clock");
         });
         model.Entity<TopologyOwnerHistoryEntity>(e =>
         {

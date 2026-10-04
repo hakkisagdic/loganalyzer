@@ -66,6 +66,10 @@ internal static class TopologyEdgeModel
             // Historical Contains keyset: one bounded next revision per parent.
             e.HasIndex(x => new { x.FromNodeId, x.Relation, x.Revision })
                 .HasDatabaseName("ix_topology_edge_hist_from_relation_revision");
+            e.HasIndex(x => new { x.FromOwnerGroup, x.FromNano })
+                .HasDatabaseName("ix_topology_edge_hist_from_owner_clock");
+            e.HasIndex(x => new { x.ToOwnerGroup, x.FromNano })
+                .HasDatabaseName("ix_topology_edge_hist_to_owner_clock");
         });
     }
 }

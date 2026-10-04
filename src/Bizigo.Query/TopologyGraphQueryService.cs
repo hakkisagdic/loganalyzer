@@ -28,7 +28,8 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         ArgumentNullException.ThrowIfNull(query); ValidateScopeAndPage(scope, query.PageSize);
         var fingerprint = Fingerprint("nodes", scope, query.ReadClockUnixNano.ToString(CultureInfo.InvariantCulture),
             query.Kind?.ToString() ?? "*");
-        var (snapshot, cursor) = await ReadAsync(query.Cursor, fingerprint, cancellationToken);
+        var (snapshot, cursor) = await ReadAsync(query.Cursor, fingerprint,
+            NodeRead(scope, query.ReadClockUnixNano), cancellationToken);
         var rows = snapshot.Nodes.Where(node => TopologyIdentity.CanReadOwner(scope, node.OwnerGroup) && node.Enabled && !node.Deleted
                 && node.ValidFromUnixNano <= query.ReadClockUnixNano
                 && (node.ValidToUnixNano is null || query.ReadClockUnixNano < node.ValidToUnixNano))
@@ -40,7 +41,7 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         CancellationToken cancellationToken = default)
     {
         ValidateNode(nodeId); ArgumentNullException.ThrowIfNull(scope); _ = TopologyExpiry.FromDecimal(readClockUnixNano);
-        var snapshot = await _source.ReadAsync(null, cancellationToken);
+        var snapshot = await ReadSnapshotAsync(null, NodeRead(scope, readClockUnixNano, nodeId), cancellationToken);
         return snapshot.Nodes.SingleOrDefault(node => node.Id == nodeId && TopologyIdentity.CanReadOwner(scope, node.OwnerGroup) && node.Enabled && !node.Deleted
             && node.ValidFromUnixNano <= readClockUnixNano && (node.ValidToUnixNano is null || readClockUnixNano < node.ValidToUnixNano));
     }
@@ -53,7 +54,9 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var expiryClock = ResolveExpiryClock(query.ReadClockUnixNano, query.ExpiryReadClockUnixNano);
         var fingerprint = Fingerprint("edges", scope, query.ReadClockUnixNano.ToString(CultureInfo.InvariantCulture),
             query.Relation?.ToString() ?? "*", query.Provenance?.ToString() ?? "*", WindowPart(window));
-        var (snapshot, cursor) = await ReadAsync(query.Cursor, fingerprint, cancellationToken);
+        var (snapshot, cursor) = await ReadAsync(query.Cursor, fingerprint,
+            EdgeRead(scope, query.ReadClockUnixNano, expiryClock, window,
+                relation: query.Relation, provenance: query.Provenance), cancellationToken);
         EnsureEdgeListReady(snapshot, scope, query.ReadClockUnixNano, expiryClock, window,
             query.Relation, query.Provenance);
         var rows = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window,
@@ -114,7 +117,9 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var fingerprint = Fingerprint("edge-evidence", scope, edgeId,
             readClockUnixNano.ToString(CultureInfo.InvariantCulture), WindowPart(window),
             ClockPart(declaredStateClockUnixNano));
-        var (snapshot, cursor) = await ReadAsync(evidenceCursor, fingerprint, cancellationToken);
+        var (snapshot, cursor) = await ReadAsync(evidenceCursor, fingerprint,
+            EdgeRead(scope, readClockUnixNano, expiryClock, window,
+                declaredStateClockUnixNano, edgeId: edgeId), cancellationToken);
         var visible = VisibleActiveEdges(snapshot, scope, readClockUnixNano, window,
             declaredStateClockUnixNano, expiryClock).ToArray();
         if (!visible.Any(candidate => candidate.Id == edgeId && candidate.Provenance == TopologyProvenance.Declared))
@@ -139,7 +144,9 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var fingerprint = Fingerprint("path", scope, query.FromNodeId, query.ToNodeId,
             query.ReadClockUnixNano.ToString(CultureInfo.InvariantCulture), WindowPart(window),
             ClockPart(query.DeclaredStateClockUnixNano));
-        var (snapshot, cursor) = await ReadAsync(query.Cursor, fingerprint, cancellationToken);
+        var (snapshot, cursor) = await ReadAsync(query.Cursor, fingerprint,
+            EdgeRead(scope, query.ReadClockUnixNano, expiryClock, window,
+                query.DeclaredStateClockUnixNano, TopologyRelation.DependsOn), cancellationToken);
         var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window,
                 query.DeclaredStateClockUnixNano, expiryClock)
             .Where(static edge => edge.Relation == TopologyRelation.DependsOn).ToArray();
@@ -200,7 +207,9 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         foreach (var nodeId in query.NodeIds) ValidateNode(nodeId);
         var window = ResolveWindow(query.ReadClockUnixNano, query.FromUnixNano, query.ToUnixNano);
         var expiryClock = ResolveExpiryClock(query.ReadClockUnixNano, query.ExpiryReadClockUnixNano);
-        var snapshot = await _source.ReadAsync(null, cancellationToken);
+        var snapshot = await ReadSnapshotAsync(null,
+            EdgeRead(scope, query.ReadClockUnixNano, expiryClock, window,
+                relation: TopologyRelation.DependsOn), cancellationToken);
         var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window,
                 expiryReadClockUnixNano: expiryClock)
             .Where(static edge => edge.Relation == TopologyRelation.DependsOn).ToArray();
@@ -254,7 +263,9 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var window = ResolveWindow(query.ReadClockUnixNano, query.FromUnixNano, query.ToUnixNano);
         ValidateDeclaredStateClock(query.DeclaredStateClockUnixNano, query.ReadClockUnixNano, window);
         var expiryClock = ResolveExpiryClock(query.ReadClockUnixNano, query.ExpiryReadClockUnixNano);
-        var snapshot = await _source.ReadAsync(null, cancellationToken);
+        var snapshot = await ReadSnapshotAsync(null,
+            EdgeRead(scope, query.ReadClockUnixNano, expiryClock, window,
+                query.DeclaredStateClockUnixNano, TopologyRelation.DependsOn), cancellationToken);
         var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window,
                 query.DeclaredStateClockUnixNano, expiryClock)
             .Where(static edge => edge.Relation == TopologyRelation.DependsOn).ToArray();
@@ -312,7 +323,9 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
         var expiryClock = ResolveExpiryClock(query.ReadClockUnixNano, query.ExpiryReadClockUnixNano);
         var fingerprint = Fingerprint("neighborhood", scope, query.NodeId,
             query.ReadClockUnixNano.ToString(CultureInfo.InvariantCulture), query.Relation?.ToString() ?? "*", WindowPart(window));
-        var (snapshot, cursor) = await ReadAsync(query.Cursor, fingerprint, cancellationToken);
+        var (snapshot, cursor) = await ReadAsync(query.Cursor, fingerprint,
+            EdgeRead(scope, query.ReadClockUnixNano, expiryClock, window,
+                relation: query.Relation, nodeId: query.NodeId), cancellationToken);
         EnsureNeighborhoodReady(snapshot, scope, query.ReadClockUnixNano, expiryClock,
             window, query.NodeId, query.Relation);
         var active = ActiveEdges(snapshot, query.ReadClockUnixNano, window,
@@ -356,14 +369,33 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
     }
 
     private async Task<(TopologyGraphSnapshot Snapshot, TopologyGraphCursor? Cursor)> ReadAsync(string? encodedCursor,
-        byte[] fingerprint, CancellationToken cancellationToken)
+        byte[] fingerprint, TopologyGraphSnapshotReadRequest request, CancellationToken cancellationToken)
     {
         TopologyGraphCursor? cursor = encodedCursor is null ? null : TopologyGraphCursorCodec.Decode(encodedCursor, fingerprint);
-        var snapshot = await _source.ReadAsync(cursor?.PublishedSequence, cancellationToken);
+        var snapshot = await ReadSnapshotAsync(cursor?.PublishedSequence, request, cancellationToken);
         if (cursor is not null && snapshot.PublishedSequence != cursor.Value.PublishedSequence)
             throw new TopologySnapshotUnavailableException(cursor.Value.PublishedSequence);
         return (snapshot, cursor);
     }
+
+    private Task<TopologyGraphSnapshot> ReadSnapshotAsync(long? publishedSequence,
+        TopologyGraphSnapshotReadRequest request, CancellationToken cancellationToken) =>
+        _source is ITopologyScopedGraphSnapshotSource scoped
+            ? scoped.ReadScopedAsync(publishedSequence, request, cancellationToken)
+            : _source.ReadAsync(publishedSequence, cancellationToken);
+
+    private static TopologyGraphSnapshotReadRequest NodeRead(AccessScope scope, decimal asOf,
+        string? nodeId = null) =>
+        new(scope, asOf, asOf, decimal.Max(0, asOf - TopologyExpiry.NanosecondsPerDay), asOf,
+            IncludeNodes: true, IncludeObserved: false, NodeId: nodeId);
+
+    private static TopologyGraphSnapshotReadRequest EdgeRead(AccessScope scope, decimal asOf,
+        decimal expiryClock, (decimal From, decimal To) window, decimal? declaredStateClock = null,
+        TopologyRelation? relation = null, TopologyProvenance? provenance = null,
+        string? nodeId = null, string? edgeId = null) =>
+        new(scope, asOf, expiryClock, window.From, window.To, declaredStateClock,
+            relation, provenance, IncludeObserved: provenance != TopologyProvenance.Declared
+                && (relation is null or TopologyRelation.DependsOn), NodeId: nodeId, EdgeId: edgeId);
 
     private static IEnumerable<TopologyEdgeProjection> ActiveEdges(TopologyGraphSnapshot snapshot, decimal readClockUnixNano,
         (decimal From, decimal To) window, decimal? declaredStateClockUnixNano = null,
