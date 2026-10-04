@@ -87,7 +87,7 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests(DevStackFixtur
             .ToArrayAsync(token);
         Assert.Contains(audits, row => row.Action == "rca.propagation");
         Assert.Contains(audits, row => row.Action.Contains("feed", StringComparison.Ordinal));
-        Assert.Single(audits.Where(row => row.Action == "topology.source-targets"));
+        Assert.Single(audits, row => row.Action == "topology.source-targets");
         var graphAction = providerId == "topology.graph-path" ? "topology.path" : "topology.ancestors";
         var expectedGraphReads = providerId == "topology.graph-path" && delta < 0 &&
             (dimension is "node" or "edge") ? 1 : providerId == "topology.graph-path" ? 2 : 1;

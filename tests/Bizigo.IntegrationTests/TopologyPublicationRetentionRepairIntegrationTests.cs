@@ -140,12 +140,12 @@ public sealed class TopologyPublicationRetentionRepairIntegrationTests(DevStackF
             table => table.Uuid, StringComparer.Ordinal);
         foreach (var name in TopologyRepairSchemaInspector.CanonicalNames)
             Assert.NotEqual(interrupted[name], complete[name]);
-        await using var db = await factory.CreateDbContextAsync(Ct);
-        var successfulAttempt = await db.Database.SqlQueryRaw<string>(
+        await using var resumedDb = await factory.CreateDbContextAsync(Ct);
+        var successfulAttempt = await resumedDb.Database.SqlQueryRaw<string>(
             "SELECT copy_attempt_id::text AS \"Value\" FROM bizigo.topology_repair_state WHERE id=1")
             .SingleAsync(Ct);
         Assert.NotEqual(failedAttempt, successfulAttempt);
-        var attemptCount = await db.Database.SqlQueryRaw<int>(
+        var attemptCount = await resumedDb.Database.SqlQueryRaw<int>(
             "SELECT jsonb_array_length(allowed_copy_identity_json -> 'topology_edges_observed') "
             + "AS \"Value\" FROM bizigo.topology_repair_state WHERE id=1").SingleAsync(Ct);
         Assert.Equal(3, attemptCount); // old canonical + failed copy + successful copy

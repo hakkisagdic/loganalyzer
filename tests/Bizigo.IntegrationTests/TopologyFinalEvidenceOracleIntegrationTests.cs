@@ -39,8 +39,8 @@ public sealed class TopologyFinalEvidenceOracleIntegrationTests(DevStackFixture 
         var observed = Assert.Single(pair, edge => edge.Provenance == TopologyProvenance.Observed);
         Assert.Equal(0.5m, observed.Confidence);
         Assert.Equal(seed.TraceId, Assert.Single((await seed.Query.GetTopologyEdgeAsync(
-            observed.Id, seed.ReadClock, seed.Scope, Ct))!.Evidence.Where(e => e.TraceLogicalId == seed.TraceId
-                && e.SpanLogicalId == seed.ChildSpanId)).TraceLogicalId);
+            observed.Id, seed.ReadClock, seed.Scope, Ct))!.Evidence, e => e.TraceLogicalId == seed.TraceId
+                && e.SpanLogicalId == seed.ChildSpanId).TraceLogicalId);
 
         var stale = await seed.Query.SearchTopologyEdgesAsync(new(seed.ReadClock,
             Provenance: TopologyProvenance.Observed,

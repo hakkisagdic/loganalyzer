@@ -352,12 +352,12 @@ public sealed class TopologyExactHttpNanoIntegrationTests(DevStackFixture stack)
         var first = await graph.SearchEdgesAsync(new TopologyEdgeQuery(expiry - 1,
             Provenance: TopologyProvenance.Observed, FromUnixNano: narrowFrom, ToUnixNano: narrowTo)
             { ExpiryReadClockUnixNano = expiry - 1 }, scope, Ct);
-        var selected = Assert.Single(first.Items.Where(edge => edge.FromNode == parent && edge.ToNode == child));
+        var selected = Assert.Single(first.Items, edge => edge.FromNode == parent && edge.ToNode == child);
         Assert.Equal(expiry, selected.EffectiveExpiry!.Value);
         var earlier = await graph.SearchEdgesAsync(new TopologyEdgeQuery(competingExpiry - 1,
             Provenance: TopologyProvenance.Observed, FromUnixNano: broadFrom, ToUnixNano: broadTo)
             { ExpiryReadClockUnixNano = competingExpiry - 1 }, scope, Ct);
-        var competing = Assert.Single(earlier.Items.Where(edge => edge.FromNode == root && edge.ToNode == third));
+        var competing = Assert.Single(earlier.Items, edge => edge.FromNode == root && edge.ToNode == third);
         Assert.Equal(competingExpiry, competing.EffectiveExpiry!.Value);
         return new(root, parent, child, third, selected.Id, competing.Id, expiry, competingExpiry,
             narrowFrom, narrowTo, broadFrom, broadTo);

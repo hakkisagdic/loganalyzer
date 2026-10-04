@@ -116,19 +116,29 @@ public sealed class TopologyFinalRouteAndAuditOracleIntegrationTests(DevStackFix
         await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
         await using var api = await TopologyHttpOracleHost.StartAsync(fixture, Ct);
         var marker = Guid.NewGuid().ToString("N");
-        var function = "s05_audit_fail_" + marker;
-        var trigger = "s05_audit_guard_" + marker;
+        var function = "\"s05_audit_fail_" + marker + "\"";
+        var trigger = "\"s05_audit_guard_" + marker + "\"";
         var subject = api.Subject("A");
         await using var db = await fixture.Factory.CreateDbContextAsync(Ct);
-        await db.Database.ExecuteSqlRawAsync("CREATE FUNCTION bizigo." + function + "() RETURNS trigger "
-            + "LANGUAGE plpgsql AS $$ BEGIN IF NEW.subject = '" + subject + "' "
+        await db.Database.OpenConnectionAsync(Ct);
+        // DDL identifiers and a PL/pgSQL body cannot be query parameters. The
+        // identifiers contain only our GUID; quote the subject as a SQL literal.
+        var subjectLiteral = subject.Replace("'", "''", StringComparison.Ordinal);
+        async Task ExecuteDdlAsync(string sql)
+        {
+            await using var command = db.Database.GetDbConnection().CreateCommand();
+            command.CommandText = sql;
+            await command.ExecuteNonQueryAsync(Ct);
+        }
+        await ExecuteDdlAsync("CREATE FUNCTION bizigo." + function + "() RETURNS trigger "
+            + "LANGUAGE plpgsql AS $$ BEGIN IF NEW.subject = '" + subjectLiteral + "' "
             + "AND NEW.action LIKE 'topology.%' THEN RAISE EXCEPTION 'forced audit outage'; "
-            + "END IF; RETURN NEW; END $$", Ct);
+            + "END IF; RETURN NEW; END $$");
         try
         {
-            await db.Database.ExecuteSqlRawAsync("CREATE TRIGGER " + trigger
+            await ExecuteDdlAsync("CREATE TRIGGER " + trigger
                 + " BEFORE INSERT ON bizigo.audit_log FOR EACH ROW EXECUTE FUNCTION bizigo."
-                + function + "()", Ct);
+                + function + "()");
             try
             {
                 using var response = await api.GetAsync("/v1/topology/nodes");
@@ -140,12 +150,12 @@ public sealed class TopologyFinalRouteAndAuditOracleIntegrationTests(DevStackFix
             }
             finally
             {
-                await db.Database.ExecuteSqlRawAsync("DROP TRIGGER " + trigger + " ON bizigo.audit_log", Ct);
+                await ExecuteDdlAsync("DROP TRIGGER " + trigger + " ON bizigo.audit_log");
             }
         }
         finally
         {
-            await db.Database.ExecuteSqlRawAsync("DROP FUNCTION bizigo." + function + "()", Ct);
+            await ExecuteDdlAsync("DROP FUNCTION bizigo." + function + "()");
         }
         using var recovered = await api.GetAsync("/v1/topology/nodes");
         Assert.Equal(HttpStatusCode.OK, recovered.StatusCode);

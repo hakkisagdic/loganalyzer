@@ -71,10 +71,10 @@ public sealed class TopologyFinalScopeOracleIntegrationTests(DevStackFixture sta
             Assert.Empty(ancestor.Paths);
             Assert.NotEqual(TopologyGraphResultStatus.Found, ancestor.Status);
         }
-        Assert.Empty((await seed.Query.GetTopologyNeighborhoodAsync(new(seed.Parent, seed.ReadClock),
-            seed.ScopeA, Ct)).Neighbors.Where(n => n.EdgeId == edge.Id));
-        Assert.Empty((await seed.Query.GetTopologyNeighborhoodAsync(new(seed.Child, seed.ReadClock),
-            seed.ScopeB, Ct)).Neighbors.Where(n => n.EdgeId == edge.Id));
+        Assert.DoesNotContain((await seed.Query.GetTopologyNeighborhoodAsync(new(seed.Parent, seed.ReadClock),
+            seed.ScopeA, Ct)).Neighbors, n => n.EdgeId == edge.Id);
+        Assert.DoesNotContain((await seed.Query.GetTopologyNeighborhoodAsync(new(seed.Child, seed.ReadClock),
+            seed.ScopeB, Ct)).Neighbors, n => n.EdgeId == edge.Id);
         Assert.Contains((await seed.Query.GetTopologyNeighborhoodAsync(new(seed.Parent, seed.ReadClock),
             seed.ScopeAB, Ct)).Neighbors, n => n.EdgeId == edge.Id);
 
