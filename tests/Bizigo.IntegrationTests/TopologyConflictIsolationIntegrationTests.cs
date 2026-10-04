@@ -487,7 +487,7 @@ public sealed class TopologyConflictIsolationIntegrationTests(DevStackFixture st
         var queryClock = new Microsoft.Extensions.Time.Testing.FakeTimeProvider(now.AddMinutes(15));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
             new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph,
-            queryClock);
+            queryClock, sourceTargetPages: new TopologySourceTargetPageReader(fixture.Factory, fence));
         var window = new RcaWindow
         {
             BaselineFrom = now.AddDays(-7), BaselineTo = now.AddMinutes(-1),
