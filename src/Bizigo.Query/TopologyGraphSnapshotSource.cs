@@ -134,7 +134,9 @@ public sealed class TopologyGraphSnapshotSource(
                     .ToArray(),
                 ObservedMigrationRequired = unattributed,
             };
-        }, cancellationToken);
+        }, request is not null && !request.IncludeObserved
+            ? TopologyReadMode.DeclaredOnly
+            : TopologyReadMode.ObservedOrMixed, cancellationToken);
 
     private async Task<IReadOnlyList<TopologyEdgeProjection>> ReadDeclaredHistoryAsync(
         ControlPlaneDbContext db, long committed, TopologyGraphSnapshotReadRequest? request,
