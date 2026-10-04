@@ -25,22 +25,43 @@ public sealed class TopologyPublicationFence(ITopologyPublicationRevisionSource 
         ArgumentNullException.ThrowIfNull(operation);
         var before = await revisions.ReadAsync(mode, cancellationToken);
         Validate(before, mode);
-        var result = await operation(before, cancellationToken);
-        TopologyPublicationRevision after;
+        T result;
         try
         {
-            after = await revisions.ReadAsync(mode, cancellationToken);
-            Validate(after, mode);
+            result = await operation(before, cancellationToken);
         }
         catch (TopologyObservedRepairUnavailableException)
         {
-            // This query began with a Ready certificate. Losing it while the
-            // operation ran is a revision change, not a successful stale read.
-            throw new TopologyRestartRequiredException("Topology repair state changed; restart the query.");
+            // An inner observed reader can detect a repair before this outer
+            // fence reaches its normal after-read. Recheck the revision: a
+            // changed/lost Ready stamp restarts, while a stable stamp leaves
+            // the physical read failure as a generic unavailable result.
+            var afterFailure = await ReadAfterAsync(mode, cancellationToken);
+            if (before != afterFailure)
+                throw new TopologyRestartRequiredException("Topology repair state changed; restart the query.");
+            throw;
         }
+        var after = await ReadAfterAsync(mode, cancellationToken);
         if (before != after)
             throw new TopologyRestartRequiredException("Topology snapshot changed; restart the query.");
         return result;
+    }
+
+    private async Task<TopologyPublicationRevision> ReadAfterAsync(TopologyReadMode mode,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var after = await revisions.ReadAsync(mode, cancellationToken);
+            Validate(after, mode);
+            return after;
+        }
+        catch (TopologyObservedRepairUnavailableException)
+        {
+            // The initial read was Ready, so a missing certificate now is an
+            // in-flight revision transition rather than initial unavailability.
+            throw new TopologyRestartRequiredException("Topology repair state changed; restart the query.");
+        }
     }
 
     private static void Validate(TopologyPublicationRevision revision, TopologyReadMode mode)

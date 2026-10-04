@@ -69,7 +69,13 @@ public sealed class TopologyWireTests
         var protectedBytes = protection.CreateProtector("Bizigo.Topology.Cursor.v1")
             .Protect(JsonSerializer.SerializeToUtf8Bytes(payload));
         var legacy = Convert.ToBase64String(protectedBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
-        Assert.Throws<TopologyRestartRequiredException>(() => codec.Decode(legacy));
+        var legacyState = codec.Decode(legacy);
+        Assert.Throws<TopologyRestartRequiredException>(() => TopologyReadCursorCodec.EnsureBound(
+            legacyState, "nodes", null, scope));
+        Assert.Throws<TopologyCursorWireException>(() => TopologyReadCursorCodec.EnsureBound(
+            legacyState, "nodes", null, AccessScope.ForGroups("reader-B", ["A"])));
+        Assert.Throws<TopologyCursorWireException>(() => TopologyReadCursorCodec.EnsureBound(
+            legacyState, "edges", null, scope));
 
         var current = codec.Decode(codec.Encode(State(scope)));
         Assert.Throws<TopologyCursorWireException>(() => TopologyReadCursorCodec.EnsureBound(

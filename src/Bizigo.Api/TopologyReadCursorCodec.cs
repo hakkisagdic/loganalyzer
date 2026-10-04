@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Bizigo.Contracts;
 using Microsoft.AspNetCore.DataProtection;
 
@@ -42,7 +43,8 @@ public sealed class TopologyReadCursorCodec(IDataProtectionProvider protection)
     {
         ArgumentNullException.ThrowIfNull(state);
         if (string.IsNullOrWhiteSpace(state.Inner)) throw new ArgumentException("Missing inner topology cursor.");
-        if (!ValidStamp(state)) throw new ArgumentException("Invalid topology cursor repair revision.");
+        if (state.FormatVersion != Version || !ValidStamp(state))
+            throw new ArgumentException("Invalid topology cursor repair revision.");
         var payload = JsonSerializer.SerializeToUtf8Bytes(new Payload(Version, state));
         return Convert.ToBase64String(_protector.Protect(payload)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
     }
@@ -58,10 +60,10 @@ public sealed class TopologyReadCursorCodec(IDataProtectionProvider protection)
             var payload = JsonSerializer.Deserialize<Payload>(_protector.Unprotect(bytes));
             if (payload is null || payload.State is null
                 || string.IsNullOrWhiteSpace(payload.State.Inner)) throw new TopologyCursorWireException();
-            if (payload.Version == LegacyVersion || (payload.Version == Version && !ValidStamp(payload.State)))
-                throw new TopologyRestartRequiredException("Topology cursor predates the current repair revision.");
-            if (payload.Version != Version) throw new TopologyCursorWireException();
-            return payload.State;
+            if (payload.Version is not LegacyVersion and not Version) throw new TopologyCursorWireException();
+            // Scope/route mismatch must be 400 even for an otherwise valid v1
+            // cursor. Defer the version/revision restart to EnsureBound.
+            return payload.State with { FormatVersion = payload.Version };
         }
         catch (Exception ex) when (ex is FormatException or CryptographicException or JsonException)
         { throw new TopologyCursorWireException(); }
@@ -84,6 +86,8 @@ public sealed class TopologyReadCursorCodec(IDataProtectionProvider protection)
         if (!string.Equals(state.Route, route, StringComparison.Ordinal)
             || !string.Equals(state.ScopeBinding, expected, StringComparison.Ordinal))
             throw new TopologyCursorWireException();
+        if (state.FormatVersion != Version || !ValidStamp(state))
+            throw new TopologyRestartRequiredException("Topology cursor predates the current repair revision.");
     }
 
     private sealed record Payload(int Version, TopologyReadCursorState State);
@@ -117,6 +121,9 @@ public sealed record TopologyReadCursorState(
 {
     public TopologyReadMode ReadMode { get; init; } = TopologyReadMode.ObservedOrMixed;
     public TopologyRepairReadStamp? RepairStamp { get; init; }
+
+    [JsonIgnore]
+    public int FormatVersion { get; init; } = 2;
 }
 
 public sealed class TopologyCursorWireException : ArgumentException

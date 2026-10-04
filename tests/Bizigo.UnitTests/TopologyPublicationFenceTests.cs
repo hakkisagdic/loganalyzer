@@ -99,6 +99,30 @@ public sealed class TopologyPublicationFenceTests
     }
 
     [Fact]
+    public async Task Inner_snapshot_repair_phase_change_restarts_before_outer_after_read()
+    {
+        var source = new MutableRepairRevisionSource();
+        await Assert.ThrowsAsync<TopologyRestartRequiredException>(() =>
+            new TopologyPublicationFence(source).ExecuteAsync<string>((_, _) =>
+            {
+                source.Unavailable = true;
+                throw new TopologyObservedRepairUnavailableException();
+            }, TestContext.Current.CancellationToken));
+        Assert.Equal(2, source.Reads);
+    }
+
+    [Fact]
+    public async Task Inner_physical_unavailability_with_stable_revision_remains_503_class()
+    {
+        var source = new MutableRepairRevisionSource();
+        await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(() =>
+            new TopologyPublicationFence(source).ExecuteAsync<string>((_, _) =>
+                throw new TopologyObservedRepairUnavailableException(),
+                TestContext.Current.CancellationToken));
+        Assert.Equal(2, source.Reads);
+    }
+
+    [Fact]
     public async Task Declared_only_fence_uses_pg_revision_without_observed_stamp()
     {
         var source = new DeclaredRevisionSource();
@@ -168,6 +192,20 @@ public sealed class TopologyPublicationFenceTests
             Assert.Equal(TopologyReadMode.DeclaredOnly, mode);
             DeclaredReads++;
             return Task.FromResult(new TopologyPublicationRevision(7, 11));
+        }
+    }
+
+    private sealed class MutableRepairRevisionSource : ITopologyPublicationRevisionSource
+    {
+        public bool Unavailable { get; set; }
+        public int Reads { get; private set; }
+
+        public Task<TopologyPublicationRevision> ReadAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Reads++;
+            return Unavailable ? throw new TopologyObservedRepairUnavailableException()
+                : Task.FromResult(Ready(7, 11));
         }
     }
 }
