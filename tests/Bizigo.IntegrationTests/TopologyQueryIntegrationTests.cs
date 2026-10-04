@@ -16,6 +16,68 @@ public sealed class TopologyQueryIntegrationTests(DevStackFixture stack)
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [Fact, Trait("Category", "Integration")]
+    public async Task Declared_only_snapshot_works_during_observed_repair_without_clickhouse_read()
+    {
+        await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var owner = "declared-repair-" + Guid.NewGuid().ToString("N");
+        var scope = AccessScope.ForGroups(owner, [owner]);
+        var registry = new TopologyRegistry(fixture.Factory);
+        var from = (await registry.CreateAsync(scope, true,
+            new(TopologyNodeKind.Service, "from", owner, true, []), Ct)).Node!.Id;
+        var to = (await registry.CreateAsync(scope, true,
+            new(TopologyNodeKind.Service, "to", owner, true, []), Ct)).Node!.Id;
+        var declared = await new TopologyEdgeRegistry(fixture.Factory).CreateAsync(scope, true,
+            new(from, to, "depends_on"), Ct);
+        Assert.Equal(201, declared.Status);
+
+        var revision = new RepairingRevision();
+        var observedRead = false;
+        var observed = new TopologyObservedSnapshotReader(fixture.Storage)
+        {
+            ObserveQuery = _ => observedRead = true,
+        };
+        var graph = new TopologyGraphQueryService(new TopologyGraphSnapshotSource(
+            fixture.Factory, observed, new TopologyPublicationFence(revision)));
+        var asOf = (decimal)DateTimeOffset.UtcNow.AddMinutes(1).ToUnixTimeMilliseconds() * 1_000_000m;
+
+        var nodes = await graph.SearchNodesAsync(new(asOf), scope, Ct);
+        Assert.Contains(nodes.Items, node => node.Id == from);
+        Assert.Contains(nodes.Items, node => node.Id == to);
+        var edges = await graph.SearchEdgesAsync(new(asOf,
+            Provenance: TopologyProvenance.Declared), scope, Ct);
+        Assert.Single(edges.Items);
+        Assert.False(observedRead);
+        Assert.Equal(4, revision.Modes.Count);
+        Assert.All(revision.Modes, mode => Assert.Equal(TopologyReadMode.DeclaredOnly, mode));
+
+        await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(() =>
+            graph.SearchEdgesAsync(new(asOf, Provenance: TopologyProvenance.Observed), scope, Ct));
+        await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(() =>
+            graph.GetEdgeAsync(Guid.NewGuid().ToString("D"), asOf, scope, Ct));
+        await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(() =>
+            graph.PathAsync(new(from, to, asOf), scope, Ct));
+        Assert.False(observedRead);
+        Assert.Equal(3, revision.Modes.Count(mode => mode == TopologyReadMode.ObservedOrMixed));
+    }
+
+    private sealed class RepairingRevision : ITopologyPublicationRevisionSource
+    {
+        public List<TopologyReadMode> Modes { get; } = [];
+
+        public Task<TopologyPublicationRevision> ReadAsync(CancellationToken cancellationToken) =>
+            ReadAsync(TopologyReadMode.ObservedOrMixed, cancellationToken);
+
+        public Task<TopologyPublicationRevision> ReadAsync(TopologyReadMode mode,
+            CancellationToken cancellationToken)
+        {
+            Modes.Add(mode);
+            return mode == TopologyReadMode.DeclaredOnly
+                ? Task.FromResult(new TopologyPublicationRevision(0, 0))
+                : throw new TopologyObservedRepairUnavailableException();
+        }
+    }
+
+    [Fact, Trait("Category", "Integration")]
     public async Task Production_sql_explain()
     {
         await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
