@@ -84,21 +84,34 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
 
     public async Task<TopologyObservedSnapshot> ReadSnapshotAsync(ulong watermark,
         CancellationToken cancellationToken = default)
-        => await ReadSnapshotCoreAsync(watermark, null, cancellationToken);
+        => await ReadSnapshotCoreAsync(watermark, null,
+            checked((decimal)(DateTimeOffset.UtcNow.UtcTicks - DateTimeOffset.UnixEpoch.UtcTicks) * 100m),
+            cancellationToken);
+
+    /// <summary>Internal diagnostic read at an explicit server-side expiry clock.
+    /// This never supplies a clock to the public scoped query API.</summary>
+    public Task<TopologyObservedSnapshot> ReadSnapshotAsync(ulong watermark,
+        decimal expiryReadClockUnixNano, CancellationToken cancellationToken)
+    {
+        if (expiryReadClockUnixNano < 0 || expiryReadClockUnixNano != decimal.Truncate(expiryReadClockUnixNano))
+            throw new ArgumentOutOfRangeException(nameof(expiryReadClockUnixNano));
+        return ReadSnapshotCoreAsync(watermark, null, expiryReadClockUnixNano, cancellationToken);
+    }
 
     public Task<TopologyObservedSnapshot> ReadScopedSnapshotAsync(ulong watermark,
         TopologyObservedReadScope scope, CancellationToken cancellationToken = default) =>
-        ReadSnapshotCoreAsync(watermark, scope ?? throw new ArgumentNullException(nameof(scope)), cancellationToken);
+        ReadSnapshotCoreAsync(watermark, scope ?? throw new ArgumentNullException(nameof(scope)),
+            scope.ExpiryReadClockUnixNano, cancellationToken);
 
     private async Task<TopologyObservedSnapshot> ReadSnapshotCoreAsync(ulong watermark,
-        TopologyObservedReadScope? scope, CancellationToken cancellationToken)
+        TopologyObservedReadScope? scope, decimal expiryClock, CancellationToken cancellationToken)
     {
         // The non-TTL ledger is authoritative even when ClickHouse has already
         // removed the latest physical row. Discovery from the TTL table would
         // silently resurrect an older version or produce a false Empty.
         var candidateIds = scope is null ? null : await ReadCandidateIdsAsync(watermark, scope, cancellationToken);
         var eligible = await ReadEligibleLifecycleAsync(watermark, scope, candidateIds,
-            cancellationToken);
+            expiryClock, cancellationToken);
         var rows = await ReadPhysicalRowsAsync(watermark, scope, eligible, cancellationToken);
         var anchors = rows.SelectMany(static row => new[] { row.ParentSemanticAnchor, row.ChildSemanticAnchor })
             .Distinct(StringComparer.Ordinal).ToArray();
@@ -121,7 +134,7 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
 
     private async Task<IReadOnlyList<LifecycleVersion>> ReadEligibleLifecycleAsync(ulong watermark,
         TopologyObservedReadScope? scope, IReadOnlyList<string>? candidateIds,
-        CancellationToken token)
+        decimal expiryClock, CancellationToken token)
     {
         if (scope is not null && candidateIds!.Count == 0) return [];
         await using var connection = context.CreateConnection();
@@ -183,9 +196,8 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
                 || version.Sequence > current.Sequence)
                 latest[version.EdgeId] = version;
         }
-        return latest.Values.Where(version =>
-                scope is null || (scope.ExpiryReadClockUnixNano < version.ExpiresNano
-                    && version.LastSeen >= scope.WindowFromUnixNano
+        return latest.Values.Where(version => expiryClock < version.ExpiresNano
+                && (scope is null || (version.LastSeen >= scope.WindowFromUnixNano
                     && version.LastSeen < scope.WindowToUnixNano
                     && (scope.Scope.IsUnrestricted
                         || (scope.Scope.OwnerGroups.Contains(version.ParentOwnerGroup)

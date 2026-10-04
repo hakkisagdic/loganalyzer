@@ -415,6 +415,7 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
         Assert.Equal("0", (await f.SqlAsync("SELECT count() FROM topology_edges_observed WHERE edge_id = '"
             + first.Id + "' AND publication_seq = 2")).Trim());
         Assert.Empty((await reader.ReadScopedSnapshotAsync(2, atExpiredLatest, Ct)).Rows);
+        Assert.Empty((await reader.ReadSnapshotAsync(2, expiryClock, Ct)).Rows);
     }
 
     [Fact, Trait("Category", "Integration")]
@@ -446,6 +447,8 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
             + latest.Id + "' AND publication_seq = 1")).Trim());
         await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(() =>
             reader.ReadScopedSnapshotAsync(2, scope, Ct));
+        await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(() =>
+            reader.ReadSnapshotAsync(2, scope.ExpiryReadClockUnixNano, Ct));
     }
 
     [Fact, Trait("Category", "Integration")]
@@ -590,14 +593,22 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
         var againParent = Reenvelope(parent);
         var againChild = Reenvelope(child);
         await writer.WriteAsync([againParent, againChild], Ct);
-        Assert.Equal("1", (await f.SqlAsync("SELECT count() FROM topology_edges_observed FINAL")).Trim());
+        // The E0014 sort key retains each publication sequence. Two physical
+        // versions still describe one semantic edge/proof identity.
+        Assert.Equal("2", (await f.SqlAsync("SELECT count() FROM topology_edges_observed FINAL")).Trim());
         Assert.Equal(first.EdgeId,
-            (await f.SqlAsync("SELECT edge_id FROM topology_edges_observed FINAL FORMAT TSV")).Trim());
+            (await f.SqlAsync("SELECT DISTINCT edge_id FROM topology_edges_observed FINAL FORMAT TSV")).Trim());
         Assert.Equal(2, published.Keys.Distinct(StringComparer.Ordinal).Count());
+        var scope = new TopologyObservedReadScope(AccessScope.ForGroups("scope-A", ["A"]),
+            f.Now, (decimal)f.Now + 2000, (decimal)f.Now + 2000, 64);
+        var publicProof = Assert.Single((await new TopologyObservedSnapshotReader(f.Storage)
+            .ReadScopedSnapshotAsync(2, scope, Ct)).Rows);
+        Assert.Equal(first.EdgeId, publicProof.Id);
+        Assert.Equal(2UL, publicProof.PublicationSequence);
         var conflict = Reenvelope(parent) with { Topology = parent.Topology! with { ServiceNodeId = ChildNode } };
         await writer.WriteAsync([conflict], Ct);
         Assert.Equal("1", (await f.SqlAsync("SELECT count() FROM topology_span_conflicts FINAL")).Trim());
-        Assert.Equal("1", (await f.SqlAsync("SELECT count() FROM topology_edges_observed FINAL")).Trim());
+        Assert.Equal("2", (await f.SqlAsync("SELECT count() FROM topology_edges_observed FINAL")).Trim());
         // Physical old edge remains for audit; the committed conflict marker
         // makes the public snapshot reject that anchor before any scope filter.
     }
@@ -623,7 +634,9 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
             new TopologyObservedProjector(f.Storage, published.PublishAsync,
                 readPendingKey: published.ReadPendingKeyAsync));
         await recovered.WriteAsync([laterChild], Ct);
-        Assert.Equal("1", (await f.SqlAsync("SELECT count() FROM topology_edges_observed FINAL")).Trim());
+        Assert.Equal("2", (await f.SqlAsync("SELECT count() FROM topology_edges_observed FINAL")).Trim());
+        Assert.Equal("1", (await f.SqlAsync("SELECT count(DISTINCT edge_id) "
+            + "FROM topology_edges_observed FINAL")).Trim());
         Assert.Equal(2, published.Keys.Count);
         Assert.Equal(1UL, published.Sequences[0]);
         Assert.Equal(1UL, published.Sequences[1]); // callback retried under the same pending key
@@ -692,6 +705,7 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
         private string? pendingKey;
         private ulong pendingSequence;
         private ulong lastSequence;
+        private readonly Dictionary<string, ulong> receipts = new(StringComparer.Ordinal);
         public List<string> AttemptedKeys { get; } = [];
         public List<ulong> Sequences { get; } = [];
         public List<string> Keys { get; } = [];
@@ -699,11 +713,17 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
         public async Task<ulong> PublishAsync(string key, Func<ulong, CancellationToken, Task> write,
             CancellationToken token)
         {
+            if (receipts.TryGetValue(key, out var committed))
+            {
+                AttemptedKeys.Add(key); Sequences.Add(committed);
+                return committed; // real PG coordinator reuses ACK, never re-inserts
+            }
             if (pendingKey is null) { pendingKey = key; pendingSequence = lastSequence + 1; }
             else if (pendingKey != key) throw new InvalidOperationException("Different key cannot reuse pending sequence.");
             AttemptedKeys.Add(key); Sequences.Add(pendingSequence);
             await write(pendingSequence, token);
             lastSequence = pendingSequence; pendingKey = null; Keys.Add(key);
+            receipts.Add(key, lastSequence);
             return lastSequence;
         }
     }
