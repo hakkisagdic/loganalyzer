@@ -228,7 +228,7 @@ public sealed class TopologyPublicationRepairStorage(ClickHouseContext context)
         ulong FirstSeen, ulong LastSeen, ulong ParentEvent, ulong ChildEvent, decimal Expiry, string Digest);
 
     private async Task<IReadOnlyList<LifecycleRow>> ReadLifecycleAsync(
-        ClickHouse.Driver.ADO.ClickHouseConnection connection, string table, string edgeId,
+        global::ClickHouse.Driver.ADO.ClickHouseConnection connection, string table, string edgeId,
         ulong sequence, CancellationToken token)
     {
         using var command = connection.CreateCommand();
