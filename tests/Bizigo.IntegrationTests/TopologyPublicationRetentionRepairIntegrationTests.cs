@@ -246,6 +246,131 @@ public sealed class TopologyPublicationRetentionRepairIntegrationTests(DevStackF
             (await runner.InitializeAsync(TopologyRepairStartMode.Startup, Ct)).Status);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Receipted_pending_crash_residue_repairs_ack_and_deletes_exact_pair_once(
+        bool ackCompletedBeforeCrash)
+    {
+        var factory = await DevStackSetup.ControlPlaneAsync(stack, Ct);
+        using var storage = await DevStackSetup.ClickHouseAsync(stack, Ct);
+        await AssertUninitializedAsync(factory);
+        var gate = new TopologyObservedRepairReadiness(factory, storage);
+        var runner = new TopologyPublicationRepairRunner(factory, storage, gate);
+        Assert.Equal(TopologyRepairInitializationStatus.Ready,
+            (await runner.InitializeAsync(TopologyRepairStartMode.Startup, Ct)).Status);
+
+        var start = checked((ulong)(DateTimeOffset.UtcNow.UtcTicks - DateTimeOffset.UnixEpoch.UtcTicks) * 100);
+        var trace = Guid.NewGuid().ToString("N");
+        var parent = Span(trace, Guid.NewGuid(), "parent", "0011223344556677", "",
+            TopologyIdentity.Node(TopologyNodeKind.Service, Guid.NewGuid()), start);
+        var child = Span(trace, Guid.NewGuid(), "child", "8899aabbccddeeff", "0011223344556677",
+            TopologyIdentity.Node(TopologyNodeKind.Service, Guid.NewGuid()), start + 1000);
+        var proof = Assert.Single(TopologyObservation.Reduce([parent, child]).Edges);
+        var watermark = new TopologyPublicationWatermarkReader(storage);
+        var coordinator = new TopologyPublicationCoordinator(factory, watermark,
+            new TopologyPublicationWatermarkWriter(watermark, storage));
+        await new TelemetryWriter(storage, new HistoricalTelemetryOwners(factory),
+            new TopologyObservedProjector(storage, coordinator.PublishAsync,
+                readPendingKey: coordinator.ReadPendingKeyAsync)).WriteAsync([parent, child], Ct);
+        Assert.Equal(1UL, await watermark.ReadAsync(Ct));
+        Assert.Equal(1UL, await CountEdgeAsync(storage, proof.EdgeId, Ct));
+        Assert.Equal(proof.EffectiveExpiry, await ReadEdgeExpiryAsync(storage, proof.EdgeId, Ct));
+
+        string publicationKey;
+        await using (var db = await factory.CreateDbContextAsync(Ct))
+        {
+            publicationKey = await db.Database.SqlQueryRaw<string>(
+                "SELECT publication_key AS \"Value\" FROM bizigo.topology_publication_receipts "
+                + "WHERE publication_sequence = 1").SingleAsync(Ct);
+            Assert.Equal(1, await db.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO bizigo.topology_publication_pending
+                    (id,publication_key,publication_sequence) VALUES (1,{publicationKey},1)
+                """, Ct));
+        }
+        if (!ackCompletedBeforeCrash)
+        {
+            // Real CH rows and PG receipt remain; model the process dying
+            // after PG commit but before its monotone CH ACK.
+            await ExecuteAsync(storage, "TRUNCATE TABLE topology_publication_watermark", Ct);
+            await ExecuteAsync(storage,
+                "INSERT INTO topology_publication_watermark(id,committed_sequence) VALUES (1,0)", Ct);
+            Assert.Equal(0UL, await watermark.ReadAsync(Ct));
+        }
+
+        Assert.Equal(2L, await runner.RecordOperatorDrainAsync("integration-operator",
+            "Old publisher processes drained through receipted pending recovery.",
+            DateTimeOffset.UtcNow.AddMinutes(10), Ct));
+        var repaired = await runner.InitializeAsync(TopologyRepairStartMode.OperatorResume, Ct);
+        Assert.Equal(TopologyRepairInitializationStatus.Ready, repaired.Status);
+        Assert.Equal(2L, repaired.Generation);
+        Assert.Equal(2L, (await gate.RequireReadyAsync(Ct)).Generation);
+        Assert.Equal(1UL, await watermark.ReadAsync(Ct));
+        Assert.Equal(1UL, await CountEdgeAsync(storage, proof.EdgeId, Ct));
+        Assert.Equal(proof.EffectiveExpiry, await ReadEdgeExpiryAsync(storage, proof.EdgeId, Ct));
+        await using (var db = await factory.CreateDbContextAsync(Ct))
+        {
+            var receipts = await db.Database.SqlQueryRaw<long>(
+                "SELECT count(*) AS \"Value\" FROM bizigo.topology_publication_receipts "
+                + "WHERE publication_sequence=1 AND publication_key={0}", publicationKey).SingleAsync(Ct);
+            var pending = await db.Database.SqlQueryRaw<long>(
+                "SELECT count(*) AS \"Value\" FROM bizigo.topology_publication_pending").SingleAsync(Ct);
+            Assert.Equal(1L, receipts);
+            Assert.Equal(0L, pending);
+        }
+        Assert.Equal(TopologyRepairInitializationStatus.Ready,
+            (await runner.InitializeAsync(TopologyRepairStartMode.Startup, Ct)).Status);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Divergent_receipted_pending_pair_never_certifies(bool mismatchedKey)
+    {
+        var factory = await DevStackSetup.ControlPlaneAsync(stack, Ct);
+        using var storage = await DevStackSetup.ClickHouseAsync(stack, Ct);
+        await AssertUninitializedAsync(factory);
+        var gate = new TopologyObservedRepairReadiness(factory, storage);
+        var runner = new TopologyPublicationRepairRunner(factory, storage, gate);
+        Assert.Equal(TopologyRepairInitializationStatus.Ready,
+            (await runner.InitializeAsync(TopologyRepairStartMode.Startup, Ct)).Status);
+
+        var start = checked((ulong)(DateTimeOffset.UtcNow.UtcTicks - DateTimeOffset.UnixEpoch.UtcTicks) * 100);
+        var trace = Guid.NewGuid().ToString("N");
+        var parent = Span(trace, Guid.NewGuid(), "parent", "0011223344556677", "",
+            TopologyIdentity.Node(TopologyNodeKind.Service, Guid.NewGuid()), start);
+        var child = Span(trace, Guid.NewGuid(), "child", "8899aabbccddeeff", "0011223344556677",
+            TopologyIdentity.Node(TopologyNodeKind.Service, Guid.NewGuid()), start + 1000);
+        var watermark = new TopologyPublicationWatermarkReader(storage);
+        var coordinator = new TopologyPublicationCoordinator(factory, watermark,
+            new TopologyPublicationWatermarkWriter(watermark, storage));
+        await new TelemetryWriter(storage, new HistoricalTelemetryOwners(factory),
+            new TopologyObservedProjector(storage, coordinator.PublishAsync,
+                readPendingKey: coordinator.ReadPendingKeyAsync)).WriteAsync([parent, child], Ct);
+        Assert.Equal(1UL, await watermark.ReadAsync(Ct));
+        string key;
+        await using (var inspect = await factory.CreateDbContextAsync(Ct))
+            key = await inspect.Database.SqlQueryRaw<string>(
+                "SELECT publication_key AS \"Value\" FROM bizigo.topology_publication_receipts "
+                + "WHERE publication_sequence = 1").SingleAsync(Ct);
+        var pendingKey = mismatchedKey ? new string('b', 64) : key;
+        var pendingSequence = mismatchedKey ? 1L : 2L;
+        await using (var db = await factory.CreateDbContextAsync(Ct))
+        {
+            Assert.Equal(1, await db.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO bizigo.topology_publication_pending(id,publication_key,publication_sequence)
+                VALUES (1,{pendingKey},{pendingSequence})
+                """, Ct));
+        }
+        Assert.Equal(2L, await runner.RecordOperatorDrainAsync("integration-operator",
+            "Old publisher processes drained while divergent pending state is audited.",
+            DateTimeOffset.UtcNow.AddMinutes(10), Ct));
+        var result = await runner.InitializeAsync(TopologyRepairStartMode.OperatorResume, Ct);
+        Assert.Equal(TopologyRepairInitializationStatus.RepairIncomplete, result.Status);
+        await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(
+            () => gate.RequireReadyAsync(Ct));
+    }
+
     private static async Task<ulong> CountEdgeAsync(ClickHouseContext storage, string edgeId,
         CancellationToken token)
     {
@@ -255,6 +380,17 @@ public sealed class TopologyPublicationRetentionRepairIntegrationTests(DevStackF
         command.CommandText = "SELECT count() FROM topology_edges_observed FINAL WHERE edge_id = {edge:String}";
         command.AddParameter("edge", edgeId);
         return Convert.ToUInt64(await command.ExecuteScalarAsync(token), CultureInfo.InvariantCulture);
+    }
+
+    private static async Task<decimal> ReadEdgeExpiryAsync(ClickHouseContext storage, string edgeId,
+        CancellationToken token)
+    {
+        await using var connection = new ClickHouseConnection(storage.Options.ConnectionString);
+        await connection.OpenAsync(token);
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT expires_nano FROM topology_edges_observed FINAL WHERE edge_id = {edge:String}";
+        command.AddParameter("edge", edgeId);
+        return Convert.ToDecimal(await command.ExecuteScalarAsync(token), CultureInfo.InvariantCulture);
     }
 
     private static async Task AssertUninitializedAsync(IDbContextFactory<ControlPlaneDbContext> factory)

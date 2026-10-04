@@ -49,7 +49,10 @@ public sealed class TopologyPublicationRepairRunner(
         DateTimeOffset ValidUntil, bool Revoked);
     private sealed record Receipt(string Key, long Sequence);
     private sealed record RebuildAuthority(string PrefixHash, string ParentHash, string LifecycleHash,
-        string? PendingKey, string? PendingPayloadHash);
+        Receipt? Pending, bool PendingHasReceipt, string? PendingPayloadHash)
+    {
+        public string? UncommittedPendingKey => PendingHasReceipt ? null : Pending?.Key;
+    }
 
     public async Task<TopologyRepairInitializationResult> InitializeAsync(TopologyRepairStartMode mode,
         CancellationToken cancellationToken)
@@ -171,11 +174,17 @@ public sealed class TopologyPublicationRepairRunner(
             }, (tableIndex, token) => (checkpoints ?? new NoTopologyRepairCheckpoints())
                 .ReachAsync("after-canonical-exchange", tableIndex, token), cancellationToken);
             await VerifyCanonicalAuthorityAsync(connection, current.PublishedSequence,
-                authority.PendingKey, cancellationToken);
+                authority.Pending, authority.PendingHasReceipt, cancellationToken);
             if ((ulong)current.PublishedSequence != committed)
                 await new TopologyPublicationWatermarkWriter(
                     new TopologyPublicationWatermarkReader(clickHouse), clickHouse)
                     .CommitAsync((ulong)current.PublishedSequence, cancellationToken);
+            // A crash after the PG receipt commit, but before CH ACK or the
+            // pending DELETE, leaves the exact receipted (key,sequence) pair.
+            // Its batch is already in the verified receipt prefix; never copy
+            // or hash it a second time as an uncommitted publication.
+            if (authority.PendingHasReceipt && authority.Pending is { } residue)
+                await DeleteReceiptedPendingAsync(db, residue, cancellationToken);
 
             var canonical = await inspector.ReadCanonicalAsync(cancellationToken);
             if (canonical.Any(table => !TopologyObservedRepairReadiness.HasRequiredVersionKey(table))
@@ -190,7 +199,7 @@ public sealed class TopologyPublicationRepairRunner(
                     "drain-attestation-expired-before-certificate");
             var certificate = new TopologyRepairCertificate(1, generation, current.PgIdentity,
                 chIdentity, current.PublishedSequence, authority.PrefixHash,
-                authority.PendingKey, authority.PendingPayloadHash,
+                authority.UncommittedPendingKey, authority.PendingPayloadHash,
                 authority.ParentHash, authority.LifecycleHash, canonical);
             await MarkReadyAsync(db, certificate, copyAttempt, automaticEmpty, cancellationToken);
             await readiness.RequireReadyAsync(cancellationToken);
@@ -291,6 +300,7 @@ public sealed class TopologyPublicationRepairRunner(
         using var parents = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         using var lifecycle = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         long last = 0;
+        Receipt? lastReceipt = null;
         while (last < publishedSequence)
         {
             var page = await ReadReceiptPageAsync(connection, last, publishedSequence, token);
@@ -306,27 +316,36 @@ public sealed class TopologyPublicationRepairRunner(
                 AppendPrefix(prefix, receipt.Sequence, receipt.Key, manifest);
                 AppendDecisions(parents, lifecycle, receipt.Sequence, manifest.Batch);
                 last = receipt.Sequence;
+                lastReceipt = receipt;
             }
         }
         var pending = await ReadPendingAsync(connection, token);
         string? pendingPayload = null;
+        var pendingHasReceipt = false;
         if (pending is not null)
         {
-            if (pending.Sequence != checked(publishedSequence + 1))
+            var receiptedSequence = await ReadReceiptSequenceByKeyAsync(connection, pending.Key, token);
+            pendingHasReceipt = receiptedSequence == pending.Sequence
+                && pending.Sequence == publishedSequence && lastReceipt == pending;
+            if (!pendingHasReceipt && (receiptedSequence is not null
+                || pending.Sequence != checked(publishedSequence + 1)))
                 throw new InvalidDataException("Pending publication sequence is not contiguous with PG receipts.");
-            var manifest = await storage.ReadVerifiedManifestAsync(pending.Key, token)
-                ?? throw new InvalidDataException("Pending publication manifest is missing.");
-            await storage.WriteVerifiedBatchAsync(copies, manifest.Batch, checked((ulong)pending.Sequence), token);
-            await storage.VerifyCopiedBatchAsync(copies, manifest.Batch, checked((ulong)pending.Sequence), token);
-            AppendDecisions(parents, lifecycle, pending.Sequence, manifest.Batch);
-            pendingPayload = manifest.PayloadSha256;
+            if (!pendingHasReceipt)
+            {
+                var manifest = await storage.ReadVerifiedManifestAsync(pending.Key, token)
+                    ?? throw new InvalidDataException("Pending publication manifest is missing.");
+                await storage.WriteVerifiedBatchAsync(copies, manifest.Batch, checked((ulong)pending.Sequence), token);
+                await storage.VerifyCopiedBatchAsync(copies, manifest.Batch, checked((ulong)pending.Sequence), token);
+                AppendDecisions(parents, lifecycle, pending.Sequence, manifest.Batch);
+                pendingPayload = manifest.PayloadSha256;
+            }
         }
         return new(Hex(prefix.GetHashAndReset()), Hex(parents.GetHashAndReset()),
-            Hex(lifecycle.GetHashAndReset()), pending?.Key, pendingPayload);
+            Hex(lifecycle.GetHashAndReset()), pending, pendingHasReceipt, pendingPayload);
     }
 
     private async Task VerifyCanonicalAuthorityAsync(DbConnection connection, long publishedSequence,
-        string? expectedPendingKey, CancellationToken token)
+        Receipt? expectedPending, bool pendingHasReceipt, CancellationToken token)
     {
         long edges = 0, conflicts = 0, parents = 0;
         long last = 0;
@@ -348,10 +367,11 @@ public sealed class TopologyPublicationRepairRunner(
             }
         }
         var pending = await ReadPendingAsync(connection, token);
-        if (pending?.Key != expectedPendingKey
-            || pending is not null && pending.Sequence != checked(publishedSequence + 1))
+        if (pending != expectedPending
+            || pending is not null && pending.Sequence !=
+                (pendingHasReceipt ? publishedSequence : checked(publishedSequence + 1)))
             throw new InvalidDataException("Pending publication changed after exchange.");
-        if (pending is not null)
+        if (pending is not null && !pendingHasReceipt)
         {
             var manifest = await storage.ReadVerifiedManifestAsync(pending.Key, token)
                 ?? throw new InvalidDataException("Pending manifest disappeared after exchange.");
@@ -361,6 +381,21 @@ public sealed class TopologyPublicationRepairRunner(
             parents = checked(parents + manifest.Batch.ParentResolutions.Count);
         }
         await storage.VerifyCanonicalTotalsAsync(edges, conflicts, parents, token);
+    }
+
+    private static async Task DeleteReceiptedPendingAsync(ControlPlaneDbContext db,
+        Receipt pending, CancellationToken token)
+    {
+        var removed = await db.Database.ExecuteSqlInterpolatedAsync($"""
+            DELETE FROM bizigo.topology_publication_pending
+            WHERE id = 1 AND publication_key = {pending.Key}
+              AND publication_sequence = {pending.Sequence}
+              AND EXISTS (
+                SELECT 1 FROM bizigo.topology_publication_receipts
+                WHERE publication_key = {pending.Key} AND publication_sequence = {pending.Sequence})
+            """, token);
+        if (removed != 1)
+            throw new InvalidDataException("Receipted pending publication changed during repair.");
     }
 
     private static void AppendPrefix(IncrementalHash hash, long sequence, string key,
@@ -427,6 +462,17 @@ public sealed class TopologyPublicationRepairRunner(
         var result = new Receipt(key, reader.GetInt64(1));
         if (await reader.ReadAsync(token)) throw new InvalidDataException("Ambiguous pending publication.");
         return result;
+    }
+
+    private static async Task<long?> ReadReceiptSequenceByKeyAsync(DbConnection connection,
+        string key, CancellationToken token)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT publication_sequence FROM bizigo.topology_publication_receipts "
+            + "WHERE publication_key = @key";
+        AddParameter(command, "key", key);
+        var result = await command.ExecuteScalarAsync(token);
+        return result is null or DBNull ? null : Convert.ToInt64(result, CultureInfo.InvariantCulture);
     }
 
     private static bool IsSha256(string value) => value.Length == 64
