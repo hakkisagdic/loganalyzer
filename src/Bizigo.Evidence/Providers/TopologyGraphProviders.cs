@@ -282,6 +282,10 @@ internal static class TopologyGraphEvidence
                 // Affected sources are groups, not opaque node-ID ordering.
                 // Every authorized cross-group candidate and both directed
                 // orientations share one revision and one usage counter.
+                // One canonical node may legitimately belong to both groups.
+                // Its zero-hop identity is not a dependency proof, so it
+                // cannot invalidate other complete candidate-pair proofs.
+                if (from.NodeId == to.NodeId) continue;
                 var forward = await ReadPathAsync(query, from.NodeId, to.NodeId, clock, fromClock, scope, usage,
                     publishedSequence, token);
                 publishedSequence ??= forward.PublishedSequence;

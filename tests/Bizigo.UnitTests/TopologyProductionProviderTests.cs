@@ -583,6 +583,44 @@ public sealed class TopologyProductionProviderTests
     }
 
     [Fact]
+    public async Task Shared_mapped_target_zero_hop_does_not_poison_another_source_pair_proof()
+    {
+        var shared = GraphNode(TopologyNodeKind.Service, 35);
+        var query = Ready();
+        var pathCalls = 0;
+        query.TopologySourceTargetPageResponse = (_, _, _, _, _, _) => Task.FromResult(
+            new TopologySourceTargetsPage([
+                new("source-1", SourceA, new TopologySourceTarget(shared, ["contains-a"],
+                    [SourceA, shared]), null, null),
+                new("source-1", SourceA, null, TopologySourceTargetStatus.Complete, null),
+                new("source-2", SourceB, new TopologySourceTarget(shared, ["contains-b"],
+                    [SourceB, shared]), null, null),
+                new("source-2", SourceB, null, TopologySourceTargetStatus.Complete, null),
+            ], null, 7, 1));
+        query.TopologyPathResponse = (request, _, _) =>
+        {
+            pathCalls++;
+            Assert.False(request.FromNodeId == shared && request.ToNodeId == shared,
+                "A shared mapped ID is not a causal path query.");
+            return Task.FromResult(request.FromNodeId == SourceA && request.ToNodeId == SourceB
+                ? new TopologyPathResult(TopologyGraphResultStatus.Found,
+                    [SourceA, SourceB], ["real-dependency"], null, 1)
+                : new TopologyPathResult(TopologyGraphResultStatus.Unreachable, [], [], null, 1));
+        };
+        query.TopologyEdges["real-dependency"] = Detail("real-dependency", SourceA, SourceB);
+
+        var result = await Provider("topology.graph-path", query,
+            new TopologyProviderBudget(3, 3, 8, 1024 * 1024)).GatherAsync(
+                Window, Scope, GatherBudget.Default, TestContext.Current.CancellationToken);
+
+        Assert.Equal(EvidenceStatus.Gathered, result.Status);
+        Assert.Single(result.Items);
+        Assert.Equal(6, pathCalls); // 2×2 cross-pairs minus shared→shared, each remaining in both directions.
+        Assert.Equal("[\"real-dependency\"]", result.Items[0].Payload["edge_ids"]);
+        Assert.Equal("Evaluated", result.Telemetry!.Evaluation);
+    }
+
+    [Fact]
     public async Task Production_mapping_page_revision_change_restarts_before_traversal()
     {
         var query = Ready();
