@@ -362,7 +362,16 @@ public sealed class TopologyExactCapturedExpiryIntegrationTests(DevStackFixture 
         using var fresh = await DevStackSetup.ClickHouseAsync(stack, Ct);
         await DevStackSetup.ResetTopologyPublicationForFreshStoreAsync(fixture.Factory, Ct);
         await using (var db = await fixture.Factory.CreateDbContextAsync(Ct))
+        {
             Assert.True(await db.TopologyBindings.AnyAsync(Ct));
+            var retainedClaims = await db.TelemetryOwnerClaims.AsNoTracking()
+                .Where(claim => claim.EnvelopeId == parentEnvelope.EnvelopeId
+                    || claim.EnvelopeId == childEnvelope.EnvelopeId)
+                .ToDictionaryAsync(claim => claim.EnvelopeId, claim => claim.BindingHash, Ct);
+            Assert.Equal(originalClaims.Count, retainedClaims.Count);
+            foreach (var (envelopeId, bindingHash) in originalClaims)
+                Assert.Equal(bindingHash, retainedClaims[envelopeId]);
+        }
         var config = Path.Combine(fixture.Root, "captured-recover.json");
         await File.WriteAllBytesAsync(config, JsonSerializer.SerializeToUtf8Bytes(new
         {
