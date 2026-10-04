@@ -1,3 +1,6 @@
+using System.Reflection;
+using System.Security.Cryptography;
+using System.Text.Json.Nodes;
 using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Bizigo.Query;
@@ -78,6 +81,71 @@ public sealed class TopologySourceTargetPageTests
         revision.Current = new(2, 3) { RepairStamp = new(1, "mapping-test-certificate") };
         await Assert.ThrowsAsync<TopologyRestartRequiredException>(() => reader.ReadPageAsync(["source"],
             1000, ScopeA, 1, first.Cursor, Ct));
+    }
+
+    [Fact]
+    public async Task Cursor_continues_with_same_repair_stamp_but_restarts_on_generation_or_digest_change()
+    {
+        var factory = new MemoryFactory();
+        await SeedAsync(factory, includeService: true, includeInstance: false);
+        var revision = new MutableRevision();
+        var reader = new TopologySourceTargetPageReader(factory, new TopologyPublicationFence(revision));
+        var first = await reader.ReadPageAsync(["source"], 1000, ScopeA, 1, null, Ct);
+        Assert.Equal("service", Assert.Single(first.Items).Target?.NodeId);
+        Assert.NotNull(first.Cursor);
+
+        var sameStamp = await reader.ReadPageAsync(["source"], 1000, ScopeA, 1, first.Cursor, Ct);
+        Assert.Equal(TopologySourceTargetStatus.Complete, Assert.Single(sameStamp.Items).FinalStatus);
+        Assert.Null(sameStamp.Cursor);
+
+        revision.Current = new(1, 3) { RepairStamp = new(2, "mapping-test-certificate") };
+        await Assert.ThrowsAsync<TopologyRestartRequiredException>(() => reader.ReadPageAsync(
+            ["source"], 1000, ScopeA, 1, first.Cursor, Ct));
+        revision.Current = new(1, 3) { RepairStamp = new(1, "replacement-certificate") };
+        await Assert.ThrowsAsync<TopologyRestartRequiredException>(() => reader.ReadPageAsync(
+            ["source"], 1000, ScopeA, 1, first.Cursor, Ct));
+    }
+
+    [Fact]
+    public async Task Authenticated_pre_repair_cursor_requires_restart_but_tampering_remains_invalid()
+    {
+        var factory = new MemoryFactory();
+        await SeedAsync(factory, includeService: true, includeInstance: false);
+        var reader = new TopologySourceTargetPageReader(factory,
+            new TopologyPublicationFence(new MutableRevision()));
+        var first = await reader.ReadPageAsync(["source"], 1000, ScopeA, 1, null, Ct);
+        var legacy = AsAuthenticatedPreRepairCursor(Assert.IsType<string>(first.Cursor));
+        await Assert.ThrowsAsync<TopologyRestartRequiredException>(() => reader.ReadPageAsync(
+            ["source"], 1000, ScopeA, 1, legacy, Ct));
+        var tampered = legacy[..20] + (legacy[20] == 'A' ? 'B' : 'A') + legacy[21..];
+        await Assert.ThrowsAsync<TopologyCursorException>(() => reader.ReadPageAsync(
+            ["source"], 1000, ScopeA, 1, tampered, Ct));
+    }
+
+    // Construct a valid old-format AEAD token with the production codec key.
+    // No test-only cursor override is added to the production API.
+    private static string AsAuthenticatedPreRepairCursor(string current)
+    {
+        var key = Assert.IsType<byte[]>(typeof(TopologySourceTargetPageReader)
+            .GetField("CursorKey", BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null));
+        var value = current.Replace('-', '+').Replace('_', '/');
+        var bytes = Convert.FromBase64String(value.PadRight((value.Length + 3) / 4 * 4, '='));
+        var plain = new byte[bytes.Length - 28];
+        using (var aes = new AesGcm(key, 16))
+            aes.Decrypt(bytes.AsSpan(0, 12), bytes.AsSpan(28), bytes.AsSpan(12, 16), plain);
+        var old = JsonNode.Parse(System.Text.Encoding.UTF8.GetString(plain))!.AsObject();
+        old["Version"] = 1;
+        old.Remove("RepairStamp");
+        var oldPlain = System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(old);
+        var nonce = RandomNumberGenerator.GetBytes(12);
+        var cipher = new byte[oldPlain.Length];
+        var tag = new byte[16];
+        using (var aes = new AesGcm(key, 16)) aes.Encrypt(nonce, oldPlain, cipher, tag);
+        var encoded = new byte[nonce.Length + tag.Length + cipher.Length];
+        nonce.CopyTo(encoded, 0);
+        tag.CopyTo(encoded, nonce.Length);
+        cipher.CopyTo(encoded, nonce.Length + tag.Length);
+        return Convert.ToBase64String(encoded).TrimEnd('=').Replace('+', '-').Replace('/', '_');
     }
 
     [Fact]

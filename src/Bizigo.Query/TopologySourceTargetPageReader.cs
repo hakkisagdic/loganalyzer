@@ -23,6 +23,7 @@ public sealed class TopologySourceTargetPageReader(
     int maxRawEdgesPerSource = 4096)
 {
     private const int MaxPageSize = 200;
+    private const int CursorVersion = 2;
     private static readonly byte[] CursorKey = RandomNumberGenerator.GetBytes(32);
     private readonly int _maxRawEdgesPerSource = maxRawEdgesPerSource > 0
         ? maxRawEdgesPerSource : throw new ArgumentOutOfRangeException(nameof(maxRawEdgesPerSource));
@@ -43,15 +44,21 @@ public sealed class TopologySourceTargetPageReader(
         var continuation = cursor is null ? null : Decode(cursor, fingerprint);
         return fence.ExecuteAsync(async (revision, token) =>
         {
+            // The page DTO intentionally carries only the PG/CH pair; the
+            // encrypted continuation additionally binds the Ready certificate.
+            // A signed pre-repair cursor cannot be used to cross this boundary.
+            var repairStamp = revision.RepairStamp ?? throw new TopologyObservedRepairUnavailableException();
             if (continuation is not null &&
-                (continuation.PostgresEpoch != revision.PostgresEpoch
-                || continuation.ClickHouseWatermark != revision.ClickHouseWatermark))
+                (continuation.Version != CursorVersion
+                || continuation.PostgresEpoch != revision.PostgresEpoch
+                || continuation.ClickHouseWatermark != revision.ClickHouseWatermark
+                || continuation.RepairStamp != repairStamp))
                 throw new TopologyRestartRequiredException("Topology mapping revision changed; restart the query.");
             if (continuation is not null && continuation.SourceIndex >= sources.Length)
                 throw new TopologyCursorException("Invalid topology mapping cursor.");
-            var state = continuation ?? new CursorState(1, fingerprint, revision.PostgresEpoch,
+            var state = continuation ?? new CursorState(CursorVersion, fingerprint, revision.PostgresEpoch,
                 revision.ClickHouseWatermark, 0, string.Empty, 0, string.Empty,
-                string.Empty, 0, Phase.Start, 0);
+                string.Empty, 0, Phase.Start, 0, repairStamp);
             await using var db = await factory.CreateDbContextAsync(token);
             var items = new List<TopologySourceTargetChunk>(pageSize);
             while (items.Count < pageSize && state.SourceIndex < sources.Length)
@@ -237,10 +244,11 @@ public sealed class TopologySourceTargetPageReader(
             using (var aes = new AesGcm(CursorKey, 16))
                 aes.Decrypt(bytes.AsSpan(0, 12), bytes.AsSpan(28), bytes.AsSpan(12, 16), plain);
             var state = JsonSerializer.Deserialize<CursorState>(plain);
-            if (state is null || state.Version != 1 || state.Fingerprint != fingerprint
+            if (state is null || state.Version is not (1 or CursorVersion) || state.Fingerprint != fingerprint
                 || state.SourceIndex < 0 || state.FirstRevision < 0 || state.SecondRevision < 0
                 || state.RawEdges < 0 || !Enum.IsDefined(state.Phase)
-                || (state.Phase == Phase.Second && string.IsNullOrWhiteSpace(state.FirstEdgeId)))
+                || (state.Phase == Phase.Second && string.IsNullOrWhiteSpace(state.FirstEdgeId))
+                || (state.Version == CursorVersion && state.RepairStamp is null))
                 throw new TopologyCursorException("Invalid topology mapping cursor.");
             return state;
         }
@@ -252,5 +260,6 @@ public sealed class TopologySourceTargetPageReader(
 
     private sealed record CursorState(int Version, string Fingerprint, long PostgresEpoch,
         ulong ClickHouseWatermark, int SourceIndex, string RootId, long FirstRevision,
-        string FirstEdgeId, string ServiceId, long SecondRevision, Phase Phase, int RawEdges);
+        string FirstEdgeId, string ServiceId, long SecondRevision, Phase Phase, int RawEdges,
+        TopologyRepairReadStamp? RepairStamp = null);
 }
