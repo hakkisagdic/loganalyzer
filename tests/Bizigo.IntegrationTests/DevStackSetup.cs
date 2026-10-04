@@ -118,10 +118,21 @@ public static class DevStackSetup
                 allowed_copy_identity_json = NULL, automatic_empty_init = false,
                 certificate_digest = NULL, certificate_json = NULL,
                 receipt_prefix_sequence = 0, receipt_prefix_sha256 = NULL,
+                sidecar_revision = 0, certificate_member_set_id = NULL,
                 updated_at = now()
             WHERE id = 1;
             """, cancellationToken);
         Assert.Equal(1, repairReset);
+
+        // Privileged test-only reset of the owned, quiesced fixture. The update
+        // above clears the certificate reference together with Uninitialized,
+        // before removing immutable membership authority. All three related
+        // tables are named explicitly; production DML guards remain intact.
+        await db.Database.ExecuteSqlRawAsync("""
+            TRUNCATE TABLE bizigo.topology_repair_members,
+                bizigo.topology_repair_member_sets,
+                bizigo.topology_legacy_conversion_sidecars;
+            """, cancellationToken);
 
         // PG is shared, while every test gets a fresh CH database. Receipts and
         // pending reservations belong to that same derived publication epoch;
