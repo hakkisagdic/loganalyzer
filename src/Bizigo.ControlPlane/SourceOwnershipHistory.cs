@@ -83,4 +83,18 @@ public sealed class HistoricalTelemetryOwners(IDbContextFactory<ControlPlaneDbCo
         if (!string.Equals(saved.BindingHash, bindingHash, StringComparison.Ordinal))
             throw new InvalidDataException("Conflicting immutable telemetry ownership binding.");
     }
+
+    /// <summary>
+    /// Reads an already committed claim for a legacy archive candidate. Unlike
+    /// ClaimAsync this must never create a missing historical claim. A matching
+    /// owner claim does not establish original spool custody or topology binding.
+    /// </summary>
+    public async Task VerifyExistingClaimAsync(Guid envelopeId, string bindingHash, CancellationToken cancellationToken)
+    {
+        await using var db = await factory.CreateDbContextAsync(cancellationToken);
+        var saved = await db.TelemetryOwnerClaims.AsNoTracking()
+            .SingleOrDefaultAsync(c => c.EnvelopeId == envelopeId, cancellationToken);
+        if (saved is null || !string.Equals(saved.BindingHash, bindingHash, StringComparison.Ordinal))
+            throw new InvalidDataException("Missing or conflicting historical telemetry ownership claim.");
+    }
 }
