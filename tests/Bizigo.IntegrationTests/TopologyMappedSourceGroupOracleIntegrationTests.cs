@@ -21,9 +21,11 @@ namespace Bizigo.IntegrationTests;
 /// </summary>
 [Collection(DevStackCollection.Name)]
 [Trait("Category", "Integration")]
-public sealed class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixture stack)
+public sealed partial class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixture stack)
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
+    private DevStackFixture Stack => stack;
+    private static readonly TopologyProviderBudget MappedGraphBudget = new(1000, 4000, 100, 1024 * 1024);
 
     [Fact]
     public async Task G_Path_evaluates_both_directions_all_cross_candidates_and_selects_one_shortest_proof()
@@ -34,7 +36,7 @@ public sealed class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixt
         await EdgeAsync(fixture, seed.Scope, seed.B2, seed.A1);
         await EdgeAsync(fixture, seed.Scope, seed.A2, mid);
         await EdgeAsync(fixture, seed.Scope, mid, seed.B1);
-        var slice = await new TopologyGraphPathProvider(seed.Query).GatherAsync(seed.Window,
+        var slice = await new TopologyGraphPathProvider(seed.Query, MappedGraphBudget).GatherAsync(seed.Window,
             seed.Scope, GatherBudget.Default, Ct);
         Assert.Equal(EvidenceStatus.Gathered, slice.Status);
         var item = Assert.Single(slice.Items); // one finding per Source pair, not candidate pair
@@ -61,7 +63,7 @@ public sealed class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixt
         await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
         var seed = await SeedAsync(fixture, admitInstance: instanceProof, projectDependency: true);
         var from = instanceProof ? seed.I1 : seed.A1;
-        var slice = await new TopologyGraphPathProvider(seed.Query).GatherAsync(seed.Window,
+        var slice = await new TopologyGraphPathProvider(seed.Query, MappedGraphBudget).GatherAsync(seed.Window,
             seed.Scope, GatherBudget.Default, Ct);
         Assert.Equal(EvidenceStatus.Gathered, slice.Status);
         var item = Assert.Single(slice.Items);
@@ -158,7 +160,8 @@ public sealed class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixt
             new TopologyObservedSnapshotReader(fixture.Storage), fence));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
             new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph,
-            topologyClock: new FakeTimeProvider(now.AddMinutes(20)));
+            topologyClock: new FakeTimeProvider(now.AddMinutes(20)),
+            sourceTargetPages: new TopologySourceTargetPageReader(fixture.Factory, fence));
         var window = new RcaWindow
         {
             BaselineFrom = now.AddDays(-7), BaselineTo = now.AddMinutes(-1),
@@ -245,7 +248,8 @@ public sealed class TopologyMappedSourceGroupOracleIntegrationTests(DevStackFixt
             new TopologyObservedSnapshotReader(fixture.Storage), fence));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
             new(fixture.Storage), fixture.Db, new ControlPlaneAuditSink(fixture.Factory), fixture.Reader, graph,
-            topologyClock: new FakeTimeProvider(now.AddMinutes(20)));
+            topologyClock: new FakeTimeProvider(now.AddMinutes(20)),
+            sourceTargetPages: new TopologySourceTargetPageReader(fixture.Factory, fence));
         var window = new RcaWindow
         {
             BaselineFrom = now.AddDays(-7), BaselineTo = now.AddMinutes(-1),
