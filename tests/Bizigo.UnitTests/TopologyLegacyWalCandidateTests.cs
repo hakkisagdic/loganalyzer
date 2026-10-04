@@ -15,10 +15,10 @@ public sealed class TopologyLegacyWalCandidateTests
     {
         var first = Envelope(Guid.NewGuid(), observedDays: 1);
         var second = Envelope(Guid.NewGuid(), observedDays: 90);
-        await WithWalAsync([RawSignalCodec.Encode(first), RawSignalCodec.Encode(second)], paths =>
+        await WithWalAsync([RawSignalCodec.Encode(first), RawSignalCodec.Encode(second), RawSignalCodec.Encode(first)], paths =>
         {
             TopologyLegacyWalCandidateVerifier.VerifyCandidate(paths, Archives(first, second), Claims(first, second),
-                maxRosterBytes: 100_000, maxFrames: 2);
+                maxRosterBytes: 100_000, maxFrames: 3);
             return Task.CompletedTask;
         });
     }
