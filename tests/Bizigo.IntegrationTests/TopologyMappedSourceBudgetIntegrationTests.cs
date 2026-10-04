@@ -23,7 +23,8 @@ public sealed partial class TopologyMappedSourceGroupOracleIntegrationTests
         await using var fixture = await TelemetryDbFixture.CreateAsync(Stack, Ct);
         var seed = await SeedAsync(fixture, admitInstance: true, projectDependency: true);
         var fence = new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
-            new TopologyPublicationWatermarkReader(fixture.Storage)));
+            new TopologyPublicationWatermarkReader(fixture.Storage),
+            new TopologyObservedRepairReadiness(fixture.Factory, fixture.Storage)));
         await using (var db = await fixture.Factory.CreateDbContextAsync(Ct))
         {
             var roots = await db.TopologyNodes.AsNoTracking()
@@ -92,7 +93,8 @@ public sealed partial class TopologyMappedSourceGroupOracleIntegrationTests
         await using var fixture = await TelemetryDbFixture.CreateAsync(Stack, Ct);
         var seed = await SeedAsync(fixture, admitInstance: true, projectDependency: true);
         var fence = new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
-            new TopologyPublicationWatermarkReader(fixture.Storage)));
+            new TopologyPublicationWatermarkReader(fixture.Storage),
+            new TopologyObservedRepairReadiness(fixture.Factory, fixture.Storage)));
         var ancestor = await NodeAsync(fixture, seed.Scope, "budget-strict-ancestor");
         var toInstance = await EdgeAsync(fixture, seed.Scope, ancestor, seed.I1);
         var toService = await EdgeAsync(fixture, seed.Scope, ancestor, seed.B1);

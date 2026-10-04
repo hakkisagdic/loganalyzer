@@ -141,7 +141,8 @@ public sealed class TopologyFinalEvidenceOracleIntegrationTests(DevStackFixture 
                 .DeleteAsync(scope, true, edge.Edge.Id, long.Parse(edge.Edge.Version,
                     CultureInfo.InvariantCulture), Ct)).Status);
         var fence = new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
-            new TopologyPublicationWatermarkReader(fixture.Storage)));
+            new TopologyPublicationWatermarkReader(fixture.Storage),
+            new TopologyObservedRepairReadiness(fixture.Factory, fixture.Storage)));
         var graph = new TopologyGraphQueryService(new TopologyGraphSnapshotSource(fixture.Factory,
             new TopologyObservedSnapshotReader(fixture.Storage), fence));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
@@ -396,7 +397,8 @@ public sealed class TopologyFinalEvidenceOracleIntegrationTests(DevStackFixture 
             Degraded(owner, childSource, now.AddMinutes(2)),
         ], Ct);
         var fence = new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
-            new TopologyPublicationWatermarkReader(fixture.Storage)));
+            new TopologyPublicationWatermarkReader(fixture.Storage),
+            new TopologyObservedRepairReadiness(fixture.Factory, fixture.Storage)));
         var graph = new TopologyGraphQueryService(new TopologyGraphSnapshotSource(fixture.Factory,
             new TopologyObservedSnapshotReader(fixture.Storage), fence));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),

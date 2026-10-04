@@ -168,13 +168,15 @@ public sealed class TopologyEdgeMigrationOracleIntegrationTests(DevStackFixture 
             var graph = new TopologyGraphQueryService(new TopologyGraphSnapshotSource(factory,
                 observedReader,
                 new TopologyPublicationFence(new TopologyPublicationRevisionSource(factory,
-                    new TopologyPublicationWatermarkReader(context)))));
+                    new TopologyPublicationWatermarkReader(context),
+                    new TopologyObservedRepairReadiness(factory, context)))));
             var query = new TopologyEdgeQuery(TopologyIdentity.Nano(DateTimeOffset.UtcNow.AddSeconds(1)));
             var scope = AccessScope.ForGroups("d08-observed-reader", ["A"]);
-            // Marker seq=1 is still uncommitted here. This is only a negative
-            // control, not evidence that the migrated legacy marker is usable.
-            Assert.Empty((await graph.SearchEdgesAsync(query with
-                { Provenance = TopologyProvenance.Observed }, scope, token)).Items);
+            // Even before seq=1 is committed, an old marker cannot turn a
+            // missing repair certificate into a public healthy Empty graph.
+            await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(() =>
+                graph.SearchEdgesAsync(query with
+                    { Provenance = TopologyProvenance.Observed }, scope, token));
 
             await using (var seed = await factory.CreateDbContextAsync(token))
             {
@@ -210,9 +212,11 @@ public sealed class TopologyEdgeMigrationOracleIntegrationTests(DevStackFixture 
             var readiness = await ReadReadinessAsync(observedReader, 1, token);
             Assert.False(readiness.Usable);
             Assert.Equal(1, readiness.UnattributedMarkers);
-            var migrationRequired = await Assert.ThrowsAnyAsync<IOException>(() =>
+            // An unattributed legacy marker is not automatically repaired into
+            // a Ready certificate. Public observed reads stop at the repair
+            // gate, while the direct reader still reports the marker context.
+            await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(() =>
                 graph.SearchEdgesAsync(query, scope, token));
-            Assert.Equal("TopologyObservedMigrationRequiredException", migrationRequired.GetType().Name);
             var declaredOnly = await graph.SearchEdgesAsync(query with
                 { Provenance = TopologyProvenance.Declared }, scope, token);
             Assert.Equal(declared.Edge!.Id.ToString("D"), Assert.Single(declaredOnly.Items).Id);

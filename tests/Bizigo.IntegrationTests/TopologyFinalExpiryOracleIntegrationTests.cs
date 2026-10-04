@@ -64,7 +64,8 @@ public sealed class TopologyFinalExpiryOracleIntegrationTests(DevStackFixture st
         var observedExpiry = (decimal)(start + 1000) + (decimal)observedDays * TopologyExpiry.NanosecondsPerDay;
         var expiry = Math.Min(parentExpiry, Math.Min(childExpiry, observedExpiry));
         var fence = new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
-            new TopologyPublicationWatermarkReader(fixture.Storage)));
+            new TopologyPublicationWatermarkReader(fixture.Storage),
+            new TopologyObservedRepairReadiness(fixture.Factory, fixture.Storage)));
         var graph = new TopologyGraphQueryService(new TopologyGraphSnapshotSource(fixture.Factory,
             new TopologyObservedSnapshotReader(fixture.Storage), fence));
         var pre = await graph.SearchEdgesAsync(new TopologyEdgeQuery(expiry - 1,

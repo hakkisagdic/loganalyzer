@@ -155,7 +155,8 @@ public sealed partial class TopologyMappedSourceGroupOracleIntegrationTests(DevS
             Degraded(owner, sourceB, now.AddMinutes(2)),
         ], Ct);
         var fence = new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
-            new TopologyPublicationWatermarkReader(fixture.Storage)));
+            new TopologyPublicationWatermarkReader(fixture.Storage),
+            new TopologyObservedRepairReadiness(fixture.Factory, fixture.Storage)));
         var graph = new TopologyGraphQueryService(new TopologyGraphSnapshotSource(fixture.Factory,
             new TopologyObservedSnapshotReader(fixture.Storage), fence));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),
@@ -243,7 +244,8 @@ public sealed partial class TopologyMappedSourceGroupOracleIntegrationTests(DevS
             Degraded(owner, sourceB, now.AddMinutes(2)),
         ], Ct);
         var fence = new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
-            new TopologyPublicationWatermarkReader(fixture.Storage)));
+            new TopologyPublicationWatermarkReader(fixture.Storage),
+            new TopologyObservedRepairReadiness(fixture.Factory, fixture.Storage)));
         var graph = new TopologyGraphQueryService(new TopologyGraphSnapshotSource(fixture.Factory,
             new TopologyObservedSnapshotReader(fixture.Storage), fence));
         var query = new ScopedQuery(new(fixture.Storage), new(fixture.Storage), new(fixture.Storage),

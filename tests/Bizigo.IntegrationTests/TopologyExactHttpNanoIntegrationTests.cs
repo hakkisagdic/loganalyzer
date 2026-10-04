@@ -343,7 +343,8 @@ public sealed class TopologyExactHttpNanoIntegrationTests(DevStackFixture stack)
 
         var graph = new TopologyGraphQueryService(new TopologyGraphSnapshotSource(fixture.Factory,
             new TopologyObservedSnapshotReader(fixture.Storage), new TopologyPublicationFence(
-                new TopologyPublicationRevisionSource(fixture.Factory, watermark))));
+                new TopologyPublicationRevisionSource(fixture.Factory, watermark,
+                    new TopologyObservedRepairReadiness(fixture.Factory, fixture.Storage)))));
         var narrowFrom = parentStart - 1;
         var narrowTo = childStart + 1;
         var broadFrom = parentStart - 1;

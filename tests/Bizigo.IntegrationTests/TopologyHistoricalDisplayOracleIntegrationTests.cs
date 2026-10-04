@@ -70,7 +70,8 @@ public sealed class TopologyHistoricalDisplayOracleIntegrationTests(DevStackFixt
         // This is the same production PG-history + CH-watermark source used by
         // public graph reads, not a current-row or hand-built projection.
         var watermark = new TopologyPublicationWatermarkReader(clickHouse);
-        var revisions = new TopologyPublicationRevisionSource(factory, watermark);
+        var revisions = new TopologyPublicationRevisionSource(factory, watermark,
+            new TopologyObservedRepairReadiness(factory, clickHouse));
         var source = new TopologyGraphSnapshotSource(factory,
             new TopologyObservedSnapshotReader(clickHouse), new TopologyPublicationFence(revisions));
         var graph = new TopologyGraphQueryService(source);
