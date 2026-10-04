@@ -199,5 +199,7 @@ public sealed partial class CommandCatalogTests
     // M16: `rca quota` eklendi. Muafiyetin gerekçesi kataloğun kendisinde ve
     // ölçülmüş: modelin cevabı `rca.trigger`'ın reddiyle ZATEN geliyor, yani
     // araç eklemek yeni bir yetenek değil yalnızca bağlam bütçesi olurdu (§9).
-    private const int ExpectedExemptCount = 6;
+    // Publication repair commands require an operator's external writer-drain
+    // attestation and change durable storage; both exemptions are catalogued.
+    private const int ExpectedExemptCount = 8;
 }

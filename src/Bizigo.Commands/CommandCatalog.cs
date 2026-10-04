@@ -174,6 +174,22 @@ public static class CommandCatalog
                 "Kontrol düzlemine YAZIYOR — alarm kuralları ürünün davranışı. Okuma yarısı " +
                 "ayrı bir komut olarak ilan edildi (`sigma.plan`), yani muafiyet " +
                 "kabiliyeti değil yalnızca YAZMAYI kapsıyor.")),
+
+        new("topology.repair.attest", "topology repair attest",
+            "Topology bakım beyanı",
+            "Durdurulmuş eski yayıncılar için operatörün generation'a bağlı bakım beyanını kaydeder.",
+            new CommandExposure.Exempt(
+                "Eski yayıncıların gerçekten durdurulduğuna dair operatör beyanı kontrol düzlemine " +
+                "yazılır. Model bu dış koşulu kendiliğinden doğrulayamaz; beyan açık kimlik ve " +
+                "süreyle bakım CLI'sinden verilmelidir.")),
+
+        new("topology.repair.resume", "topology repair resume",
+            "Topology yayın onarımı",
+            "Doğrulanmış bakım beyanıyla publication tablolarını yeniden kurar ve onarımı sürdürür.",
+            new CommandExposure.Exempt(
+                "Bakım sırasında kalıcı PG durumunu ve CH tablolarını değiştirir. Eski yayıncıların " +
+                "durdurulması ve hedefe bağlı operatör beyanı gerekir; bu işletim adımı ürünün " +
+                "MCP sorgu yüzeyinden başlatılmaz.")),
     ];
 
     /// <summary>Araç olarak ilan edilen komutlar.</summary>
