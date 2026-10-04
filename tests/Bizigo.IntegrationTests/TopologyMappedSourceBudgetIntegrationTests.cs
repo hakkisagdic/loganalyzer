@@ -2,6 +2,8 @@ using System.Text.Json;
 using Bizigo.Contracts;
 using Bizigo.Evidence;
 using Bizigo.Evidence.Providers;
+using Bizigo.Query;
+using Bizigo.Storage.ClickHouse;
 using Microsoft.EntityFrameworkCore;
 
 namespace Bizigo.IntegrationTests;
@@ -20,6 +22,8 @@ public sealed partial class TopologyMappedSourceGroupOracleIntegrationTests
     {
         await using var fixture = await TelemetryDbFixture.CreateAsync(Stack, Ct);
         var seed = await SeedAsync(fixture, admitInstance: true, projectDependency: true);
+        var fence = new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
+            new TopologyPublicationWatermarkReader(fixture.Storage)));
         await using (var db = await fixture.Factory.CreateDbContextAsync(Ct))
         {
             var roots = await db.TopologyNodes.AsNoTracking()
@@ -41,7 +45,7 @@ public sealed partial class TopologyMappedSourceGroupOracleIntegrationTests
         }
 
         var before = await AuditCountsAsync(fixture, seed.Scope.Subject);
-        var baseline = await new TopologyGraphPathProvider(seed.Query, MappedGraphBudget).GatherAsync(
+        var baseline = await new TopologyGraphPathProvider(seed.Query, MappedGraphBudget, fence).GatherAsync(
             seed.Window, seed.Scope, GatherBudget.Default, Ct);
         Assert.Equal(EvidenceStatus.Gathered, baseline.Status);
         var item = Assert.Single(baseline.Items);
@@ -72,7 +76,7 @@ public sealed partial class TopologyMappedSourceGroupOracleIntegrationTests
                 dimension == "edge" ? exact + delta : 4000,
                 dimension == "page" ? exact + delta : 100,
                 1024 * 1024);
-            var result = await new TopologyGraphPathProvider(seed.Query, budget).GatherAsync(
+            var result = await new TopologyGraphPathProvider(seed.Query, budget, fence).GatherAsync(
                 seed.Window, seed.Scope, GatherBudget.Default, Ct);
             Assert.Equal(delta < 0 ? EvidenceStatus.Unavailable : EvidenceStatus.Gathered, result.Status);
             Assert.Equal(delta < 0, result.Truncated);
@@ -87,11 +91,21 @@ public sealed partial class TopologyMappedSourceGroupOracleIntegrationTests
     {
         await using var fixture = await TelemetryDbFixture.CreateAsync(Stack, Ct);
         var seed = await SeedAsync(fixture, admitInstance: true, projectDependency: true);
+        var fence = new TopologyPublicationFence(new TopologyPublicationRevisionSource(fixture.Factory,
+            new TopologyPublicationWatermarkReader(fixture.Storage)));
         var ancestor = await NodeAsync(fixture, seed.Scope, "budget-strict-ancestor");
         var toInstance = await EdgeAsync(fixture, seed.Scope, ancestor, seed.I1);
         var toService = await EdgeAsync(fixture, seed.Scope, ancestor, seed.B1);
+        await using (var db = await fixture.Factory.CreateDbContextAsync(Ct))
+        {
+            var cutoff = TopologyIdentity.Nano(seed.Window.To) - 1m;
+            var declaredIds = new[] { Guid.Parse(toInstance), Guid.Parse(toService) };
+            Assert.Equal(2, await db.TopologyDeclaredEdgeHistory.AsNoTracking().CountAsync(edge =>
+                declaredIds.Contains(edge.EdgeId) && edge.FromNano <= cutoff
+                && (edge.ToNano == null || cutoff < edge.ToNano), Ct));
+        }
         var before = await AuditCountsAsync(fixture, seed.Scope.Subject);
-        var baseline = await new TopologyCommonAncestorProvider(seed.Query, MappedGraphBudget)
+        var baseline = await new TopologyCommonAncestorProvider(seed.Query, MappedGraphBudget, fence)
             .GatherAsync(seed.Window, seed.Scope, GatherBudget.Default, Ct);
         Assert.Equal(EvidenceStatus.Gathered, baseline.Status);
         var item = Assert.Single(baseline.Items);
@@ -125,7 +139,7 @@ public sealed partial class TopologyMappedSourceGroupOracleIntegrationTests
                 dimension == "edge" ? exact + delta : 4000,
                 dimension == "page" ? exact + delta : 100,
                 1024 * 1024);
-            var result = await new TopologyCommonAncestorProvider(seed.Query, budget).GatherAsync(
+            var result = await new TopologyCommonAncestorProvider(seed.Query, budget, fence).GatherAsync(
                 seed.Window, seed.Scope, GatherBudget.Default, Ct);
             Assert.Equal(delta < 0 ? EvidenceStatus.Unavailable : EvidenceStatus.Gathered, result.Status);
             Assert.Equal(delta < 0, result.Truncated);
