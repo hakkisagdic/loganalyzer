@@ -93,10 +93,34 @@ public sealed class TopologyRepairMembershipBuilderTests
     [Fact]
     public void Native_only_publications_have_an_empty_conversion_set_not_a_missing_prefix()
     {
-        var candidate = TopologyRepairMembershipBuilder.Build([Native(1, 'a'), Native(2, 'b')], 2, null);
-        Assert.Empty(candidate.Members);
-        Assert.Equal(0, candidate.Count);
-        Assert.Equal(64, candidate.CanonicalSha256.Length);
+        var first = Native(1, 'a');
+        var second = Native(2, 'b');
+        var pending = new TopologyRepairMembershipPending(3, Hash('c'), false, null);
+        var beforeReceipt = TopologyRepairMembershipBuilder.Build([first, second], 2, pending);
+        var third = Native(3, 'c');
+        var residue = TopologyRepairMembershipBuilder.Build([first, second, third], 3, pending);
+        var afterDelete = TopologyRepairMembershipBuilder.Build([first, second, third], 3, null);
+        Assert.Empty(beforeReceipt.Members);
+        Assert.Equal(0, beforeReceipt.Count);
+        Assert.Equal(64, beforeReceipt.CanonicalSha256.Length);
+        Assert.Equal(beforeReceipt.CanonicalSha256, residue.CanonicalSha256);
+        Assert.Equal(beforeReceipt.CanonicalSha256, afterDelete.CanonicalSha256);
+    }
+
+    [Fact]
+    public void Extra_missing_or_divergent_physical_member_cannot_match_exact_converted_union()
+    {
+        var candidate = TopologyRepairMembershipBuilder.Build(
+            [Legacy(1, 'a', 'b'), Legacy(2, 'c', 'd')], 2, null);
+        TopologyRepairMembershipBuilder.VerifyExactUnion(candidate, candidate.Members.Reverse().ToArray());
+        Assert.Throws<InvalidDataException>(() => TopologyRepairMembershipBuilder.VerifyExactUnion(candidate,
+            [candidate.Members[0]]));
+        Assert.Throws<InvalidDataException>(() => TopologyRepairMembershipBuilder.VerifyExactUnion(candidate,
+            [candidate.Members[0], candidate.Members[1], new(3, Hash('e'), Hash('f'))]));
+        Assert.Throws<InvalidDataException>(() => TopologyRepairMembershipBuilder.VerifyExactUnion(candidate,
+            [candidate.Members[0], candidate.Members[0]]));
+        Assert.Throws<InvalidDataException>(() => TopologyRepairMembershipBuilder.VerifyExactUnion(candidate,
+            [candidate.Members[0], candidate.Members[1] with { ConversionDigest = Hash('e') }]));
     }
 
     private static TopologyRepairMembershipPublication Native(long sequence, char key) =>

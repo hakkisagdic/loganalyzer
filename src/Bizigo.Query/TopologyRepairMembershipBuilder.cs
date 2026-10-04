@@ -123,6 +123,34 @@ public static class TopologyRepairMembershipBuilder
         return new(Array.AsReadOnly(members.ToArray()), digest, checked((int)bytes.Length));
     }
 
+    /// <summary>
+    /// Candidate pre-seal check for the complete physical member rows. A
+    /// matching aggregate count/hash alone must not let an extra, absent or
+    /// divergent conversion row become part of a certificate. The eventual
+    /// PG seal must repeat this under its publication/repair locks.
+    /// </summary>
+    public static void VerifyExactUnion(TopologyRepairMemberSetCandidate candidate,
+        IReadOnlyList<TopologyRepairConversionMember> proposedRows)
+    {
+        ArgumentNullException.ThrowIfNull(candidate);
+        ArgumentNullException.ThrowIfNull(proposedRows);
+        if (candidate.Count != proposedRows.Count)
+            throw new InvalidDataException("Conversion member rows differ from the verified union.");
+        var expected = candidate.Members.ToDictionary(
+            member => (member.Sequence, member.PublicationKey), member => member.ConversionDigest);
+        var seen = new HashSet<(long Sequence, string PublicationKey)>();
+        foreach (var member in proposedRows)
+        {
+            if (member.Sequence <= 0) throw new InvalidDataException("Invalid conversion member sequence.");
+            RequireLowerSha256(member.PublicationKey);
+            RequireLowerSha256(member.ConversionDigest);
+            var pair = (member.Sequence, member.PublicationKey);
+            if (!seen.Add(pair) || !expected.TryGetValue(pair, out var digest)
+                || !string.Equals(digest, member.ConversionDigest, StringComparison.Ordinal))
+                throw new InvalidDataException("Conversion member rows differ from the verified union.");
+        }
+    }
+
     private static void Validate(string key, bool requiresLegacyConversion, string? digest)
     {
         RequireLowerSha256(key);
