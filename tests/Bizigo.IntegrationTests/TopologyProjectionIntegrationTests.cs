@@ -253,6 +253,83 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
     }
 
     [Fact, Trait("Category", "Integration")]
+    public async Task Expired_latest_version_cannot_resurrect_older_observed_proof_after_cleanup()
+    {
+        await using var f = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var publisher = new Publication();
+        var writer = new TelemetryWriter(f.Storage, f.Owners,
+            new TopologyObservedProjector(f.Storage, publisher.PublishAsync));
+        var parent = Span(Guid.NewGuid(), "parent", ParentSpan, string.Empty, ParentNode, f.Now);
+        var child = Span(Guid.NewGuid(), "child", ChildSpan, ParentSpan, ChildNode, f.Now + 1000);
+        await writer.WriteAsync([parent, child], Ct);
+        var reader = new TopologyObservedSnapshotReader(f.Storage);
+        var windowFrom = (decimal)f.Now;
+        var windowTo = windowFrom + 2000;
+        var first = Assert.Single((await reader.ReadScopedSnapshotAsync(1,
+            new(AccessScope.ForGroups("scope-A", ["A"]), windowFrom, windowTo,
+                windowTo, 64), Ct)).Rows);
+
+        // Same semantic anchors, new raw occurrences and a shorter captured
+        // retention create committed seq2 with the same EdgeId but expiry10d.
+        await writer.WriteAsync([
+            Reenvelope(parent) with { RetentionDays = 10, ObservedRetentionDays = 10 },
+            Reenvelope(child) with { RetentionDays = 10, ObservedRetentionDays = 10 },
+        ], Ct);
+        Assert.Equal(2, publisher.Sequences.Count);
+        Assert.Equal("1", (await f.SqlAsync("SELECT count() FROM topology_edges_observed WHERE edge_id = '"
+            + first.Id + "' AND publication_seq = 1")).Trim());
+        Assert.Equal("1", (await f.SqlAsync("SELECT count() FROM topology_edges_observed WHERE edge_id = '"
+            + first.Id + "' AND publication_seq = 2")).Trim());
+        var expiryClock = (decimal)child.TimeUnixNano + 10 * TopologyExpiry.NanosecondsPerDay + 1;
+        Assert.True(expiryClock < first.ExpiresUnixNano);
+        var atExpiredLatest = new TopologyObservedReadScope(AccessScope.ForGroups("scope-A", ["A"]),
+            windowFrom, windowTo, expiryClock, 64);
+        Assert.Empty((await reader.ReadScopedSnapshotAsync(2, atExpiredLatest, Ct)).Rows);
+
+        // Simulate completed physical TTL cleanup of seq2 while seq1's 90-day
+        // row remains. The non-TTL lifecycle authority must still suppress it.
+        await f.SqlAsync("ALTER TABLE topology_edges_observed DELETE WHERE edge_id = '"
+            + first.Id + "' AND publication_seq = 2 SETTINGS mutations_sync = 2");
+        await f.SqlAsync("OPTIMIZE TABLE topology_edges_observed FINAL");
+        Assert.Equal("1", (await f.SqlAsync("SELECT count() FROM topology_edges_observed WHERE edge_id = '"
+            + first.Id + "' AND publication_seq = 1")).Trim());
+        Assert.Equal("0", (await f.SqlAsync("SELECT count() FROM topology_edges_observed WHERE edge_id = '"
+            + first.Id + "' AND publication_seq = 2")).Trim());
+        Assert.Empty((await reader.ReadScopedSnapshotAsync(2, atExpiredLatest, Ct)).Rows);
+    }
+
+    [Fact, Trait("Category", "Integration")]
+    public async Task Missing_unexpired_latest_physical_row_fails_instead_of_using_old_proof()
+    {
+        await using var f = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var publisher = new Publication();
+        var writer = new TelemetryWriter(f.Storage, f.Owners,
+            new TopologyObservedProjector(f.Storage, publisher.PublishAsync));
+        var parent = Span(Guid.NewGuid(), "parent", ParentSpan, string.Empty, ParentNode, f.Now);
+        var child = Span(Guid.NewGuid(), "child", ChildSpan, ParentSpan, ChildNode, f.Now + 1000);
+        await writer.WriteAsync([parent, child], Ct);
+        await writer.WriteAsync([Reenvelope(parent), Reenvelope(child)], Ct);
+        Assert.Equal(2, publisher.Sequences.Count);
+        var scope = new TopologyObservedReadScope(AccessScope.ForGroups("scope-A", ["A"]),
+            f.Now, (decimal)f.Now + 2000, (decimal)f.Now + 2000, 64);
+        var reader = new TopologyObservedSnapshotReader(f.Storage);
+        var latest = Assert.Single((await reader.ReadScopedSnapshotAsync(2, scope, Ct)).Rows);
+        Assert.Equal(2UL, latest.PublicationSequence);
+        Assert.Equal("1", (await f.SqlAsync("SELECT count() FROM topology_edges_observed WHERE edge_id = '"
+            + latest.Id + "' AND publication_seq = 1")).Trim());
+
+        // The lifecycle says seq2 is still unexpired. If its canonical row is
+        // absent, returning seq1 (or Empty) would falsely complete the graph.
+        await f.SqlAsync("ALTER TABLE topology_edges_observed DELETE WHERE edge_id = '"
+            + latest.Id + "' AND publication_seq = 2 SETTINGS mutations_sync = 2");
+        await f.SqlAsync("OPTIMIZE TABLE topology_edges_observed FINAL");
+        Assert.Equal("1", (await f.SqlAsync("SELECT count() FROM topology_edges_observed WHERE edge_id = '"
+            + latest.Id + "' AND publication_seq = 1")).Trim());
+        await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(() =>
+            reader.ReadScopedSnapshotAsync(2, scope, Ct));
+    }
+
+    [Fact, Trait("Category", "Integration")]
     public async Task Unresolved_and_query_failure()
     {
         await using var f = await TelemetryDbFixture.CreateAsync(stack, Ct);
