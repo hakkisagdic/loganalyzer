@@ -330,6 +330,37 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
     }
 
     [Fact, Trait("Category", "Integration")]
+    public async Task Missing_all_physical_candidates_for_unexpired_lifecycle_fails_instead_of_empty()
+    {
+        await using var f = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var publisher = new Publication();
+        var writer = new TelemetryWriter(f.Storage, f.Owners,
+            new TopologyObservedProjector(f.Storage, publisher.PublishAsync));
+        var parent = Span(Guid.NewGuid(), "parent", ParentSpan, string.Empty, ParentNode, f.Now);
+        var child = Span(Guid.NewGuid(), "child", ChildSpan, ParentSpan, ChildNode, f.Now + 1000);
+        await writer.WriteAsync([parent, child], Ct);
+        Assert.Single(publisher.Sequences);
+
+        var scope = new TopologyObservedReadScope(AccessScope.ForGroups("scope-A", ["A"]),
+            f.Now, (decimal)f.Now + 2000, (decimal)f.Now + 2000, 64);
+        var reader = new TopologyObservedSnapshotReader(f.Storage);
+        var proof = Assert.Single((await reader.ReadScopedSnapshotAsync(1, scope, Ct)).Rows);
+        Assert.True(scope.ExpiryReadClockUnixNano < proof.ExpiresUnixNano);
+        Assert.Equal("1", (await f.SqlAsync("SELECT count() FROM topology_edges_observed WHERE edge_id = '"
+            + proof.Id + "'")).Trim());
+
+        // The committed lifecycle still describes a live edge, but physical
+        // candidate discovery has no edge row at all. Empty/zero is unsafe.
+        await f.SqlAsync("ALTER TABLE topology_edges_observed DELETE WHERE edge_id = '"
+            + proof.Id + "' SETTINGS mutations_sync = 2");
+        await f.SqlAsync("OPTIMIZE TABLE topology_edges_observed FINAL");
+        Assert.Equal("0", (await f.SqlAsync("SELECT count() FROM topology_edges_observed WHERE edge_id = '"
+            + proof.Id + "'")).Trim());
+        await Assert.ThrowsAsync<TopologyObservedRepairUnavailableException>(() =>
+            reader.ReadScopedSnapshotAsync(1, scope, Ct));
+    }
+
+    [Fact, Trait("Category", "Integration")]
     public async Task Unresolved_and_query_failure()
     {
         await using var f = await TelemetryDbFixture.CreateAsync(stack, Ct);
