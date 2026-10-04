@@ -56,6 +56,61 @@ public sealed class TopologyConflictIsolationIntegrationTests(DevStackFixture st
         Assert.Contains(audits, row => row.Subject == seed.ScopeA.Subject && row.Action == "topology.path" && row.Succeeded);
     }
 
+    // kapsam: GetTopologyGroupedCommonAncestorAsync
+    [Fact, Trait("Category", "Integration")]
+    public async Task Grouped_ancestor_cannot_use_hidden_cross_owner_witness()
+    {
+        await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var seed = await SeedAsync(fixture);
+        var created = await new TopologyEdgeRegistry(fixture.Factory).CreateAsync(
+            AccessScope.System("grouped-scope-admin"), true,
+            new(seed.AService1, seed.BService2, "depends_on"), Ct);
+        Assert.Equal(201, created.Status);
+        var query = new TopologyGroupedAncestorQuery(
+            [[seed.AService2], [seed.BService2]], seed.ReadClock);
+
+        // The same graph has a valid positive-hop witness for both groups
+        // when all owners are authorized. Scope A must not reuse the hidden
+        // cross-owner edge or disclose the foreign target as a proof.
+        var unrestricted = await seed.Query.GetTopologyGroupedCommonAncestorAsync(query,
+            AccessScope.System("grouped-scope-admin"), Ct);
+        Assert.Equal(TopologyGraphResultStatus.Found, unrestricted.Status);
+        Assert.Equal(seed.AService1, unrestricted.NodeId);
+        Assert.Equal(2, unrestricted.Paths.Count);
+
+        var restricted = await seed.Query.GetTopologyGroupedCommonAncestorAsync(query, seed.ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.NotVerified, restricted.Status);
+        Assert.Null(restricted.NodeId);
+        Assert.Empty(restricted.Paths);
+        Assert.Equal("HiddenBoundary", restricted.Reason);
+    }
+
+    // kapsam: ResolveTopologySourceTargetsPageAsync
+    [Fact, Trait("Category", "Integration")]
+    public async Task Source_target_page_hides_foreign_root_instead_of_claiming_complete()
+    {
+        await using var fixture = await TelemetryDbFixture.CreateAsync(stack, Ct);
+        var seed = await SeedAsync(fixture);
+        var authorized = await seed.Query.ResolveTopologySourceTargetsPageAsync(
+            [seed.BSource], seed.ReadClock, seed.ScopeB, cancellationToken: Ct);
+        var rootOnly = Assert.Single(authorized.Items);
+        Assert.Equal(TopologySourceTargetStatus.Complete, rootOnly.FinalStatus);
+        Assert.NotEmpty(rootOnly.SourceNodeId);
+        Assert.Null(rootOnly.Target);
+        Assert.Null(authorized.Cursor);
+
+        var foreign = await seed.Query.ResolveTopologySourceTargetsPageAsync(
+            [seed.BSource], seed.ReadClock, seed.ScopeA, cancellationToken: Ct);
+        var hidden = Assert.Single(foreign.Items);
+        Assert.Equal(TopologySourceTargetStatus.Hidden, hidden.FinalStatus);
+        Assert.Empty(hidden.SourceNodeId);
+        Assert.Null(hidden.Target);
+        Assert.Null(foreign.Cursor);
+        await using var db = await fixture.Factory.CreateDbContextAsync(Ct);
+        Assert.Contains(await db.AuditLog.Where(row => row.Subject == seed.ScopeA.Subject)
+            .ToArrayAsync(Ct), row => row.Action == "topology.source-targets" && !row.Succeeded);
+    }
+
     [Fact, Trait("Category", "Integration")]
     public async Task Orphan_conflict_without_published_proof_is_scoped_and_windowed()
     {
