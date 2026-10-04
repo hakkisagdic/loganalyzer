@@ -7,6 +7,7 @@ using Bizigo.Contracts;
 using Bizigo.ControlPlane;
 using Bizigo.Storage.ClickHouse;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Bizigo.Query;
 
@@ -197,11 +198,9 @@ public sealed class TopologyPublicationRepairRunner(
                     isResume: true, cancellationToken))
                 return new(TopologyRepairInitializationStatus.MaintenanceRequired, generation,
                     "drain-attestation-expired-before-certificate");
-            var certificate = new TopologyRepairCertificate(1, generation, current.PgIdentity,
-                chIdentity, current.PublishedSequence, authority.PrefixHash,
-                authority.UncommittedPendingKey, authority.PendingPayloadHash,
-                authority.ParentHash, authority.LifecycleHash, canonical);
-            await MarkReadyAsync(db, certificate, copyAttempt, automaticEmpty, cancellationToken);
+            await MarkReadyV2Async(db, generation, current.PgIdentity, chIdentity,
+                current.PublishedSequence, authority, canonical, copyAttempt, automaticEmpty,
+                cancellationToken);
             await readiness.RequireReadyAsync(cancellationToken);
             return new(TopologyRepairInitializationStatus.Ready, generation);
         }
@@ -528,6 +527,9 @@ public sealed class TopologyPublicationRepairRunner(
         command.CommandText = """
             SELECT (SELECT count(*) FROM bizigo.topology_publication_receipts)
                  + (SELECT count(*) FROM bizigo.topology_publication_pending)
+                 + (SELECT count(*) FROM bizigo.topology_legacy_conversion_sidecars)
+                 + (SELECT count(*) FROM bizigo.topology_repair_member_sets)
+                 + (SELECT count(*) FROM bizigo.topology_repair_members)
             """;
         if (Convert.ToInt64(await command.ExecuteScalarAsync(token), CultureInfo.InvariantCulture) != 0)
             return false;
@@ -611,7 +613,8 @@ public sealed class TopologyPublicationRepairRunner(
                 old_canonical_identity_json = CAST({oldJson} AS jsonb),
                 allowed_copy_identity_json = CAST({allowedJson} AS jsonb),
                 automatic_empty_init = {automaticEmpty}, certificate_digest = NULL,
-                certificate_json = NULL, receipt_prefix_sha256 = NULL,
+                certificate_json = NULL, certificate_member_set_id = NULL,
+                receipt_prefix_sha256 = NULL,
                 receipt_prefix_sequence = 0, updated_at = now()
             WHERE id = 1 AND generation <= {generation}
             """, token);
@@ -620,25 +623,94 @@ public sealed class TopologyPublicationRepairRunner(
         await transaction.CommitAsync(token);
     }
 
-    private static async Task MarkReadyAsync(ControlPlaneDbContext db, TopologyRepairCertificate certificate,
-        Guid copyAttempt, bool automaticEmpty, CancellationToken token)
+    private static async Task MarkReadyV2Async(ControlPlaneDbContext db, long generation,
+        Guid pgIdentity, Guid chIdentity, long prefixSequence, RebuildAuthority authority,
+        IReadOnlyList<TopologyRepairTableIdentity> canonical, Guid copyAttempt,
+        bool automaticEmpty, CancellationToken token)
     {
+        // The repair storage only accepts verified v4 manifests. Its pre-v4
+        // rejection is the classification source; no caller-provided boolean
+        // can turn an unauthenticated legacy publication into a native one.
+        var candidate = TopologyRepairMembershipBuilder.Build(
+            Array.Empty<TopologyRepairMembershipPublication>(), 0, null);
+        if (candidate.Count != 0)
+            throw new TopologyObservedRepairUnavailableException();
+        await using var transaction = await db.Database.BeginTransactionAsync(token);
+        var connection = db.Database.GetDbConnection();
+        long sidecarRevision;
+        await using (var command = connection.CreateCommand())
+        {
+            command.Transaction = transaction.GetDbTransaction();
+            command.CommandText = """
+                SELECT r.sidecar_revision, s.published_sequence,
+                       p.publication_key, p.publication_sequence
+                FROM bizigo.topology_repair_state r
+                CROSS JOIN bizigo.topology_read_state s
+                LEFT JOIN bizigo.topology_publication_pending p ON p.id = 1
+                WHERE r.id = 1 AND s.id = 1 AND r.phase = 'Repairing'
+                  AND r.generation = @generation AND r.copy_attempt_id = @attempt
+                  AND r.pg_database_identity = @pg AND r.clickhouse_database_uuid = @ch
+                FOR UPDATE OF r, s
+                """;
+            AddParameter(command, "generation", generation);
+            AddParameter(command, "attempt", copyAttempt);
+            AddParameter(command, "pg", pgIdentity);
+            AddParameter(command, "ch", chIdentity);
+            await using var reader = await command.ExecuteReaderAsync(token);
+            if (!await reader.ReadAsync(token) || reader.GetInt64(1) != prefixSequence
+                || (reader.IsDBNull(2) ? null : reader.GetString(2)) != authority.UncommittedPendingKey
+                || (reader.IsDBNull(3) ? null : reader.GetInt64(3)) !=
+                    (authority.UncommittedPendingKey is null ? null : authority.Pending!.Sequence))
+                throw new InvalidDataException("Repair publication state changed before certification.");
+            sidecarRevision = reader.GetInt64(0);
+            if (await reader.ReadAsync(token))
+                throw new InvalidDataException("Ambiguous repair publication state.");
+        }
+
+        var memberSetId = Guid.NewGuid();
+        var pendingKey = authority.UncommittedPendingKey;
+        long? pendingSequence = pendingKey is null ? null : authority.Pending!.Sequence;
+        var inserted = await db.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO bizigo.topology_repair_member_sets
+              (member_set_id, generation, copy_attempt_id, pg_database_identity,
+               clickhouse_database_uuid, sampled_sidecar_revision, receipt_prefix_sequence,
+               receipt_prefix_sha256, pending_publication_key, pending_sequence,
+               pending_payload_sha256, member_count, canonical_byte_length, canonical_sha256)
+            VALUES ({memberSetId}, {generation}, {copyAttempt}, {pgIdentity}, {chIdentity},
+                    {sidecarRevision}, {prefixSequence}, {authority.PrefixHash},
+                    {pendingKey}, {pendingSequence}, {authority.PendingPayloadHash}, {candidate.Count},
+                    {candidate.CanonicalByteLength}, {candidate.CanonicalSha256})
+            """, token);
+        if (inserted != 1) throw new InvalidDataException("Repair member set was not inserted.");
+        var sealedCount = await db.Database.ExecuteSqlInterpolatedAsync($"""
+            UPDATE bizigo.topology_repair_member_sets SET sealed_at = now()
+            WHERE member_set_id = {memberSetId} AND sealed_at IS NULL
+            """, token);
+        if (sealedCount != 1) throw new InvalidDataException("Repair member set was not sealed.");
+
+        var certificate = new TopologyRepairCertificateV2(2, generation, pgIdentity, chIdentity,
+            prefixSequence, authority.PrefixHash, pendingKey, authority.PendingPayloadHash,
+            authority.ParentHash, authority.LifecycleHash, canonical, memberSetId,
+            sidecarRevision, candidate.Count, candidate.CanonicalSha256);
         var json = JsonSerializer.Serialize(certificate);
         var digest = TopologyObservedRepairReadiness.Digest(certificate);
-        await using var transaction = await db.Database.BeginTransactionAsync(token);
         var updated = await db.Database.ExecuteSqlInterpolatedAsync($"""
             UPDATE bizigo.topology_repair_state
             SET phase = 'Ready', certificate_digest = {digest}, certificate_json = CAST({json} AS jsonb),
-                receipt_prefix_sequence = {certificate.ReceiptPrefixSequence},
-                receipt_prefix_sha256 = {certificate.ReceiptPrefixSha256}, updated_at = now()
-            WHERE id = 1 AND phase = 'Repairing' AND generation = {certificate.Generation}
+                certificate_member_set_id = {memberSetId},
+                receipt_prefix_sequence = {prefixSequence},
+                receipt_prefix_sha256 = {authority.PrefixHash}, updated_at = now()
+            WHERE id = 1 AND phase = 'Repairing' AND generation = {generation}
               AND copy_attempt_id = {copyAttempt}
-              AND clickhouse_database_uuid = {certificate.ClickHouseDatabaseUuid}
+              AND pg_database_identity = {pgIdentity}
+              AND clickhouse_database_uuid = {chIdentity}
+              AND sidecar_revision = {sidecarRevision}
+              AND (SELECT published_sequence FROM bizigo.topology_read_state WHERE id = 1) = {prefixSequence}
               AND ({automaticEmpty} OR EXISTS (
                     SELECT 1 FROM bizigo.topology_repair_attestations a
-                    WHERE a.generation = {certificate.Generation}
-                      AND a.pg_database_identity = {certificate.PostgresDatabaseIdentity}
-                      AND a.clickhouse_database_uuid = {certificate.ClickHouseDatabaseUuid}
+                    WHERE a.generation = {generation}
+                      AND a.pg_database_identity = {pgIdentity}
+                      AND a.clickhouse_database_uuid = {chIdentity}
                       AND a.revoked_at IS NULL AND a.valid_until > now()))
             """, token);
         if (updated != 1) throw new InvalidDataException("Repair phase changed before certification.");
