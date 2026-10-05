@@ -74,18 +74,14 @@ public sealed class TopologyArchiveProcessIntegrationTests(DevStackFixture stack
         await f.SourceAsync("archive-parent", "B", DateTimeOffset.UtcNow.AddSeconds(1));
         await f.SourceAsync("archive-child", "B", DateTimeOffset.UtcNow.AddSeconds(1));
         using var fresh = await DevStackSetup.ClickHouseAsync(stack, ct);
+        // The fresh-store boundary rebinds the repair certificate to the distinct
+        // ClickHouse database; hand-written DELETEs left the old Ready identity
+        // in place, so the child's real startup repair could not become Ready.
+        await DevStackSetup.ResetTopologyPublicationForFreshStoreAsync(f.Factory, ct);
         await using (var db = await f.Factory.CreateDbContextAsync(ct))
         {
             // Restore input retains registry history, not derived projection receipts.
-            // Reset PG publication state together with the empty CH publication store.
-            await using var reset = await db.Database.BeginTransactionAsync(ct);
-            await db.Database.ExecuteSqlRawAsync("""
-                DELETE FROM bizigo.topology_publication_pending;
-                DELETE FROM bizigo.topology_publication_receipts;
-                UPDATE bizigo.topology_read_state SET published_sequence = 0, epoch = epoch + 1;
-                """, ct);
             await db.TelemetryOwnerClaims.ExecuteDeleteAsync(ct);
-            await reset.CommitAsync(ct);
             Assert.True(await db.TopologyBindings.AnyAsync(ct));
             Assert.True(await db.SourceOwnershipHistory.AnyAsync(ct));
         }

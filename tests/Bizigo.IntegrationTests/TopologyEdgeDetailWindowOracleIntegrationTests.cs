@@ -21,8 +21,9 @@ public sealed class TopologyEdgeDetailWindowOracleIntegrationTests(DevStackFixtu
     public async Task Edge_detail_explicit_window_is_applied_and_invalid_or_unpaired_bounds_are_400()
     {
         await using var f = await TelemetryDbFixture.CreateAsync(stack, Ct);
-        await using var api = await TopologyHttpOracleHost.StartAsync(f, Ct);
-        var seed = await SeedAsync(f, api);
+        var clock = new MutableTopologyExpiryNanoClock(TimeNowNano());
+        await using var api = await TopologyHttpOracleHost.StartAsync(f, Ct, clock);
+        var seed = await SeedAsync(f, api, clock);
         var endpoint = "/v1/topology/edges/" + Uri.EscapeDataString(seed.EdgeId) + "?asOf=" + seed.AsOf;
         using var included = await api.GetAsync(endpoint + "&from=" + seed.From + "&to=" + seed.To);
         Assert.Equal(HttpStatusCode.OK, included.StatusCode);
@@ -52,8 +53,9 @@ public sealed class TopologyEdgeDetailWindowOracleIntegrationTests(DevStackFixtu
     public async Task Edge_detail_cursor_binds_window_and_same_window_continuation_preserves_exact_evidence()
     {
         await using var f = await TelemetryDbFixture.CreateAsync(stack, Ct);
-        await using var api = await TopologyHttpOracleHost.StartAsync(f, Ct);
-        var seed = await SeedAsync(f, api);
+        var clock = new MutableTopologyExpiryNanoClock(TimeNowNano());
+        await using var api = await TopologyHttpOracleHost.StartAsync(f, Ct, clock);
+        var seed = await SeedAsync(f, api, clock);
         var endpoint = "/v1/topology/edges/" + Uri.EscapeDataString(seed.EdgeId) + "?asOf=" + seed.AsOf;
         var window = "&from=" + seed.From + "&to=" + seed.To;
         using var full = await api.GetAsync(endpoint + window);
@@ -85,7 +87,11 @@ public sealed class TopologyEdgeDetailWindowOracleIntegrationTests(DevStackFixtu
         { seed, changedWindow = 400, sameWindow = 200, first = firstJson.RootElement, next = nextJson.RootElement });
     }
 
-    private static async Task<Seed> SeedAsync(TelemetryDbFixture f, TopologyHttpOracleHost api)
+    private static decimal TimeNowNano() =>
+        checked((decimal)(DateTimeOffset.UtcNow.UtcTicks - DateTimeOffset.UnixEpoch.UtcTicks) * 100m);
+
+    private static async Task<Seed> SeedAsync(TelemetryDbFixture f, TopologyHttpOracleHost api,
+        MutableTopologyExpiryNanoClock clock)
     {
         await f.SourceAsync("detail-parent", "A"); await f.SourceAsync("detail-child", "A");
         var registry = new TopologyRegistry(f.Factory);
@@ -110,6 +116,11 @@ public sealed class TopologyEdgeDetailWindowOracleIntegrationTests(DevStackFixtu
         await ingest.RecoverAsync(Ct);
         await f.EmitAsync(ingest, p, TelemetrySignal.Traces);
         await f.EmitAsync(ingest, c, TelemetrySignal.Traces);
+        // The server-owned clock must not precede the requested as-of: the REST
+        // boundary rejects a future asOf. Seeded ingest times sit a few seconds
+        // ahead of wall clock, so the oracle advances the clock explicitly rather
+        // than weakening that rule.
+        clock.Set(time + 2000000000m);
         await using var read = api.App.Services.CreateAsyncScope();
         var edges = await read.ServiceProvider.GetRequiredService<IScopedQuery>().SearchTopologyEdgesAsync(
             new(time + 2000000000m, Provenance: TopologyProvenance.Observed), scope, Ct);
