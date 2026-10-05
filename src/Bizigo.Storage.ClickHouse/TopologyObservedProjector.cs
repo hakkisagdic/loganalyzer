@@ -175,8 +175,9 @@ public sealed class TopologyObservedProjector(
         await publish(manifest.Batch.PublicationKey, async (sequence, token) =>
         {
             var batch = manifest.Batch;
-            if (batch.ProjectionVersion < 4)
-                throw new InvalidDataException("A pre-v4 publication lacks authoritative parent-resolution decisions.");
+            // A pending v2 manifest is immutable physical authority. It may be
+            // replayed exactly, but readiness will keep it out of certified
+            // observed reads until it is migrated to v4.
             if (batch.Edges.Count != 0)
             {
                 var frozenRows = batch.Edges.Select(e => EdgeRow(e, sequence)).ToArray();
@@ -199,7 +200,10 @@ public sealed class TopologyObservedProjector(
             if (batch.Conflicts.Count != 0)
             {
                 var legacy = batch.Conflicts.All(static conflict => conflict.Candidates.Count == 0);
-                if (legacy || batch.Conflicts.Any(conflict => !HasAttributedConflict(conflict)))
+                // An empty legacy marker has no durable candidate context and
+                // cannot be reconstructed. V2 context, however, is frozen in
+                // the manifest and must be replayed byte-for-byte.
+                if (legacy)
                     throw new InvalidDataException("Unattributed legacy conflict cannot be republished.");
                 var rows = batch.Conflicts.Select(c => ConflictRow(c, sequence, legacy)).ToArray();
                 var written = await context.Client.InsertBinaryAsync("topology_span_conflicts",
