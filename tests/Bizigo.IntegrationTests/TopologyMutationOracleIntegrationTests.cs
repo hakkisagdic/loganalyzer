@@ -89,7 +89,10 @@ public sealed class TopologyMutationOracleIntegrationTests(DevStackFixture stack
         await using var check = await f.Factory.CreateDbContextAsync(Ct);
         var audit = Assert.Single(await check.AuditLog.AsNoTracking().Where(a => a.Subject == api.Subject("A")).ToArrayAsync(Ct));
         Assert.Equal("topology." + kind + "." + operation, audit.Action);
-        Assert.Equal("A", audit.Scope);
+        // Topology writes require the Admin policy. Admin principals intentionally
+        // resolve to the unrestricted system scope; the rejected request above is
+        // a Reader principal and must be stopped by that policy before the handler.
+        Assert.Equal("*", audit.Scope);
         Assert.NotEqual(baseline, await State(f, api.Subject("A")));
         if (operation != "create")
         {
@@ -107,7 +110,7 @@ public sealed class TopologyMutationOracleIntegrationTests(DevStackFixture stack
             var route = "/v1/topology/" + (kind == "node" ? "nodes" : "edges");
             if (operation != "create") route += "/" + id;
             if (operation == "delete")
-                return api.DeleteAsync(route + "?version=" + (invalid ? "01" : version), role: "admin");
+                return api.DeleteAsync(route + "?version=" + (invalid ? "01" : version), role: foreign ? "reader" : "admin");
             string body;
             if (kind == "node")
                 body = JsonSerializer.Serialize(new TopologyNodeMutationDto(TopologyNodeKind.Service, "H02-new-name",
@@ -116,7 +119,8 @@ public sealed class TopologyMutationOracleIntegrationTests(DevStackFixture stack
             else
                 body = JsonSerializer.Serialize(new TopologyDeclaredEdgeInput(nodes[0], foreign ? nodes[2] : nodes[1],
                     invalid ? "not-a-relation" : "connects_to", operation == "create" ? null : version), Wire);
-            return operation == "create" ? api.PostAsync(route, body, role: "admin") : api.PutAsync(route, body, role: "admin");
+            var role = foreign ? "reader" : "admin";
+            return operation == "create" ? api.PostAsync(route, body, role: role) : api.PutAsync(route, body, role: role);
         }
     }
 
