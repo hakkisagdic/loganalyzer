@@ -193,9 +193,7 @@ public sealed class TopologyQueryIntegrationTests(DevStackFixture stack)
         // as an empty plan when its bound anchors vector is empty. The exact
         // production command is still replayed above; no fake anchor is added.
         Assert.Contains("conflicts", clickhouse.Keys);
-        // EXPLAIN validates that the bound production SQL can be typed and
-        // planned. Granule pruning is an optimizer/statistics detail, so it is
-        // recorded as evidence above rather than made a semantic contract.
+        Assert.True(pruned["observed-candidates"]);
         Assert.NotEmpty(postgres);
         Assert.True(postgres.Contains("ix_topology_edge_hist_from_owner_clock", StringComparison.Ordinal)
             || postgres.Contains("ix_topology_edge_hist_to_owner_clock", StringComparison.Ordinal));
