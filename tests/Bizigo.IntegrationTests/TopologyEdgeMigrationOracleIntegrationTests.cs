@@ -51,7 +51,8 @@ public sealed class TopologyEdgeMigrationOracleIntegrationTests(DevStackFixture 
                 var migrator = upgrade.GetService<IMigrator>();
                 await migrator.MigrateAsync(Declared, token);
                 Assert.Equal("bizigo.topology_edges_declared", await ScalarAsync(connection,
-                    "SELECT to_regclass('bizigo.topology_edges_declared')::text", token));
+                    "SELECT n.nspname || '.' || c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+                    + "WHERE c.oid = to_regclass('bizigo.topology_edges_declared')", token));
                 await migrator.MigrateAsync(Declared, token);
                 Assert.Equal(1, (await upgrade.Database.GetAppliedMigrationsAsync(token)).Count(id => id == Declared));
             }
