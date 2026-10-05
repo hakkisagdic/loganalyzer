@@ -53,6 +53,7 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
         var parent = Span(Guid.NewGuid(), "parent", ParentSpan, string.Empty, ParentNode, f.Now);
         var child = Span(Guid.NewGuid(), "child", ChildSpan, ParentSpan, ChildNode, f.Now + 1000);
         await writer.WriteAsync([parent, child], Ct);
+        var observed = Assert.Single(TopologyObservation.Reduce([parent, child]).Edges);
         var scope = new TopologyObservedReadScope(AccessScope.ForGroups("scope-A", ["A"]),
             f.Now, (decimal)f.Now + 2000, (decimal)f.Now + 2000, 64);
         var reader = new TopologyObservedSnapshotReader(f.Storage);
@@ -61,16 +62,12 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
         // The non-TTL authority must select the latest committed version before
         // applying the event window. The synthetic later version is deliberately
         // ledger-only: a filtered-out version needs no physical proof hydration.
-        await f.SqlAsync("INSERT INTO topology_edge_lifecycle "
-            + "SELECT * REPLACE (last_seen + 100000 AS last_seen, 2 AS publication_seq) "
-            + "FROM topology_edge_lifecycle WHERE publication_seq = 1");
+        await InsertLifecycleVersionAsync(f, observed.EdgeId, "A", "A", f.Now + 101000, 2);
         Assert.Empty((await reader.ReadScopedSnapshotAsync(2, scope, Ct)).Rows);
 
         // An unpublished later owner transfer cannot suppress the committed
         // view at watermark 1, even when it has the same edge identity.
-        await f.SqlAsync("INSERT INTO topology_edge_lifecycle "
-            + "SELECT * REPLACE ('B' AS parent_owner_group, 'B' AS child_owner_group, "
-            + "3 AS publication_seq) FROM topology_edge_lifecycle WHERE publication_seq = 1");
+        await InsertLifecycleVersionAsync(f, observed.EdgeId, "B", "B", f.Now + 1000, 3);
         Assert.Single((await reader.ReadScopedSnapshotAsync(1, scope, Ct)).Rows);
         Assert.Empty((await reader.ReadScopedSnapshotAsync(3, scope, Ct)).Rows);
     }
@@ -660,6 +657,25 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
         Assert.Empty(published.AttemptedKeys);
         Assert.Equal("0", (await f.SqlAsync("SELECT count() FROM topology_edges_observed")).Trim());
     }
+
+    private static Task InsertLifecycleVersionAsync(TelemetryDbFixture fixture, string edgeId,
+        string childOwner, string parentOwner, ulong lastSeen, ulong sequence) =>
+        fixture.SqlAsync("INSERT INTO topology_edge_lifecycle FORMAT JSONEachRow\n"
+            + JsonSerializer.Serialize(new
+            {
+                child_owner_group = childOwner,
+                parent_owner_group = parentOwner,
+                from_node_id = ParentNode,
+                to_node_id = ChildNode,
+                first_seen = fixture.Now,
+                last_seen = lastSeen,
+                parent_event_time_nano = fixture.Now,
+                child_event_time_nano = fixture.Now + 1000,
+                edge_id = edgeId,
+                publication_seq = sequence,
+                expires_nano = (decimal)fixture.Now + 7_776_000_000_000_000m,
+                physical_row_sha256 = new string('0', 64),
+            }, RawSignalCodec.Json));
 
     private static TelemetryRecord Reenvelope(TelemetryRecord record)
     {
