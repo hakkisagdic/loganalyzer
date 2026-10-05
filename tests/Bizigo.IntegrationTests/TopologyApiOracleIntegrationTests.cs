@@ -178,7 +178,13 @@ public sealed class TopologyApiOracleIntegrationTests(DevStackFixture stack)
         await f.SqlAsync("RENAME TABLE topology_edges_observed TO topology_fault_driver_marker");
         try
         {
-            foreach (var name in Reads)
+            // The fault removes the observed-edge store. Routes that read observed
+            // data must fail closed (503, never an empty 200). nodes/node read only
+            // the declared registry in Postgres: an observed-store outage must not
+            // take them down, and their answer must be real data, not an error.
+            var observedRoutes = Reads.Where(static name => name is not ("nodes" or "node")).ToArray();
+            var declaredRoutes = Reads.Except(observedRoutes).ToArray();
+            foreach (var name in observedRoutes)
             {
                 using var response = await api.GetAsync(seed.At(name));
                 Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
@@ -186,8 +192,16 @@ public sealed class TopologyApiOracleIntegrationTests(DevStackFixture stack)
                 using var json = JsonDocument.Parse(body);
                 Assert.Equal("QueryUnavailable", json.RootElement.GetProperty("reason").GetString());
             }
+            foreach (var name in declaredRoutes)
+            {
+                using var response = await api.GetAsync(seed.At(name));
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                Sweep(await response.Content.ReadAsStringAsync(Ct), seed);
+            }
             var audits = await f.Db.AuditLog.AsNoTracking().Where(a => a.Subject == api.Subject("A")).ToArrayAsync(Ct);
-            Assert.Equal(7, audits.Length); Assert.All(audits, a => Assert.False(a.Succeeded));
+            Assert.Equal(7, audits.Length);
+            Assert.Equal(observedRoutes.Length, audits.Count(static a => !a.Succeeded));
+            Assert.Equal(declaredRoutes.Length, audits.Count(static a => a.Succeeded));
             TelemetryDbFixture.Evidence("h06-real-db-errors", new { audits, count = 7 });
         }
         finally { await f.SqlAsync("RENAME TABLE topology_fault_driver_marker TO topology_edges_observed"); }
