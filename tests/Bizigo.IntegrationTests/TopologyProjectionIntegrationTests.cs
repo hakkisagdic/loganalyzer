@@ -604,7 +604,9 @@ public sealed class TopologyProjectionIntegrationTests(DevStackFixture stack)
         Assert.Equal(2UL, publicProof.PublicationSequence);
         var conflict = Reenvelope(parent) with { Topology = parent.Topology! with { ServiceNodeId = ChildNode } };
         await writer.WriteAsync([conflict], Ct);
-        Assert.Equal("1", (await f.SqlAsync("SELECT count() FROM topology_span_conflicts FINAL")).Trim());
+        // Conflicts are an append-only MergeTree audit ledger; FINAL is valid
+        // for the replacing observed-edge table below, not for this table.
+        Assert.Equal("1", (await f.SqlAsync("SELECT count() FROM topology_span_conflicts")).Trim());
         Assert.Equal("2", (await f.SqlAsync("SELECT count() FROM topology_edges_observed FINAL")).Trim());
         // Physical old edge remains for audit; the committed conflict marker
         // makes the public snapshot reject that anchor before any scope filter.
