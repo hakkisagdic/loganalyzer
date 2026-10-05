@@ -364,7 +364,8 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
             return new(result.ExternalNeighborCount, result.ExternalNeighborReason);
         }
         catch (OperationCanceledException) { throw; }
-        catch (Exception ex) when (ex is TimeoutException or IOException or DbException or HttpRequestException)
+        catch (Exception ex) when (ex is TimeoutException or IOException or DbException or HttpRequestException
+            or TopologyObservedRepairUnavailableException)
         { return new(null, ex is TimeoutException ? "Timeout" : "QueryUnavailable"); }
     }
 
