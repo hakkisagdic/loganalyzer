@@ -151,6 +151,25 @@ public sealed class TopologyGraphTests
     }
 
     [Fact]
+    public async Task Observed_expiry_clock_is_independent_when_it_precedes_historical_as_of()
+    {
+        var edge = Edge("independent-expiry", R, A, provenance: TopologyProvenance.Observed)
+            with { LastSeenUnixNano = 950, EffectiveExpiry = 1100 };
+        var source = new ScopedMemorySource(new(9, [edge]));
+        var graph = new TopologyGraphQueryService(source);
+
+        var result = await graph.SearchEdgesAsync(new TopologyEdgeQuery(1000)
+        {
+            ExpiryReadClockUnixNano = 900,
+        }, ScopeA, Ct);
+
+        Assert.Single(result.Items);
+        Assert.NotNull(source.LastRequest);
+        Assert.Equal(1000, source.LastRequest.AsOfUnixNano);
+        Assert.Equal(900, source.LastRequest.ExpiryReadClockUnixNano);
+    }
+
+    [Fact]
     public async Task Cursor_is_stable_and_partial_cursor_never_restarts()
     {
         var query = Query([Edge("1", R, A), Edge("2", R, B), Edge("3", R, C)]);

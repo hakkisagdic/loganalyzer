@@ -116,6 +116,12 @@ public sealed class TopologyReplayProcessTests(DevStackFixture stack)
             foreach (var manifest in archived) await archive.ReadAsync(manifest, ct);
             var interrupted = await State(f, ct);
             var visibleBefore = await query.SearchTopologyEdgesAsync(request, scope, ct);
+            // A child-first request intentionally publishes an explicit
+            // MissingParent resolution before the parent arrives. The later
+            // resolved edge is a second state transition, not a duplicated
+            // proof or replay of the same publication.
+            var childFirstWatermarkCount = childFirst ? 1UL : 0UL;
+            var childFirstEpochCount = childFirst ? 1L : 0L;
             Assert.Equal(stage == "after-telemetry-db-before-checkpoint" ? 1 : 0, visibleBefore.Items.Count);
             Assert.Equal(stage is "after-observed-db-before-publish" or "after-telemetry-db-before-checkpoint" ? 2 : 1,
                 await Scalar(f, "SELECT count() FROM trace_spans FINAL"));
@@ -123,8 +129,8 @@ public sealed class TopologyReplayProcessTests(DevStackFixture stack)
             {
                 Assert.Equal(1, await Scalar(f, "SELECT count() FROM topology_edges_observed FINAL"));
                 Assert.Equal(1, interrupted.PendingCount);
-                Assert.Equal(before.Watermark, interrupted.Watermark);
-                Assert.Equal(before.Epoch, interrupted.Epoch);
+                Assert.Equal(before.Watermark + childFirstWatermarkCount, interrupted.Watermark);
+                Assert.Equal(before.Epoch + childFirstEpochCount, interrupted.Epoch);
                 Assert.Equal(interrupted.Watermark + 1, interrupted.PendingSequence);
                 Assert.Equal(64, interrupted.PendingKey!.Length);
             }
@@ -145,12 +151,16 @@ public sealed class TopologyReplayProcessTests(DevStackFixture stack)
             Assert.Equal(2, recovered.RootElement.GetProperty("verified").GetArrayLength());
             var after = await State(f, ct);
             Assert.Equal(0, after.PendingCount);
-            Assert.Equal(before.Watermark + 1, after.Watermark);
-            Assert.Equal(before.Epoch + 1, after.Epoch);
+            Assert.Equal(before.Watermark + childFirstWatermarkCount + 1UL, after.Watermark);
+            Assert.Equal(before.Epoch + childFirstEpochCount + 1L, after.Epoch);
             Assert.Equal((long)after.Watermark, after.PublishedSequence);
             Assert.Equal(2, await Scalar(f, "SELECT count() FROM trace_spans FINAL"));
             Assert.Equal(1, await Scalar(f, "SELECT count() FROM topology_edges_observed FINAL"));
             var final = await query.SearchTopologyEdgesAsync(request, scope, ct);
+            // The child-first MissingParent record and the later Resolved
+            // record are two immutable publication states. They must still
+            // converge to one directed public proof, rather than duplicating
+            // the edge or either of its two input manifests.
             var edge = Assert.Single(final.Items);
             Assert.Equal(parent.Node.Id, edge.FromNode); Assert.Equal(child.Node.Id, edge.ToNode);
             Assert.Equal("A", edge.FromOwnerGroup); Assert.Equal("A", edge.ToOwnerGroup);
@@ -158,7 +168,9 @@ public sealed class TopologyReplayProcessTests(DevStackFixture stack)
             var detail = await query.GetTopologyEdgeAsync(edge.Id, request.ReadClockUnixNano, scope, ct);
             Assert.NotNull(detail); Assert.Equal(2, detail.Evidence.Count);
             Assert.Equal(2, detail.Evidence.Select(e => e.Id).Distinct(StringComparer.Ordinal).Count());
-            Assert.Equal(2, archive.Manifests().Count());
+            var finalManifests = archive.Manifests().ToArray();
+            Assert.Equal(2, finalManifests.Length);
+            Assert.All(frames, envelope => Assert.Single(finalManifests, manifest => manifest.EnvelopeId == envelope.EnvelopeId));
             Assert.Equal(2, Directory.GetFiles(Path.Combine(root, "processed"), "*.json").Length);
             foreach (var envelope in frames)
             {

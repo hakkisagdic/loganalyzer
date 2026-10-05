@@ -693,9 +693,10 @@ public sealed class TopologyGraphQueryService(ITopologyGraphSnapshotSource sourc
     {
         var clock = expiryReadClockUnixNano ?? asOfUnixNano;
         _ = TopologyExpiry.FromDecimal(clock);
-        if (clock < asOfUnixNano)
-            throw new ArgumentOutOfRangeException(nameof(expiryReadClockUnixNano),
-                "Observed expiry clock cannot precede historical as-of.");
+        // Observed TTL is evaluated at the server's current clock, whereas
+        // owner/history reads use the caller's historical as-of timestamp.
+        // They are deliberately independent: a valid server clock can precede
+        // an as-of instant selected just after a captured event.
         return clock;
     }
 
