@@ -78,9 +78,9 @@ public sealed class TopologyRegistry(IDbContextFactory<ControlPlaneDbContext> fa
             if (db.Database.IsNpgsql()) await db.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(735031)", token);
             var node = id is null ? null : await db.TopologyNodes.SingleOrDefaultAsync(n => n.Id == id, token);
             if (id is not null && node is null) return new(404, Error: "Node not found.");
-            if (node is not null && !scope.Allows(node.OwnerGroup)) return new(403, Error: "Node outside authorized scope.");
             if (node is not null && (node.Deleted || node.Version != (deleteVersion ?? input!.Version)))
                 return new(409, Error: "Node version changed or node deleted.");
+            if (node is not null && !scope.Allows(node.OwnerGroup)) return new(403, Error: "Node outside authorized scope.");
             if (node is not null && input is not null && (node.Kind != input.Kind || node.SourceId != input.SourceId))
                 return new(400, Error: "Node type and inventory identity are immutable.");
             var aliases = input?.Bindings ?? [];
