@@ -610,6 +610,10 @@ internal static class McpExpectedTools
             [
                 .. CommandCatalog.Tools.Select(static c => c.Name),
                 AlertRulesTool.ToolIdentifier,
+                AnomalyPoliciesListTool.ToolIdentifier,
+                AnomalyPoliciesDetailTool.ToolIdentifier,
+                AnomalyRunsListTool.ToolIdentifier,
+                AnomalyRunsDetailTool.ToolIdentifier,
                 AlertsMaintenanceTool.ToolIdentifier,
                 AlertTriggersTool.ToolIdentifier,
                 CatalogParsersTool.ToolIdentifier,

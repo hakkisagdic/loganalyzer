@@ -64,7 +64,7 @@ public static class ScenarioTriggers
     /// bekleyebileceği tetiklenmeler.
     /// </summary>
     public static readonly IReadOnlySet<string> Continuations =
-        new HashSet<string>(StringComparer.Ordinal) { Anomaly };
+        new HashSet<string>(StringComparer.Ordinal);
 
     /// <summary>
     /// Bir pluginin <c>trigger.on</c>'da yazabileceği her şey: kaynakların

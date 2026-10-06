@@ -153,6 +153,15 @@ public sealed class RcaSingleQueueTests
                 Now),
             Token);
 
+        // S07: anomali tetiklemesi
+        await gate.AdmitAsync(
+            RcaTriggerSources.FromAnomaly(
+                "anomali-pol-1",
+                "network/core",
+                Now.AddHours(-1),
+                Now),
+            Token);
+
         await using var db = factory.CreateDbContext();
         var runs = db.RcaRuns.ToList();
 
@@ -185,13 +194,13 @@ public sealed class RcaSingleQueueTests
     /// </para>
     /// </summary>
     [Fact]
-    public void Kaynak_kumesi_bes_degerde_kapali()
+    public void Kaynak_kumesi_alti_degerde_kapali()
     {
-        Assert.Equal(5, Enum.GetValues<RcaTriggerSource>().Length);
+        // Beşten altıya S07 ile çıktı (Anomaly)
+        Assert.Equal(6, Enum.GetValues<RcaTriggerSource>().Length);
 
         Assert.DoesNotContain(
             Enum.GetNames<RcaTriggerSource>(),
-            name => name.Contains("Chain", StringComparison.OrdinalIgnoreCase)
-                || name.Contains("Anomaly", StringComparison.OrdinalIgnoreCase));
+            name => name.Contains("Chain", StringComparison.OrdinalIgnoreCase));
     }
 }

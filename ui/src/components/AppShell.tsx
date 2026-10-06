@@ -28,6 +28,7 @@ const NAV = [
   { href: "/metrikler", label: "Metrikler" },
   { href: "/izler", label: "İzler" },
   { href: "/topoloji", label: "Topoloji" },
+  { href: "/anomaliler", label: "Anomaliler" },
   { href: "/kaynaklar", label: "Kaynaklar" },
   { href: "/alarmlar", label: "Alarmlar" },
   // Katalog T20 ile indi ama gezinmeye girmemişti: gezinmede olmayan bir ekran

@@ -272,6 +272,183 @@ namespace Bizigo.ControlPlane.Migrations
                     b.ToTable("alert_triggers", "bizigo");
                 });
 
+            modelBuilder.Entity("Bizigo.ControlPlane.AnomalyPolicyEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("id");
+
+                    b.Property<int>("BaselineWindowSeconds")
+                        .HasColumnType("integer")
+                        .HasColumnName("baseline_window_seconds");
+
+                    b.Property<int>("CadenceSeconds")
+                        .HasColumnType("integer")
+                        .HasColumnName("cadence_seconds");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("EventWindowSeconds")
+                        .HasColumnType("integer")
+                        .HasColumnName("event_window_seconds");
+
+                    b.Property<DateTimeOffset?>("LastEvaluatedWindowStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_evaluated_window_start");
+
+                    b.Property<int>("MinSamples")
+                        .HasColumnType("integer")
+                        .HasColumnName("min_samples");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("OwnerGroup")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("owner_group");
+
+                    b.Property<double>("Sensitivity")
+                        .HasColumnType("double precision")
+                        .HasColumnName("sensitivity");
+
+                    b.Property<string>("Signal")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("signal");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("state");
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("target");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.Property<double?>("ZeroBaselineMinAbsolute")
+                        .HasColumnType("double precision")
+                        .HasColumnName("zero_baseline_min_absolute");
+
+                    b.HasKey("Id")
+                        .HasName("pk_anomaly_policies");
+
+                    b.HasIndex("Signal")
+                        .HasDatabaseName("ix_anomaly_policies_signal");
+
+                    b.HasIndex("OwnerGroup", "State")
+                        .HasDatabaseName("ix_anomaly_policies_owner_group_state");
+
+                    b.ToTable("anomaly_policies", "bizigo");
+                });
+
+            modelBuilder.Entity("Bizigo.ControlPlane.AnomalyRunEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("id");
+
+                    b.Property<double?>("BaselineValue")
+                        .HasColumnType("double precision")
+                        .HasColumnName("baseline_value");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<double?>("Deviation")
+                        .HasColumnType("double precision")
+                        .HasColumnName("deviation");
+
+                    b.Property<int>("EvaluatedPolicyVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("evaluated_policy_version");
+
+                    b.Property<double?>("ObservedValue")
+                        .HasColumnType("double precision")
+                        .HasColumnName("observed_value");
+
+                    b.Property<string>("OwnerGroup")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("owner_group");
+
+                    b.Property<string>("PolicyId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("policy_id");
+
+                    b.Property<Guid?>("RcaRunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rca_run_id");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("WindowEnd")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("window_end");
+
+                    b.Property<DateTimeOffset>("WindowStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("window_start");
+
+                    b.Property<string>("WorkerJobId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("worker_job_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_anomaly_runs");
+
+                    b.HasIndex("OwnerGroup", "CreatedAt")
+                        .HasDatabaseName("ix_anomaly_runs_owner_group_created_at");
+
+                    b.HasIndex("Status", "CreatedAt")
+                        .HasDatabaseName("ix_anomaly_runs_status_created_at");
+
+                    b.HasIndex("PolicyId", "OwnerGroup", "WindowStart")
+                        .IsUnique()
+                        .HasDatabaseName("ix_anomaly_runs_policy_id_owner_group_window_start");
+
+                    b.ToTable("anomaly_runs", "bizigo");
+                });
+
             modelBuilder.Entity("Bizigo.ControlPlane.AuditLogEntity", b =>
                 {
                     b.Property<long>("Id")
@@ -1702,14 +1879,14 @@ namespace Bizigo.ControlPlane.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_topology_edge_declared_history_edge_id_from_nano");
 
-                    b.HasIndex("FromNodeId", "Relation", "Revision")
-                        .HasDatabaseName("ix_topology_edge_hist_from_relation_revision");
-
                     b.HasIndex("FromOwnerGroup", "FromNano")
                         .HasDatabaseName("ix_topology_edge_hist_from_owner_clock");
 
                     b.HasIndex("ToOwnerGroup", "FromNano")
                         .HasDatabaseName("ix_topology_edge_hist_to_owner_clock");
+
+                    b.HasIndex("FromNodeId", "Relation", "Revision")
+                        .HasDatabaseName("ix_topology_edge_hist_from_relation_revision");
 
                     b.ToTable("topology_edge_declared_history", "bizigo");
                 });

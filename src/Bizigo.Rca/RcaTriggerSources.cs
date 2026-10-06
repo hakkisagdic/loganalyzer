@@ -188,4 +188,23 @@ public static class RcaTriggerSources
             Parent = parent,
             RequestedBy = $"schedule:{scheduleId}",
         };
+
+    /// <summary>
+    /// S4 Anomaly worker tetiklemesi (Sprint 07, S13).
+    /// </summary>
+    public static RcaTriggerRequest FromAnomaly(
+        string policyId,
+        string ownerGroup,
+        DateTimeOffset from,
+        DateTimeOffset to) =>
+        new()
+        {
+            Source = RcaTriggerSource.Anomaly,
+            Identity = policyId,
+            OwnerGroup = RcaTriggerKey.Scope([ownerGroup]),
+            WindowFrom = from,
+            WindowTo = to,
+            IdempotencyKey = $"anomaly:{policyId}:{ownerGroup}:{from.ToUnixTimeSeconds()}",
+            RequestedBy = $"anomaly-worker:{policyId}"
+        };
 }

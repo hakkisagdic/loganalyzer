@@ -126,6 +126,10 @@ public sealed class ProducesContractTests
         ["DELETE /v1/changes/connectors/{id}"] = "204, gövdesiz.",
         ["DELETE /v1/topology/nodes/{nodeId}"] = "204, gövdesiz.",
         ["DELETE /v1/topology/edges/{edgeId}"] = "204, gövdesiz.",
+        ["DELETE /api/anomaly-policies/{id}"] = "405 Method Not Allowed (S17); no 2xx response body.",
+        ["DELETE /api/anomaly-runs/{id}"] = "405 Method Not Allowed (S27); no 2xx response body.",
+        ["DELETE /v1/anomaly-policies/{id}"] = "405 Method Not Allowed (S17); no 2xx response body.",
+        ["DELETE /v1/anomaly-runs/{id}"] = "405 Method Not Allowed (S27); no 2xx response body.",
     };
 
     /// <summary>
@@ -139,7 +143,7 @@ public sealed class ProducesContractTests
     /// düşmeli.
     /// </para>
     /// </summary>
-    private const int ExpectedExemptCount = 11;
+    private const int ExpectedExemptCount = 15;
 
     /// <summary>
     /// Kapının <b>hiç göremediği</b> uçlar — ve neden.
@@ -529,7 +533,7 @@ public sealed class ProducesContractTests
         // bilinçli bir hareket olur.
         Assert.Equal(
             [
-                "MapAlertClosure", "MapAlerts", "MapAuth",
+                "MapAlertClosure", "MapAlerts", "MapAnomalies", "MapAuth",
 
                 // M01: MCP'nin akışlanabilir HTTP taşıması. `Bizigo.Api` içinde
                 // duruyor ve bu liste bunun sebebi — kayıt `Bizigo.Mcp`'de
