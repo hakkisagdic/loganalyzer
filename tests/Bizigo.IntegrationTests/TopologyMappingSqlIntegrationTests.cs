@@ -83,7 +83,7 @@ public sealed class TopologyMappingSqlIntegrationTests(DevStackFixture stack)
         {
             await using (var disableSeqScan = connection.CreateCommand())
             {
-                disableSeqScan.CommandText = "ANALYZE topology_edge_declared_history; SET enable_seqscan=off";
+                disableSeqScan.CommandText = "ANALYZE bizigo.topology_edge_declared_history; SET enable_seqscan=off";
                 await disableSeqScan.ExecuteNonQueryAsync(Ct);
             }
             await using var explain = connection.CreateCommand();
