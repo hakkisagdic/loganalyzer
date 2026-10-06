@@ -20,7 +20,7 @@ import type { paths } from "./schema";
  * dışlamak, bir ekranın yanlışlıkla oraya yazmasını derleme zamanında
  * engelliyor.</p>
  */
-export type ExcludedPath = "/v1/logs" | "/v1/metrics" | "/v1/traces";
+export type ExcludedPath = "/v1/logs";
 
 export type HttpMethod = "get" | "post" | "put" | "delete" | "patch";
 

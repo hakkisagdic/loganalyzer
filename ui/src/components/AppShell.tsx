@@ -25,6 +25,9 @@ export interface AppShellProps {
 const NAV = [
   { href: "/", label: "Genel bakış" },
   { href: "/olaylar", label: "Log arama" },
+  { href: "/metrikler", label: "Metrikler" },
+  { href: "/izler", label: "İzler" },
+  { href: "/topoloji", label: "Topoloji" },
   { href: "/kaynaklar", label: "Kaynaklar" },
   { href: "/alarmlar", label: "Alarmlar" },
   // Katalog T20 ile indi ama gezinmeye girmemişti: gezinmede olmayan bir ekran

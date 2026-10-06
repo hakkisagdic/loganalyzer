@@ -1,4 +1,5 @@
 using System.Reflection;
+using Microsoft.Extensions.Hosting;
 
 namespace Bizigo.Api;
 
@@ -47,7 +48,7 @@ public static class DocumentGeneration
         // kendiliğinden doğru.
         Directory.SetCurrentDirectory(RepositoryRoot());
 
-        return WebApplication.CreateBuilder(new WebApplicationOptions
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
             Args = args,
 
@@ -62,6 +63,16 @@ public static class DocumentGeneration
             // çalıştırıcısında yazılamaz. Belge üretimi bir geliştirme adımı.
             EnvironmentName = Environments.Development,
         });
+
+        // Belge üretimi sırasında veritabanları veya harici depolar (MinIO)
+        // ayakta olmayabilir; arka plan işçilerinin ilk deneme hataları
+        // belgeyi üreten host'u düşürmemeli.
+        builder.Services.Configure<HostOptions>(options =>
+        {
+            options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
+        });
+
+        return builder;
     }
 
     /// <summary><c>Bizigo.sln</c>'i barındıran dizin.</summary>

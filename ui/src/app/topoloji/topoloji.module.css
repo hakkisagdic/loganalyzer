@@ -1,0 +1,154 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  inline-size: 100%;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.title {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  color: var(--text-1);
+  margin: 0;
+}
+
+.controls {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.selectInput {
+  background: var(--surface-1);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-1);
+  font-size: var(--text-sm);
+}
+
+.selectInput:focus-visible {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+}
+
+@media (min-width: 1024px) {
+  .gridTwoCol {
+    grid-template-columns: 3fr 2fr;
+  }
+}
+
+.panel {
+  background: var(--surface-1);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.panelTitle {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--text-1);
+  margin: 0;
+}
+
+.graphContainer {
+  inline-size: 100%;
+  block-size: 20rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border-1);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  position: relative;
+}
+
+.graphSvg {
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.nodeCircle {
+  fill: var(--accent);
+  stroke: var(--surface-1);
+  stroke-width: 2px;
+  cursor: pointer;
+  transition: r var(--motion-fast);
+}
+
+.nodeCircle:hover,
+.nodeCircle:focus-visible {
+  fill: var(--accent-strong);
+  outline: none;
+}
+
+.nodeText {
+  fill: var(--text-1);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  font-family: var(--font-sans);
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+
+.edgeLine {
+  stroke: var(--border-2);
+  stroke-width: 2px;
+  stroke-dasharray: 4;
+}
+
+.edgeLineObserved {
+  stroke: var(--accent);
+  stroke-dasharray: none;
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: var(--space-3);
+}
+
+.metaItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.metaLabel {
+  font-size: var(--text-xs);
+  color: var(--text-3);
+  text-transform: uppercase;
+}
+
+.metaValue {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-1);
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-block-start: var(--space-3);
+}

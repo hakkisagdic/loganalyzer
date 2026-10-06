@@ -118,3 +118,11 @@ export type SourceUpsertBody = NonNullable<
 
 /** `GET /v1/health/pipeline` — envanter ekranındaki özet blok (T17). */
 export type PipelineHealth = JsonResponse<Operation<"/v1/health/pipeline", "get">>;
+
+/** Telemetri ve Topoloji tipleri (Sprint 06 UI). */
+export type TelemetryPageResponse = JsonResponse<Operation<"/v1/metrics", "get">>;
+export type TelemetryRecord = TelemetryPageResponse["records"][number];
+export type TopologyNodePage = JsonResponse<Operation<"/v1/topology/nodes", "get">>;
+export type TopologyNodeItem = TopologyNodePage["nodes"][number];
+export type TopologyEdgePage = JsonResponse<Operation<"/v1/topology/edges", "get">>;
+export type TopologyEdgeItem = TopologyEdgePage["edges"][number];

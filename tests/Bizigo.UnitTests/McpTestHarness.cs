@@ -616,8 +616,17 @@ internal static class McpExpectedTools
                 InventoryListTool.ToolIdentifier,
                 LogsGetTool.ToolIdentifier,
                 LogsSearchTool.ToolIdentifier,
+                MetricsDetailTool.ToolIdentifier,
+                MetricsDrilldownTool.ToolIdentifier,
+                MetricsListTool.ToolIdentifier,
                 RcaQualityTool.ToolIdentifier,
                 RcaRunsTool.ToolIdentifier,
+                TopologyDetailTool.ToolIdentifier,
+                TopologyDrilldownTool.ToolIdentifier,
+                TopologyListTool.ToolIdentifier,
+                TracesDetailTool.ToolIdentifier,
+                TracesDrilldownTool.ToolIdentifier,
+                TracesListTool.ToolIdentifier,
 
                 // M14 · ürünün MCP üzerinden yaptığı TEK yazma. Kümede
                 // görünmesi bilinçli bir hareket — gerekçesi dört kalem hâlinde

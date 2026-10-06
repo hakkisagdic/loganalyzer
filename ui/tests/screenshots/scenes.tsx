@@ -1,3 +1,7 @@
+
+import { BucketVisualizer } from "@/app/metrikler/BucketVisualizer";
+import { WaterfallVisualizer } from "@/app/izler/WaterfallVisualizer";
+import { TopologyGraph } from "@/app/topoloji/TopologyGraph";
 import type { ReactElement } from "react";
 
 import { InventoryTable } from "@/app/kaynaklar/InventoryTable";
@@ -324,6 +328,165 @@ export const SCENES: readonly Scene[] = [
           <Button variant="secondary">Sıfırla</Button>
           <Button variant="danger">Sil</Button>
         </div>
+      </Card>
+    ),
+  },
+
+  {
+    id: "metrikler-kovalar",
+    title: "Metrikler — Histogram kova dağılımı",
+    styles: ["app/metrikler/metrikler.module.css"],
+    node: (
+      <Card>
+        <BucketVisualizer
+          point={{
+            start_time_unix_nano: "1724155200000000000",
+            time_unix_nano: "1724155260000000000",
+            value: { present: false, value: null },
+            count: "100",
+            sum: { present: true, value: { kind: "double", value: 450.5, special: null } },
+            min: { present: false, value: null },
+            max: { present: false, value: null },
+            attributes: [],
+            flags: "0",
+            exemplars: [],
+            quantile_values: [],
+            scale: null,
+            zero_count: null,
+            zero_threshold: { present: false, value: null },
+            positive: null,
+            negative: null,
+            explicit_bounds: [
+              { kind: "double", value: 10, special: null },
+              { kind: "double", value: 50, special: null },
+              { kind: "double", value: 100, special: null },
+            ],
+            bucket_counts: ["15", "45", "30", "10"],
+          }}
+        />
+      </Card>
+    ),
+  },
+  {
+    id: "izler-selale",
+    title: "İzler — Dağıtık iz şelalesi ve span hiyerarşisi",
+    styles: ["app/izler/izler.module.css"],
+    node: (
+      <Card>
+        <WaterfallVisualizer
+          spans={[
+            {
+              trace_id: "trace-demo",
+              span_id: "span-root",
+              parent_span_id: "",
+              trace_state: "",
+              flags: "0",
+              name: "POST /checkout/order",
+              kind: 1,
+              start_time_unix_nano: "1724155200000000000",
+              end_time_unix_nano: "1724155200250000000",
+              attributes: [],
+              dropped_attributes_count: "0",
+              events: [],
+              dropped_events_count: "0",
+              links: [],
+              dropped_links_count: "0",
+              status_code: 1,
+              status_message: "OK",
+            },
+            {
+              trace_id: "trace-demo",
+              span_id: "span-auth",
+              parent_span_id: "span-root",
+              trace_state: "",
+              flags: "0",
+              name: "GET /auth/verify",
+              kind: 3,
+              start_time_unix_nano: "1724155200020000000",
+              end_time_unix_nano: "1724155200080000000",
+              attributes: [],
+              dropped_attributes_count: "0",
+              events: [],
+              dropped_events_count: "0",
+              links: [],
+              dropped_links_count: "0",
+              status_code: 1,
+              status_message: "OK",
+            },
+            {
+              trace_id: "trace-demo",
+              span_id: "span-pay",
+              parent_span_id: "span-root",
+              trace_state: "",
+              flags: "0",
+              name: "POST /payment/process",
+              kind: 3,
+              start_time_unix_nano: "1724155200090000000",
+              end_time_unix_nano: "1724155200240000000",
+              attributes: [],
+              dropped_attributes_count: "0",
+              events: [],
+              dropped_events_count: "0",
+              links: [],
+              dropped_links_count: "0",
+              status_code: 2,
+              status_message: "CardExpired",
+            },
+          ]}
+        />
+      </Card>
+    ),
+  },
+  {
+    id: "topoloji-grafik",
+    title: "Topoloji — Servis bağımlılık grafiği ve köken ayrımı",
+    styles: ["app/topoloji/topoloji.module.css"],
+    node: (
+      <Card>
+        <TopologyGraph
+          nodes={[
+            {
+              id: "order-service",
+              kind: "service",
+              display_name: "Sipariş Servisi",
+              owner_group: "checkout/core",
+              enabled: true,
+              version: "2.1",
+              valid_from_unix_nano: "1724155200000000000",
+              valid_to_unix_nano: null,
+            },
+            {
+              id: "payment-gateway",
+              kind: "service",
+              display_name: "Ödeme Geçidi",
+              owner_group: "payments/edge",
+              enabled: true,
+              version: "1.4",
+              valid_from_unix_nano: "1724155200000000000",
+              valid_to_unix_nano: null,
+            },
+          ]}
+          edges={[
+            {
+              id: "edge-checkout-pay",
+              from_node_id: "order-service",
+              to_node_id: "payment-gateway",
+              relation: "calls",
+              provenance: "Observed",
+              directed: true,
+              confidence: 0.99,
+              from_owner_group: "checkout/core",
+              to_owner_group: "payments/edge",
+              visibility: "internal",
+              first_seen_unix_nano: "1724155200000000000",
+              last_seen_unix_nano: "1724155260000000000",
+              effective_expiry_unix_nano: "1724158800000000000",
+              publication_sequence: "1",
+              version: "1.0",
+            },
+          ]}
+          selectedNodeId="order-service"
+        />
       </Card>
     ),
   },

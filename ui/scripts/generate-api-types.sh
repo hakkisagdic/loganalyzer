@@ -29,6 +29,7 @@ fi
 # `dotnet` PATH'te SDK 8/9 gösterebiliyor; depo `global.json` ile 10.0.302
 # istiyor ve arm64 SDK `~/.dotnet` altında duruyor.
 if [[ -x "${HOME}/.dotnet/dotnet" ]]; then
+  export DOTNET_ROOT="${HOME}/.dotnet"
   export PATH="${HOME}/.dotnet:${PATH}"
 fi
 
