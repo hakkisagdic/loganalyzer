@@ -83,7 +83,7 @@ public sealed class TopologyMappingSqlIntegrationTests(DevStackFixture stack)
         {
             await using (var disableSeqScan = connection.CreateCommand())
             {
-                disableSeqScan.CommandText = "ANALYZE bizigo.topology_edge_declared_history; SET enable_seqscan=off";
+                disableSeqScan.CommandText = "SET enable_seqscan=off";
                 await disableSeqScan.ExecuteNonQueryAsync(Ct);
             }
             await using var explain = connection.CreateCommand();
@@ -99,7 +99,7 @@ public sealed class TopologyMappingSqlIntegrationTests(DevStackFixture stack)
                 explain.Parameters.Add(bound);
             }
             var lines = new List<string>();
-                        await using var plan = await explain.ExecuteReaderAsync(Ct);
+            await using var plan = await explain.ExecuteReaderAsync(Ct);
             while (await plan.ReadAsync(Ct)) lines.Add(plan.GetString(0));
             var indexed = lines.Any(line => line.Contains(
                 "ix_topology_edge_hist_from_relation_revision",
@@ -113,7 +113,7 @@ public sealed class TopologyMappingSqlIntegrationTests(DevStackFixture stack)
                 UsesMappingIndex = indexed,
                 ParameterNames = captured.Parameters.Select(static parameter => parameter.Name),
             });
-            Assert.True(indexed, $"Production mapping keyset index was not used in forced-index EXPLAIN. Plan: {string.Join("\n", lines)}");
+            Assert.True(indexed, "Production mapping keyset index was not used in forced-index EXPLAIN.");
         }
         finally
         {
