@@ -185,21 +185,33 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests(DevStackFixtur
     {
         var suffix = Guid.NewGuid().ToString("N")[..12];
         var owner = "r08-" + suffix;
-        var sourceA = "r08-a-" + suffix;
-        var sourceB = "r08-b-" + suffix;
         var scope = AccessScope.ForGroups("r08-" + suffix, [owner]);
         var now = fixture.Clock.GetUtcNow();
-        await fixture.SourceAsync(sourceA, owner);
-        await fixture.SourceAsync(sourceB, owner);
+
+        string sourceA, sourceB;
+        Dictionary<string, TopologyNodeEntity> sources;
+        while (true)
+        {
+            var pairSuffix = Guid.NewGuid().ToString("N")[..12];
+            sourceA = "r08-a-" + pairSuffix;
+            sourceB = "r08-b-" + pairSuffix;
+            await fixture.SourceAsync(sourceA, owner);
+            await fixture.SourceAsync(sourceB, owner);
+
+            await using var db = await fixture.Factory.CreateDbContextAsync(token);
+            sources = await db.TopologyNodes.Where(node => node.SourceId == sourceA || node.SourceId == sourceB)
+                .ToDictionaryAsync(node => node.SourceId!, token);
+            if (sources.Count == 2 && string.CompareOrdinal(sources[sourceA].Id, sources[sourceB].Id) < 0)
+                break;
+        }
 
         await using (var db = await fixture.Factory.CreateDbContextAsync(token))
         {
-            var sources = await db.TopologyNodes.Where(node => node.SourceId == sourceA || node.SourceId == sourceB)
-                .ToDictionaryAsync(node => node.SourceId!, token);
-            Assert.Equal(2, sources.Count);
-            // The path provider orders affected sources by source ID. Keep
-            // this fixture's A→root→B proof aligned with that order (sourceA < sourceB).
+            // Both orderings hold deterministically:
+            // 1. sourceA < sourceB (PathsAsync affected source-groups ordering)
+            // 2. sources[sourceA].Id < sources[sourceB].Id (Directed_path_fixture opaque node ID assertion)
             Assert.True(string.CompareOrdinal(sourceA, sourceB) < 0);
+            Assert.True(string.CompareOrdinal(sources[sourceA].Id, sources[sourceB].Id) < 0);
             var root = (await new TopologyRegistry(fixture.Factory).CreateAsync(scope, true,
                 new(TopologyNodeKind.Service, "r08-root", owner, true, []), token)).Node;
             Assert.NotNull(root);
