@@ -925,3 +925,50 @@ jobs:
         if: always()
         working-directory: deploy
         run: docker compose down -v
+
+
+  operational-e2e:
+    name: Operational E2E, Image Gate, Proxy & Freeze Manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: .NET SDK kur
+        run: |
+          curl -fsSL --retry 5 --retry-all-errors https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"
+          echo "$HOME/.dotnet" >> "$GITHUB_PATH"
+
+      - name: Build Bizigo Release
+        run: |
+          bash tools/machine-resources.sh check
+          dotnet build Bizigo.sln -c Release -m:1
+
+      - name: Operational E2E test suite and single-TRX verifier
+        run: |
+          bash tools/machine-resources.sh check
+          dotnet test tests/Bizigo.IntegrationTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~OperationalE2EIntegrationTests' --logger 'trx;LogFileName=operational-e2e-report.trx' --results-directory TestResults
+          python3 tools/otlp-verify-trx.py TestResults/operational-e2e-report.trx --require-class OperationalE2EIntegrationTests
+
+      - name: Operational image gate & digest pinning verification
+        run: |
+          python3 tools/operational-image-gate.py --compose deploy/docker-compose.s08.yml --manifest deploy/s08-image-manifest.json
+
+      - name: Operational reverse proxy & listener matrix harness
+        run: |
+          python3 tools/operational-proxy-harness.py
+
+      - name: Operational Docker inventory isolation guard
+        run: |
+          python3 tools/operational-inventory-guard.py
+
+      - name: Operational CI contract verification
+        run: |
+          python3 tools/operational_ci_contract.py --verify
+
+      - name: Operational freeze evidence manifest verification
+        run: |
+          python3 tools/operational-manifest.py --verify deploy/s08-freeze-manifest.json
