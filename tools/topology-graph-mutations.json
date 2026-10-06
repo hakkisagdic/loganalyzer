@@ -1,0 +1,434 @@
+{
+  "contractSha256": "b9590c5192e324fd3a971a36d5026d967f1fac822ca68a8ea7b51dbca5b523ae",
+  "sourceHashes": {
+    "src/Bizigo.Contracts/TopologyIdentity.cs": "0948062f24c3e8a28c79c1b3553efefdef32fd0c6e42fa9ac9ed25e4a1c9d239",
+    "src/Bizigo.ControlPlane/HistoricalTopologyBindings.cs": "c75d288056ce5fe37d0a8109a34e14a9fea0b8c2d13f2c5783505387cdf3d72f",
+    "src/Bizigo.Storage.ClickHouse/TopologyObservation.cs": "0737191980cc046b0dd1474b2b8f31053f13eb466e803faa7cf398b28749c795",
+    "src/Bizigo.Storage.ClickHouse/TopologyObservedProjector.cs": "a561e1607072da4361ae5e710996e39eb78b49d1c2c89c45a58278b1e3f9c2a9",
+    "src/Bizigo.Contracts/TopologyExpiry.cs": "86b0b2e60cf724e3c21fb297c555281bef653ca0dd7377981e8a34659fa82c4f",
+    "src/Bizigo.Query/TopologyGraphQueryService.cs": "08fa3939f9f621e64157a314beb794b08a97c837fa15875c7fac7f408f60d1bb",
+    "src/Bizigo.Evidence/TopologyProviderBudget.cs": "403fb265a471a7d26c71e6e7a24cbdf030cbde3d6ff20aa27903715a2c42a98f",
+    "src/Bizigo.Evidence/Providers/TopologyGraphProviders.cs": "96efa31e10d34a9dd59273df4984fda11f1e453358561727ab66871a5d9c24b1",
+    "src/Bizigo.Evidence/EvidenceServiceCollectionExtensions.cs": "c640894ac53d255cdabcfb8f7a04f5fd5be987b37b5f02fdca309bfe663361f4",
+    "src/Bizigo.ControlPlane/SourceOwnershipHistory.cs": "2c637a61d42e4efc0c7a74502be9e2bb487ddfd25c64f315c57769ef6692fd11",
+    "src/Bizigo.Contracts/TopologyVisibility.cs": "d21c811d4a78f5188edc42ac13ac332f7ccf1881a67823b935ed488bd0e4abf4",
+    "src/Bizigo.Api/TopologyReadCursorCodec.cs": "242585a872bab79c0e23d345226b68936c39f35508d7325ecac02273ba5eafce",
+    "src/Bizigo.Query/ScopedQuery.Topology.cs": "c4ebd545fad520e0746b2b2ebd9931cca6819da1d9f54936bd0c5a1dbe80c3a0",
+    "src/Bizigo.Query/TopologyPublicationFence.cs": "4531a18ad25954b0363c71f35216cfc3dfc7d085f8a54be15d4781048e967600"
+  },
+  "restoreFilters": {
+    "UnitTests": [
+      "TopologyAuditTests",
+      "TopologyEvidenceTests",
+      "TopologyGraphTests",
+      "TopologyIdentityTests",
+      "TopologyObservationTests",
+      "TopologyOutsideCountTests",
+      "TopologyProductionProviderTests",
+      "TopologyProviderBudgetTests",
+      "TopologyPublicationFenceTests",
+      "TopologyVisibilityTests",
+      "TopologyWireTests"
+    ],
+    "IntegrationTests": [
+      "TopologyProjectionIntegrationTests",
+      "TopologyPublicationIntegrationTests"
+    ]
+  },
+  "mutations": [
+    {
+      "id": "M01",
+      "project": "IntegrationTests",
+      "red": "Parent_direction_not_links_and_out_of_order_durable_pairing",
+      "green": "Pending_manifest_missing_fails_closed_before_current_batch",
+      "changes": [
+        {
+          "path": "src/Bizigo.Storage.ClickHouse/TopologyObservedProjector.cs",
+          "before": "parent.NodeId, child.NodeId,",
+          "after": "parent.DisplayName!, child.NodeId,",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M02",
+      "project": "UnitTests",
+      "red": "Hidden_bridge_no_claim",
+      "green": "Shortest_directed_paths",
+      "changes": [
+        {
+          "path": "src/Bizigo.Query/TopologyGraphQueryService.cs",
+          "before": ".Where(edge => TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup));",
+          "after": ".Where(_ => true);",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M03",
+      "project": "UnitTests",
+      "red": "Save_changes_captures_create_transfer_alias_and_disable_history",
+      "green": "Candidate_precedence_and_ambiguous_history_never_pick_a_winner",
+      "changes": [
+        {
+          "path": "src/Bizigo.ControlPlane/SourceOwnershipHistory.cs",
+          "before": "h.EffectiveFromNano <= upper && (h.EffectiveToNano == null || h.EffectiveToNano > lower)",
+          "after": "h.EffectiveToNano == null",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M04",
+      "project": "UnitTests",
+      "red": "Declared_and_observed_parallel_edges_remain_separate_proofs",
+      "green": "Shortest_directed_paths",
+      "changes": [
+        {
+          "path": "src/Bizigo.Query/TopologyGraphQueryService.cs",
+          "before": ".Where(edge => TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup));",
+          "after": ".Where(edge => TopologyIdentity.CanReadEdge(scope, edge.FromOwnerGroup, edge.ToOwnerGroup))\n        .DistinctBy(edge => (edge.FromNode, edge.ToNode, edge.Relation));",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M05",
+      "project": "IntegrationTests",
+      "red": "Parent_direction_not_links_and_out_of_order_durable_pairing",
+      "green": "Pending_manifest_missing_fails_closed_before_current_batch",
+      "changes": [
+        {
+          "path": "src/Bizigo.Storage.ClickHouse/TopologyObservedProjector.cs",
+          "before": "parent.NodeId, child.NodeId,",
+          "after": "child.NodeId, parent.NodeId,",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M06",
+      "project": "UnitTests",
+      "red": "Parent_direction_not_links_and_child_first_pairing",
+      "green": "Effective_expiry_uses_parent_child_and_observed_minimum",
+      "changes": [
+        {
+          "path": "src/Bizigo.Storage.ClickHouse/TopologyObservation.cs",
+          "before": "var parent = String(span, \"parentSpanId\").ToLowerInvariant();",
+          "after": "var parent = span.TryGetProperty(\"links\", out var links) && links.ValueKind == JsonValueKind.Array && links.GetArrayLength() > 0 ? String(links[0], \"spanId\").ToLowerInvariant() : String(span, \"parentSpanId\").ToLowerInvariant();",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M07",
+      "project": "UnitTests",
+      "red": "Parent_direction_not_links_and_child_first_pairing",
+      "green": "Effective_expiry_uses_parent_child_and_observed_minimum",
+      "changes": [
+        {
+          "path": "src/Bizigo.Storage.ClickHouse/TopologyObservation.cs",
+          "before": "var parts = new List<string> { \"topology-publication-v1\" };",
+          "after": "var parts = new List<string> { \"topology-publication-v1\", Guid.NewGuid().ToString(\"N\") };",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M08",
+      "project": "IntegrationTests",
+      "red": "Projector_crash_restart_reuses_publication_key_and_sequence",
+      "green": "Parent_direction_not_links_and_out_of_order_durable_pairing",
+      "changes": [
+        {
+          "path": "src/Bizigo.Storage.ClickHouse/TopologyObservedProjector.cs",
+          "before": "var batch = manifest.Batch;\n            if (batch.Edges.Count != 0)",
+          "after": "var batch = manifest.Batch;\n            await (checkpoints ?? new NoTopologyProjectionCheckpoints()).ReachAsync(\"after-observed-db-before-publish\", token);\n            if (batch.Edges.Count != 0)",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M09",
+      "project": "UnitTests",
+      "red": "Logical_expiry_hides_physical_edge_at_deadline",
+      "green": "Observed_window_is_half_open_validated_and_bound_to_cursor",
+      "changes": [
+        {
+          "path": "src/Bizigo.Query/TopologyGraphQueryService.cs",
+          "before": "var active = snapshot.Edges.Where(edge => !edge.Deleted && edge.FirstSeenUnixNano <= readClockUnixNano\n            && (edge.EffectiveExpiry is null || TopologyExpiry.IsReadable(readClockUnixNano, edge.EffectiveExpiry.Value))\n            && (edge.Provenance != TopologyProvenance.Observed\n                || edge.LastSeenUnixNano >= window.From && edge.LastSeenUnixNano < window.To));",
+          "after": "var active = snapshot.Edges.Where(edge => !edge.Deleted && edge.FirstSeenUnixNano <= readClockUnixNano\n            && (edge.Provenance != TopologyProvenance.Observed\n                || edge.LastSeenUnixNano >= window.From && edge.LastSeenUnixNano < window.To));",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M10",
+      "project": "UnitTests",
+      "red": "Cycle_selfloop_and_order",
+      "green": "Shortest_directed_paths",
+      "decisionOracle": "Cycle_selfloop_and_order asserts Unreachable with empty proof for R-to-Y across a cyclic, self-looping disconnected graph, plus 20 insertion-order path decisions; the watchdog is the outer safety net.",
+      "changes": [
+        {
+          "path": "src/Bizigo.Query/TopologyGraphQueryService.cs",
+          "before": "if (!previous.TryAdd(next, (current, edgeId))) continue;",
+          "after": "previous[next] = (current, edgeId);",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M11",
+      "project": "UnitTests",
+      "red": "Shortest_directed_paths",
+      "green": "Logical_expiry_hides_physical_edge_at_deadline",
+      "changes": [
+        {
+          "path": "src/Bizigo.Query/TopologyGraphQueryService.cs",
+          "before": ".OrderBy(static next => next.Node, StringComparer.Ordinal).ThenBy(static next => next.EdgeId, StringComparer.Ordinal)",
+          "after": ".OrderByDescending(static next => next.Node, StringComparer.Ordinal).ThenByDescending(static next => next.EdgeId, StringComparer.Ordinal)",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M12",
+      "project": "UnitTests",
+      "red": "Common_ancestor_selection",
+      "green": "Shortest_directed_paths",
+      "changes": [
+        {
+          "path": "src/Bizigo.Query/TopologyGraphQueryService.cs",
+          "before": ".Distinct(StringComparer.Ordinal).Where(node => !targets.Contains(node)))",
+          "after": ".Distinct(StringComparer.Ordinal))",
+          "occurrence": null
+        },
+        {
+          "path": "src/Bizigo.Query/TopologyGraphQueryService.cs",
+          "before": "if (paths.All(static path => path.Nodes.Count > 1))",
+          "after": "if (paths.All(static path => path.Nodes.Count > 0))",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M13",
+      "project": "UnitTests",
+      "red": "Hidden_bridge_no_claim",
+      "green": "Shortest_directed_paths",
+      "changes": [
+        {
+          "path": "src/Bizigo.Query/TopologyGraphQueryService.cs",
+          "before": "var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window)",
+          "after": "var edges = ActiveEdges(snapshot, query.ReadClockUnixNano, window)",
+          "occurrence": 0
+        }
+      ]
+    },
+    {
+      "id": "M14",
+      "project": "UnitTests",
+      "red": "Unknown_external_count_stays_null_not_zero",
+      "green": "Shortest_directed_paths",
+      "changes": [
+        {
+          "path": "src/Bizigo.Query/TopologyGraphQueryService.cs",
+          "before": "return new(null, ex is TimeoutException ? \"Timeout\" : \"QueryUnavailable\");",
+          "after": "return new(0, ex is TimeoutException ? \"Timeout\" : \"QueryUnavailable\");",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M15",
+      "project": "UnitTests",
+      "red": "External_neighbour_count_is_distinct_and_reveals_no_edge_multiplicity",
+      "green": "Cross_owner_edge_requires_both_endpoint_permissions",
+      "changes": [
+        {
+          "path": "src/Bizigo.Contracts/TopologyVisibility.cs",
+          "before": "_ => new HashSet<string>(StringComparer.Ordinal), StringComparer.Ordinal);",
+          "after": "_ => new List<string>(), StringComparer.Ordinal);",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M16",
+      "project": "UnitTests",
+      "red": "Production_all_numeric_boundaries",
+      "green": "Production_failure_and_cancel_truth_table",
+      "changes": [
+        {
+          "path": "src/Bizigo.Evidence/TopologyProviderBudget.cs",
+          "before": "return nodes > MaxNodes || edges > MaxEdges || pages > MaxPages || serializedBytes > MaxSerializedBytes\n            ? TopologyProviderCompleteness.Partial : TopologyProviderCompleteness.Complete;",
+          "after": "return TopologyProviderCompleteness.Complete;",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M17",
+      "project": "UnitTests",
+      "red": "Production_failure_and_cancel_truth_table",
+      "green": "Production_all_numeric_boundaries",
+      "changes": [
+        {
+          "path": "src/Bizigo.Evidence/Providers/TopologyGraphProviders.cs",
+          "before": "callerToken.ThrowIfCancellationRequested();",
+          "after": "if (callerToken.IsCancellationRequested) return Slice(providerId, EvidenceStatus.Empty, \"Cancelled\", \"Evaluated\");",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M18",
+      "project": "UnitTests",
+      "red": "Cursor_scope_binding_rejects_identity_changes",
+      "green": "Tampered_cursor_is_rejected_before_query",
+      "changes": [
+        {
+          "path": "src/Bizigo.Api/TopologyReadCursorCodec.cs",
+          "before": "|| !string.Equals(state.ScopeBinding, expected, StringComparison.Ordinal)",
+          "after": "|| expected.Length == 0",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M19",
+      "project": "UnitTests",
+      "red": "Read_audit_failure_never_returns_data",
+      "green": "Healthy_read_audit_commits_actor_scope_and_count",
+      "changes": [
+        {
+          "path": "src/Bizigo.Query/ScopedQuery.Topology.cs",
+          "before": "await _audit.RecordAsync(",
+          "after": "_ = _audit.RecordAsync(",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M20a",
+      "project": "UnitTests",
+      "red": "Production_registration_and_ranking",
+      "green": "Previous_evidence_semantics_and_legacy_bundle_hash_remain_stable",
+      "changes": [
+        {
+          "path": "src/Bizigo.Evidence/EvidenceServiceCollectionExtensions.cs",
+          "before": "        services.AddScoped<IEvidenceProvider, TopologyGraphPathProvider>();\n",
+          "after": "",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M20b",
+      "project": "UnitTests",
+      "red": "Production_registration_and_ranking",
+      "green": "Previous_evidence_semantics_and_legacy_bundle_hash_remain_stable",
+      "changes": [
+        {
+          "path": "src/Bizigo.Evidence/EvidenceServiceCollectionExtensions.cs",
+          "before": "        services.AddScoped<IEvidenceProvider, TopologyCommonAncestorProvider>();\n",
+          "after": "",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M21",
+      "project": "UnitTests",
+      "red": "Binding_keys_preserve_sources_and_instances",
+      "green": "Dual_endpoint_predicate",
+      "changes": [
+        {
+          "path": "src/Bizigo.ControlPlane/HistoricalTopologyBindings.cs",
+          "before": "rows.Where(r => r.Binding.SourceId == owner.SourceId\n            && TopologyIdentity.At(r.Binding.FromNano, r.Binding.ToNano, owner.EventTimeUnixNano))",
+          "after": "rows.Where(r => TopologyIdentity.At(r.Binding.FromNano, r.Binding.ToNano, owner.EventTimeUnixNano))",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M22",
+      "project": "UnitTests",
+      "red": "Dual_endpoint_predicate",
+      "green": "Type_qualified_ids_do_not_merge_names",
+      "changes": [
+        {
+          "path": "src/Bizigo.Contracts/TopologyIdentity.cs",
+          "before": "CanReadOwner(scope, parentOwner) && CanReadOwner(scope, childOwner);",
+          "after": "CanReadOwner(scope, childOwner);",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M23",
+      "project": "UnitTests",
+      "red": "Separate_http_occurrences_keep_one_topology_event_and_new_publication_key",
+      "green": "Effective_expiry_uses_parent_child_and_observed_minimum",
+      "changes": [
+        {
+          "path": "src/Bizigo.Storage.ClickHouse/TopologyObservation.cs",
+          "before": "var id = TopologyCanonicalIdentity.Hash(\"observed-edge-v1\", parentSpan.Anchor, childSpan.Anchor,",
+          "after": "var id = TopologyCanonicalIdentity.Hash(\"observed-edge-v1\", parentSpan.Record.EnvelopeId.ToString(\"N\"), childSpan.Record.EnvelopeId.ToString(\"N\"), parentSpan.Anchor, childSpan.Anchor,",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M24",
+      "project": "UnitTests",
+      "red": "Effective_expiry_minimum",
+      "green": "Captured_retention_cannot_be_extended_by_new_configuration",
+      "changes": [
+        {
+          "path": "src/Bizigo.Contracts/TopologyExpiry.cs",
+          "before": "UInt128.Min(parentTraceExpiryUnixNano, UInt128.Min(childTraceExpiryUnixNano, observedExpiryUnixNano));",
+          "after": "observedExpiryUnixNano;",
+          "occurrence": null
+        }
+      ]
+    },
+    {
+      "id": "M25",
+      "project": "UnitTests",
+      "red": "Cursor_revision_and_ttl_are_both_required",
+      "green": "Stable_two_store_revision_returns_the_operation_result",
+      "changes": [
+        {
+          "path": "src/Bizigo.Query/TopologyPublicationFence.cs",
+          "before": "|| cursor.ClickHouseWatermark != current.ClickHouseWatermark\n            || nowUnixNano >= deadline",
+          "after": "",
+          "occurrence": null
+        }
+      ]
+    }
+  ],
+  "packetInputs": {
+    "E": {
+      "path": "topology-graph-mutations-e.json",
+      "sha256": "8e09d9fa554ec3c0469bba552f3ebd0e48802bd24571513f4c5d9af4537dc683"
+    },
+    "Q": {
+      "path": "query-ttl.json",
+      "sha256": "c9c1f1b9947ab7769a079f59e543f5ed8ac11d723a4bf7f94975e7ffca0b8b41"
+    },
+    "V": {
+      "path": "topology-visibility-mutations.json",
+      "sha256": "202cb241dbe5861157be8e2c54af7641ce2fd5753e6e8eca1f0daad16304566a"
+    }
+  },
+  "baselineAdjustments": [
+    {
+      "id": "M22",
+      "path": "src/Bizigo.Contracts/TopologyIdentity.cs",
+      "oldSha256": "464986154adb49379c98108af2beb77e9bb2dc8e3c280a80d8a61d2b12e94f04",
+      "newSha256": "0948062f24c3e8a28c79c1b3553efefdef32fd0c6e42fa9ac9ed25e4a1c9d239",
+      "reason": "Merged c83aaeb introduces CanReadOwner unassigned gate. Mutant still removes only parent authorization; child unassigned guard remains. Named Dual_endpoint_predicate groups=B must fail false vs true. Origin of old anchor is E packet, not Q."
+    }
+  ]
+}

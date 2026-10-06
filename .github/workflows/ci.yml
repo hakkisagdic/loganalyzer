@@ -440,6 +440,102 @@ jobs:
             /tmp/evidence-session/keycloak-image.json
             /tmp/evidence-session/keycloak-optimized.json
 
+  topology-graph:
+    name: Topology — scoped graph, durable projection and process recovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: .NET SDK kur
+        run: |
+          curl -fsSL --retry 5 --retry-all-errors https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"
+          echo "$HOME/.dotnet" >> "$GITHUB_PATH"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: Serial Release build and UI dependencies
+        run: |
+          bash tools/machine-resources.sh check
+          dotnet build Bizigo.sln -c Release -m:1
+          bash tools/machine-resources.sh check
+          npm --prefix ui ci
+      - name: Topology contract units and generated interface
+        env:
+          BIZIGO_TOPOLOGY_WIRE_DIR: /tmp/topology-wire
+        run: |
+          bash tools/machine-resources.sh check
+          dotnet test tests/Bizigo.UnitTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~Topology|FullyQualifiedName~EvidenceBundleStoreTests|FullyQualifiedName~ScopeCoverageTests|FullyQualifiedName~SignalReplayReadinessTests|FullyQualifiedName~SignalArchiveBoundaryTests|FullyQualifiedName~SignalDurabilityTests|FullyQualifiedName~LegacySignalReplayTests' --logger 'trx;LogFileName=topology-unit.trx' --results-directory TestResults
+          python3 tools/otlp-verify-trx.py TestResults/topology-unit.trx --require-class EvidenceBundleStoreTests LegacySignalReplayTests ScopeCoverageTests SignalArchiveBoundaryTests SignalDurabilityTests SignalReplayReadinessTests TopologyAdmissionTests TopologyAncestorScoringTests TopologyAuditTests TopologyConflictIsolationTests TopologyDeclaredEdgeTests TopologyEvidenceTests TopologyFeedScopeStateTests TopologyGeneratedWireFixtureTests TopologyGraphOrderingOracleTests TopologyGraphTests TopologyGroupedAncestorTests TopologyHistoryBoundaryTests TopologyIdentityTests TopologyNodeWriteWireTests TopologyObservationTests TopologyOutsideCountTests TopologyProductionProviderTests TopologyProvenanceCoexistenceTests TopologyProviderBudgetTests TopologyProviderRemovalTests TopologyProviderTests TopologyPublicationFenceTests TopologyRecoveryTests TopologyRegistryTests TopologyResponseBudgetTests TopologySourceTargetPageTests TopologyVisibilityTests TopologyWireTests
+          bash tools/machine-resources.sh check
+          npm --prefix ui run api:generate
+          npm --prefix ui run typecheck
+          node --experimental-strip-types ui/scripts/topology-wire-check.ts /tmp/topology-wire
+          git diff --exit-code -- ui/openapi/bizigo-api.json ui/src/lib/api/schema.d.ts
+          python3 -m unittest discover -s tools/tests -p 'test_topology*py'
+      - name: Actual topology PG CH scope publication and eight process kills
+        env:
+          BIZIGO_TELEMETRY_EVIDENCE: /tmp/topology-db-artifacts
+        run: |
+          bash tools/machine-resources.sh check
+          dotnet test tests/Bizigo.IntegrationTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~Topology|FullyQualifiedName~EvidenceBundleStorageTests.Topology_bundle_roundtrip_and_legacy|FullyQualifiedName~SourceOwnershipHistoryIntegrationTests' --logger 'trx;LogFileName=topology-db.trx' --results-directory TestResults
+          python3 tools/otlp-verify-trx.py TestResults/topology-db.trx --require-class EvidenceBundleStorageTests SourceOwnershipHistoryIntegrationTests SourceTopologyAttributeTests TopologyApiOracleIntegrationTests TopologyArchiveProcessIntegrationTests TopologyConflictIsolationIntegrationTests TopologyDeclaredIntegrationTests TopologyEdgeConcurrentOwnerOracleIntegrationTests TopologyEdgeDetailWindowOracleIntegrationTests TopologyEdgeMigrationOracleIntegrationTests TopologyExactCapturedExpiryIntegrationTests TopologyExactHttpNanoIntegrationTests TopologyFinalEvidenceOracleIntegrationTests TopologyFinalExpiryOracleIntegrationTests TopologyFinalRouteAndAuditOracleIntegrationTests TopologyFinalScopeOracleIntegrationTests TopologyGraphDatabaseIntegrationTests TopologyGraphIntegrationTests TopologyHistoricalDisplayOracleIntegrationTests TopologyHttpBudgetIntegrationTests TopologyIdentityIntegrationTests TopologyMappedSourceGroupOracleIntegrationTests TopologyMappingSqlIntegrationTests TopologyMutationOracleIntegrationTests TopologyProjectionIntegrationTests TopologyPublicationIntegrationTests TopologyQueryIntegrationTests TopologyRegistryIntegrationTests TopologyReplayIntegrationTests TopologyReplayNegativeIntegrationTests TopologyReplayProcessTests TopologyScopedArchitectureOracleTests
+      - name: Twenty-six compiled variants with positive and restored controls
+        run: |
+          bash tools/machine-resources.sh check
+          python3 tools/topology-graph-mutation-check.py --plan tools/topology-graph-mutations.json --validate-only
+          python3 tools/topology-graph-mutation-check.py --plan tools/topology-graph-mutations.json --mode unit --evidence-dir /tmp/topology-unit-mutants
+          bash tools/machine-resources.sh check
+          python3 tools/topology-graph-mutation-check.py --plan tools/topology-graph-mutations.json --mode db --evidence-dir /tmp/topology-db-mutants
+      - name: Production API Collector and two isolated nonce probes
+        env:
+          BIZIGO_TEST_KEYCLOAK_IMAGE: bizigo-test/keycloak-s04:26.7.1-ci
+        run: |
+          bash tools/machine-resources.sh check
+          docker pull quay.io/keycloak/keycloak:26.7.1
+          fixture_base=$(docker image inspect quay.io/keycloak/keycloak:26.7.1 --format '{{index .RepoDigests 0}}')
+          test -n "$fixture_base"
+          docker build --build-arg KEYCLOAK_BASE="$fixture_base" -t "$BIZIGO_TEST_KEYCLOAK_IMAGE" tools/fixtures/keycloak-s04
+          bash tools/machine-resources.sh check
+          python3 tools/topology-graph-smoke.py --serve --output /tmp/topology-session > /tmp/topology-session.log 2>&1 &
+          fixture_pid=$!
+          trap 'kill -TERM "$fixture_pid" 2>/dev/null || true; wait "$fixture_pid" || true' EXIT
+          for attempt in $(seq 1 180); do
+            test -f /tmp/topology-session/session.json && break
+            kill -0 "$fixture_pid" || { cat /tmp/topology-session.log; exit 1; }
+            sleep 5
+          done
+          test -f /tmp/topology-session/session.json
+          bash tools/machine-resources.sh check
+          python3 tools/topology-graph-probe.py --session /tmp/topology-session/session.json --evidence-dir /tmp/topology-probe-one
+          bash tools/machine-resources.sh check
+          python3 tools/topology-graph-probe.py --session /tmp/topology-session/session.json --evidence-dir /tmp/topology-probe-two
+          python3 tools/topology-graph-smoke.py --stop --session /tmp/topology-session/session.json
+          wait "$fixture_pid"
+          python3 -c 'import json; d=json.load(open("/tmp/topology-session/cleanup.json")); assert d["finished"] and not d["owned_pid_alive"] and not d["owned_container_alive"] and d["elapsed_seconds"] < 30'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: topology-graph-results
+          path: |
+            TestResults/
+            /tmp/topology-db-artifacts/
+            /tmp/topology-wire/
+            /tmp/topology-unit-mutants/
+            /tmp/topology-db-mutants/
+            /tmp/topology-probe-one/
+            /tmp/topology-probe-two/
+            /tmp/topology-session.log
+            /tmp/topology-session/*.log
+            /tmp/topology-session/cleanup.json
+            /tmp/topology-session/topology-source-binary.json
+            /tmp/topology-session/keycloak-image.json
+            /tmp/topology-session/keycloak-optimized.json
+
   sidecar:
     name: Sidecar — pytest
     runs-on: ubuntu-latest

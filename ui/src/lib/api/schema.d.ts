@@ -4601,7 +4601,10 @@ export interface operations {
     };
     GetTopologyEdge: {
         parameters: {
-            query?: never;
+            query?: {
+                from?: string;
+                to?: string;
+            };
             header?: never;
             path: {
                 edgeId: string;
