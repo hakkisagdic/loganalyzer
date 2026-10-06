@@ -197,12 +197,9 @@ public sealed partial class TopologyGraphDatabaseIntegrationTests(DevStackFixtur
             var sources = await db.TopologyNodes.Where(node => node.SourceId == sourceA || node.SourceId == sourceB)
                 .ToDictionaryAsync(node => node.SourceId!, token);
             Assert.Equal(2, sources.Count);
-            // The path provider orders affected nodes by opaque node ID. Keep
-            // this fixture's A→root→B proof aligned with that order; inventory
-            // creates source IDs with random UUIDs, independent of source name.
-            if (string.CompareOrdinal(sources[sourceA].Id, sources[sourceB].Id) > 0)
-                (sourceA, sourceB) = (sourceB, sourceA);
-            Assert.True(string.CompareOrdinal(sources[sourceA].Id, sources[sourceB].Id) < 0);
+            // The path provider orders affected sources by source ID. Keep
+            // this fixture's A→root→B proof aligned with that order (sourceA < sourceB).
+            Assert.True(string.CompareOrdinal(sourceA, sourceB) < 0);
             var root = (await new TopologyRegistry(fixture.Factory).CreateAsync(scope, true,
                 new(TopologyNodeKind.Service, "r08-root", owner, true, []), token)).Node;
             Assert.NotNull(root);
