@@ -86,24 +86,32 @@ public sealed class TopologyMappingSqlIntegrationTests(DevStackFixture stack)
                 disableSeqScan.CommandText = "SET enable_seqscan=off";
                 await disableSeqScan.ExecuteNonQueryAsync(Ct);
             }
-            await using var explain = connection.CreateCommand();
-            explain.CommandText = "EXPLAIN (FORMAT TEXT) "
-                + captured.Sql.Replace("-- topology.mapping.next-edge", string.Empty,
-                    StringComparison.Ordinal);
-            foreach (var parameter in captured.Parameters)
-            {
-                var bound = explain.CreateParameter();
-                bound.ParameterName = parameter.Name;
-                bound.DbType = parameter.Type;
-                bound.Value = parameter.Value ?? DBNull.Value;
-                explain.Parameters.Add(bound);
-            }
+            var indexed = false;
             var lines = new List<string>();
-            await using var plan = await explain.ExecuteReaderAsync(Ct);
-            while (await plan.ReadAsync(Ct)) lines.Add(plan.GetString(0));
-            var indexed = lines.Any(line => line.Contains(
-                "ix_topology_edge_hist_from_relation_revision",
-                StringComparison.Ordinal));
+            foreach (var cmd in commands.Commands)
+            {
+                await using var explain = connection.CreateCommand();
+                explain.CommandText = "EXPLAIN (FORMAT TEXT) "
+                    + cmd.Sql.Replace("-- topology.mapping.next-edge", string.Empty,
+                        StringComparison.Ordinal);
+                foreach (var parameter in cmd.Parameters)
+                {
+                    var bound = explain.CreateParameter();
+                    bound.ParameterName = parameter.Name;
+                    bound.DbType = parameter.Type;
+                    bound.Value = parameter.Value ?? DBNull.Value;
+                    explain.Parameters.Add(bound);
+                }
+                var cmdLines = new List<string>();
+                await using var plan = await explain.ExecuteReaderAsync(Ct);
+                while (await plan.ReadAsync(Ct)) cmdLines.Add(plan.GetString(0));
+                lines.AddRange(cmdLines);
+                if (cmdLines.Any(line => line.Contains("ix_topology_edge_hist_from_relation_revision", StringComparison.Ordinal)))
+                {
+                    indexed = true;
+                    break;
+                }
+            }
             // Never persist SQL parameter values or plan lines: either may
             // include hidden node/owner identifiers.
             TelemetryDbFixture.Evidence("topology-mapping-keyset-plan", new
