@@ -311,22 +311,34 @@ public sealed class TopologyObservedSnapshotReader(ClickHouseContext context)
         await connection.OpenAsync(token);
         using var command = connection.CreateCommand();
         var restricted = !scope.Scope.IsUnrestricted;
-        command.CommandText = """
-            SELECT DISTINCT edge_id FROM topology_edge_lifecycle
+        var commonWhere = """
             WHERE publication_seq <= {watermark:UInt64}
                 AND last_seen >= {window_from:Decimal(21,0)}
                 AND last_seen < {window_to:Decimal(21,0)}
-            """ + (restricted ? "\n" + """
-                AND (parent_owner_group IN ({scope_groups:Array(String)})
-                    OR child_owner_group IN ({scope_groups:Array(String)}))
-            """ : string.Empty)
-                + (scope.NodeId is null ? string.Empty : "\n" + """
+            """ + (scope.NodeId is null ? string.Empty : "\n" + """
                 AND (from_node_id = {node_id:String} OR to_node_id = {node_id:String})
             """) + (scope.EdgeId is null ? string.Empty : "\n" + """
                 AND edge_id = {edge_id:String}
-            """) + "\n" + """
+            """);
+
+        command.CommandText = (restricted
+            ? """
+            SELECT DISTINCT edge_id FROM (
+                SELECT edge_id FROM topology_edge_lifecycle
+            """ + "\n" + commonWhere + "\n" + """
+                    AND child_owner_group IN ({scope_groups:Array(String)})
+                UNION ALL
+                SELECT edge_id FROM topology_edge_lifecycle
+            """ + "\n" + commonWhere + "\n" + """
+                    AND parent_owner_group IN ({scope_groups:Array(String)})
+            )
             ORDER BY edge_id LIMIT {candidate_limit:UInt32}
-            """ + ScopedReadSettings;
+            """
+            : """
+            SELECT DISTINCT edge_id FROM topology_edge_lifecycle
+            """ + "\n" + commonWhere + "\n" + """
+            ORDER BY edge_id LIMIT {candidate_limit:UInt32}
+            """) + ScopedReadSettings;
         command.AddParameter("watermark", watermark);
         command.AddParameter("window_from", scope.WindowFromUnixNano);
         command.AddParameter("window_to", scope.WindowToUnixNano);
