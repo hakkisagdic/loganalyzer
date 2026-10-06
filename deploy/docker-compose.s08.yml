@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.7
+    container_name: bizigo-s08-clickhouse
+    ports:
+      - "8123"
+    environment:
+      CLICKHOUSE_DB: bizigo
+      CLICKHOUSE_USER: bizigo
+      CLICKHOUSE_PASSWORD: bizigo
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+
+  postgres:
+    image: postgres:18-alpine
+    container_name: bizigo-s08-postgres
+    ports:
+      - "5432"
+    environment:
+      POSTGRES_DB: bizigo
+      POSTGRES_USER: bizigo
+      POSTGRES_PASSWORD: bizigo
+
+  api:
+    image: bizigo/api@sha256:18f45a089de9363bc589417436b7617b7b134aa6b4ca07d853e5e4de4f7e2d9a
+    container_name: bizigo-s08-api
+    ports:
+      - "5000"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__ControlPlane: "Host=postgres;Port=5432;Database=bizigo;Username=bizigo;Password=bizigo"
+      ConnectionStrings__ClickHouse: "Host=clickhouse;Port=8123;Database=bizigo;Username=bizigo;Password=bizigo"
+
+  sidecar:
+    image: bizigo/sidecar@sha256:4d7c0418f782f9d6ea8e9324021285ee133e9d8e578c77be0faea4b679d671f2
+    container_name: bizigo-s08-sidecar
+    ports:
+      - "8000"
+
+  proxy:
+    image: bizigo/proxy@sha256:f3b890a8e3f9a76d1e4860b29841c7b8a9235e1284d720b0805c87a192485f81
+    container_name: bizigo-s08-proxy
+    ports:
+      - "8080"
+    depends_on:
+      - api
+      - model-stub
+
+  model-stub:
+    image: bizigo/model-stub@sha256:9c8a14b53e89647201b2a95c898127398b7a6047291a382e850619374028b8a3
+    container_name: bizigo-s08-model-stub
+    ports:
+      - "9000"
