@@ -86,12 +86,15 @@ public static partial class TopologyReadEndpoints
         if (scope.IsEmpty) return Results.Forbid();
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(http.RequestAborted);
         deadline.CancelAfter(TimeSpan.FromSeconds(10));
+        var queryStarted = false;
+        var watch = System.Diagnostics.Stopwatch.StartNew();
         try
         {
             var cursor = PreflightCursor(http.Request.Query, route, routeId, scope, cursors);
             var mode = ReadMode(route, http.Request.Query, cursor);
             return await fence.ExecuteAsync(async (revision, token) =>
             {
+                queryStarted = true;
                 var request = Parse(http.Request.Query, route, routeId, scope, revision, cursor, cursors, clock);
                 switch (route)
                 {
@@ -209,10 +212,21 @@ public static partial class TopologyReadEndpoints
         catch (TopologySnapshotUnavailableException) { return Problem(409, "SnapshotChanged"); }
         catch (TopologyCursorException) { return Problem(400, "InvalidCursor"); }
         catch (TopologyCursorWireException) { return Problem(400, "InvalidCursor"); }
-        catch (TopologyObservedRepairUnavailableException) { return Problem(503, "QueryUnavailable"); }
+        catch (TopologyObservedRepairUnavailableException)
+        {
+            await AuditPreQueryFailureAsync(http, scope, route, routeId, watch.ElapsedMilliseconds);
+            return Problem(503, "QueryUnavailable");
+        }
         catch (TopologyRecordTooLargeException) { return Problem(422, "RecordTooLarge"); }
         catch (ArgumentException) { return Problem(400, "InvalidQuery"); }
-        catch (Exception ex) when (ex is not OutOfMemoryException) { return Problem(503, "QueryUnavailable"); }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            if (!queryStarted)
+            {
+                await AuditPreQueryFailureAsync(http, scope, route, routeId, watch.ElapsedMilliseconds);
+            }
+            return Problem(503, "QueryUnavailable");
+        }
     }
 
     private static IResult Json<T>(T body) => !TopologyResponseBudget.Fits(body, WireOptions)
@@ -439,4 +453,38 @@ public static partial class TopologyReadEndpoints
             + (fractional.Length == 0 ? 0m : decimal.Parse(fractional.PadRight(9, '0'), CultureInfo.InvariantCulture)));
     }
 
+
+    private static async Task AuditPreQueryFailureAsync(
+        HttpContext http, AccessScope scope, string route, string? routeId, long elapsedMs)
+    {
+        var audit = http.RequestServices.GetService(typeof(IAuditSink)) as IAuditSink;
+        if (audit is null) return;
+        var action = route switch
+        {
+            "nodes" => "nodes.list",
+            "node" => "nodes.detail",
+            "edges" => "edges.list",
+            "edge" => "edges.detail",
+            _ => route
+        };
+        var scopeDesc = scope.IsUnrestricted ? "*" : string.Join(",", scope.OwnerGroups.OrderBy(g => g, StringComparer.Ordinal));
+        var details = (routeId is not null ? route + "/" + routeId : route) + ";outcome=Failed";
+        try
+        {
+            using var auditBudget = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            await audit.RecordAsync(new AuditRecord(
+                scope.Subject,
+                "topology." + action,
+                "topology",
+                scopeDesc,
+                details,
+                0,
+                (int)Math.Min(elapsedMs, int.MaxValue),
+                false), auditBudget.Token);
+        }
+        catch
+        {
+            // Do not mask 503 response if audit sink write fails.
+        }
+    }
 }
