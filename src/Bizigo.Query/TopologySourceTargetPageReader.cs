@@ -203,7 +203,7 @@ public sealed class TopologySourceTargetPageReader(
         db.TopologyDeclaredEdgeHistory.AsNoTracking().Where(edge => edge.FromNodeId == fromNodeId
             && edge.Relation == "contains" && edge.Revision > afterRevision
             && edge.FromNano <= asOf && (edge.ToNano == null || asOf < edge.ToNano)
-            && edge.DeletedAt == null).OrderBy(edge => edge.Revision)
+            && edge.DeletedAt == null).OrderBy(edge => edge.FromNodeId).ThenBy(edge => edge.Relation).ThenBy(edge => edge.Revision)
             .TagWith("topology.mapping.next-edge").FirstOrDefaultAsync(token);
 
     private static bool CanRead(AccessScope scope, string owner) =>
