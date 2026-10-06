@@ -1002,6 +1002,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/anomaly-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List anomaly policies within caller's access scope */
+        get: operations["ListAnomalyPolicies__api_anomaly-policies"];
+        put?: never;
+        /** Create a new anomaly policy */
+        post: operations["CreateAnomalyPolicy__api_anomaly-policies"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/anomaly-policies/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get anomaly policy by ID */
+        get: operations["GetAnomalyPolicy__api_anomaly-policies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update an anomaly policy (enable/disable or parameter changes) */
+        patch: operations["UpdateAnomalyPolicy__api_anomaly-policies"];
+        trace?: never;
+    };
+    "/v1/anomaly-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List anomaly policies within caller's access scope */
+        get: operations["ListAnomalyPolicies__v1_anomaly-policies"];
+        put?: never;
+        /** Create a new anomaly policy */
+        post: operations["CreateAnomalyPolicy__v1_anomaly-policies"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/anomaly-policies/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get anomaly policy by ID */
+        get: operations["GetAnomalyPolicy__v1_anomaly-policies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update an anomaly policy (enable/disable or parameter changes) */
+        patch: operations["UpdateAnomalyPolicy__v1_anomaly-policies"];
+        trace?: never;
+    };
+    "/api/anomaly-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List anomaly runs within caller's access scope */
+        get: operations["ListAnomalyRuns__api_anomaly-runs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/anomaly-runs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get anomaly run by ID */
+        get: operations["GetAnomalyRun__api_anomaly-runs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/anomaly-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List anomaly runs within caller's access scope */
+        get: operations["ListAnomalyRuns__v1_anomaly-runs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/anomaly-runs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get anomaly run by ID */
+        get: operations["GetAnomalyRun__v1_anomaly-runs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/rca": {
         parameters: {
             query?: never;
@@ -1279,6 +1419,59 @@ export interface components {
             /** Format: uuid */
             review_id: null | string;
         };
+        AnomalyPolicyResponse: {
+            id: string;
+            ownerGroup: string;
+            name: string;
+            signal: string;
+            target: string;
+            /** Format: int32 */
+            eventWindowSeconds: number | string;
+            /** Format: int32 */
+            baselineWindowSeconds: number | string;
+            /** Format: double */
+            sensitivity: number | string;
+            /** Format: int32 */
+            minSamples: number | string;
+            /** Format: double */
+            zeroBaselineMinAbsolute: null | number | string;
+            state: string;
+            /** Format: int32 */
+            version: number | string;
+            /** Format: int32 */
+            cadenceSeconds: number | string;
+            /** Format: date-time */
+            lastEvaluatedWindowStart: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        AnomalyRunResponse: {
+            id: string;
+            policyId: string;
+            ownerGroup: string;
+            /** Format: date-time */
+            windowStart: string;
+            /** Format: date-time */
+            windowEnd: string;
+            status: string;
+            reason: null | string;
+            /** Format: double */
+            observedValue: null | number | string;
+            /** Format: double */
+            baselineValue: null | number | string;
+            /** Format: double */
+            deviation: null | number | string;
+            /** Format: uuid */
+            rcaRunId: null | string;
+            /** Format: int32 */
+            evaluatedPolicyVersion: number | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            completedAt: null | string;
+        };
         AuthMeResponse: {
             subject: string;
             username: string;
@@ -1456,6 +1649,24 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+        };
+        CreateAnomalyPolicyRequest: {
+            name: string;
+            ownerGroup: string;
+            signal: string;
+            target: string;
+            /** Format: int32 */
+            eventWindowSeconds: null | number | string;
+            /** Format: int32 */
+            baselineWindowSeconds: null | number | string;
+            /** Format: double */
+            sensitivity: null | number | string;
+            /** Format: int32 */
+            minSamples: null | number | string;
+            /** Format: double */
+            zeroBaselineMinAbsolute: null | number | string;
+            /** Format: int32 */
+            cadenceSeconds: null | number | string;
         };
         CreatedIdResponse: {
             /** Format: uuid */
@@ -1652,6 +1863,17 @@ export interface components {
             /** Format: double */
             measured_coverage: null | number | string;
             missing_evidence?: null | components["schemas"]["MissingEvidenceQualityResponse"];
+        };
+        HttpValidationProblemDetails: {
+            type?: null | string;
+            title?: null | string;
+            /** Format: int32 */
+            status?: null | number | string;
+            detail?: null | string;
+            instance?: null | string;
+            errors?: {
+                [key: string]: string[];
+            };
         };
         JsonElement: unknown;
         MaintenanceWindowListResponse: {
@@ -2735,6 +2957,22 @@ export interface components {
         TopologyProblemDto: {
             reason: string;
             message: string;
+        };
+        UpdateAnomalyPolicyRequest: {
+            /** Format: int32 */
+            expectedVersion: number | string;
+            state: null | string;
+            name: null | string;
+            /** Format: double */
+            sensitivity: null | number | string;
+            /** Format: int32 */
+            minSamples: null | number | string;
+            /** Format: int32 */
+            baselineWindowSeconds: null | number | string;
+            /** Format: int32 */
+            eventWindowSeconds: null | number | string;
+            /** Format: double */
+            zeroBaselineMinAbsolute: null | number | string;
         };
     };
     responses: never;
@@ -5918,6 +6156,394 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AlertingStatsResponse"];
+                };
+            };
+        };
+    };
+    "ListAnomalyPolicies__api_anomaly-policies": {
+        parameters: {
+            query?: {
+                state?: string;
+                signal?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomalyPolicyResponse"][];
+                };
+            };
+        };
+    };
+    "CreateAnomalyPolicy__api_anomaly-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAnomalyPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomalyPolicyResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    "GetAnomalyPolicy__api_anomaly-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomalyPolicyResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "UpdateAnomalyPolicy__api_anomaly-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAnomalyPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomalyPolicyResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "ListAnomalyPolicies__v1_anomaly-policies": {
+        parameters: {
+            query?: {
+                state?: string;
+                signal?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomalyPolicyResponse"][];
+                };
+            };
+        };
+    };
+    "CreateAnomalyPolicy__v1_anomaly-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAnomalyPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomalyPolicyResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+        };
+    };
+    "GetAnomalyPolicy__v1_anomaly-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomalyPolicyResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "UpdateAnomalyPolicy__v1_anomaly-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAnomalyPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomalyPolicyResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "ListAnomalyRuns__api_anomaly-runs": {
+        parameters: {
+            query?: {
+                policyId?: string;
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomalyRunResponse"][];
+                };
+            };
+        };
+    };
+    "GetAnomalyRun__api_anomaly-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomalyRunResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    "ListAnomalyRuns__v1_anomaly-runs": {
+        parameters: {
+            query?: {
+                policyId?: string;
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomalyRunResponse"][];
+                };
+            };
+        };
+    };
+    "GetAnomalyRun__v1_anomaly-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnomalyRunResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };

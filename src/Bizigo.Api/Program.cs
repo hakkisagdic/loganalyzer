@@ -1,3 +1,4 @@
+using Bizigo.Api.Anomaly;
 using Bizigo.Alerting;
 using Bizigo.Api;
 using Bizigo.Api.Connectors;
@@ -92,6 +93,20 @@ builder.Services.AddBizigoModelProvider(builder.Configuration);
     builder.Configuration.GetSection(RcaScheduleOptions.SectionName).Bind(schedules);
     builder.Services.AddSingleton(schedules);
     builder.Services.AddHostedService<RcaScheduleWorker>();
+}
+
+// S4 Anomaly evaluator, worker, and retention (Sprint 07).
+builder.Services.AddScoped<IAnomalyEvaluator, AnomalyEvaluator>();
+{
+    var anomalyWorkerOptions = new AnomalyWorkerOptions();
+    builder.Configuration.GetSection(AnomalyWorkerOptions.SectionName).Bind(anomalyWorkerOptions);
+    builder.Services.AddSingleton(anomalyWorkerOptions);
+    builder.Services.AddHostedService<AnomalyWorker>();
+
+    var retentionOptions = new AnomalyRetentionWorkerOptions();
+    builder.Configuration.GetSection(AnomalyRetentionWorkerOptions.SectionName).Bind(retentionOptions);
+    builder.Services.AddSingleton(retentionOptions);
+    builder.Services.AddHostedService<AnomalyRetentionWorker>();
 }
 
 // MCP protokol çekirdeği ve akışlanabilir HTTP taşıması (M01). Ürün yüzeyi
@@ -217,6 +232,7 @@ app.MapReplay();
 app.MapParsers();
 app.MapParserAuthoring();
 app.MapAlerts();
+app.MapAnomalies();
 
 // RCA kanıt paketi, deterministik rapor ve export (T37). Elle tetikleme dar
 // tutuldu: kuyruk, kota ve debounce dört tetikleyiciyle birlikte F4'te.

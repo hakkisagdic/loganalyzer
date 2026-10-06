@@ -141,6 +141,10 @@ public partial class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContex
     /// </summary>
     public DbSet<RcaReportEntity> RcaReports => Set<RcaReportEntity>();
 
+    // S4 Anomaly policies ve runs (Sprint 07).
+    public DbSet<AnomalyPolicyEntity> AnomalyPolicies => Set<AnomalyPolicyEntity>();
+    public DbSet<AnomalyRunEntity> AnomalyRuns => Set<AnomalyRunEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -336,6 +340,21 @@ public partial class ControlPlaneDbContext(DbContextOptions<ControlPlaneDbContex
             // anlamlı — iki farklı senaryonun oranını toplamak, iki farklı
             // soruyu tek sayıya indirmek olurdu.
             e.HasIndex(x => new { x.ScenarioId, x.CreatedAt });
+        });
+
+        modelBuilder.Entity<AnomalyPolicyEntity>(e =>
+        {
+            e.HasIndex(x => new { x.OwnerGroup, x.State });
+            e.HasIndex(x => x.Signal);
+            e.Property(x => x.Version).IsConcurrencyToken();
+        });
+
+        modelBuilder.Entity<AnomalyRunEntity>(e =>
+        {
+            // S06, S23: dedupe key = policy + scope + window_start tekil.
+            e.HasIndex(x => new { x.PolicyId, x.OwnerGroup, x.WindowStart }).IsUnique();
+            e.HasIndex(x => new { x.OwnerGroup, x.CreatedAt });
+            e.HasIndex(x => new { x.Status, x.CreatedAt });
         });
     }
 }

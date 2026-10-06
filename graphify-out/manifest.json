@@ -372,9 +372,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Api/DocumentGeneration.cs": {
-    "mtime": 1787124714.393769,
-    "seen": 1789394890.817792,
-    "ast_hash": "7ae3c5b2cbff6bf15693c6507579f1db",
+    "mtime": 1791320330.8812065,
+    "seen": 1791320343.557973,
+    "ast_hash": "bfc974d83188dcf2c05c80be714471c6",
     "semantic_hash": ""
   },
   "src/Bizigo.Api/EventResponses.cs": {
@@ -450,9 +450,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Api/Program.cs": {
-    "mtime": 1790552560.3861206,
-    "seen": 1790595779.341343,
-    "ast_hash": "64d456d499cd99b002bfc4f98b7e1e96",
+    "mtime": 1791062075.3087199,
+    "seen": 1791320327.364623,
+    "ast_hash": "e614240977547e73d0238fd5962b3c0f",
     "semantic_hash": ""
   },
   "src/Bizigo.Api/Properties/launchSettings.json": {
@@ -588,9 +588,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Cli/Program.cs": {
-    "mtime": 1790332075.97324,
-    "seen": 1790425787.496824,
-    "ast_hash": "a57a9e85b18e4679b4ef489433b87ba8",
+    "mtime": 1791078094.8861103,
+    "seen": 1791320327.36464,
+    "ast_hash": "8644111615926082eab00bfe68833b79",
     "semantic_hash": ""
   },
   "src/Bizigo.Cli/SeedCommandHandlers.cs": {
@@ -690,15 +690,15 @@
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/ControlPlaneDbContext.cs": {
-    "mtime": 1790552259.291671,
-    "seen": 1790595779.341491,
-    "ast_hash": "ee33c8f4afa8b489a297c9849c890245",
+    "mtime": 1791062075.3173895,
+    "seen": 1791320327.364668,
+    "ast_hash": "53d78f8e2fa21f501c326938c6e50910",
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/ControlPlaneServiceCollectionExtensions.cs": {
-    "mtime": 1790552529.831671,
-    "seen": 1790595779.341492,
-    "ast_hash": "c84b7a9ca8d5481485e41abe8c8d8735",
+    "mtime": 1791062075.3178918,
+    "seen": 1791320327.3646688,
+    "ast_hash": "0b11c1c66c2dfed0dab2e010d7bc193d",
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/Entities.cs": {
@@ -864,15 +864,15 @@
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/Migrations/ControlPlaneDbContextModelSnapshot.cs": {
-    "mtime": 1790552621.0566807,
-    "seen": 1790595779.3415701,
-    "ast_hash": "68a5ed2ec7b7fd91b87581442777fc6d",
+    "mtime": 1791078108.8665292,
+    "seen": 1791320327.364695,
+    "ast_hash": "bc7c358e4d8856ccc2272490bd3e1567",
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/SourceDirectory.cs": {
-    "mtime": 1790437841.3023899,
-    "seen": 1790444381.581203,
-    "ast_hash": "2a2799dbf0af9d348aae05327d336b90",
+    "mtime": 1791062075.3354914,
+    "seen": 1791320327.3646998,
+    "ast_hash": "8d5cd1dc84d9a3ef8b54a91efa455db5",
     "semantic_hash": ""
   },
   "src/Bizigo.Devices/Bizigo.Devices.csproj": {
@@ -966,15 +966,15 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Evidence/EvidenceRanking.cs": {
-    "mtime": 1790542863.857818,
-    "seen": 1790543317.231452,
-    "ast_hash": "f51e9cd431c70033d693a6c2217f0af7",
+    "mtime": 1791062075.3691785,
+    "seen": 1791320327.3647082,
+    "ast_hash": "2c30f0cc06437ac4f4071ee466dd5f4c",
     "semantic_hash": ""
   },
   "src/Bizigo.Evidence/EvidenceServiceCollectionExtensions.cs": {
-    "mtime": 1790535171.4931908,
-    "seen": 1790543317.231452,
-    "ast_hash": "f5f07c50c53db58202772d70ff06949b",
+    "mtime": 1791062075.372028,
+    "seen": 1791320327.3647082,
+    "ast_hash": "cf4f995166bc1f77607236c76244d3b6",
     "semantic_hash": ""
   },
   "src/Bizigo.Evidence/GoldenReviewStore.cs": {
@@ -1392,15 +1392,15 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Query/QueryServiceCollectionExtensions.cs": {
-    "mtime": 1790438786.9887176,
-    "seen": 1790444381.583277,
-    "ast_hash": "e5de3555bcdb97b461769b322eaad8b3",
+    "mtime": 1791078104.8543768,
+    "seen": 1791320327.364767,
+    "ast_hash": "b776af4135f40732a3f4906517028ee8",
     "semantic_hash": ""
   },
   "src/Bizigo.Query/ScopedQuery.cs": {
-    "mtime": 1790536844.5533626,
-    "seen": 1790543317.233261,
-    "ast_hash": "3f5aa8423f550cc4f2baca5e51a3b891",
+    "mtime": 1791072419.8078036,
+    "seen": 1791320327.364768,
+    "ast_hash": "005ca7a4001964e9f3c1cce7f594f485",
     "semantic_hash": ""
   },
   "src/Bizigo.Replay/Bizigo.Replay.csproj": {
@@ -1662,9 +1662,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/Bizigo.IntegrationTests.csproj": {
-    "mtime": 1790544525.779138,
-    "seen": 1790544739.398019,
-    "ast_hash": "2a8f965ee9cfcc68900d29b44fa1d3e3",
+    "mtime": 1791068010.1971447,
+    "seen": 1791320327.36481,
+    "ast_hash": "e9ca0cd4c91ed866d36888e4b8752620",
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/ChangeConfigSnapshotTests.cs": {
@@ -1704,9 +1704,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/DevStackSetup.cs": {
-    "mtime": 1790551687.5326836,
-    "seen": 1790595779.3425431,
-    "ast_hash": "0daae25b5d87c12506eebe995a8723ac",
+    "mtime": 1791082528.266559,
+    "seen": 1791320327.364814,
+    "ast_hash": "bb0f248dff1bb23901f7c1bdedf46261",
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/DevStackSmokeTests.cs": {
@@ -1722,9 +1722,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/EvidenceBundleStorageTests.cs": {
-    "mtime": 1790548646.5707855,
-    "seen": 1790548998.152215,
-    "ast_hash": "e3271d59196b076031b5a031cc9f5bd4",
+    "mtime": 1791062075.394748,
+    "seen": 1791320327.364816,
+    "ast_hash": "53300818da8130f3bd30b93152dba062",
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/F2ChainTests.cs": {
@@ -1860,9 +1860,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/AlertingTestDoubles.cs": {
-    "mtime": 1790437758.8859434,
-    "seen": 1790444381.585161,
-    "ast_hash": "45d0e7434fcac93c338578347f05c77b",
+    "mtime": 1791072419.8107858,
+    "seen": 1791320327.3648498,
+    "ast_hash": "120c560bc2e1bb2416100902eca2b560",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/AnnotatorTestExtensions.cs": {
@@ -2040,9 +2040,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/EvidenceCompositionTests.cs": {
-    "mtime": 1790542778.2498705,
-    "seen": 1790543317.23573,
-    "ast_hash": "e1310da4ea27699754664f85762460fe",
+    "mtime": 1791062075.4042096,
+    "seen": 1791320327.364867,
+    "ast_hash": "b27a66d430d493ac698df8194294e6fa",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/EvidenceProviderTests.cs": {
@@ -2058,9 +2058,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/EvidenceTestDoubles.cs": {
-    "mtime": 1790535281.0832798,
-    "seen": 1790543317.2357461,
-    "ast_hash": "d7b75e7c1005ed01270bb7136f346155",
+    "mtime": 1791072420.0511181,
+    "seen": 1791320327.3648682,
+    "ast_hash": "a573dfdb5304de570893e94f4ac2feb7",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/FieldCoverageTests.cs": {
@@ -2256,9 +2256,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/ProducesContractTests.cs": {
-    "mtime": 1790595504.9312372,
-    "seen": 1790595779.3429382,
-    "ast_hash": "79a5b67c94b750bd1a7ee190aadc19fc",
+    "mtime": 1791062075.4066248,
+    "seen": 1791320327.3649,
+    "ast_hash": "374e2910862a6e48e837a7e404fe5bbc",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/RawArchiveDoubles.cs": {
@@ -2544,9 +2544,9 @@
     "semantic_hash": ""
   },
   "ui/openapi/bizigo-api.json": {
-    "mtime": 1790536043.3361504,
-    "seen": 1790543317.238678,
-    "ast_hash": "e1a229bf4eb62bf391b8756c06f45faf",
+    "mtime": 1791201534.6991682,
+    "seen": 1791320327.364981,
+    "ast_hash": "c3fea0dee4bd89e6eb0124543e441d96",
     "semantic_hash": ""
   },
   "ui/package.json": {
@@ -2556,9 +2556,9 @@
     "semantic_hash": ""
   },
   "ui/scripts/generate-api-types.sh": {
-    "mtime": 1787124714.4272761,
-    "seen": 1789394890.818084,
-    "ast_hash": "ffe05df3433ac9bb1d3d809d6dde4015",
+    "mtime": 1791320330.8823063,
+    "seen": 1791320343.568631,
+    "ast_hash": "a8ccf3642cdd14ed51e3015ff1d79121",
     "semantic_hash": ""
   },
   "ui/src/app/alarmlar/AlertRuleEditor.tsx": {
@@ -2898,9 +2898,9 @@
     "semantic_hash": ""
   },
   "ui/src/components/AppShell.tsx": {
-    "mtime": 1787224720.2522829,
-    "seen": 1789394890.8181162,
-    "ast_hash": "60d859f43932a70beb47066884f2362b",
+    "mtime": 1791320330.8835697,
+    "seen": 1791320343.569542,
+    "ast_hash": "ecdd62eafd2508520cdbf2736493af75",
     "semantic_hash": ""
   },
   "ui/src/components/LogoutButton.tsx": {
@@ -2970,9 +2970,9 @@
     "semantic_hash": ""
   },
   "ui/src/lib/api/client.ts": {
-    "mtime": 1787221572.6794093,
-    "seen": 1789394890.818124,
-    "ast_hash": "e32e886bedbf240ebdcac58d7ec06559",
+    "mtime": 1791320330.883687,
+    "seen": 1791320343.569739,
+    "ast_hash": "d208af4574dac6b6875cbc42cf5f1cbb",
     "semantic_hash": ""
   },
   "ui/src/lib/api/errors.ts": {
@@ -2988,9 +2988,9 @@
     "semantic_hash": ""
   },
   "ui/src/lib/api/paths.ts": {
-    "mtime": 1790343072.1024358,
-    "seen": 1790425787.516366,
-    "ast_hash": "b5138b4376a063cc81782266ce2634a9",
+    "mtime": 1791320330.883791,
+    "seen": 1791320343.569769,
+    "ast_hash": "842ad79e2a4a58650fede4718e62657c",
     "semantic_hash": ""
   },
   "ui/src/lib/api/proxy.ts": {
@@ -3000,9 +3000,9 @@
     "semantic_hash": ""
   },
   "ui/src/lib/api/schema.d.ts": {
-    "mtime": 1790536044.0351586,
-    "seen": 1790543317.240027,
-    "ast_hash": "4390d973ccbdbc76e2129452c686824c",
+    "mtime": 1791201535.5228312,
+    "seen": 1791320327.3650188,
+    "ast_hash": "e0ef9cb458bfadebce32bdbb0be949f6",
     "semantic_hash": ""
   },
   "ui/src/lib/api/server.ts": {
@@ -3306,9 +3306,9 @@
     "semantic_hash": ""
   },
   "ui/tests/screenshots/scenes.tsx": {
-    "mtime": 1789393858.8265688,
-    "seen": 1789394890.818159,
-    "ast_hash": "4205944102d276fa4f948ef7225d3dbe",
+    "mtime": 1791320330.883932,
+    "seen": 1791320343.570658,
+    "ast_hash": "5e698b520423e1d7c1bd6dd03c25aa3c",
     "semantic_hash": ""
   },
   "ui/tests/session-store.test.ts": {
@@ -3366,9 +3366,9 @@
     "semantic_hash": ""
   },
   ".github/workflows/ci.yml": {
-    "mtime": 1790546696.8162227,
-    "seen": 1790547304.284597,
-    "ast_hash": "f70c99c547a8fc75ebc938a9fc960113",
+    "mtime": 1791072582.149367,
+    "seen": 1791320327.365063,
+    "ast_hash": "5869d98ff4d687ad5e595b31f2ee424f",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
@@ -4242,110 +4242,110 @@
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/durum-bos-dark.png": {
-    "mtime": 1790007529.1241078,
-    "seen": 1790008053.516907,
+    "mtime": 1791320259.8574004,
+    "seen": 1791320327.3651881,
     "ast_hash": "3d07312f9887fb46aa74c1e05fa329ac",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/durum-bos-light.png": {
-    "mtime": 1790007529.0569413,
-    "seen": 1790008053.516908,
+    "mtime": 1791320259.7736945,
+    "seen": 1791320327.3651881,
     "ast_hash": "99be4c9df4539413186c277749e6b86c",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/durum-hata-dark.png": {
-    "mtime": 1790007529.274438,
-    "seen": 1790008053.516908,
+    "mtime": 1791320260.023626,
+    "seen": 1791320327.365189,
     "ast_hash": "ad1155657e46abdb9710b771630be493",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/durum-hata-light.png": {
-    "mtime": 1790007529.1912413,
-    "seen": 1790008053.5169091,
+    "mtime": 1791320259.9414647,
+    "seen": 1791320327.365189,
     "ast_hash": "3c7dbbe592d95ece3dccb624a75726bd",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/durum-yukleniyor-dark.png": {
-    "mtime": 1790007529.4073062,
-    "seen": 1790008053.51691,
+    "mtime": 1791320260.1825008,
+    "seen": 1791320327.3651898,
     "ast_hash": "7b1ebf1d2ad70bfc146b0eb1c2123ff6",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/durum-yukleniyor-light.png": {
-    "mtime": 1790007529.340889,
-    "seen": 1790008053.51691,
+    "mtime": 1791320260.1037579,
+    "seen": 1791320327.3651898,
     "ast_hash": "e00cf193c4f0046b71f3f98abe11118e",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/kaynaklar-envanter-dark.png": {
-    "mtime": 1790007529.5752132,
-    "seen": 1790008053.516911,
+    "mtime": 1791320260.3841755,
+    "seen": 1791320327.365191,
     "ast_hash": "a7f97c6f536a42e6706234382f72e688",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/kaynaklar-envanter-light.png": {
-    "mtime": 1790007529.491215,
-    "seen": 1790008053.516911,
+    "mtime": 1791320260.2844756,
+    "seen": 1791320327.365192,
     "ast_hash": "ede6f8529c531975a9fd8e56537efa3d",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/kaynaklar-saglik-dark.png": {
-    "mtime": 1790007529.74227,
-    "seen": 1790008053.5169122,
+    "mtime": 1791320260.562968,
+    "seen": 1791320327.365192,
     "ast_hash": "4992c787a19e8764d5e1113b7935e45e",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/kaynaklar-saglik-light.png": {
-    "mtime": 1790007529.658945,
-    "seen": 1790008053.5169122,
+    "mtime": 1791320260.4859946,
+    "seen": 1791320327.365193,
     "ast_hash": "888919f93e99c349f54bf568d650dab4",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/olaylar-cok-veri-dark.png": {
-    "mtime": 1790007528.786823,
-    "seen": 1790008053.516913,
+    "mtime": 1791320259.4275074,
+    "seen": 1791320327.365194,
     "ast_hash": "7e925f18259eceffcb0d041bc7d5cf11",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/olaylar-cok-veri-light.png": {
-    "mtime": 1790007528.5407095,
-    "seen": 1790008053.516914,
+    "mtime": 1791320259.228583,
+    "seen": 1791320327.365194,
     "ast_hash": "cc4457b566f3a3c0516517f4a4adea2a",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/olaylar-dolu-dark.png": {
-    "mtime": 1790007528.0865736,
-    "seen": 1790008053.516914,
+    "mtime": 1791320258.950062,
+    "seen": 1791320327.365195,
     "ast_hash": "dd4975a0d18f2d2550a0db8537224f4e",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/olaylar-dolu-light.png": {
-    "mtime": 1790007527.9530997,
-    "seen": 1790008053.5169148,
+    "mtime": 1791320258.8018641,
+    "seen": 1791320327.365195,
     "ast_hash": "5009cd4b9314d063549cf8d4d9f9fc61",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/olaylar-filtre-dark.png": {
-    "mtime": 1790007528.976101,
-    "seen": 1790008053.5169148,
+    "mtime": 1791320259.684902,
+    "seen": 1791320327.365195,
     "ast_hash": "3b759e8966fa855371cdedb57034111c",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/olaylar-filtre-light.png": {
-    "mtime": 1790007528.8943717,
-    "seen": 1790008053.516916,
+    "mtime": 1791320259.560088,
+    "seen": 1791320327.365196,
     "ast_hash": "8ddbaf7a45250233c9ada10ace43f145",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/rozetler-dark.png": {
-    "mtime": 1790007529.9250145,
-    "seen": 1790008053.516916,
+    "mtime": 1791320260.6986408,
+    "seen": 1791320327.365196,
     "ast_hash": "2d18033a48b2fe599786704674d57184",
     "semantic_hash": ""
   },
   "docs/ekran-goruntuleri/rozetler-light.png": {
-    "mtime": 1790007529.8423853,
-    "seen": 1790008053.516917,
+    "mtime": 1791320260.6328487,
+    "seen": 1791320327.365197,
     "ast_hash": "e9c63511f512972a63d3b9fdb957a423",
     "semantic_hash": ""
   },
@@ -4574,169 +4574,169 @@
   "db/clickhouse/0001_events.sql": {
     "mtime": 1786890726.1532326,
     "seen": 1790547304.284023,
-    "ast_hash": "9ccdbcac3c225014d7b69f1ba2b3e04f",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "db/clickhouse/0002_change_events.sql": {
     "mtime": 1786890738.9754841,
     "seen": 1790547304.284024,
-    "ast_hash": "f4bb68734d6ae2feb79c044af9d5deb1",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "db/clickhouse/0003_ocsf_otel_views.sql": {
     "mtime": 1786910890.067597,
     "seen": 1790547304.2840252,
-    "ast_hash": "7d6f5b8e388ce8ba1a66e82d8aa8140b",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "db/clickhouse/0004_fix_otel_severity_scale.sql": {
     "mtime": 1786915988.8669715,
     "seen": 1790547304.2840261,
-    "ast_hash": "b92fe4b0c6bbc298401bb7b6864d9d31",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "db/clickhouse/0005_time_source.sql": {
     "mtime": 1786965211.179073,
     "seen": 1790547304.2840261,
-    "ast_hash": "252a0a1a3817efb9fb747bbea345b8c1",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "db/clickhouse/0006_signature_hash.sql": {
     "mtime": 1787222013.5221343,
     "seen": 1790547304.2840269,
-    "ast_hash": "53a4a8cc7f8c0eacd5f4d4ed14d42e42",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "deploy/postgres/01-keycloak-db.sql": {
     "mtime": 1786719738.108468,
     "seen": 1790547304.284029,
-    "ast_hash": "2ee785334a925843c9ebb39b692e6a27",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/03702803-0000-4000-8000-000000000000.sql": {
     "mtime": 1787266842.4201438,
     "seen": 1790547304.284035,
-    "ast_hash": "3f9487872c0977c3d189e3710c360628",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/06977082-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.186488,
     "seen": 1790547304.2840362,
-    "ast_hash": "8d58565d01757d9a8fa2fcd16c79fc2b",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/07131427-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.1870582,
     "seen": 1790547304.2840362,
-    "ast_hash": "60a332308e9912e8ddf7542b545a8299",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/07883503-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.1874986,
     "seen": 1790547304.284037,
-    "ast_hash": "7f78b50e2743c65d36c44e2243439843",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/14477452-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.1881628,
     "seen": 1790547304.2840378,
-    "ast_hash": "ee144851a7180b238ec209ee928cf56c",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/14644215-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.1889923,
     "seen": 1790547304.2840378,
-    "ast_hash": "08a64fcd1d8e36b2b944ceecce696c07",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/17828938-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.1935973,
     "seen": 1790547304.284039,
-    "ast_hash": "c0752f4726b973ed5305a55d44710319",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/19506570-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.1943064,
     "seen": 1790547304.284039,
-    "ast_hash": "9518de0311b54c71996c519495a5c6f8",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/21011482-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.1950092,
     "seen": 1790547304.28404,
-    "ast_hash": "0e8b61febdbfdd62b6e43a5c2cda26fb",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/21934394-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.1958108,
     "seen": 1790547304.28404,
-    "ast_hash": "2fe375dba5c4065fbcfa9e1766251a95",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/25520785-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.1993065,
     "seen": 1790547304.284041,
-    "ast_hash": "b9269dd550faffebd7da90c16938bb72",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/33839694-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.2017095,
     "seen": 1790547304.284042,
-    "ast_hash": "dda44ed9c00b36d73acfae4b6a5dd43e",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/34775915-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.2024777,
     "seen": 1790547304.284042,
-    "ast_hash": "99b5eb93f33b78fcc74ce9fb127f1920",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/43129827-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.2031386,
     "seen": 1790547304.284043,
-    "ast_hash": "9337cc84248c5f60c7708a3897a843d8",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/50087630-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.203664,
     "seen": 1790547304.284043,
-    "ast_hash": "81e2ae1de393b9f909257e6b046ff377",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/52776632-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.2040815,
     "seen": 1790547304.284044,
-    "ast_hash": "8b5a4f79cb75a91ab5a36dc6d6b1d435",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/56293354-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.2044873,
     "seen": 1790547304.284044,
-    "ast_hash": "8020888fcbbe394b67ff6862ff99c99d",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/58613739-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.2048628,
     "seen": 1790547304.284045,
-    "ast_hash": "7bd2fb0adba0e0d071fd2a200b6e4e01",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/73633522-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.2052298,
     "seen": 1790547304.284045,
-    "ast_hash": "2a1be91c4b08612801775d21f0fe6358",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/81341084-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.2064586,
     "seen": 1790547304.2840462,
-    "ast_hash": "3abd6fe89ff473a56a1a8615761201c8",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "detections/sigma/86872380-0000-4000-8000-000000000000.sql": {
     "mtime": 1787261038.2076256,
     "seen": 1790547304.2840471,
-    "ast_hash": "2791c38c4472c47d827ffff273ac8a45",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "docs/arastirma/uret.py": {
@@ -6156,9 +6156,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/EpicStatusTests.cs": {
-    "mtime": 1790595961.038935,
-    "seen": 1790595968.2429702,
-    "ast_hash": "a216d84a50bd24427b4210a6eefc34ef",
+    "mtime": 1790632624.824484,
+    "seen": 1791320327.364864,
+    "ast_hash": "2aaa3c93fc5d0db92755562b37d152c1",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/HarnessSeedingTests.cs": {
@@ -6198,9 +6198,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/McpTestHarness.cs": {
-    "mtime": 1789408908.4994168,
-    "seen": 1789409357.997536,
-    "ast_hash": "193949fcc1a1026b98b230222eec99f8",
+    "mtime": 1791320330.882192,
+    "seen": 1791320343.565919,
+    "ast_hash": "12a7d3a15ef7001afeebd1837625cb29",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/RcaAdmissionRaceTests.cs": {
@@ -6606,9 +6606,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Commands/CommandCatalog.cs": {
-    "mtime": 1789412020.1862571,
-    "seen": 1789414202.5816529,
-    "ast_hash": "7d51f0f906dc7664ab18ce29d674f568",
+    "mtime": 1791078769.5207324,
+    "seen": 1791320327.364646,
+    "ast_hash": "b14170df0f76b96b5328fb630153b759",
     "semantic_hash": ""
   },
   "src/Bizigo.Commands/CommandOutcome.cs": {
@@ -6792,9 +6792,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/CommandCatalogTests.cs": {
-    "mtime": 1789412020.1867857,
-    "seen": 1789414202.5818539,
-    "ast_hash": "f9237a608e1fc4f3c7e2b7039a8310b5",
+    "mtime": 1791078769.5213127,
+    "seen": 1791320327.3648582,
+    "ast_hash": "4e796d71f2e0205d1f25e8c36ef62849",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/CommandCoreConsoleTests.cs": {
@@ -7542,27 +7542,27 @@
     "semantic_hash": ""
   },
   "sim/Bizigo.Capacity/CapacityRunManifest.cs": {
-    "mtime": 1790595961.0362825,
-    "seen": 1790595968.242367,
-    "ast_hash": "777adc64c2a83b83cfd9e70d44cbaaef",
+    "mtime": 1790596000.2706096,
+    "seen": 1791320327.3645818,
+    "ast_hash": "3ccb2fe8d4f35162feea3c224a607e5e",
     "semantic_hash": ""
   },
   "sim/Bizigo.Capacity/GeneratorAttainment.cs": {
-    "mtime": 1790595961.0368862,
-    "seen": 1790595968.2423732,
-    "ast_hash": "be65f06c42acfdc96c35894349a9bdec",
+    "mtime": 1790596000.2710717,
+    "seen": 1791320327.364584,
+    "ast_hash": "fabaf58185e634c71a46332caba5f812",
     "semantic_hash": ""
   },
   "sim/Bizigo.Capacity/PaceProfile.cs": {
-    "mtime": 1790595961.037351,
-    "seen": 1790595968.2423759,
-    "ast_hash": "8a501fc7de8abce3eb66b513782e9f6a",
+    "mtime": 1790596000.2715766,
+    "seen": 1791320327.364585,
+    "ast_hash": "b4395ace22d4b2b7c5a7488874a4506f",
     "semantic_hash": ""
   },
   "sim/Bizigo.Capacity/TokenBucketPacer.cs": {
-    "mtime": 1790595961.0377452,
-    "seen": 1790595968.242377,
-    "ast_hash": "97f01cf3ed41e1e7bef34c00788e592d",
+    "mtime": 1790596000.271795,
+    "seen": 1791320327.364585,
+    "ast_hash": "31d5dd08291ecae599250062d94a57f8",
     "semantic_hash": ""
   },
   "sim/Bizigo.Simulators/CapacityEmitter.cs": {
@@ -7578,15 +7578,15 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/CapacityManifestTests.cs": {
-    "mtime": 1790595961.038285,
-    "seen": 1790595968.242944,
-    "ast_hash": "f04aec8672ec45e166d6aa3800aef03b",
+    "mtime": 1790596000.2720065,
+    "seen": 1791320327.364853,
+    "ast_hash": "93e92e79e5862f07abe46000e2860c0b",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/GeneratorPacingTests.cs": {
-    "mtime": 1790595961.039508,
-    "seen": 1790595968.2429912,
-    "ast_hash": "0d773c8a121f719ae96685d3f3fcce91",
+    "mtime": 1790596000.272914,
+    "seen": 1791320327.364873,
+    "ast_hash": "00d77984ef5952d9179fba70089fe0f9",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/LiveModelQualityMeasurement.cs": {
@@ -7596,9 +7596,9 @@
     "semantic_hash": ""
   },
   "tools/b01-kirmizi-olcumu.py": {
-    "mtime": 1790595961.0399148,
-    "seen": 1790595968.243126,
-    "ast_hash": "06244f2b5c7811da81af7afebe469c98",
+    "mtime": 1790596000.2730591,
+    "seen": 1791320327.364944,
+    "ast_hash": "8862a90e54c00de6851046108752e03f",
     "semantic_hash": ""
   },
   "tools/sigma-build/tests/test_expectation_count.py": {
@@ -7626,15 +7626,15 @@
     "semantic_hash": ""
   },
   "docs/epic/tickets-kapasite/gercek-hiz-kontrolu/index.md": {
-    "mtime": 1790595961.0350742,
-    "seen": 1790595968.243978,
-    "ast_hash": "39a6b359c232c7bf855b165624349199",
+    "mtime": 1790596000.2733498,
+    "seen": 1791320327.365139,
+    "ast_hash": "8e9f2d5fce45c3e01bc44b3d7b270484",
     "semantic_hash": ""
   },
   "docs/epic/tickets-kapasite/index.md": {
-    "mtime": 1790595961.0354369,
-    "seen": 1790595968.2439811,
-    "ast_hash": "0e9ee40d8b7fdc7ffccba6dc03e9afda",
+    "mtime": 1790596000.2735817,
+    "seen": 1791320327.36514,
+    "ast_hash": "9bc5ca04ac7ed664eaeaf1172b5747b2",
     "semantic_hash": ""
   },
   "tools/tests/test_t63_rustfs_outage.py": {
@@ -7704,9 +7704,9 @@
     "semantic_hash": ""
   },
   "sim/Bizigo.OtlpFixture/Program.cs": {
-    "mtime": 1790538228.9541492,
-    "seen": 1790543317.2282739,
-    "ast_hash": "915624931760ad5b8151b075577d68dc",
+    "mtime": 1791078104.8555782,
+    "seen": 1791320327.364587,
+    "ast_hash": "e63daf9e6ca9c534089c42e06aa08b9a",
     "semantic_hash": ""
   },
   "src/Bizigo.Api/TelemetryEndpoints.cs": {
@@ -7722,9 +7722,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Contracts/RawSignalEnvelope.cs": {
-    "mtime": 1790438786.986841,
-    "seen": 1790444381.580247,
-    "ast_hash": "3f589782d17953f4d313e89f69584a9d",
+    "mtime": 1791062075.3128061,
+    "seen": 1791320327.364654,
+    "ast_hash": "4afcbea9efa9cacc224bbaa26cd8732b",
     "semantic_hash": ""
   },
   "src/Bizigo.Ingest/Otlp/OtlpJsonCodec.cs": {
@@ -7740,21 +7740,21 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Ingest/Otlp/SignalIngest.cs": {
-    "mtime": 1790454144.6418333,
-    "seen": 1790459039.414171,
-    "ast_hash": "a96b589e2280d5e16e525e7217d96fc6",
+    "mtime": 1791070031.8559895,
+    "seen": 1791320327.3647208,
+    "ast_hash": "fc69baa372ee0cf8ff4324123d2d24e3",
     "semantic_hash": ""
   },
   "src/Bizigo.Ingest/Otlp/SignalIngestService.cs": {
-    "mtime": 1790426792.575889,
-    "seen": 1790433224.0199811,
-    "ast_hash": "2a2ff6cff4320b3fe5b8f1a9032419c1",
+    "mtime": 1791078104.8553846,
+    "seen": 1791320327.3647208,
+    "ast_hash": "c920e583c124243f330192e3635a256b",
     "semantic_hash": ""
   },
   "src/Bizigo.Ingest/Otlp/SignalOptions.cs": {
-    "mtime": 1790339833.9042165,
-    "seen": 1790425787.5003772,
-    "ast_hash": "bf390cad824f0c547e6e106000b3ce84",
+    "mtime": 1791062075.3757167,
+    "seen": 1791320327.364722,
+    "ast_hash": "7250d3bbd8ede9fd662ef41c3a33bc8b",
     "semantic_hash": ""
   },
   "src/Bizigo.Ingest/Wal/IWalDurability.cs": {
@@ -7770,9 +7770,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Storage.Raw/SignalArchive.cs": {
-    "mtime": 1790533266.087342,
-    "seen": 1790533361.938167,
-    "ast_hash": "9b70bac7a9c10b16b0e8efb48d403686",
+    "mtime": 1791062075.3927696,
+    "seen": 1791320327.364806,
+    "ast_hash": "d4bc6050c2eb770259251d24fec2e8d6",
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/OtlpTelemetryIntegrationTests.cs": {
@@ -7830,9 +7830,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/SignalDurabilityTests.cs": {
-    "mtime": 1790438184.7390568,
-    "seen": 1790444381.5873652,
-    "ast_hash": "f740eeb74fcb2aae23fde1b932f58b8e",
+    "mtime": 1791078104.855457,
+    "seen": 1791320327.364919,
+    "ast_hash": "59c90d1395ab96defee2502e70c2f30a",
     "semantic_hash": ""
   },
   "tools/capacity-descendant-smoke.py": {
@@ -7968,9 +7968,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Contracts/TelemetryRecord.cs": {
-    "mtime": 1790438786.9871492,
-    "seen": 1790444381.580417,
-    "ast_hash": "16a0d35624ba20eb2421a08e87853b9e",
+    "mtime": 1791062075.3134954,
+    "seen": 1791320327.364661,
+    "ast_hash": "bde644b9a59fefea7a689953a950b7b9",
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/Migrations/20260926160000_AddTelemetryOwnership.cs": {
@@ -7980,15 +7980,15 @@
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/SourceOwnershipHistory.cs": {
-    "mtime": 1790437841.3026822,
-    "seen": 1790444381.581204,
-    "ast_hash": "594f308a35eb9be228f916c8ed644157",
+    "mtime": 1791080186.097806,
+    "seen": 1791320327.3646998,
+    "ast_hash": "762c79c8eef843c1beab441aa10d5aa1",
     "semantic_hash": ""
   },
   "src/Bizigo.Ingest/Otlp/TelemetryMaterializer.cs": {
-    "mtime": 1790438786.9882612,
-    "seen": 1790444381.581783,
-    "ast_hash": "b5b2cab1fd9afd5bf14d3445be774e36",
+    "mtime": 1791062075.3771107,
+    "seen": 1791320327.364722,
+    "ast_hash": "708286c2cb5e8a42b3aee85e1eae7adc",
     "semantic_hash": ""
   },
   "src/Bizigo.Query/IScopedQuery.Telemetry.cs": {
@@ -8010,9 +8010,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Storage.ClickHouse/TelemetryWriter.cs": {
-    "mtime": 1790438786.9885018,
-    "seen": 1790444381.584089,
-    "ast_hash": "71009482f2d24bb17c646dcfe86aabd7",
+    "mtime": 1791062075.3859115,
+    "seen": 1791320327.3647969,
+    "ast_hash": "5fb72be5a082091c16855481b2e1c12b",
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/SourceOwnershipHistoryIntegrationTests.cs": {
@@ -8034,9 +8034,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/TelemetryDbFixture.cs": {
-    "mtime": 1790536844.5539453,
-    "seen": 1790543317.234994,
-    "ast_hash": "21f1ea57eb9bb661f8e1b32bad76bfd5",
+    "mtime": 1791078104.855226,
+    "seen": 1791320327.364832,
+    "ast_hash": "97cd7c0ab9f56a3cd905998fd0f344e2",
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/TelemetryMutationControlsIntegrationTests.cs": {
@@ -8088,9 +8088,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/TelemetryScopeTests.cs": {
-    "mtime": 1790437990.2259722,
-    "seen": 1790444381.587507,
-    "ast_hash": "7d33122c0c329237213992496fd1cf8d",
+    "mtime": 1791062075.4069033,
+    "seen": 1791320327.3649259,
+    "ast_hash": "2bf0c287ccd5dd02c3594c1b13be4abb",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/TelemetryStorageTests.cs": {
@@ -8142,9 +8142,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/LegacySignalReplayTests.cs": {
-    "mtime": 1790454356.8909767,
-    "seen": 1790459039.4192069,
-    "ast_hash": "e2696fb5399635fb9ddfe7fe8c034467",
+    "mtime": 1791062075.4058168,
+    "seen": 1791320327.3648791,
+    "ast_hash": "099f18a909fee7e721ca8aced7b63b8c",
     "semantic_hash": ""
   },
   "tools/telemetry-legacy-replay-smoke.py": {
@@ -8156,7 +8156,7 @@
   "db/clickhouse/0007_telemetry.sql": {
     "mtime": 1790437462.2287452,
     "seen": 1790547304.2840278,
-    "ast_hash": "ae0f3d07616ef16fe0bd3f529d6037aa",
+    "ast_hash": "",
     "semantic_hash": ""
   },
   "src/Bizigo.Api/TelemetryDtos.cs": {
@@ -8190,9 +8190,9 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Evidence/EvidenceCoverage.cs": {
-    "mtime": 1790535281.083009,
-    "seen": 1790543317.231443,
-    "ast_hash": "914710648d68311eb6fcb34c0d735554",
+    "mtime": 1791066609.6491156,
+    "seen": 1791320327.3647082,
+    "ast_hash": "ebd74500fe49e559dc5eacfc1b564ae5",
     "semantic_hash": ""
   },
   "src/Bizigo.Evidence/ExcludedInputRecords.cs": {
@@ -8256,9 +8256,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/TelemetryApiHost.cs": {
-    "mtime": 1790552690.5793111,
-    "seen": 1790595779.342601,
-    "ast_hash": "94aea814e603264af15ec1497036aa06",
+    "mtime": 1791062075.3956542,
+    "seen": 1791320327.36483,
+    "ast_hash": "533bb6adff3e60da1f9ec87d4e5599fd",
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/TelemetryApiIntegrationTests.cs": {
@@ -8322,9 +8322,9 @@
     "semantic_hash": ""
   },
   "tools/telemetry-evidence-probe.py": {
-    "mtime": 1790541208.956952,
-    "seen": 1790543317.238571,
-    "ast_hash": "b1efa54ecf2aa642964d3ba89712217b",
+    "mtime": 1790632741.943968,
+    "seen": 1791320327.364974,
+    "ast_hash": "4edc4f272d1d7b07fedf7616f163f1d5",
     "semantic_hash": ""
   },
   "tools/telemetry-evidence-smoke.py": {
@@ -8400,27 +8400,27 @@
     "semantic_hash": ""
   },
   "src/Bizigo.Api/TopologyWriteEndpoints.cs": {
-    "mtime": 1790552560.3853698,
-    "seen": 1790595779.3413708,
-    "ast_hash": "0528bd913fb5b7ac8c0b967ad7071268",
+    "mtime": 1791064942.9613414,
+    "seen": 1791320327.364631,
+    "ast_hash": "b8d61cca0c94607451908f2dbc809eed",
     "semantic_hash": ""
   },
   "src/Bizigo.Contracts/TopologyIdentity.cs": {
-    "mtime": 1790551687.5316827,
-    "seen": 1790595779.341481,
-    "ast_hash": "04ea8cb436908187116ae50870f6462e",
+    "mtime": 1791062075.3147964,
+    "seen": 1791320327.3646631,
+    "ast_hash": "8d30a5e281d2ae25624f64d1c0b1df9b",
     "semantic_hash": ""
   },
   "src/Bizigo.Contracts/TopologyRegistry.cs": {
-    "mtime": 1790552529.829876,
-    "seen": 1790595779.341483,
+    "mtime": 1790982890.73407,
+    "seen": 1791320327.364664,
     "ast_hash": "7e83b0e123e6eb4bbdbfe32596f12f94",
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/ControlPlaneDbContext.Topology.cs": {
-    "mtime": 1790552797.806021,
-    "seen": 1790595779.34149,
-    "ast_hash": "aedb4a9889277808bf36bea49897d9b2",
+    "mtime": 1791062075.3166068,
+    "seen": 1791320327.364667,
+    "ast_hash": "314501cd2a1655f6e636a065f92fcfed",
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/HistoricalTopologyBindings.cs": {
@@ -8454,15 +8454,15 @@
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/TopologyEntities.cs": {
-    "mtime": 1790552529.8310618,
-    "seen": 1790595779.341577,
-    "ast_hash": "d1d0c7f56e9c25dff3d04784e13def47",
+    "mtime": 1791078108.8687167,
+    "seen": 1791320327.364701,
+    "ast_hash": "e3158fe50e22521764251c67cf08a75d",
     "semantic_hash": ""
   },
   "src/Bizigo.ControlPlane/TopologyRegistry.cs": {
-    "mtime": 1790552797.806462,
-    "seen": 1790595779.341578,
-    "ast_hash": "7f3caadc7477cafb15e77b6b678b555f",
+    "mtime": 1791318889.3749638,
+    "seen": 1791320327.364701,
+    "ast_hash": "be8662514df6ecd025c795c750e053a6",
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/TopologyIdentityIntegrationTests.cs": {
@@ -8472,9 +8472,9 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.IntegrationTests/TopologyRegistryIntegrationTests.cs": {
-    "mtime": 1790552937.4861286,
-    "seen": 1790595779.342622,
-    "ast_hash": "fb7f49351af8f254ade7d1237719dc04",
+    "mtime": 1791066609.6559966,
+    "seen": 1791320327.364844,
+    "ast_hash": "dc2304dfdaca3ba113c98d1a5f7486ae",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/TopologyHistoryBoundaryTests.cs": {
@@ -8484,15 +8484,1011 @@
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/TopologyIdentityTests.cs": {
-    "mtime": 1790552736.1986134,
-    "seen": 1790595779.3430212,
-    "ast_hash": "db4c05b31b3a7abd86c80abed427654f",
+    "mtime": 1791062075.416263,
+    "seen": 1791320327.364932,
+    "ast_hash": "d8a68d4f7b9a5d9ed08c235744c879a6",
     "semantic_hash": ""
   },
   "tests/Bizigo.UnitTests/TopologyRegistryTests.cs": {
-    "mtime": 1790552797.8067281,
-    "seen": 1790595779.343023,
-    "ast_hash": "cf149487a2ea7aa04be76ebcf558d832",
+    "mtime": 1791064942.9749897,
+    "seen": 1791320327.364938,
+    "ast_hash": "d45a5c9dc58965a26760d4b032dc8f68",
+    "semantic_hash": ""
+  },
+  "db/clickhouse/0008_topology_edges.sql": {
+    "mtime": 1791062075.3054733,
+    "seen": 1791320327.364546,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "db/clickhouse/0009_topology_publication.sql": {
+    "mtime": 1791062075.3067367,
+    "seen": 1791320327.364547,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "db/clickhouse/0010_topology_projection_batches.sql": {
+    "mtime": 1791062075.307196,
+    "seen": 1791320327.364547,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "db/clickhouse/0011_topology_conflict_context.sql": {
+    "mtime": 1791063557.565334,
+    "seen": 1791320327.364547,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "db/clickhouse/0012_topology_parent_resolution.sql": {
+    "mtime": 1791066609.2786949,
+    "seen": 1791320327.3645482,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "db/clickhouse/0013_topology_scoped_read_indexes.sql": {
+    "mtime": 1791078108.864115,
+    "seen": 1791320327.3645482,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "db/clickhouse/0014_topology_publication_versions.sql": {
+    "mtime": 1791078094.885569,
+    "seen": 1791320327.3645492,
+    "ast_hash": "",
+    "semantic_hash": ""
+  },
+  "sim/Bizigo.OtlpFixture/TopologyCrashHost.cs": {
+    "mtime": 1791078104.8553164,
+    "seen": 1791320327.364588,
+    "ast_hash": "faf5228fa90a51cb8e0fed123db7e8b9",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Api/TopologyNodeMutationDto.cs": {
+    "mtime": 1791064942.955906,
+    "seen": 1791320327.364629,
+    "ast_hash": "db288c0455d266c4ca54a7c3b0131bff",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Api/TopologyNodeWriteDto.cs": {
+    "mtime": 1791064942.9592216,
+    "seen": 1791320327.364629,
+    "ast_hash": "c0c9e4afbb8b0033c6c7ae72e0392b3f",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Api/TopologyReadCursorCodec.cs": {
+    "mtime": 1791078352.757271,
+    "seen": 1791320327.36463,
+    "ast_hash": "8c7163cc97ce2c06714e7d152b9716ff",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Api/TopologyReadEndpoints.cs": {
+    "mtime": 1791318889.3744037,
+    "seen": 1791320327.36463,
+    "ast_hash": "4286ce04e18f3eeaac10977583abb4e6",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Api/TopologyReadResponses.cs": {
+    "mtime": 1791062075.3105185,
+    "seen": 1791320327.36463,
+    "ast_hash": "a03f023181d6173e47fd0c3a5cb08cf8",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Api/TopologyResponseBudget.cs": {
+    "mtime": 1791062075.3108857,
+    "seen": 1791320327.36463,
+    "ast_hash": "282eba7314afe28ab6f19ac1491b493e",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Cli/TopologyRepairCommandHandlers.cs": {
+    "mtime": 1791078352.7586756,
+    "seen": 1791320327.3646421,
+    "ast_hash": "c50eb1d5c2a7f38a1fe92dfd15cd52da",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Contracts/TopologyEdgeProjection.cs": {
+    "mtime": 1791062075.3137887,
+    "seen": 1791320327.364662,
+    "ast_hash": "9a20dbbc2cf1c35b826578eceab59008",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Contracts/TopologyEdges.cs": {
+    "mtime": 1791062075.3140507,
+    "seen": 1791320327.364662,
+    "ast_hash": "2d1b8baefaf28767c3c16c314a66a2fe",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Contracts/TopologyExpiry.cs": {
+    "mtime": 1791062075.314322,
+    "seen": 1791320327.3646631,
+    "ast_hash": "acf8e9deebfe2411fd870ba0f7bdfd00",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Contracts/TopologyPublication.cs": {
+    "mtime": 1791078094.8866603,
+    "seen": 1791320327.364664,
+    "ast_hash": "81a990a0d87b3d21cdfd0c0777dd5ddd",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Contracts/TopologyVisibility.cs": {
+    "mtime": 1791062075.3155198,
+    "seen": 1791320327.364665,
+    "ast_hash": "1b3ad8e0e17cc23dfc2c5dfd6b5a14dc",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/ControlPlaneDbContext.TopologyEdges.cs": {
+    "mtime": 1791062075.3169549,
+    "seen": 1791320327.364668,
+    "ast_hash": "e75a3236f6039f73648938906ec0e8cb",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/Migrations/20261002224707_AddTopologyOwnerHistory.Designer.cs": {
+    "mtime": 1791062075.3186636,
+    "seen": 1791320327.364692,
+    "ast_hash": "955a986e62af061e652b01521da3acfa",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/Migrations/20261002224707_AddTopologyOwnerHistory.cs": {
+    "mtime": 1791062075.3250275,
+    "seen": 1791320327.364692,
+    "ast_hash": "c4777095f8cdd872e7fd884726341df4",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/Migrations/20261002231400_AddTopologyDeclaredEdges.Designer.cs": {
+    "mtime": 1791062075.331998,
+    "seen": 1791320327.364692,
+    "ast_hash": "f96383bac4b2097dca72e4e416ad8fdd",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/Migrations/20261002231400_AddTopologyDeclaredEdges.cs": {
+    "mtime": 1791062075.3328218,
+    "seen": 1791320327.364693,
+    "ast_hash": "0c8df9fc5ed2bb2abd2afc3595856653",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/Migrations/20261003030000_AddTopologyPublicationPending.cs": {
+    "mtime": 1791062075.3336744,
+    "seen": 1791320327.364693,
+    "ast_hash": "37308891d63f3cbe72016dc68aa2cc78",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/Migrations/20261004010000_AddTopologyPublicationRepairState.cs": {
+    "mtime": 1791078094.8867922,
+    "seen": 1791320327.364694,
+    "ast_hash": "ed958bd42c3a31716b9a1c9c09b8007b",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/Migrations/20261004110000_AddTopologyMappedSourceReadIndex.cs": {
+    "mtime": 1791072419.8035083,
+    "seen": 1791320327.364694,
+    "ast_hash": "cc5d6995ef2cf2ef83491c812cbe375d",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/Migrations/20261004120000_AddTopologyScopedReadIndexes.cs": {
+    "mtime": 1791078108.8643026,
+    "seen": 1791320327.364694,
+    "ast_hash": "9622c3bfba25f7221342e3862adeff38",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/Migrations/20261004130000_AddTopologyLegacyMembership.cs": {
+    "mtime": 1791082528.2201712,
+    "seen": 1791320327.364695,
+    "ast_hash": "7052c2e26a3a74dc6b69324bb2fc8744",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/TopologyEdgeEntities.cs": {
+    "mtime": 1791078108.8682604,
+    "seen": 1791320327.3646998,
+    "ast_hash": "c73a018c6b73233d6ba0c0ce0a309874",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.ControlPlane/TopologyEdgeRegistry.cs": {
+    "mtime": 1791064942.965712,
+    "seen": 1791320327.364701,
+    "ast_hash": "0ebd1505e4eee015ec9e2bd20885d7e4",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Evidence/Providers/TopologyGraphProviders.cs": {
+    "mtime": 1791079236.8007514,
+    "seen": 1791320327.364713,
+    "ast_hash": "bd8686e3b4e4f2a8d8da534fac19ce1a",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Evidence/TopologyProviderBudget.cs": {
+    "mtime": 1791062075.3742743,
+    "seen": 1791320327.364715,
+    "ast_hash": "01133f2770b5e42a8843ef0bb15e05cd",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Ingest/Wal/TopologyLegacyWalCandidateVerifier.cs": {
+    "mtime": 1791080186.0982337,
+    "seen": 1791320327.364727,
+    "ast_hash": "975c6a66db343d75769ed919d6cecc49",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Mcp.Product/Tools/MetricsDetailTool.cs": {
+    "mtime": 1791320330.8813834,
+    "seen": 1791320343.5613592,
+    "ast_hash": "87354d27e71f7eade58f5f007a1ba21f",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Mcp.Product/Tools/MetricsDrilldownTool.cs": {
+    "mtime": 1791320330.881447,
+    "seen": 1791320343.56136,
+    "ast_hash": "ff88e95fd41f5ced8ebe83e8d7810570",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Mcp.Product/Tools/MetricsListTool.cs": {
+    "mtime": 1791320330.8815012,
+    "seen": 1791320343.5613608,
+    "ast_hash": "ae1884bdf519efcf31955644f0036ebb",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Mcp.Product/Tools/TopologyDetailTool.cs": {
+    "mtime": 1791320330.8816798,
+    "seen": 1791320343.5614002,
+    "ast_hash": "feb9c8d175aba99bdba2cf5ed6528381",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Mcp.Product/Tools/TopologyDrilldownTool.cs": {
+    "mtime": 1791320330.8817766,
+    "seen": 1791320343.5614002,
+    "ast_hash": "982e9c75ceac32ecaf3fbac31f929e1a",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Mcp.Product/Tools/TopologyListTool.cs": {
+    "mtime": 1791320330.881835,
+    "seen": 1791320343.5614011,
+    "ast_hash": "7706cf083be1d0e71b7cd831e2b0681f",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Mcp.Product/Tools/TracesDetailTool.cs": {
+    "mtime": 1791320330.8818858,
+    "seen": 1791320343.561402,
+    "ast_hash": "f08550e4d89136bfc9ad539c4f75cbec",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Mcp.Product/Tools/TracesDrilldownTool.cs": {
+    "mtime": 1791320330.8819358,
+    "seen": 1791320343.561402,
+    "ast_hash": "eb689e544b4da433ad69c93975dbcdad",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Mcp.Product/Tools/TracesListTool.cs": {
+    "mtime": 1791320330.8819907,
+    "seen": 1791320343.5614028,
+    "ast_hash": "92dd7c66e195273019841cf03db0eadc",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Query/IScopedQuery.Topology.cs": {
+    "mtime": 1791072419.8063898,
+    "seen": 1791320327.364766,
+    "ast_hash": "2d680e91ced262bff6a0b93e5facebb4",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Query/ITopologyExpiryNanoClock.cs": {
+    "mtime": 1791070739.8368769,
+    "seen": 1791320327.364767,
+    "ast_hash": "5c208bd4125bdeb0ec057bb531ae4faf",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Query/ScopedQuery.Topology.cs": {
+    "mtime": 1791072419.8072062,
+    "seen": 1791320327.364768,
+    "ast_hash": "955886ba82c7473d316ee82d46770c56",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Query/TopologyGraphContracts.cs": {
+    "mtime": 1791078108.8690255,
+    "seen": 1791320327.364769,
+    "ast_hash": "5c0b81b234b270caa51b20d9f2b6f5a5",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Query/TopologyGraphCursor.cs": {
+    "mtime": 1791062075.381453,
+    "seen": 1791320327.364769,
+    "ast_hash": "919398b8cff3c30f4015d771a03a3005",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Query/TopologyGraphQueryService.cs": {
+    "mtime": 1791318889.3754954,
+    "seen": 1791320327.364769,
+    "ast_hash": "48aefa3c4e79fc39b4f5cb82eec972f6",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Query/TopologyGraphSnapshotSource.cs": {
+    "mtime": 1791078118.1310346,
+    "seen": 1791320327.36477,
+    "ast_hash": "11485e72df55092928f862612230d405",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Query/TopologyObservedRepairReadiness.cs": {
+    "mtime": 1791082528.010954,
+    "seen": 1791320327.36477,
+    "ast_hash": "7852fb3bc6b5e5fcde962ab64ddf42a8",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Query/TopologyPublicationCoordinator.cs": {
+    "mtime": 1791078094.887591,
+    "seen": 1791320327.36477,
+    "ast_hash": "c4533e15519e3e0ad836a5673bf170b1",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Query/TopologyPublicationFence.cs": {
+    "mtime": 1791078113.4558642,
+    "seen": 1791320327.3647711,
+    "ast_hash": "29d2222801afda90182f9148b0e2701f",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Query/TopologyPublicationRepairRunner.cs": {
+    "mtime": 1791082527.9516106,
+    "seen": 1791320327.3647711,
+    "ast_hash": "0b0c62950c298cd8d0c19108592166ff",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Query/TopologyPublicationRevisionSource.cs": {
+    "mtime": 1791078094.8881655,
+    "seen": 1791320327.364772,
+    "ast_hash": "fadaf3dbecf6428d5f1cb64fcae369f0",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Query/TopologyRepairMembershipBuilder.cs": {
+    "mtime": 1791080734.7799091,
+    "seen": 1791320327.364772,
+    "ast_hash": "b03b8e7a796abafb2c3cc9186d3909b8",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Query/TopologySourceTargetPageReader.cs": {
+    "mtime": 1791318889.3758483,
+    "seen": 1791320327.364772,
+    "ast_hash": "6f60b9f89f5a91c6b406276fec006fe7",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Replay/TopologyRecovery.cs": {
+    "mtime": 1791062075.3851624,
+    "seen": 1791320327.364786,
+    "ast_hash": "ea8903a62e0e96e17e4dd38850e6252b",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Storage.ClickHouse/TopologyLegacyV2CandidateVerifier.cs": {
+    "mtime": 1791079236.7707107,
+    "seen": 1791320327.3647969,
+    "ast_hash": "fbdb7d714a21e09f3a02e995066f96aa",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Storage.ClickHouse/TopologyObservation.cs": {
+    "mtime": 1791066609.2815845,
+    "seen": 1791320327.364798,
+    "ast_hash": "a58ee2e64b6e049cda22e9cc245a87db",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Storage.ClickHouse/TopologyObservedProjector.cs": {
+    "mtime": 1791318889.3763583,
+    "seen": 1791320327.364798,
+    "ast_hash": "35f8b43b9ad33b67a0d4e7c318238b5e",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Storage.ClickHouse/TopologyObservedRowDigest.cs": {
+    "mtime": 1791078094.8890412,
+    "seen": 1791320327.364799,
+    "ast_hash": "cc2b9f245df3855fffedc5d0f5979009",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Storage.ClickHouse/TopologyObservedRowHydration.cs": {
+    "mtime": 1791078094.8891718,
+    "seen": 1791320327.364799,
+    "ast_hash": "1f92c902ad5cf3f147f08a7aec183d98",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Storage.ClickHouse/TopologyObservedSnapshotReader.cs": {
+    "mtime": 1791318889.3768642,
+    "seen": 1791320327.364799,
+    "ast_hash": "9b878f575aa44061cbd86b4f473b5ac7",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Storage.ClickHouse/TopologyPublicationRepairStorage.cs": {
+    "mtime": 1791078286.1567736,
+    "seen": 1791320327.3648,
+    "ast_hash": "e3bcdc130ccbbb1e402307a53b29ccc0",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Storage.ClickHouse/TopologyPublicationWatermarkReader.cs": {
+    "mtime": 1791062075.391833,
+    "seen": 1791320327.3648,
+    "ast_hash": "6b76cfb3438b135de83e881d831b68ae",
+    "semantic_hash": ""
+  },
+  "src/Bizigo.Storage.ClickHouse/TopologyRepairSchemaInspector.cs": {
+    "mtime": 1791078094.889525,
+    "seen": 1791320327.3648,
+    "ast_hash": "4df5669da662d896d7bd03dcc2e91bbe",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/FixedTopologyExpiryNanoClock.cs": {
+    "mtime": 1791070792.2065988,
+    "seen": 1791320327.364817,
+    "ast_hash": "ac804dac62d38bcba121c12db887b561",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyApiOracleIntegrationTests.cs": {
+    "mtime": 1791318889.3771994,
+    "seen": 1791320327.364835,
+    "ast_hash": "4744bd8b31cb74b9d262f5050dced28e",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyArchiveProcessIntegrationTests.cs": {
+    "mtime": 1791318889.3776479,
+    "seen": 1791320327.364835,
+    "ast_hash": "e7a3e93708589439fab01609ff48e489",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyConflictIsolationIntegrationTests.cs": {
+    "mtime": 1791079236.853504,
+    "seen": 1791320327.364836,
+    "ast_hash": "a8cb891be15b52e14773cf8af45c37c7",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyDeclaredIntegrationTests.cs": {
+    "mtime": 1791066609.6540475,
+    "seen": 1791320327.364836,
+    "ast_hash": "1e330d4029fb21664425e5a4dca94f2e",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyEdgeConcurrentOwnerOracleIntegrationTests.cs": {
+    "mtime": 1791068836.7031953,
+    "seen": 1791320327.364836,
+    "ast_hash": "81300d44c61c4b34600dc2e46a5f1bbd",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyEdgeDetailWindowOracleIntegrationTests.cs": {
+    "mtime": 1791318889.3779922,
+    "seen": 1791320327.3648372,
+    "ast_hash": "5c2312aef74521e3ffa695a1f269b267",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyEdgeMigrationOracleIntegrationTests.cs": {
+    "mtime": 1791318889.3782523,
+    "seen": 1791320327.3648372,
+    "ast_hash": "e5dc8471b773e59c7ad5f68bb9c575a7",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyExactCapturedExpiryIntegrationTests.cs": {
+    "mtime": 1791078155.655604,
+    "seen": 1791320327.3648372,
+    "ast_hash": "781567bb23b1a83255505b938e03f80f",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyExactHttpNanoIntegrationTests.cs": {
+    "mtime": 1791078470.255742,
+    "seen": 1791320327.3648372,
+    "ast_hash": "1e489206a3ddec851f7b37858b036885",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyFinalEvidenceOracleIntegrationTests.cs": {
+    "mtime": 1791078470.2552178,
+    "seen": 1791320327.364838,
+    "ast_hash": "6b573abf57dce4263f1a46ba9d5a67bc",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyFinalExpiryOracleIntegrationTests.cs": {
+    "mtime": 1791078155.625052,
+    "seen": 1791320327.364838,
+    "ast_hash": "09788d8122493c9b11c47b49ee2f8ffd",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyFinalRouteAndAuditOracleIntegrationTests.cs": {
+    "mtime": 1791078484.0506265,
+    "seen": 1791320327.364838,
+    "ast_hash": "99fde1095b8101fbdffae6d4628bbe76",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyFinalScopeOracleIntegrationTests.cs": {
+    "mtime": 1791078470.2548609,
+    "seen": 1791320327.3648388,
+    "ast_hash": "6f6a98ab69b93ae2d810878539a0a527",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyGraphDatabaseFenceTests.cs": {
+    "mtime": 1791078131.4459565,
+    "seen": 1791320327.3648388,
+    "ast_hash": "bc258dfb75f800f4ad05a013845f7497",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyGraphDatabaseIntegrationTests.cs": {
+    "mtime": 1791318889.3786514,
+    "seen": 1791320327.3648388,
+    "ast_hash": "0350c7c25ee6d49101604609a244ba25",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyGraphIntegrationTests.cs": {
+    "mtime": 1791062075.39859,
+    "seen": 1791320327.36484,
+    "ast_hash": "240f26853e70c663886d204e8b982d8a",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyHistoricalDisplayOracleIntegrationTests.cs": {
+    "mtime": 1791078155.6262958,
+    "seen": 1791320327.36484,
+    "ast_hash": "f8b481716f949bab8258cc33f0baf083",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyHttpBudgetIntegrationTests.cs": {
+    "mtime": 1791065242.4373167,
+    "seen": 1791320327.36484,
+    "ast_hash": "cdb8388836c45d5b6d5ef0ee60941863",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyHttpOracleHost.cs": {
+    "mtime": 1791072459.6231565,
+    "seen": 1791320327.36484,
+    "ast_hash": "aaccdae55df9b02726a50f408d9e6736",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyLegacyMembershipGuardIntegrationTests.cs": {
+    "mtime": 1791082528.220975,
+    "seen": 1791320327.364841,
+    "ast_hash": "3fc54948820a6eaecdadc19e4e0c17d9",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyMappedSourceBudgetIntegrationTests.cs": {
+    "mtime": 1791078155.6267402,
+    "seen": 1791320327.364841,
+    "ast_hash": "113fc6eaec904d0e383325573828433f",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyMappedSourceGroupOracleIntegrationTests.cs": {
+    "mtime": 1791078155.6277437,
+    "seen": 1791320327.364842,
+    "ast_hash": "6a6b3cf93583b4dffb9923f2e3f4156c",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyMappingSqlIntegrationTests.cs": {
+    "mtime": 1791318889.3789256,
+    "seen": 1791320327.364842,
+    "ast_hash": "ab9d83cab04f37276b4d5db3fa0f1fd1",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyMutationOracleIntegrationTests.cs": {
+    "mtime": 1791318889.3791902,
+    "seen": 1791320327.364842,
+    "ast_hash": "50904947601dd3e36d029ee2548f35c5",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyObservedRowDigestIntegrationTests.cs": {
+    "mtime": 1791078094.8896608,
+    "seen": 1791320327.364843,
+    "ast_hash": "38b6cde3377e35744e4a1a44a5e06580",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyProjectionIntegrationTests.cs": {
+    "mtime": 1791318889.379546,
+    "seen": 1791320327.364843,
+    "ast_hash": "16d7f2f8100908ff8e9881346d880985",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyPublicationIntegrationTests.cs": {
+    "mtime": 1791078131.4475033,
+    "seen": 1791320327.364843,
+    "ast_hash": "e4945140ea567c4778f8a11cdddb0946",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyPublicationRetentionRepairIntegrationTests.cs": {
+    "mtime": 1791078955.1541777,
+    "seen": 1791320327.364843,
+    "ast_hash": "a29507403c051e5e42dfe8e31b906ac2",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyQueryIntegrationTests.cs": {
+    "mtime": 1791078122.6374204,
+    "seen": 1791320327.364844,
+    "ast_hash": "84ca3ec710d91ee63a8d7d0e0a3fb8bf",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyReplayIntegrationTests.cs": {
+    "mtime": 1791062075.4017642,
+    "seen": 1791320327.364844,
+    "ast_hash": "50ec44396c3ba9af0215c62f3d5374f7",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyReplayNegativeIntegrationTests.cs": {
+    "mtime": 1791070031.892295,
+    "seen": 1791320327.364845,
+    "ast_hash": "0b01fa14d91939044e4b7d136a727d64",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyReplayProcessTests.cs": {
+    "mtime": 1791318889.379814,
+    "seen": 1791320327.364845,
+    "ast_hash": "5d73839a47d94575547da4dada2c62aa",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.IntegrationTests/TopologyScopedArchitectureOracleTests.cs": {
+    "mtime": 1791070789.1315548,
+    "seen": 1791320327.364845,
+    "ast_hash": "30fb8b5f04872fd9413b4cd05e9d3c42",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/McpTelemetryAndTopologyTests.cs": {
+    "mtime": 1791320330.8820643,
+    "seen": 1791320343.565919,
+    "ast_hash": "83774f2416695c68d2df66c01bc5bfdc",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/SignalReplayReadinessTests.cs": {
+    "mtime": 1791070031.8684518,
+    "seen": 1791320327.3649201,
+    "ast_hash": "fef371bff825a1eaf7a44384c5054308",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyAdmissionTests.cs": {
+    "mtime": 1791062075.4075391,
+    "seen": 1791320327.364927,
+    "ast_hash": "e4a0abad51a9462df76f05487aa8147f",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyAncestorScoringTests.cs": {
+    "mtime": 1791066609.657116,
+    "seen": 1791320327.364928,
+    "ast_hash": "faf70e979f4db7e31a204df0f0071c96",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyAuditTests.cs": {
+    "mtime": 1791070739.8724844,
+    "seen": 1791320327.364928,
+    "ast_hash": "f7cb2c25763007b1b2b3c66cc0d47632",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyConflictIsolationTests.cs": {
+    "mtime": 1791066609.2878175,
+    "seen": 1791320327.364928,
+    "ast_hash": "17a8b55eee17a0fb722535b0df004b01",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyDeclaredEdgeTests.cs": {
+    "mtime": 1791064942.9719274,
+    "seen": 1791320327.364928,
+    "ast_hash": "1bc84d2e6ce6b09db4d7013eac602557",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyEvidenceTests.cs": {
+    "mtime": 1791063553.4072208,
+    "seen": 1791320327.364929,
+    "ast_hash": "2ba1b7405c9f5b72ab17702d385f89f3",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyExpiryTests.cs": {
+    "mtime": 1791062075.4104571,
+    "seen": 1791320327.364929,
+    "ast_hash": "4653d48692a72e8e93e8007c9d9660b2",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyFeedScopeStateTests.cs": {
+    "mtime": 1791066609.6575146,
+    "seen": 1791320327.364929,
+    "ast_hash": "d62ff96a7579cec9f6b7acfc4c577e81",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyGeneratedWireFixtureTests.cs": {
+    "mtime": 1791065604.2392125,
+    "seen": 1791320327.3649302,
+    "ast_hash": "af542ab8b1293ff771849d77c4823e15",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyGraphOrderingOracleTests.cs": {
+    "mtime": 1791065788.5512915,
+    "seen": 1791320327.3649302,
+    "ast_hash": "db83ed3d9c04841a0e8a54250c3a7131",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyGraphTests.cs": {
+    "mtime": 1791318889.3802967,
+    "seen": 1791320327.3649302,
+    "ast_hash": "4aac899372d85a1adfeaab347e693ef2",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyGroupedAncestorTests.cs": {
+    "mtime": 1791070732.9554017,
+    "seen": 1791320327.364931,
+    "ast_hash": "21e73df0a896e21c0a98798af0323b32",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyHostedActivationTests.cs": {
+    "mtime": 1791078104.855518,
+    "seen": 1791320327.364932,
+    "ast_hash": "59362d583acc2ee6a9cba47fe696ab3a",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyLegacyV2CandidateTests.cs": {
+    "mtime": 1791079236.772106,
+    "seen": 1791320327.364932,
+    "ast_hash": "ec2d53f11cb1e456b83fa958074969cb",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyLegacyWalCandidateTests.cs": {
+    "mtime": 1791080186.164851,
+    "seen": 1791320327.364933,
+    "ast_hash": "cb35ac699fe297833139541bd61c0762",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyNodeWriteWireTests.cs": {
+    "mtime": 1791064942.9739451,
+    "seen": 1791320327.364933,
+    "ast_hash": "e3abf380c011403a58fdefa1b7a7c27e",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyObservationTests.cs": {
+    "mtime": 1791066609.2881045,
+    "seen": 1791320327.364933,
+    "ast_hash": "d6cb4d932d97159f42519158d6358b03",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyObservedRowDigestTests.cs": {
+    "mtime": 1791078094.8900993,
+    "seen": 1791320327.364934,
+    "ast_hash": "a882a7b540421e5225fd919fa7b61a05",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyOutsideCountTests.cs": {
+    "mtime": 1791070733.4092083,
+    "seen": 1791320327.364934,
+    "ast_hash": "7beffb7f9303b0885800af76900aecb0",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyProductionProviderTests.cs": {
+    "mtime": 1791079236.8025568,
+    "seen": 1791320327.364935,
+    "ast_hash": "4a612bfeb6a82a48c732e2e9cc81f2fa",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyProvenanceCoexistenceTests.cs": {
+    "mtime": 1791062075.4200974,
+    "seen": 1791320327.364935,
+    "ast_hash": "5322304d691a3abac39b4415bac9cdfe",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyProviderBudgetTests.cs": {
+    "mtime": 1791062075.420391,
+    "seen": 1791320327.3649359,
+    "ast_hash": "3d62d075936c7a7544d84fd90632648a",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyProviderRemovalTests.cs": {
+    "mtime": 1791066609.6587193,
+    "seen": 1791320327.3649359,
+    "ast_hash": "51c97562bdf1ea5bf98d764a7282a1c5",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyPublicationFenceTests.cs": {
+    "mtime": 1791078113.4565017,
+    "seen": 1791320327.364937,
+    "ast_hash": "0f65f82dd9e3650571aea9079cd9b71d",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyRecoveryTests.cs": {
+    "mtime": 1791062075.4219782,
+    "seen": 1791320327.364937,
+    "ast_hash": "03674b9740c4e5cfb10afbda4426823c",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyRepairMembershipBuilderTests.cs": {
+    "mtime": 1791080734.7801023,
+    "seen": 1791320327.364938,
+    "ast_hash": "7dbc90933664247b87b2e0919534acd8",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyRepairRevisionTests.cs": {
+    "mtime": 1791078094.8902328,
+    "seen": 1791320327.364938,
+    "ast_hash": "7cdd3d6ea066048f7a24890c83d4b303",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyResponseBudgetTests.cs": {
+    "mtime": 1791062075.422829,
+    "seen": 1791320327.364939,
+    "ast_hash": "73c2dabcecab5d1528865834e660db43",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologySourceTargetPageTests.cs": {
+    "mtime": 1791079236.884181,
+    "seen": 1791320327.364939,
+    "ast_hash": "af2af224efc2a5ad8e6b43f204ca5766",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyVisibilityTests.cs": {
+    "mtime": 1791062075.4231305,
+    "seen": 1791320327.364939,
+    "ast_hash": "3de3dd99b26ae76f8e7d2a0689d28720",
+    "semantic_hash": ""
+  },
+  "tests/Bizigo.UnitTests/TopologyWireTests.cs": {
+    "mtime": 1791078113.4567518,
+    "seen": 1791320327.364939,
+    "ast_hash": "a05e7729dafcb0f5b47a7c2617c36377",
+    "semantic_hash": ""
+  },
+  "tools/tests/test_topology_ci_contract.py": {
+    "mtime": 1791071207.4605114,
+    "seen": 1791320327.3649778,
+    "ast_hash": "e470bb775af556ff33db1395754abf7f",
+    "semantic_hash": ""
+  },
+  "tools/tests/test_topology_graph_harness.py": {
+    "mtime": 1791063465.5367417,
+    "seen": 1791320327.3649778,
+    "ast_hash": "5b594004dbc9b1fc2d8ca143fc7bf479",
+    "semantic_hash": ""
+  },
+  "tools/tests/test_topology_mutation_plan.py": {
+    "mtime": 1790982094.8019412,
+    "seen": 1791320327.364979,
+    "ast_hash": "1446a1f68f1049f1520f3997671f8093",
+    "semantic_hash": ""
+  },
+  "tools/topology-graph-mutation-check.py": {
+    "mtime": 1790982085.367897,
+    "seen": 1791320327.364979,
+    "ast_hash": "cc9a0a271093d176049b5ed0c2e17978",
+    "semantic_hash": ""
+  },
+  "tools/topology-graph-mutations.json": {
+    "mtime": 1790984513.95168,
+    "seen": 1791320327.364979,
+    "ast_hash": "15613978605fd224100f1f170501c0db",
+    "semantic_hash": ""
+  },
+  "tools/topology-graph-probe.py": {
+    "mtime": 1791064252.6062517,
+    "seen": 1791320327.36498,
+    "ast_hash": "07351f807c3a0cde241f3eb9893c10f8",
+    "semantic_hash": ""
+  },
+  "tools/topology-graph-smoke.py": {
+    "mtime": 1790981245.475407,
+    "seen": 1791320327.36498,
+    "ast_hash": "f193801015dcac627b40c19b05168c88",
+    "semantic_hash": ""
+  },
+  "tools/topology-visibility-mutations.json": {
+    "mtime": 1791062075.4236603,
+    "seen": 1791320327.36498,
+    "ast_hash": "a2146c499a90227ca983cb24be330bf1",
+    "semantic_hash": ""
+  },
+  "ui/scripts/topology-wire-check.ts": {
+    "mtime": 1791065604.2422898,
+    "seen": 1791320327.364984,
+    "ast_hash": "e79ab353a5aae406f1ae7a8bf3cfd2d2",
+    "semantic_hash": ""
+  },
+  "ui/src/app/izler/TracesView.tsx": {
+    "mtime": 1791320330.8824594,
+    "seen": 1791320343.569071,
+    "ast_hash": "77e677e5240b031f71dda5f10e727ce6",
+    "semantic_hash": ""
+  },
+  "ui/src/app/izler/WaterfallVisualizer.tsx": {
+    "mtime": 1791320330.882519,
+    "seen": 1791320343.5690722,
+    "ast_hash": "e427d8babd90e663f50fa09dfc1d31d1",
+    "semantic_hash": ""
+  },
+  "ui/src/app/izler/loading.tsx": {
+    "mtime": 1791320330.8826132,
+    "seen": 1791320343.5690722,
+    "ast_hash": "f0bb4aecefffc4009a4c3c73e5e3fef3",
+    "semantic_hash": ""
+  },
+  "ui/src/app/izler/page.tsx": {
+    "mtime": 1791320330.8826554,
+    "seen": 1791320343.569073,
+    "ast_hash": "80f14e57202a6bd13c49e1241e0cb199",
+    "semantic_hash": ""
+  },
+  "ui/src/app/metrikler/BucketVisualizer.tsx": {
+    "mtime": 1791320330.8827827,
+    "seen": 1791320343.5692391,
+    "ast_hash": "d041a39547faae91e2ee22eb0832c50a",
+    "semantic_hash": ""
+  },
+  "ui/src/app/metrikler/MetricsView.tsx": {
+    "mtime": 1791320330.8828773,
+    "seen": 1791320343.56924,
+    "ast_hash": "96e53c20b2e9c07b8c4b7ff15629d65e",
+    "semantic_hash": ""
+  },
+  "ui/src/app/metrikler/loading.tsx": {
+    "mtime": 1791320330.8829215,
+    "seen": 1791320343.56924,
+    "ast_hash": "a1e6666545b46407456da0111ec27948",
+    "semantic_hash": ""
+  },
+  "ui/src/app/metrikler/page.tsx": {
+    "mtime": 1791320330.883026,
+    "seen": 1791320343.56924,
+    "ast_hash": "ad1a3d45e17ce9658dcdca0ac0a7db06",
+    "semantic_hash": ""
+  },
+  "ui/src/app/topoloji/TopologyGraph.tsx": {
+    "mtime": 1791320330.8831644,
+    "seen": 1791320343.569539,
+    "ast_hash": "03444a77a3fefcaa21dea03333b8ad63",
+    "semantic_hash": ""
+  },
+  "ui/src/app/topoloji/TopologyView.tsx": {
+    "mtime": 1791320330.883242,
+    "seen": 1791320343.56954,
+    "ast_hash": "9ea9b7ef2d9b61edc3a7e514aab6d113",
+    "semantic_hash": ""
+  },
+  "ui/src/app/topoloji/loading.tsx": {
+    "mtime": 1791320330.8832965,
+    "seen": 1791320343.56954,
+    "ast_hash": "807967f00005aae541092fa50bbf6f0d",
+    "semantic_hash": ""
+  },
+  "ui/src/app/topoloji/page.tsx": {
+    "mtime": 1791320330.883357,
+    "seen": 1791320343.5695412,
+    "ast_hash": "c4c3c1c0479c87d840e653e861652b07",
+    "semantic_hash": ""
+  },
+  "ui/src/lib/api/topology-node-write.typecheck.ts": {
+    "mtime": 1791064942.9767005,
+    "seen": 1791320327.3650198,
+    "ast_hash": "012867aa0452785ca2e8611f4271f843",
+    "semantic_hash": ""
+  },
+  "ui/tests/telemetry-topology-screens.test.tsx": {
+    "mtime": 1791320330.884001,
+    "seen": 1791320343.570739,
+    "ast_hash": "f05afc3f746e472b9dd1c312bea3e218",
+    "semantic_hash": ""
+  },
+  "docs/topology-conflict-readiness.md": {
+    "mtime": 1791066609.2794716,
+    "seen": 1791320327.3651562,
+    "ast_hash": "11d4656ea73a4e8ff53b02d2df633680",
+    "semantic_hash": ""
+  },
+  "docs/topology-graph.md": {
+    "mtime": 1791062075.3076532,
+    "seen": 1791320327.3651562,
+    "ast_hash": "a97952a7194fefe16b849556ad253023",
+    "semantic_hash": ""
+  },
+  "docs/ekran-goruntuleri/izler-selale-dark.png": {
+    "mtime": 1791320330.8801284,
+    "seen": 1791320343.574867,
+    "ast_hash": "d0f25dc0f23e96ffdfc6f12bebb5c9f9",
+    "semantic_hash": ""
+  },
+  "docs/ekran-goruntuleri/izler-selale-light.png": {
+    "mtime": 1791320330.8804023,
+    "seen": 1791320343.574867,
+    "ast_hash": "58f29c0a575cfde6c2241d620c890fb8",
+    "semantic_hash": ""
+  },
+  "docs/ekran-goruntuleri/metrikler-kovalar-dark.png": {
+    "mtime": 1791320330.8805535,
+    "seen": 1791320343.5749161,
+    "ast_hash": "8130116c2ed8c37bd9d7fe8871b57dd1",
+    "semantic_hash": ""
+  },
+  "docs/ekran-goruntuleri/metrikler-kovalar-light.png": {
+    "mtime": 1791320330.8806958,
+    "seen": 1791320343.5749161,
+    "ast_hash": "34685061e18a3d82b4bd9151ab20d744",
+    "semantic_hash": ""
+  },
+  "docs/ekran-goruntuleri/topoloji-grafik-dark.png": {
+    "mtime": 1791320330.880871,
+    "seen": 1791320343.5750132,
+    "ast_hash": "045c3f97f6cef604c07965ef6f5a776c",
+    "semantic_hash": ""
+  },
+  "docs/ekran-goruntuleri/topoloji-grafik-light.png": {
+    "mtime": 1791320330.8810458,
+    "seen": 1791320343.5750132,
+    "ast_hash": "375ecf5def5cf0b5b01770211b2785fc",
     "semantic_hash": ""
   }
 }

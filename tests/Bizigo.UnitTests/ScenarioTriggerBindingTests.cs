@@ -88,38 +88,19 @@ public sealed class ScenarioTriggerBindingTests
             .ToHashSet(StringComparer.Ordinal);
 
         Assert.Equal(ScenarioTriggers.Continuations, extra);
-
-        // Ve devam kuralı tek: anomali zinciri. İkincisi eklenirse bu bir
-        // çekirdek kararı ve buraya bilinçli olarak yazılması gerekiyor.
-        Assert.Equal([ScenarioTriggers.Anomaly], ScenarioTriggers.Continuations);
+        Assert.Empty(ScenarioTriggers.Continuations);
     }
 
     /// <summary>
-    /// Anomali zinciri sözlükte var, <b>kaynak kümesinde yok</b> — ve bu ayrım
-    /// kasıtlı.
-    ///
-    /// <para>
-    /// İki liste farklı soru soruyor. Kaynak kümesi <i>"bu koşumu ne
-    /// doğurdu"</i>: zincir bir kaynak değil bir devam, izi
-    /// <c>RcaRunEntity.Depth &gt; 0</c> ve kaynağını kökünden miras alıyor.
-    /// Sözlük <i>"bir senaryo neye bakarak koşabilir"</i>: orada "bir zincir
-    /// devam ettiğinde koş" meşru bir cümle.
-    /// </para>
-    ///
-    /// <para>
-    /// Bu test iki listeyi <b>birleştirme</b> yönündeki bir düzeltmeyi de
-    /// yakalıyor: <c>anomaly</c> enum'a beşinci değer olarak eklenirse burası
-    /// kırmızı yanıyor. Yani hem ayrışmaya hem fazla-birleşmeye karşı.
-    /// </para>
+    /// Anomali Sprint 07 (S13) ile birlikte birinci sınıf bir RCA tetikleyici kaynağı oldu.
+    /// Sözlükte ve kaynak kümesinde yerini alıyor.
     /// </summary>
     [Fact]
-    public void Anomali_zinciri_kaynak_degil()
+    public void Anomali_kaynak_kumesinde_yer_aldi()
     {
         Assert.Contains(ScenarioTriggers.Anomaly, ScenarioTriggers.Known);
-
-        Assert.DoesNotContain(ScenarioTriggers.Anomaly, RcaTriggerVocabulary.WireNames);
-
-        Assert.DoesNotContain(
+        Assert.Contains(ScenarioTriggers.Anomaly, RcaTriggerVocabulary.WireNames);
+        Assert.Contains(
             Enum.GetNames<RcaTriggerSource>(),
             name => name.Equals("Anomaly", StringComparison.OrdinalIgnoreCase));
     }

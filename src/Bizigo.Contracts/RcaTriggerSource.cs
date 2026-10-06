@@ -110,6 +110,11 @@ public enum RcaTriggerSource
     /// </para>
     /// </summary>
     Agent = 4,
+
+    /// <summary>
+    /// <b>Anomali</b> — S4 anomaly policy ve worker motoru (Sprint 07, S13).
+    /// </summary>
+    Anomaly = 5,
 }
 
 /// <summary>
