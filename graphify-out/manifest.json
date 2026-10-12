@@ -4590,9 +4590,9 @@
     "semantic_hash": ""
   },
   "db/clickhouse/0004_fix_otel_severity_scale.sql": {
-    "mtime": 1786915988.8669715,
-    "seen": 1791323438.994606,
-    "ast_hash": "",
+    "mtime": 1791825101.9875717,
+    "seen": 1791825599.588,
+    "ast_hash": "a8cce1b1c9fce1d12422f7871853be51",
     "semantic_hash": ""
   },
   "db/clickhouse/0005_time_source.sql": {
@@ -4602,9 +4602,9 @@
     "semantic_hash": ""
   },
   "db/clickhouse/0006_signature_hash.sql": {
-    "mtime": 1787222013.5221343,
-    "seen": 1791323438.9946072,
-    "ast_hash": "",
+    "mtime": 1791825101.9874682,
+    "seen": 1791825599.5880032,
+    "ast_hash": "c8b7bafd77887e9f0c7d895c2e8efe0e",
     "semantic_hash": ""
   },
   "deploy/postgres/01-keycloak-db.sql": {
@@ -4614,129 +4614,129 @@
     "semantic_hash": ""
   },
   "detections/sigma/03702803-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787266842.4201438,
-    "seen": 1791323438.9946198,
-    "ast_hash": "",
+    "mtime": 1791825101.984346,
+    "seen": 1791825599.5880299,
+    "ast_hash": "5a94f95731749db7c804313ec52abb9c",
     "semantic_hash": ""
   },
   "detections/sigma/06977082-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.186488,
-    "seen": 1791323438.9946198,
-    "ast_hash": "",
+    "mtime": 1791825101.983676,
+    "seen": 1791825599.588031,
+    "ast_hash": "3f99f7f25d0c31abbae5644e5cf82863",
     "semantic_hash": ""
   },
   "detections/sigma/07131427-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.1870582,
-    "seen": 1791323438.994621,
-    "ast_hash": "",
+    "mtime": 1791825101.9831448,
+    "seen": 1791825599.588032,
+    "ast_hash": "fe14ea352dbc78d70346d6df544162e1",
     "semantic_hash": ""
   },
   "detections/sigma/07883503-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.1874986,
-    "seen": 1791323438.994621,
-    "ast_hash": "",
+    "mtime": 1791825101.9842696,
+    "seen": 1791825599.588032,
+    "ast_hash": "1f694c2e334e88f0a78df9cc1594d125",
     "semantic_hash": ""
   },
   "detections/sigma/14477452-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.1881628,
-    "seen": 1791323438.994622,
-    "ast_hash": "",
+    "mtime": 1791825101.9837391,
+    "seen": 1791825599.588033,
+    "ast_hash": "8bf43ff64ed9adbe0b9aafba606ae9b6",
     "semantic_hash": ""
   },
   "detections/sigma/14644215-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.1889923,
-    "seen": 1791323438.994622,
-    "ast_hash": "",
+    "mtime": 1791825101.9844167,
+    "seen": 1791825599.5880342,
+    "ast_hash": "b3aa720c39dadca0173b27f7cd8de9a5",
     "semantic_hash": ""
   },
   "detections/sigma/17828938-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.1935973,
-    "seen": 1791323438.994622,
-    "ast_hash": "",
+    "mtime": 1791825101.983551,
+    "seen": 1791825599.588035,
+    "ast_hash": "65b41e5d0774276c23c72a3ac127c5d6",
     "semantic_hash": ""
   },
   "detections/sigma/19506570-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.1943064,
-    "seen": 1791323438.994623,
-    "ast_hash": "",
+    "mtime": 1791825101.9837952,
+    "seen": 1791825599.588036,
+    "ast_hash": "22631d2e9cec945516b99a596278c8cd",
     "semantic_hash": ""
   },
   "detections/sigma/21011482-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.1950092,
-    "seen": 1791323438.994623,
-    "ast_hash": "",
+    "mtime": 1791825101.9840515,
+    "seen": 1791825599.588037,
+    "ast_hash": "35647992c4f5c11ff13598700254dd4f",
     "semantic_hash": ""
   },
   "detections/sigma/21934394-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.1958108,
-    "seen": 1791323438.994623,
-    "ast_hash": "",
+    "mtime": 1791825101.9832706,
+    "seen": 1791825599.588037,
+    "ast_hash": "687f0793b9a1f187863ded9dd028a981",
     "semantic_hash": ""
   },
   "detections/sigma/25520785-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.1993065,
-    "seen": 1791323438.994624,
-    "ast_hash": "",
+    "mtime": 1791825101.984605,
+    "seen": 1791825599.588039,
+    "ast_hash": "aa09147430df864141def6e6ba2105e6",
     "semantic_hash": ""
   },
   "detections/sigma/33839694-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.2017095,
-    "seen": 1791323438.994625,
-    "ast_hash": "",
+    "mtime": 1791825101.9836156,
+    "seen": 1791825599.5880399,
+    "ast_hash": "6063724135ea56e615199eb183305747",
     "semantic_hash": ""
   },
   "detections/sigma/34775915-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.2024777,
-    "seen": 1791323438.994625,
-    "ast_hash": "",
+    "mtime": 1791825101.9838648,
+    "seen": 1791825599.588041,
+    "ast_hash": "748e187435abb17263d876f976a34624",
     "semantic_hash": ""
   },
   "detections/sigma/43129827-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.2031386,
-    "seen": 1791323438.994625,
-    "ast_hash": "",
+    "mtime": 1791825101.9847336,
+    "seen": 1791825599.588042,
+    "ast_hash": "0ae19cef89775b4de31855b912b08b93",
     "semantic_hash": ""
   },
   "detections/sigma/50087630-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.203664,
-    "seen": 1791323438.994626,
-    "ast_hash": "",
+    "mtime": 1791825101.9844806,
+    "seen": 1791825599.588043,
+    "ast_hash": "9a4cdd7e5922b856209e327c9872917b",
     "semantic_hash": ""
   },
   "detections/sigma/52776632-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.2040815,
-    "seen": 1791323438.994626,
-    "ast_hash": "",
+    "mtime": 1791825101.9834774,
+    "seen": 1791825599.588043,
+    "ast_hash": "ddd688f392eb95f049a054a9fd9d5977",
     "semantic_hash": ""
   },
   "detections/sigma/56293354-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.2044873,
-    "seen": 1791323438.994627,
-    "ast_hash": "",
+    "mtime": 1791825101.983936,
+    "seen": 1791825599.588044,
+    "ast_hash": "cb3f7fa27611762037bfc14c791f0d05",
     "semantic_hash": ""
   },
   "detections/sigma/58613739-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.2048628,
-    "seen": 1791323438.994627,
-    "ast_hash": "",
+    "mtime": 1791825101.9833696,
+    "seen": 1791825599.5880451,
+    "ast_hash": "6614668004ea0189c72121dcec64d55c",
     "semantic_hash": ""
   },
   "detections/sigma/73633522-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.2052298,
-    "seen": 1791323438.994627,
-    "ast_hash": "",
+    "mtime": 1791825101.9832132,
+    "seen": 1791825599.588046,
+    "ast_hash": "9b4a7d3364315b48a9bfcee6e52098fd",
     "semantic_hash": ""
   },
   "detections/sigma/81341084-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.2064586,
-    "seen": 1791323438.9946282,
-    "ast_hash": "",
+    "mtime": 1791825101.9845424,
+    "seen": 1791825599.588047,
+    "ast_hash": "7223afb4da8b1363fb610f43a75cbedf",
     "semantic_hash": ""
   },
   "detections/sigma/86872380-0000-4000-8000-000000000000.sql": {
-    "mtime": 1787261038.2076256,
-    "seen": 1791323438.9946282,
-    "ast_hash": "",
+    "mtime": 1791825101.9846685,
+    "seen": 1791825599.588047,
+    "ast_hash": "80578f1e3f73701da6c522c6c31d71a2",
     "semantic_hash": ""
   },
   "docs/arastirma/uret.py": {
@@ -9714,9 +9714,9 @@
     "semantic_hash": ""
   },
   "src/LogAnalyzer.Lite/Program.cs": {
-    "mtime": 1791825148.399634,
-    "seen": 1791825227.330685,
-    "ast_hash": "b7652dbb3ff52502dfe5c79d2732bb9f",
+    "mtime": 1791825550.4020116,
+    "seen": 1791825599.5884302,
+    "ast_hash": "9b7f99f7799aa68f88a2ad5e074492fa",
     "semantic_hash": ""
   },
   "src/LogAnalyzer.Lite/Services/IncidentFlightRecorder.cs": {
@@ -9738,9 +9738,9 @@
     "semantic_hash": ""
   },
   "src/LogAnalyzer.Lite/wwwroot/index.html": {
-    "mtime": 1791825165.533269,
-    "seen": 1791825227.334833,
-    "ast_hash": "1f32c2c34cfc78917851d53ba4afbb1b",
+    "mtime": 1791825554.254805,
+    "seen": 1791825599.590539,
+    "ast_hash": "fa9b995f90fb72d4d2ee96011f25784d",
     "semantic_hash": ""
   }
 }

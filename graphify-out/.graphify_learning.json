@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-12T17:13:47.612196+00:00",
+  "generated_at": "2026-10-12T17:20:00.527107+00:00",
   "nodes": {
     "docs_otlp_durability_otlp_metrics_and_traces_admission_archive_and_replay": {
       "code_fingerprint": "7d575cda15c532dc369d0b9eece92672df5e9cc0c161521df1c32abca77607a6",
@@ -12,7 +12,7 @@
           "q": "ne iş kaldı? liste ver. bir an önce buranın bitmesini istiyorum."
         }
       ],
-      "score": 0.688284626,
+      "score": 0.688215991,
       "source_file": "docs/otlp-durability.md",
       "status": "tentative",
       "uses": 1
@@ -28,7 +28,7 @@
           "q": "ne iş kaldı? liste ver. bir an önce buranın bitmesini istiyorum."
         }
       ],
-      "score": 0.688284626,
+      "score": 0.688215991,
       "source_file": "src/LogAnalyzer.Query/ScopedQuery.Telemetry.cs",
       "status": "tentative",
       "uses": 1
@@ -44,7 +44,7 @@
           "q": "Which product discovery, architecture and wiki digest guards are affected by OTLP fixture integration?"
         }
       ],
-      "score": 0.689649578,
+      "score": 0.689580806,
       "source_file": "tests/LogAnalyzer.UnitTests/ArchitectureTests.cs",
       "status": "tentative",
       "uses": 1
@@ -60,7 +60,7 @@
           "q": "Which product discovery, architecture and wiki digest guards are affected by OTLP fixture integration?"
         }
       ],
-      "score": 0.689649578,
+      "score": 0.689580806,
       "source_file": "tests/LogAnalyzer.UnitTests/CompositionRootTests.cs",
       "status": "tentative",
       "uses": 1
@@ -76,7 +76,7 @@
           "q": "Which product discovery, architecture and wiki digest guards are affected by OTLP fixture integration?"
         }
       ],
-      "score": 0.689649578,
+      "score": 0.689580806,
       "source_file": "tests/LogAnalyzer.UnitTests/ProductDiscovery.cs",
       "status": "tentative",
       "uses": 1
@@ -92,7 +92,7 @@
           "q": "Which product discovery, architecture and wiki digest guards are affected by OTLP fixture integration?"
         }
       ],
-      "score": 0.689649578,
+      "score": 0.689580806,
       "source_file": "tests/LogAnalyzer.UnitTests/WikiSourceDigestStamper.cs",
       "status": "tentative",
       "uses": 1
@@ -108,7 +108,7 @@
           "q": "ne iş kaldı? liste ver. bir an önce buranın bitmesini istiyorum."
         }
       ],
-      "score": 0.688284626,
+      "score": 0.688215991,
       "source_file": "ui/src/lib/api/proxy.ts",
       "status": "tentative",
       "uses": 1

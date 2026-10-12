@@ -10,11 +10,16 @@ services:
     restart: unless-stopped
     ports:
       - "5060:5060"
+    volumes:
+      - loganalyzer-data:/app/data
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5060
     networks:
       - coolify
+
+volumes:
+  loganalyzer-data:
 
 networks:
   coolify:
