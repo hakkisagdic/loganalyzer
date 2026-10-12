@@ -55,11 +55,12 @@ export const COMPARISON_LABELS: Record<Comparison, string> = {
   lte: "küçük veya eşitse (≤)",
 };
 
-export const CHANNEL_TYPES = ["slack", "teams", "email", "webhook"] as const;
+export const CHANNEL_TYPES = ["slack", "discord", "teams", "email", "webhook"] as const;
 export type ChannelType = (typeof CHANNEL_TYPES)[number];
 
 export const CHANNEL_TYPE_LABELS: Record<ChannelType, string> = {
   slack: "Slack",
+  discord: "Discord",
   teams: "Microsoft Teams",
   email: "E-posta (SMTP)",
   webhook: "Genel webhook",

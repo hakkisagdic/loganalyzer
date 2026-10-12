@@ -190,3 +190,59 @@ public sealed class WebhookChannel(IHttpClientFactory clients, AlertingOptions o
         return Json(message.ToJson());
     }
 }
+
+/// <summary>
+/// Discord gelen webhooku (Embeds formati).
+/// </summary>
+public sealed class DiscordChannel(IHttpClientFactory clients, AlertingOptions options)
+    : HttpNotificationChannel(clients, options)
+{
+    public override NotificationChannelType Type => NotificationChannelType.Discord;
+
+    protected override HttpContent BuildContent(NotificationMessage message)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+
+        var fields = new List<object>
+        {
+            new { name = "Kural Tipi", value = NotificationMessage.Describe(message.RuleType), inline = true },
+            new { name = "Kapsam", value = message.OwnerGroup, inline = true },
+            new { name = "Tetiklenme Sayisi", value = message.TriggerCount.ToString(CultureInfo.InvariantCulture), inline = true }
+        };
+
+        if (message.Lines.Count > 0)
+        {
+            var summaries = string.Join("
+", message.Lines.Take(5).Select(l => "• " + l.Summary));
+            if (message.Lines.Count > 5)
+            {
+                summaries += "
+... ve " + (message.Lines.Count - 5) + " tetiklenme daha.";
+            }
+            fields.Add(new { name = "Olay Ozeti", value = summaries, inline = false });
+        }
+
+        var embed = new Dictionary<string, object>(StringComparer.Ordinal)
+        {
+            ["title"] = message.Title,
+            ["description"] = "**Zaman Araligi:** " + message.WindowFrom.ToString("yyyy-MM-dd HH:mm:ss") + " - " + message.WindowTo.ToString("yyyy-MM-dd HH:mm:ss") + " UTC",
+            ["color"] = 15158332,
+            ["fields"] = fields,
+            ["footer"] = new { text = "LogAnalyzer Observability Platform" },
+            ["timestamp"] = DateTimeOffset.UtcNow.ToString("o", CultureInfo.InvariantCulture)
+        };
+
+        if (!string.IsNullOrWhiteSpace(message.Link))
+        {
+            embed["url"] = message.Link;
+        }
+
+        var payload = new Dictionary<string, object>(StringComparer.Ordinal)
+        {
+            ["content"] = "🚨 **" + message.Title + "**",
+            ["embeds"] = new[] { embed }
+        };
+
+        return Json(JsonSerializer.Serialize(payload));
+    }
+}

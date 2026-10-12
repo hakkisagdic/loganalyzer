@@ -40,6 +40,9 @@
 
     <!-- Actions -->
     <div class="flex items-center space-x-3">
+      <button onclick="openAlertModal()" class="text-xs px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 rounded-lg border border-indigo-500/30 flex items-center gap-1.5 transition">
+        <i class="fa-solid fa-bell text-indigo-400"></i> Slack & Discord
+      </button>
       <button onclick="triggerSimulate()" class="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 flex items-center gap-1.5 transition">
         <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Simüle Olay
       </button>
@@ -155,6 +158,85 @@
       </div>
     </div>
   </main>
+
+  
+  <!-- Webhook & Alerts Modal -->
+  <div id="alert-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+        <div class="flex items-center space-x-3">
+          <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+            <i class="fa-solid fa-bell"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white">Slack & Discord Webhook Alarmları</h3>
+            <p class="text-xs text-slate-400">Kritik incident ve hatalarda anlık bildirim kanalları</p>
+          </div>
+        </div>
+        <button onclick="closeAlertModal()" class="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 text-xs">
+        <div class="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800">
+          <div>
+            <span class="font-bold text-white block">Alarm Bildirimlerini Etkinleştir</span>
+            <span class="text-slate-400 text-[11px]">Hata oluştuğunda kanallara anında mesaj gönderilir.</span>
+          </div>
+          <input type="checkbox" id="cfg-enabled" class="rounded bg-slate-800 text-indigo-500 focus:ring-0 w-4 h-4">
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-300 mb-1 flex items-center gap-1.5">
+            <i class="fa-brands fa-slack text-amber-400"></i> Slack Webhook URL
+          </label>
+          <input type="url" id="cfg-slack-url" placeholder="https://hooks.slack.com/services/T00/B00/XXXX"
+                 class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono text-[11px]">
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-300 mb-1 flex items-center gap-1.5">
+            <i class="fa-brands fa-discord text-indigo-400"></i> Discord Webhook URL
+          </label>
+          <input type="url" id="cfg-discord-url" placeholder="https://discord.com/api/webhooks/12345/XXXX"
+                 class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono text-[11px]">
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Minimum Seviye</label>
+            <select id="cfg-min-level" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+              <option value="Error">Error ve Fatal (4xx & 5xx)</option>
+              <option value="Fatal">Yalnızca Fatal (500+ ve Çökmeler)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium text-slate-300 mb-1">Cooldown / Spam Koruması (sn)</label>
+            <input type="number" id="cfg-cooldown" value="60"
+                   class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-200 focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <div id="test-alert-result" class="hidden p-3 rounded-xl border text-[11px]"></div>
+      </div>
+
+      <div class="px-6 py-4 border-t border-slate-800 bg-slate-950/50 flex justify-between items-center">
+        <div class="flex space-x-2">
+          <button onclick="testWebhook('slack')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded-lg border border-slate-700 transition flex items-center gap-1 text-xs">
+            <i class="fa-brands fa-slack"></i> Slack Test
+          </button>
+          <button onclick="testWebhook('discord')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-indigo-300 rounded-lg border border-slate-700 transition flex items-center gap-1 text-xs">
+            <i class="fa-brands fa-discord"></i> Discord Test
+          </button>
+        </div>
+        <div class="flex space-x-2">
+          <button onclick="closeAlertModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition text-xs">İptal</button>
+          <button onclick="saveAlertConfig()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition font-medium text-xs">Ayarları Kaydet</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Incident Detail Modal (Flight Blackbox) -->
   <div id="detail-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -359,6 +441,87 @@
       const text = document.getElementById(elementId).innerText;
       navigator.clipboard.writeText(text);
       alert('Panoya kopyalandı!');
+    }
+
+    
+    async function openAlertModal() {
+      try {
+        const res = await fetch(`${basePath}/api/v1/alerts/config`);
+        if (res.ok) {
+          const cfg = await res.json();
+          document.getElementById('cfg-enabled').checked = cfg.enabled ?? true;
+          document.getElementById('cfg-slack-url').value = cfg.slackWebhookUrl || '';
+          document.getElementById('cfg-discord-url').value = cfg.discordWebhookUrl || '';
+          document.getElementById('cfg-min-level').value = cfg.minLevel || 'Error';
+          document.getElementById('cfg-cooldown').value = cfg.cooldownSeconds || 60;
+        }
+      } catch (e) {
+        console.error('Config fetch error:', e);
+      }
+      document.getElementById('test-alert-result').classList.add('hidden');
+      document.getElementById('alert-modal').classList.remove('hidden');
+    }
+
+    function closeAlertModal() {
+      document.getElementById('alert-modal').classList.add('hidden');
+    }
+
+    async function saveAlertConfig() {
+      const cfg = {
+        enabled: document.getElementById('cfg-enabled').checked,
+        slackWebhookUrl: document.getElementById('cfg-slack-url').value.trim() || null,
+        discordWebhookUrl: document.getElementById('cfg-discord-url').value.trim() || null,
+        minLevel: document.getElementById('cfg-min-level').value,
+        cooldownSeconds: parseInt(document.getElementById('cfg-cooldown').value, 10) || 60,
+        notifyOnSlaBreach: true,
+        slaThresholdMs: 3000
+      };
+
+      try {
+        const res = await fetch(`${basePath}/api/v1/alerts/config`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(cfg)
+        });
+        if (res.ok) {
+          alert('Alarm ve webhook yapılandırması başarıyla kaydedildi!');
+          closeAlertModal();
+        } else {
+          alert('Ayarlar kaydedilirken hata oluştu.');
+        }
+      } catch (err) {
+        alert('Hata: ' + err.message);
+      }
+    }
+
+    async function testWebhook(target) {
+      const resBox = document.getElementById('test-alert-result');
+      resBox.className = 'p-3 rounded-xl border text-[11px] bg-indigo-950/30 border-indigo-800 text-indigo-300';
+      resBox.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Webhook test bildirimi iletiliyor...';
+      resBox.classList.remove('hidden');
+
+      try {
+        const res = await fetch(`${basePath}/api/v1/alerts/test`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target: target })
+        });
+        const data = await res.json();
+        
+        let success = target === 'slack' ? data.slackSuccess : data.discordSuccess;
+        let err = target === 'slack' ? data.slackError : data.discordError;
+
+        if (success) {
+          resBox.className = 'p-3 rounded-xl border text-[11px] bg-emerald-950/30 border-emerald-800 text-emerald-300';
+          resBox.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i> ${target.toUpperCase()} testi başarılı! Bildirim iletildi.`;
+        } else {
+          resBox.className = 'p-3 rounded-xl border text-[11px] bg-rose-950/30 border-rose-800 text-rose-300';
+          resBox.innerHTML = `<i class="fa-solid fa-circle-xmark mr-1"></i> ${target.toUpperCase()} testi başarısız: ${err || 'Adres tanımlı değil veya geçersiz'}`;
+        }
+      } catch (e) {
+        resBox.className = 'p-3 rounded-xl border text-[11px] bg-rose-950/30 border-rose-800 text-rose-300';
+        resBox.innerHTML = 'Hata: ' + e.message;
+      }
     }
 
     async function triggerSimulate() {

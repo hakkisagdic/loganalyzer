@@ -182,6 +182,7 @@ public static class NotificationChannelEndpoints
     private static NotificationChannelType ParseType(string value) => value?.ToLowerInvariant() switch
     {
         "slack" => NotificationChannelType.Slack,
+        "discord" => NotificationChannelType.Discord,
         "teams" => NotificationChannelType.Teams,
         "email" or "eposta" => NotificationChannelType.Email,
         "webhook" => NotificationChannelType.Webhook,

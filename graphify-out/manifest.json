@@ -9720,9 +9720,9 @@
     "semantic_hash": ""
   },
   "src/LogAnalyzer.Lite/Services/IncidentFlightRecorder.cs": {
-    "mtime": 1791825143.222414,
-    "seen": 1791825227.330685,
-    "ast_hash": "2140ca65cc287ee8e650f522e94d5eaf",
+    "mtime": 1791827029.368477,
+    "seen": 1791827071.8914418,
+    "ast_hash": "27256647f38766d0cc84e8c6b6a7622a",
     "semantic_hash": ""
   },
   "src/LogAnalyzer.Lite/global.json": {
@@ -9732,9 +9732,9 @@
     "semantic_hash": ""
   },
   "deploy/docker-compose.lite.yml": {
-    "mtime": 1791825195.8781135,
-    "seen": 1791825227.333856,
-    "ast_hash": "93f81aad89c6e3b10b36805769db1434",
+    "mtime": 1791827037.6752825,
+    "seen": 1791827071.892284,
+    "ast_hash": "0424a9d48eca58af9912756b582b66fb",
     "semantic_hash": ""
   },
   "src/LogAnalyzer.Lite/wwwroot/index.html": {

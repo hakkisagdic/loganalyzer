@@ -12,6 +12,7 @@ namespace LogAnalyzer.Lite.Services;
 
 public class IncidentFlightRecorder
 {
+    private readonly AlertWebhookNotifier? _notifier;
     private readonly ConcurrentQueue<IncidentRecord> _incidents = new();
     private readonly int _maxIncidents;
     private readonly DateTime _startTime = DateTime.UtcNow;
@@ -25,8 +26,9 @@ public class IncidentFlightRecorder
     private double _totalDurationMs;
     private DateTime? _lastIncidentTime;
 
-    public IncidentFlightRecorder(int maxIncidents = 1000, string? storagePath = null)
+    public IncidentFlightRecorder(int maxIncidents = 1000, string? storagePath = null, AlertWebhookNotifier? notifier = null)
     {
+        _notifier = notifier;
         _maxIncidents = maxIncidents;
         var dir = storagePath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
         Directory.CreateDirectory(dir);
@@ -129,6 +131,9 @@ public class IncidentFlightRecorder
 
         // Arka planda diske spool et (asenkron debounced)
         _ = Task.Run(SaveToDisk);
+
+        // Slack / Discord Webhook alarm bildirimi
+        _notifier?.NotifyIncident(incident);
     }
 
     public IReadOnlyList<IncidentRecord> GetIncidents(int limit = 50, string? search = null, string? level = null, string? source = null)

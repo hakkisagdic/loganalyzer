@@ -421,6 +421,7 @@ public enum NotificationChannelType
     Teams = 1,
     Email = 2,
     Webhook = 3,
+    Discord = 4,
 }
 
 /// <summary>

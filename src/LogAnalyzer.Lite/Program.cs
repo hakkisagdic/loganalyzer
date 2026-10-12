@@ -9,7 +9,10 @@ using Microsoft.Extensions.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<AlertWebhookNotifier>();
 builder.Services.AddSingleton<IncidentFlightRecorder>();
+
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -75,6 +78,21 @@ app.MapPost("/api/v1/logs/purge", (PurgeRequest? request, IncidentFlightRecorder
 {
     var response = recorder.Purge(request ?? new PurgeRequest());
     return Results.Ok(response);
+});
+
+// --- Alerts & Webhooks ---
+app.MapGet("/api/v1/alerts/config", (AlertWebhookNotifier notifier) => Results.Ok(notifier.GetConfig()));
+
+app.MapPost("/api/v1/alerts/config", (AlertWebhookConfig config, AlertWebhookNotifier notifier) =>
+{
+    notifier.UpdateConfig(config);
+    return Results.Ok(new { success = true, message = "Alert webhook configuration updated." });
+});
+
+app.MapPost("/api/v1/alerts/test", async (AlertTestRequest request, AlertWebhookNotifier notifier) =>
+{
+    var result = await notifier.TestAlertAsync(request);
+    return Results.Ok(result);
 });
 
 // Seed sample incidents trigger (for testing / demo)

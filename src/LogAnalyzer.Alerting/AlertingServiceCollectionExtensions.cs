@@ -50,6 +50,7 @@ public static class AlertingServiceCollectionExtensions
         services.AddHttpClient(nameof(HttpNotificationChannel));
 
         services.AddSingleton<INotificationChannel, SlackChannel>();
+        services.AddSingleton<INotificationChannel, DiscordChannel>();
         services.AddSingleton<INotificationChannel, TeamsChannel>();
         services.AddSingleton<INotificationChannel, WebhookChannel>();
         services.AddSingleton<INotificationChannel, EmailChannel>();

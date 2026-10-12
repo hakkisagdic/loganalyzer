@@ -141,6 +141,7 @@ public sealed class NotificationChannelService(
     /// <summary>Hedef adresi gizli olan kanallar; e-postada parola isteğe bağlı (açık röle).</summary>
     private static bool RequiresSecret(NotificationChannelType type) =>
         type is NotificationChannelType.Slack
+            or NotificationChannelType.Discord
             or NotificationChannelType.Teams
             or NotificationChannelType.Webhook;
 
