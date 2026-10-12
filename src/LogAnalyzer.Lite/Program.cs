@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using LogAnalyzer.Lite.Models;
 using LogAnalyzer.Lite.Services;
 using Microsoft.AspNetCore.Builder;
@@ -33,6 +34,10 @@ app.Use(async (context, next) =>
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+// Root and empty path fallback for reverse-proxy strip-prefix
+app.MapGet("", () => Results.Redirect("/index.html"));
+app.MapGet("/loganalyzer", () => Results.Redirect("/loganalyzer/index.html"));
 
 // --- Health ---
 app.MapGet("/health", () => Results.Ok(new

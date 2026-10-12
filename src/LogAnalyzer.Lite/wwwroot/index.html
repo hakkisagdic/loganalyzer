@@ -230,11 +230,13 @@
   </div>
 
   <script>
+    const basePath = window.location.pathname.startsWith("/loganalyzer") ? "/loganalyzer" : "";
     let allIncidents = [];
+
 
     async function loadStats() {
       try {
-        const res = await fetch('/api/v1/stats');
+        const res = await fetch(`${basePath}/api/v1/stats');
         if (!res.ok) return;
         const data = await res.json();
         document.getElementById('stat-total').innerText = Number(data.totalIngested).toLocaleString();
@@ -249,7 +251,7 @@
 
     async function loadIncidents() {
       try {
-        const res = await fetch('/api/v1/incidents?limit=100');
+        const res = await fetch(`${basePath}/api/v1/incidents?limit=100');
         if (!res.ok) return;
         allIncidents = await res.json();
         renderIncidents(allIncidents);
@@ -360,13 +362,13 @@
     }
 
     async function triggerSimulate() {
-      await fetch('/api/v1/demo/simulate-incident', { method: 'POST' });
+      await fetch(`${basePath}/api/v1/demo/simulate-incident', { method: 'POST' });
       await loadAll();
     }
 
     async function purgeLogs() {
       if (!confirm('24 saatten eski veya başarılı tüm log sayaçları süpürülecek. Onaylıyor musunuz?')) return;
-      await fetch('/api/v1/logs/purge', {
+      await fetch(`${basePath}/api/v1/logs/purge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ keepLastHours: 1, resetStats: false })

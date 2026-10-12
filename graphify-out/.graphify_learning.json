@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-10-06T21:50:39.216694+00:00",
+  "generated_at": "2026-10-12T17:13:47.612196+00:00",
   "nodes": {
     "docs_otlp_durability_otlp_metrics_and_traces_admission_archive_and_replay": {
-      "code_fingerprint": "34480d8ae914c4170077855b662378adfaa3e0f84799c9982b4047a53dec526f",
+      "code_fingerprint": "7d575cda15c532dc369d0b9eece92672df5e9cc0c161521df1c32abca77607a6",
       "label": "OTLP metrics and traces: admission, archive and replay",
       "last": "2026-09-26T13:12:19.688148+00:00",
       "provenance": [
@@ -12,13 +12,13 @@
           "q": "ne iş kaldı? liste ver. bir an önce buranın bitmesini istiyorum."
         }
       ],
-      "score": 0.787127032,
+      "score": 0.688284626,
       "source_file": "docs/otlp-durability.md",
       "status": "tentative",
       "uses": 1
     },
     "src_loganalyzer_query_scopedquery_telemetry_loganalyzer_query_scopedquery": {
-      "code_fingerprint": "a8fde33ddf02f02852f05825a19f32186f15d1664f9a2abcce515efb24f1bfaf",
+      "code_fingerprint": "c11fe8f79843b463025221ccc2a427fc3168da36e24f595523ab2a3b93d9c852",
       "label": "ScopedQuery",
       "last": "2026-09-26T13:12:19.688148+00:00",
       "provenance": [
@@ -28,13 +28,13 @@
           "q": "ne iş kaldı? liste ver. bir an önce buranın bitmesini istiyorum."
         }
       ],
-      "score": 0.787127032,
+      "score": 0.688284626,
       "source_file": "src/LogAnalyzer.Query/ScopedQuery.Telemetry.cs",
       "status": "tentative",
       "uses": 1
     },
     "tests_loganalyzer_unittests_architecturetests_loganalyzer_unittests_architecturetests": {
-      "code_fingerprint": "41653fb5b1aba3884f4713a082855386e434c8f613434e616743f7e51a7a3dec",
+      "code_fingerprint": "c88367792c48cfe48e0f3cddf578acc0f9dd9a74a5ab64e0df8679f70be6c6c5",
       "label": "ArchitectureTests",
       "last": "2026-09-26T15:15:48.158450+00:00",
       "provenance": [
@@ -44,13 +44,13 @@
           "q": "Which product discovery, architecture and wiki digest guards are affected by OTLP fixture integration?"
         }
       ],
-      "score": 0.788688,
+      "score": 0.689649578,
       "source_file": "tests/LogAnalyzer.UnitTests/ArchitectureTests.cs",
       "status": "tentative",
       "uses": 1
     },
     "tests_loganalyzer_unittests_compositionroottests_loganalyzer_unittests_compositionroottests": {
-      "code_fingerprint": "276a6e2b71a8caf8e8763471fd0accb9a9cdcfc838e7a3ff04fcab4a0927d3a3",
+      "code_fingerprint": "d86dc8d1f4e9cfaef382fd5657c5c86f5f31744a303cc65521b7830aae7c2409",
       "label": "CompositionRootTests",
       "last": "2026-09-26T15:15:48.158450+00:00",
       "provenance": [
@@ -60,13 +60,13 @@
           "q": "Which product discovery, architecture and wiki digest guards are affected by OTLP fixture integration?"
         }
       ],
-      "score": 0.788688,
+      "score": 0.689649578,
       "source_file": "tests/LogAnalyzer.UnitTests/CompositionRootTests.cs",
       "status": "tentative",
       "uses": 1
     },
     "tests_loganalyzer_unittests_productdiscovery_loganalyzer_unittests_productdiscovery": {
-      "code_fingerprint": "2bea85b73e78016a4feb922a10468e68578579a7486f05a903deb6abc14bef82",
+      "code_fingerprint": "84ff232b26c396d65bd689f84b68c4540c952b86ebb1d90570a9c506a6ea72d1",
       "label": "ProductDiscovery",
       "last": "2026-09-26T15:15:48.158450+00:00",
       "provenance": [
@@ -76,13 +76,13 @@
           "q": "Which product discovery, architecture and wiki digest guards are affected by OTLP fixture integration?"
         }
       ],
-      "score": 0.788688,
+      "score": 0.689649578,
       "source_file": "tests/LogAnalyzer.UnitTests/ProductDiscovery.cs",
       "status": "tentative",
       "uses": 1
     },
     "tests_loganalyzer_unittests_wikisourcedigeststamper_loganalyzer_unittests_wikisourcedigeststamper": {
-      "code_fingerprint": "40235f579a5d44782c077c31c269d385a347ab0f7988d9acf02d1e9ac145622d",
+      "code_fingerprint": "4abe64ce3cfe007da389f7a52456f0e1bc101108868a5e4ca0da50d1e6e54498",
       "label": "WikiSourceDigestStamper",
       "last": "2026-09-26T15:15:48.158450+00:00",
       "provenance": [
@@ -92,13 +92,13 @@
           "q": "Which product discovery, architecture and wiki digest guards are affected by OTLP fixture integration?"
         }
       ],
-      "score": 0.788688,
+      "score": 0.689649578,
       "source_file": "tests/LogAnalyzer.UnitTests/WikiSourceDigestStamper.cs",
       "status": "tentative",
       "uses": 1
     },
     "ui_src_lib_api_proxy": {
-      "code_fingerprint": "1ee304e463cf4e2e54024f3cf521d9aa4f9f1fb63a4846ff8910f085fd636b92",
+      "code_fingerprint": "29dfb3b6d9e9eff7a56815ca4e188da4b0287e01be46ce389dcc26b71e593387",
       "label": "proxy.ts",
       "last": "2026-09-26T13:12:19.688148+00:00",
       "provenance": [
@@ -108,7 +108,7 @@
           "q": "ne iş kaldı? liste ver. bir an önce buranın bitmesini istiyorum."
         }
       ],
-      "score": 0.787127032,
+      "score": 0.688284626,
       "source_file": "ui/src/lib/api/proxy.ts",
       "status": "tentative",
       "uses": 1
