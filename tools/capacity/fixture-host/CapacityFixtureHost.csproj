@@ -1,4 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
-  <ItemGroup><ProjectReference Include="../../../sim/Bizigo.Capacity/Bizigo.Capacity.csproj" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="../../../sim/LogAnalyzer.Capacity/LogAnalyzer.Capacity.csproj" /></ItemGroup>
 </Project>

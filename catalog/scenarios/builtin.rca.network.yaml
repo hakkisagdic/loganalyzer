@@ -11,7 +11,7 @@
 # işaretli. Buradaki dördü de işaretli ve ölçümleri F4'ün işi — işaretleri
 # silmek, ölçülmemiş bir sayıyı ölçülmüş göstermek olur.
 
-apiVersion: bizigo.dev/v1
+apiVersion: loganalyzer.dev/v1
 kind: Scenario
 metadata:
   id: builtin.rca.network

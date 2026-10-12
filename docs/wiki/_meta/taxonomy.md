@@ -2,7 +2,7 @@
 title: Tag Taxonomy
 ---
 
-# Tag Taxonomy — bizigo-loganalyzer vault'u
+# Tag Taxonomy — loganalyzer-loganalyzer vault'u
 
 `tag-taxonomy` skill'inin okuduğu kanonik etiket sözlüğü. Sayfa yazarken
 **önce burası okunur**; listede olmayan bir etiket uydurulmaz.
@@ -43,7 +43,7 @@ title: Tag Taxonomy
 
 | Etiket | Ne için |
 | --- | --- |
-| `bizigo` | bizigo-loganalyzer'a özgü bilgi |
+| `loganalyzer` | loganalyzer-loganalyzer'a özgü bilgi |
 
 ## Alias eşlemeleri
 

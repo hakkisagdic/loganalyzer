@@ -50,12 +50,12 @@ Envanterde bağlı kaynak doğrudan doğru parser'a gidiyor (regex denemesi yok)
 
 | Parça | Nerede |
 | --- | --- |
-| Literal ön filtre | `src/Bizigo.Parsing/Dispatch/AhoCorasick.cs` |
+| Literal ön filtre | `src/LogAnalyzer.Parsing/Dispatch/AhoCorasick.cs` |
 | Katalog + sıcak yükleme | `Dispatch/ParserCatalog.cs` — atomik anlık görüntü değişimi |
 | Dört kademe | `Dispatch/Dispatcher.cs` |
 | Sağlık sayaçları | `Dispatch/DispatchStats.cs` — `bound_ratio` dahil |
-| Parse adımı | `src/Bizigo.Ingest/Pipeline/ParsingSink.cs` (geçişin yerine) |
-| Katalog/envanter tazeleme | `src/Bizigo.Ingest/Pipeline/CatalogRefreshService.cs` |
+| Parse adımı | `src/LogAnalyzer.Ingest/Pipeline/ParsingSink.cs` (geçişin yerine) |
+| Katalog/envanter tazeleme | `src/LogAnalyzer.Ingest/Pipeline/CatalogRefreshService.cs` |
 
 **Üç tasarım kararı:**
 

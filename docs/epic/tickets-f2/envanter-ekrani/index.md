@@ -25,7 +25,7 @@ ekran bunu kullanıcıya böyle anlatmalı.
 - Her kaynak için son görülme zamanı ve son 24 saatteki olay sayısı.
 - `_unassigned` kaynakların ayrı ve **dikkat çeken** listesi: envanterde
 olmayan bir cihaz veri gönderiyor demek. F1 bunu `attrs` içinde
-`bizigo.unassigned_source_key` ile işaretliyor.
+`loganalyzer.unassigned_source_key` ile işaretliyor.
 - `/v1/health/pipeline` göstergelerinin özeti.
 
 ### Dışında

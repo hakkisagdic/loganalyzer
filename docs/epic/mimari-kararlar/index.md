@@ -1,5 +1,5 @@
 ---
-title: "Mimari Kararlar — bizigo-loganalyzer"
+title: "Mimari Kararlar — loganalyzer-loganalyzer"
 kind: spec
 ---
 
@@ -7,7 +7,7 @@ kind: spec
 
 2026-08-14 tarihinde, [pazar araştırması ve feature parity](../pazar-arastirmasi-ve-feature-parity/index.md)
 çalışması üzerine yapılan dört turluk netleştirme sonucunda alınan kararlar. Proje greenfield —
-`/Users/hakkisagdic/Projects/bizigo-loganalyzer` şu an boş.
+`/Users/hakkisagdic/Projects/loganalyzer-loganalyzer` şu an boş.
 
 Bu belge karar tabanıdır. Türevleri:
 [F1 teknik plan](../f1-teknik-plan/index.md) · [RCA raporu özelliği](../rca-raporu-ozelligi/index.md)
@@ -80,7 +80,7 @@ hop öteye taşınmış olurdu.
 
 `iso-8859-1` üçünü birden veriyor: çerçeveleme korunuyor, eşleme tersinir, telde
 geçerli UTF-8 taşınıyor. Bedeli, 0x80–0xFF baytlarının telde iki bayta çıkması.
-Tel kodlaması `bizigo.wire_encoding` özniteliğiyle **açıkça** bildiriliyor —
+Tel kodlaması `loganalyzer.wire_encoding` özniteliğiyle **açıkça** bildiriliyor —
 çözücünün tahmin etmesi gerekmiyor.
 
 ### K4 ve K10'un birlikte etkisi

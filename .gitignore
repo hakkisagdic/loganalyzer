@@ -24,11 +24,11 @@ venv/
 # Yerel çalışma verisi — asla commitlenmez
 #
 # DİKKAT: burada geniş desen kullanmayın. `**/wal/` kuralı, macOS'un büyük/küçük
-# harf duyarsız dosya sistemi yüzünden `src/Bizigo.Ingest/Wal/` KAYNAK dizinini
+# harf duyarsız dosya sistemi yüzünden `src/LogAnalyzer.Ingest/Wal/` KAYNAK dizinini
 # de yuttu; yerelde derlendiği için de fark edilmedi, CI'da patladı.
 /data/
 /deploy/.env
-/.bizigo/
+/.loganalyzer/
 *.wal
 
 # macOS

@@ -1,4 +1,4 @@
-# Graph Report - bizigo-loganalyzer  (2026-10-07)
+# Graph Report - loganalyzer-loganalyzer  (2026-10-07)
 
 ## Corpus Check
 - 1506 files · ~1,505,288 words
@@ -25,7 +25,7 @@
 - McpIdentityTests
 - compile.py
 - test_explain_gate.py
-- BizigoMcpResource
+- LogAnalyzerMcpResource
 - ICurrentUser
 - TopologyGraphQueryService
 - OtlpTelemetryDecoder
@@ -77,13 +77,13 @@
 - ParserAuthoringTests
 - ReplayStoreTests
 - ModelEndpoint
-- Bizigo LogAnalyzer Modernizasyon Analizi
+- LogAnalyzer LogAnalyzer Modernizasyon Analizi
 - ParseContext
 - CorrelationQueryTests
 - .StartAsync
-- Bizigo.UnitTests
+- LogAnalyzer.UnitTests
 - ParserCatalogResponses.cs
-- Bizigo.Capacity
+- LogAnalyzer.Capacity
 - OtlpTelemetryHttpTests
 - RcaAdmissionTests
 - GrokCompiler
@@ -99,9 +99,9 @@
 - .Decode
 - AlertRuleServiceTests
 - ProducesContractTests
-- Bizigo.Api.csproj
+- LogAnalyzer.Api.csproj
 - compilerOptions
-- Bizigo.Parsing.Grok
+- LogAnalyzer.Parsing.Grok
 - McpListenerBoundaryTests
 - ClaimContractTests
 - SignalIngest
@@ -153,7 +153,7 @@
 - AccessScope
 - api/client.ts
 - MetricsDetailTool
-- Bizigo.sln
+- LogAnalyzer.sln
 - .CreateDbContext
 - .GatherAsync
 - What You Must Do When Invoked
@@ -202,7 +202,7 @@
 - .Run
 - TelemetryApiHost
 - WriteAheadLogTests
-- Bizigo.Storage.Raw
+- LogAnalyzer.Storage.Raw
 - Senaryo plugin formatı: çivilenebilir mi, nereye kadar
 - counts
 - F1 kapanışı
@@ -232,9 +232,9 @@
 - SignalDurabilityTests
 - TelemetryBoundaryIntegrationTests
 - McpComplianceTests
-- BizigoV1PatternTests
+- LogAnalyzerV1PatternTests
 - ScopeCoverageTests
-- Bizigo Log Analyzer — çalışma protokolü
+- LogAnalyzer Log Analyzer — çalışma protokolü
 - F3 — Detection ve RCA kanıtı
 - 2 · Koddan okunan kararlar
 - T36 → T37 devir notu
@@ -281,12 +281,12 @@
 - McpQueryCancellationTests
 - Eşleşmeyen kuralın teşhisi — üç eksen
 - F2 — Görünürlük
-- Bizigo.ControlPlane
+- LogAnalyzer.ControlPlane
 - T29 — `signature_hash` sözleşmesi ve sıcak yol maliyeti
 - T37 — Rapor ekranı ve export
 - T17 — Envanter ekranı
 - .Create
-- bizigo_pipeline.py
+- loganalyzer_pipeline.py
 - T30 — Sigma pipeline prototipi
 - Exception
 - test_cost_tool.py
@@ -318,7 +318,7 @@
 - ScenarioCatalogContractTests
 - T01 — İskelet, geliştirme ortamı ve CI
 - .FindNestedQuantifiers
-- Bizigo.ControlPlane.Migrations
+- LogAnalyzer.ControlPlane.Migrations
 - .EmitAsync
 - GoldenReviewEvidenceKindsIntegrationTests
 - Task
@@ -372,7 +372,7 @@
 - T08 — Vendor parser kataloğu ve altın örnekler
 - ScenarioDefinition
 - T53 — Statünün dört gösterimi birbirini yalanlamasın
-- Bizigo.Ingest.csproj
+- LogAnalyzer.Ingest.csproj
 - Sayı kapsamın yerine geçmez
 - .CreateDbContext
 - GrokPropertyTests
@@ -381,15 +381,15 @@
 - Paralel ajan koordinasyonu
 - .CreateConnection
 - topology-wire-check.ts
-- bizigo-loganalyzer
+- loganalyzer-loganalyzer
 - scope-isolation.test.ts
 - Cisco ASA
 - Fortinet FortiGate
 - MikroTik RouterOS
-- `bizigo-v1` — lookaround'suz temel pattern seti
+- `loganalyzer-v1` — lookaround'suz temel pattern seti
 - ControlPlaneDbContextModelSnapshot.cs
 - T36 — Kanıt paketi ve deterministik rapor
-- BizigoMcpTool
+- LogAnalyzerMcpTool
 - Veri kaybedebilen bir depoyla tasarım
 - EventResponses.cs
 - T28 ekran görüntüleri
@@ -398,7 +398,7 @@
 - Bu korpus taşındı — buradaki kopya **yoktur**
 - T60 — Entropi katmanının terfi kararı
 - Determinizm bir kapının ön şartıdır
-- bizigo-loganalyzer
+- loganalyzer-loganalyzer
 - Eşleme tabloları
 - Maestro — uçtan uca akışlar (web)
 - middleware.ts
@@ -520,7 +520,7 @@
 - Kapsam tek kapıdan geçer
 - Ölçülen kısıt ekranı tasarlar
 - Hot Cache
-- Tag Taxonomy — bizigo-loganalyzer vault'u
+- Tag Taxonomy — loganalyzer-loganalyzer vault'u
 - Graphify — depo bilgi grafiği
 - package.json
 - playwright.config.ts
@@ -556,7 +556,7 @@
 - SshSimulatorCliTests
 - VendorValueSpace
 - .Callees
-- Bizigo.Contracts
+- LogAnalyzer.Contracts
 - SimulatorProfile
 - T44 — LLM adımları ve iki kapı
 - .SeedAsync
@@ -631,7 +631,7 @@
 - NotificationSecretTests
 - EngineFeedbackFixTests
 - m10-kirmizi-olcumu.py
-- Bizigo.IntegrationTests.csproj
+- LogAnalyzer.IntegrationTests.csproj
 - IngestGatewayTests
 - MetricTraceEvidenceContractTests
 - .LoadFromDirectory
@@ -642,7 +642,7 @@
 - m16-kirmizi-olcumu.py
 - MetricEvidenceOracleTests
 - TopologyProviderBudget
-- Bizigo.UnitTests.csproj
+- LogAnalyzer.UnitTests.csproj
 - IngestPipeline
 - McpIdentityDiscoveryTests
 - b02-kirmizi-olcumu.py
@@ -664,7 +664,7 @@
 - RcaRejectionReason
 - CapacityChild
 - .GatherAsync
-- Bizigo.Contracts.csproj
+- LogAnalyzer.Contracts.csproj
 - DateTime
 - .ReceiveAsync
 - M15 — Kota rezervi `Agent` kaynağını kapsamıyor
@@ -676,9 +676,9 @@
 - ValueError
 - .Telemetry_tools_limit_butcesini_asarsa_hata_verir
 - patch
-- Bizigo.Storage.Raw.csproj
+- LogAnalyzer.Storage.Raw.csproj
 - FixtureAuth
-- Bizigo.Replay
+- LogAnalyzer.Replay
 - .Encode
 - VendorCatalogTests
 - FleetListTool
@@ -690,7 +690,7 @@
 - .ExecuteScopedAsync
 - CancellationToken
 - StateTool
-- Bizigo.Parsing.csproj
+- LogAnalyzer.Parsing.csproj
 - .JoinRules
 - AddSourceTopologyAttributes
 - AddRcaModelBoundary
@@ -756,7 +756,7 @@
 - .RunAsync
 - fixture-generator.py
 - tickets-mcp/index.md
-- Bizigo.Mcp
+- LogAnalyzer.Mcp
 - TracesDetailTool
 - ChangeConnectorEntity
 - AddMissingEvidenceKinds
@@ -786,7 +786,7 @@
 - .Gercek_saglayici_atilan_cumle_tabanini_olcer
 - SimulatorMcpSetup
 - RcaServiceCollectionExtensions.cs
-- Bizigo.ControlPlane.csproj
+- LogAnalyzer.ControlPlane.csproj
 - operational-image-gate.py
 - RedisClient
 - OtlpCollectorConfigurationTests.cs
@@ -806,7 +806,7 @@
 - diff.ts
 - .Projected_row_roundtrips_through_real_driver_with_exact_digest_and_detects_payload_mismatch
 - TopologyEvidenceTests
-- T31 — Bizigo `ProcessingPipeline`
+- T31 — LogAnalyzer `ProcessingPipeline`
 - .Production_sql_explain
 - TopologyCiContractTests
 - TopologyDetailTool
@@ -848,7 +848,7 @@
 - AlwaysAuthenticated
 - .Archive_only_fresh_process_preserves_historical_owner_and_one_proof
 - operational-inventory-guard.py
-- BizigoReadToolsSetup.cs
+- LogAnalyzerReadToolsSetup.cs
 - Topology conflict attribution and readiness
 - 3 · Kapsam kararı — C → dar B → gölge A
 - T43 · Senaryo plugin çekirdeği
@@ -857,40 +857,40 @@
 - TestOperationalCiContract
 - .Real_inventory_and_S3_preserve_signal_envelope_after_wal_retention
 - AuthEndpoints.cs
-- .AddBizigoModelProvider
+- .AddLogAnalyzerModelProvider
 - .Q01_All_seven_REST_reads_and_both_RCA_providers_use_scoped_query
 - McpResourceBudgetTests
 - operational_ci_contract.py
 - OperationalManifestTests
 - OperationalResourceGateTests
-- .AddBizigoCommandTools
+- .AddLogAnalyzerCommandTools
 - SecretProtector
 - operational_resource_gate.py
 - test_operational_proxy_harness.py
 
 ## God Nodes (most connected - your core abstractions)
-1. `Bizigo.Contracts` - 381 edges
+1. `LogAnalyzer.Contracts` - 381 edges
 2. `AccessScope` - 373 edges
-3. `Bizigo.ControlPlane` - 252 edges
-4. `Bizigo.UnitTests` - 230 edges
+3. `LogAnalyzer.ControlPlane` - 252 edges
+4. `LogAnalyzer.UnitTests` - 230 edges
 5. `ControlPlaneDbContext` - 163 edges
-6. `Bizigo.Query` - 133 edges
-7. `Bizigo.Storage.ClickHouse` - 118 edges
-8. `Bizigo.IntegrationTests` - 108 edges
+6. `LogAnalyzer.Query` - 133 edges
+7. `LogAnalyzer.Storage.ClickHouse` - 118 edges
+8. `LogAnalyzer.IntegrationTests` - 108 edges
 9. `IScopedQuery` - 101 edges
 10. `DevStackFixture` - 101 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `McpResourceSubscriptionTests` --references--> `McpBoundaryDeclaration`  [EXTRACTED]
-  tests/Bizigo.UnitTests/McpResourceSubscriptionTests.cs → src/Bizigo.Mcp/McpBoundary.cs
+  tests/LogAnalyzer.UnitTests/McpResourceSubscriptionTests.cs → src/LogAnalyzer.Mcp/McpBoundary.cs
 - `RawArchiveRecoveryTests` --references--> `RawStoreOptions`  [EXTRACTED]
-  tests/Bizigo.UnitTests/RawArchiveRecoveryTests.cs → src/Bizigo.Storage.Raw/RawStoreOptions.cs
+  tests/LogAnalyzer.UnitTests/RawArchiveRecoveryTests.cs → src/LogAnalyzer.Storage.Raw/RawStoreOptions.cs
 - `TopologyDeclaredIntegrationTests` --references--> `AccessScope`  [EXTRACTED]
-  tests/Bizigo.IntegrationTests/TopologyDeclaredIntegrationTests.cs → src/Bizigo.Contracts/AccessScope.cs
+  tests/LogAnalyzer.IntegrationTests/TopologyDeclaredIntegrationTests.cs → src/LogAnalyzer.Contracts/AccessScope.cs
 - `ParserEngineTests` --references--> `MappingTableCatalog`  [EXTRACTED]
-  tests/Bizigo.UnitTests/ParserEngineTests.cs → src/Bizigo.Parsing/Engine/MappingTableCatalog.cs
+  tests/LogAnalyzer.UnitTests/ParserEngineTests.cs → src/LogAnalyzer.Parsing/Engine/MappingTableCatalog.cs
 - `ParserEngineTests` --references--> `GrokPatternLibrary`  [EXTRACTED]
-  tests/Bizigo.UnitTests/ParserEngineTests.cs → src/Bizigo.Parsing/Grok/GrokPatternLibrary.cs
+  tests/LogAnalyzer.UnitTests/ParserEngineTests.cs → src/LogAnalyzer.Parsing/Grok/GrokPatternLibrary.cs
 
 ## Import Cycles
 - None detected.
@@ -933,9 +933,9 @@ Nodes (39): collect_outcomes(), _committed_manifest(), _declared_blockers(), _gi
 Cohesion: 0.07
 Nodes (48): check_directory(), classify_error(), explain_sql(), ExplainResult, _main(), probe_forms(), Path, Kapı 2 — ClickHouse üretilen SQL'i kabul ediyor mu (T32). Kapı 1 kolon… (+40 more)
 
-### Community 10 - "BizigoMcpResource"
+### Community 10 - "LogAnalyzerMcpResource"
 Cohesion: 0.11
-Nodes (15): McpProtocolException, McpServerResource, ReadResourceRequestParams, ReadResourceResult, ResourceTemplate, BizigoMcpResource, McpResourceRead, CancellationToken (+7 more)
+Nodes (15): McpProtocolException, McpServerResource, ReadResourceRequestParams, ReadResourceResult, ResourceTemplate, LogAnalyzerMcpResource, McpResourceRead, CancellationToken (+7 more)
 
 ### Community 11 - "ICurrentUser"
 Cohesion: 0.09
@@ -971,7 +971,7 @@ Nodes (38): FastAPI, MaskingInstruction, PersistenceHandler, lifespan(), Sidecar
 
 ### Community 19 - "test_sigma_pipeline.py"
 Cohesion: 0.03
-Nodes (93): bizigo_backend(), bizigo_pipeline(), describe(), handled_fields(), ip_text_expression(), _ip_text_transformation(), known_field_pattern(), load_proto_table() (+85 more)
+Nodes (93): loganalyzer_backend(), loganalyzer_pipeline(), describe(), handled_fields(), ip_text_expression(), _ip_text_transformation(), known_field_pattern(), load_proto_table() (+85 more)
 
 ### Community 20 - "RedactedPrompt"
 Cohesion: 0.08
@@ -1141,7 +1141,7 @@ Nodes (14): ReplayStore, CancellationToken, DateTimeOffset, IReadOnlyList, Task,
 Cohesion: 0.10
 Nodes (23): DnsEndpointAddressResolver, IEndpointAddressResolver, ModelBoundaryGate, ModelBoundaryVerdict, CancellationToken, IPAddress, IReadOnlyList, ValueTask (+15 more)
 
-### Community 62 - "Bizigo LogAnalyzer Modernizasyon Analizi"
+### Community 62 - "LogAnalyzer LogAnalyzer Modernizasyon Analizi"
 Cohesion: 0.05
 Nodes (41): 1.1 Kritik Güncellemeler, 1.2 Önerilen Güncellemeler, 1.3 İsteğe Bağlı Güncellemeler, 1.4 Test Kütüphaneleri, 1. .NET Ekosistemi, 2.1 Kritik Güncellemeler, 2.2 Önerilen Güncellemeler, 2.3 İsteğe Bağlı Güncellemeler (+33 more)
 
@@ -1157,17 +1157,17 @@ Nodes (7): CorrelationQueryTests, DateTimeOffset, Fact, string, Task, Trait, Val
 Cohesion: 0.08
 Nodes (32): Seed, Seed, TopologyApiOracleIntegrationTests, CancellationToken, Fact, HttpResponseMessage, InlineData, string (+24 more)
 
-### Community 66 - "Bizigo.UnitTests"
+### Community 66 - "LogAnalyzer.UnitTests"
 Cohesion: 0.03
-Nodes (15): Bizigo.UnitTests, Bizigo.Evidence, Bizigo.ScenarioPlugin, Bizigo.Commands.Fields, Bizigo.Api, EvidenceServiceCollectionExtensions, IServiceCollection, ExcludedInputRecords (+7 more)
+Nodes (15): LogAnalyzer.UnitTests, LogAnalyzer.Evidence, LogAnalyzer.ScenarioPlugin, LogAnalyzer.Commands.Fields, LogAnalyzer.Api, EvidenceServiceCollectionExtensions, IServiceCollection, ExcludedInputRecords (+7 more)
 
 ### Community 67 - "ParserCatalogResponses.cs"
 Cohesion: 0.18
 Nodes (17): CatalogCoverageResponse, CatalogReloadResponse, ParserCoverageEntryResponse, ParserDetailResponse, ParserDraftDetailResponse, ParserDraftListResponse, ParserDraftResponse, ParserGrokResponse (+9 more)
 
-### Community 68 - "Bizigo.Capacity"
+### Community 68 - "LogAnalyzer.Capacity"
 Cohesion: 0.05
-Nodes (12): Bizigo.Devices, Bizigo.Api.Connectors, Bizigo.Api.Webhooks, Bizigo.Simulators, Bizigo.Capacity, ChangeConnectorServiceCollectionExtensions, IConfiguration, IServiceCollection (+4 more)
+Nodes (12): LogAnalyzer.Devices, LogAnalyzer.Api.Connectors, LogAnalyzer.Api.Webhooks, LogAnalyzer.Simulators, LogAnalyzer.Capacity, ChangeConnectorServiceCollectionExtensions, IConfiguration, IServiceCollection (+4 more)
 
 ### Community 69 - "OtlpTelemetryHttpTests"
 Cohesion: 0.10
@@ -1229,7 +1229,7 @@ Nodes (7): AlertRuleServiceTests, CancellationToken, Fact, FakeTimeProvider, Gui
 Cohesion: 0.18
 Nodes (8): ProducesContractTests, Registration, Dictionary, Fact, int, IReadOnlyDictionary, IReadOnlyList, Lazy
 
-### Community 84 - "Bizigo.Api.csproj"
+### Community 84 - "LogAnalyzer.Api.csproj"
 Cohesion: 0.18
 Nodes (9): Microsoft.AspNetCore.Authentication.JwtBearer, Microsoft.AspNetCore.OpenApi, Microsoft.EntityFrameworkCore.Design, Microsoft.Extensions.ApiDescription.Server, ModelContextProtocol.AspNetCore, SharpZipLib, Microsoft.EntityFrameworkCore.InMemory, Microsoft.NET.Sdk.Web (+1 more)
 
@@ -1237,9 +1237,9 @@ Nodes (9): Microsoft.AspNetCore.Authentication.JwtBearer, Microsoft.AspNetCore.O
 Cohesion: 0.07
 Nodes (28): dom, dom.iterable, ES2022, next-env.d.ts, .next/types/**/*.ts, node_modules, **/*.ts, **/*.tsx (+20 more)
 
-### Community 86 - "Bizigo.Parsing.Grok"
+### Community 86 - "LogAnalyzer.Parsing.Grok"
 Cohesion: 0.04
-Nodes (25): Bizigo.Parsing.Testing, Bizigo.Ingest, Bizigo.Authoring, Bizigo.Parsing.Engine, Bizigo.Parsing, Bizigo.Commands.Seeding, Bizigo.Normalization, Bizigo.Parsing.Dispatch (+17 more)
+Nodes (25): LogAnalyzer.Parsing.Testing, LogAnalyzer.Ingest, LogAnalyzer.Authoring, LogAnalyzer.Parsing.Engine, LogAnalyzer.Parsing, LogAnalyzer.Commands.Seeding, LogAnalyzer.Normalization, LogAnalyzer.Parsing.Dispatch (+17 more)
 
 ### Community 87 - "McpListenerBoundaryTests"
 Cohesion: 0.12
@@ -1247,7 +1247,7 @@ Nodes (16): AddressProbe, AddressProbe, McpListenerBoundaryTests, SahteCozucu, C
 
 ### Community 88 - "ClaimContractTests"
 Cohesion: 0.12
-Nodes (16): IdpGroup, OwnerGroup, AccessScopeResolver, BizigoClaims, BizigoRoles, GroupMapping, CancellationToken, ClaimsPrincipal (+8 more)
+Nodes (16): IdpGroup, OwnerGroup, AccessScopeResolver, LogAnalyzerClaims, LogAnalyzerRoles, GroupMapping, CancellationToken, ClaimsPrincipal (+8 more)
 
 ### Community 89 - "SignalIngest"
 Cohesion: 0.06
@@ -1441,7 +1441,7 @@ Nodes (62): InventoryTable(), InventoryTableProps, dynamic, InventoryPage(), loa
 Cohesion: 0.27
 Nodes (8): MetricsDetailTool, CancellationToken, IServiceScopeFactory, JsonElement, McpToolInvocation, McpToolResult, string, ValueTask
 
-### Community 139 - "Bizigo.sln"
+### Community 139 - "LogAnalyzer.sln"
 Cohesion: 0.11
 Nodes (15): Microsoft.Extensions.Logging.Console, Microsoft.IdentityModel.JsonWebTokens, Microsoft.IdentityModel.Protocols.OpenIdConnect, ModelContextProtocol, ModelContextProtocol.Core, System.CommandLine, Microsoft.Extensions.Hosting.Abstractions, Microsoft.Extensions.Http (+7 more)
 
@@ -1607,7 +1607,7 @@ Nodes (8): ChangeResponse, ChangeSearchResponse, ChangeWriteRequest, ChangeWrite
 
 ### Community 180 - ".CreateOptions"
 Cohesion: 0.23
-Nodes (12): IMcpServerBuilder, BizigoMcpServer, Assembly, IEnumerable, IReadOnlyList, IServiceProvider, McpServerOptions, string (+4 more)
+Nodes (12): IMcpServerBuilder, LogAnalyzerMcpServer, Assembly, IEnumerable, IReadOnlyList, IServiceProvider, McpServerOptions, string (+4 more)
 
 ### Community 181 - "F4 · Kota neyi koruyor?"
 Cohesion: 0.10
@@ -1637,9 +1637,9 @@ Nodes (11): TelemetryApiHost, Action, CancellationToken, HttpClient, HttpRespons
 Cohesion: 0.33
 Nodes (6): WriteAheadLogTests, Action, Fact, ReadOnlyMemory, string, Task
 
-### Community 188 - "Bizigo.Storage.Raw"
+### Community 188 - "LogAnalyzer.Storage.Raw"
 Cohesion: 0.04
-Nodes (15): Bizigo.Ingest.Pipeline, Bizigo.Ingest.Otlp, Bizigo.Storage.Raw, Bizigo.Ingest.Text, Bizigo.Ingest.Wal, OtlpContentTypes, string, SignalIngestStatus (+7 more)
+Nodes (15): LogAnalyzer.Ingest.Pipeline, LogAnalyzer.Ingest.Otlp, LogAnalyzer.Storage.Raw, LogAnalyzer.Ingest.Text, LogAnalyzer.Ingest.Wal, OtlpContentTypes, string, SignalIngestStatus (+7 more)
 
 ### Community 189 - "Senaryo plugin formatı: çivilenebilir mi, nereye kadar"
 Cohesion: 0.10
@@ -1757,15 +1757,15 @@ Nodes (9): PartialSink, TelemetryBoundaryIntegrationTests, CancellationToken, Fa
 Cohesion: 0.06
 Nodes (38): JsonSchema, McpClientOptions, DataBoundary, McpBoundaryDeclaration, McpBoundaryGate, McpSurface, McpSurfaces, string (+30 more)
 
-### Community 218 - "BizigoV1PatternTests"
+### Community 218 - "LogAnalyzerV1PatternTests"
 Cohesion: 0.31
-Nodes (4): BizigoV1PatternTests, Fact, InlineData, Theory
+Nodes (4): LogAnalyzerV1PatternTests, Fact, InlineData, Theory
 
 ### Community 219 - "ScopeCoverageTests"
 Cohesion: 0.22
 Nodes (8): ScopeCoverageTests, Dictionary, Fact, GeneratedRegex, int, IReadOnlyList, IReadOnlySet, Regex
 
-### Community 220 - "Bizigo Log Analyzer — çalışma protokolü"
+### Community 220 - "LogAnalyzer Log Analyzer — çalışma protokolü"
 Cohesion: 0.08
 Nodes (24): 10 · Rapor biçimi, 11 · Epic artifact'ları depoda, 12 · Ortam, 1 · Roller, 2 · Test bölünmesi — bu kural pazarlığa açık değil, 3 · Proses hijyeni, 4 · Worktree yaşam döngüsü, 5 · Birleştirme protokolü (+16 more)
 
@@ -1919,7 +1919,7 @@ Nodes (12): Amaç, Doğrulanan kabul kriterleri, Dışında, İçinde, Kabul kri
 
 ### Community 258 - "ProductResource"
 Cohesion: 0.16
-Nodes (14): BizigoMcpResource, EvidenceBundleResource, CancellationToken, IServiceScopeFactory, McpResourceBody, McpResourceRead, string, ValueTask (+6 more)
+Nodes (14): LogAnalyzerMcpResource, EvidenceBundleResource, CancellationToken, IServiceScopeFactory, McpResourceBody, McpResourceRead, string, ValueTask (+6 more)
 
 ### Community 259 - "GoldenReviewTests"
 Cohesion: 0.22
@@ -1951,11 +1951,11 @@ Nodes (18): 1 · Metin ekseni — üç kutu, 2 · Alan ekseni — dört kutu, 3 
 
 ### Community 266 - "F2 — Görünürlük"
 Cohesion: 0.18
-Nodes (11): Alarm motoru (K32), Arayüzü bağlayan iki ölçüm, Change feed (K34) — üç kaynak, üç ayrı büyüklük, Doğrulama — F1'in dersi, F2 — Görünürlük, F2'nin dışında kalanlar, Görsel tutarlılık iki yere bölündü, K31'in sonucu: `Bizigo.Api` sadeleşiyor (+3 more)
+Nodes (11): Alarm motoru (K32), Arayüzü bağlayan iki ölçüm, Change feed (K34) — üç kaynak, üç ayrı büyüklük, Doğrulama — F1'in dersi, F2 — Görünürlük, F2'nin dışında kalanlar, Görsel tutarlılık iki yere bölündü, K31'in sonucu: `LogAnalyzer.Api` sadeleşiyor (+3 more)
 
-### Community 267 - "Bizigo.ControlPlane"
+### Community 267 - "LogAnalyzer.ControlPlane"
 Cohesion: 0.05
-Nodes (8): Bizigo.Alerting, Bizigo.ControlPlane, Bizigo.Rca, Bizigo.Api.Rca, Bizigo.Alerting.Notifications, AlertingServiceCollectionExtensions, IConfiguration, IServiceCollection
+Nodes (8): LogAnalyzer.Alerting, LogAnalyzer.ControlPlane, LogAnalyzer.Rca, LogAnalyzer.Api.Rca, LogAnalyzer.Alerting.Notifications, AlertingServiceCollectionExtensions, IConfiguration, IServiceCollection
 
 ### Community 268 - "T29 — `signature_hash` sözleşmesi ve sıcak yol maliyeti"
 Cohesion: 0.10
@@ -1973,9 +1973,9 @@ Nodes (10): Amaç, Dışında, İçinde, Kabul kriterleri, Kabul kriterlerinin k
 Cohesion: 0.19
 Nodes (10): WebhookDelivery, WebhookDeliveryFactory, WebhookDeliveryRequest, WebhookProviders, Action, DateTimeOffset, IReadOnlyDictionary, string (+2 more)
 
-### Community 272 - "bizigo_pipeline.py"
+### Community 272 - "loganalyzer_pipeline.py"
 Cohesion: 0.18
-Nodes (10): ProcessingPipeline, bizigo_pipeline(), mapped_field_count(), pipeline_line_count(), Bizigo `events_ocsf` görünümü için Sigma ProcessingPipeline — **prototip**…, `unmapped` Map'ine erişim ifadesi. Pipeline'ın ürettiği `unmapped.X`…, Örneklemin gerektirdiği en küçük pipeline. <b>Bilerek dar.</b> T30'un sorusu…, Eşleme sözlüğünün boyutu — ölçümün birinci sayısı. (+2 more)
+Nodes (10): ProcessingPipeline, loganalyzer_pipeline(), mapped_field_count(), pipeline_line_count(), LogAnalyzer `events_ocsf` görünümü için Sigma ProcessingPipeline — **prototip**…, `unmapped` Map'ine erişim ifadesi. Pipeline'ın ürettiği `unmapped.X`…, Örneklemin gerektirdiği en küçük pipeline. <b>Bilerek dar.</b> T30'un sorusu…, Eşleme sözlüğünün boyutu — ölçümün birinci sayısı. (+2 more)
 
 ### Community 273 - "T30 — Sigma pipeline prototipi"
 Cohesion: 0.18
@@ -2079,7 +2079,7 @@ Nodes (8): 1 · Taşıyıcı iddia ve neden sınanması zor, 2 · `DropWrite` ku
 
 ### Community 298 - "PostHog — kendi altyapımızda"
 Cohesion: 0.15
-Nodes (13): Açmayın: oturum kaydı (session replay), Bizigo'yu buna bağlamak, Donanım — buraya dikkat, Kanıt: giden byte'lara bakmak, Kimlik, Kurulum, Lisans, ⚠️ `localhost` yazmayın, `127.0.0.1` yazın (+5 more)
+Nodes (13): Açmayın: oturum kaydı (session replay), LogAnalyzer'yu buna bağlamak, Donanım — buraya dikkat, Kanıt: giden byte'lara bakmak, Kimlik, Kurulum, Lisans, ⚠️ `localhost` yazmayın, `127.0.0.1` yazın (+5 more)
 
 ### Community 299 - "ModelProviderTests"
 Cohesion: 0.17
@@ -2101,9 +2101,9 @@ Nodes (9): Amaç, Dışında, Engel — Docker Desktop disk sınırı, İçinde,
 Cohesion: 0.22
 Nodes (7): Fragment, Position, ParserRedosFindingResponse, RedosFinding, RedosLinter, RedosSeverity, IEnumerable
 
-### Community 304 - "Bizigo.ControlPlane.Migrations"
+### Community 304 - "LogAnalyzer.ControlPlane.Migrations"
 Cohesion: 0.28
-Nodes (4): Bizigo.ControlPlane.Migrations, MigrationBuilder, Initial, ModelBuilder
+Nodes (4): LogAnalyzer.ControlPlane.Migrations, MigrationBuilder, Initial, ModelBuilder
 
 ### Community 305 - ".EmitAsync"
 Cohesion: 0.11
@@ -2309,7 +2309,7 @@ Nodes (15): Mapping, Scalar, ScenarioDefinition, ScenarioEvidenceBlock, Scenario
 Cohesion: 0.14
 Nodes (14): 1 · Sorun deponun kendi kaydında yazılı, 2 · Seçilen olgu ve iki adayın neden elendiği, 3 · Ne sınamıyor — beyan, 4.1 · Yol haritası tablosunda hiç görünmeyen ticket dosyaları (7), 4.2 · `tickets-fs` `Durum` sütunu ticket dosyasıyla çelişiyor (4), 4.3 · `kalan-is-raporu` "açık" diyor, ticket dosyası aksini söylüyor (5), 4.4 · Bu ticket'ın kendi eklediği borç, 4 · Bugün ayrışmış olanlar — bu ticket'ın çıktısı (+6 more)
 
-### Community 358 - "Bizigo.Ingest.csproj"
+### Community 358 - "LogAnalyzer.Ingest.csproj"
 Cohesion: 0.13
 Nodes (12): Google.Protobuf, Grpc.Tools, Microsoft.Extensions.Hosting.Abstractions, Microsoft.Extensions.Logging.Abstractions, Microsoft.Extensions.Options, Microsoft.Extensions.Options.ConfigurationExtensions, System.IO.Hashing, Microsoft.NET.Sdk (+4 more)
 
@@ -2341,9 +2341,9 @@ Nodes (17): LifecycleVersion, ClickHouseConnection, LifecycleVersion, TopologyOb
 Cohesion: 0.08
 Nodes (20): data, NumberDto, point, RecordDto, DeleteEdgeVersion, DeleteNodeVersion, EdgeDelete, EdgeInputVersion (+12 more)
 
-### Community 367 - "bizigo-loganalyzer"
+### Community 367 - "loganalyzer-loganalyzer"
 Cohesion: 0.29
-Nodes (7): Araçlar, Açık sorular, bizigo-loganalyzer, Durum, Kaynaklar, Nasıl çalışılıyor, Ortam notları
+Nodes (7): Araçlar, Açık sorular, loganalyzer-loganalyzer, Durum, Kaynaklar, Nasıl çalışılıyor, Ortam notları
 
 ### Community 368 - "scope-isolation.test.ts"
 Cohesion: 0.40
@@ -2361,9 +2361,9 @@ Nodes (4): Ayırt edicilik, Fortinet FortiGate, Zaman damgası, Örnek dosyalar
 Cohesion: 0.40
 Nodes (4): MikroTik RouterOS, RouterOS kuralın SONUCUNU yazmıyor, Zarf değişkenleri, Örnek dosyalar
 
-### Community 372 - "`bizigo-v1` — lookaround'suz temel pattern seti"
+### Community 372 - "`loganalyzer-v1` — lookaround'suz temel pattern seti"
 Cohesion: 0.40
-Nodes (4): `bizigo-v1` — lookaround'suz temel pattern seti, Kapsam, Neden, Sınır davranışı — bu işin asıl zorluğu
+Nodes (4): `loganalyzer-v1` — lookaround'suz temel pattern seti, Kapsam, Neden, Sınır davranışı — bu işin asıl zorluğu
 
 ### Community 373 - "ControlPlaneDbContextModelSnapshot.cs"
 Cohesion: 0.40
@@ -2373,9 +2373,9 @@ Nodes (3): ModelSnapshot, ControlPlaneDbContextModelSnapshot, ModelBuilder
 Cohesion: 0.20
 Nodes (7): Amaç, Dışında, İçinde, Kabul kriterleri, Kapsam, Notlar, T36 — Kanıt paketi ve deterministik rapor
 
-### Community 375 - "BizigoMcpTool"
+### Community 375 - "LogAnalyzerMcpTool"
 Cohesion: 0.08
-Nodes (25): CallToolRequestParams, McpServerTool, SimulatorTool, BizigoMcpTool, CallToolResult, CancellationToken, IReadOnlyList, JsonElement (+17 more)
+Nodes (25): CallToolRequestParams, McpServerTool, SimulatorTool, LogAnalyzerMcpTool, CallToolResult, CancellationToken, IReadOnlyList, JsonElement (+17 more)
 
 ### Community 376 - "Veri kaybedebilen bir depoyla tasarım"
 Cohesion: 0.29
@@ -2409,9 +2409,9 @@ Nodes (19): 10 · Bu kararın kapatmadığı şey, 1 · Soru ve cevap, 2.1 · Ma
 Cohesion: 0.20
 Nodes (10): Ağ tarafı: aynı şart yükseltmeye de uygulanıyor, Determinizm bir kapının ön şartıdır, Determinizmin bir bedeli de var, Determinizmin ikinci yüzü: etiket sürüklenmesi, Genelleme, Girdi tanımı: cron yok, ağ yok, İki olay karışmasın diye: manifest iki katmanlı, Kanıt tarafı: hash'ten duvar saati çıkarılıyor (+2 more)
 
-### Community 384 - "bizigo-loganalyzer"
+### Community 384 - "loganalyzer-loganalyzer"
 Cohesion: 0.18
-Nodes (11): Araştırma notları, Bilgi grafiği (Graphify), Bilgi tabanı — Obsidian vault, Bilinmesi gerekenler, bizigo-loganalyzer, Hızlı başlangıç, Lisans, Mimarinin özeti (+3 more)
+Nodes (11): Araştırma notları, Bilgi grafiği (Graphify), Bilgi tabanı — Obsidian vault, Bilinmesi gerekenler, loganalyzer-loganalyzer, Hızlı başlangıç, Lisans, Mimarinin özeti (+3 more)
 
 ### Community 386 - "Maestro — uçtan uca akışlar (web)"
 Cohesion: 0.12
@@ -2467,7 +2467,7 @@ Nodes (4): post-commit script, GRAPHIFY_CHANGED, GRAPHIFY_REBUILD_LOG, PYTHONHAS
 
 ### Community 410 - "Third-party notices"
 Cohesion: 0.22
-Nodes (7): Grok pattern kütüphanesi, Yükseltme, catalog/patterns/, catalog/sigma/ — bugün üçüncü taraf DEĞİL, NuGet packages, src/Bizigo.Ingest/Otlp/proto/, Third-party notices
+Nodes (7): Grok pattern kütüphanesi, Yükseltme, catalog/patterns/, catalog/sigma/ — bugün üçüncü taraf DEĞİL, NuGet packages, src/LogAnalyzer.Ingest/Otlp/proto/, Third-party notices
 
 ### Community 411 - "graphify reference: add a URL and watch a folder"
 Cohesion: 0.50
@@ -2783,7 +2783,7 @@ Nodes (3): MigrationBuilder, AddSigmaChangedAt, ModelBuilder
 
 ### Community 496 - "MCP Implementasyon Ticket'ları"
 Cohesion: 0.15
-Nodes (13): Bitti tanımı, Bu belgenin bilmediği şey — **ikisi de cevaplandı**, Dilimleme mantığı, `External` + `bizigo-sim` geçiyor, K6 ekseni tek tip, ama MCP'de çıplak dolaşmıyor, Kapanan son belirsizlik, M06'nın verdiği kararlar, M06'nın yazdığı kör noktalardan biri M11'de kapandı (+5 more)
+Nodes (13): Bitti tanımı, Bu belgenin bilmediği şey — **ikisi de cevaplandı**, Dilimleme mantığı, `External` + `loganalyzer-sim` geçiyor, K6 ekseni tek tip, ama MCP'de çıplak dolaşmıyor, Kapanan son belirsizlik, M06'nın verdiği kararlar, M06'nın yazdığı kör noktalardan biri M11'de kapandı (+5 more)
 
 ### Community 497 - "screenshots.spec.ts"
 Cohesion: 0.22
@@ -2807,7 +2807,7 @@ Nodes (8): Bugünkü durum ve açık uç, Eşik ekranın değil kuralın, Kaynak
 
 ### Community 502 - "Sık kullanılan komutlar"
 Cohesion: 0.20
-Nodes (10): Alan kapsamı — `bizigo fields coverage` (T39), Arayüz, Değer uzayı — `bizigo fields values` (T39), Kimlik — ortamdan TOKEN, ayardan KAPSAM değil, MCP yüzeyi — `bizigo mcp serve`, Parser CLI, RCA kotası — `bizigo rca quota`, Sık kullanılan komutlar (+2 more)
+Nodes (10): Alan kapsamı — `loganalyzer fields coverage` (T39), Arayüz, Değer uzayı — `loganalyzer fields values` (T39), Kimlik — ortamdan TOKEN, ayardan KAPSAM değil, MCP yüzeyi — `loganalyzer mcp serve`, Parser CLI, RCA kotası — `loganalyzer rca quota`, Sık kullanılan komutlar (+2 more)
 
 ### Community 503 - "AddSigmaGatedFingerprint"
 Cohesion: 0.29
@@ -2833,9 +2833,9 @@ Nodes (7): Açık kalan, Kalıp, Kaynaklar, Ölçülen kısıt ekranı tasarlar,
 Cohesion: 0.29
 Nodes (7): Açık uçlar, En bağlantılı düğümler, Flagged Contradictions, Hot Cache, Kümeler, Ne var, Okuma yolu
 
-### Community 509 - "Tag Taxonomy — bizigo-loganalyzer vault'u"
+### Community 509 - "Tag Taxonomy — loganalyzer-loganalyzer vault'u"
 Cohesion: 0.29
-Nodes (7): Alias eşlemeleri, Domain (konu alanı), Kurallar, Project, Tag Taxonomy — bizigo-loganalyzer vault'u, Type (sayfanın türü), Yeni etiket eklerken
+Nodes (7): Alias eşlemeleri, Domain (konu alanı), Kurallar, Project, Tag Taxonomy — loganalyzer-loganalyzer vault'u, Type (sayfanın türü), Yeni etiket eklerken
 
 ### Community 510 - "Graphify — depo bilgi grafiği"
 Cohesion: 0.29
@@ -2851,7 +2851,7 @@ Nodes (7): API_DIR, API_PORT, E2E_TARGET, KEYCLOAK_ORIGIN, REPO_DIR, UI_DIR, UI_
 
 ### Community 513 - "MCP teknik planı"
 Cohesion: 0.09
-Nodes (23): 10 · M01'in ölçtükleri, 11 · M08'in ölçtükleri, 1 · Neden bu planın ilk cümlesi bir yasak, 2 · Protokol uyumu — neyin şart olduğu, 3 · CLI paritesi — ve neden kopya değil, 4 · `bizigo-sim` — simülatör kontrolü, 5 · `bizigo` — ürünün kendisi, 6 · Kimlik (+15 more)
+Nodes (23): 10 · M01'in ölçtükleri, 11 · M08'in ölçtükleri, 1 · Neden bu planın ilk cümlesi bir yasak, 2 · Protokol uyumu — neyin şart olduğu, 3 · CLI paritesi — ve neden kopya değil, 4 · `loganalyzer-sim` — simülatör kontrolü, 5 · `loganalyzer` — ürünün kendisi, 6 · Kimlik (+15 more)
 
 ### Community 514 - "uret.py"
 Cohesion: 0.60
@@ -2949,9 +2949,9 @@ Nodes (12): SortedSet, ColumnValueSpace, ColumnValueSpaces, ValueSpaceKind, Vend
 Cohesion: 0.27
 Nodes (6): OpCode, IlCallReader, BindingFlags, Dictionary, IEnumerable, MethodBase
 
-### Community 545 - "Bizigo.Contracts"
+### Community 545 - "LogAnalyzer.Contracts"
 Cohesion: 0.04
-Nodes (7): Bizigo.IntegrationTests, Bizigo.Storage.ClickHouse, Bizigo.Evidence.Providers, Bizigo.Mcp.Product, Bizigo.Mcp.Product.Tools, Bizigo.Query, Bizigo.Contracts
+Nodes (7): LogAnalyzer.IntegrationTests, LogAnalyzer.Storage.ClickHouse, LogAnalyzer.Evidence.Providers, LogAnalyzer.Mcp.Product, LogAnalyzer.Mcp.Product.Tools, LogAnalyzer.Query, LogAnalyzer.Contracts
 
 ### Community 546 - "SimulatorProfile"
 Cohesion: 0.08
@@ -2991,7 +2991,7 @@ Nodes (41): CommandDescriptor, FailedTestPayload, FilePayload, LinePayload, Pars
 
 ### Community 555 - "M02 — Tek çekirdek, iki sunum"
 Cohesion: 0.20
-Nodes (10): 1 · Bugünkü hâl — ölçüldü, 2 · Çekirdek nerede yaşıyor — **`Bizigo.Commands`, yeni proje**, 3 · Çivilenen küme, 4 · Kabul kriterleri, 5 · Bitti tanımından karşıladıkları, 6 · Bağımlılık ve sıra, 7 · Bilinen sınırlar ve açık sorular, CLI bugün API'ye konuşmuyor (+2 more)
+Nodes (10): 1 · Bugünkü hâl — ölçüldü, 2 · Çekirdek nerede yaşıyor — **`LogAnalyzer.Commands`, yeni proje**, 3 · Çivilenen küme, 4 · Kabul kriterleri, 5 · Bitti tanımından karşıladıkları, 6 · Bağımlılık ve sıra, 7 · Bilinen sınırlar ve açık sorular, CLI bugün API'ye konuşmuyor (+2 more)
 
 ### Community 556 - ".Instantiate"
 Cohesion: 0.27
@@ -3079,7 +3079,7 @@ Nodes (6): GoldenSeedTests, DateTimeOffset, Dictionary, Fact, IReadOnlyList, Tim
 
 ### Community 578 - "S08 — Çekim modelinin sayfalama kusuru ve teşhisin düzleşmesi"
 Cohesion: 0.13
-Nodes (15): 1 · Vendor hata metni stdout'a kaydı — **bu ticket'ın kendi regresyonu**, 2 · Etkileşimli kabuk testleri boş dize okuyordu — **test hatası**, 3 · Hedef kimliği ad alanlı geliyor — **iddia yanlıştı, ürün doğruydu**, Atfetme kayboldu mu, CI'ın yakaladıkları — yedi test, üç ayrı kök, Kalem 1 — sessiz kayıp, Kalem 2 — teşhis servis kapısında düzleşiyordu, Kalem 3 — `Bizigo.Api` referansının bedeli **yokmuş** (+7 more)
+Nodes (15): 1 · Vendor hata metni stdout'a kaydı — **bu ticket'ın kendi regresyonu**, 2 · Etkileşimli kabuk testleri boş dize okuyordu — **test hatası**, 3 · Hedef kimliği ad alanlı geliyor — **iddia yanlıştı, ürün doğruydu**, Atfetme kayboldu mu, CI'ın yakaladıkları — yedi test, üç ayrı kök, Kalem 1 — sessiz kayıp, Kalem 2 — teşhis servis kapısında düzleşiyordu, Kalem 3 — `LogAnalyzer.Api` referansının bedeli **yokmuş** (+7 more)
 
 ### Community 579 - "`machine-resources.sh` — kaynak kapısı"
 Cohesion: 0.20
@@ -3237,7 +3237,7 @@ Nodes (4): EngineFeedbackFixTests, Fact, InlineData, Theory
 Cohesion: 0.23
 Nodes (14): derle(), geri_al(), iddia_et(), kos(), Kusur, main(), CompletedProcess, M10 — bekçilerin KIRMIZI YANABİLDİĞİNİ ölçen araç. Geçen bir test geçtiğini… (+6 more)
 
-### Community 620 - "Bizigo.IntegrationTests.csproj"
+### Community 620 - "LogAnalyzer.IntegrationTests.csproj"
 Cohesion: 0.10
 Nodes (16): SSH.NET, Testcontainers, Testcontainers.ClickHouse, Testcontainers.PostgreSql, Microsoft.NET.Sdk, YamlDotNet, Microsoft.NET.Sdk, Microsoft.Extensions.Logging.Abstractions (+8 more)
 
@@ -3281,7 +3281,7 @@ Nodes (6): MetricEvidenceOracleTests, CancellationToken, Fact, InlineData, Task,
 Cohesion: 0.20
 Nodes (7): TopologyProviderBudget, TopologyProviderCompleteness, TopologyProviderFailure, TopologyProviderBudgetTests, IEnumerable, MemberData, Theory
 
-### Community 631 - "Bizigo.UnitTests.csproj"
+### Community 631 - "LogAnalyzer.UnitTests.csproj"
 Cohesion: 0.15
 Nodes (12): JsonSchema.Net, Microsoft.AspNetCore.TestHost, Microsoft.ML.Tokenizers, Microsoft.ML.Tokenizers.Data.O200kBase, NetArchTest.Rules, coverlet.collector, Microsoft.EntityFrameworkCore.InMemory, Microsoft.Extensions.TimeProvider.Testing (+4 more)
 
@@ -3303,7 +3303,7 @@ Nodes (13): ChangeEventReader, CancellationToken, IReadOnlyList, Task, ClickHous
 
 ### Community 636 - ".Failure"
 Cohesion: 0.11
-Nodes (19): BizigoMcpTool, McpToolError, IReadOnlyDictionary, string, ProductReadTool, CancellationToken, McpSurface, McpToolError (+11 more)
+Nodes (19): LogAnalyzerMcpTool, McpToolError, IReadOnlyDictionary, string, ProductReadTool, CancellationToken, McpSurface, McpToolError (+11 more)
 
 ### Community 637 - "Kalem 2 · Idempotency araması penceresiz — **ve öyle kalması gerekiyor**"
 Cohesion: 0.17
@@ -3369,7 +3369,7 @@ Nodes (10): NamedPipeServerStream, CapacityChild, bool, CancellationToken, Proce
 Cohesion: 0.12
 Nodes (21): TraceErrorPropagationProvider, TraceProviderOutput, TraceServiceDependencyProvider, CancellationToken, EvidenceKind, EvidenceSlice, GatherBudget, IOptions (+13 more)
 
-### Community 653 - "Bizigo.Contracts.csproj"
+### Community 653 - "LogAnalyzer.Contracts.csproj"
 Cohesion: 0.12
 Nodes (15): Microsoft.NET.Sdk, Microsoft.Extensions.DependencyInjection.Abstractions, Microsoft.Extensions.Logging.Abstractions, Microsoft.NET.Sdk, Microsoft.NET.Sdk, Microsoft.NET.Sdk, Microsoft.Extensions.DependencyInjection.Abstractions, Microsoft.Extensions.Http (+7 more)
 
@@ -3417,7 +3417,7 @@ Nodes (16): TopologyListTool, CancellationToken, int, IServiceScopeFactory, Json
 Cohesion: 0.12
 Nodes (5): patch(), CollectorHarnessTests, No Docker: verify fixture setup and owned early-failure cleanup wiring., Docker-free checks of ownership cleanup and the independent wire oracle., TelemetryHarnessTests
 
-### Community 665 - "Bizigo.Storage.Raw.csproj"
+### Community 665 - "LogAnalyzer.Storage.Raw.csproj"
 Cohesion: 0.10
 Nodes (17): AWSSDK.S3, ClickHouse.Driver, ZstdSharp.Port, Microsoft.NET.Sdk, Microsoft.Extensions.DependencyInjection.Abstractions, Microsoft.Extensions.Logging.Abstractions, Microsoft.NET.Sdk, Microsoft.Extensions.Hosting.Abstractions (+9 more)
 
@@ -3425,9 +3425,9 @@ Nodes (17): AWSSDK.S3, ClickHouse.Driver, ZstdSharp.Port, Microsoft.NET.Sdk, Mic
 Cohesion: 0.25
 Nodes (7): AuthenticationHandler, AuthenticateResult, AuthenticationSchemeOptions, ILoggerFactory, IOptionsMonitor, UrlEncoder, FixtureAuth
 
-### Community 667 - "Bizigo.Replay"
+### Community 667 - "LogAnalyzer.Replay"
 Cohesion: 0.18
-Nodes (3): Bizigo.Replay, ReplayServiceCollectionExtensions, IServiceCollection
+Nodes (3): LogAnalyzer.Replay, ReplayServiceCollectionExtensions, IServiceCollection
 
 ### Community 668 - ".Encode"
 Cohesion: 0.23
@@ -3473,7 +3473,7 @@ Nodes (8): CancellationToken, FileStream, ReadOnlyMemory, Task, ValueTask, FileO
 Cohesion: 0.16
 Nodes (14): DevicePayload, Payload, StateTool, CancellationToken, DateTimeOffset, DevicePayload, IReadOnlyList, JsonElement (+6 more)
 
-### Community 679 - "Bizigo.Parsing.csproj"
+### Community 679 - "LogAnalyzer.Parsing.csproj"
 Cohesion: 0.25
 Nodes (7): Microsoft.Extensions.Configuration.Abstractions, Microsoft.Extensions.DependencyInjection.Abstractions, Microsoft.Extensions.Options, Microsoft.Extensions.Options.ConfigurationExtensions, System.IO.Hashing, YamlDotNet, Microsoft.NET.Sdk
 
@@ -3697,9 +3697,9 @@ Nodes (9): McpStdioHost, Assembly, CancellationToken, ClaimsPrincipal, Func, ILo
 Cohesion: 0.20
 Nodes (6): Bu bir kusur değil — ama kriterin yanlış olması kusur, Bunun açtığı soru — cevaplanmadı, Düzeltilmiş kriter, F1'in kapsam kabul kriteri yanlış yazılmış, Kriterin hâli, Ve kimse ölçmedi
 
-### Community 748 - "Bizigo.Mcp"
+### Community 748 - "LogAnalyzer.Mcp"
 Cohesion: 0.03
-Nodes (24): Bizigo.Mcp, Bizigo.Cli, Bizigo.Contracts.Security, Bizigo.Simulators.Mcp, Bizigo.Mcp.Product.Resources, Bizigo.Rca.Models, Bizigo.Mcp.Tools, Bizigo.Commands (+16 more)
+Nodes (24): LogAnalyzer.Mcp, LogAnalyzer.Cli, LogAnalyzer.Contracts.Security, LogAnalyzer.Simulators.Mcp, LogAnalyzer.Mcp.Product.Resources, LogAnalyzer.Rca.Models, LogAnalyzer.Mcp.Tools, LogAnalyzer.Commands (+16 more)
 
 ### Community 749 - "TracesDetailTool"
 Cohesion: 0.27
@@ -3775,7 +3775,7 @@ Nodes (5): McpSubscriptionSideChannelTests, Fact, InlineData, Task, Theory
 
 ### Community 768 - "AuthenticationSetup.cs"
 Cohesion: 0.26
-Nodes (8): AuthenticationSetup, AuthOptions, BizigoAuthPolicies, BizigoAuthSchemes, IConfiguration, IServiceCollection, JwtBearerOptions, string
+Nodes (8): AuthenticationSetup, AuthOptions, LogAnalyzerAuthPolicies, LogAnalyzerAuthSchemes, IConfiguration, IServiceCollection, JwtBearerOptions, string
 
 ### Community 769 - "proxy.ts"
 Cohesion: 0.15
@@ -3809,7 +3809,7 @@ Nodes (5): SimulatorMcpSetup, Assembly, IServiceCollection, string, TimeProvider
 Cohesion: 0.40
 Nodes (3): RcaServiceCollectionExtensions, IConfiguration, IServiceCollection
 
-### Community 779 - "Bizigo.ControlPlane.csproj"
+### Community 779 - "LogAnalyzer.ControlPlane.csproj"
 Cohesion: 0.22
 Nodes (7): EFCore.NamingConventions, Microsoft.EntityFrameworkCore.Relational, Npgsql.EntityFrameworkCore.PostgreSQL, Microsoft.Extensions.Logging.Abstractions, Microsoft.Extensions.Options, Microsoft.NET.Sdk, Microsoft.NET.Sdk
 
@@ -3877,9 +3877,9 @@ Nodes (7): TopologyObservedRowHydration, DbDataReader, TopologyObservedRowDigest
 Cohesion: 0.30
 Nodes (5): TopologyEvidenceTests, Fact, InlineData, Task, Theory
 
-### Community 799 - "T31 — Bizigo `ProcessingPipeline`"
+### Community 799 - "T31 — LogAnalyzer `ProcessingPipeline`"
 Cohesion: 0.25
-Nodes (8): Amaç, Dışında, İçinde, Kabul kriterleri, Kapanırken karşılanmayan, Kapsam, Notlar, T31 — Bizigo `ProcessingPipeline`
+Nodes (8): Amaç, Dışında, İçinde, Kabul kriterleri, Kapanırken karşılanmayan, Kapsam, Notlar, T31 — LogAnalyzer `ProcessingPipeline`
 
 ### Community 800 - ".Production_sql_explain"
 Cohesion: 0.24
@@ -4041,7 +4041,7 @@ Nodes (5): OtlpTelemetryIntegrationTests, InlineData, Task, Theory, Trait
 Cohesion: 0.40
 Nodes (3): AuthEndpoints, AuthMeResponse, IEndpointRouteBuilder
 
-### Community 850 - ".AddBizigoModelProvider"
+### Community 850 - ".AddLogAnalyzerModelProvider"
 Cohesion: 0.40
 Nodes (3): ModelServiceCollectionExtensions, IConfiguration, IServiceCollection
 
@@ -4078,11 +4078,11 @@ Nodes (3): check_resources(), main(), run_gate()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Bizigo.Contracts` connect `Bizigo.Contracts` to `.ZincirAsync`, `.Project`, `TopologyPublicationRepairRunner`, `McpIdentityTests`, `AccessScope`, `.Describe`, `ICurrentUser`, `Bizigo.ControlPlane`, `.GatherAsync`, `OtlpTelemetryDecoder`, `.ReceiveAsync`, `TelemetryOwnerBinding`, `RcaTriggerSource`, `DeterministicReport`, `ScopedQuery`, `IScopedQuery`, `LogEvent`, `RcaWindow`, `.Hash`, `AlertPreviewTests`, `Bizigo.Replay`, `RawArchiveUploader`, `ParserToolbox`, `TelemetryQuery`, `.Point`, `TopologyNodeWriteDto.cs`, `TopologyGraphContracts.cs`, `EvidenceResponses.cs`, `.Structured`, `TopologyRecovery`, `.CreateAsync`, `CorrelationWindow`, `ChangesEndpoints.cs`, `Bizigo.Storage.Raw`, `.Node`, `AlertRuleEntity`, `RcaQuotaTests`, `Bizigo.UnitTests`, `TopologyPublicationRevision`, `Bizigo.Capacity`, `BizigoReadToolsSetup.cs`, `TelemetryDtos.cs`, `AlertLinkTargetTests`, `.TryToDomain`, `Bizigo.Parsing.Grok`, `ClaimContractTests`, `SignalIngest`, `FieldCoverage`, `EventWriter`, `.Analyze`, `.FromDecimal`, `RawRecord`, `TopologyGraphSnapshotSource`, `ChangeWebhookEndpoint`, `.CreateAsync`, `Bizigo.Mcp`, `.CreateConnection`, `EventResponses.cs`?**
+- **Why does `LogAnalyzer.Contracts` connect `LogAnalyzer.Contracts` to `.ZincirAsync`, `.Project`, `TopologyPublicationRepairRunner`, `McpIdentityTests`, `AccessScope`, `.Describe`, `ICurrentUser`, `LogAnalyzer.ControlPlane`, `.GatherAsync`, `OtlpTelemetryDecoder`, `.ReceiveAsync`, `TelemetryOwnerBinding`, `RcaTriggerSource`, `DeterministicReport`, `ScopedQuery`, `IScopedQuery`, `LogEvent`, `RcaWindow`, `.Hash`, `AlertPreviewTests`, `LogAnalyzer.Replay`, `RawArchiveUploader`, `ParserToolbox`, `TelemetryQuery`, `.Point`, `TopologyNodeWriteDto.cs`, `TopologyGraphContracts.cs`, `EvidenceResponses.cs`, `.Structured`, `TopologyRecovery`, `.CreateAsync`, `CorrelationWindow`, `ChangesEndpoints.cs`, `LogAnalyzer.Storage.Raw`, `.Node`, `AlertRuleEntity`, `RcaQuotaTests`, `LogAnalyzer.UnitTests`, `TopologyPublicationRevision`, `LogAnalyzer.Capacity`, `LogAnalyzerReadToolsSetup.cs`, `TelemetryDtos.cs`, `AlertLinkTargetTests`, `.TryToDomain`, `LogAnalyzer.Parsing.Grok`, `ClaimContractTests`, `SignalIngest`, `FieldCoverage`, `EventWriter`, `.Analyze`, `.FromDecimal`, `RawRecord`, `TopologyGraphSnapshotSource`, `ChangeWebhookEndpoint`, `.CreateAsync`, `LogAnalyzer.Mcp`, `.CreateConnection`, `EventResponses.cs`?**
   _High betweenness centrality (0.113) - this node is a cross-community bridge._
-- **Why does `CompiledDateStep` connect `ParseContext` to `ParserYamlLoader`, `Bizigo.Parsing.Grok`?**
+- **Why does `CompiledDateStep` connect `ParseContext` to `ParserYamlLoader`, `LogAnalyzer.Parsing.Grok`?**
   _High betweenness centrality (0.112) - this node is a cross-community bridge._
-- **Why does `Bizigo.UnitTests` connect `Bizigo.UnitTests` to `CompositionRootTests`, `Bizigo.ControlPlane`, `OtlpCollectorConfigurationTests.cs`, `.DiscoverAsync`, `Bizigo.Replay`, `.Callees`, `Bizigo.Contracts`, `CliSmokeTests`, `UiHealthcheckTests`, `CommandCoreConsoleTests`, `HarnessSeedingTests`, `Bizigo.Storage.Raw`, `Bizigo.Capacity`, `KeycloakRealmTests`, `.RunAsync`, `ShadowPromotionMeasurementTests`, `ProductDiscoveryTests`, `Bizigo.Parsing.Grok`, `EpicStatusTests`, `ConfigurationFileTests`, `ProductDiscovery`, `Bizigo.Mcp`, `WikiSourceDigest`, `AlertCriteriaBridgeTests`?**
+- **Why does `LogAnalyzer.UnitTests` connect `LogAnalyzer.UnitTests` to `CompositionRootTests`, `LogAnalyzer.ControlPlane`, `OtlpCollectorConfigurationTests.cs`, `.DiscoverAsync`, `LogAnalyzer.Replay`, `.Callees`, `LogAnalyzer.Contracts`, `CliSmokeTests`, `UiHealthcheckTests`, `CommandCoreConsoleTests`, `HarnessSeedingTests`, `LogAnalyzer.Storage.Raw`, `LogAnalyzer.Capacity`, `KeycloakRealmTests`, `.RunAsync`, `ShadowPromotionMeasurementTests`, `ProductDiscoveryTests`, `LogAnalyzer.Parsing.Grok`, `EpicStatusTests`, `ConfigurationFileTests`, `ProductDiscovery`, `LogAnalyzer.Mcp`, `WikiSourceDigest`, `AlertCriteriaBridgeTests`?**
   _High betweenness centrality (0.097) - this node is a cross-community bridge._
 - **What connects `TopologyObservedEdge`, `ChannelTestResponse`, `ErrorResponse` to the rest of the system?**
   _2604 weakly-connected nodes found - possible documentation gaps or missing edges._

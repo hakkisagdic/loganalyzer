@@ -32,7 +32,7 @@ Kapsamlanmış bir replay, arşivin yalnızca **bir kısmını** geri yükleyebi
 kurtarma aracının kurtarabildiği şey çağıranın grubuna bağlı olurdu. `System("replay")`
 bir gevşeme değil, aracın tanımı.
 
-**CLI'da kimlik yok ve olamaz.** Komut için `BIZIGO_CONTROLPLANE` gerekiyor; elinde
+**CLI'da kimlik yok ve olamaz.** Komut için `LOGANALYZER_CONTROLPLANE` gerekiyor; elinde
 `psql` olan birini bir bayrakla durdurmaya çalışmak, duvarı olmayan yere kapı takmak.
 
 Kriterin hatası **kapsamı** karıştırmakta: *"bütün okuma yolları"* ile *"kullanıcıya

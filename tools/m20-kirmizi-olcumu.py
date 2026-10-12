@@ -19,8 +19,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from kirmizi_olcumu import Kusur, olc  # noqa: E402
 
-MCP = "src/Bizigo.Mcp"
-PROD = "src/Bizigo.Mcp.Product"
+MCP = "src/LogAnalyzer.Mcp"
+PROD = "src/LogAnalyzer.Mcp.Product"
 
 KUSURLAR = [
     Kusur(
@@ -70,14 +70,14 @@ KUSURLAR = [
     ),
     Kusur(
         ad="6 · Filtre kurulmuyor (abonelik deftere hiç girmiyor)",
-        dosya=f"{MCP}/BizigoMcpServer.cs",
+        dosya=f"{MCP}/LogAnalyzerMcpServer.cs",
         bul="            options.Filters.Message.IncomingFilters.Add(registry.Filter());",
         koy="            _ = registry; // KUSUR: filtre kurulmuyor",
         kirmizi_bekleniyor=["Abonelik_onaylaniyor_ve_bildirim_ulasiyor"],
     ),
     Kusur(
         ad="7 · Koşum başlangıcı duyurulmuyor (dördüncü yayın noktası)",
-        dosya="src/Bizigo.Rca/RcaAdmission.cs",
+        dosya="src/LogAnalyzer.Rca/RcaAdmission.cs",
         bul="        // M07 · YAYIN NOKTASI 4/4 — koşum BAŞLADI (`Running`).",
         koy="        // KUSUR: dördüncü nokta kaldırıldı\n        /*",
         derleme_kirilmali=True,

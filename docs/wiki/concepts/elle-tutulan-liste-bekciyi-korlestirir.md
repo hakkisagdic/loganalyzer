@@ -1,7 +1,7 @@
 ---
 title: Elle tutulan liste bekçiyi körleştirir
 category: concepts
-tags: [test, surec, kavram, bizigo]
+tags: [test, surec, kavram, loganalyzer]
 aliases: [manuel liste kalıbı, yansımayla denetim]
 relationships:
   - target: "[[concepts/sessiz-yanlis-davranis]]"
@@ -40,7 +40,7 @@ tekrarlandığını ve her seferinde bekçinin yeşil yandığını kaydediyor:
 | `Produces<T>` kapısı | Elle `Map*` listesi — **16 uç** kapıya hiç görünmedi, üç test de geçti |
 | Ömür bekçisi | Elle `Add*` listesi — kanıt katmanı görünmedi |
 | Ömür bekçisi | Aynı liste **doğduğu gün** eksikti: kimlik grafiği hiç denetlenmemişti |
-| Ömür bekçisi | `AddBizigoDiscovery` başka bir uzantının içinden çağrılıyor; elle listeye girmesi akla gelmezdi |
+| Ömür bekçisi | `AddLogAnalyzerDiscovery` başka bir uzantının içinden çağrılıyor; elle listeye girmesi akla gelmezdi |
 | Kapı, ikinci yarı | Uç bulunuyordu ama **çağrılamıyordu**; bağımlılığı kayıtlı olmayan `Map*` patlıyor ve o dosya yine denetlenmemiş kalıyordu |
 
 Dördüncü satır kalıbın neden disiplinle çözülemeyeceğini gösteriyor: liste
@@ -96,8 +96,8 @@ Yansıma bir listeyi kaldırıyor ama yerine bir **konvansiyon** koyuyor, ve
 konvansiyon da elle tutulur — yalnızca başka bir dosyada.
 
 T50 bunun ölçülmüş örneğini buldu: bu depodaki yansıma keşifleri ürün
-derlemelerini `Bizigo.` **önekinden** tanıyor. `src/Bizigo.Cli` ise derlemesini
-`<AssemblyName>bizigo</AssemblyName>` ile yeniden adlandırıyor, yani önekli
+derlemelerini `LogAnalyzer.` **önekinden** tanıyor. `src/LogAnalyzer.Cli` ise derlemesini
+`<AssemblyName>loganalyzer</AssemblyName>` ile yeniden adlandırıyor, yani önekli
 keşiflerin **hepsine görünmez**. Delik `CLAUDE.md` §4'ün *"dizin adına
 güvenme, `git worktree list` çıktısına bak"* dersiyle aynı biçimde: ad bir
 kimlik değil bir alışkanlık.
@@ -137,8 +137,8 @@ karşılaştırmıyordu. Ve üç yönde birden yanlıştı:
 | | Liste ne diyordu | Ölçülen |
 | --- | --- | --- |
 | **Fazla** | `CLI`, `replay okuma` | İkisi de bu arayüzü **hiç anmıyor** |
-| **Eksik** | — | `Bizigo.Alerting` tüketiyor, sayılmamış |
-| **Yanlış ad** | *"F4'ün MCP sunucusu"* | Tüketen `Bizigo.Mcp.Product`; çekirdek tanımıyor |
+| **Eksik** | — | `LogAnalyzer.Alerting` tüketiyor, sayılmamış |
+| **Yanlış ad** | *"F4'ün MCP sunucusu"* | Tüketen `LogAnalyzer.Mcp.Product`; çekirdek tanımıyor |
 
 Yani liste körleştirecek bir kapı bulamamıştı ve **kendisi** yanlıştı. Bu, ilk üç
 kılıktan daha sessiz: körleşen bir bekçi hiç değilse bir gün yanlış bir şeyi

@@ -99,7 +99,7 @@ farklı kırılıyor, yani üç ayrı iddia — tek bir test değil.
 | **Ölçülmeyen** | Kriterin **hacim** okuması: *"7 günlük hacim bir seferde işlenebiliyor"*. Gün sayısı bir **kod yolu** ölçüsü olarak anlamına çekildi; bir **kapasite** ölçüsü olarak hiç ölçülmedi. |
 
 **Ölçmek neyi gerektiriyor.** Bu bir kapasite ölçümü, doğruluk ölçümü değil —
-B01–B05 ile aynı aile. Gerçek hacimde veri (`bizigo seed golden --span-days`),
+B01–B05 ile aynı aile. Gerçek hacimde veri (`loganalyzer seed golden --span-days`),
 bellek tavanı, ve replay'in bölüm başına ne kadar tuttuğu. Ve bir karar:
 *"bir seferde"* ne demek — tek süreçte mi, tek `REPLACE PARTITION` işleminde mi.
 İkisi farklı sayı verir.
@@ -160,7 +160,7 @@ da hata basmaz.
 | --- | --- |
 | **Kriter (eski)** | *"Kapsam dışı sorgu **hiçbir** yoldan (REST, replay okuma, CLI) veri döndürmez."* |
 | **Bugün ölçülen** | REST: `ScopeNegativeTests`, `F2ChainTests` (kapsam dışı olayın dönmediği), `McpResourceScopeIntegrationTests`. |
-| **Ölçülen (M18/M19)** | Kriterin saydığı üç yoldan **yalnızca REST** kapsam kapısından geçiyor. Replay `AccessScope.System("replay")` ile okuyor; `Bizigo.Cli` `IScopedQuery`'yi **hiç anmıyor** (`ClickHouseContext`/`EventWriter` ile doğrudan çalışıyor). |
+| **Ölçülen (M18/M19)** | Kriterin saydığı üç yoldan **yalnızca REST** kapsam kapısından geçiyor. Replay `AccessScope.System("replay")` ile okuyor; `LogAnalyzer.Cli` `IScopedQuery`'yi **hiç anmıyor** (`ClickHouseContext`/`EventWriter` ile doğrudan çalışıyor). |
 | **Ölçülmeyen** | Artık bir boşluk **değil** — kriter ürün yüzeylerine (REST, MCP, arayüz) çekildi ve replay ile CLI'ın kapsam dışı olması **gerekçeleriyle** yazıldı. |
 
 Bu kalem listede **kapanmış** olarak duruyor ve sebebi bir uyarı taşıyor: ikisinin

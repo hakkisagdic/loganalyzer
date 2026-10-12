@@ -156,23 +156,23 @@ adıyla sayıyor. Dokunmadan önce tüketici listesi lazım.
 ```
 $ graphify explain "SecretProtector" 2>/dev/null
 Node: SecretProtector
-  ID:        src_bizigo_contracts_security_secretprotector_bizigo_contracts_security_secretprotector
-  Source:    src/Bizigo.Contracts/Security/SecretProtector.cs L32
+  ID:        src_loganalyzer_contracts_security_secretprotector_loganalyzer_contracts_security_secretprotector
+  Source:    src/LogAnalyzer.Contracts/Security/SecretProtector.cs L32
   Type:      code
   Community: NotificationSecretTests
   Degree:    10
 
 Connections (10):
-  <-- ChangeConnectorService [references] [EXTRACTED] src/Bizigo.Api/Connectors/ChangeConnectorService.cs:L53
-  <-- ChangeConnectorTests [references] [EXTRACTED] tests/Bizigo.UnitTests/ChangeConnectorTests.cs:L35
-  <-- NotificationDispatcher [references] [EXTRACTED] src/Bizigo.Alerting/Notifications/NotificationDispatcher.cs:L43
-  <-- DeviceConfigRunner [references] [EXTRACTED] src/Bizigo.Api/Connectors/DeviceConfigRunner.cs:L81
-  <-- NotificationChannelService [references] [EXTRACTED] src/Bizigo.Alerting/NotificationChannelService.cs:L55
-  --> .Unprotect() [method] [EXTRACTED] src/Bizigo.Contracts/Security/SecretProtector.cs:L117
-  --> .Protect() [method] [EXTRACTED] src/Bizigo.Contracts/Security/SecretProtector.cs:L83
-  <-- SecretProtector.cs [contains] [EXTRACTED] src/Bizigo.Contracts/Security/SecretProtector.cs:L32
-  --> byte [references] [EXTRACTED] src/Bizigo.Contracts/Security/SecretProtector.cs:L37
-  --> int [references] [EXTRACTED] src/Bizigo.Contracts/Security/SecretProtector.cs:L35
+  <-- ChangeConnectorService [references] [EXTRACTED] src/LogAnalyzer.Api/Connectors/ChangeConnectorService.cs:L53
+  <-- ChangeConnectorTests [references] [EXTRACTED] tests/LogAnalyzer.UnitTests/ChangeConnectorTests.cs:L35
+  <-- NotificationDispatcher [references] [EXTRACTED] src/LogAnalyzer.Alerting/Notifications/NotificationDispatcher.cs:L43
+  <-- DeviceConfigRunner [references] [EXTRACTED] src/LogAnalyzer.Api/Connectors/DeviceConfigRunner.cs:L81
+  <-- NotificationChannelService [references] [EXTRACTED] src/LogAnalyzer.Alerting/NotificationChannelService.cs:L55
+  --> .Unprotect() [method] [EXTRACTED] src/LogAnalyzer.Contracts/Security/SecretProtector.cs:L117
+  --> .Protect() [method] [EXTRACTED] src/LogAnalyzer.Contracts/Security/SecretProtector.cs:L83
+  <-- SecretProtector.cs [contains] [EXTRACTED] src/LogAnalyzer.Contracts/Security/SecretProtector.cs:L32
+  --> byte [references] [EXTRACTED] src/LogAnalyzer.Contracts/Security/SecretProtector.cs:L37
+  --> int [references] [EXTRACTED] src/LogAnalyzer.Contracts/Security/SecretProtector.cs:L35
 exit=0
 ```
 
@@ -184,12 +184,12 @@ $ graphify explain ".Protect()" 2>/dev/null
 Node: .Protect()
   Degree:    9
 Connections (9):
-  <-- .SaveAsync() [calls] [INFERRED] src/Bizigo.Api/Connectors/ChangeConnectorService.cs:L179
-  <-- .SaveAsync() [calls] [INFERRED] src/Bizigo.Alerting/NotificationChannelService.cs:L122
-  <-- .RunAsync() [calls] [INFERRED] src/Bizigo.Api/Connectors/DeviceConfigRunner.cs:L172
-  <-- SecretProtector [method] [EXTRACTED] src/Bizigo.Contracts/Security/SecretProtector.cs:L83
-  <-- .Gonderici_turu_ne_veritabanina_ne_loga_gizli_bilgi_yaziyor() [calls] [INFERRED] tests/Bizigo.UnitTests/NotificationSecretTests.cs:L254
-  <-- .Kurcalanmis_sifreli_metin_reddediliyor() [calls] [INFERRED] tests/Bizigo.UnitTests/NotificationSecretTests.cs:L69
+  <-- .SaveAsync() [calls] [INFERRED] src/LogAnalyzer.Api/Connectors/ChangeConnectorService.cs:L179
+  <-- .SaveAsync() [calls] [INFERRED] src/LogAnalyzer.Alerting/NotificationChannelService.cs:L122
+  <-- .RunAsync() [calls] [INFERRED] src/LogAnalyzer.Api/Connectors/DeviceConfigRunner.cs:L172
+  <-- SecretProtector [method] [EXTRACTED] src/LogAnalyzer.Contracts/Security/SecretProtector.cs:L83
+  <-- .Gonderici_turu_ne_veritabanina_ne_loga_gizli_bilgi_yaziyor() [calls] [INFERRED] tests/LogAnalyzer.UnitTests/NotificationSecretTests.cs:L254
+  <-- .Kurcalanmis_sifreli_metin_reddediliyor() [calls] [INFERRED] tests/LogAnalyzer.UnitTests/NotificationSecretTests.cs:L69
   ... (kırpıldı, 3 satır daha — hepsi INFERRED)
 exit=0
 ```
@@ -209,11 +209,11 @@ ortalama güven tam olarak burada okunuyor.
 Grafın **hiçbir düğümünde görünmeyen 5 dosya** ve satırları:
 
 ```
-src/Bizigo.Alerting/AlertingServiceCollectionExtensions.cs:42:        services.TryAddSingleton(_ => new SecretProtector(
-src/Bizigo.Api/Connectors/ChangeConnectorServiceCollectionExtensions.cs:32:        services.TryAddSingleton(_ => new SecretProtector(
-tests/Bizigo.UnitTests/NotificationDispatcherTests.cs:46:        new SecretProtector(Key),
-src/Bizigo.Contracts/Security/SecretProtectionOptions.cs:26:/// ... <see cref="SecretProtector"/> anahtarı
-src/Bizigo.ControlPlane/ChangeConnectorEntities.cs:44:/// ... <c>Bizigo.Contracts.Security.SecretProtector</c> ile — T22'nin ...
+src/LogAnalyzer.Alerting/AlertingServiceCollectionExtensions.cs:42:        services.TryAddSingleton(_ => new SecretProtector(
+src/LogAnalyzer.Api/Connectors/ChangeConnectorServiceCollectionExtensions.cs:32:        services.TryAddSingleton(_ => new SecretProtector(
+tests/LogAnalyzer.UnitTests/NotificationDispatcherTests.cs:46:        new SecretProtector(Key),
+src/LogAnalyzer.Contracts/Security/SecretProtectionOptions.cs:26:/// ... <see cref="SecretProtector"/> anahtarı
+src/LogAnalyzer.ControlPlane/ChangeConnectorEntities.cs:44:/// ... <c>LogAnalyzer.Contracts.Security.SecretProtector</c> ile — T22'nin ...
 ```
 
 Desen net: **3'ü `new SecretProtector(...)` nesne üretimi, 2'si doküman
@@ -230,16 +230,16 @@ güvenlik incelemesi için yeterli değil.
 ### 2.2 · "`EventWriter.cs`'e dokunuyorum — ne kırılır?"
 
 ```
-$ graphify affected src/Bizigo.Storage.ClickHouse/EventWriter.cs 2>/dev/null
+$ graphify affected src/LogAnalyzer.Storage.ClickHouse/EventWriter.cs 2>/dev/null
 Affected nodes for EventWriter.cs
 Relations: calls, indirect_call, references, imports, imports_from, dynamic_import,
            re_exports, inherits, extends, implements, uses, mixes_in, embeds, requires
 Depth: 2
-- ScopedQuery [references] src/Bizigo.Query/ScopedQuery.cs:L54
-- ReplayEngine [references] src/Bizigo.Replay/ReplayEngine.cs:L37
-- ClickHouseEventSink [references] src/Bizigo.Storage.ClickHouse/ClickHouseEventSink.cs:L36
-- ChangeOutOfScopeCountTests [references] tests/Bizigo.IntegrationTests/ChangeOutOfScopeCountTests.cs:L24
-- CorrelationQueryTests [references] tests/Bizigo.IntegrationTests/CorrelationQueryTests.cs:L30
+- ScopedQuery [references] src/LogAnalyzer.Query/ScopedQuery.cs:L54
+- ReplayEngine [references] src/LogAnalyzer.Replay/ReplayEngine.cs:L37
+- ClickHouseEventSink [references] src/LogAnalyzer.Storage.ClickHouse/ClickHouseEventSink.cs:L36
+- ChangeOutOfScopeCountTests [references] tests/LogAnalyzer.IntegrationTests/ChangeOutOfScopeCountTests.cs:L24
+- CorrelationQueryTests [references] tests/LogAnalyzer.IntegrationTests/CorrelationQueryTests.cs:L30
 ... (kırpıldı, toplam 102 satır)
 exit=0
 ```
@@ -253,16 +253,16 @@ exit=0
 | **Yalnızca grep'te** | **4 dosya** ← grafın kör noktası |
 
 Grafın tek başına bulduğu 18 dosya iki adım ötedeki dolaylı bağımlılar:
-`src/Bizigo.Api/Program.cs`, `src/Bizigo.Api/ReplayEndpoints.cs`,
-`src/Bizigo.Replay/ReplayDiff.cs`, `tests/.../DevStackFixture.cs`… Bunları
+`src/LogAnalyzer.Api/Program.cs`, `src/LogAnalyzer.Api/ReplayEndpoints.cs`,
+`src/LogAnalyzer.Replay/ReplayDiff.cs`, `tests/.../DevStackFixture.cs`… Bunları
 grep'le bulmak elle BFS yapmak demekti. **Bu, grafın kazandığı yer.**
 
 Grep'in bulup grafın bulamadığı 4 satır — dördü de ayrı bir sebeple:
 
 ```
-src/Bizigo.Storage.ClickHouse/EventFieldKinds.cs:95:  [.. EventWriter.EventColumns.Where(...)]   <- statik üye erişimi
-tests/Bizigo.IntegrationTests/EventRetentionChainTests.cs:106:  new EventWriter(_context),        <- nesne üretimi (§2.1'in aynısı)
-tests/Bizigo.UnitTests/EventRetentionTests.cs:60:  private sealed class KabulEdenYazici : IEventWriter   <- grep gürültüsü (farklı sembol)
+src/LogAnalyzer.Storage.ClickHouse/EventFieldKinds.cs:95:  [.. EventWriter.EventColumns.Where(...)]   <- statik üye erişimi
+tests/LogAnalyzer.IntegrationTests/EventRetentionChainTests.cs:106:  new EventWriter(_context),        <- nesne üretimi (§2.1'in aynısı)
+tests/LogAnalyzer.UnitTests/EventRetentionTests.cs:60:  private sealed class KabulEdenYazici : IEventWriter   <- grep gürültüsü (farklı sembol)
 ui/tests/e2e/prepare.ts:153:  * (<c>... → EventWriter</c>)                                      <- yorum içi, üstelik dil sınırı ötesi
 ```
 
@@ -338,7 +338,7 @@ Doğru cevap grep'te, iki satırda:
 ```
 $ git grep -n "TTL " -- src db
 db/clickhouse/0001_events.sql:79:TTL toDateTime(ts) + INTERVAL 90 DAY
-src/Bizigo.Storage.ClickHouse/ClickHouseEventSink.cs:23:  /// (<c>db/clickhouse/0001_events.sql</c>: <c>TTL toDateTime(ts) + INTERVAL 90 DAY</c>).
+src/LogAnalyzer.Storage.ClickHouse/ClickHouseEventSink.cs:23:  /// (<c>db/clickhouse/0001_events.sql</c>: <c>TTL toDateTime(ts) + INTERVAL 90 DAY</c>).
 ```
 
 `ClickHouseEventSink` — yani saklama politikasının gerçek sahibi — `query`
@@ -356,11 +356,11 @@ yok**, manifest'e bile girmemişler.
 notunu bulmak isteyelim.
 
 ```
-$ graphify explain "src_bizigo_contracts_accessscope_bizigo_contracts_accessscope" 2>/dev/null
+$ graphify explain "src_loganalyzer_contracts_accessscope_loganalyzer_contracts_accessscope" 2>/dev/null
 Node: AccessScope
   Degree:    150
 Connections (150):
-  --> .ForGroups() [method] [EXTRACTED] src/Bizigo.Contracts/AccessScope.cs:L53
+  --> .ForGroups() [method] [EXTRACTED] src/LogAnalyzer.Contracts/AccessScope.cs:L53
   ... (kırpıldı, 20 satır gösteriliyor + "and 130 more")
 exit=0
 ```
@@ -403,7 +403,7 @@ demiyor — **yanlış cevap veriyor.**
 
 ### 3.1 · Yokluğu bildiren hâl
 
-`SyslogEmitter`, `85343ff` commit'iyle gelen `sim/Bizigo.Simulators/`
+`SyslogEmitter`, `85343ff` commit'iyle gelen `sim/LogAnalyzer.Simulators/`
 projesinin göbeğinde. Graf `cca19da5`'te derlendi ve o an `sim/` ağacı boştu.
 
 ```
@@ -413,9 +413,9 @@ exit=0
 
 $ git grep -l "SyslogEmitter"
 docs/epic/fs-simulatorler/index.md
-sim/Bizigo.Simulators/Program.cs
-sim/Bizigo.Simulators/SyslogEmitter.cs
-tests/Bizigo.UnitTests/EventRetentionTests.cs
+sim/LogAnalyzer.Simulators/Program.cs
+sim/LogAnalyzer.Simulators/SyslogEmitter.cs
+tests/LogAnalyzer.UnitTests/EventRetentionTests.cs
 ```
 
 Bu hâli görmek kolay: cevap boş, şüphelenirsin. **Asıl tehlikeli olan öteki
@@ -434,30 +434,30 @@ Start: ['.RenderSyslog()', '.TryParseSyslog()',
 
 [!] TRUNCATED: showing 57 of 102 nodes (~2000-token budget). ...
 
-NODE .RenderSyslog() [src=src/Bizigo.Cli/Seeding/SampleTimeRewriter.cs loc=L183 community=.Rewrite]
-NODE .TryParseSyslog() [src=src/Bizigo.Parsing/Engine/StepExecutors.cs loc=L507 community=ParseContext]
-NODE .Gercek_syslog_satiri_ayristirilir() [src=tests/Bizigo.UnitTests/GrokPatternLibraryTests.cs loc=L59 ...]
-NODE SampleTimeRewriter [src=src/Bizigo.Cli/Seeding/SampleTimeRewriter.cs loc=L42 community=.Rewrite]
+NODE .RenderSyslog() [src=src/LogAnalyzer.Cli/Seeding/SampleTimeRewriter.cs loc=L183 community=.Rewrite]
+NODE .TryParseSyslog() [src=src/LogAnalyzer.Parsing/Engine/StepExecutors.cs loc=L507 community=ParseContext]
+NODE .Gercek_syslog_satiri_ayristirilir() [src=tests/LogAnalyzer.UnitTests/GrokPatternLibraryTests.cs loc=L59 ...]
+NODE SampleTimeRewriter [src=src/LogAnalyzer.Cli/Seeding/SampleTimeRewriter.cs loc=L42 community=.Rewrite]
 ... (kırpıldı, 57 düğüm)
 exit=0
 ```
 
 102 düğümlük, kendinden emin, biçimi kusursuz bir cevap. İçinde:
 
-**Bir:** aranan sınıf yok. `sim/Bizigo.Simulators/SyslogEmitter.cs` çıktının
+**Bir:** aranan sınıf yok. `sim/LogAnalyzer.Simulators/SyslogEmitter.cs` çıktının
 hiçbir yerinde geçmiyor — çünkü graf o dosyayı hiç görmedi.
 
 **İki:** ilk satırdaki dosya **artık depoda yok.**
 
 ```
-$ ls src/Bizigo.Cli/Seeding/SampleTimeRewriter.cs
-ls: src/Bizigo.Cli/Seeding/SampleTimeRewriter.cs: No such file or directory
+$ ls src/LogAnalyzer.Cli/Seeding/SampleTimeRewriter.cs
+ls: src/LogAnalyzer.Cli/Seeding/SampleTimeRewriter.cs: No such file or directory
 exit=1
 
-$ ls src/Bizigo.Parsing/Samples/SampleTimeRewriter.cs
--rw-r--r--  8.8K   src/Bizigo.Parsing/Samples/SampleTimeRewriter.cs
+$ ls src/LogAnalyzer.Parsing/Samples/SampleTimeRewriter.cs
+-rw-r--r--  8.8K   src/LogAnalyzer.Parsing/Samples/SampleTimeRewriter.cs
 
-$ git log --oneline --diff-filter=D -- src/Bizigo.Cli/Seeding/SampleTimeRewriter.cs
+$ git log --oneline --diff-filter=D -- src/LogAnalyzer.Cli/Seeding/SampleTimeRewriter.cs
 7c74ced Count the rows ClickHouse says it wrote but silently erased (S02a)
 ```
 
@@ -480,7 +480,7 @@ HEAD'de var, grafta YOK : 24 dosya
   catalog 1
 
 grafta var, HEAD'de YOK : 2
-  src/Bizigo.Cli/Seeding/SampleTimeRewriter.cs   <- taşındı
+  src/LogAnalyzer.Cli/Seeding/SampleTimeRewriter.cs   <- taşındı
   src                                            <- artık karşılığı olmayan düğüm
 ```
 
@@ -489,7 +489,7 @@ dağılımı kötü — hangi commit'in eklediğini saydım:
 
 ```
 $ git log --oneline --diff-filter=A -1 -- <dosya>
-sim/Bizigo.Simulators/* (6)              85343ff  S02
+sim/LogAnalyzer.Simulators/* (6)              85343ff  S02
 EventRetentionChainTests.cs              7c74ced  S02a
 EventRetentionTests.cs                   7c74ced  S02a
 SimulatorFixtureChainTests.cs            0de3beb  S01
@@ -526,7 +526,7 @@ oturumda ölçüldü:
 | --- | --- | --- |
 | `graphify path "SyslogEmitter" "EventWriter" --undirected` | **stderr** | **1** |
 | `graphify explain "HicBoyleBirSinifYok"` | stdout | **0** |
-| `graphify affected "sim/Bizigo.Simulators/SyslogEmitter.cs"` | stdout | **0** |
+| `graphify affected "sim/LogAnalyzer.Simulators/SyslogEmitter.cs"` | stdout | **0** |
 
 Ölçüm:
 
@@ -540,8 +540,8 @@ $ graphify explain "HicBoyleBirSinifYok" 2>/dev/null
 No node matching 'HicBoyleBirSinifYok' found.
 exit=0
 
-$ graphify affected "sim/Bizigo.Simulators/SyslogEmitter.cs" 2>/dev/null
-No unique node match for sim/Bizigo.Simulators/SyslogEmitter.cs
+$ graphify affected "sim/LogAnalyzer.Simulators/SyslogEmitter.cs" 2>/dev/null
+No unique node match for sim/LogAnalyzer.Simulators/SyslogEmitter.cs
 exit=0
 ```
 

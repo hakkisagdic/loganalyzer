@@ -86,7 +86,7 @@ kural başına maliyet. Kapsam kararı ondan sonra.
 ```mermaid
 flowchart TB
   subgraph derleme["Derleme zamanı"]
-    SR["SigmaHQ kuralları"] --> PP["Bizigo ProcessingPipeline"]
+    SR["SigmaHQ kuralları"] --> PP["LogAnalyzer ProcessingPipeline"]
     PP --> CB["pySigma-backend-clickhouse"]
     CB --> SQL["Üretilen SQL<br/>repoda versiyonlu"]
   end

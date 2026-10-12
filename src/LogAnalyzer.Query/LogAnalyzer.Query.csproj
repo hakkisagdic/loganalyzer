@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\LogAnalyzer.Contracts\LogAnalyzer.Contracts.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Storage.ClickHouse\LogAnalyzer.Storage.ClickHouse.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.ControlPlane\LogAnalyzer.ControlPlane.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+  </PropertyGroup>
+
+</Project>

@@ -39,7 +39,7 @@ else:
 sys.exit(result.returncode)
 """.replace("ROOT", repr(str(root))).replace("ROLE", repr(role)).replace("OUTCOME", repr(outcome))
         .replace("DOTNET", repr(smoke.DOTNET))
-        .replace("SIMULATOR", repr(str(ROOT / "sim/Bizigo.Simulators/bin/Release/net10.0/Bizigo.Simulators.dll")))
+        .replace("SIMULATOR", repr(str(ROOT / "sim/LogAnalyzer.Simulators/bin/Release/net10.0/LogAnalyzer.Simulators.dll")))
         .replace("PROBE", repr(str(ROOT / "tools/capacity/fixture-probe.py"))))
     return program
 

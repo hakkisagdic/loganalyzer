@@ -15,7 +15,7 @@ MCP'de var CLI'da yok ise fark **bir karar** olmalı, kaza değil.
 
 ## 1 · Bugünkü hâl — ölçüldü
 
-`src/Bizigo.Cli/Program.cs` üzerinde sayıldı (main `a71df17`): **6 komut grubu,
+`src/LogAnalyzer.Cli/Program.cs` üzerinde sayıldı (main `a71df17`): **6 komut grubu,
 10 yaprak komut**, `SetAction` çağrısı **10**.
 
 | Grup | Yapraklar |
@@ -28,30 +28,30 @@ MCP'de var CLI'da yok ise fark **bir karar** olmalı, kaza değil.
 | `sigma` | `sync` |
 
 **On birinci komut bu ağaçta yok.** `mcp serve` M01 ile geliyor ve M01 bu
-worktree'ye (main `a71df17`) **birleşmedi**: `src/Bizigo.Mcp` dizini yok,
+worktree'ye (main `a71df17`) **birleşmedi**: `src/LogAnalyzer.Mcp` dizini yok,
 `"mcp"`/`"serve"` dizgileri CLI'da geçmiyor. Ölçüm ikisinde ayrışıyor ve
 ayrışma sayının kendisinde — aşağıdaki sabit bu yüzden **koşullu**.
 
 ### CLI bugün API'ye konuşmuyor
 
-Ayrıca ölçüldü, çünkü çekirdeğin şeklini belirliyor: `Bizigo.Cli` içinde
+Ayrıca ölçüldü, çünkü çekirdeğin şeklini belirliyor: `LogAnalyzer.Cli` içinde
 **`HttpClient` yok**, `Authorization`/`Bearer`/Keycloak/oidc izi yok, `"/v1…"`
 çağrısı yok. (`token` eşleşmelerinin tamamı `CancellationToken` parametresi —
-ayıklandı.) CLI referansları `Bizigo.Query` · `Bizigo.Ingest` ·
-`Bizigo.Parsing` · `Bizigo.Alerting` · `Bizigo.Simulators`: **alan
+ayıklandı.) CLI referansları `LogAnalyzer.Query` · `LogAnalyzer.Ingest` ·
+`LogAnalyzer.Parsing` · `LogAnalyzer.Alerting` · `LogAnalyzer.Simulators`: **alan
 kütüphanelerine süreç içi** gidiyor.
 
 Yani çekirdek bugünkü komutlardan türetilirse **kimlik taşımayan** bir şekli
 miras alır. [M08](../kimlik-tasima/index.md) bu ölçümün üstüne kuruluyor.
 
-## 2 · Çekirdek nerede yaşıyor — **`Bizigo.Commands`, yeni proje**
+## 2 · Çekirdek nerede yaşıyor — **`LogAnalyzer.Commands`, yeni proje**
 
 Karar koordinatörde verildi. İki gerekçesi var ve ikisi de ölçüme dayanıyor.
 
-**Birincisi T50'nin ölçtüğü şey:** `Bizigo.Cli`'nin derleme adı `Bizigo.Cli`
-değil **`bizigo`** (`<AssemblyName>` ile yeniden adlandırılmış). Çekirdeği
-CLI'nin içine koymak `Bizigo.Mcp → bizigo` referansını doğurur — protokol
-katmanı bir **sunum** katmanına bağlanmış olur, üstelik `Bizigo.` önek
+**Birincisi T50'nin ölçtüğü şey:** `LogAnalyzer.Cli`'nin derleme adı `LogAnalyzer.Cli`
+değil **`loganalyzer`** (`<AssemblyName>` ile yeniden adlandırılmış). Çekirdeği
+CLI'nin içine koymak `LogAnalyzer.Mcp → loganalyzer` referansını doğurur — protokol
+katmanı bir **sunum** katmanına bağlanmış olur, üstelik `LogAnalyzer.` önek
 konvansiyonunun dışında kalan ve bu yüzden yansımayla keşfeden bekçilere
 görünmeyen bir derlemeye.
 
@@ -74,7 +74,7 @@ etkisiz**.
 | --- | --- |
 | `schema migrate` | Göç **geri alınamaz**; bu deponun en pahalı önlenmiş hatası bir göçtü |
 | `seed golden` | Ölçüm verisinin kirlenmesi **sessiz** — yanlış sayı üretir, hata vermez |
-| `fleet apply` | [M03](../sim-araclari/index.md)'ün yüzeyi; `bizigo` yüzeyine ait değil |
+| `fleet apply` | [M03](../sim-araclari/index.md)'ün yüzeyi; `loganalyzer` yüzeyine ait değil |
 | `mcp serve` | Özyineleme — sunucuyu sunucunun aracı olarak sunmak |
 | `sigma sync` | Alarm kurallarına **yazıyor** |
 
@@ -95,7 +95,7 @@ kılardı.
 
 ## 4 · Kabul kriterleri
 
-1. `Bizigo.Commands` projesi var; `Bizigo.Cli` ve MCP yüzeyi **onu** kullanıyor,
+1. `LogAnalyzer.Commands` projesi var; `LogAnalyzer.Cli` ve MCP yüzeyi **onu** kullanıyor,
    birbirini değil.
 2. Çekirdekteki her komut ya bir MCP aracı ya `Exempt` listesinde **gerekçesiyle**;
    sayı `ExpectedExemptCount = 5` ile çivili.
@@ -120,7 +120,7 @@ kılardı.
 
 ## 6 · Bağımlılık ve sıra
 
-**M01.** Çekirdek ancak araç sözleşmesi (`BizigoMcpTool`) ve keşif
+**M01.** Çekirdek ancak araç sözleşmesi (`LogAnalyzerMcpTool`) ve keşif
 (`McpToolDiscovery`) varken ikinci sunumunu üretebilir.
 
 ## 7 · Bilinen sınırlar ve açık sorular
@@ -135,6 +135,6 @@ kılardı.
    bir bütçe kalemi.
 4. **Açık soru:** çekirdek komutları hangi imzayla alıyor — `AccessScope`
    parametresi çekirdeğin sözleşmesinde mi, sunum katmanında mı? Plan sessiz.
-   `bizigo` yüzeyi için kapsamın çekirdekten geçmesi gerekiyor
+   `loganalyzer` yüzeyi için kapsamın çekirdekten geçmesi gerekiyor
    ([M04](../okuma-araclari/index.md)); bugünkü altı komutun hiçbiri kapsamlı
    sorgu yapmadığı için soru bugün **görünmüyor** ve M04'te patlıyor.

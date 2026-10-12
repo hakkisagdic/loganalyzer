@@ -42,7 +42,7 @@ flowchart TB
   M01["M01 · protokol çekirdeği<br/>+ uyum kapısı"]
 
   subgraph Sim["simülatör kolu — ürün verisi yok"]
-    M03["M03 · bizigo-sim araçları"]
+    M03["M03 · loganalyzer-sim araçları"]
   end
 
   subgraph Urun["ürün kolu — K6'nın alanı"]
@@ -68,9 +68,9 @@ flowchart TB
 | --- | --- | --- | --- |
 | M01 | Protokol çekirdeği ve uyum kapısı | `initialize`, yetenek anlaşması, `stdio` + akışlanabilir HTTP, **araçları kendisi bulan** sözleşme testi, iptal | — |
 | M02 | [Komut çekirdeği ve CLI paritesi](komut-cekirdegi/index.md) | Ortak çekirdek, iki sunum katmanı, gerekçeli muafiyet + sabit sayı | M01 |
-| M03 | [`bizigo-sim` araçları](sim-araclari/index.md) | Yedi araç; **yüzey hatası** yüzeyi söylüyor, profili değil | M01, FS-a |
-| M04 | [`bizigo` okuma araçları](okuma-araclari/index.md) | `logs.*`, `alerts.*`, `inventory.*`, `catalog.*`; kapsam **tek kapıdan** | M01, M02 |
-| M05 | [`bizigo` RCA araçları](rca-araclari/index.md) | `rca.trigger` (**yazıyor** — dört kalemli ölçüt), `rca.runs` (üç yönlü ayrım); `evidence.bundle` **kaynak olarak** karşılandı | M04, T46 |
+| M03 | [`loganalyzer-sim` araçları](sim-araclari/index.md) | Yedi araç; **yüzey hatası** yüzeyi söylüyor, profili değil | M01, FS-a |
+| M04 | [`loganalyzer` okuma araçları](okuma-araclari/index.md) | `logs.*`, `alerts.*`, `inventory.*`, `catalog.*`; kapsam **tek kapıdan** | M01, M02 |
+| M05 | [`loganalyzer` RCA araçları](rca-araclari/index.md) | `rca.trigger` (**yazıyor** — dört kalemli ölçüt), `rca.runs` (üç yönlü ayrım); `evidence.bundle` **kaynak olarak** karşılandı | M04, T46 |
 | M06 | [Redaksiyon ve K6 kapısı](redaksiyon-kapisi/index.md) | `RedactedPrompt` zorunluluğu **derleyicide**; sunucu ağ sınırını beyan ediyor | M04, T41, T42 |
 | M07 | [Kaynaklar ve abonelik](kaynaklar-ve-abonelik/index.md) | Belge kaynakları, `rca.runs` durum bildirimi | M05 |
 | M08 | [Kimlik taşıma](kimlik-tasima/index.md) | Keycloak kimliği MCP oturumundan uca; servis hesabı **yasak** | M04 |
@@ -145,16 +145,16 @@ gibi) ve o, aldığı her şeyi **buluta** gönderiyor. Sınırı koda çivileme
 ürünün en büyük sözünü **bayrak yeşilken** boşa çıkaran bir hâl yazmak
 olurdu — §7'nin tarif ettiği sınıf.
 
-Sonuç: `bizigo mcp serve --data-boundary internal|external`, **varsayılanı
+Sonuç: `loganalyzer mcp serve --data-boundary internal|external`, **varsayılanı
 yok**. `--surface`'in varsayılanı var çünkü yüzeyin makul bir varsayılanı var;
-sınırın yok. `--data-boundary external --surface bizigo` reddediliyor.
+sınırın yok. `--data-boundary external --surface loganalyzer` reddediliyor.
 
 Bu gözlemin yazılı olması gerekiyordu çünkü **bir sonraki kişi aynı mekanik
 çıkarımı yapacak** ve o çıkarımın nerede kırıldığı koddan görünmüyor.
 
 ### K6 ekseni tek tip, ama MCP'de çıplak dolaşmıyor
 
-`ModelDataBoundary` `Bizigo.Contracts.Security.DataBoundary`'ye **taşındı**:
+`ModelDataBoundary` `LogAnalyzer.Contracts.Security.DataBoundary`'ye **taşındı**:
 K6 tek bir eksen çiziyor ve o eksenin iki tipi olamaz (§9). Ama tipi paylaşmak
 tek başına yeni bir tehlike doğuruyordu — T42'nin kapısında `Internal`
 **adrese karşı doğrulanmış**, MCP'de **yalnızca beyan edilmiş** demek, ve aynı
@@ -170,13 +170,13 @@ Farkın kaynağı yön: model ucu **egress** — biz ona bağlanıyoruz, adresi
 biliniyor. MCP yüzeyi **ingress** — istemci bize bağlanıyor ve kim olduğu
 bağlanana kadar bilinmiyor; stdio'da hiç adres yok.
 
-### `External` + `bizigo-sim` geçiyor
-İki yüzeyin ayrı olmasının **sebebi** o risk ayrımı: `bizigo-sim` ürün verisi
+### `External` + `loganalyzer-sim` geçiyor
+İki yüzeyin ayrı olmasının **sebebi** o risk ayrımı: `loganalyzer-sim` ürün verisi
 değil simülatör durumu döndürüyor. Kurum dışı bir istemciye açılması K6'yı
 ihlal etmiyor.
 
-Bu yol bugün ürün kurulumunda **ulaşılamaz** — `BizigoMcpSetup` yalnızca ürün
-yüzeyini kuruyor ve `bizigo-sim`'in HTTP yüzeyi M03'ün kararı. Kararı
+Bu yol bugün ürün kurulumunda **ulaşılamaz** — `LogAnalyzerMcpSetup` yalnızca ürün
+yüzeyini kuruyor ve `loganalyzer-sim`'in HTTP yüzeyi M03'ün kararı. Kararı
 daraltmak (her yüzeyde `External` reddi) bugün ölçülemeyen bir kararı
 ölçülemeyen bir başkasıyla değiştirirdi ve M03 gerekçesiz bir kapı bulurdu.
 
@@ -186,7 +186,7 @@ M06 kapısının kendi belgesinde üç tutamadığı yazılıydı ve üçüncüs
 *"HTTP taşımasında dinlenen adresi doğrulamıyor."* Yani `internal` beyanı
 kabul ediliyor, sunucu `0.0.0.0` üzerinde koşuyor olabiliyordu — ve sevk edilen
 container imajı **tam olarak öyle** bağlıyor (ölçüldü,
-`src/Bizigo.Api/Dockerfile:85`).
+`src/LogAnalyzer.Api/Dockerfile:85`).
 
 [M11](kestrel-kor-noktasi/index.md) o boşluğu **ikinci bir kapıyla** kapattı
 (kalkışta, `IServerAddressesFeature` üzerinden) ve joker bağlamayı *"dışa

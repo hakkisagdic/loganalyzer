@@ -80,7 +80,7 @@ def main():
     timestamp = time.time_ns()
     def resource(name):
         return {"attributes": [
-            {"key": "bizigo.source_key", "value": {"stringValue": name}},
+            {"key": "loganalyzer.source_key", "value": {"stringValue": name}},
             {"key": "service.name", "value": {"stringValue": "service-" + nonce}},
             {"key": "test.run", "value": {"stringValue": nonce}},
             {"key": "owner_group", "value": {"stringValue": "forged-admin"}}]}
@@ -150,7 +150,7 @@ def main():
         content = old.s3_get(session["s3"], manifest["object_key"])
         assert hashlib.sha256(content).hexdigest() == manifest["object_sha256"]
         archive_path = output / (path.stem + ".archive"); archive_path.write_bytes(content)
-        raw = subprocess.check_output([old.helpers.DOTNET, str(ROOT / "sim/Bizigo.OtlpFixture/bin/Release/net10.0/Bizigo.OtlpFixture.dll"), "--read-archive", str(archive_path), str(manifest["envelope_length"])], cwd=ROOT)
+        raw = subprocess.check_output([old.helpers.DOTNET, str(ROOT / "sim/LogAnalyzer.OtlpFixture/bin/Release/net10.0/LogAnalyzer.OtlpFixture.dll"), "--read-archive", str(archive_path), str(manifest["envelope_length"])], cwd=ROOT)
         envelope = json.loads(raw)
         if not any(b["source_id"] in names.values() for b in envelope.get("owner_bindings", [])):
             continue

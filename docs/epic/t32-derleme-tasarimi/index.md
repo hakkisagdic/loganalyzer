@@ -19,7 +19,7 @@ gerekçeleriyle duruyor.
 
 İlk brief bu farkın sebebini `ocsf_pipeline`'ın `type_uid` eklemesi olarak
 veriyordu. **Bu koşumda o sebep işlemiyor:** `measure.py` ve `test_measure.py`
-içinde `ocsf_pipeline` geçmiyor — ölçülen zincir yalnızca `bizigo_pipeline()`.
+içinde `ocsf_pipeline` geçmiyor — ölçülen zincir yalnızca `loganalyzer_pipeline()`.
 `type_uid` T30'un doğru tespit ettiği bir tuzak ama **bu on kuralın sebebi
 değil.** Koordinatör düzeltmeyi kabul etti: sebep doğrulanmadan aktarılmıştı.
 
@@ -28,7 +28,7 @@ der, aşağıdaki bulgu "eksik bir dönüşüm yaz" der.
 
 ### Gerçek sebep — `UNMAPPED_FIELDS` bir belge, bir dönüşüm değil
 
-`bizigo_pipeline.py` iki liste tutuyor: `FIELD_MAP` (28 alan) ve
+`loganalyzer_pipeline.py` iki liste tutuyor: `FIELD_MAP` (28 alan) ve
 `UNMAPPED_FIELDS` (9 alan). Birincisi `FieldMappingTransformation`'a veriliyor.
 **İkincisi hiçbir yere verilmiyor.** `unmapped_expression()` fonksiyonu tanımlı
 ama depo genelinde **hiç çağrılmıyor** (`prototypes/t30-sigma/` içinde sıfır
@@ -532,7 +532,7 @@ yeniden dağıtımda **atıf** istiyor. Yükseltme çivilendiği gün:
 * kopyalanan kural dosyalarının **kendi başlıkları korunuyor** — SigmaHQ
   kuralları `author` ve `id` taşıyor ve o `id` atfın kendisi; yeniden
   üretilmemeli
-* `ruleset.json`'daki `license` alanı `DRL-1.1` olacak (bugün `MIT (bizigo)`)
+* `ruleset.json`'daki `license` alanı `DRL-1.1` olacak (bugün `MIT (loganalyzer)`)
 
 Lisans alanının **çivide** durması bilinçli: korpus bir gün karışık kaynaklı
 olursa (kendi kurallarımız + SigmaHQ) tek bir `license` alanı yetmez ve o gün

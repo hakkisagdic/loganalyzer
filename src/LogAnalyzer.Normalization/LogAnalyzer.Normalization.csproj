@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\LogAnalyzer.Contracts\LogAnalyzer.Contracts.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Parsing\LogAnalyzer.Parsing.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.ControlPlane\LogAnalyzer.ControlPlane.csproj" />
+    <!-- Yalnızca RawObjectKey.Prefix için: raw_ref ön eki anahtar biçimiyle
+         aynı yerden gelmeli, iki yerde tanımlanıp sürüklenmemeli. -->
+    <ProjectReference Include="..\LogAnalyzer.Storage.Raw\LogAnalyzer.Storage.Raw.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+  </PropertyGroup>
+
+</Project>

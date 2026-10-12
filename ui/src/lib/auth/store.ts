@@ -139,7 +139,7 @@ class InMemorySessionStore implements SessionStore {
  * yüklediği için `globalThis` üzerinde tutuluyor — yoksa her sıcak yeniden
  * yüklemede herkesin oturumu düşer ve sebebi "Keycloak bozuldu" sanılır.
  */
-const globalKey = Symbol.for("bizigo.bff.sessionStore");
+const globalKey = Symbol.for("loganalyzer.bff.sessionStore");
 
 type StoreHolder = { [globalKey]?: SessionStore };
 
@@ -206,7 +206,7 @@ export interface LoginAttempt {
   readonly expiresAt: number;
 }
 
-const attemptKey = Symbol.for("bizigo.bff.loginAttempts");
+const attemptKey = Symbol.for("loganalyzer.bff.loginAttempts");
 
 type AttemptHolder = { [attemptKey]?: Map<string, LoginAttempt> };
 

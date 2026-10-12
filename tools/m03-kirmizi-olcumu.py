@@ -51,10 +51,10 @@ import time
 KOK = pathlib.Path(__file__).resolve().parent.parent
 DOTNET = str(pathlib.Path.home() / ".dotnet" / "dotnet")
 
-SET = KOK / "sim/Bizigo.Simulators/Mcp/Tools/ScenarioSetTool.cs"
-BURST = KOK / "sim/Bizigo.Simulators/Mcp/Tools/SyslogBurstTool.cs"
-DURUM = KOK / "sim/Bizigo.Simulators/Mcp/SimulatorStateStore.cs"
-KAPI = KOK / "tests/Bizigo.UnitTests/McpComplianceTests.cs"
+SET = KOK / "sim/LogAnalyzer.Simulators/Mcp/Tools/ScenarioSetTool.cs"
+BURST = KOK / "sim/LogAnalyzer.Simulators/Mcp/Tools/SyslogBurstTool.cs"
+DURUM = KOK / "sim/LogAnalyzer.Simulators/Mcp/SimulatorStateStore.cs"
+KAPI = KOK / "tests/LogAnalyzer.UnitTests/McpComplianceTests.cs"
 
 OLCUMLER = [
     {
@@ -113,7 +113,7 @@ OLCUMLER = [
     {
         "ad": "F · Uyum kapısı simülatör yüzeyine API kökünden bakarsa",
         "dosya": KAPI,
-        "eski": "        McpSurface.Simulator => typeof(Bizigo.Cli.McpCommandHandlers).Assembly,",
+        "eski": "        McpSurface.Simulator => typeof(LogAnalyzer.Cli.McpCommandHandlers).Assembly,",
         "yeni": "        McpSurface.Simulator => typeof(global::Program).Assembly, // KIRMIZI-F",
         "isaret": "KIRMIZI-F",
         # Kapının ESKİ hâli buydu ve yedi aracı hiç görmüyordu. Bu ölçüm,
@@ -127,7 +127,7 @@ OLCUMLER = [
 def kosk(filtre: str) -> bool:
     """Testi koşturur; True = geçti."""
     sonuc = subprocess.run(
-        [DOTNET, "test", "tests/Bizigo.UnitTests", "--filter", f"FullyQualifiedName~{filtre}"],
+        [DOTNET, "test", "tests/LogAnalyzer.UnitTests", "--filter", f"FullyQualifiedName~{filtre}"],
         cwd=KOK,
         capture_output=True,
         text=True,
@@ -146,7 +146,7 @@ def kosk(filtre: str) -> bool:
 
 def derle() -> bool:
     sonuc = subprocess.run(
-        [DOTNET, "build", "Bizigo.sln", "-v", "quiet"], cwd=KOK, capture_output=True, text=True
+        [DOTNET, "build", "LogAnalyzer.sln", "-v", "quiet"], cwd=KOK, capture_output=True, text=True
     )
     return sonuc.returncode == 0
 
@@ -221,7 +221,7 @@ def main() -> int:
         basarisiz.append("geri alma derlenmedi")
     else:
         sonuc = subprocess.run(
-            [DOTNET, "test", "tests/Bizigo.UnitTests", "--no-build"],
+            [DOTNET, "test", "tests/LogAnalyzer.UnitTests", "--no-build"],
             cwd=KOK,
             capture_output=True,
             text=True,

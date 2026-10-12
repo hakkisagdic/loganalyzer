@@ -4,7 +4,7 @@
 Enforces:
 1. Foreign/unrelated containers, networks, volumes are inventoried before execution.
 2. After execution and cleanup, all foreign/unrelated resources remain byte-for-byte unmodified.
-3. Cleanup strictly targets only resources matching `bizigo-s08-*` or carrying the run's UUID label.
+3. Cleanup strictly targets only resources matching `loganalyzer-s08-*` or carrying the run's UUID label.
 """
 import argparse
 import hashlib
@@ -14,7 +14,7 @@ import subprocess
 import sys
 import uuid
 
-OWNED_PREFIX = "bizigo-s08"
+OWNED_PREFIX = "loganalyzer-s08"
 
 
 def get_docker_inventory():

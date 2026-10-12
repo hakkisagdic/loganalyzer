@@ -10,8 +10,8 @@ ve tek uyum kapısı:
 
 | Yüzey | Kim kullanıyor | Ne yapıyor |
 | --- | --- | --- |
-| **`bizigo-sim`** | Geliştirici / ajan | Simülatörleri **çalışırken** yönetir: senaryo değiştir, filo bas, cihaz sustur |
-| **`bizigo`** | Operatör / ajan / dış araç | Ürünün kendisi: log ara, alarm oku, RCA tetikle, kanıt paketi getir |
+| **`loganalyzer-sim`** | Geliştirici / ajan | Simülatörleri **çalışırken** yönetir: senaryo değiştir, filo bas, cihaz sustur |
+| **`loganalyzer`** | Operatör / ajan / dış araç | Ürünün kendisi: log ara, alarm oku, RCA tetikle, kanıt paketi getir |
 
 ---
 
@@ -115,7 +115,7 @@ bunu tutan bir bekçi gerekiyor:
 
 ---
 
-## 4 · `bizigo-sim` — simülatör kontrolü
+## 4 · `loganalyzer-sim` — simülatör kontrolü
 
 FS'in ürettiği simülatörler bugün **başlarken** yapılandırılıyor: profil,
 senaryo, filo. MCP bunu **çalışırken** değiştirilebilir yapıyor.
@@ -142,7 +142,7 @@ ya gereksiz yere her şeyi maskeler ya hiçbir şeyi.
 
 ---
 
-## 5 · `bizigo` — ürünün kendisi
+## 5 · `loganalyzer` — ürünün kendisi
 
 | Araç | Karşılığı |
 | --- | --- |
@@ -168,11 +168,11 @@ yüzeyini de kapsamalı.
 
 ## 6 · Kimlik
 
-MCP istemcisi bir kullanıcı adına konuşuyor. `bizigo` yüzeyi Keycloak'tan
+MCP istemcisi bir kullanıcı adına konuşuyor. `loganalyzer` yüzeyi Keycloak'tan
 gelen kimliği **taşımak** zorunda; servis hesabıyla koşan bir MCP sunucusu
 bütün kapsam kapılarını atlar.
 
-Realm'de yalnızca `bizigo-claims` client scope var (`scope=openid` geçiyor,
+Realm'de yalnızca `loganalyzer-claims` client scope var (`scope=openid` geçiyor,
 `openid profile email` `invalid_scope` alıyor) — ölçüldü, MCP tarafı bunu
 varsaymalı.
 
@@ -189,7 +189,7 @@ Yol şu:
 
 ```mermaid
 flowchart LR
-  KC["Keycloak<br/>bizigo-claims"] -->|Bearer| HTTP["/mcp<br/>RequireAuthorization()"]
+  KC["Keycloak<br/>loganalyzer-claims"] -->|Bearer| HTTP["/mcp<br/>RequireAuthorization()"]
   HTTP -->|HttpContext.User| CTX["RequestContext.User<br/>(SDK, MessageContext)"]
   CTX --> GATE["IAccessScopeResolver.Resolve<br/><b>REST ile aynı kapı</b>"]
   GATE --> INV["McpToolInvocation.Scope<br/><b>zorunlu argüman</b>"]
@@ -198,18 +198,18 @@ flowchart LR
 ```
 
 Kapının üç mekanik özelliği var ve üçü de ölçüldü
-(`tests/Bizigo.UnitTests/McpIdentityTests.cs`):
+(`tests/LogAnalyzer.UnitTests/McpIdentityTests.cs`):
 
 | Özellik | Nasıl zorlanıyor |
 | --- | --- |
-| Kapsamsız araç çağrısı **yazılamıyor** | `McpToolInvocation.Scope` zorunlu; onu kuran tek yer `sealed BizigoMcpTool.InvokeAsync` |
+| Kapsamsız araç çağrısı **yazılamıyor** | `McpToolInvocation.Scope` zorunlu; onu kuran tek yer `sealed LogAnalyzerMcpTool.InvokeAsync` |
 | Kapsam **REST'in kapısından** geliyor | `IAccessScopeResolver` = `AccessScopeResolver`'ın kendisi; MCP ikinci bir çevrim yazmıyor |
 | Muafiyet **iki bilinçli hareket** | `RequiresCallerIdentity` ezilecek **ve** gerekçeli listeye + sabit sayıya girilecek |
 
 ### stdio'da kimlik — cihaz akışı **elendi**
 
-Sorulan soru şuydu: stdio'da HTTP başlığı yok, o hâlde `bizigo mcp serve
---surface bizigo` kimliği nereden alacak? Beklenen cevap **cihaz akışı**
+Sorulan soru şuydu: stdio'da HTTP başlığı yok, o hâlde `loganalyzer mcp serve
+--surface loganalyzer` kimliği nereden alacak? Beklenen cevap **cihaz akışı**
 (device code) idi. **Çürütüldü**, ve çürüten şey uyduğumuz revizyonun kendi
 yetkilendirme spesifikasyonu (`2026-07-28`, birebir):
 
@@ -234,7 +234,7 @@ tüketmiyor** olurdu.
 bir ürün aracı **koşmadan** reddediliyor — `unauthenticated`, sebebi söyleyen
 bir mesajla. Boş sonuç dönmüyor: `logs.search`'ün sıfır satırı *"eşleşme yok"*
 diye okunur ve kimliğin kaybolduğunu kimse görmez. Bugün ürün yüzeyinde kimlik
-isteyen araç olmadığı için (`server.info` gerekçeli muaf) `bizigo mcp serve`
+isteyen araç olmadığı için (`server.info` gerekçeli muaf) `loganalyzer mcp serve`
 bozulmuyor; M04'ün ilk aracıyla birlikte duvar oraya çıkıyor.
 
 **Açık kalan:** belirtecin ortamdan hangi biçimde okunacağı (değişken adı,
@@ -279,9 +279,9 @@ ve ikisi de M08'in patlama yarıçapının dışına çıkıyor:
 | --- | --- | --- | --- |
 | **M01** | Protokol çekirdeği ve uyum kapısı | `initialize`, yetenek anlaşması, iki taşıma, sözleşme testi | — |
 | **M02** | Komut çekirdeği ve CLI paritesi | Ortak çekirdek, iki sunum, muafiyet sabiti | M01 |
-| **M03** | `bizigo-sim` araçları | §4'ün yedi aracı, yüzey hatası dahil | M01, FS-a |
-| **M04** | `bizigo` okuma araçları | `logs.*`, `alerts.*`, `inventory.*`, `catalog.*` | M01, M02 |
-| **M05** | `bizigo` RCA araçları | `rca.trigger`, `rca.runs`, `evidence.bundle` | M04, T46 |
+| **M03** | `loganalyzer-sim` araçları | §4'ün yedi aracı, yüzey hatası dahil | M01, FS-a |
+| **M04** | `loganalyzer` okuma araçları | `logs.*`, `alerts.*`, `inventory.*`, `catalog.*` | M01, M02 |
+| **M05** | `loganalyzer` RCA araçları | `rca.trigger`, `rca.runs`, `evidence.bundle` | M04, T46 |
 | **M06** | Redaksiyon ve K6 kapısı | §1'in iki cümlesi mekanizmaya bağlanıyor | M04, T41, T42 |
 | **M07** | Kaynaklar ve abonelik | Belge kaynakları, `rca.runs` bildirimi | M05 |
 | **M08** | Kimlik taşıma | Keycloak kimliği MCP oturumundan uca | M04 |
@@ -422,13 +422,13 @@ edildi**, sonra geri alındı ve tam paket bir kez daha koştu (§6):
 
 ### Canlı Keycloak ölçümü **yazıldı, koşturulmadı**
 
-`tests/Bizigo.IntegrationTests/McpKeycloakIdentityTests.cs` — koşturulduğunda
+`tests/LogAnalyzer.IntegrationTests/McpKeycloakIdentityTests.cs` — koşturulduğunda
 üç halkayı kapatıyor: Keycloak gerçekten `groups`/`sub` basıyor mu,
 `MapInboundClaims = false` MCP yolunda da geçerli mi, ve baştaki eğik çizgi
 gerçek `idp_group_mapping` satırlarıyla eşleşiyor mu.
 
-Belirteç **ortamdan** alınıyor (`BIZIGO_MCP_ACCESS_TOKEN`) ve sebebi ölçüldü:
+Belirteç **ortamdan** alınıyor (`LOGANALYZER_MCP_ACCESS_TOKEN`) ve sebebi ölçüldü:
 realm'deki hiçbir istemcide `directAccessGrantsEnabled` açık **değil**
-(`bizigo-ui`, `bizigo-collector` — ikisi de `false`), yani parola akışıyla
+(`loganalyzer-ui`, `loganalyzer-collector` — ikisi de `false`), yani parola akışıyla
 test içinden kullanıcı belirteci alınamıyor. Alınabilmesi realm'i gevşetmeyi
 gerektirirdi ve bu bir ürün kararı, bir test kolaylığı değil.

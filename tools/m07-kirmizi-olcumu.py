@@ -26,8 +26,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from kirmizi_olcumu import Kusur, olc  # noqa: E402
 
-MCP = "src/Bizigo.Mcp"
-PROD = "src/Bizigo.Mcp.Product/Resources"
+MCP = "src/LogAnalyzer.Mcp"
+PROD = "src/LogAnalyzer.Mcp.Product/Resources"
 
 KUSURLAR = [
     Kusur(
@@ -56,7 +56,7 @@ KUSURLAR = [
     ),
     Kusur(
         ad="3 · Kaynaksız yüzeyde boş koleksiyon bırakılıyor",
-        dosya=f"{MCP}/BizigoMcpServer.cs",
+        dosya=f"{MCP}/LogAnalyzerMcpServer.cs",
         bul="            options.ResourceCollection = null;",
         koy="            options.ResourceCollection ??= []; // KUSUR",
         kirmizi_bekleniyor=[
@@ -111,10 +111,10 @@ KUSURLAR = [
     ),
     Kusur(
         ad="10 · Derleme listesi katmanı tek başına (YEŞİL kalmalı)",
-        dosya="src/Bizigo.Cli/McpCommandHandlers.cs",
-        bul="McpSurface.Simulator => [typeof(Bizigo.Simulators.Mcp.SimulatorTool).Assembly],",
-        koy="McpSurface.Simulator => [typeof(Bizigo.Simulators.Mcp.SimulatorTool).Assembly, "
-            "typeof(Bizigo.Mcp.Product.Resources.ProductResource).Assembly], // KUSUR",
+        dosya="src/LogAnalyzer.Cli/McpCommandHandlers.cs",
+        bul="McpSurface.Simulator => [typeof(LogAnalyzer.Simulators.Mcp.SimulatorTool).Assembly],",
+        koy="McpSurface.Simulator => [typeof(LogAnalyzer.Simulators.Mcp.SimulatorTool).Assembly, "
+            "typeof(LogAnalyzer.Mcp.Product.Resources.ProductResource).Assembly], // KUSUR",
         yesil_kalmali=["Simulator_yuzeyi_hic_kaynak_sunmuyor"],
     ),
 ]

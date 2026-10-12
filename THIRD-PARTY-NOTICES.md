@@ -18,7 +18,7 @@ translated inside the grok compiler, so upgrading to a newer upstream release
 stays a plain file copy. See
 [`catalog/patterns/README.md`](catalog/patterns/README.md).
 
-## src/Bizigo.Ingest/Otlp/proto/
+## src/LogAnalyzer.Ingest/Otlp/proto/
 
 Protocol Buffer definitions copied verbatim from
 [open-telemetry/opentelemetry-proto](https://github.com/open-telemetry/opentelemetry-proto),
@@ -41,7 +41,7 @@ in source form. Their licenses are available on nuget.org.
 ## catalog/sigma/ — bugün üçüncü taraf DEĞİL
 
 Buradaki 24 Sigma kuralı **bizim** (T30 örnekleminden terfi ettirildi) ve çivi
-bunu söylüyor: `catalog/sigma/ruleset.json` → `source: "bizigo/prototip"`.
+bunu söylüyor: `catalog/sigma/ruleset.json` → `source: "loganalyzer/prototip"`.
 Dolayısıyla bugün bu bölümde bildirilecek bir üçüncü taraf malzemesi yok.
 
 **Gerçek SigmaHQ alt kümesi çivilendiğinde burası doldurulmalı.** O gün

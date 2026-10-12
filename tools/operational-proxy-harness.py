@@ -24,7 +24,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-VALID_TOKEN = "bizigo-op-token-s08-verified"
+VALID_TOKEN = "loganalyzer-op-token-s08-verified"
 MAX_BODY_BYTES = 1048576  # 1 MiB
 
 
@@ -326,9 +326,9 @@ def main():
     proxy_port = find_free_port()
 
     # Servers
-    api_server = HTTPServer(("127.0.0.1", api_port), make_handler("Bizigo.Api", is_stub=False))
-    mcp_server = HTTPServer(("127.0.0.1", mcp_port), make_handler("Bizigo.Mcp", is_stub=False))
-    model_server = HTTPServer(("127.0.0.1", model_port), make_handler("Bizigo.ModelStub", is_stub=True))
+    api_server = HTTPServer(("127.0.0.1", api_port), make_handler("LogAnalyzer.Api", is_stub=False))
+    mcp_server = HTTPServer(("127.0.0.1", mcp_port), make_handler("LogAnalyzer.Mcp", is_stub=False))
+    model_server = HTTPServer(("127.0.0.1", model_port), make_handler("LogAnalyzer.ModelStub", is_stub=True))
 
     routes = {
         "/api": ("127.0.0.1", api_port),
@@ -351,9 +351,9 @@ def main():
         t.start()
 
     routes_info = {
-        "/api": {"listener": "Bizigo.Api", "is_stub": False},
-        "/mcp": {"listener": "Bizigo.Mcp", "is_stub": False},
-        "/model": {"listener": "Bizigo.ModelStub", "is_stub": True}
+        "/api": {"listener": "LogAnalyzer.Api", "is_stub": False},
+        "/mcp": {"listener": "LogAnalyzer.Mcp", "is_stub": False},
+        "/model": {"listener": "LogAnalyzer.ModelStub", "is_stub": True}
     }
 
     try:

@@ -18,7 +18,7 @@ vault bugüne kadar yalnızca **deponun kendi belgelerinden** damıtıldı.
 Kaynak yüzeyi: `docs/epic/` altındaki 40'tan fazla dizin, `CLAUDE.md`,
 `README.md`, `docs/graphify.md`, `docs/ekran-goruntuleri/BENIOKU.md`. Her sayfa
 `sources:` ile bunlara bağlı ve bir `source_digest` taşıyor; bayatlama bekçisi
-(`tests/Bizigo.UnitTests/WikiSourceDigestTests.cs`) damgayı yeniden hesaplayıp
+(`tests/LogAnalyzer.UnitTests/WikiSourceDigestTests.cs`) damgayı yeniden hesaplayıp
 karşılaştırıyor. Ayrıntı ve kırmızı yandığında ne yapılacağı [[README]]'de.
 
 ## En bağlantılı düğümler
@@ -28,7 +28,7 @@ karşılaştırıyor. Ayrıntı ve kırmızı yandığında ne yapılacağı [[R
 | [[concepts/sessiz-yanlis-davranis]] | 32 |
 | [[concepts/elle-tutulan-liste-bekciyi-korlestirir]] | 17 |
 | [[references/f2-kapanis]] | 15 |
-| [[projects/bizigo-loganalyzer/bizigo-loganalyzer]] | 14 |
+| [[projects/loganalyzer-loganalyzer/loganalyzer-loganalyzer]] | 14 |
 | [[skills/paralel-ajan-koordinasyonu]] | 13 |
 
 Grafın şekli tek başına bir bulgu: en çok bağlanan beş düğümün dördü bir **hata
@@ -68,7 +68,7 @@ ekran olarak değil, **karar** olarak duruyor.
 ## Okuma yolu
 
 Vault'a soğuktan girenin üç adımı: önce
-[[projects/bizigo-loganalyzer/bizigo-loganalyzer]] (ürün ne, hangi faz kapandı),
+[[projects/loganalyzer-loganalyzer/loganalyzer-loganalyzer]] (ürün ne, hangi faz kapandı),
 sonra [[concepts/sessiz-yanlis-davranis]] (geri kalan 39 sayfanın etrafında
 döndüğü hata sınıfı), sonra ilgilenilen fazın referans sayfası —
 [[references/f2-kapanis]] ya da [[references/f3-detection-ve-rca-kaniti]].

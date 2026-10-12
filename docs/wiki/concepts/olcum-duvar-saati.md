@@ -1,7 +1,7 @@
 ---
 title: Duvar saati neyi ölçtüğünü söylemez
 category: concepts
-tags: [test, surec, kavram, bizigo]
+tags: [test, surec, kavram, loganalyzer]
 aliases: [süre bütçeli test, wall clock tuzağı, kararsız test yanılgısı]
 relationships:
   - target: "[[concepts/olcum-kirmizi-yanamayan-sayi]]"

@@ -52,11 +52,11 @@ Gerçek bir cihaz/logger ile syslog → collector → /v1/logs → WAL akıyorki
 
 | Parça | Nerede |
 | --- | --- |
-| OTLP çözücü (protobuf + JSON) | `src/Bizigo.Ingest/Otlp/OtlpLogsDecoder.cs`, protolar `Otlp/proto/` (opentelemetry-proto v1.9.0) |
-| WAL | `src/Bizigo.Ingest/Wal/` — `WalFrame` (magic + CRC32), `WriteAheadLog` (fsync, kurtarma, kapasite) |
-| Kodlama tespiti | `src/Bizigo.Ingest/Text/EncodingDetector.cs` |
-| Boru hattı | `src/Bizigo.Ingest/Pipeline/` — kanal, işçiler, `IIngestSink` (T06 buraya takılıyor) |
-| Uç | `src/Bizigo.Api/LogsEndpoint.cs` — `POST /v1/logs`, 503 + `Retry-After` |
+| OTLP çözücü (protobuf + JSON) | `src/LogAnalyzer.Ingest/Otlp/OtlpLogsDecoder.cs`, protolar `Otlp/proto/` (opentelemetry-proto v1.9.0) |
+| WAL | `src/LogAnalyzer.Ingest/Wal/` — `WalFrame` (magic + CRC32), `WriteAheadLog` (fsync, kurtarma, kapasite) |
+| Kodlama tespiti | `src/LogAnalyzer.Ingest/Text/EncodingDetector.cs` |
+| Boru hattı | `src/LogAnalyzer.Ingest/Pipeline/` — kanal, işçiler, `IIngestSink` (T06 buraya takılıyor) |
+| Uç | `src/LogAnalyzer.Api/LogsEndpoint.cs` — `POST /v1/logs`, 503 + `Retry-After` |
 | Collector | `deploy/otel/collector.yaml` — `protocol: none` + `encoding: nop` |
 
 **İki taşıyıcı bulgu:**

@@ -1,4 +1,4 @@
-"""Bizigo `events_ocsf` görünümü için kalıcı Sigma ProcessingPipeline (T31).
+"""LogAnalyzer `events_ocsf` görünümü için kalıcı Sigma ProcessingPipeline (T31).
 
 T30 prototipinin yerini alıyor. Prototip bir **sayı** teslim etmişti; bu modül
 o sayının dayandığı eşlemeyi kalıcı hâle getiriyor.
@@ -99,7 +99,7 @@ FIELD_MAP: dict[str, str] = {
     "username": "actor_user_name",
     # `user_name` eksikti ve eksikliği SESSİZDİ: eşlenmeyince ham adıyla SQL'e
     # iniyor, `events_ocsf`'te öyle bir kolon yok, sorgu kırılıyor. Aşağıdaki
-    # `bizigo_unmapped_field_guard` artık bu sınıfı topluca yakalıyor; bu satır
+    # `loganalyzer_unmapped_field_guard` artık bu sınıfı topluca yakalıyor; bu satır
     # onun yakaladığı ilk vakanın düzeltmesi.
     "user_name": "actor_user_name",
     "TargetUserName": "actor_user_name",
@@ -390,7 +390,7 @@ def load_proto_table(mappings_path: Path | str | None = None) -> dict[str, str]:
     """
     import yaml
 
-    root = Path(mappings_path or os.environ.get("BIZIGO_MAPPINGS_PATH", DEFAULT_MAPPINGS_PATH))
+    root = Path(mappings_path or os.environ.get("LOGANALYZER_MAPPINGS_PATH", DEFAULT_MAPPINGS_PATH))
     document = yaml.safe_load((root / "ip_proto_name.yaml").read_text(encoding="utf-8")) or {}
 
     # Anahtarlar YAML'da tırnaklı ("6") ama bir sürüm tırnağı düşürürse int
@@ -582,15 +582,15 @@ def _logsource_items(processing_item, logsource_condition, add_condition):
     hiçbir şey belli etmezdi.
     """
     classes = (
-        ("bizigo_class_network", CLASS_NETWORK_ACTIVITY, ("firewall", "network_connection")),
-        ("bizigo_class_http", CLASS_HTTP_ACTIVITY, ("webserver", "proxy")),
-        ("bizigo_class_dns", CLASS_DNS_ACTIVITY, ("dns", "dns_query")),
+        ("loganalyzer_class_network", CLASS_NETWORK_ACTIVITY, ("firewall", "network_connection")),
+        ("loganalyzer_class_http", CLASS_HTTP_ACTIVITY, ("webserver", "proxy")),
+        ("loganalyzer_class_dns", CLASS_DNS_ACTIVITY, ("dns", "dns_query")),
     )
     vendors = (
-        ("bizigo_vendor_fortinet", "fortigate", "device_vendor_name", "Fortinet"),
-        ("bizigo_vendor_cisco", "asa", "device_vendor_name", "Cisco"),
-        ("bizigo_vendor_mikrotik", "routeros", "device_vendor_name", "MikroTik"),
-        ("bizigo_vendor_nginx", "nginx", "metadata_product_name", "nginx"),
+        ("loganalyzer_vendor_fortinet", "fortigate", "device_vendor_name", "Fortinet"),
+        ("loganalyzer_vendor_cisco", "asa", "device_vendor_name", "Cisco"),
+        ("loganalyzer_vendor_mikrotik", "routeros", "device_vendor_name", "MikroTik"),
+        ("loganalyzer_vendor_nginx", "nginx", "metadata_product_name", "nginx"),
     )
 
     items = []
@@ -617,7 +617,7 @@ def _logsource_items(processing_item, logsource_condition, add_condition):
     return items
 
 
-def bizigo_pipeline(mappings_path: Path | str | None = None):
+def loganalyzer_pipeline(mappings_path: Path | str | None = None):
     """`events_ocsf` için Sigma ProcessingPipeline.
 
     pySigma burada import ediliyor, modül düzeyinde değil: backend yoksa bu
@@ -655,7 +655,7 @@ def bizigo_pipeline(mappings_path: Path | str | None = None):
         #    dokunmadığı için ham adla SQL'e inerlerdi ve `unmapped` sanılırdı.
         #    Burada derleme düşüyor ve sebebi kuralın yanında yazılı oluyor.
         ProcessingItem(
-            identifier=f"bizigo_schema_gap_{field}",
+            identifier=f"loganalyzer_schema_gap_{field}",
             transformation=DetectionItemFailureTransformation(
                 f"`{field}` bu şemada eşlenemiyor [remedy={gap.remedy}]: {gap.reason}"
             ),
@@ -667,25 +667,25 @@ def bizigo_pipeline(mappings_path: Path | str | None = None):
     items += [
         # 2) Kolonu olan alanlar.
         ProcessingItem(
-            identifier="bizigo_field_names",
+            identifier="loganalyzer_field_names",
             transformation=FieldMappingTransformation(FIELD_MAP),
         ),
         # 3) Kolonu olmayan ama `attrs`'ta duran alanlar.
         ProcessingItem(
-            identifier="bizigo_attrs_fields",
+            identifier="loganalyzer_attrs_fields",
             transformation=FieldMappingTransformation(attrs_expressions),
         ),
         # 4) Değer dönüşümleri — ad eşlemesinden SONRA, çünkü ikisi de
         #    eşlenmiş kolon adına bakıyor.
         ProcessingItem(
-            identifier="bizigo_proto_value",
+            identifier="loganalyzer_proto_value",
             transformation=_proto_transformation(proto_table),
             field_name_conditions=[
                 IncludeFieldCondition(fields=["connection_info_protocol_name"])
             ],
         ),
         ProcessingItem(
-            identifier="bizigo_ip_text",
+            identifier="loganalyzer_ip_text",
             transformation=_ip_text_transformation(),
         ),
     ]
@@ -694,7 +694,7 @@ def bizigo_pipeline(mappings_path: Path | str | None = None):
     #    kolon adı (`activity_name`), ham Sigma adı (`action`) değil.
     items += [
         ProcessingItem(
-            identifier=f"bizigo_vendor_empty_{product}_{column}",
+            identifier=f"loganalyzer_vendor_empty_{product}_{column}",
             transformation=DetectionItemFailureTransformation(
                 f"`{column}` bu logsource'da (`{product}`) her zaman BOŞ "
                 f"[remedy={REMEDY_SCHEMA}]: {reason}"
@@ -719,7 +719,7 @@ def bizigo_pipeline(mappings_path: Path | str | None = None):
     # yakaladı. Tesadüfe bırakılacak bir sınıf değil.
     items.append(
         ProcessingItem(
-            identifier="bizigo_unmapped_field_guard",
+            identifier="loganalyzer_unmapped_field_guard",
             transformation=DetectionItemFailureTransformation(
                 "Bu alan `events_ocsf` görünümüne eşlenmiyor. Kolonu varsa "
                 "`FIELD_MAP`'e, `attrs` içindeyse `ATTRS_MAP`'e, hiç üretilmiyorsa "
@@ -736,12 +736,12 @@ def bizigo_pipeline(mappings_path: Path | str | None = None):
 
     items.append(
         ProcessingItem(
-            identifier="bizigo_table",
+            identifier="loganalyzer_table",
             transformation=SetStateTransformation("table", TABLE),
         )
     )
 
-    pipeline = ProcessingPipeline(name="bizigo-events-ocsf", priority=10, items=items)
+    pipeline = ProcessingPipeline(name="loganalyzer-events-ocsf", priority=10, items=items)
 
     # Değer dönüşümleri pipeline'ın dışında tutuluyor; gerekçesi
     # `apply_value_transformations()` içinde.
@@ -750,7 +750,7 @@ def bizigo_pipeline(mappings_path: Path | str | None = None):
     return pipeline
 
 
-def bizigo_backend(table: str = TABLE, mappings_path: Path | str | None = None):
+def loganalyzer_backend(table: str = TABLE, mappings_path: Path | str | None = None):
     """Pipeline'ı bağlanmış ve tırnaklaması düzeltilmiş ClickHouse backend'i.
 
     Backend'i ayrı kurup pipeline'ı elle takmak yerine tek yerden veriliyor:
@@ -759,13 +759,13 @@ def bizigo_backend(table: str = TABLE, mappings_path: Path | str | None = None):
     """
     from sigma.backends.clickhouse.clickhouse import ClickhouseBackend
 
-    class BizigoClickhouseBackend(ClickhouseBackend):
+    class LogAnalyzerClickhouseBackend(ClickhouseBackend):
         # Gerekçe `FIELD_EXPRESSION_PATTERN` üzerinde yazılı: bizim ürettiğimiz
         # ifadeler zaten geçerli SQL; backtick'lenirse kolon adı sanılıyorlar.
         field_quote_pattern = re.compile(FIELD_EXPRESSION_PATTERN)
 
-    return BizigoClickhouseBackend(
-        processing_pipeline=bizigo_pipeline(mappings_path),
+    return LogAnalyzerClickhouseBackend(
+        processing_pipeline=loganalyzer_pipeline(mappings_path),
         table_name=table,
     )
 

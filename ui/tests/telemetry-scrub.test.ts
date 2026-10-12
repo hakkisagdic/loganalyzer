@@ -63,7 +63,7 @@ describe("scrubUrl — sorgu dizesi TAMAMEN düşüyor", () => {
   });
 
   it("kimlik taşıyan yol da kalıba iniyor", () => {
-    expect(scrubUrl("https://bizigo.local/kaynaklar/4242?tab=ham")).toBe("/kaynaklar/:id");
+    expect(scrubUrl("https://loganalyzer.local/kaynaklar/4242?tab=ham")).toBe("/kaynaklar/:id");
   });
 
   it("ayrıştırılamayan girdi köke düşüyor", () => {

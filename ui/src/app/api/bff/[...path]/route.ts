@@ -5,10 +5,10 @@ import { apiError, proxyToApi } from "@/lib/api/proxy";
 export const dynamic = "force-dynamic";
 
 /**
- * `Bizigo.Api`'ye açılan **tek** kapı.
+ * `LogAnalyzer.Api`'ye açılan **tek** kapı.
  *
  * <p>
- * Tarayıcı `/api/bff/v1/events/search` diyor, Next `${BIZIGO_API_URL}/v1/events/search`
+ * Tarayıcı `/api/bff/v1/events/search` diyor, Next `${LOGANALYZER_API_URL}/v1/events/search`
  * diyor. Aradaki fark bir `Authorization` başlığı ve o başlık hiçbir zaman
  * geri yönde ilerlemiyor.
  * </p>

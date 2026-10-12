@@ -17,7 +17,7 @@
  * bunu iskeletten öğrenmesi, katalogda bir kez daha keşfedilmesinden ucuz.
  * </p>
  */
-export const NEW_PARSER_TEMPLATE = `apiVersion: bizigo.dev/v1
+export const NEW_PARSER_TEMPLATE = `apiVersion: loganalyzer.dev/v1
 kind: Parser
 metadata:
   id: vendor.urun.olay

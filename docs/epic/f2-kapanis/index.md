@@ -25,7 +25,7 @@ yanlış yere dayanmış olurdu.
 
 Realm dosyası `clientScopes` verdiği için Keycloak **yerleşik scope'ları hiç
 oluşturmuyor**. Keşif belgesi
-`scopes_supported = ["openid", "offline_access", "bizigo-claims"]` diyor.
+`scopes_supported = ["openid", "offline_access", "loganalyzer-claims"]` diyor.
 
 | İstenen scope | Cevap |
 | --- | --- |
@@ -93,7 +93,7 @@ Altı kusur çıktı ve **altısı da aynı şekle sahip**:
 | 2 | "Ekran kuralı kimliğinden okuyor" (`AlertLinkBuilder`) | Hiç okumuyor; alarm işaret ettiğinden **geniş** bir ekran açıyor |
 | 3 | "Gizli değerler maskeleniyor" (T26) | Maskeleniyor, ama sır **bölüm adının içinde** kalıyordu |
 | 4 | "İki Jenkins fazı aynı olguyu bildiriyor" | Post-build adımı durumu çevirebiliyor; erken ve **yanlış** durum kalıcı oluyordu |
-| 5 | "Kimlik grafiği kapsam doğrulamasından geçiyor" | `AddBizigoAuthentication` bekçinin listesinde **hiç yoktu** |
+| 5 | "Kimlik grafiği kapsam doğrulamasından geçiyor" | `AddLogAnalyzerAuthentication` bekçinin listesinde **hiç yoktu** |
 | 6 | "`UNMAPPED_FIELDS` eşlenemeyen alanları koruyor" | Tanımlıydı, **hiçbir yere bağlı değildi** |
 
 **Hiçbiri koşturarak bulunmadı.** Altısı da okurken ya da o yorumun doğru
@@ -115,7 +115,7 @@ Aynı şey **beş kez** oldu ve her seferinde bekçi yeşil yandı:
 | `Produces<T>` kapısı | Elle `Map*` listesi — **16 uç** kapıya hiç görünmedi, üç test de geçti |
 | Ömür bekçisi | Elle `Add*` listesi — kanıt katmanı görünmedi |
 | Ömür bekçisi | Aynı liste **doğduğu gün** eksikti: kimlik grafiği hiç denetlenmemişti |
-| Ömür bekçisi | `AddBizigoDiscovery` başka bir uzantının içinden çağrılıyor; elle listeye girmesi akla gelmezdi |
+| Ömür bekçisi | `AddLogAnalyzerDiscovery` başka bir uzantının içinden çağrılıyor; elle listeye girmesi akla gelmezdi |
 | Kapı, ikinci yarı | Uç **bulunuyordu ama çağrılamıyordu**; bağımlılığı kayıtlı olmayan `Map*` patlıyor ve o dosya yine denetlenmemiş kalıyordu |
 
 Çözüm her seferinde aynı yöne gitti: **denetlenen kümeyi yansımayla bul.** Elle

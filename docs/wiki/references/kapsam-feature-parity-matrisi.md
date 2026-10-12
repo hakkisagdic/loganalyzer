@@ -1,7 +1,7 @@
 ---
 title: Feature parity — hedef ve bugünkü karşılığı
 category: references
-tags: [log-analiz, mimari, kaynak-ozeti, bizigo]
+tags: [log-analiz, mimari, kaynak-ozeti, loganalyzer]
 aliases: [feature parity, pazar araştırması, MVP/v2/Diff]
 relationships:
   - target: "[[concepts/kapsam-yazmama-karari-ve-kayan-sinir]]"
@@ -84,7 +84,7 @@ primitifi oldukları için sonradan eklenemiyorlar. ^[inferred]
 | **Log template mining (Drain3)** | Sidecar olarak çözüldü — araştırmanın öngördüğü iki seçenekten ikincisi |
 | **Otomatik format tespiti** | Keşif tarafı var (sidecar, `DiscoveryWorker`), ama bu dilimin belgelerinde ölçülmüş bir kapsam sayısı yok ^[ambiguous] |
 | **Schema-on-read** (Sumo FER modeli) | Bu dilimin belgelerinde karşılığı **aranmış ve bulunamamıştır** ^[ambiguous] |
-| **Çok dilli mesaj gövdesi** | Kodlama tarafı ürüne girmiş (`bizigo.wire_encoding`, `bozuk-kodlama` senaryosu); yerelleştirilmiş tarih/sayı tarafı görünmüyor |
+| **Çok dilli mesaj gövdesi** | Kodlama tarafı ürüne girmiş (`loganalyzer.wire_encoding`, `bozuk-kodlama` senaryosu); yerelleştirilmiş tarih/sayı tarafı görünmüyor |
 
 Sigma satırı özellikle öğretici: parity tablosunda **MVP** işaretliydi ve
 "binlerce hazır kural bedavaya gelir" gerekçesine dayanıyordu. Envanterin

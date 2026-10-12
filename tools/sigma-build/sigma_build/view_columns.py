@@ -97,7 +97,7 @@ class ViewDefinition:
 def split_statements(sql: str) -> list[str]:
     """Bir .sql metnini çalıştırılabilir ifadelere böler.
 
-    ⚠️ Bu, `src/Bizigo.Storage.ClickHouse/SqlStatementSplitter.cs`'nin **ikinci
+    ⚠️ Bu, `src/LogAnalyzer.Storage.ClickHouse/SqlStatementSplitter.cs`'nin **ikinci
     kopyası** ve normalde §9 bunu yasaklar ("ortak yüzey varsa genişlet,
     kopyalama"). Sapmanın gerekçesi: o taraf C#, bu taraf Python ve ortak yüzey
     diye bir şey yok. Bedeli ayrışma riski; karşılığı `test_view_columns.py`
@@ -420,12 +420,12 @@ def view_definition(view: str, migrations_dir: Path | None = None) -> ViewDefini
 
 
 def repo_root(start: Path | None = None) -> Path:
-    """`Bizigo.sln` barındıran ilk üst dizin."""
+    """`LogAnalyzer.sln` barındıran ilk üst dizin."""
     current = (start or Path(__file__)).resolve()
     for candidate in [current, *current.parents]:
-        if (candidate / "Bizigo.sln").is_file():
+        if (candidate / "LogAnalyzer.sln").is_file():
             return candidate
-    raise MigrationParseError(f"Depo kökü bulunamadı ({current} üzerinden `Bizigo.sln` aranıyor).")
+    raise MigrationParseError(f"Depo kökü bulunamadı ({current} üzerinden `LogAnalyzer.sln` aranıyor).")
 
 
 # --------------------------------------------------------------------------- #
@@ -437,7 +437,7 @@ def repo_root(start: Path | None = None) -> Path:
 #:
 #: Neden dosya, neden Python'ı çağırmak değil: entegrasyon testi C#. Ortada
 #: **dosya** olduğu için iki dil birbirini çağırmadan aynı sözleşmeye bakıyor —
-#: `ui/openapi/bizigo-api.json`'ın oynadığı rolün aynısı.
+#: `ui/openapi/loganalyzer-api.json`'ın oynadığı rolün aynısı.
 SNAPSHOT_PATH = Path("detections") / "schema" / "view-columns.json"
 
 

@@ -39,7 +39,7 @@ bağlam katman C'nin ekseni.
 
 ## 2 · Ölçüldü — dört ölçüm, kararı üçü birden veriyor
 
-Hepsi `tests/Bizigo.UnitTests/ShadowPromotionMeasurementTests.cs`, konteynersiz
+Hepsi `tests/LogAnalyzer.UnitTests/ShadowPromotionMeasurementTests.cs`, konteynersiz
 (§2). Korpuslar: **altın korpus** (`catalog/parsers/**/*.log`, 87 satır,
 **sırsız**) ve **sır taşıyan fixture'lar**
 (`catalog/simulators/profiller/*/sir-tasiyan.log`, **11 bildirilen sahte sır**).
@@ -248,11 +248,11 @@ kapatıldı.
 
 | Parça | Yer |
 | --- | --- |
-| Sınıflar + sınıflandırıcı | `src/Bizigo.Contracts/Security/ShadowTokenClassifier.cs` |
-| Kararın kendisi | `src/Bizigo.Contracts/Security/ShadowLayerPurpose.cs` |
+| Sınıflar + sınıflandırıcı | `src/LogAnalyzer.Contracts/Security/ShadowTokenClassifier.cs` |
+| Kararın kendisi | `src/LogAnalyzer.Contracts/Security/ShadowLayerPurpose.cs` |
 | Sayaç, dağılım, kanıt alanları | `RedactedPrompt` — `ShadowTokens`, `ShadowClasses`, `ShadowPurpose` |
-| Ölçümler | `tests/Bizigo.UnitTests/ShadowPromotionMeasurementTests.cs` (7 test) |
-| Ortak korpus okuyucusu | `tests/Bizigo.UnitTests/RedactionFixtures.cs` |
+| Ölçümler | `tests/LogAnalyzer.UnitTests/ShadowPromotionMeasurementTests.cs` (7 test) |
+| Ortak korpus okuyucusu | `tests/LogAnalyzer.UnitTests/RedactionFixtures.cs` |
 | Kırmızı ölçümü | `tools/t60-kirmizi-olcumu.py` |
 
 İki küçük yapısal karar:
@@ -375,7 +375,7 @@ kapsamına girmedi ve bir öneri olarak §10'da duruyor.
 | Ölçüm | Sonuç |
 | --- | --- |
 | `dotnet build` | 0 hata, 0 uyarı |
-| `dotnet test tests/Bizigo.UnitTests` | **1482 geçti / 0 düştü / 4 atlandı** |
+| `dotnet test tests/LogAnalyzer.UnitTests` | **1482 geçti / 0 düştü / 4 atlandı** |
 | `ShadowPromotionMeasurementTests` | 7/7 |
 | Kırmızı ölçümü (`tools/t60-kirmizi-olcumu.py`) | 7 kusur, **13 beklenen kırmızının 13'ü yandı**, 1 "yeşil kalmalı" tuttu |
 | Altın korpus: aday / payda | **59 / 96** (eşik 3.50 bit/krk, min uzunluk 20) |

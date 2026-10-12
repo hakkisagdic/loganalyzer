@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bizigo LogAnalyzer — Plugin-based Log Analysis Platform</title>
+  <title>LogAnalyzer LogAnalyzer — Plugin-based Log Analysis Platform</title>
   <meta name="description" content="Multi-format, multi-language log analysis platform with agentic root cause analysis.">
   <style>
     :root {
@@ -108,7 +108,7 @@
 <body>
   <header>
     <div class="container">
-      <h1>Bizigo LogAnalyzer</h1>
+      <h1>LogAnalyzer LogAnalyzer</h1>
       <a href="https://github.com/hakkisagdic/loganalyzer">GitHub Repository</a>
     </div>
   </header>
@@ -171,10 +171,10 @@ cd deploy && cp .env.example .env && docker compose up -d --wait && cd ..
 
 # Build and test
 dotnet build
-dotnet test tests/Bizigo.UnitTests
+dotnet test tests/LogAnalyzer.UnitTests
 
 # Run the API
-dotnet run --project src/Bizigo.Api
+dotnet run --project src/LogAnalyzer.Api
 
 # Run the UI (separate terminal)
 cd ui && cp .env.example .env.local && npm install && npm run dev</code></pre>

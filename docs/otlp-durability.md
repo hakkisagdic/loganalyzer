@@ -63,7 +63,7 @@ Sweeps serialize with processing/replay and never delete an unverified result.
 
 Processed files retain the complete typed metric datapoint/span, resource/scope,
 schema URLs and a server-resolved source/owner. Candidate priority is
-`bizigo.source_key`, `service.instance.id`, `host.id`, `host.name`, `service.name`.
+`loganalyzer.source_key`, `service.instance.id`, `host.id`, `host.name`, `service.name`.
 Unknown or ambiguous keys remain `_unassigned`; payload `owner_group` never grants
 authority. Replay intentionally resolves against the current inventory snapshot.
 
@@ -77,8 +77,8 @@ To replay archived signals, stop the API instance owning the same directory,
 then run its normal configuration with the local operator flag:
 
 ```sh
-dotnet src/Bizigo.Api/bin/Release/net10.0/Bizigo.Api.dll \
-  --contentRoot src/Bizigo.Api --replay-signals
+dotnet src/LogAnalyzer.Api/bin/Release/net10.0/LogAnalyzer.Api.dll \
+  --contentRoot src/LogAnalyzer.Api --replay-signals
 ```
 
 The command uses production DI, inventory and S3 configuration. It recovers WAL,
@@ -96,7 +96,7 @@ production throughput are not established by these tests.
 Local checks are `tools/otlp-durability-smoke.py`, `tools/otlp-mutation-gate.py` and
 `tools/otlp-verify-trx.py`. Docker belongs to the coordinator: it starts
 `tools/otlp-collector-smoke.py --serve --session-dir <empty directory>` and stops
-the owned session with `--stop`. The live session uses real `Bizigo.Api` and the
+the owned session with `--stop`. The live session uses real `LogAnalyzer.Api` and the
 shipped Collector YAML. An independent evaluator runs
 `tools/otlp-collector-probe.py --session <session.json> --evidence-dir <directory>`;
 that tool uses HTTP and read-only artifact/S3 access, with no Docker calls.

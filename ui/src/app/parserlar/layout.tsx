@@ -50,7 +50,7 @@ export default async function ParsersLayout({ children }: { children: ReactNode 
 
       <header className={styles.header}>
         <Link className={styles.brand} href="/">
-          Bizigo Log Analyzer
+          LogAnalyzer Log Analyzer
         </Link>
         <span className={styles.spacer} />
         {identity.status === "ok" ? (

@@ -1,5 +1,5 @@
 ---
-title: "M03 — bizigo-sim araçları"
+title: "M03 — loganalyzer-sim araçları"
 kind: ticket
 status: 2
 ---
@@ -16,7 +16,7 @@ verisinin kurumdan çıkması**. İki risk aynı ticket'ta olmamalı.
 
 ## 1 · Bugünkü hâl — ölçüldü
 
-`sim/Bizigo.Simulators` içinde bugün duranlar: `Fleet.cs` · `Scenario.cs` ·
+`sim/LogAnalyzer.Simulators` içinde bugün duranlar: `Fleet.cs` · `Scenario.cs` ·
 `SimulatorProfile.cs` · `SimulatorProfileStore.cs` · `SyslogEmitter.cs` ·
 `SimulatedDeviceTransport.cs` · `WebhookDeliveryFactory.cs` · `WebhookSender.cs`.
 
@@ -105,7 +105,7 @@ duruyor"* diyordu ve bayattı.
 
 1. **Bağlam maliyeti.** M01 ölçtü: araç başına **194 belirteç**, en pahalı
    kalem `description`. Yedi araç ≈ **1360 belirteç** ve bu **her bağlamda**
-   taşınıyor. `bizigo` yüzeyiyle birlikte on beş araç ≈ 2900 belirteç.
+   taşınıyor. `loganalyzer` yüzeyiyle birlikte on beş araç ≈ 2900 belirteç.
    Açıklama uzunluğu bir bütçe kalemi.
 2. **Açık soru:** `sim.*` araçları hangi süreçte koşuyor? Simülatör ayrı bir
    süreç; MCP sunucusu ona nasıl bağlanıyor — süreç içi mi, bir kontrol
@@ -113,7 +113,7 @@ duruyor"* diyordu ve bayattı.
    `sim.state`'in canlılığını belirliyor: süreç içi değilse "o anki hâl" bir
    anlık görüntü olur.
 3. **Açık soru:** `sim.syslog.burst` uzun sürebilen bir iş. Bitti tanımı §3
-   iptali `bizigo` yüzeyindeki ClickHouse sorgusu üzerinden tarif ediyor;
+   iptali `loganalyzer` yüzeyindeki ClickHouse sorgusu üzerinden tarif ediyor;
    `burst`'ün iptali aynı mekanizmayı kullanacak mı? M01'e bağlı.
 4. **Bu ticket ürün verisi görmüyor** — ama `sim.state`'in döndürdüğü örnek
    satırlar simülatörün ürettiği veri. Sentetik olması onları redaksiyondan
@@ -132,7 +132,7 @@ uzun ömürlü bir süreç **yok**, dolayısıyla `sim.scenario.set`, `sim.devic
 ve `sim.state`'in altında hiçbir şey yoktu. **M03'ün gerçek işi üç araç değil, o
 katman.**
 
-Katman **stdio-only + dosya**: `artifacts/bizigo-sim/state.json`, kilit altında
+Katman **stdio-only + dosya**: `artifacts/loganalyzer-sim/state.json`, kilit altında
 oku-değiştir-yaz + atomik `rename`, `schema_version`. Bellek içi durum elendi
 çünkü stdio'da **her bağlantı kendi süreci** — iki istemci farklı durum görür ve
 `sim.state` ile `sim.device.silence` **yalan söylerdi**. Daemon elendi çünkü §3
@@ -169,8 +169,8 @@ için *≈1360* diyordu. Ölçüldü (`McpSchemaBudgetTests`, `o200k_base`):
 
 | Yüzey | `tools/list` toplam | Araç |
 | --- | --- | --- |
-| `bizigo` | **198** belirteç | 1 |
-| `bizigo-sim` | **2977** belirteç (10 259 karakter) | 8 |
+| `loganalyzer` | **198** belirteç | 1 |
+| `loganalyzer-sim` | **2977** belirteç (10 259 karakter) | 8 |
 
 Araç başına: `sim.webhook.emit` 537 · `sim.state` 424 · `sim.syslog.burst` 424 ·
 `sim.fleet.list` 382 · `sim.scenario.set` 355 · `sim.scenario.list` 330 ·
@@ -184,16 +184,16 @@ sayısı da bu yüzden düşük — yalnız simülatör kolu neredeyse o kadar.
 
 ### Ayrıca ölçülen iki şey — ikisi de kapı kusuru
 
-- **Uyum kapısı her iki yüzeyi de `Bizigo.Api` kökünden denetliyordu**, ama
-  `bizigo-sim` üretimde `Bizigo.Cli` kökünden koşuyor ve `Bizigo.Api`'nin
-  `Bizigo.Simulators`'a **hiç referansı yok**. Yani yedi araç kapıya
-  görünmüyordu ve kapı `bizigo-sim` için yine tek araç sayıp **yeşil kalıyordu**.
+- **Uyum kapısı her iki yüzeyi de `LogAnalyzer.Api` kökünden denetliyordu**, ama
+  `loganalyzer-sim` üretimde `LogAnalyzer.Cli` kökünden koşuyor ve `LogAnalyzer.Api`'nin
+  `LogAnalyzer.Simulators`'a **hiç referansı yok**. Yani yedi araç kapıya
+  görünmüyordu ve kapı `loganalyzer-sim` için yine tek araç sayıp **yeşil kalıyordu**.
   Kök artık yüzeye göre seçiliyor.
-- **`Bizigo.Cli` → `Bizigo.Simulators` bağı bugün kazaen ayakta.** `bizigo.dll`
-  ölçüldü: `Bizigo.Simulators` **var**, `Bizigo.Query` **yok** (budanmış — tuzağın
+- **`LogAnalyzer.Cli` → `LogAnalyzer.Simulators` bağı bugün kazaen ayakta.** `loganalyzer.dll`
+  ölçüldü: `LogAnalyzer.Simulators` **var**, `LogAnalyzer.Query` **yok** (budanmış — tuzağın
   depoda canlı örneği). Simülatör ayakta çünkü `FleetCommandHandlers`
-  `bizigo fleet apply` için `FleetStore`'a dokunuyor. `McpCommandHandlers` artık
-  `AddBizigoSimulatorTools`'u **MCP yolundan** çağırıyor; bağ tesadüften çıktı.
+  `loganalyzer fleet apply` için `FleetStore`'a dokunuyor. `McpCommandHandlers` artık
+  `AddLogAnalyzerSimulatorTools`'u **MCP yolundan** çağırıyor; bağ tesadüften çıktı.
   ⚠ **Geçici**: M05'in açık derleme listesi geldiğinde doğru cevap bir çağrı yan
   etkisi değil, `SimulatorMcpSetup.ToolAssembly`'nin o listeye verilmesi olacak.
   **→ GELDİ, §7'ye bakın.**
@@ -216,14 +216,14 @@ Koşum (2026-09-15, `857ad4f` üstü): `SimulatorMcpToolTests` + `McpSchemaBudge
 
 ### Bağlam maliyeti sorusu: tavan araç başına, sim yüzeyinin AYRI bir toplamı var
 
-`bizigo-sim`'in **2977 belirteci** 700'lük tavanı ihlal etmiyor ve sebebi
+`loganalyzer-sim`'in **2977 belirteci** 700'lük tavanı ihlal etmiyor ve sebebi
 *"muafiyet"* **değil**:
 
 | Ölçüt | Değer | Nasıl kurulmuş |
 | --- | --- | --- |
 | Araç başına tavan | **700** | Her iki yüzeyde de geçerli. Sim'in en pahalısı `sim.webhook.emit` **537** — tavanın altında |
-| `bizigo` toplam tavanı | araç sayısı × 700 | **Türetiliyor**: araç eklemek o satırı düzenlemeyi gerektirmiyor (§9) |
-| `bizigo-sim` toplam tavanı | **3600** | **Ölçülmüş** sayı (2977 + ~%20 pay) |
+| `loganalyzer` toplam tavanı | araç sayısı × 700 | **Türetiliyor**: araç eklemek o satırı düzenlemeyi gerektirmiyor (§9) |
+| `loganalyzer-sim` toplam tavanı | **3600** | **Ölçülmüş** sayı (2977 + ~%20 pay) |
 
 Gerekçesi `McpSchemaBudgetTests` içinde yazılı ve iki cümlesi taşıyıcı: iki yüzey
 **aynı bütçeyi paylaşmıyor** (bir istemci tek bir yüzeye bağlanıyor; ortak tavan
@@ -240,7 +240,7 @@ Yani sim yüzeyi muaf değil, **kendi ölçülmüş zarfını** taşıyor.
 derlemelerini açıkça aldıracak"* idi ve **gerçekleşti** —
 `ToolAssembliesFor(McpSurface.Simulator)` simülatör derlemesini
 `typeof(SimulatorTool).Assembly` ile taşıyor, yani ilan artık
-`AddBizigoSimulatorTools()` çağrısının **yan etkisine bağlı değil** ve
+`AddLogAnalyzerSimulatorTools()` çağrısının **yan etkisine bağlı değil** ve
 derleyicinin budaması imkânsız. Çağrı duruyor ama **işi değişti**: ilan etmiyor,
 araçların *kurulabilir* olmasını sağlıyor. Paragraf o ayrımı yazacak şekilde
 değiştirildi — silinmedi, çünkü hangi sorunun kapandığı da bilgi.

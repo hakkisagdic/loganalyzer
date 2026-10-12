@@ -25,7 +25,7 @@
 -- Değer: maskelenmiş metnin UTF-8 baytları üzerinde XXH64 — ClickHouse'un
 -- `xxHash64()` fonksiyonuyla **birebir aynı**. Bunun bedava getirdiği şey,
 -- hash'in doğruluğunun üretim veritabanının kendisine karşı sınanabilmesi
--- (bkz. tests/Bizigo.IntegrationTests, SignatureHashClickHouseTests).
+-- (bkz. tests/LogAnalyzer.IntegrationTests, SignatureHashClickHouseTests).
 --
 -- 0 = "imza yok": gövde boş ya da satır 16 KB'lık maskeleme sınırını aşıyor
 -- (`MaskCatalog.SkippedTooLong` sayıyor). Nullable(UInt64) yerine ayrılmış değer

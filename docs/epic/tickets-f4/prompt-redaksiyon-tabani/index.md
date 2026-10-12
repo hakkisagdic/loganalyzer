@@ -37,10 +37,10 @@ duruyor:
 
 | Bileşen | Nerede | Gerçekte ne yapıyor | Neden taban değil |
 | --- | --- | --- | --- |
-| `catalog/masks/bizigo-masks.yaml` | 13 maske, Python sidecar + .NET ortak okur | `IPV4`, `NUMBER`, `HOSTNAME`, `URI`… — şablon madenciliği için **değişken** kısımları siler | Amacı imza kararlılığı. Altın satırlarından biri: `Failed password for admin from 10.1.2.3` → `Failed password for admin from <IPV4>`. **IP gitti, "password" durdu** — modelin ihtiyacı olan bağlamı siliyor, sır sınıfına hiç bakmıyor |
-| `SecretProtector` | `Bizigo.Contracts.Security` | Saklanan kanal sırlarını AES-256-GCM ile **şifreliyor** | Girdisi yapılandırma alanı; log metni hiç görmüyor |
-| `ConfigNormalizer` (T04 config scrub) | `Bizigo.Devices` | Cihaz config satırında `password`/`psksecret`/`pre-shared-key`… anahtar kelimesinin **değerini** maskeliyor | Girdisi cihaz config'i. Deseni `^`'a bağlı ve *"≤4 belirteç + anahtar kelime + ayırıcı + değer"* biçimini varsayıyor — bu biçim config satırının biçimi, log satırının değil |
-| **`SecretRedactor`** | `Bizigo.Contracts.Security` | **Bilinen** bir dizgeyi ve türevlerini metinden söküyor: URL parçaları, `MinFragment = 6` tabanı, uzundan kısaya sıra | Girdisi *"şu dizgeyi maskele"*. **Keşif yapmıyor** |
+| `catalog/masks/loganalyzer-masks.yaml` | 13 maske, Python sidecar + .NET ortak okur | `IPV4`, `NUMBER`, `HOSTNAME`, `URI`… — şablon madenciliği için **değişken** kısımları siler | Amacı imza kararlılığı. Altın satırlarından biri: `Failed password for admin from 10.1.2.3` → `Failed password for admin from <IPV4>`. **IP gitti, "password" durdu** — modelin ihtiyacı olan bağlamı siliyor, sır sınıfına hiç bakmıyor |
+| `SecretProtector` | `LogAnalyzer.Contracts.Security` | Saklanan kanal sırlarını AES-256-GCM ile **şifreliyor** | Girdisi yapılandırma alanı; log metni hiç görmüyor |
+| `ConfigNormalizer` (T04 config scrub) | `LogAnalyzer.Devices` | Cihaz config satırında `password`/`psksecret`/`pre-shared-key`… anahtar kelimesinin **değerini** maskeliyor | Girdisi cihaz config'i. Deseni `^`'a bağlı ve *"≤4 belirteç + anahtar kelime + ayırıcı + değer"* biçimini varsayıyor — bu biçim config satırının biçimi, log satırının değil |
+| **`SecretRedactor`** | `LogAnalyzer.Contracts.Security` | **Bilinen** bir dizgeyi ve türevlerini metinden söküyor: URL parçaları, `MinFragment = 6` tabanı, uzundan kısaya sıra | Girdisi *"şu dizgeyi maskele"*. **Keşif yapmıyor** |
 
 Sonucu §2.1'in cümlesi: **taban bir ikame sorunu değil bir keşif sorunu.**
 `SecretRedactor` ikame yarısını zaten çözüyor; eksik olan ona *neyi*
@@ -80,7 +80,7 @@ gerekçesi ayrı ve her birinin ürüne giriş biçimi ayrı.
 
 | Sıra | Katman | Ne yapıyor | Gerekçe |
 | --- | --- | --- | --- |
-| **1** | **C — üretici söz dizimi** | **Maskeliyor** | Yeni bir liste değil, **mevcut desenin taşınması**: `ConfigNormalizer.SecretAssignment()` `Bizigo.Contracts`'a çıkıyor ve iki taraf da aynı desenden okuyor (§9 — ikinci kopya yazma). O desen **iki kez kırıldı ve iki kez sertleşti** (§2); bakım maliyeti zaten ödeniyor |
+| **1** | **C — üretici söz dizimi** | **Maskeliyor** | Yeni bir liste değil, **mevcut desenin taşınması**: `ConfigNormalizer.SecretAssignment()` `LogAnalyzer.Contracts`'a çıkıyor ve iki taraf da aynı desenden okuyor (§9 — ikinci kopya yazma). O desen **iki kez kırıldı ve iki kez sertleşti** (§2); bakım maliyeti zaten ödeniyor |
 | **2** | **B — ama tamamı değil** | **Maskeliyor** | Yalnızca **kendini tarif eden ve eskimeyen** biçimler: PEM başlığı, JWT'nin üç parçası, `Authorization: Bearer/Basic <token>`. Biçim sabit, bakım kalemi yok, ve `nginx.access` katalogda olduğu için JWT gerçekten düşüyor |
 | **3** | **A — entropi** | **Maskelemiyor — sayıyor** | Gölge mod: *"C+B'nin üstüne kaç belirteç daha maskelerdim"* sorusunun cevabını yayıyor, hiçbir şeye dokunmuyor |
 
@@ -224,7 +224,7 @@ redaksiyon kapısının ölçüm korpusu olamaz, çünkü içinde sır yok.**
    ikili karar. Üçünü tek kapı yapmak kırmızı yanma koşulunu karıştırırdı —
    katmanların **ayrı** olması bunun için.
 5. **`ConfigNormalizer` ile ortak yüzey doğar mı?** C seçildi, dolayısıyla
-   **evet ve zorunlu**: desen `Bizigo.Contracts`'a taşınıyor, iki yerde iki
+   **evet ve zorunlu**: desen `LogAnalyzer.Contracts`'a taşınıyor, iki yerde iki
    liste olmuyor (§9).
 
 ## 4 · Yanlış pozitiflerin asimetrisi — bu ticket'ın en önemli cümlesi
@@ -330,7 +330,7 @@ yüzey** olmalı ve bu tüketicilerin çağrı biçimini değiştirmemeli.
 
 ## 7 · Kapsam
 
-1. **`SecretAssignment()` deseninin `Bizigo.Contracts`'a taşınması.**
+1. **`SecretAssignment()` deseninin `LogAnalyzer.Contracts`'a taşınması.**
    `ConfigNormalizer` ve keşif tarafı **aynı** listeden okur. İki liste
    doğmaz (§9). Desenin bugünkü XML yorumu — iki kırığın kaydı — taşınırken
    **birlikte gider**; o yorum desenin niye böyle olduğunun tek kaydı.
@@ -379,7 +379,7 @@ yüzey** olmalı ve bu tüketicilerin çağrı biçimini değiştirmemeli.
 | 3 | Kapı, `sir-dondu` konvansiyonundaki sahte sır fixture'larında sırrı buluyor ve maskeliyor (§5) |
 | 4 | Kapı **kırmızı yanabiliyor**: kapı devre dışı bırakıldığında ya da sahte sır biçimi değiştirildiğinde test düşüyor — ölçüldü ve geri alındı, rapora yazıldı |
 | 5 | Maskeleme `SecretRedactor` üzerinden yapılıyor; ikinci bir ikame uygulaması yok (§9) |
-| 6 | **Desen tek yerde:** `SecretAssignment()` `Bizigo.Contracts`'ta ve `ConfigNormalizer` onu oradan okuyor. `SimulatorFixtureChainTests` taşımadan sonra **aynı sonucu** veriyor — config kolunun davranışı değişmedi |
+| 6 | **Desen tek yerde:** `SecretAssignment()` `LogAnalyzer.Contracts`'ta ve `ConfigNormalizer` onu oradan okuyor. `SimulatorFixtureChainTests` taşımadan sonra **aynı sonucu** veriyor — config kolunun davranışı değişmedi |
 | 7 | Yanlış pozitif ölçüldü: 87 satırlık altın korpusta kaç satırın maskelendiği sayıldı ve sayı **gerekçesiyle** yazıldı. §3'ün ölçümüne göre beklenen **0/87**; 0 değilse neden 0 olmadığı açıklanmalı |
 | 8 | **A'nın gölge sayıları yayılıyor ve sıfırken de yazılıyor**, eşikle birlikte (§3) |
 | 9 | **Neyi tanıyamadığı yazılı.** Bir belge bölümü ya da sınıfın XML yorumu, kapının **kapsamadığı** sır sınıflarını açıkça sayıyor — en azından: sağlayıcı anahtar katalogları (bilinçli kapsam dışı), anahtar kelimesiz taşınan sırlar, ve A gölgede olduğu sürece yüksek entropili bilinmeyen biçimler. Bu kriter isteğe bağlı değil: hiçbir redaksiyon kapısı tam değildir ve **tam olduğu iddiası, olmadığı iddiasından tehlikelidir** — çünkü tam sanılan bir kapı, arkasındaki düzeyi (`raw`) gerekçesiz açtırır |
@@ -408,11 +408,11 @@ yüzey** olmalı ve bu tüketicilerin çağrı biçimini değiştirmemeli.
 
 | Parça | Yer |
 | --- | --- |
-| Ortak anahtar kelime listesi + iki çapa | `src/Bizigo.Contracts/Security/SecretPatterns.cs` |
-| Kapı (C + B + gölge A) | `src/Bizigo.Contracts/Security/RedactedPrompt.cs` |
+| Ortak anahtar kelime listesi + iki çapa | `src/LogAnalyzer.Contracts/Security/SecretPatterns.cs` |
+| Kapı (C + B + gölge A) | `src/LogAnalyzer.Contracts/Security/RedactedPrompt.cs` |
 | Keşif yolunun ikamesi | `SecretRedactor.RedactExact` — ikame gövdesi ortak (`Apply`) |
 | Log kolunda sır taşıyan fixture | `catalog/simulators/profiller/<profil>/sir-tasiyan.log` (4 dosya) |
-| Testler | `tests/Bizigo.UnitTests/RedactionGateTests.cs` (17 test) |
+| Testler | `tests/LogAnalyzer.UnitTests/RedactionGateTests.cs` (17 test) |
 
 ### Kararlar ve gerekçeleri
 
@@ -482,7 +482,7 @@ her değer aday olarak da görünür ve terfi kararını şişirirdi.
 | Ölçüm | Sonuç |
 | --- | --- |
 | `dotnet build` | 17 proje, 0 hata, 0 uyarı |
-| `dotnet test tests/Bizigo.UnitTests` | 1006 geçti / 1 düştü / 4 atlandı. Düşen `WikiSourceDigestTests` ve **T41'e ait değil**: `CLAUDE.md` §2 değişikliğinden dolayı 14 vault sayfası damgasız — bu turda başka bir ajanın işi |
+| `dotnet test tests/LogAnalyzer.UnitTests` | 1006 geçti / 1 düştü / 4 atlandı. Düşen `WikiSourceDigestTests` ve **T41'e ait değil**: `CLAUDE.md` §2 değişikliğinden dolayı 14 vault sayfası damgasız — bu turda başka bir ajanın işi |
 | `RedactionGateTests` | 17/17 |
 | **Kriter 7 — altın korpusta yanlış pozitif** | **0/87.** Ticket §3 aynı sayıyı *config* çapasıyla ölçmüştü; log çapası yeni bir desen olduğu için ölçüm tekrarlandı. Boşluk ayırıcılı, `=`/`:` ayırıcılı ve karma varyantların **üçü de 0/87** verdi |
 | **Kriter 8 — gölge sayıları (altın korpus, 87 satır)** | `maskelenen=0 gölge_aday=59 gölge_oran=0.6146 payda=96 eşik=3.50bit/krk min_uzunluk=20` |
@@ -582,7 +582,7 @@ gibi taşımak gerçekten hiçbir şey bulmuyor, ve fixture'lar olmasaydı bu
 **Aranmadı:**
 
 - Sidecar'ın (Python) Drain3 tarafında sır sınıfına bakan bir davranış olup
-  olmadığı ayrıca incelenmedi; `bizigo-masks.yaml` okundu ve 13 maskesinin
+  olmadığı ayrıca incelenmedi; `loganalyzer-masks.yaml` okundu ve 13 maskesinin
   hiçbiri sır sınıfı değil, ama sidecar'ın kendi kodu bu ticket için
   taranmadı.
 - Dış sır-tanıma kütüphaneleri (sağlayıcı biçim listeleri) karşılaştırılmadı.

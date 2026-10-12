@@ -1,5 +1,5 @@
 using System.Text;
-using Bizigo.Ingest.Wal;
+using LogAnalyzer.Ingest.Wal;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 

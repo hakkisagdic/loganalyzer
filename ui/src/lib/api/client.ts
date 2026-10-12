@@ -11,7 +11,7 @@ import {
 } from "./paths";
 
 /**
- * `Bizigo.Api` istemcisi — **ince** ve **üretilen tiplerden** beslenen.
+ * `LogAnalyzer.Api` istemcisi — **ince** ve **üretilen tiplerden** beslenen.
  *
  * <p>
  * Yol ve yöntem adları elle yazılmıyor: <c>schema.d.ts</c> OpenAPI belgesinden
@@ -21,7 +21,7 @@ import {
  * </p>
  *
  * <p>
- * Tarayıcı <c>Bizigo.Api</c>'ye doğrudan konuşmuyor. Bütün istekler
+ * Tarayıcı <c>LogAnalyzer.Api</c>'ye doğrudan konuşmuyor. Bütün istekler
  * <c>/api/bff/…</c> vekilinden geçiyor; oradaki oturum çerezi sunucuda
  * <c>Authorization: Bearer</c>'a çevriliyor. Sunucu bileşenlerinin karşılığı
  * <c>server.ts</c> — o vekile hiç uğramıyor.

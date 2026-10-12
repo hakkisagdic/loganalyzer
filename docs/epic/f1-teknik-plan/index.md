@@ -202,7 +202,7 @@ kaynak için tanımlı yedek kod sayfası → `latin1` (kayıpsız geri dönüş
 ## 3. YAML parser plugin formatı (K3)
 
 ```yaml
-apiVersion: bizigo.dev/v1
+apiVersion: loganalyzer.dev/v1
 kind: Parser
 metadata:
   id: fortinet.fortigate.traffic
@@ -485,7 +485,7 @@ Akış: `ham nesneleri seç → sabitlenmiş parser sürümüyle yeniden ayrış
 `parse_generation` kolonu yine de tutulur — hangi satırın kaçıncı kuşaktan geldiği
 denetlenebilsin diye.
 
-CLI: `bizigo replay --from 2026-08-01 --to 2026-08-07 --parser fortinet.fortigate.traffic@1.4.0 --dry-run`
+CLI: `loganalyzer replay --from 2026-08-01 --to 2026-08-07 --parser fortinet.fortigate.traffic@1.4.0 --dry-run`
 
 `--dry-run` önce **fark raporu** basar: kaç satır değişecek, kaç `failed` → `ok`
 olacak. Bu olmadan replay korkutucu bir düğmedir ve kimse basmaz.
@@ -598,10 +598,10 @@ keycloak:
     KC_DB: postgres
     KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
   volumes:
-    - ./deploy/keycloak/realm-bizigo.json:/opt/keycloak/data/import/realm.json:ro
+    - ./deploy/keycloak/realm-loganalyzer.json:/opt/keycloak/data/import/realm.json:ro
 ```
 
-**Realm-as-code.** `realm-bizigo.json` repoda durur ve `--import-realm` ile yüklenir.
+**Realm-as-code.** `realm-loganalyzer.json` repoda durur ve `--import-realm` ile yüklenir.
 Böylece herkesin ortamı aynı olur ve **hangi claim'lere ihtiyacımız olduğu belgeye**
 **değil dosyaya yazılmış** olur. Bu olmazsa grup claim eşlemesi herkesin makinesinde
 farklı davranır ve nedeni günlerce bulunamaz.
@@ -646,7 +646,7 @@ IScopedQuery q = _scope.For(user);      // owner_group IN (...) enjekte edilir
 
 - Ham ClickHouse bağlantısı **hiçbir** uygulama katmanına sızmaz; tek bir iç assembly
 `IDbConnection`'a erişir.
-- Mimari test (NetArchTest) bunu **derleme zamanında** zorlar: `Bizigo.Query.Internal`
+- Mimari test (NetArchTest) bunu **derleme zamanında** zorlar: `LogAnalyzer.Query.Internal`
 dışındaki hiçbir tip `ClickHouse.Driver`'a referans veremez. Bu kural olmadan
 kapsam ayrımı ilk aceleci PR'da delinir.
 - Ham arşiv okuma da aynı kapıdan: nesne anahtarındaki `owner_group` segmenti
@@ -669,12 +669,12 @@ GET  /v1/health/pipeline          bound_ratio, parse_status dağılımı, WAL de
 ## 11. CLI
 
 ```
-bizigo parser lint <file.yaml>          # şema + ReDoS linter
-bizigo parser test <file.yaml>          # gömülü testleri koştur
-bizigo parser try <file.yaml> --input <log>   # tek satır dene, alanları göster
-bizigo ingest file <path> --source <id> # dosyadan besle (geliştirme/test)
-bizigo replay --from … --to … --parser …@… [--dry-run]
-bizigo schema migrate
+loganalyzer parser lint <file.yaml>          # şema + ReDoS linter
+loganalyzer parser test <file.yaml>          # gömülü testleri koştur
+loganalyzer parser try <file.yaml> --input <log>   # tek satır dene, alanları göster
+loganalyzer ingest file <path> --source <id> # dosyadan besle (geliştirme/test)
+loganalyzer replay --from … --to … --parser …@… [--dry-run]
+loganalyzer schema migrate
 ```
 
 `parser try` en çok kullanılacak komut — F2'deki UI editörü bunun üstüne oturacak.
@@ -683,16 +683,16 @@ bizigo schema migrate
 
 ```
 src/
-  Bizigo.Contracts/          # ortak tipler, plugin şemaları
-  Bizigo.Ingest/             # OTLP uç, WAL, kodlama, boru hattı
-  Bizigo.Parsing/            # YAML şema, grok derleyici, dispatcher, adım tipleri
-  Bizigo.Normalization/      # core → OCSF/OTel eşleme tabloları
-  Bizigo.Storage.ClickHouse/ # şema, bulk writer, INTERNAL — dışarı sızmaz
-  Bizigo.Storage.Raw/        # object storage yazıcı/okuyucu, replay okuyucu
-  Bizigo.ControlPlane/       # EF Core, envanter, katalog, audit
-  Bizigo.Query/              # IScopedQuery — tek kapı
-  Bizigo.Api/                # ASP.NET Core, OIDC, uçlar
-  Bizigo.Cli/
+  LogAnalyzer.Contracts/          # ortak tipler, plugin şemaları
+  LogAnalyzer.Ingest/             # OTLP uç, WAL, kodlama, boru hattı
+  LogAnalyzer.Parsing/            # YAML şema, grok derleyici, dispatcher, adım tipleri
+  LogAnalyzer.Normalization/      # core → OCSF/OTel eşleme tabloları
+  LogAnalyzer.Storage.ClickHouse/ # şema, bulk writer, INTERNAL — dışarı sızmaz
+  LogAnalyzer.Storage.Raw/        # object storage yazıcı/okuyucu, replay okuyucu
+  LogAnalyzer.ControlPlane/       # EF Core, envanter, katalog, audit
+  LogAnalyzer.Query/              # IScopedQuery — tek kapı
+  LogAnalyzer.Api/                # ASP.NET Core, OIDC, uçlar
+  LogAnalyzer.Cli/
 sidecar/                     # Python: drain3 + pysigma
 catalog/parsers/             # YAML parser'lar + altın örnek dosyaları
 tests/

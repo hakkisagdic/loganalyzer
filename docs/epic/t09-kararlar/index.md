@@ -31,13 +31,13 @@ yerlerde bunu belirtiyorum.
 
 ### 2.1 Dört claim — ve dar tutulmasının bedeli ödendi
 
-`BizigoClaims`: `sub`, `preferred_username`, `roles`, `groups`. Sınıf yorumu
+`LogAnalyzerClaims`: `sub`, `preferred_username`, `roles`, `groups`. Sınıf yorumu
 gerekçeyi yazıyor: sözleşme **bilinçli olarak dar**, çünkü Keycloak → Entra ID
 geçişi IdP tarafında mapper ayarı ve `idp_group_mapping` satırları demek —
 kodda değişiklik yok. "Buraya beşinci bir claim eklemek o özelliği kaybetmek
 olur."
 
-Bunun realm tarafındaki karşılığı `bizigo-claims` adında **tek bir client
+Bunun realm tarafındaki karşılığı `loganalyzer-claims` adında **tek bir client
 scope**: dört claim'in dördü de orada, artı `aud`.
 `Paylasilan_scope_bes_claimi_de_uretiyor` testinin yorumu sebebi yazıyor —
 `sub` ve `preferred_username` normalde Keycloak'ın `basic`/`profile`
@@ -99,12 +99,12 @@ tersi olsaydı collector 302 alırdı.
 ### 2.5 Roller ve servis hesabı
 
 Dört politika (`ingest`, `read`, `author`, `admin`) rol kümelerine bağlı.
-`BizigoRoles.Ingest`'in özet yorumu tek cümle: "Yalnızca `/v1/logs`. Okuma
+`LogAnalyzerRoles.Ingest`'in özet yorumu tek cümle: "Yalnızca `/v1/logs`. Okuma
 yetkisi **yok**." Ticket gerekçeyi tamamlıyor: collector kimliği sızarsa veri
 **yazılabilir, okunamaz**.
 
-Realm dosyası bunu ayrı bir client'la kuruyor: `bizigo-collector` yalnızca
-servis hesabı (`standardFlowEnabled=false`), `bizigo-ui` yalnızca tarayıcı akışı
+Realm dosyası bunu ayrı bir client'la kuruyor: `loganalyzer-collector` yalnızca
+servis hesabı (`standardFlowEnabled=false`), `loganalyzer-ui` yalnızca tarayıcı akışı
 (`serviceAccountsEnabled=false`).
 
 ### 2.6 Denetim kaydı
@@ -135,15 +135,15 @@ kod okundu, ölçüm yapılmadı.
 ### 4.1 Kimlik grafiği kapsam doğrulamasından hiç geçmiyordu — kapandı
 
 `ArchitectureTests`'in kapsam (captive dependency) bekçisi denetlediği kayıt
-uzantılarını **elle yazılmış bir listeden** alıyordu ve `AddBizigoAuthentication`
+uzantılarını **elle yazılmış bir listeden** alıyordu ve `AddLogAnalyzerAuthentication`
 o listede **yoktu**. `Program.cs` onu çağırıyor, yani üretim grafiğinin parçası;
-ama doğrulamaya hiç girmiyordu. Aynı boşlukta `AddBizigoDiscovery` de vardı.
+ama doğrulamaya hiç girmiyordu. Aynı boşlukta `AddLogAnalyzerDiscovery` de vardı.
 
 Bu, bu deponun adını koyduğu hata sınıfının tam örneği: bekçi **yeşil
 yanıyordu** ve yeşilliği kimlik katmanı hakkında hiçbir şey söylemiyordu.
 
 **Kapandı** — `5dcb786` "Let the lifetime guard find its own layers". Keşif artık
-kompozisyon kökünden (`Bizigo.Api`) başlayıp `Bizigo.*` referanslarını geçişli
+kompozisyon kökünden (`LogAnalyzer.Api`) başlayıp `LogAnalyzer.*` referanslarını geçişli
 yükleyerek bütün `Add*` uzantılarını yansımayla buluyor; elle yazılan liste
 **denetlenen küme** olmaktan çıkıp **beklenen küme** oldu
 (`Kapsam_bekcisi_butun_kayit_uzantilarini_kendisi_buluyor`). Keşif azını bulursa
@@ -155,7 +155,7 @@ ve bilinçli yazılması gerekiyor.
 Ticket açıkça yazmış: "Gerçek Keycloak'a karşı uçtan uca giriş akışı
 **denenmedi**." Bunun bedeli F2'de görüldü ve
 [F2 kapanışı](../f2-kapanis/index.md)'nda ölçülü olarak duruyor: realm
-`scopes_supported = ["openid", "offline_access", "bizigo-claims"]` diyor,
+`scopes_supported = ["openid", "offline_access", "loganalyzer-claims"]` diyor,
 `openid profile email` **`invalid_scope`** alıyor — ve F1'den kalma OIDC
 işleyicisi tam o üçlüyü istiyordu. Tarayıcı akışı sevk edilseydi **ilk
 kullanıcının ilk girişinde** patlardı ve hiçbir test bunu görmezdi, çünkü akış
@@ -166,14 +166,14 @@ vardı. K31 ile akış Next tarafına taşındığı için kusur ürüne çıkma
 
 ### 4.3 Realm'in kendi varsayılan scope listesi tanımsız scope'lara işaret ediyor
 
-`realm-bizigo.json` içinde `defaultDefaultClientScopes` şunu diyor:
-`["profile", "email", "roles", "bizigo-claims"]`. Realm'in `clientScopes`
-listesinde ise **yalnızca `bizigo-claims` var** — `profile`, `email` ve `roles`
+`realm-loganalyzer.json` içinde `defaultDefaultClientScopes` şunu diyor:
+`["profile", "email", "roles", "loganalyzer-claims"]`. Realm'in `clientScopes`
+listesinde ise **yalnızca `loganalyzer-claims` var** — `profile`, `email` ve `roles`
 tanımlı değil.
 
 `Istemciler_yalnizca_var_olan_scopelara_referans_veriyor` bu durumu
 yakalamıyor, çünkü **istemci düzeyindeki** listeleri denetliyor; iki istemcinin
-de `defaultClientScopes` değeri sadece `bizigo-claims`. Realm düzeyindeki liste
+de `defaultClientScopes` değeri sadece `loganalyzer-claims`. Realm düzeyindeki liste
 bekçinin görüş alanının dışında.
 
 Ölçülmüş sonuç §4.2'deki `invalid_scope`. Bu iki gözlem arasındaki nedensel

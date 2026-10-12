@@ -1,7 +1,7 @@
 ---
 title: Ölçüm protokolünü sonuçtan önce yaz
 category: skills
-tags: [test, surec, yordam, bizigo]
+tags: [test, surec, yordam, loganalyzer]
 aliases: [ön kontrol, geçersizleme kriteri, karar değişkeni]
 relationships:
   - target: "[[concepts/olcum-sayi-kapsam-degil]]"
@@ -129,7 +129,7 @@ koşuluyor. Bir **aşama** ya da **izin** iddiası değil — aynı cümlenin bu
 Aynı belge raporu `$TMPDIR/t29-hotpath.log`'a da yazıyor — *xunit konsolu
 yutarsa sayı yine de duruyor.*
 
-Karşı örnek aynı dilimde: T12'nin `SidecarLiveTests`'i `BIZIGO_SIDECAR_LIVE=1` +
+Karşı örnek aynı dilimde: T12'nin `SidecarLiveTests`'i `LOGANALYZER_SIDECAR_LIVE=1` +
 `sidecar/.venv` istiyor, CI'da ikisi de yok, ve **hiç koşmadı** — T12'nin
 taşıyıcı iddiası (*sidecar arızalıyken throughput düşmüyor*) bu yüzden bugün
 "mantıklı ama ölçülmemiş" durumda.

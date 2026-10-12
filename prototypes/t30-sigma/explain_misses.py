@@ -288,7 +288,7 @@ def repo_root() -> Path | None:
     dizinleri bulunamıyor ve araç "hiçbir şey yok" diye rapor veriyor.
     """
     for parent in Path(__file__).resolve().parents:
-        if (parent / "Bizigo.sln").exists():
+        if (parent / "LogAnalyzer.sln").exists():
             return parent
 
     return None
@@ -613,7 +613,7 @@ def main(argv: list[str] | None = None) -> int:
     root = repo_root()
 
     if root is None:
-        print("Depo kökü bulunamadı (`Bizigo.sln`). Araç depo ağacından koşmalı.", file=sys.stderr)
+        print("Depo kökü bulunamadı (`LogAnalyzer.sln`). Araç depo ağacından koşmalı.", file=sys.stderr)
         return 2
 
     corpus = Path(args.corpus) if args.corpus else corpus_dir(root)

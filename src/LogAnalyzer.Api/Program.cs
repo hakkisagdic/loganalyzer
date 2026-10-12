@@ -1,0 +1,386 @@
+using LogAnalyzer.Api.Anomaly;
+using LogAnalyzer.Alerting;
+using LogAnalyzer.Api;
+using LogAnalyzer.Api.Connectors;
+using LogAnalyzer.Api.Rca;
+using LogAnalyzer.Api.Webhooks;
+using LogAnalyzer.Authoring;
+using LogAnalyzer.ControlPlane;
+using LogAnalyzer.Evidence;
+using LogAnalyzer.Ingest;
+using LogAnalyzer.Ingest.Discovery;
+using LogAnalyzer.Ingest.Pipeline;
+using LogAnalyzer.Parsing;
+using LogAnalyzer.Parsing.Dispatch;
+using LogAnalyzer.Parsing.Grok;
+using LogAnalyzer.Ingest.Wal;
+using LogAnalyzer.Commands.Mcp;
+using LogAnalyzer.Mcp;
+using LogAnalyzer.Query;
+using LogAnalyzer.Rca;
+using LogAnalyzer.Rca.Models;
+using LogAnalyzer.Replay;
+using LogAnalyzer.Storage.ClickHouse;
+using LogAnalyzer.Storage.Raw;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
+
+// OpenAPI belge üretimi (T14) bu giriş noktasını gerçekten çalıştırıyor;
+// gerekçesi ve üç ayarı `DocumentGeneration` içinde.
+var builder = DocumentGeneration.CreateBuilder(args.Where(a => a != "--replay-signals").ToArray());
+
+var postgres = builder.Configuration.GetConnectionString("ControlPlane")
+    ?? throw new InvalidOperationException("ConnectionStrings:ControlPlane tanımlı değil.");
+
+var clickHouseOptions = new ClickHouseOptions();
+builder.Configuration.GetSection(ClickHouseOptions.SectionName).Bind(clickHouseOptions);
+clickHouseOptions.ConnectionString = builder.Configuration.GetConnectionString("ClickHouse")
+    ?? clickHouseOptions.ConnectionString;
+
+builder.Services.AddControlPlane(postgres);
+
+// Veri düzleminin tamamı tek satırda. API katmanı somut okuyucuları hiç görmüyor —
+// yalnızca IScopedQuery (K17). Mimari test bunu zorluyor.
+builder.Services.AddLogAnalyzerDataPlane(clickHouseOptions);
+builder.Services.AddDataProtection();
+builder.Services.AddSingleton<TopologyReadCursorCodec>();
+
+// Parser motoru, katalog ve dispatcher (T05, T06).
+builder.Services.AddLogAnalyzerParsing(builder.Configuration);
+
+// Ingest: OTLP çözücü + WAL + boru hattı (T03).
+builder.Services.AddLogAnalyzerIngest(builder.Configuration);
+
+// Ham arşiv: yükleyici, manifest, scrub (T04).
+builder.Services.AddLogAnalyzerRawArchive(builder.Configuration);
+builder.Services.AddLogAnalyzerTelemetry(builder.Configuration);
+
+// Replay: gölge tablo + bölüm değiştirme (T11).
+builder.Services.AddLogAnalyzerReplay();
+
+// Parser yazarlığı: taslak deposu ve yayın kapıları (T18).
+builder.Services.AddLogAnalyzerAuthoring();
+
+// Değişiklik webhook'ları: uç kaydı ve imza yapılandırması (T24, K34).
+builder.Services.AddChangeWebhooks(builder.Configuration);
+
+// Connector yapılandırması, zamanlayıcı ve saklama temizliği (T25).
+// AddChangeWebhooks'tan SONRA: kontrol düzlemi defteri onu yedek olarak tüketiyor.
+builder.Services.AddChangeConnectors(builder.Configuration);
+
+// Kanıt sağlayıcı sözleşmesi ve iki sağlayıcı (T34). Uç yok: kanıt paketi
+// deposu ve rapor T36'da, korelasyonlar T35'te.
+builder.Services.AddLogAnalyzerEvidence();
+builder.Services.Configure<MetricEvidenceOptions>(builder.Configuration.GetSection("MetricEvidence"));
+builder.Services.Configure<TelemetryEvidenceOptions>(builder.Configuration.GetSection("TelemetryEvidence"));
+
+// Alarm motoru ve bildirim kanalları (T21, T22).
+builder.Services.AddLogAnalyzerAlerting(builder.Configuration);
+
+// RCA tetikleyicileri: dört kaynak tek kapıdan (T45).
+builder.Services.AddLogAnalyzerRcaTriggers(builder.Configuration);
+
+// Model sağlayıcısı ve K6'nın kapısı (T42). Uç burada DOĞRULANMIYOR —
+// doğrulama ağ çözümlemesi yapıyor ve kayıt anına konsaydı DNS erişilemediğinde
+// API'nin tamamı ayağa kalkmazdı.
+builder.Services.AddLogAnalyzerModelProvider(builder.Configuration);
+
+// Takvim tetikleyicisi ve kuyruk boşaltıcısı (T46). Api katmanında, çünkü
+// koşumu tamamlamak kanıt paketini kurmayı gerektiriyor ve `LogAnalyzer.Rca`
+// Evidence'ı tanımıyor — tanısaydı kabul kararı kanıt toplamaya bağımlı olurdu.
+{
+    var schedules = new RcaScheduleOptions();
+    builder.Configuration.GetSection(RcaScheduleOptions.SectionName).Bind(schedules);
+    builder.Services.AddSingleton(schedules);
+    builder.Services.AddHostedService<RcaScheduleWorker>();
+}
+
+// S4 Anomaly evaluator, worker, and retention (Sprint 07).
+builder.Services.AddScoped<IAnomalyEvaluator, AnomalyEvaluator>();
+{
+    var anomalyWorkerOptions = new AnomalyWorkerOptions();
+    builder.Configuration.GetSection(AnomalyWorkerOptions.SectionName).Bind(anomalyWorkerOptions);
+    builder.Services.AddSingleton(anomalyWorkerOptions);
+    builder.Services.AddHostedService<AnomalyWorker>();
+
+    var retentionOptions = new AnomalyRetentionWorkerOptions();
+    builder.Configuration.GetSection(AnomalyRetentionWorkerOptions.SectionName).Bind(retentionOptions);
+    builder.Services.AddSingleton(retentionOptions);
+    builder.Services.AddHostedService<AnomalyRetentionWorker>();
+}
+
+// MCP protokol çekirdeği ve akışlanabilir HTTP taşıması (M01). Ürün yüzeyi
+// (`loganalyzer`); simülatör yüzeyi bilerek burada değil — gerekçesi
+// `LogAnalyzerMcpSetup` içinde.
+builder.Services.AddLogAnalyzerMcp(builder.Configuration);
+
+// Kimlik ve yetkilendirme (T09).
+builder.Services.AddLogAnalyzerAuthentication(builder.Configuration);
+
+builder.Services.AddHealthChecks();
+
+// OpenAPI: F2'nin istemci kodu bu şemadan doğacak (T10).
+// M02 — komut araçlarının bağımlılıkları. stdio host'u aynı uzantıyı
+// çağırıyor; iki ayrı kayıt, bir aracın bir taşımada çalışıp diğerinde
+// patlaması demekti.
+builder.Services.AddLogAnalyzerCommandTools();
+
+builder.Services.AddOpenApi();
+
+// Hız sınırı (risk #6, gürültülü komşu). Tek bir kullanıcının ağır sorgusu
+// ClickHouse'u ve dolayısıyla herkesi yavaşlatabiliyor; sınır KULLANICI BAŞINA,
+// çünkü küresel bir sınır kalabalık bir ekibi tek kişilik bir ekiple aynı
+// kefeye koyardı.
+builder.Services.AddRateLimiter(limiter =>
+{
+    limiter.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    limiter.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+    {
+        var subject = context.User.FindFirst(LogAnalyzerClaims.Subject)?.Value
+            ?? context.Connection.RemoteIpAddress?.ToString()
+            ?? "anonymous";
+
+        return RateLimitPartition.GetConcurrencyLimiter(subject, _ => new ConcurrencyLimiterOptions
+        {
+            PermitLimit = 4,
+            QueueLimit = 8,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+        });
+    });
+});
+
+var app = builder.Build();
+
+// Offline operator command. The same production DI graph and exclusive writer
+// lease apply; stop this API instance before replaying its telemetry directory.
+if (args.Contains("--replay-signals", StringComparer.Ordinal))
+{
+    using var replayCancellation = new CancellationTokenSource();
+    ConsoleCancelEventHandler cancelReplay = (_, e) => { e.Cancel = true; replayCancellation.Cancel(); };
+    Console.CancelKeyPress += cancelReplay;
+    try
+    {
+        var telemetry = app.Services.GetRequiredService<LogAnalyzer.Ingest.Otlp.SignalIngest>();
+        await telemetry.RecoverAsync(replayCancellation.Token);
+        await telemetry.ReplayArchiveAsync(replayCancellation.Token);
+        Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(new
+        { status = "Completed", manifests = telemetry.Archive.Manifests().Count(), directory = telemetry.Root }));
+    }
+    catch (OperationCanceledException)
+    {
+        Console.Error.WriteLine("{\"status\":\"Cancelled\"}");
+        Environment.ExitCode = 130;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine(System.Text.Json.JsonSerializer.Serialize(new
+        { status = "Failed", error = ex.GetType().Name, message = ex.Message }));
+        Environment.ExitCode = 1;
+    }
+    finally { Console.CancelKeyPress -= cancelReplay; await app.DisposeAsync(); }
+    return;
+}
+
+// Belge üretimi sırasında ortada Postgres de ClickHouse da yok; göç adımı
+// bağlantı hatasıyla düşer ve belge hiç üretilemez.
+if (!DocumentGeneration.IsActive)
+{
+    // Ayağa kalkarken iki şema da hazır olmalı.
+    // Not: üretimde göç ayrı bir adım olacak; şimdilik açılışta.
+    await app.Services.MigrateControlPlaneAsync();
+
+    var (applied, existing) = await app.Services.MigrateDataPlaneAsync();
+    app.Logger.LogInformation(
+        "ClickHouse göçleri: {Applied} uygulandı, {Existing} zaten vardı.", applied, existing);
+}
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+if (!DocumentGeneration.IsActive)
+{
+    // Grup → owner_group eşlemesini belleğe al. Boş kalırsa kimse veri göremez;
+    // bu, eşleme tablosu boşken "her şeyi gör"e düşmekten iyidir (K17).
+    await app.Services.GetRequiredService<AccessScopeResolver>().RefreshAsync();
+}
+
+app.UseRateLimiter();
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+}
+
+app.MapHealthChecks("/healthz");
+app.MapAuth();
+app.MapOtlpLogs();
+app.MapOtlpTelemetry();
+app.MapTelemetryReads();
+
+// Sorgu ve yazma yüzeyi (T10). Hepsi IScopedQuery'den geçiyor; mimari test
+// API'nin somut okuyuculara erişmesini zaten yasaklıyor.
+app.MapEvents();
+app.MapSources();
+app.MapTopologyWrites();
+app.MapTopologyReads();
+app.MapChanges();
+app.MapChangeWebhooks();
+app.MapChangeConnectors();
+app.MapPipelineHealth();
+app.MapReplay();
+app.MapParsers();
+app.MapParserAuthoring();
+app.MapAlerts();
+app.MapAnomalies();
+
+// RCA kanıt paketi, deterministik rapor ve export (T37). Elle tetikleme dar
+// tutuldu: kuyruk, kota ve debounce dört tetikleyiciyle birlikte F4'te.
+app.MapRca();
+
+// Koşum listesi (T46): "neden RCA yok" sorusunun okuma yolu. Boş liste bir
+// garanti taşıyor — reddedilen koşum satır olarak burada görünüyor.
+app.MapRcaRuns();
+
+app.MapNotificationChannels();
+app.MapAlertClosure();
+
+// MCP'nin ikinci taşıması (M01). Birincisi stdio ve `loganalyzer mcp serve` ile
+// koşuyor; ikisi AYNI araç kümesini sunuyor, çünkü ikisi de
+// `LogAnalyzerMcpServer.Apply`'den geçiyor.
+app.MapLogAnalyzerMcp();
+
+// Ingest sayaçları: "boru hattı akıyor mu" sorusunun tek bakışta cevabı.
+// `declared_encoding_mismatches` sıfırdan büyükse envanterdeki `encoding` yanlış.
+//
+// `stored` ve `unaccounted` SONRADAN eklendi; sebebi ölçüldü (S02a). Simülatör
+// 100 satır bastığında bu uç `accepted 100 / processed 100` diyor, INSERT
+// başarılı dönüyor ve tabloya SIFIR satır giriyordu. Hiçbir sayaç, hiçbir hata,
+// hiçbir belirti yoktu.
+//
+// Kritik ayrım: `processed_records` **ÇÖZÜLEN** kaydı sayıyor, depolananı değil
+// — `IngestPipeline` onu çözümlemeden hemen sonra, sink'e vermeden ARTIRIYOR.
+// Yani "processed" hiçbir zaman bir depolama iddiası değildi ama öyle okunuyordu.
+//
+// `unaccounted` o okuma hatasını imkânsız kılıyor: çözülen ile hesabı verilen
+// (yazılan + süresi dolan + düşürülen + tamponda bekleyen) arasındaki fark.
+// Sıfırdan büyükse kayıt ne tabloya ulaşmış ne de kaybı raporlanmış demektir.
+app.MapGet("/internal/ingest/stats", (
+    IngestStats stats,
+    WriteAheadLog wal,
+    ClickHouseEventSink sink) =>
+{
+    var written = sink.Written;
+    var expired = sink.Expired;
+    var dropped = sink.Dropped;
+    var buffered = sink.Buffered;
+
+    return Results.Ok(new
+    {
+        accepted_batches = stats.AcceptedBatches,
+        accepted_records = stats.AcceptedRecords,
+        processed_records = stats.ProcessedRecords,
+        rejected_full = stats.RejectedFull,
+        rejected_invalid = stats.RejectedInvalid,
+        non_utf8_records = stats.NonUtf8Records,
+        declared_encoding_mismatches = stats.DeclaredEncodingMismatches,
+        stored = new
+        {
+            written,
+
+            // Sıfırdan büyükse tabloya girmeyen satır var: cihaz saati ya da
+            // parser'ın ts alanı yanlış. Ayrıntı sink'in uyarı kaydında.
+            expired,
+            dropped,
+            buffered,
+        },
+
+        // Negatif olamaz; olursa sayaçlardan biri fazla sayıyor demektir.
+        unaccounted = Math.Max(0, stats.ProcessedRecords - written - expired - dropped - buffered),
+        wal = new
+        {
+            total_bytes = wal.TotalBytes,
+            is_full = wal.IsFull,
+            recovery = wal.Recovery,
+        },
+    });
+});
+
+// Keşif yolu (T12). Devre kesici **görünür olmak zorunda** (F1 §9): sidecar
+// sıcak yolda olmadığı için arızası hiçbir alarmı tetiklemez; tek belirti
+// `template_id`'nin sessizce boş kalmasıdır.
+app.MapGet("/internal/discovery/stats", (
+    SidecarOptions options,
+    DiscoveryStats stats,
+    IServiceProvider services) =>
+{
+    var breaker = services.GetService<SidecarCircuitBreaker>();
+    var cache = services.GetService<TemplateCache>();
+    var masks = services.GetService<MaskCatalog>();
+
+    return Results.Ok(new
+    {
+        enabled = options.Enabled,
+        base_url = options.BaseUrl,
+        api_version = options.ApiVersion,
+        timeout_seconds = options.Timeout.TotalSeconds,
+        queue_capacity = options.QueueCapacity,
+        sample_rate = options.SampleRate,
+        circuit = new
+        {
+            state = breaker?.State.ToString() ?? "Disabled",
+            opened_count = breaker?.OpenedCount ?? 0,
+            break_minutes = options.BreakDuration.TotalMinutes,
+            failure_threshold = options.FailureThreshold,
+            last_error = breaker?.LastError,
+        },
+        masks = new
+        {
+            version = masks?.Version ?? 0,
+            count = masks?.Masks.Count ?? 0,
+            source = masks?.SourcePath,
+
+            // K35'ten sonra bu sayaç operasyonel: maskeleme her olayda koşuyor
+            // ve sınırı aşan satırın `signature_hash`'i boş kalıyor, yani o
+            // satırlar RCA'nın "ilk-görülen imza" sinyalinde **görünmüyor**.
+            // Sıfırdan büyük olması arıza değil ama raporun söylemesi gereken
+            // bir şey; hiçbir yerde okunamıyor olması, kaldırılan zaman
+            // aşımının sessizliğini geri getirirdi.
+            skipped_too_long = masks?.SkippedTooLong ?? 0,
+        },
+        queue = new
+        {
+            enqueued = stats.Enqueued,
+            dropped_queue_full = stats.DroppedQueueFull,
+            dropped_circuit_open = stats.DroppedCircuitOpen,
+        },
+        sidecar = new
+        {
+            requests = stats.Requests,
+            failures = stats.RequestFailures,
+            timeouts = stats.Timeouts,
+            mined_messages = stats.MinedMessages,
+            new_templates = stats.NewTemplates,
+        },
+        templates = new
+        {
+            cache_size = cache?.Count ?? 0,
+            cache_hits = stats.CacheHits,
+            cache_misses = stats.CacheMisses,
+            // Sıfırdan büyükse .NET ile Python maskeleri ayrışmış demektir.
+            signature_drift = stats.SignatureDrift,
+        },
+    });
+});
+
+app.MapGet("/", () => Results.Ok(new
+{
+    service = "loganalyzer-loganalyzer",
+    phase = "F2",
+    status = "F1 tamamlandı; F2 sürüyor",
+}));
+
+await app.RunAsync();
+
+/// <summary>Entegrasyon testlerinin <c>WebApplicationFactory</c> ile erişebilmesi için.</summary>
+public partial class Program;

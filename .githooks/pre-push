@@ -48,7 +48,7 @@ done
 # TEST DİKİŞİ. Kancanın kırmızı yanabildiğini ölçmenin tek yolu bu — gerçek bir
 # push denemeden durumu enjekte edebilmek. Aynı zamanda bir kaçış kapısı, ama
 # YENİ bir delik değil: `git push --no-verify` zaten var ve daha kolay.
-status="${BIZIGO_CI_STATUS:-}"
+status="${LOGANALYZER_CI_STATUS:-}"
 
 if [ -z "$status" ]; then
     if ! command -v gh >/dev/null 2>&1; then
@@ -91,7 +91,7 @@ fi
 # için değil.
 #
 # Kontrol test dikişinin DIŞINDA, ve bu yerleşim ölçülerek düzeltildi: dikişin
-# içinde kalmışken `BIZIGO_CI_STATUS=null` ile koşan ölçüm bu dala hiç
+# içinde kalmışken `LOGANALYZER_CI_STATUS=null` ile koşan ölçüm bu dala hiç
 # uğramıyordu, yani dal yazılmıştı ama SINANMAMIŞTI. Dikişin ölçemediği bir dal,
 # ölçülmemiş bir daldır.
 if [ "$status" = "null" ]; then
@@ -116,7 +116,7 @@ echo "" >&2
 echo "  main'deki SON CI koşumu: $status" >&2
 echo "" >&2
 
-if [ -z "${BIZIGO_CI_STATUS:-}" ] && command -v gh >/dev/null 2>&1; then
+if [ -z "${LOGANALYZER_CI_STATUS:-}" ] && command -v gh >/dev/null 2>&1; then
     # Koşum kimliği ÖNCE alınıyor: `gh run view` kimliksiz çağrıldığında
     # etkileşimli seçici açıyor ve bir kanca içinde o, asılı kalan bir push
     # demek.

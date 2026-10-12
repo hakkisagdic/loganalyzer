@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\LogAnalyzer.Contracts\LogAnalyzer.Contracts.csproj" />
+    <!-- Yön: ingest → arşiv. Arşiv katmanı WAL'ın biçimini bilmez. -->
+    <ProjectReference Include="..\LogAnalyzer.Storage.Raw\LogAnalyzer.Storage.Raw.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Parsing\LogAnalyzer.Parsing.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Normalization\LogAnalyzer.Normalization.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.ControlPlane\LogAnalyzer.ControlPlane.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="Grpc.Tools" PrivateAssets="all" />
+    <PackageReference Include="System.IO.Hashing" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+  <!--
+    OTLP mesaj sınıfları opentelemetry-proto v1.11.0'dan üretilir.
+    GrpcServices="None": yalnızca mesajlar; :4317 gRPC ucu v1'de yok (kaçış kapısı).
+    Üretilen kod repoya girmez — proto dosyaları tek kaynak.
+  -->
+  <ItemGroup>
+    <Protobuf Include="Otlp\proto\**\*.proto"
+              ProtoRoot="Otlp\proto"
+              GrpcServices="None"
+              Access="Public" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- Üretilen protobuf kodu bizim analiz kurallarımıza uymuyor; kendi kodumuzda kural aynen geçerli. -->
+    <NoWarn>$(NoWarn);CS8981</NoWarn>
+  </PropertyGroup>
+
+</Project>

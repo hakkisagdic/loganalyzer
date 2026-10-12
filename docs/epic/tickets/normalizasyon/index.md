@@ -46,9 +46,9 @@ Aynı olay hem OCSF hem OTel görünümünden okunabiliyorcore alanları doğru 
 
 | Parça | Nerede |
 | --- | --- |
-| `ParsedEvent` → `LogEvent` | `src/Bizigo.Normalization/EventNormalizer.cs` |
-| Sözleşme tipleri | `src/Bizigo.Normalization/ParsedEvent.cs` (ingest ve depolama arasında) |
-| Toplu yazım | `src/Bizigo.Storage.ClickHouse/ClickHouseEventSink.cs` — 10k satır / 2 sn |
+| `ParsedEvent` → `LogEvent` | `src/LogAnalyzer.Normalization/EventNormalizer.cs` |
+| Sözleşme tipleri | `src/LogAnalyzer.Normalization/ParsedEvent.cs` (ingest ve depolama arasında) |
+| Toplu yazım | `src/LogAnalyzer.Storage.ClickHouse/ClickHouseEventSink.cs` — 10k satır / 2 sn |
 | Periyodik boşaltma | `EventSinkFlushService.cs` |
 | Görünümler | `db/clickhouse/0003_ocsf_otel_views.sql` |
 

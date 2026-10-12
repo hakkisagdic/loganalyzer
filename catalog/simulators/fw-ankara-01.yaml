@@ -24,7 +24,7 @@ encoding: utf-8
 
 ssh:
   port: 22
-  username: bizigo-ro
+  username: loganalyzer-ro
   # Parola DEĞİL, parolanın nereden okunacağı. Profil dosyaya giriyor;
   # gizli bilgi girmiyor.
   credential_env: SIM_FW_ANKARA_PASSWORD

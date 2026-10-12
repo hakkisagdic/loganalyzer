@@ -43,8 +43,8 @@ en güçlü sinyal" diye tanımlıyor.
 - `ReplayDiff` karşılaştırmasına dahil — imza değişmesi replay'in raporlaması
 gereken bir fark.
 - **Maliyet ölçümü:** sıcak yolun `signature_hash` öncesi ve sonrası ns/olay
-maliyeti. `tests/Bizigo.UnitTests/SidecarLiveTests.cs` iskelesi bunun için zaten
-var (T12'de yazıldı, `BIZIGO_SIDECAR_LIVE=1` ile koşuyor).
+maliyeti. `tests/LogAnalyzer.UnitTests/SidecarLiveTests.cs` iskelesi bunun için zaten
+var (T12'de yazıldı, `LOGANALYZER_SIDECAR_LIVE=1` ile koşuyor).
 - Uzunluk sınırını aşan satırın `signature_hash`'i boş kalıyor ve bu
 **sayılıyor** (`MaskCatalog.SkippedTooLong` zaten var).
 

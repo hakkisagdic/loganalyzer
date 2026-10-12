@@ -83,7 +83,7 @@ Doğrulama üç sürüklenme yönünü **ayrı** raporluyor, çünkü üçünün
 eksik dosya (kopyalama yarım), fazla dosya (çiviye girmemiş kural — derlenir ama
 nereden geldiği kayıtsız), değişmiş içerik (elle düzenlenmiş).
 
-Çivi bugün **24 kurala bağlı** ve kaynağı `bizigo/prototip` — SigmaHQ değil, ve
+Çivi bugün **24 kurala bağlı** ve kaynağı `loganalyzer/prototip` — SigmaHQ değil, ve
 bunu bir test tutuyor (`assert "SigmaHQ" not in pin.source`). Kurallar T30
 örnekleminden terfi ettirildi; SigmaHQ'nun dağılımını temsil etmiyorlar, o yüzden
 kaynağın doğru söylenmesi kapsamın yanlış okunmasını engelliyor.
@@ -370,7 +370,7 @@ manifest 24 kural taşıyor (21 `written`, 3 `gated`, 0 `failed`) ve
 ve bir kez bayatladı.
 
 Kapı, kural üretilmeden **önce** CI'a girdi. Sebep bu turda ölçüldü:
-`bizigo_pipeline.py`
+`loganalyzer_pipeline.py`
 `UNMAPPED_FIELDS`'ı tanımlamış ama hiçbir dönüşüme vermemişti,
 `unmapped_expression()` yazılmış ama hiç çağrılmamıştı. **Hazırlanmış ama
 bağlanmamış**, ve bağlanmamış olması hiçbir yerde belirti üretmiyordu — 24
@@ -556,7 +556,7 @@ Tarih atıldı çünkü **git zaten tutuyor ve daha güvenilir tutuyor**:
 
 ## Koşturmadığım test
 
-`tests/Bizigo.IntegrationTests/SigmaViewColumnsTests.cs` türetilmiş kümeyi canlı
+`tests/LogAnalyzer.IntegrationTests/SigmaViewColumnsTests.cs` türetilmiş kümeyi canlı
 ClickHouse'un `system.columns` çıktısıyla karşılaştırıyor. **Yazıldı,
 koşturulmadı** (§2: ajanlar Docker'a dokunmaz).
 

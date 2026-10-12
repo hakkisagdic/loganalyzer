@@ -25,9 +25,9 @@ Aşağıdakilerin hepsi **bugün bakılarak** doğrulandı; hiçbiri tahmin değ
 
 | Yüzey | Bugün ne var | Ne yok |
 | --- | --- | --- |
-| **SSH config çekimi** | `IDeviceTransport` seam'i, tek üretim uygulaması `SshDeviceTransport`, üç vendor toplayıcısı | `SshDeviceTransport`'u **hiçbir test koşturmuyor.** Cihaz yüzeyine dokunan tek dosya `tests/Bizigo.UnitTests/DeviceConfigTests.cs` ve o da süreç içi iki sahte kullanıyor (`FailingTransport`, `CountingTransport`) |
-| **Syslog basımı** | Collector yapılandırılmış (TCP 5140 / UDP 5141), `iso-8859-1` kodlaması, ingest boru hattı | Boru hattını besleyen tek araç `bizigo seed golden` ve o **doğrudan ClickHouse'a** yazıyor — CLI'ın tek bağlantı seçeneği `--clickhouse`. Yani kodlama tespiti, WAL, ham arşiv ve dispatcher kademeleri ölçüm verisiyle **hiç koşmuyor** |
-| **Kaynak envanteri** | `bizigo.sources` tablosu, ekran, kapsam eşlemesi | Tablo **boştu.** Uçtan uca ekran görüntüsü koşumunda envanter elle tohumlanmak zorunda kaldı; aksi hâlde ekran "Kapsamınızda kayıtlı kaynak yok" basıyordu |
+| **SSH config çekimi** | `IDeviceTransport` seam'i, tek üretim uygulaması `SshDeviceTransport`, üç vendor toplayıcısı | `SshDeviceTransport`'u **hiçbir test koşturmuyor.** Cihaz yüzeyine dokunan tek dosya `tests/LogAnalyzer.UnitTests/DeviceConfigTests.cs` ve o da süreç içi iki sahte kullanıyor (`FailingTransport`, `CountingTransport`) |
+| **Syslog basımı** | Collector yapılandırılmış (TCP 5140 / UDP 5141), `iso-8859-1` kodlaması, ingest boru hattı | Boru hattını besleyen tek araç `loganalyzer seed golden` ve o **doğrudan ClickHouse'a** yazıyor — CLI'ın tek bağlantı seçeneği `--clickhouse`. Yani kodlama tespiti, WAL, ham arşiv ve dispatcher kademeleri ölçüm verisiyle **hiç koşmuyor** |
+| **Kaynak envanteri** | `loganalyzer.sources` tablosu, ekran, kapsam eşlemesi | Tablo **boştu.** Uçtan uca ekran görüntüsü koşumunda envanter elle tohumlanmak zorunda kaldı; aksi hâlde ekran "Kapsamınızda kayıtlı kaynak yok" basıyordu |
 
 ### Bir gösterge, iki anlamsız cevap
 
@@ -115,7 +115,7 @@ kendisi ve çalışan örnekler burada:
 
 - **Şema ve gerekçeler:** [`catalog/simulators/README.md`](../../../catalog/simulators/README.md)
 - **Beş profil:** [`catalog/simulators/*.yaml`](../../../catalog/simulators/)
-- **Tipler:** [`sim/Bizigo.Simulators/SimulatorProfile.cs`](../../../sim/Bizigo.Simulators/SimulatorProfile.cs)
+- **Tipler:** [`sim/LogAnalyzer.Simulators/SimulatorProfile.cs`](../../../sim/LogAnalyzer.Simulators/SimulatorProfile.cs)
 
 > **Buraya örnek bir YAML kopyalanmıyor** ve bu bir eksiklik değil, bu belgenin
 > bizzat ödediği bir bedelin karşılığı. Kopya iki kez ayrıştı ve ikisini de
@@ -215,7 +215,7 @@ iddiasını hedefliyor** — "genel olarak değişsin" diye bir senaryo yok.
 | `cihaz-yeniden-yazdi` | Aynı ayarlar, bölüm içinde farklı sırada | Çoklu-küme farkı **sahte değişiklik üretmiyor** (LCS üretirdi) |
 | `gurultu` | Yalnızca `Cryptochecksum` / config sürümü / export başlığı damgası değişiyor | `ConfigNormalizer` gürültüyü eliyor; fark **boş** çıkıyor |
 | `saat-kaymasi` | Cihazın syslog damgası ileri/geri kayıyor | `time_source` dürüstlüğü; kaymış kaynak **görünür** oluyor, sessizce atlanmıyor |
-| `bozuk-kodlama` | Latin-1 baytlar UTF-8 iddiasıyla geliyor | Kodlama tespiti ve `bizigo.wire_encoding`; ham baytlar bozulmadan arşive giriyor |
+| `bozuk-kodlama` | Latin-1 baytlar UTF-8 iddiasıyla geliyor | Kodlama tespiti ve `loganalyzer.wire_encoding`; ham baytlar bozulmadan arşive giriyor |
 | `sidecar-yok` | — (sidecar durdurulur) | D3: *"sidecar arızalıyken throughput düşmüyor"* — bugün **mantıklı ama ölçülmemiş** bir iddia |
 
 Son iki satır bu fazın F1'den devralınan borçlara dokunduğu yer: `bozuk-kodlama`
@@ -322,7 +322,7 @@ kaydı kabul ediyor, "işledim" diye sayıyor, ve kayıt tabloya ulaşmıyor —
 hata yok, sayaç yok, belirti yok.
 
 Bugüne kadar görünmemesinin sebebi de yazılı: boru hattını besleyen tek araç
-`bizigo seed golden`'dı ve o **doğrudan ClickHouse'a** yazıyor. Canlı yol
+`loganalyzer seed golden`'dı ve o **doğrudan ClickHouse'a** yazıyor. Canlı yol
 ölçüm verisiyle hiç koşmadığı için kimse bakmamıştı.
 
 ### Yol boyunca doğrulananlar
@@ -389,7 +389,7 @@ ve hesaplanan **`unaccounted`** alanını veriyor. `processed_records` her zaman
 imkânsız kılıyor.
 - Basıcı örnek satırın damgasını **şimdiye kaydırıyor** (`SyslogEmitter.WireLine`).
 Kaydırıcı yeni yazılmadı: `SampleTimeRewriter` zaten vardı, ortak eve taşındı
-(`Bizigo.Cli.Seeding` → `Bizigo.Parsing.Samples`).
+(`LogAnalyzer.Cli.Seeding` → `LogAnalyzer.Parsing.Samples`).
 
 #### Bekçiler — dördü de kırmızı yanabildiği ölçülüp geri alındı
 

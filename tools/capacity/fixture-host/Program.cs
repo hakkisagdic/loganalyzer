@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Bizigo.Capacity;
+using LogAnalyzer.Capacity;
 
 // Process-only acceptance fixture, not shipped in the product CLI.
 if (args[0] == "write")

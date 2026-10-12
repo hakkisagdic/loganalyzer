@@ -70,7 +70,7 @@ flowchart TB
 
 | # | Ticket | Özü | Bağımlılık |
 | --- | --- | --- | --- |
-| T13 | [Next.js iskelet ve BFF](nextjs-iskelet-bff/index.md) | OIDC authorization code + PKCE, oturum çerezi, API proxy, `Bizigo.Api`'den OIDC'nin çıkarılması | — |
+| T13 | [Next.js iskelet ve BFF](nextjs-iskelet-bff/index.md) | OIDC authorization code + PKCE, oturum çerezi, API proxy, `LogAnalyzer.Api`'den OIDC'nin çıkarılması | — |
 | T14 | [OpenAPI tip üretimi](openapi-tip-uretimi/index.md) | Şemadan TypeScript tipleri, tiplenmiş istemci, CI'da sürüklenme kapısı | T13 |
 | T15 | [Log arama ekranı](log-arama-ekrani/index.md) | Filtreler, keyset sayfalama, kısa sorgu kısıtı, kaynak filtresi teşviki | T14 |
 | T16 | [Olay detayı ve ham görünüm](olay-detayi/index.md) | Alan görünümü, `time_source`, etiketler, ham baytlar + indirme | T15 |

@@ -1,4 +1,4 @@
-# Bizigo Log Analyzer — çalışma protokolü
+# LogAnalyzer Log Analyzer — çalışma protokolü
 
 Bu depoda iş **bir koordinatör ajan** ve **paralel uygulayıcı ajanlar** ile
 yürüyor. Aşağıdakiler o düzenin kuralları. Global kurallar
@@ -44,7 +44,7 @@ kapattı ve o sırada dört ajan boşta bekledi.
 
 | Kim | Ne koşturur |
 | --- | --- |
-| **Ajan** | `dotnet build`, `dotnet test tests/Bizigo.UnitTests`, `npm run typecheck`, `npm test`, `npm run api:generate` / `api:check` |
+| **Ajan** | `dotnet build`, `dotnet test tests/LogAnalyzer.UnitTests`, `npm run typecheck`, `npm test`, `npm run api:generate` / `api:check` |
 | **Koordinatör** | Entegrasyon testleri (Testcontainers), compose, canlı Keycloak/ClickHouse/sidecar, benchmark'lar |
 
 **Ajanlar Docker'a hiç dokunmaz.** Entegrasyon testlerini **yazar, koşturmaz** —
@@ -136,7 +136,7 @@ Worktree dizini ile içindeki dalın adı ayrışabilir; **dizin adına güvenme
 ajan bir dosyayı yeniden yazdıysa onun dalı önce girer; diğerlerinin satır
 silmeleri o yapının üstüne uygulanır. Tersi olursa aynı iş iki kez yapılır.
 
-**Üretilen dosyalar elle birleştirilmez.** `ui/openapi/bizigo-api.json` ve
+**Üretilen dosyalar elle birleştirilmez.** `ui/openapi/loganalyzer-api.json` ve
 `ui/src/lib/api/schema.d.ts` çakışırsa herhangi bir taraf alınır, sonra
 `npm run api:generate` ile **kaynaktan yeniden üretilir** ve `api:check`'in
 birebir dediği görülür. Bir üretilen dosya için anlamı olan tek çözüm budur.
@@ -299,7 +299,7 @@ tipi yalnızca belge yorumunda anıyordu. Küme **meta veriden** çıkarılmalı
 
 **Bir iddiayı tek yerde düzeltmek, düzeltildiği anlamına gelmiyor.** Kaynağı
 düzeltilmemiş bir kopya sadakatle yanlış kalır. Ölçülen hâli: *"realm'de yalnızca
-`bizigo-claims` var"* **üç** yerde duruyordu — `CLAUDE.md` ve onu kaynak gösteren
+`loganalyzer-claims` var"* **üç** yerde duruyordu — `CLAUDE.md` ve onu kaynak gösteren
 iki vault sayfası. Bir kopya düzeltildi ve düzeltme *"yanlış iddia yakalandı"*
 diye raporlandı; yakalanan şey bir **kopyaydı**. Refleks: bir iddiayı
 düzeltmeden önce **kaç yerin söylediğini say**.
@@ -435,11 +435,11 @@ Refleks: doğrulama çıktısı **tam loga** yazılıyor; kısaltma yalnızca `g
 ve **hata desenini de kapsayarak** yapılıyor (`grep -E "\[FAIL\]|error|Başarısız"`).
 Bir arızanın *var olduğunu* bilmek, *ne olduğunu* bilmek değil.
 
-### Paylaşılan ASP.NET çatısı `Bizigo.Cli`'ye inemez
+### Paylaşılan ASP.NET çatısı `LogAnalyzer.Cli`'ye inemez
 
 Üç ayrı yerden aynı duvara çarpıldı: `AddJwtBearer` kullanmak, test derlemesine
 `InternalsVisibleTo` vermek, ve namespace seçimi. Sebep üretilen `Program` tipi —
-`Bizigo.Api` ile `Bizigo.Cli` ikisi de üretiyor ve çatı paylaşılınca `CS0433`
+`LogAnalyzer.Api` ile `LogAnalyzer.Cli` ikisi de üretiyor ve çatı paylaşılınca `CS0433`
 geliyor. Kimlik doğrulama gibi ortak ihtiyaçlar `Microsoft.IdentityModel`
 düzeyinde çözülmeli, ve **sürüm ölçülerek** seçilmeli (API'nin zaten çözdüğü
 sürüm): ayrı sürüm, aynı belirteç hakkında farklı karar demek.
@@ -590,7 +590,7 @@ Kural: bir `docs/epic/**` belgesine yazdıysan, o belgeyi kaynak gösteren vault
 sayfalarını **oku ve gerekiyorsa güncelle**, sonra damgala:
 
 ```bash
-BIZIGO_WIKI_STAMP=1 dotnet test tests/Bizigo.UnitTests \
+LOGANALYZER_WIKI_STAMP=1 dotnet test tests/LogAnalyzer.UnitTests \
   --filter FullyQualifiedName~WikiSourceDigestStamper
 ```
 
@@ -612,14 +612,14 @@ Sorun ajanların dikkatinde değil, kuralın yazılı olmamasındaydı.
 
 - .NET 10 SDK `~/.dotnet` altında:
 `export DOTNET_ROOT="$HOME/.dotnet"; export PATH="$HOME/.dotnet:$PATH"`
-- `Bizigo.Api`'yi elle koşturmak: CWD **depo kökü** (katalog/maske yolları
+- `LogAnalyzer.Api`'yi elle koşturmak: CWD **depo kökü** (katalog/maske yolları
 oradan çözülüyor), içerik kökü **bin dizini** (appsettings oradan okunuyor),
-`ASPNETCORE_ENVIRONMENT=Development` (WAL dizini aksi hâlde `/var/lib/bizigo`).
-- Keycloak realm'inde **iki** client scope var: `bizigo-claims` (varsayılan) ve
-`bizigo-mcp` (**isteğe bağlı**, M09 ekledi — RFC 8707 kaynak kimliği için).
+`ASPNETCORE_ENVIRONMENT=Development` (WAL dizini aksi hâlde `/var/lib/loganalyzer`).
+- Keycloak realm'inde **iki** client scope var: `loganalyzer-claims` (varsayılan) ve
+`loganalyzer-mcp` (**isteğe bağlı**, M09 ekledi — RFC 8707 kaynak kimliği için).
 Yerleşik `profile`/`email` hiç oluşmuyor: `scope=openid` geçer,
 `openid profile email` canlıda `invalid_scope` alır. Ölçüldü.
-  - ⚠️ Bu satır bir zamanlar *"**yalnızca** `bizigo-claims` var"* diyordu ve M09'dan
+  - ⚠️ Bu satır bir zamanlar *"**yalnızca** `loganalyzer-claims` var"* diyordu ve M09'dan
   sonra yanlış oldu. **Üç yerde** tekrarlanmıştı — burada ve iki vault sayfasında —
   çünkü ikisi bu satırı kaynak gösteriyordu. M17 vault'un birini düzeltti, ikincisi
   damgası düşene kadar görünmedi, ve **kök buydu**. Ders: bir iddiayı tek yerde

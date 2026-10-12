@@ -10,7 +10,7 @@ status: 2
 *"çivilenebilir"* dediği kısım kuruldu; *"açık kalsın"* dediği kısım
 uzantı noktası olarak duruyor.
 
-Yeni derleme: `src/Bizigo.ScenarioPlugin`. Sevk edilen senaryolar
+Yeni derleme: `src/LogAnalyzer.ScenarioPlugin`. Sevk edilen senaryolar
 `catalog/scenarios/`.
 
 ---

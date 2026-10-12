@@ -45,7 +45,7 @@ def tests(copy, names, output, env):
     trx = output / "result.trx"
     if trx.exists():
         trx.unlink()
-    result = execute([DOTNET, "test", "tests/Bizigo.UnitTests", "--no-build", "--configuration", "Release",
+    result = execute([DOTNET, "test", "tests/LogAnalyzer.UnitTests", "--no-build", "--configuration", "Release",
         "--filter", "|".join("FullyQualifiedName~" + name for name in names),
         "--logger", "trx;LogFileName=result.trx", "--results-directory", str(output), "-m:1"], copy, env)
     if not trx.exists():
@@ -65,13 +65,13 @@ def main():
                       help="Require real-PID regression to kill parent-only cleanup mutation")
     args = parser.parse_args()
     mutations = [
-        ("three repeats -> one", "sim/Bizigo.Capacity/CapacityDiscovery.cs",
+        ("three repeats -> one", "sim/LogAnalyzer.Capacity/CapacityDiscovery.cs",
          "public const int RequiredPasses = 3;", "public const int RequiredPasses = 1;",
          ["Search_is_deterministic_and_requires_three_consecutive_passes"], [DEFAULT_GREEN]),
-        ("remove attempt suffix", "sim/Bizigo.Capacity/CapacityDiscovery.cs",
+        ("remove attempt suffix", "sim/LogAnalyzer.Capacity/CapacityDiscovery.cs",
          '$"{discoveryId}-{ordinal:D6}"', 'discoveryId',
          ["Late_events_with_same_ordinals_cannot_fill_next_attempt_gaps"], [DEFAULT_GREEN]),
-        ("publish aborted capacity", "sim/Bizigo.Capacity/CapacityDiscovery.cs",
+        ("publish aborted capacity", "sim/LogAnalyzer.Capacity/CapacityDiscovery.cs",
          "Verdict == CapacityVerdict.Pass ? VerifiedLowerEps : null",
          "Verdict is CapacityVerdict.Pass or CapacityVerdict.Aborted ? VerifiedLowerEps : null",
          ["Limited_or_aborted_after_passes_never_publishes_capacity"], [DEFAULT_GREEN]),
@@ -92,11 +92,11 @@ def main():
                 shutil.copy2(source, target)
         # Read-only git history for pre-existing repository tests; no git mutation is invoked.
         env = os.environ | {"GIT_DIR": str(ROOT / ".git"), "GIT_WORK_TREE": str(copy)}
-        build_command = [DOTNET, "build", "tests/Bizigo.UnitTests", "--configuration", "Release", "-m:1"]
+        build_command = [DOTNET, "build", "tests/LogAnalyzer.UnitTests", "--configuration", "Release", "-m:1"]
         build = execute(build_command, copy, env)
         assert build.returncode == 0, "Baseline must compile"
         if args.descendants:
-            path = copy / "sim/Bizigo.Capacity/CapacityProcessOwnership.cs"
+            path = copy / "sim/LogAnalyzer.Capacity/CapacityProcessOwnership.cs"
             original = path.read_text()
             assert original.count("kill(-id, 9)") == 1
             cases = ("generator-nonzero", "probe-nonzero")

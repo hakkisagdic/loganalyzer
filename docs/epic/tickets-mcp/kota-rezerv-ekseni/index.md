@@ -97,7 +97,7 @@ Tetikleyici koşul yazılı olsun:
 
 ## M16 · gözlem yüzeye çıktı — üç aday ölçüldü, biri seçildi
 
-Yukarıdaki boşluk kapandı: `bizigo rca quota --owner-group <grup>` kaynak başına
+Yukarıdaki boşluk kapandı: `loganalyzer rca quota --owner-group <grup>` kaynak başına
 tüketimi **ve kaynak başına etkin sınırı** basıyor. Kırılım
 `RcaQuotaUsage.BySource`'tan geliyor; ikinci bir toplama yazılmadı.
 
@@ -107,15 +107,15 @@ tüketimi **ve kaynak başına etkin sınırı** basıyor. Kırılım
 | --- | --- | --- |
 | `GET /v1/rca/quota` | RCA ekranı kotayı **bilerek** kapsam dışında bırakmış — `ui/src/app/rca/page.tsx`: *"kuyruk/kota/debounce yok — onlar dört tetikleyiciyle birlikte F4'te"* | ❌ tüketicisi **ertelenmiş** (§8) |
 | `rca.quota` MCP aracı | Modelin cevabı **zaten var**: `rca.trigger` kota dolduğunda `state=rejected` + `reason` döndürüyor, `rca.runs` her satırda `counts_against_quota` taşıyor. Reaktif yol **bedava** — reddedilen koşum kotadan düşülmüyor | ❌ ikinci yol, yeni yetenek yok (§9) |
-| `bizigo rca quota` | Okuyucu **var ve M15 onu yarattı**: rezerv yüzdesine karar verecek operatör | ✅ **seçildi** |
+| `loganalyzer rca quota` | Okuyucu **var ve M15 onu yarattı**: rezerv yüzdesine karar verecek operatör | ✅ **seçildi** |
 
-Emsal `bizigo fields coverage`: bu depoda *"ölç ve bas"* komutunun okuyucusu bir
+Emsal `loganalyzer fields coverage`: bu depoda *"ölç ve bas"* komutunun okuyucusu bir
 ekran değil, **karar veren bir insan**.
 
 ### Bekçi · "hesaplanıp atılan alan" — bir SINIFIN ilk örneği
 
 `ComputedButUnreadTests` `RcaQuotaUsage.BySource`'un üretimde bir okuyucusu
-olduğunu `Bizigo.Cli`'nin **MemberRef tablosundan** ölçüyor. M15'ten önce
+olduğunu `LogAnalyzer.Cli`'nin **MemberRef tablosundan** ölçüyor. M15'ten önce
 **kırmızı yanardı** — kırılımı okuyan tek yer bir birim testiydi, ve bir birim
 testi okuyucu değil.
 

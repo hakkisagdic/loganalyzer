@@ -61,7 +61,7 @@ class OperationalInventoryGuardTests(unittest.TestCase):
             "containers": {
                 "c1": {"name": "foreign-app-1", "image": "nginx:latest", "labels": "canary=true"},
                 "c2": {"name": "foreign-db", "image": "postgres:15", "labels": ""},
-                "c3": {"name": "bizigo-s08-api", "image": "bizigo/api@sha256:...", "labels": ""}
+                "c3": {"name": "loganalyzer-s08-api", "image": "loganalyzer/api@sha256:...", "labels": ""}
             },
             "networks": self.before["networks"],
             "volumes": self.before["volumes"]

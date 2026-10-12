@@ -379,7 +379,7 @@ table code {{ background:var(--surface2); }}
 
 <div class="kabuk">
   <header class="kunye">
-    <p class="etiket"><span>Bizigo · altyapı araştırması</span><span>21 Ağustos 2026</span><span>6 mercek · 13 ajan</span></p>
+    <p class="etiket"><span>LogAnalyzer · altyapı araştırması</span><span>21 Ağustos 2026</span><span>6 mercek · 13 ajan</span></p>
     <h1>Kenar güveni: 100 mikroservislik bir estate'te kod bilgisi</h1>
     <p class="ozet">Altı ayrı merceğin taraması, her mercek için onu çürütmeye çalışan bir doğrulama turu, ve bir eksiklik eleştirisi. Doğrulamanın düzelttiği her yerde düzeltilmiş hâl esas alındı; doğrulanamayan her sayı işaretli.</p>
     <ul class="olcum">

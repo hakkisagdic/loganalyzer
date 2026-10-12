@@ -17,7 +17,7 @@ sürüklendiği gün CI kırmızı yanıyor.
 
 ### İçinde
 
-- `Bizigo.Api`'nin ürettiği OpenAPI belgesinden TypeScript tipleri.
+- `LogAnalyzer.Api`'nin ürettiği OpenAPI belgesinden TypeScript tipleri.
 - Tiplenmiş, ince bir istemci sarmalayıcısı: yol ve yöntem adları üretilen
 tiplerden geliyor.
 - **CI kapısı:** üretilen tipler depodakiyle aynı değilse adım düşüyor. Aksi

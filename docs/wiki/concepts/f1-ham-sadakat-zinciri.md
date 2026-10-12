@@ -1,7 +1,7 @@
 ---
 title: Ham sadakat bir zincirdir
 category: concepts
-tags: [log-analiz, veri-deposu, kavram, bizigo]
+tags: [log-analiz, veri-deposu, kavram, loganalyzer]
 aliases: [ham arşiv, byte fidelity, protocol none, encoding nop]
 relationships:
   - target: "[[concepts/sessiz-yanlis-davranis]]"
@@ -10,7 +10,7 @@ relationships:
     type: related_to
   - target: "[[skills/f1-deklaratif-parser-motoru]]"
     type: related_to
-  - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
+  - target: "[[projects/loganalyzer-loganalyzer/loganalyzer-loganalyzer]]"
     type: part_of
 sources:
   - docs/epic/mimari-kararlar/index.md
@@ -82,7 +82,7 @@ dönüşüyor. Yani `nop` seçeneğinin *var olduğu* doğrulanmıştı, *çalı
 
 `iso-8859-1` üçünü birden veriyor: çerçeveleme korunuyor, bayt ↔ kod noktası
 eşlemesi tersinir, telde geçerli UTF-8 taşınıyor. Tel kodlaması
-`bizigo.wire_encoding` özniteliğiyle **açıkça** bildiriliyor; çözücünün tahmin
+`loganalyzer.wire_encoding` özniteliğiyle **açıkça** bildiriliyor; çözücünün tahmin
 etmesi gerekmiyor.
 
 Sonrasında .NET tarafındaki tespit sırası devreye giriyor

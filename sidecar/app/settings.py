@@ -16,7 +16,7 @@ from pathlib import Path
 # konuşmamaktan kötü.
 API_VERSION = "v1"
 
-DEFAULT_MASKS_PATH = "/app/masks/bizigo-masks.yaml"
+DEFAULT_MASKS_PATH = "/app/masks/loganalyzer-masks.yaml"
 
 #: `catalog/mappings/` — Sigma değer dönüşümleri buradan okunuyor, KOPYALANMIYOR.
 #: Maskelerle aynı gerekçe: tablo iki yerde tutulsaydı ingest ile sessizce
@@ -47,7 +47,7 @@ def _float(name: str, default: float) -> float:
 @dataclass(frozen=True)
 class Settings:
     redis_url: str = ""
-    redis_key_prefix: str = "bizigo:drain3:"
+    redis_key_prefix: str = "loganalyzer:drain3:"
     masks_path: Path = field(default_factory=lambda: Path(DEFAULT_MASKS_PATH))
 
     # Drain3
@@ -71,8 +71,8 @@ class Settings:
     def from_env() -> "Settings":
         settings = Settings(
             redis_url=os.environ.get("REDIS_URL", "redis://localhost:6379/0"),
-            redis_key_prefix=os.environ.get("REDIS_KEY_PREFIX", "bizigo:drain3:"),
-            masks_path=Path(os.environ.get("BIZIGO_MASKS_PATH", DEFAULT_MASKS_PATH)),
+            redis_key_prefix=os.environ.get("REDIS_KEY_PREFIX", "loganalyzer:drain3:"),
+            masks_path=Path(os.environ.get("LOGANALYZER_MASKS_PATH", DEFAULT_MASKS_PATH)),
             max_clusters=_int("DRAIN_MAX_CLUSTERS", 5_000),
             sim_th=_float("DRAIN_SIM_TH", 0.4),
             depth=_int("DRAIN_DEPTH", 4),
@@ -83,7 +83,7 @@ class Settings:
             sigma_table=os.environ.get("SIGMA_TABLE", "events_ocsf"),
             sigma_full_log_column=os.environ.get("SIGMA_FULL_LOG_COLUMN", "raw_data"),
             sigma_mappings_path=Path(
-                os.environ.get("BIZIGO_MAPPINGS_PATH", DEFAULT_MAPPINGS_PATH)
+                os.environ.get("LOGANALYZER_MAPPINGS_PATH", DEFAULT_MAPPINGS_PATH)
             ),
         )
         settings.validate()

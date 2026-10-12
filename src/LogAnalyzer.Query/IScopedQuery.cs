@@ -1,0 +1,289 @@
+using LogAnalyzer.Contracts;
+
+namespace LogAnalyzer.Query;
+
+/// <summary>
+/// <b>Kapsam zorlamasının tek kapısı</b> (K17, F1 §10.2).
+///
+/// <para>
+/// <b>Kural, liste değil:</b> kapsamlı veri okuyan her <b>ürün yüzeyi</b>
+/// buradan geçer. ClickHouse row policy tercih edilmedi çünkü tek kapı olması
+/// gereken yer bu: agent'lar ve MCP de aynı yolu kullanıyor.
+/// </para>
+///
+/// <para>
+/// <b>Burada bir zamanlar tüketici LİSTESİ vardı ve M18'de ölçülünce üç yönde
+/// birden yanlış çıktı</b> — <c>LogAnalyzer.Cli</c> ile <c>LogAnalyzer.Replay</c>'i
+/// sayıyordu (ikisi bu arayüzü <b>hiç anmıyor</b>), <c>LogAnalyzer.Alerting</c>'i
+/// saymıyordu (tüketiyor), ve <i>"MCP sunucusu"</i> dediği şey aslında
+/// <c>LogAnalyzer.Mcp.Product</c> (araçlar) — <b>çekirdek değil</b>. Liste silindi,
+/// yerine türetilen bir bekçi kondu: <c>ScopedQueryConsumerTests</c> tüketici
+/// kümesini <b>meta veriden</b> çıkarıyor ve beyan edilenle karşılaştırıyor.
+/// Bir katmanın bu kapıyı <b>kullanmayı bırakması</b> — yani atlamaya
+/// başlaması — o bekçide kırmızı yanıyor; elle tutulan listede hiçbir şey
+/// yanmıyordu.
+/// </para>
+///
+/// Her metot <see cref="AccessScope"/> istiyor; kapsamsız çağrı yazılamıyor.
+/// Kapıyı atlamayı engelleyen şey bu imzalar <b>değil</b> — o iş
+/// <c>ArchitectureTests</c>'te: ham sürücüye erişim yalnızca
+/// <c>LogAnalyzer.Storage.ClickHouse</c>'ta olabiliyor, ve <c>LogAnalyzer.Api</c>
+/// okuyucuları (<c>EventReader</c> vb.) <b>doğrudan</b> kullanamıyor.
+///
+/// <h3>CLI bir kapsam SINIRI değil — ve kapıdan da GEÇMİYOR</h3>
+///
+/// <para>
+/// <b>Ölçüldü (M18):</b> <c>LogAnalyzer.Cli</c> bu arayüzü hiç anmıyor. Veri
+/// erişimini doğrudan kuruyor — <c>new ClickHouseContext(...)</c>,
+/// <c>new EventWriter(context)</c> — ve <c>ArchitectureTests</c>'in
+/// "sürücüye dokunamaz" listesinde de <b>yok</b>, yani bu bilinçli olarak
+/// serbest bırakılmış bir katman.
+/// </para>
+///
+/// <para>
+/// M17 bu muafiyeti yazarken <i>"komutlar da bu kapıdan geçiyor, yani kapsamsız
+/// sorgu yazamıyorlar"</i> demişti; <b>o cümle yanlıştı</b> ve M18'de düzeltildi.
+/// Muafiyetin <b>gerekçesi</b> değişmedi, yalnızca mekanizması farklı: CLI
+/// kapsamı seçmiyor, kapsam kavramına hiç girmiyor.
+/// </para>
+///
+/// <para>
+/// <b>Gerekçe iki kalem:</b>
+/// </para>
+///
+/// <list type="number">
+/// <item>
+/// <b>CLI'da kimlik yok ve olamaz.</b> Bir komutun koşması için kontrol düzlemi
+/// ya da ClickHouse bağlantı dizgesi gerekiyor — yani çağıran <b>zaten</b>
+/// veritabanı erişimine sahip. Oraya bir kapsam kontrolü koymak, elinde
+/// <c>psql</c> olan birini bir bayrakla durdurmaya çalışmak olurdu: kapının
+/// önünde duvar yokken kapı takmak.
+/// </item>
+/// <item>
+/// <b>K17 ürün yüzeylerinin sözü.</b> Kapsam sınırı REST, MCP ve arayüz için
+/// var; üçünde de çağıran bir <b>kullanıcı</b> ve kimliği IdP'den geliyor
+/// (<c>IAccessScopeResolver</c> → <c>idp_group_mapping</c>). CLI'da o zincirin
+/// ilk halkası yok, dolayısıyla geri kalanı da yok.
+/// </item>
+/// </list>
+///
+/// <para>
+/// <b>Muafiyetin yazılı olması şart</b> ve sebebi bu depoda ölçüldü: yazılı
+/// olmayan bir muafiyet, bir gün <i>"CLI'da neden kapsam yok"</i> diye
+/// sorulduğunda <b>cevabı olmayan</b> bir muafiyet olur — ve o an ya gereksiz
+/// bir kontrol eklenir ya da gerçek bir kaçak muafiyet sanılır.
+/// </para>
+///
+/// <para>
+/// ⚠️ <b>Bugün kapsam sormayan komutlar SAYILMIYOR</b>, ve bu bir eksiklik
+/// değil bir karar: böyle bir liste bayatlar — nitekim yukarıdaki tüketici
+/// listesi tam olarak öyle yaptı. Kural <b>yüzey düzeyinde</b> okunuyor:
+/// <i>CLI bir kapsam sınırı değil.</i>
+/// </para>
+///
+/// <para>
+/// <b>Bunun tersi de yazılı olsun:</b> bir CLI komutu bir gün <b>ürün</b>
+/// yüzeyi hâline gelirse (bir uca ya da MCP aracına sarılırsa) kapsamı artık
+/// operatör seçmiyor — o an kimlikten türemesi gerekiyor. M14'ün
+/// <c>rca.trigger</c>'ı tam bu geçişin örneği: aynı iş, ama MCP yüzeyinde
+/// kapsam <c>AccessScope</c>'tan geliyor ve grubun kapsamda olduğu <b>açıkça</b>
+/// soruluyor.
+/// </para>
+/// </summary>
+public partial interface IScopedQuery
+{
+    Task<EventPage> SearchEventsAsync(EventQuery query, AccessScope scope, CancellationToken cancellationToken = default);
+
+    Task<LogEvent?> GetEventAsync(Guid eventId, AccessScope scope, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Olayın OCSF ya da OTel görünümündeki hâli (T16 olay detayı).
+    ///
+    /// <para>
+    /// Alan adlarını API <b>türetmiyor</b>, ClickHouse görünümünden okuyor.
+    /// Türetmeyi buraya taşımak eşlemenin ikinci kopyası olurdu; oysa aynı adları
+    /// F3'ün Sigma derleyicisi ve doğrudan SQL konuşan araçlar da görüyor (K8).
+    /// </para>
+    ///
+    /// <para>Kapsam dışı olayda <b>boş liste</b> dönüyor — 404'ün bilgi gizleme
+    /// gerekçesi burada da geçerli.</para>
+    /// </summary>
+    Task<IReadOnlyList<EventFieldView>> GetEventViewAsync(
+        Guid eventId,
+        EventViewKind view,
+        AccessScope scope,
+        CancellationToken cancellationToken = default);
+
+    Task<long> CountEventsAsync(EventQuery query, AccessScope scope, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Kapsam dışında kaç eşleşme olduğunu sayar, içeriği döndürmez.
+    /// RCA raporundaki "kapsamınız dışında N ilişkili olay var" satırının kaynağı
+    /// (RCA özelliği §3.2) — bilgi sızdırmadan yanlış güveni engelliyor.
+    /// </summary>
+    Task<long> CountOutOfScopeEventsAsync(EventQuery query, AccessScope scope, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ChangeEvent>> SearchChangesAsync(ChangeQuery query, AccessScope scope, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Kapsam dışındaki <b>değişiklik</b> sayısı — olay tarafındaki
+    /// <see cref="CountOutOfScopeEventsAsync"/>'in ikizi (T34).
+    ///
+    /// <para>
+    /// Kanıt sağlayıcısı bunu sayamasaydı <c>0</c> dönmek zorunda kalırdı, ve
+    /// <c>0</c> "dışarıda ilişkili değişiklik yok" diye okunur. Kök neden başka
+    /// grubun cihazındaki bir config değişikliğiyse rapor bunu <b>bilmeden</b>
+    /// yanlış sonuca varırdı — sayamadığını sıfır sanmak, bu projedeki en
+    /// pahalı hata sınıfı.
+    /// </para>
+    /// </summary>
+    Task<long> CountOutOfScopeChangesAsync(ChangeQuery query, AccessScope scope, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Ham arşiv nesnesinin bu kapsamdan okunabilir olup olmadığı.
+    /// Ham okuma yolu da bu kapıdan geçmeli — yoksa kapsam ayrımı arka kapıdan
+    /// delinir (F1 §6.1 madde 3).
+    /// </summary>
+    Task<bool> CanReadRawObjectAsync(string objectKey, AccessScope scope, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Değişiklik olayı yazar (T10, RCA'nın F3'teki en güçlü sinyali).
+    ///
+    /// <para>
+    /// Yazma da bu kapıdan geçiyor: çağıran yalnızca <b>kendi kapsamındaki</b> bir
+    /// gruba yazabilir. Aksi halde bir ekip başka bir ekibin zaman çizelgesine
+    /// olay düşürebilirdi ve RCA yanlış kanıtla çalışırdı.
+    /// </para>
+    /// </summary>
+    Task WriteChangeAsync(ChangeEvent change, AccessScope scope, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Kapsam içindeki kaynak envanteri (T10).
+    ///
+    /// <para>
+    /// Envanter de ClickHouse verisi kadar kapsamlı: bir ekip başka bir ekibin
+    /// cihaz listesini görmemeli. Filtreyi uç katmanında elle uygulamak, kapsam
+    /// zorlamasını <b>ikinci bir yere</b> koymak olurdu — K17'nin kaçındığı şey
+    /// tam olarak bu.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyList<SourceSummary>> SearchSourcesAsync(AccessScope scope, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Kaynak başına <b>son görülme</b> ve olay sayısı — kaynak sayısından bağımsız,
+    /// tek sorgu (T21).
+    ///
+    /// <para>
+    /// <b>Bu metodun varlık sebebi tek bir cümle:</b> "bu kaynaktan en son ne zaman
+    /// veri geldi" sorusunun üç yerde ayrı ayrı cevaplanmasını engellemek.
+    /// Sessizlik alarmı, envanter listesindeki "son görülme" sütunu ve
+    /// <c>/v1/health/pipeline</c> — üçü de <b>buradan</b> okumalı. Üçüncü bir kopya
+    /// yazmak, üç farklı zaman kolonu seçimi ve üç farklı kapsam davranışı demek
+    /// olurdu; ilk ikisinin ayrışması ancak alarm yanlış tetiklendiğinde fark edilirdi.
+    /// </para>
+    ///
+    /// <para>
+    /// Dönen küme <b>yalnızca pencerede verisi olan</b> kaynakları içerir. Hiç
+    /// verisi olmayan kaynak burada görünmez — "yokluk" bilgisi envanterle
+    /// birleştirilerek elde edilir, çünkü olay tablosu var olmayan bir şeyi
+    /// listeleyemez.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyList<SourceActivityRow>> GetSourceActivityAsync(
+        SourceActivityWindow window,
+        AccessScope scope,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Zaman kovalarına bölünmüş sayım — alarm önizlemesinin tek sorgusu (T23).
+    ///
+    /// <para>
+    /// Eşik <b>uygulanmadan</b> dönüyor: önizleme ekranı eşiği değiştirdiğinde
+    /// yeni bir sorgu atmasın diye. Kaydırıcıyı sürükleyen bir kullanıcı aksi
+    /// hâlde saniyede onlarca sorgu üretirdi ve K16'nın uyardığı "tek kötü kural"
+    /// senaryosu kural yazılmadan, sadece yazılırken gerçekleşirdi.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyList<HistogramBucket>> GetEventHistogramAsync(
+        EventHistogramQuery query,
+        AccessScope scope,
+        CancellationToken cancellationToken = default);
+
+    // ---- F3 korelasyonları (T35) ------------------------------------------
+    //
+    // Dördü de **toplama** döndürüyor, karar değil: eşik, oran ve z-score
+    // sağlayıcı tarafında hesaplanıyor. Sınır bilinçli — istatistiği SQL'e
+    // gömmek onu yalnızca canlı ClickHouse'la sınanabilir hâle getirirdi ve
+    // yanlış bir z-score hiçbir yerde hata vermez, yalnızca hipotez
+    // sıralamasını sessizce bozar.
+    //
+    // Beşinci korelasyon (sessizlik) burada yok: `GetSourceActivityAsync`
+    // zaten var ve onu **paylaşıyor**. İkinci bir kopya, üç farklı zaman
+    // kolonu seçimi ve üç farklı kapsam davranışı demek olurdu.
+
+    /// <summary>
+    /// Tabanda hiç görülmemiş, pencerede beliren imzalar — RCA'nın tek en
+    /// güçlü sinyali. T29'dan önce yazılamıyordu.
+    /// </summary>
+    Task<IReadOnlyList<SignatureCount>> GetFirstSeenSignaturesAsync(
+        CorrelationWindow window,
+        AccessScope scope,
+        int limit,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>İmza başına pencere ve taban <b>ham</b> sayımları.</summary>
+    Task<IReadOnlyList<SignatureVolume>> GetSignatureVolumeAsync(
+        CorrelationWindow window,
+        AccessScope scope,
+        int limit,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Alan değeri başına pencere ve taban sayımları; lift çağıranda.</summary>
+    Task<IReadOnlyList<FieldValueCount>> GetAttributeLiftAsync(
+        CorrelationWindow window,
+        AccessScope scope,
+        IReadOnlyList<string> fields,
+        int limitPerField,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Kaynak başına ilk bozulma anı, sıralı — ve güvenilmez zamanlı olay sayısı.</summary>
+    Task<IReadOnlyList<SourceOnset>> GetPropagationAsync(
+        CorrelationWindow window,
+        AccessScope scope,
+        byte severityAtOrBelow,
+        int limit,
+        CancellationToken cancellationToken = default);
+}
+
+/// <param name="IsKnownToDispatcher"><c>parser_id</c> bağlı mı — dispatcher kademe 1.</param>
+/// <param name="CreatedAt">
+/// Envantere girdiği an. Sessizlik alarmının ihtiyacı: henüz hiç veri göndermemiş
+/// bir kaynağın "susuyor" sayılıp sayılmayacağı buna bakılarak kararlaştırılıyor —
+/// aksi halde her yeni kaynak eklendiği dakika alarm üretirdi.
+/// </param>
+/// <param name="Upstream">Üst düğüm — boş ise <b>bilinmiyor</b>, "yok" değil (F5 · S1).</param>
+/// <param name="Vlan">Ağ segmenti; boş ise bilinmiyor.</param>
+/// <param name="Firmware">Firmware sürümü; boş ise bilinmiyor.</param>
+/// <remarks>
+/// Üç topoloji alanı <b>varsayılansız</b>: iki kurma yeri var ve ikisinin de
+/// alanı bilerek geçmesi isteniyor. Varsayılan verilseydi yeni bir kurma yeri
+/// üçünü de boş bırakıp derlenirdi, ve boş <c>Upstream</c> bu tipte
+/// <i>"bilinmiyor"</i> demek — yani sinyal, hiç sorulmamış bir soruyu
+/// "bilinmiyor" diye cevaplardı.
+/// </remarks>
+public sealed record SourceSummary(
+    string SourceId,
+    string OwnerGroup,
+    string? PeerAddress,
+    string? Hostname,
+    string Vendor,
+    string Product,
+    string? ParserId,
+    string Encoding,
+    string SourceClass,
+    bool Enabled,
+    bool IsKnownToDispatcher,
+    DateTimeOffset CreatedAt,
+    string Upstream,
+    string Vlan,
+    string Firmware);

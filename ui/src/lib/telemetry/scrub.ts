@@ -2,7 +2,7 @@
  * Telemetriye giren her değerin geçtiği süzgeç.
  *
  * <p>
- * Bu modülün varlık sebebi ürünün ne olduğu: Bizigo <b>müşterinin log'unu</b>
+ * Bu modülün varlık sebebi ürünün ne olduğu: LogAnalyzer <b>müşterinin log'unu</b>
  * okuyor. Bir arama kutusuna yazılan metin bir IP, bir kullanıcı adı, bir
  * oturum kimliği ya da bir sır olabilir; bir URL'deki kimlik müşterinin
  * kaynak envanterinden bir satır. Ürün analitiği aracı bunların hiçbirini

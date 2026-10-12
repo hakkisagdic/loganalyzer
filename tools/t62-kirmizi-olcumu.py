@@ -4,7 +4,7 @@
 Koşum yordamı ortak (`kirmizi_olcumu`); burada kalan tek şey kusur listesi.
 
 Bu ticket'ın bekçileri **iki pakette** duruyor ve ölçüm de öyle: mantık ve rota
-`ui/` içinde (vitest), compose bağı `tests/Bizigo.UnitTests` içinde (dotnet).
+`ui/` içinde (vitest), compose bağı `tests/LogAnalyzer.UnitTests` içinde (dotnet).
 İkisi ayrı koşum, tek yordam.
 
 Ölçülen şey ucun ne söylediği değil, **neyi göremediğinde sustuğu**: T49'un

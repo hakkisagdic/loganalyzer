@@ -78,8 +78,8 @@ def main(extension=None):
     ports = {key: port() for key in ("PG_PORT", "CH_HTTP_PORT", "CH_NATIVE_PORT", "S3_PORT", "S3_CONSOLE_PORT", "KC_PORT")}
     api_port, proxy_port, collector_port, control_port = port(), port(), port(), port()
     issuer = f"http://localhost:{ports['KC_PORT']}"
-    fixture_env = ports | {"KC_ISSUER": issuer, "PG_USER": "bizigo", "PG_PASSWORD": "fixture-password",
-        "CH_USER": "bizigo", "CH_PASSWORD": "fixture-password", "S3_ACCESS_KEY": "fixture-access",
+    fixture_env = ports | {"KC_ISSUER": issuer, "PG_USER": "loganalyzer", "PG_PASSWORD": "fixture-password",
+        "CH_USER": "loganalyzer", "CH_PASSWORD": "fixture-password", "S3_ACCESS_KEY": "fixture-access",
         "S3_SECRET_KEY": "fixture-secret-key", "KC_ADMIN_PASSWORD": "fixture-admin"}
     env_file = folder / "compose.env"
     env_file.write_text("\n".join(f"{k}={v}" for k, v in fixture_env.items()) + "\n")
@@ -98,17 +98,17 @@ def main(extension=None):
     def run(argv):
         return subprocess.run(argv, cwd=ROOT, stdout=logs, stderr=subprocess.STDOUT, check=True, timeout=600)
     def token():
-        data = urllib.parse.urlencode({"grant_type": "client_credentials", "client_id": "bizigo-collector",
-                                      "client_secret": "bizigo-collector-dev-secret"}).encode()
-        status, body, _ = http(issuer + "/realms/bizigo/protocol/openid-connect/token", data,
+        data = urllib.parse.urlencode({"grant_type": "client_credentials", "client_id": "loganalyzer-collector",
+                                      "client_secret": "loganalyzer-collector-dev-secret"}).encode()
+        status, body, _ = http(issuer + "/realms/loganalyzer/protocol/openid-connect/token", data,
                               {"Content-Type": "application/x-www-form-urlencoded"})
         assert status == 200
         return json.loads(body)["access_token"]
     api_env = os.environ | {
         "ASPNETCORE_ENVIRONMENT": "Development", "ASPNETCORE_URLS": f"http://127.0.0.1:{api_port}",
-        "ConnectionStrings__ControlPlane": f"Host=127.0.0.1;Port={ports['PG_PORT']};Database=bizigo;Username=bizigo;Password=fixture-password",
-        "ConnectionStrings__ClickHouse": f"Host=127.0.0.1;Port={ports['CH_HTTP_PORT']};Database=bizigo;Username=bizigo;Password=fixture-password",
-        "Auth__Enabled": "true", "Auth__Authority": issuer + "/realms/bizigo", "Auth__Audience": "bizigo-api",
+        "ConnectionStrings__ControlPlane": f"Host=127.0.0.1;Port={ports['PG_PORT']};Database=loganalyzer;Username=loganalyzer;Password=fixture-password",
+        "ConnectionStrings__ClickHouse": f"Host=127.0.0.1;Port={ports['CH_HTTP_PORT']};Database=loganalyzer;Username=loganalyzer;Password=fixture-password",
+        "Auth__Enabled": "true", "Auth__Authority": issuer + "/realms/loganalyzer", "Auth__Audience": "loganalyzer-api",
         "Auth__McpResource": f"http://127.0.0.1:{api_port}/mcp", "Auth__RequireHttpsMetadata": "false",
         "RawStore__ServiceUrl": f"http://127.0.0.1:{ports['S3_PORT']}", "RawStore__AccessKey": "fixture-access",
         "RawStore__SecretKey": "fixture-secret-key", "RawStore__Bucket": project, "RawStore__UploadInterval": "00:00:01",
@@ -116,8 +116,8 @@ def main(extension=None):
         "Ingest__Wal__MaxSegmentBytes": "1024", "Ingest__Wal__FlushToDisk": "true",
         "Alerting__Enabled": "false", "Discovery__Enabled": "false", "Changes__Connectors__Enabled": "false",
     }
-    command = [DOTNET, str(ROOT / "src/Bizigo.Api/bin/Release/net10.0/Bizigo.Api.dll"),
-               "--contentRoot", str(ROOT / "src/Bizigo.Api")]
+    command = [DOTNET, str(ROOT / "src/LogAnalyzer.Api/bin/Release/net10.0/LogAnalyzer.Api.dll"),
+               "--contentRoot", str(ROOT / "src/LogAnalyzer.Api")]
     def stop_api():
         child = state["api"]
         if child is not None:
@@ -234,20 +234,20 @@ def main(extension=None):
         run(["docker", "run", "-d", "--name", name, "--network", project + "_default", "--user", "0:0",
              "--add-host", "host.docker.internal:host-gateway", "-p", f"127.0.0.1:{collector_port}:4318",
              "-v", str(ROOT / "deploy/otel/collector.yaml") + ":/etc/otelcol-contrib/config.yaml:ro",
-             "-e", f"BIZIGO_ENDPOINT=http://host.docker.internal:{proxy_port}",
-             "-e", "KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/bizigo/protocol/openid-connect/token",
-             "-e", "COLLECTOR_CLIENT_SECRET=bizigo-collector-dev-secret", IMAGE,
+             "-e", f"LOGANALYZER_ENDPOINT=http://host.docker.internal:{proxy_port}",
+             "-e", "KEYCLOAK_TOKEN_URL=http://keycloak:8080/realms/loganalyzer/protocol/openid-connect/token",
+             "-e", "COLLECTOR_CLIENT_SECRET=loganalyzer-collector-dev-secret", IMAGE,
              "--config=/etc/otelcol-contrib/config.yaml"])
         wait_for(lambda: http(f"http://127.0.0.1:{collector_port}/v1/metrics", b"{}", {"Content-Type": "application/json"})[0] == 200)
         session = {"schema": 1, "project": project, "pid": os.getpid(), "collector_image": IMAGE,
             "collector": f"http://127.0.0.1:{collector_port}", "api": f"http://127.0.0.1:{api_port}",
             "control": f"http://127.0.0.1:{control_port}", "control_secret": control_secret,
-            "token_url": issuer + "/realms/bizigo/protocol/openid-connect/token", "client_id": "bizigo-collector",
-            "client_secret": "bizigo-collector-dev-secret", "signals": str(folder / "signals"),
+            "token_url": issuer + "/realms/loganalyzer/protocol/openid-connect/token", "client_id": "loganalyzer-collector",
+            "client_secret": "loganalyzer-collector-dev-secret", "signals": str(folder / "signals"),
             "logs_wal": str(folder / "logs-wal"), "captures": str(captures),
             "s3": {"url": f"http://127.0.0.1:{ports['S3_PORT']}", "bucket": project,
                    "access": "fixture-access", "secret": "fixture-secret-key"},
-            "clickhouse": f"http://127.0.0.1:{ports['CH_HTTP_PORT']}", "ch_user": "bizigo", "ch_password": "fixture-password"}
+            "clickhouse": f"http://127.0.0.1:{ports['CH_HTTP_PORT']}", "ch_user": "loganalyzer", "ch_password": "fixture-password"}
         path = folder / "session.json"
         if extension is not None:
             session.update(extension.session())

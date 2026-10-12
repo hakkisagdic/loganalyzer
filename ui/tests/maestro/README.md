@@ -15,7 +15,7 @@ yaşamaları, `CiCoverageTests`'i bir kez kör eden şeyin ta kendisiydi.
 
 ## Koşturmak
 
-Yığın ayakta olmalı: Keycloak, `Bizigo.Api`, ve `next dev`.
+Yığın ayakta olmalı: Keycloak, `LogAnalyzer.Api`, ve `next dev`.
 
 ```bash
 maestro test --platform web ui/tests/maestro

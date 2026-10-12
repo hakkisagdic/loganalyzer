@@ -25,7 +25,7 @@ KUSURLAR = [
         # göremez — aşağıdaki `yesil_kalmali` satırı tam olarak o körlüğü
         # ölçüyor.
         ad="kapı MCP kaydından çıkarılıyor",
-        dosya="src/Bizigo.Api/McpEndpoints.cs",
+        dosya="src/LogAnalyzer.Api/McpEndpoints.cs",
         bul="        services.AddHostedService<McpListenerBoundaryCheck>();",
         koy="        // KIRMIZI: kapı kayıttan çıkarıldı.",
         kirmizi_bekleniyor=[
@@ -38,7 +38,7 @@ KUSURLAR = [
         # M11'in var olma sebebinin birebir tersi: joker bağlamayı KANIT
         # saymak. Sessiz hâl bu satırla geri geliyor.
         ad="joker bağlama kanıt sayılıyor",
-        dosya="src/Bizigo.Api/McpListenerBoundary.cs",
+        dosya="src/LogAnalyzer.Api/McpListenerBoundary.cs",
         bul='                + "arayüzlerin dışa açık olduğu süreç içinden bilinemiyor",\n'
             "                Routable: true);",
         koy='                + "arayüzlerin dışa açık olduğu süreç içinden bilinemiyor",\n'
@@ -54,7 +54,7 @@ KUSURLAR = [
         # değil ve dal kapanınca ad çözümüne düşüyorlar. Yani kusur yalnızca
         # mesajı değil SONUCU da değiştiriyor.
         ad="joker dalı hiç koşmuyor (ad çözümüne düşüyor)",
-        dosya="src/Bizigo.Api/McpListenerBoundary.cs",
+        dosya="src/LogAnalyzer.Api/McpListenerBoundary.cs",
         bul="        if (IsWildcard(host))",
         koy="        if (false && IsWildcard(host))",
         kirmizi_bekleniyor=[
@@ -64,7 +64,7 @@ KUSURLAR = [
     ),
     Kusur(
         ad="boş gerekçe muafiyet açıyor",
-        dosya="src/Bizigo.Api/McpListenerBoundary.cs",
+        dosya="src/LogAnalyzer.Api/McpListenerBoundary.cs",
         bul="        if (!string.IsNullOrWhiteSpace(overrideReason))",
         koy="        if (overrideReason is not null)",
         kirmizi_bekleniyor=["Bos_gerekce_muafiyet_acmiyor"],
@@ -75,14 +75,14 @@ KUSURLAR = [
         # yeşil rapor ediyor. `NoListener` ile `Verified` aynı ada düşerse
         # `TestServer` ile koşan her host "doğrulandı" sayılır.
         ad="adressiz kalkış doğrulama sayılıyor",
-        dosya="src/Bizigo.Api/McpListenerBoundary.cs",
+        dosya="src/LogAnalyzer.Api/McpListenerBoundary.cs",
         bul="                McpListenerBoundaryOutcome.NoListener,",
         koy="                McpListenerBoundaryOutcome.Verified,",
         kirmizi_bekleniyor=["Adressiz_kalkis_dogrulama_sayilmiyor"],
     ),
     Kusur(
         ad="sevk edilen muafiyet siliniyor",
-        dosya="src/Bizigo.Api/Dockerfile",
+        dosya="src/LogAnalyzer.Api/Dockerfile",
         bul='ENV Mcp__ListenerBoundaryOverrideReason="Konteyner agi:',
         koy='ENV KIRMIZI_Muafiyet_Silindi="Konteyner agi:',
         kirmizi_bekleniyor=["Sevk_edilen_muafiyet_baglamasina_bagli_ve_sayisi_civili"],
@@ -93,7 +93,7 @@ KUSURLAR = [
         # "bu kurulum muaf" diye okunmaya devam ediyor. Muafiyetin kendi
         # gerekçesinden uzun yaşaması bu depoda ölçülmüş bir olay (T53).
         ad="bağlama loopback'e çekiliyor, bayat muafiyet kalıyor",
-        dosya="src/Bizigo.Api/Dockerfile",
+        dosya="src/LogAnalyzer.Api/Dockerfile",
         bul="ENV ASPNETCORE_URLS=http://0.0.0.0:8080",
         koy="ENV ASPNETCORE_URLS=http://127.0.0.1:8080",
         kirmizi_bekleniyor=["Sevk_edilen_muafiyet_baglamasina_bagli_ve_sayisi_civili"],

@@ -115,7 +115,7 @@ def _header() -> RunHeader:
     return RunHeader(
         view="events_ocsf",
         ruleset_commit="olcum",
-        pipeline_version="bizigo-events-ocsf/0000000000",
+        pipeline_version="loganalyzer-events-ocsf/0000000000",
         pipeline_sha="sha256:0",
         pysigma_version="1.5.0",
         backend_version="1.1.1",

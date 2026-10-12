@@ -5,7 +5,7 @@ title: "Alan kapsamı — örnek dosyadan events_ocsf'e ne iniyor"
 
 # Alan kapsamı ölçümü (T39)
 
-`bizigo fields coverage`. Sorusu tek: **altın örnek satırının taşıdığı bilginin
+`loganalyzer fields coverage`. Sorusu tek: **altın örnek satırının taşıdığı bilginin
 ne kadarı `events_ocsf`'te bir ALAN olarak sorgulanabiliyor.**
 
 Soruyu doğuran şey Kapı 3'ün boş kuralları. Bir Sigma kuralı hiçbir satır
@@ -279,7 +279,7 @@ de kapalı. `activity_name`, `actor_user_name`, `device_hostname` ve uç noktala
 
 Kuralları **okumuyor**: `explain_misses.py --json` zaten `alan|operatör = değer`
 üçlülerini çıkarıyor, bu taraf onu tüketiyor. Alan adı çevirisi de
-`bizigo_pipeline.py`'nin `FIELD_MAP`'inden okunuyor. İki ayrıştırıcı yazmak,
+`loganalyzer_pipeline.py`'nin `FIELD_MAP`'inden okunuyor. İki ayrıştırıcı yazmak,
 iki aracın aynı kuralı farklı kolona bağladığı günü hazırlamak olurdu.
 
 | Sınıf | Sayı | Anlamı |
@@ -376,7 +376,7 @@ kesirli bir an ekilirse yeniden yazılan satır onu kaybeder ve "ektiğim an ile
 yazılan an aynı" doğrulaması her satırda düşer. O doğrulama düşünce onunla
 birlikte **gerçek** kaymaları da göremeyiz.
 
-Kural `Bizigo.Parsing.Samples.SampleClock`'ta, tek kopya. Öncesinde **dört ayrı
+Kural `LogAnalyzer.Parsing.Samples.SampleClock`'ta, tek kopya. Öncesinde **dört ayrı
 yerde** yazılıydı (CLI'ın iki komutu, yayılım planı, baseline ölçümü) ve
 beşincisi simülatör olacaktı.
 

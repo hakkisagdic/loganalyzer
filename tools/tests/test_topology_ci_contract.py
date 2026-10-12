@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def selected(class_name, selector):
     # This workflow uses only OR'd FullyQualifiedName substring selectors.
-    return any(term.removeprefix('FullyQualifiedName~') in 'Bizigo.IntegrationTests.' + class_name
+    return any(term.removeprefix('FullyQualifiedName~') in 'LogAnalyzer.IntegrationTests.' + class_name
                or term.startswith('FullyQualifiedName~' + class_name + '.')
                for term in selector.split('|'))
 
@@ -20,13 +20,13 @@ class TopologyCiContractTests(unittest.TestCase):
         self.job = workflow.split('\n  topology-graph:\n', 1)[1].split('\n  sidecar:\n', 1)[0]
 
     def test_every_required_db_class_is_selected_in_the_same_single_trx(self):
-        command = next(line for line in self.job.splitlines() if 'dotnet test tests/Bizigo.IntegrationTests' in line)
+        command = next(line for line in self.job.splitlines() if 'dotnet test tests/LogAnalyzer.IntegrationTests' in line)
         selector = re.search(r"--filter '([^']+)'", command).group(1)
         verifier = next(line for line in self.job.splitlines() if 'otlp-verify-trx.py TestResults/topology-db.trx' in line)
         required = verifier.split('--require-class ', 1)[1].split()
         for cls in required:
             with self.subTest(cls=cls):
-                self.assertTrue((ROOT / 'tests/Bizigo.IntegrationTests' / (cls + '.cs')).exists())
+                self.assertTrue((ROOT / 'tests/LogAnalyzer.IntegrationTests' / (cls + '.cs')).exists())
                 self.assertTrue(selected(cls, selector), 'required class cannot execute under CI filter')
         self.assertTrue({'TopologyReplayProcessTests', 'TopologyArchiveProcessIntegrationTests',
                          'TopologyConflictIsolationIntegrationTests', 'TopologyReplayNegativeIntegrationTests',
@@ -43,7 +43,7 @@ class TopologyCiContractTests(unittest.TestCase):
         self.assertEqual(1, verifier.count('.trx'))
 
     def test_readiness_and_archive_regressions_execute_in_required_unit_trx(self):
-        command = next(line for line in self.job.splitlines() if 'dotnet test tests/Bizigo.UnitTests' in line)
+        command = next(line for line in self.job.splitlines() if 'dotnet test tests/LogAnalyzer.UnitTests' in line)
         selector = re.search(r"--filter '([^']+)'", command).group(1)
         verifier = next(line for line in self.job.splitlines() if 'otlp-verify-trx.py TestResults/topology-unit.trx' in line)
         required = verifier.split('--require-class ', 1)[1].split()
@@ -54,7 +54,7 @@ class TopologyCiContractTests(unittest.TestCase):
         self.assertFalse(selected('SignalReplayReadinessTests', 'FullyQualifiedName~Topology'))
         for cls in required:
             with self.subTest(cls=cls):
-                self.assertTrue((ROOT / 'tests/Bizigo.UnitTests' / (cls + '.cs')).exists())
+                self.assertTrue((ROOT / 'tests/LogAnalyzer.UnitTests' / (cls + '.cs')).exists())
                 self.assertTrue(selected(cls, selector), 'required unit class cannot execute under CI filter')
         self.assertIn('LogFileName=topology-unit.trx', command)
         self.assertEqual(1, verifier.count('.trx'))
@@ -65,7 +65,7 @@ class TopologyCiContractTests(unittest.TestCase):
         self.assertFalse(selected('TopologyArchiveProcessIntegrationTests', old))
 
     def test_process_matrix_cannot_silently_shrink(self):
-        source = (ROOT / 'tests/Bizigo.IntegrationTests/TopologyReplayProcessTests.cs').read_text()
+        source = (ROOT / 'tests/LogAnalyzer.IntegrationTests/TopologyReplayProcessTests.cs').read_text()
         cases = re.findall(r'\[InlineData\("([^"]+)", (true|false)\)\]', source)
         stages = {'after-wal-before-ack', 'archive-before-manifest',
                   'after-observed-db-before-publish', 'after-telemetry-db-before-checkpoint'}

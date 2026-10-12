@@ -14,7 +14,7 @@ class OperationalManifestTests(unittest.TestCase):
     def test_compute_and_verify_self_manifest(self):
         manifest = manifest_tool.compute_manifest()
         self.assertGreater(manifest["entry_count"], 50)
-        self.assertIn("ui/openapi/bizigo-api.json", manifest["files"])
+        self.assertIn("ui/openapi/loganalyzer-api.json", manifest["files"])
         self.assertIn(".github/workflows/ci.yml", manifest["files"])
         errs = manifest_tool.verify_manifest(manifest)
         self.assertEqual(0, len(errs))

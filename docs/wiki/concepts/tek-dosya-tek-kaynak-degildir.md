@@ -1,7 +1,7 @@
 ---
 title: Tek dosya, tek kaynak değildir
 category: concepts
-tags: [kavram, surec, kapsam, bizigo]
+tags: [kavram, surec, kapsam, loganalyzer]
 aliases: [tek kaynak ilkesi, kavram tekilleştirme]
 relationships:
   - target: "[[concepts/sessiz-yanlis-davranis]]"

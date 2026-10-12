@@ -1,14 +1,14 @@
 ---
 title: F2 kapanışı — görünürlük sevk edildi
 category: references
-tags: [surec, test, kaynak-ozeti, bizigo]
+tags: [surec, test, kaynak-ozeti, loganalyzer]
 aliases: [f2-kapanis, F2 kapanış belgesi]
 relationships:
   - target: "[[concepts/sessiz-yanlis-davranis]]"
     type: related_to
   - target: "[[concepts/elle-tutulan-liste-bekciyi-korlestirir]]"
     type: related_to
-  - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
+  - target: "[[projects/loganalyzer-loganalyzer/loganalyzer-loganalyzer]]"
     type: derived_from
 sources: [docs/epic/f2-kapanis/index.md, docs/epic/t27-kapanis-taramasi/index.md, README.md]
 source_digest: "sha256-12/v1 README.md=8c53a176a7e5 docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/t27-kapanis-taramasi/index.md=fc23cd892d11"

@@ -63,7 +63,7 @@ export default async function RcaPage() {
 
       <header className={styles.header}>
         <a className={styles.brand} href="/">
-          Bizigo Log Analyzer
+          LogAnalyzer Log Analyzer
         </a>
         <span className={styles.spacer} />
         <ThemeToggle />

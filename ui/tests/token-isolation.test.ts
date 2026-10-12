@@ -58,9 +58,9 @@ async function signIn(): Promise<{ cookie: string; responses: string[] }> {
   const callbackResponse = await callback(nextRequest(`/signin-oidc?code=kod-123&state=${state}`));
   responses.push(await serializeResponse(callbackResponse));
 
-  const sessionCookie = callbackResponse.cookies.get("bizigo.sid")!;
+  const sessionCookie = callbackResponse.cookies.get("loganalyzer.sid")!;
 
-  return { cookie: `bizigo.sid=${sessionCookie.value}`, responses };
+  return { cookie: `loganalyzer.sid=${sessionCookie.value}`, responses };
 }
 
 describe("erişim token'ı tarayıcıya hiç ulaşmıyor", () => {
@@ -82,7 +82,7 @@ describe("erişim token'ı tarayıcıya hiç ulaşmıyor", () => {
     rememberPending(state);
 
     const response = await callback(nextRequest(`/signin-oidc?code=kod-123&state=${state}`));
-    const cookie = response.cookies.get("bizigo.sid")!;
+    const cookie = response.cookies.get("loganalyzer.sid")!;
 
     expect(cookie.value).not.toContain(ACCESS_TOKEN);
     expect(cookie.value).not.toContain(REFRESH_TOKEN);
@@ -274,7 +274,7 @@ describe("çıkış iki oturumu da kapatıyor", () => {
     const response = await POST(nextRequest("/api/auth/logout", { method: "POST", cookie }));
     const body = (await response.json()) as { redirectTo: string };
 
-    const cleared = response.cookies.get("bizigo.sid")!;
+    const cleared = response.cookies.get("loganalyzer.sid")!;
     expect(cleared.value).toBe("");
     expect(cleared.maxAge).toBe(0);
 
@@ -329,6 +329,6 @@ describe("oturum yoksa", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain("/giris?hata=");
-    expect(response.cookies.get("bizigo.sid")).toBeUndefined();
+    expect(response.cookies.get("loganalyzer.sid")).toBeUndefined();
   });
 });

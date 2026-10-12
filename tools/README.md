@@ -112,7 +112,7 @@ Gerçek sebep bir **ayırma**:
 
 Yani VM **ajan sayısından bağımsız olarak** sığmıyordu. Ayar 4096'ya çekildi
 (`~/Library/Group Containers/group.com.docker/settings-store.json`, yedeği
-`.bak-bizigo`) ve yığın sekiz servisle kalktı.
+`.bak-loganalyzer`) ve yığın sekiz servisle kalktı.
 
 **Kapının görmediği şey de bu ayrımla netleşiyor:** RAM'e *taahhüt edilmiş ama
 henüz dokunulmamış* bir ayırma hiçbir sayaçta görünmüyor. `memory_pressure`

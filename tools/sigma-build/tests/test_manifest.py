@@ -24,7 +24,7 @@ from sigma_build.manifest import (
 
 HEADER = RunHeader(
     ruleset_commit="a1b2c3d4",
-    pipeline_version="bizigo-events-ocsf/1",
+    pipeline_version="loganalyzer-events-ocsf/1",
     pipeline_sha="sha256:deadbeef",
     pysigma_version="1.5.0",
     backend_version="1.1.1",
@@ -202,7 +202,7 @@ def test_kural_dosyasinda_tarih_yok_kaynak_surumu_var():
     text = rule_file_text(written(), HEADER)
     assert "sha256:aaaa" in text
     assert "a1b2c3d4" in text
-    assert "bizigo-events-ocsf/1" in text
+    assert "loganalyzer-events-ocsf/1" in text
     assert "SELECT * FROM events_ocsf WHERE a=1" in text
 
 
@@ -319,7 +319,7 @@ def test_kapi_pipeline_degisimini_yakaliyor(tmp_path):
 
     yeni = RunHeader(
         ruleset_commit=HEADER.ruleset_commit,
-        pipeline_version="bizigo-events-ocsf/2",
+        pipeline_version="loganalyzer-events-ocsf/2",
         pipeline_sha="sha256:cafe",
         pysigma_version=HEADER.pysigma_version,
         backend_version=HEADER.backend_version,

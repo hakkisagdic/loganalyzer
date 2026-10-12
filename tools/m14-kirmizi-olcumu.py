@@ -24,9 +24,9 @@ from pathlib import Path
 KOK = Path(__file__).resolve().parent.parent
 YEDEK = KOK / ".m14-olcum-yedek"
 
-TRIGGER = "src/Bizigo.Mcp.Product/Tools/RcaTriggerTool.cs"
-RUNS = "src/Bizigo.Mcp.Product/Tools/RcaRunsTool.cs"
-WRITE = "src/Bizigo.Mcp.Product/ProductWriteTool.cs"
+TRIGGER = "src/LogAnalyzer.Mcp.Product/Tools/RcaTriggerTool.cs"
+RUNS = "src/LogAnalyzer.Mcp.Product/Tools/RcaRunsTool.cs"
+WRITE = "src/LogAnalyzer.Mcp.Product/ProductWriteTool.cs"
 
 
 @dataclass
@@ -204,7 +204,7 @@ def test_kos(filtre: str) -> int:
     `Failed:`) ve ayıklama düştüğünde sessizce sıfır üretirdi.
     """
     return kos([
-        "dotnet", "test", "tests/Bizigo.UnitTests", "--no-build", "--nologo", "--filter", filtre,
+        "dotnet", "test", "tests/LogAnalyzer.UnitTests", "--no-build", "--nologo", "--filter", filtre,
     ]).returncode
 
 

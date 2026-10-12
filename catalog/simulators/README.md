@@ -26,7 +26,7 @@ envanterde iki yarım cihaz görünür.
 ## Profilde bilerek OLMAYAN üç şey
 
 **Vendor komutları.** `show`, `more system:running-config`, `/export terse` —
-bunlar ürünün toplayıcısında (`src/Bizigo.Devices/ConfigCollector.cs`) yazılı ve
+bunlar ürünün toplayıcısında (`src/LogAnalyzer.Devices/ConfigCollector.cs`) yazılı ve
 tek kaynak orası. Profilde tekrarlansaydı, ürün komutu değiştirdiği gün
 simülatör eski komuta cevap vermeye devam ederdi: test yeşil kalır, üretim
 kırılır.

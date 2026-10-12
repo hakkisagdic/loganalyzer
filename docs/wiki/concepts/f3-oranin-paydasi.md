@@ -1,7 +1,7 @@
 ---
 title: Bir oran paydasıyla birlikte bir sayıdır
 category: concepts
-tags: [test, log-analiz, kavram, bizigo]
+tags: [test, log-analiz, kavram, loganalyzer]
 aliases: [payda hatası, kapsam oranı, match_ratio]
 relationships:
   - target: "[[concepts/sessiz-yanlis-davranis]]"

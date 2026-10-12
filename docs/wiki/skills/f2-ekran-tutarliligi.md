@@ -1,7 +1,7 @@
 ---
 title: Ekran tutarlılığı — temel başta, denetim sonda
 category: skills
-tags: [arayuz, test, yordam, bizigo]
+tags: [arayuz, test, yordam, loganalyzer]
 aliases: [T13 jetonları, T28 denetimi, dört durum, çok dilli gövde]
 relationships:
   - target: "[[concepts/f2-bff-deseni]]"

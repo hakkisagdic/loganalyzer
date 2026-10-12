@@ -64,7 +64,7 @@ yeniden yükleme atomik; yayın ucu, taslak→inceleme→yayın akışı olmadan
 tek bir isteğin bozabileceği bir yere çevirirdi. O akış F2'nin işi. Yerine
 `POST /v1/parsers/try` var: bir satırı kataloğa karşı deniyor, hiçbir şey yazmıyor.
 
-`try` **yazar** rolü istiyor (`bizigo:author`), okuyucu değil — keyfi bir satırı
+`try` **yazar** rolü istiyor (`loganalyzer:author`), okuyucu değil — keyfi bir satırı
 motora koşturmak veri okumak değil ama bedeli sınırsız bir hesaplama.
 Dispatcher'la çalıştırıldığında hangi **kademenin** karar verdiğini de döndürüyor:
 envanter bağı yerine literal filtreye düşen bir satır, parser doğru olsa bile

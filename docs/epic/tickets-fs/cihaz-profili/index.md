@@ -42,5 +42,5 @@ ayrışması demekti — ve o ayrışmayı hiçbir şey söylemezdi.
 
 **Kapandı.** `catalog/simulators/profiller/` altında dört profil
 (`asa-dc-01`, `fw-ankara-01`, `fw-izmir-01`, `rb-sube-07`),
-`sim/Bizigo.Simulators/` altında `SimulatorProfile`, `SimulatorProfileStore`,
+`sim/LogAnalyzer.Simulators/` altında `SimulatorProfile`, `SimulatorProfileStore`,
 `SimulatedDeviceTransport`.

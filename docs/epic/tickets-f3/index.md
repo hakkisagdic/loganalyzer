@@ -29,7 +29,7 @@ Sonrası iki bağımsız kol: **detection** (T31–T33) ve **kanıt** (T34–T37
 flowchart TB
   T29["T29 · signature_hash<br/>sıcak yol + maliyet ölçümü"]
   T30["T30 · Sigma pipeline prototipi<br/>ÇIKTI: kural başına maliyet"]
-  T31["T31 · Bizigo ProcessingPipeline"]
+  T31["T31 · LogAnalyzer ProcessingPipeline"]
   T32["T32 · Derleme hattı<br/>SQL üretimi + versiyonlama"]
   T33["T33 · Kural yönetimi<br/>+ alarm motoruna bağlama"]
   T34["T34 · Kanıt sağlayıcı sözleşmesi<br/>5 tür tanımlı, 2 uygulanıyor"]
@@ -51,7 +51,7 @@ flowchart TB
 | --- | --- | --- | --- |
 | T29 | [signature_hash ve sıcak yol maliyeti](signature-hash/index.md) | Her olayda imza hash'i; maliyet **ölçülüyor** | — |
 | T30 | [Sigma pipeline prototipi](sigma-prototip/index.md) | 20-30 kural, atılabilir; **çıktı bir sayı** | — |
-| T31 | [Bizigo ProcessingPipeline](sigma-pipeline/index.md) | Kendi alan eşlememiz; kapsam T30'un sonucuna göre | T30 |
+| T31 | [LogAnalyzer ProcessingPipeline](sigma-pipeline/index.md) | Kendi alan eşlememiz; kapsam T30'un sonucuna göre | T30 |
 | T32 | [Derleme hattı](sigma-derleme/index.md) | Build-time SQL üretimi, repoda versiyonlama, CI kapısı | T31 |
 | T33 | [Kural yönetimi](kural-yonetimi/index.md) | Etkin/pasif, kapsam, gürültü; F2'nin alarm motoruna bağlama | T32 |
 | T34 | [Kanıt sağlayıcı sözleşmesi](kanit-sozlesmesi/index.md) | Beş tür tanımlı, log + change uygulanıyor | T29 |

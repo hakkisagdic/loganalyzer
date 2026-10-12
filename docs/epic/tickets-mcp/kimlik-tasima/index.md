@@ -7,7 +7,7 @@ status: 2
 # M08 — Kimlik MCP oturumundan uca
 
 [MCP teknik plan §6](../../mcp-teknik-plan/index.md): MCP istemcisi bir
-kullanıcı adına konuşuyor; `bizigo` yüzeyi Keycloak'tan gelen kimliği
+kullanıcı adına konuşuyor; `loganalyzer` yüzeyi Keycloak'tan gelen kimliği
 **taşımak** zorunda.
 
 > **Servis hesabıyla koşan bir MCP sunucusu bütün kapsam kapılarını atlar.**
@@ -20,7 +20,7 @@ kapının kendisini kaldırmaktır.
 
 ### CLI'nin kimlik yolu **yok**, ve API'ye hiç çıkmıyor
 
-`src/Bizigo.Cli` üzerinde arandı (main `a71df17`):
+`src/LogAnalyzer.Cli` üzerinde arandı (main `a71df17`):
 
 | Aranan | Sonuç |
 | --- | --- |
@@ -29,13 +29,13 @@ kapının kendisini kaldırmaktır.
 | `"/v1…"` çağrısı | **yok** |
 | `token` eşleşmeleri | hepsi `CancellationToken` parametresi — **yanlış pozitif**, ayıklandı |
 
-CLI referansları: `Bizigo.Query` · `Bizigo.Ingest` · `Bizigo.Parsing` ·
-`Bizigo.Alerting` · `Bizigo.Simulators`. Yani CLI **alan kütüphanelerine süreç
+CLI referansları: `LogAnalyzer.Query` · `LogAnalyzer.Ingest` · `LogAnalyzer.Parsing` ·
+`LogAnalyzer.Alerting` · `LogAnalyzer.Simulators`. Yani CLI **alan kütüphanelerine süreç
 içi** gidiyor; API'nin kimlik katmanına hiç uğramıyor.
 
 ### Kapsam kimlikten nasıl doğuyor
 
-`src/Bizigo.ControlPlane/AccessScopeResolver.cs` ölçüldü: doğrulanmamış
+`src/LogAnalyzer.ControlPlane/AccessScopeResolver.cs` ölçüldü: doğrulanmamış
 principal → `AccessScope.Denied`; `admin` rolü → `AccessScope.System(subject)`
 (kaynağın kendi yorumu: *"`admin` kapsam filtresinden muaf — ama bu **BİLİNÇLİ
 ve tek yerde**"*); diğerleri → gruplarından türetilmiş kapsam.
@@ -49,15 +49,15 @@ açmak değil, MCP oturumunun principal'ını bu resolver'a **ulaştırmak**.
 
 | # | Aday | Değerlendirme |
 | --- | --- | --- |
-| (a) | `stdio` yüzeyi `bizigo` araçlarını hiç sunmaz, yalnızca HTTP sunar | **Elendi** |
+| (a) | `stdio` yüzeyi `loganalyzer` araçlarını hiç sunmaz, yalnızca HTTP sunar | **Elendi** |
 | (b) | `stdio` başlarken bir **cihaz akışıyla** oturum açar | **Önce seçildi, sonra çürütüldü** |
-| (c) | `stdio` yalnızca `bizigo-sim` içindir | **Elendi** |
+| (c) | `stdio` yalnızca `loganalyzer-sim` içindir | **Elendi** |
 | (d) | `stdio` kimliği **ortamdan okur** | **Seçildi** |
 
 **(a) ve (c)'nin elenmesi bir tercih değil bir ölçümün sonucu.** Ölçüm §1'de:
 CLI'nin bugün kimlik yolu **yok**. Eğer olsaydı, stdio onu miras alırdı ve M08
 *"var olanı MCP oturumuna taşı"* olurdu (`CLAUDE.md` §9: ikinci kopya yazma).
-Olmadığı için ikisi de eleniyor — `bizigo` yüzeyini stdio'da işe yaramaz
+Olmadığı için ikisi de eleniyor — `loganalyzer` yüzeyini stdio'da işe yaramaz
 kılıyorlar, oysa **stdio'nun var olma sebebi** yerel bir ajanın ürüne
 konuşmasıdır.
 
@@ -81,8 +81,8 @@ spesifikasyona **aykırı**.
 > dönülmeli.
 
 Ayrıca §7.2'nin ölçümü aynı sonucu **ikinci bir yönden** destekliyor: realm'de
-cihaz akışı için bir istemci kaydı **yok** — yalnızca `bizigo-ui` ve
-`bizigo-collector` var. (b) seçilseydi bu ticket realm-as-code'a da dokunacak,
+cihaz akışı için bir istemci kaydı **yok** — yalnızca `loganalyzer-ui` ve
+`loganalyzer-collector` var. (b) seçilseydi bu ticket realm-as-code'a da dokunacak,
 yani canlı Keycloak doğrulaması gerektirecekti.
 
 ### `stdio`'nun kendine özgü zorluğu — (d) bunu nasıl çözüyor
@@ -100,7 +100,7 @@ yoksa ortam değişkeni canlı mı okunuyor? **Karar M08'in.**
 
 **İçinde**
 
-- Keycloak kimliğinin MCP oturumundan `bizigo` araçlarının çağırdığı uca
+- Keycloak kimliğinin MCP oturumundan `loganalyzer` araçlarının çağırdığı uca
   taşınması.
 - Kapsamın `AccessScopeResolver` üzerinden **türetilmesi** — kurulması değil.
 - Token'ın yaşam döngüsü: alınması, tutulması, tazelenmesi, süresi dolduğunda
@@ -109,16 +109,16 @@ yoksa ortam değişkeni canlı mı okunuyor? **Karar M08'in.**
 **Dışında**
 
 - Araçların kendisi — [M04](../okuma-araclari/index.md).
-- `bizigo-sim` yüzeyi: ürün verisi döndürmüyor, kimlik taşımıyor.
+- `loganalyzer-sim` yüzeyi: ürün verisi döndürmüyor, kimlik taşımıyor.
 
 ## 4 · Kabul kriterleri
 
-1. `bizigo` yüzeyinin çağrıları **kullanıcının** kimliğiyle koşuyor; sunucunun
+1. `loganalyzer` yüzeyinin çağrıları **kullanıcının** kimliğiyle koşuyor; sunucunun
    servis hesabı **yok**.
 2. Kapsam `AccessScopeResolver`'dan geliyor; yüzey `AccessScope.System`'i
    **kendi çağırmıyor** ([M04](../okuma-araclari/index.md) kriteri 2 ile aynı
    kapı — ikinci bir kapı yazılmıyor).
-3. Kimliksiz bir MCP oturumu `bizigo` araçlarını çağıramıyor; ret **araç
+3. Kimliksiz bir MCP oturumu `loganalyzer` araçlarını çağıramıyor; ret **araç
    hatası** olarak (`isError`) dönüyor, protokol istisnası olarak değil
    (plan §2'nin hata ayrımı).
 4. Token'ın süresi dolduğunda davranış **yazılı ve sınanmış**.
@@ -130,7 +130,7 @@ yoksa ortam değişkeni canlı mı okunuyor? **Karar M08'in.**
 Beş kriterin dördü karşılanmış; **kriter 4 karşılanmamış**: *"Token'ın süresi
 dolduğunda davranış yazılı ve sınanmış."*
 
-Arandı ve **yok**: `tests/Bizigo.UnitTests/Mcp*.cs` altında süre sonuna dair tek
+Arandı ve **yok**: `tests/LogAnalyzer.UnitTests/Mcp*.cs` altında süre sonuna dair tek
 bir iddia geçmiyor (`expired`, `exp`, `NotBefore`, `ValidateLifetime` — hiçbiri).
 Yani davranış bugün SDK'nın varsayılanı ne yapıyorsa o, ve ne yaptığı **yazılı
 değil**.
@@ -154,7 +154,7 @@ kez** koştu) `exp + 1 saniye`de belirteç hâlâ **kabul ediliyordu**.
 > neye baktığını söylemiyor* kuralının bir örneği daha.
 
 Ölçülen gerekçe: realm'in `accessTokenLifespan` değeri **900 s**
-(`deploy/keycloak/realm-bizigo.json`). Beş dakikalık tolerans belirtecin ömrünün
+(`deploy/keycloak/realm-loganalyzer.json`). Beş dakikalık tolerans belirtecin ömrünün
 **üçte biri** — etkin ömrü %33 uzatıyor.
 
 İki yüzey **farklı** cevap verdi ve fark bilinçli:
@@ -175,8 +175,8 @@ Canlı ölçümde çıktı ve **kararı verilmedi**:
 
 | Belirteç | `aud` |
 | --- | --- |
-| `bizigo-mcp` scope'u **istenmeden** | `bizigo-api` |
-| `bizigo-mcp` scope'u **istenerek** | `['http://localhost:5080/mcp', 'bizigo-api']` |
+| `loganalyzer-mcp` scope'u **istenmeden** | `loganalyzer-api` |
+| `loganalyzer-mcp` scope'u **istenerek** | `['http://localhost:5080/mcp', 'loganalyzer-api']` |
 
 Yani bir MCP belirteci **aynı zamanda geçerli bir API belirteci**: masaüstü
 istemcisinden sızan bir belirteç REST API'yi de açar. Sebebi Keycloak'ta
@@ -203,11 +203,11 @@ M08'in."*
 ## 7 · Bilinen sınırlar ve açık sorular
 
 1. **Keycloak realm'i ölçülü ve M08 bunu varsaymalı:** realm'de yalnızca
-   `bizigo-claims` client scope var. `scope=openid` geçiyor;
+   `loganalyzer-claims` client scope var. `scope=openid` geçiyor;
    `openid profile email` **canlıda `invalid_scope` alıyor**. Ölçüldü, plan §6
    de yazıyor.
-2. **Realm'de iki istemci var — ölçüldü.** `deploy/keycloak/realm-bizigo.json`:
-   **`bizigo-ui`** ve **`bizigo-collector`**. MCP için ya da cihaz akışı için
+2. **Realm'de iki istemci var — ölçüldü.** `deploy/keycloak/realm-loganalyzer.json`:
+   **`loganalyzer-ui`** ve **`loganalyzer-collector`**. MCP için ya da cihaz akışı için
    bir istemci kaydı **yok**.
 
    Bu ölçüm önce *"M08 realm-as-code'a da dokunuyor"* diye okunmuştu — o okuma
@@ -217,13 +217,13 @@ M08'in."*
    **dokunmayabilir** — ve dokunmuyorsa canlı Keycloak doğrulaması da
    gerekmez.
 
-   **Hangi istemcinin bastığı açık soru:** ortamdaki token `bizigo-ui`'nin mi,
+   **Hangi istemcinin bastığı açık soru:** ortamdaki token `loganalyzer-ui`'nin mi,
    yoksa ayrı bir istemcinin mi olmalı? Cevap *"ayrı"* ise realm yine
    değişiyor. **Ölçmedim.**
 
-   Aynı dosyada ölçülen ikinci şey M09'un konusu: `bizigo-claims` client
+   Aynı dosyada ölçülen ikinci şey M09'un konusu: `loganalyzer-claims` client
    scope'unda bir **audience mapper** var
-   (`included.client.audience: bizigo-api`) ve API `ValidateAudience = true`
+   (`included.client.audience: loganalyzer-api`) ve API `ValidateAudience = true`
    ile onu doğruluyor. Yani kitlenin bağlanması **bugün çalışıyor** — eksik
    olan, MCP sunucusunun **kendine ait bir kaynak kimliğinin** olmaması.
 3. **Açık soru:** HTTP taşımasında kimlik `Authorization` başlığıyla mı

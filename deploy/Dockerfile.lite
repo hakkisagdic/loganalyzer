@@ -1,0 +1,19 @@
+# --- Build Stage ---
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+WORKDIR /source
+
+COPY src/LogAnalyzer.Lite/LogAnalyzer.Lite.csproj src/LogAnalyzer.Lite/
+RUN dotnet restore src/LogAnalyzer.Lite/LogAnalyzer.Lite.csproj
+
+COPY src/LogAnalyzer.Lite/ src/LogAnalyzer.Lite/
+RUN dotnet publish src/LogAnalyzer.Lite/LogAnalyzer.Lite.csproj -c Release -o /app/publish /p:UseAppHost=false
+
+# --- Runtime Stage ---
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+
+ENV ASPNETCORE_URLS=http://+:5060
+EXPOSE 5060
+
+ENTRYPOINT ["dotnet", "LogAnalyzer.Lite.dll"]

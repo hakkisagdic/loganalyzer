@@ -1,4 +1,4 @@
-# bizigo-loganalyzer
+# LogAnalyzer | Enterprise Observability & Incident Flight Recorder
 
 [![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/hakkisagdic/loganalyzer?utm_source=oss&utm_medium=github&utm_campaign=hakkisagdic%2Floganalyzer&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)](https://coderabbit.ai)
 
@@ -33,8 +33,22 @@ Planlama belgeleri Traycer epic'inde:
 `mimari-kararlar` · `f1-teknik-plan` · `rca-raporu-ozelligi` · `tickets/`
 
 > ⚠️ **Geliştirme aşamasında.** `deploy/.env.example` ve `appsettings.json` içindeki
-> kimlik bilgileri (`bizigo/bizigo`, `admin/admin`) yalnızca yerel compose içindir.
+> kimlik bilgileri (`loganalyzer/loganalyzer`, `admin/admin`) yalnızca yerel compose içindir.
 > Üretimde kullanılmaz.
+
+
+## 🚀 LogAnalyzer Lite (Incident Flight Recorder)
+
+Gereksiz disk şişkinliği ve ağır bağımlılıklar olmadan doğrudan olay ve hata odaklı çalışan hafifleştirilmiş mod:
+- **Zero-Bloat In-Memory Ring Buffer:** Başarılı istekleri diskte biriktirmez, yalnızca sayaç ve SLA metriği olarak tutar.
+- **Incident Flight Recorder:** 4xx/5xx ve fırlatılan istisnaları (exceptions) payload, stack trace, headers ve latency değerleriyle kara kutu gibi saklar.
+- **Dahili Canlı Dashboard:** `http://localhost:5060` üzerinden canlı akış, cURL kopyalama ve anında filtreleme.
+- **Tek Tuşla Süpürme (Purge):** Hafızayı veya eski olayları anında temizleme (`/api/v1/logs/purge`).
+
+```bash
+# LogAnalyzer Lite Docker ile çalıştırma:
+docker compose -f deploy/docker-compose.lite.yml up -d
+```
 
 ## Hızlı başlangıç
 
@@ -47,11 +61,11 @@ cd deploy && cp .env.example .env && docker compose up -d --wait && cd ..
 
 # 2. Derle ve test et
 dotnet build
-dotnet test tests/Bizigo.UnitTests            # container gerektirmez
-dotnet test tests/Bizigo.IntegrationTests     # Testcontainers ile ayrı container'lar
+dotnet test tests/LogAnalyzer.UnitTests            # container gerektirmez
+dotnet test tests/LogAnalyzer.IntegrationTests     # Testcontainers ile ayrı container'lar
 
 # 3. API'yi çalıştır (göçleri açılışta uygular)
-dotnet run --project src/Bizigo.Api
+dotnet run --project src/LogAnalyzer.Api
 
 # 4. Arayüzü çalıştır (ayrı terminal)
 cd ui && cp .env.example .env.local && npm install && npm run dev
@@ -68,7 +82,7 @@ Bilerek geçmek için `git push --no-verify`.
 tarafındaki `.github/workflows/ci-red.yml` kapatıyor: main kırmızı kaldığında
 açık bir konu (issue) yazıyor ve hiçbir yerel kuruluma bağlı değil.
 
-`Bizigo.Api` gibi arayüz de **compose'un dışında**, doğrudan makinede koşuyor:
+`LogAnalyzer.Api` gibi arayüz de **compose'un dışında**, doğrudan makinede koşuyor:
 sıcak yeniden yükleme geliştirme döngüsünü hızlandırıyor ve API zaten aynı
 şekilde çalışıyor.
 
@@ -100,7 +114,7 @@ Yerel koşum (`npm run e2e`) **varsayılan kalıyor**; aynı testler, iki hedef.
 ölçülerek bulundu:
 
 - **`Auth:MetadataAddress`** — anahtarın *nereden indirileceği* ile *kime
-güvenildiği* ayrıldı. Issuer hâlâ `http://localhost:8180/realms/bizigo` (token'da
+güvenildiği* ayrıldı. Issuer hâlâ `http://localhost:8180/realms/loganalyzer` (token'da
 yazan o ve tarayıcı oraya gidiyor), ama container içinde `localhost:8180`
 Keycloak değil container'ın kendisi.
 - **`KC_HOSTNAME_BACKCHANNEL_DYNAMIC`** — metadata adresini ayırmak tek başına
@@ -150,7 +164,7 @@ loopback ya da özel adres uzayı geçiyor, `0.0.0.0`/`[::]` **geçmiyor** — v
 sebebi *"joker demek dışa açık demek"* değil, ***"joker demek süreç içinden
 bilinemez demek"***: cevabı container ağı, `publish` kuralı ve güvenlik duvarı
 veriyor, üçü de sürecin göremediği yerde. Container imajı bu yüzden gerekçesini
-`Mcp__ListenerBoundaryOverrideReason` ile **yazıyor** (`src/Bizigo.Api/Dockerfile`,
+`Mcp__ListenerBoundaryOverrideReason` ile **yazıyor** (`src/LogAnalyzer.Api/Dockerfile`,
 joker bağlamanın hemen altında). API'yi makinede joker bir adrese bağlayarak
 koşturursanız aynı gerekçeyi siz yazmak zorundasınız; `dotnet run` varsayılanı
 (`localhost:5058`) ve uçtan uca harness (`localhost:5080`) loopback olduğu için
@@ -160,10 +174,10 @@ der.
 
 | Servis | Adres | Not |
 | --- | --- | --- |
-| ClickHouse | http://localhost:8123 | `bizigo` / `bizigo` |
-| PostgreSQL | localhost:5432 | `bizigo` / `bizigo` — Keycloak da bu örneği kullanır |
-| RustFS (S3) | http://localhost:9000 | konsol :9001, `bizigoadmin` / `bizigoadmin` |
-| Keycloak | http://localhost:8180 | `admin` / `admin`, realm `bizigo` |
+| ClickHouse | http://localhost:8123 | `loganalyzer` / `loganalyzer` |
+| PostgreSQL | localhost:5432 | `loganalyzer` / `loganalyzer` — Keycloak da bu örneği kullanır |
+| RustFS (S3) | http://localhost:9000 | konsol :9001, `loganalyzeradmin` / `loganalyzeradmin` |
+| Keycloak | http://localhost:8180 | `admin` / `admin`, realm `loganalyzer` |
 | OTel Collector | syslog TCP :5140, UDP :5141, OTLP :4318 | |
 | Sidecar | http://localhost:8099 | Drain3 + pySigma (T12) |
 | Arayüz (Next.js) | http://localhost:3000 | BFF burada; tarayıcı API'ye doğrudan konuşmuyor |
@@ -213,7 +227,7 @@ sadakati korumuyor. `nop` denendi ve **çalışmıyor**: UDP'de varsayılan
 edip tüm akışı tek kayda çeviriyor (çökme yok — sessizce bozuk veri).
 `iso-8859-1` bayt ↔ kod noktası eşlemesini birebir ve tersinir yapar; satır bölme
 korunur ve baytlar bizde `Latin1.GetBytes` ile aynen geri alınır. Tel kodlaması
-`bizigo.wire_encoding` özniteliğiyle açıkça bildirilir. Kodlama tespiti bizim
+`loganalyzer.wire_encoding` özniteliğiyle açıkça bildirilir. Kodlama tespiti bizim
 tarafımızda (BOM → bildirilen → UTF-8 doğrulaması → kaynağın yedek kod sayfası →
 latin1), sonuç NFC normalize edilir.
 
@@ -282,11 +296,11 @@ upstream'den yeniden kopyalanır. Oniguruma/POSIX söz dizimi farkları derleyic
 çevrilir (`\h`, `[[:alnum:]]`, `X?*`). Aynı şekilde `catalog/mappings/` altındaki
 eşleme tabloları YAML'dır; bilinmeyen tablo **derleme zamanında** hata verir.
 
-**`bizigo-v1` kaplaması varsayılan olarak devrede.** Logstash'in `IPV4` ve `TIME`
+**`loganalyzer-v1` kaplaması varsayılan olarak devrede.** Logstash'in `IPV4` ve `TIME`
 tanımları lookaround taşıyor ve ağ logunda IP geçmeyen pattern neredeyse yok —
 sonuç olarak kataloğun 21 ifadesi doğrusal motorda derlenemeyip geri izlemeye
 düşüyordu, yani "önce `NonBacktracking` dene" kademesi pratikte hiç çalışmıyordu.
-`catalog/patterns/bizigo-v1/` bir **kaplama**, tam set değil: `legacy` üstüne
+`catalog/patterns/loganalyzer-v1/` bir **kaplama**, tam set değil: `legacy` üstüne
 biniyor ve yalnızca adlandırılmış pattern'leri değiştiriyor, böylece `legacy` ile
 `ecs-v1` upstream'in birebir kopyası kalıp `cp -R` ile yükseltilebiliyor.
 Sınırlar `\b` ile kuruldu — yerine geçtiği lookaround'dan **daha katı**, yani
@@ -342,8 +356,8 @@ zaman çizelgesine olay düşürebilirdi.
 | --- | --- | --- |
 | GitHub | `X-Hub-Signature-256` (HMAC-SHA256) | `workflow_run` (yalnızca `completed`), `deployment_status` (nihai durum), `push` |
 | GitLab | `X-Gitlab-Token` (düz jeton — sağlayıcı HMAC vermiyor) | `pipeline` ve `deployment` (yalnızca `success`/`failed`) |
-| Jenkins | `X-Bizigo-Signature` (HMAC-SHA256) | Notification Plugin, yalnızca `COMPLETED` fazı |
-| generic | `X-Bizigo-Signature` (HMAC-SHA256) | Yapılandırılan yollar |
+| Jenkins | `X-LogAnalyzer-Signature` (HMAC-SHA256) | Notification Plugin, yalnızca `COMPLETED` fazı |
+| generic | `X-LogAnalyzer-Signature` (HMAC-SHA256) | Yapılandırılan yollar |
 
 **Filtreler kasıtlı:** her sağlayıcı aynı işi birden çok kez bildiriyor
 (`in_progress`, `STARTED`, `running`). Hepsini kaydetmek `change_events`'i RCA
@@ -367,7 +381,7 @@ sessizce etkisiz kalırdı.
 **Gizli bilgi anahtarı ürün geneli tek:** `Security__SecretKey` (base64, 32 bayt,
 AES-256-GCM). T22 bunu `Alerting:SecretKey` olarak kurmuştu; T25 connector
 kimlik bilgileri için aynı şeye ihtiyaç duyunca ortaklaştırıldı
-(`Bizigo.Contracts.Security`). İki anahtar, iki rotasyon hikâyesi ve altı ay
+(`LogAnalyzer.Contracts.Security`). İki anahtar, iki rotasyon hikâyesi ve altı ay
 sonra birinin döndürülüp diğerinin unutulması demekti. **Anahtar yoksa gizli
 bilgi kaydedilmiyor** — düz metne düşmek, "şifreli saklanıyor" iddiasını
 sessizce yalanlardı.
@@ -392,7 +406,7 @@ silinmiyor; ve her connector'ın **en yeni** anlık görüntüsü kesimin gerisi
 kalsa bile korunuyor, yoksa hiç değişmeyen bir cihazın taban çizgisi silinir ve
 bir sonraki çekim config'in tamamını sahte bir değişiklik olarak raporlar.
 
-**Cihaz config farkı (T26).** `Bizigo.Devices` ürünün cihazlara **bağlanan**
+**Cihaz config farkı (T26).** `LogAnalyzer.Devices` ürünün cihazlara **bağlanan**
 tek derlemesi; SSH bağımlılığı yalnızca orada ve arayüzün yüzeyinde yazma diye
 bir şey yok — bu ürün config okuyor, değiştirmiyor. FortiGate, Cisco ASA ve
 MikroTik: üçü de SSH konuşuyor, komutları vendor başına yazıldı (`show`,
@@ -425,21 +439,21 @@ taşıyor, satır içeriklerini değil.
 
 ```
 src/
-  Bizigo.Contracts/            ortak tipler, plugin şemaları
-  Bizigo.Ingest/               OTLP uç, WAL, kodlama, boru hattı
-  Bizigo.Parsing/              YAML şema, grok derleyici, dispatcher
-  Bizigo.Normalization/        core → OCSF/OTel eşleme
-  Bizigo.Storage.ClickHouse/   şema, göç, bulk writer — ClickHouse.Driver'a erişen tek yer
-  Bizigo.Storage.Raw/          object storage (S3 API), manifest, replay okuyucu
-  Bizigo.ControlPlane/         EF Core, envanter, katalog, audit
-  Bizigo.Query/                IScopedQuery — kapsam zorlamasının tek kapısı
-  Bizigo.Alerting/             eşik · oran · sessizlik + Slack/Teams/e-posta/webhook
-  Bizigo.Api/                  ASP.NET Core, JWT bearer, uçlar — cookie/OIDC YOK (K31)
-  Bizigo.Cli/
+  LogAnalyzer.Contracts/            ortak tipler, plugin şemaları
+  LogAnalyzer.Ingest/               OTLP uç, WAL, kodlama, boru hattı
+  LogAnalyzer.Parsing/              YAML şema, grok derleyici, dispatcher
+  LogAnalyzer.Normalization/        core → OCSF/OTel eşleme
+  LogAnalyzer.Storage.ClickHouse/   şema, göç, bulk writer — ClickHouse.Driver'a erişen tek yer
+  LogAnalyzer.Storage.Raw/          object storage (S3 API), manifest, replay okuyucu
+  LogAnalyzer.ControlPlane/         EF Core, envanter, katalog, audit
+  LogAnalyzer.Query/                IScopedQuery — kapsam zorlamasının tek kapısı
+  LogAnalyzer.Alerting/             eşik · oran · sessizlik + Slack/Teams/e-posta/webhook
+  LogAnalyzer.Api/                  ASP.NET Core, JWT bearer, uçlar — cookie/OIDC YOK (K31)
+  LogAnalyzer.Cli/
 ui/                            Next.js: arayüz + BFF (OIDC, oturum, API vekili)
   src/app/api/auth/            giriş ve çıkış
   src/app/signin-oidc/         OIDC dönüş ucu — yol realm dosyasında sabit
-  src/app/api/bff/[...path]/   Bizigo.Api'ye açılan tek kapı
+  src/app/api/bff/[...path]/   LogAnalyzer.Api'ye açılan tek kapı
   src/app/olaylar/             log arama (T15) ve olay detayı + ham baytlar (T16)
   src/app/kaynaklar/           kaynak envanteri, son görülme, CSV yükleme (T17)
   src/lib/auth/                keşif, PKCE, oturum deposu, yenileme
@@ -459,11 +473,11 @@ deploy/                        docker-compose, otel, keycloak realm
 
 ```bash
 dotnet build                                            # uyarılar hata
-dotnet test tests/Bizigo.UnitTests                      # hızlı, container yok
+dotnet test tests/LogAnalyzer.UnitTests                      # hızlı, container yok
 dotnet ef migrations add <Ad> \
-  --project src/Bizigo.ControlPlane \
-  --startup-project src/Bizigo.Api --output-dir Migrations
-dotnet run --project src/Bizigo.Cli -- schema migrate db/clickhouse
+  --project src/LogAnalyzer.ControlPlane \
+  --startup-project src/LogAnalyzer.Api --output-dir Migrations
+dotnet run --project src/LogAnalyzer.Cli -- schema migrate db/clickhouse
 cd deploy && docker compose logs -f <servis>
 ```
 
@@ -499,7 +513,7 @@ npx playwright test     # yalnız koşum (hazırlık zaten yapılmışsa)
 ```
 
 `npm run e2e:prepare` dört iş yapıyor: yığın sağlıklı mı, API/CLI derlemesi,
-`bizigo seed golden`, `next build`. **Playwright'ın `globalSetup`'ına
+`loganalyzer seed golden`, `next build`. **Playwright'ın `globalSetup`'ına
 konulamıyor** — Playwright `webServer`'ı ondan önce başlatıyor ve sunucu henüz
 var olmayan bir ikiliyi çalıştırmaya çalışıyor.
 
@@ -509,13 +523,13 @@ göstermezdi. Analistin `/network/core` claim'i `idp_group_mapping` üzerinden
 `golden`'a çevriliyor, yani görüntüdeki her satır aynı zamanda K17'nin kanıtı.
 
 Çıktı `docs/ekran-goruntuleri/uctan-uca/`. Üç port sabit ve üçü de zorunlu:
-**3000** (realm'in `redirectUris`'i), **5080** (`BIZIGO_API_URL`), **8180**
+**3000** (realm'in `redirectUris`'i), **5080** (`LOGANALYZER_API_URL`), **8180**
 (Keycloak'ın `KC_HOSTNAME`'i issuer'ı oraya sabitliyor).
 
 
 **Kimlik akışı Next'te (K31).** Tarayıcıya yalnızca oturum çerezi gidiyor; erişim
 ve yenileme token'ları sunucudaki oturum deposunda duruyor ve API'ye sunucudan
-sunucuya `Authorization: Bearer` ile taşınıyor. `Bizigo.Api` saf kaynak
+sunucuya `Authorization: Bearer` ile taşınıyor. `LogAnalyzer.Api` saf kaynak
 sunucusu: cookie ve OIDC işleyicisi taşımıyor.
 
 **Oturum deposu seçilebilir** (B7). Varsayılan `memory`, çok kopyalı kurulum
@@ -553,7 +567,7 @@ ağacını tutuyor ve kalıcılığı **açık** olmak zorunda — durum kaybolu
 `template_id`'ler sessizce kayar. RDB anlık görüntüsü örneğin tamamını yazdığı
 için (veritabanı seçmiyor) tek örnekte iki ihtiyaç sağlanamıyor.
 
-### Ölçüm verisi — `bizigo seed golden` (T39)
+### Ölçüm verisi — `loganalyzer seed golden` (T39)
 
 F3'ün iki ölçümü de **gerçek** veri istiyor: Sigma kapsam ölçümü
 (`prototypes/t30-sigma/measure.py`) vendor başına sayıyor, baseline penceresi
@@ -562,13 +576,13 @@ de ön kontrolü sentetik kıyaslama verisini **reddediyor** ve doğru yapıyor.
 
 ```bash
 export DOTNET_ROOT="$HOME/.dotnet"
-BIN=src/Bizigo.Cli/bin/Debug/net10.0/bizigo
+BIN=src/LogAnalyzer.Cli/bin/Debug/net10.0/loganalyzer
 
 # Docker'sız: üret, zaman damgası bekçisini koştur, raporla.
 $BIN seed golden --dry-run
 
-# Yükle. Bağlantı --clickhouse ya da BIZIGO_CLICKHOUSE'tan geliyor.
-$BIN seed golden --clickhouse 'Host=localhost;Port=8123;Database=bizigo;Username=bizigo;Password=bizigo'
+# Yükle. Bağlantı --clickhouse ya da LOGANALYZER_CLICKHOUSE'tan geliyor.
+$BIN seed golden --clickhouse 'Host=localhost;Port=8123;Database=loganalyzer;Username=loganalyzer;Password=loganalyzer'
 
 # Yeniden yükleme: yalnızca kendi kapsam grubunu siler, tablodaki diğer veriye
 # DOKUNMAZ. Bayraksız koşum, grup doluysa hata verip durur.
@@ -625,7 +639,7 @@ olmasının şartı.**
 > yayılımda 81 ayrı imza, 30 günlükte 92, 90 günlükte 102. Yükleyici bunu her
 > koşumda basıyor. F3'ün "ilk-görülen imza" sinyali için gerçek bir kalem.
 
-### Alan kapsamı — `bizigo fields coverage` (T39)
+### Alan kapsamı — `loganalyzer fields coverage` (T39)
 
 Bir Sigma kuralı hiçbir satır bulmuyorsa sebebi üç bambaşka şey olabilir ve
 tabloda üçü de aynı görünür: **boş kolon**. Bu araç üçünü ayırıyor.
@@ -664,7 +678,7 @@ okuyan yapıyor. Tek istisna **biçim** farkı: `proto_token=UDP` ile
 > şeyi yakalamış" görünüyordu. Artık **içinde başka bir yakalanmış değer geçen**
 > alanlar üst hâl sayılıyor ve kapsama girmiyor.
 
-### Değer uzayı — `bizigo fields values` (T39)
+### Değer uzayı — `loganalyzer fields values` (T39)
 
 Üç kutu "bilgi alan oldu mu" diye soruyor; bu ölçüm **alan hangi değerleri
 taşıyabiliyor** diye. Bir eşleme tablosu, beslediği kolonun değer uzayını
@@ -682,7 +696,7 @@ bulunmaması *"bugün yok"*, şemanın onu üretememesi *"hiçbir zaman olmayaca
 
 Kuralları da **okumuyor** — `explain_misses.py --json` zaten
 `alan|operatör = değer` üçlülerini çıkarıyor, alan adı çevirisi de
-`bizigo_pipeline.py`'nin `FIELD_MAP`'inden okunuyor. İki ayrıştırıcı, iki aracın
+`loganalyzer_pipeline.py`'nin `FIELD_MAP`'inden okunuyor. İki ayrıştırıcı, iki aracın
 aynı kuralı farklı kolona bağladığı gün demekti.
 
 | Sınıf | Anlamı |
@@ -708,7 +722,7 @@ Ayrıntı: `docs/epic/t39-alan-kapsami/`.
 ### Parser CLI
 
 ```bash
-BIN=src/Bizigo.Cli/bin/Debug/net10.0/bizigo        # ya da: dotnet run --project src/Bizigo.Cli --
+BIN=src/LogAnalyzer.Cli/bin/Debug/net10.0/loganalyzer        # ya da: dotnet run --project src/LogAnalyzer.Cli --
 
 $BIN parser lint catalog/parsers                    # şema + ReDoS taraması
 $BIN parser test catalog/parsers                    # gömülü `tests` bloklarını koştur
@@ -717,35 +731,35 @@ $BIN parser try p.yaml --input-file ornekler.log --json
 cat ornekler.log | $BIN parser try p.yaml           # stdin de çalışır
 ```
 
-`--patterns` / `--mappings` (ya da `BIZIGO_PATTERNS` / `BIZIGO_MAPPINGS`) katalog
+`--patterns` / `--mappings` (ya da `LOGANALYZER_PATTERNS` / `LOGANALYZER_MAPPINGS`) katalog
 dizinlerini değiştirir. Varsayılanlar çalışma dizininden yukarı doğru aranır, yani
 CLI repo içindeki herhangi bir alt dizinden çağrılabilir.
 
-⚠️ `bizigo` ikilisi doğrudan çalıştırılırken `DOTNET_ROOT` gerekir — apphost PATH'teki
+⚠️ `loganalyzer` ikilisi doğrudan çalıştırılırken `DOTNET_ROOT` gerekir — apphost PATH'teki
 `dotnet`'i (SDK 8/9) bulup net10.0 çalışma zamanını göremez:
 
 ```bash
 export DOTNET_ROOT="$HOME/.dotnet"
 ```
 
-### MCP yüzeyi — `bizigo mcp serve`
+### MCP yüzeyi — `loganalyzer mcp serve`
 
-Ürünün iki MCP yüzeyi var ve **taşımaları farklı**: `bizigo` (ürün araçları) hem
-`POST /mcp` üzerinden hem stdio'dan, `bizigo-sim` (simülatör) **yalnızca**
+Ürünün iki MCP yüzeyi var ve **taşımaları farklı**: `loganalyzer` (ürün araçları) hem
+`POST /mcp` üzerinden hem stdio'dan, `loganalyzer-sim` (simülatör) **yalnızca**
 stdio'dan. Simülatörün HTTP'si bilerek yok — ürünün kendi süreci simülatör
 filosunu değiştirebilir hâle gelirdi.
 
 ```bash
 export DOTNET_ROOT="$HOME/.dotnet"
-BIN=src/Bizigo.Cli/bin/Debug/net10.0/bizigo
+BIN=src/LogAnalyzer.Cli/bin/Debug/net10.0/loganalyzer
 
 # Simülatör yüzeyi: ayar istemiyor.
-$BIN mcp serve --surface bizigo-sim --data-boundary internal
+$BIN mcp serve --surface loganalyzer-sim --data-boundary internal
 
 # Ürün yüzeyi: iki bağlantı ayarı ZORUNLU.
-export BIZIGO_CLICKHOUSE='Host=localhost;Port=8123;Database=bizigo;Username=bizigo;Password=bizigo'
-export BIZIGO_CONTROLPLANE='Host=localhost;Port=5432;Database=bizigo;Username=bizigo;Password=bizigo'
-$BIN mcp serve --surface bizigo --data-boundary internal
+export LOGANALYZER_CLICKHOUSE='Host=localhost;Port=8123;Database=loganalyzer;Username=loganalyzer;Password=loganalyzer'
+export LOGANALYZER_CONTROLPLANE='Host=localhost;Port=5432;Database=loganalyzer;Username=loganalyzer;Password=loganalyzer'
+$BIN mcp serve --surface loganalyzer --data-boundary internal
 ```
 
 **`--data-boundary`'nin varsayılanı yok ve olmayacak** (K6). *"stdio, demek ki iç
@@ -766,14 +780,14 @@ stdio MCP yetkilendirme spesifikasyonunun dışında, yani protokol kimlik
 taşımıyor. Kimlik **ortamdan** geliyor:
 
 ```bash
-export BIZIGO_MCP_TOKEN=<Keycloak erişim belirteci>     # zorunlu (kimlik için)
-export BIZIGO_MCP_AUTHORITY=http://localhost:8180/realms/bizigo
-export BIZIGO_MCP_RESOURCE=http://localhost:5080/mcp   # beklenen `aud`
-export BIZIGO_MCP_METADATA=...                          # opsiyonel; container'da issuer≠erişilebilir adres
+export LOGANALYZER_MCP_TOKEN=<Keycloak erişim belirteci>     # zorunlu (kimlik için)
+export LOGANALYZER_MCP_AUTHORITY=http://localhost:8180/realms/loganalyzer
+export LOGANALYZER_MCP_RESOURCE=http://localhost:5080/mcp   # beklenen `aud`
+export LOGANALYZER_MCP_METADATA=...                          # opsiyonel; container'da issuer≠erişilebilir adres
 ```
 
 Ayrım kritik: değişken **kimliği taşıyor, kapsamı belirlemiyor**. Bir
-`BIZIGO_MCP_OWNER_GROUP` olsaydı veri kapsamı bir süreç ayarı olurdu (K17
+`LOGANALYZER_MCP_OWNER_GROUP` olsaydı veri kapsamı bir süreç ayarı olurdu (K17
 ihlali); burada kapsam hâlâ claim'lerden ve `idp_group_mapping` üzerinden
 çıkıyor — REST uçlarının geçtiği **aynı** kapıdan.
 
@@ -795,7 +809,7 @@ kimlik bilgisini süreç ortamına yazmak olurdu.
 > yeşil değil. Doğrulama kuralları API'nin `AddJwtBearer`'ıyla aynı kütüphaneden
 > ve aynı sürümden (8.19.2) geliyor, ama *"ölçüldü"* diyemiyoruz.
 
-### RCA kotası — `bizigo rca quota`
+### RCA kotası — `loganalyzer rca quota`
 
 ```bash
 $BIN rca quota --owner-group network/core
@@ -828,8 +842,8 @@ Deponun belgelerinden beslenen bir bilgi tabanı `docs/wiki/` altında duruyor v
 # Aracı getir (depoya vendor EDİLMİYOR — .gitignore'da)
 git clone --depth 1 https://github.com/ar9av/obsidian-wiki.git tools/obsidian-wiki
 
-# Profil zaten `~/.obsidian-wiki/config.bizigo` altında; aktif etmek için
-ln -sfn ~/.obsidian-wiki/config.bizigo ~/.obsidian-wiki/config
+# Profil zaten `~/.obsidian-wiki/config.loganalyzer` altında; aktif etmek için
+ln -sfn ~/.obsidian-wiki/config.loganalyzer ~/.obsidian-wiki/config
 ```
 
 **Araç vendor edilmiyor** çünkü ürünün parçası değil: bilgi tabanını üreten bir

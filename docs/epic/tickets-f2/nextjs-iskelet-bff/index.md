@@ -19,15 +19,15 @@ Bu ticket bitmeden hiçbir ekran yazılamaz.
 ### İçinde
 
 - `ui/` altında Next.js uygulaması (App Router, TypeScript).
-- OIDC **authorization code + PKCE**, `bizigo-ui` confidential client'ı ile.
+- OIDC **authorization code + PKCE**, `loganalyzer-ui` confidential client'ı ile.
 Realm'de hazır: `redirectUris` `http://localhost:3000/signin-oidc` içeriyor.
 - Oturum çerezi: `HttpOnly`, `Secure`, `SameSite=Lax`. **Erişim token'ı çerez**
 **içeriğine girmiyor** — sunucu tarafı oturum deposunda duruyor.
 - API proxy: tarayıcıdan gelen istek Next sunucusunda token'la zenginleştirilip
-`Bizigo.Api`'ye iletiliyor. Tarayıcı `Bizigo.Api`'ye **doğrudan konuşmuyor**.
+`LogAnalyzer.Api`'ye iletiliyor. Tarayıcı `LogAnalyzer.Api`'ye **doğrudan konuşmuyor**.
 - Token yenileme: refresh token sunucuda, süresi dolan erişim token'ı şeffaf
 yenileniyor.
-- `Bizigo.Api`'den **OIDC ve cookie işleyicilerinin kaldırılması** (K31).
+- `LogAnalyzer.Api`'den **OIDC ve cookie işleyicilerinin kaldırılması** (K31).
 - Oturum yoksa korunan yollarda giriş yönlendirmesi.
 - **Tasarım temeli** (T28'in önkoşulu): renk, tipografi ölçeği, boşluk, köşe
 yarıçapı ve gölge jetonları; açık/koyu tema; ortak bileşenler (tablo, boş durum,
@@ -48,7 +48,7 @@ kendi düğmesini çizerse F2 sonunda toparlanmıyor.
 sınanıyor. Bu testin varlığı BFF deseninin tek kanıtı.
 - Süresi dolmuş erişim token'ı kullanıcıya hissettirilmeden yenileniyor.
 - Çıkış hem Next oturumunu hem Keycloak oturumunu sonlandırıyor.
-- `Bizigo.Api` artık cookie/OIDC işleyicisi taşımıyor; yalnızca JWT bearer.
+- `LogAnalyzer.Api` artık cookie/OIDC işleyicisi taşımıyor; yalnızca JWT bearer.
 - `ClaimMappingTests` sadeleşiyor ama **JWT tarafındaki**
 **`MapInboundClaims = false` kalıyor** — o olmadan roller görünmez oluyor (F1'de
 ölçüldü).

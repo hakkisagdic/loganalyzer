@@ -44,7 +44,7 @@ SELECT
 
     -- Ham OCSF değeri de taşınıyor: eşlemenin kaybettiği ayrıntıyı geri
     -- kazanmanın tek yolu bu (Critical ile High aynı ERROR bandına düşüyor).
-    severity_num                                         AS "bizigo.ocsf_severity_id",
+    severity_num                                         AS "loganalyzer.ocsf_severity_id",
 
     body                                                 AS Body,
 

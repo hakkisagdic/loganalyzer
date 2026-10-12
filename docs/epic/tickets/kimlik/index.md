@@ -19,7 +19,7 @@ kapısına gerçek kimlik bağlanıyor.
 
 ### İçinde
 
-1. **Keycloak realm-as-code** — `deploy/keycloak/realm-bizigo.json`, `--import-realm`
+1. **Keycloak realm-as-code** — `deploy/keycloak/realm-loganalyzer.json`, `--import-realm`
 ile yüklenir. İçinde: realm, roller (`reader/analyst/author/admin`), örnek gruplar,
 UI client'ı, collector servis hesabı, ve **claim mapper'ları**.
 Bu dosya olmadan grup claim eşlemesi herkesin makinesinde farklı davranır.
@@ -53,10 +53,10 @@ docker compose up sonrası Keycloak realm'i hazır geliyor, elle ayar yokUI'dan 
 
 | Parça | Nerede |
 | --- | --- |
-| Realm-as-code | `deploy/keycloak/realm-bizigo.json` — roller, gruplar, iki client, claim mapper'ları, geliştirme kullanıcıları |
-| Claim → kapsam | `src/Bizigo.ControlPlane/AccessScopeResolver.cs` (`GroupMapping` saf tip) |
-| Kimlik doğrulama | `src/Bizigo.Api/AuthenticationSetup.cs` — JWT Bearer + Cookie/OIDC |
-| BFF uçları | `src/Bizigo.Api/AuthEndpoints.cs` — `/auth/login`, `/auth/logout`, `/auth/me` |
+| Realm-as-code | `deploy/keycloak/realm-loganalyzer.json` — roller, gruplar, iki client, claim mapper'ları, geliştirme kullanıcıları |
+| Claim → kapsam | `src/LogAnalyzer.ControlPlane/AccessScopeResolver.cs` (`GroupMapping` saf tip) |
+| Kimlik doğrulama | `src/LogAnalyzer.Api/AuthenticationSetup.cs` — JWT Bearer + Cookie/OIDC |
+| BFF uçları | `src/LogAnalyzer.Api/AuthEndpoints.cs` — `/auth/login`, `/auth/logout`, `/auth/me` |
 | Collector kimliği | `deploy/otel/collector.yaml` `oauth2client` + compose ortam değişkenleri |
 
 **Üç tasarım noktası:**

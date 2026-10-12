@@ -86,7 +86,7 @@ backed up for ongoing admissions and conflict arbitration.
 
 To restore after WAL retention: migrate a fresh database, restore the verified
 objects and manifest directory into a new signal state directory, and run the
-production `Bizigo.Api --replay-signals` path with that directory and restored
+production `LogAnalyzer.Api --replay-signals` path with that directory and restored
 object store configured. No old processed directory or mutable current inventory
 is required to recover v2 ownership. Claims are recreated from verified bindings.
 Missing or inconsistent v2 owner metadata fails visibly. Do not edit a manifest
@@ -124,21 +124,21 @@ compiled fixture nor a resource-blocked run constitutes database PASS.
 Planner runs the live session with:
 
 ```sh
-python3 tools/telemetry-storage-smoke.py --serve --session-dir /tmp/bizigo-telemetry-session
+python3 tools/telemetry-storage-smoke.py --serve --session-dir /tmp/loganalyzer-telemetry-session
 ```
 
 After `session.json` exists, each verifier uses a new evidence directory:
 
 ```sh
-python3 tools/telemetry-storage-probe.py --session /tmp/bizigo-telemetry-session/session.json --evidence-dir /tmp/bizigo-telemetry-independent
+python3 tools/telemetry-storage-probe.py --session /tmp/loganalyzer-telemetry-session/session.json --evidence-dir /tmp/loganalyzer-telemetry-independent
 ```
 
-The session starts the real `Bizigo.Api` entry point, the shipped
+The session starts the real `LogAnalyzer.Api` entry point, the shipped
 `deploy/otel/collector.yaml`, and a loopback-only query adapter in
-`Bizigo.OtlpFixture`. Its server-owned fixture tokens define A, B, unassigned and
+`LogAnalyzer.OtlpFixture`. Its server-owned fixture tokens define A, B, unassigned and
 explicit admin scope; client filters cannot choose their access scope. Source
 writes call the production `SourcesEndpoints` handlers. Query calls use
-production `AddBizigoDataPlane` and `IScopedQuery`, including PostgreSQL audit.
+production `AddLogAnalyzerDataPlane` and `IScopedQuery`, including PostgreSQL audit.
 The fixture query routes are not shipped API endpoints.
 
 The probe sends its own source IDs, sender exports and scoped requests. It
@@ -153,7 +153,7 @@ ClickHouse database**, with an empty owner-claim registry and current inventory 
 Planner stops only this session's processes/containers/volumes:
 
 ```sh
-python3 tools/telemetry-storage-smoke.py --stop --session-dir /tmp/bizigo-telemetry-session
+python3 tools/telemetry-storage-smoke.py --stop --session-dir /tmp/loganalyzer-telemetry-session
 ```
 
 `cleanup.json` and `query-cleanup.json` record completion. Database mutation gates

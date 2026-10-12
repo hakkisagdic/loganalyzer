@@ -20,17 +20,17 @@ def m(name, changes, red, green, db=False):
     return runner.mutation(name, changes, red, green, "IntegrationTests" if db else "UnitTests")
 
 
-API = "src/Bizigo.Api/TelemetryReadEndpoints.cs"
-WIRE = "src/Bizigo.Api/TelemetryDtos.cs"
-READER = "src/Bizigo.Evidence/TelemetryEvidence.cs"
-REVIEW = "src/Bizigo.Api/EvidenceEndpoints.cs"
-CLOSE = "src/Bizigo.Api/AlertClosureEndpoints.cs"
+API = "src/LogAnalyzer.Api/TelemetryReadEndpoints.cs"
+WIRE = "src/LogAnalyzer.Api/TelemetryDtos.cs"
+READER = "src/LogAnalyzer.Evidence/TelemetryEvidence.cs"
+REVIEW = "src/LogAnalyzer.Api/EvidenceEndpoints.cs"
+CLOSE = "src/LogAnalyzer.Api/AlertClosureEndpoints.cs"
 POS = "Allowed_A_scalar_and_root_span_remain_visible"
 MUTANTS = [
-    *[m("N01" + letter + "-exempt-" + kind.lower(), [p("src/Bizigo.Evidence/EvidenceContract.cs",
+    *[m("N01" + letter + "-exempt-" + kind.lower(), [p("src/LogAnalyzer.Evidence/EvidenceContract.cs",
         "new HashSet<EvidenceKind>();", "new HashSet<EvidenceKind> { EvidenceKind." + kind + " };")],
         kind + "_is_not_exempt", "Log_remains_not_exempt") for letter, kind in (("a", "Metric"), ("b", "Trace"))],
-    *[m("N02" + letter + "-di-" + label, [p("src/Bizigo.Evidence/EvidenceServiceCollectionExtensions.cs",
+    *[m("N02" + letter + "-di-" + label, [p("src/LogAnalyzer.Evidence/EvidenceServiceCollectionExtensions.cs",
         "services.AddScoped<IEvidenceProvider, " + cls + ">();", "// removed provider registration")],
         "Production_di_" + label + "_required", "Production_di_" + other + "_required")
       for letter, label, cls, other in (("a", "metric_baseline", "MetricBaselineProvider", "metric_threshold"),
@@ -46,12 +46,12 @@ MUTANTS = [
         "if (signal == TelemetrySignal." + signal + ") scope = AccessScope.System(scope.Subject);\n        var rows = new List<TelemetryRecord>(); var seen = new HashSet<string>(StringComparer.Ordinal);")],
         kind + "_provider_historical_scope", "Allowed_A_provider_" + positive, True)
       for letter, signal, kind, positive in (("a", "Metrics", "Metric", "series"), ("b", "Traces", "Trace", "edge"))],
-    m("N05a-failed-empty", [p("src/Bizigo.Evidence/EvidenceCoverage.cs",
+    m("N05a-failed-empty", [p("src/LogAnalyzer.Evidence/EvidenceCoverage.cs",
         "var partial = slices.Length == 0", "slices = slices.Select(s => s.Status == EvidenceStatus.Failed ? s with { Status = EvidenceStatus.Empty } : s).ToArray();\n        var partial = slices.Length == 0")],
         "Kind_failed_is_not_empty", "Two_empty_providers_are_empty"),
-    m("N05b-unknown-zero", [p("src/Bizigo.Evidence/ExcludedInputRecords.cs", "public long? Total => Measured ? KnownSubtotal : null;", "public long? Total => Measured ? KnownSubtotal : 0;")],
+    m("N05b-unknown-zero", [p("src/LogAnalyzer.Evidence/ExcludedInputRecords.cs", "public long? Total => Measured ? KnownSubtotal : null;", "public long? Total => Measured ? KnownSubtotal : 0;")],
         "Outside_failed_count_is_null", "Outside_measured_zero_is_zero"),
-    m("N05c-double-count", [p("src/Bizigo.Evidence/EvidenceBundle.cs", "public long? OutOfScopeCount => ExcludedInputRecords.Total;",
+    m("N05c-double-count", [p("src/LogAnalyzer.Evidence/EvidenceBundle.cs", "public long? OutOfScopeCount => ExcludedInputRecords.Total;",
         "public long? OutOfScopeCount => Slices.Sum(s => s.OutOfScopeCount);")],
         "Four_production_providers_preserve_exact_decisions_and_distinct_outside_counts", "Outside_one_provider_count_three", True),
     m("N06a-bucket-loss", [p(WIRE, 'Array(point, "bucketCounts").Select(Integer).ToArray(), Array(point, "explicitBounds")',
@@ -61,16 +61,16 @@ MUTANTS = [
     m("N06c-link-loss", [p(WIRE,
         'Array(span, "links").Select(l => new TelemetrySpanLinkDto(Text(l, "traceId"), Text(l, "spanId"), Text(l, "traceState"), Integer(l, "flags"), Attributes(l), Integer(l, "droppedAttributesCount"))).ToArray(),',
         'System.Array.Empty<TelemetrySpanLinkDto>(),')], "Trace_link_observation_parity", "Trace_parent_edge_parity"),
-    m("N07a-exclusive-factor", [p("src/Bizigo.Evidence/MetricArithmetic.cs", "ratio.CompareTo(factor) >= 0", "ratio.CompareTo(factor) > 0"),
-        p("src/Bizigo.Evidence/MetricArithmetic.cs", "ratio.CompareTo(ExactMetricNumber.Integer(1) / factor) <= 0", "ratio.CompareTo(ExactMetricNumber.Integer(1) / factor) < 0")],
+    m("N07a-exclusive-factor", [p("src/LogAnalyzer.Evidence/MetricArithmetic.cs", "ratio.CompareTo(factor) >= 0", "ratio.CompareTo(factor) > 0"),
+        p("src/LogAnalyzer.Evidence/MetricArithmetic.cs", "ratio.CompareTo(ExactMetricNumber.Integer(1) / factor) <= 0", "ratio.CompareTo(ExactMetricNumber.Integer(1) / factor) < 0")],
         "Baseline_factor_inclusive_boundaries", "Five_samples_and_ratio_three_positive"),
-    m("N07b-minimum-one", [p("src/Bizigo.Evidence/MetricArithmetic.cs", "if (count < minimumSamples)", "if (count < 1)")],
+    m("N07b-minimum-one", [p("src/LogAnalyzer.Evidence/MetricArithmetic.cs", "if (count < minimumSamples)", "if (count < 1)")],
         "Each_window_requires_configured_sample_minimum", "Five_samples_and_ratio_three_positive"),
-    m("N07c-no-rule-finding", [p("src/Bizigo.Evidence/Providers/MetricProviders.cs",
+    m("N07c-no-rule-finding", [p("src/LogAnalyzer.Evidence/Providers/MetricProviders.cs",
         'if (rules.Length == 0) return MetricProviderOutput.Unavailable(Id, current.Status, "NoRule", "NoRule", policy.Value);',
         'if (rules.Length == 0) return MetricProviderOutput.Unavailable(Id, current.Status, "NoRule", "NoRule", policy.Value) with { Items = [new("invented", Id, Kind, window.From, 1, "invented", new Dictionary<string, string>())] };')],
         "No_rule_preserves_feed_and_reports_no_evaluation", "Matching_rule_finds_violation"),
-    m("N08a-old-null-measured", [p("src/Bizigo.Evidence/GoldenReviewStore.cs",
+    m("N08a-old-null-measured", [p("src/LogAnalyzer.Evidence/GoldenReviewStore.cs",
         "var measured = visible.Where(r => r.SchemaVersion >= GoldenReviewEntity.MissingEvidenceSchemaVersion\n            && r.MissingEvidenceKinds != null);", "var measured = visible;")],
         "Golden_missing_kind_fixed_denominator_through_both_routes", "Review_capture_nonempty_persists", True),
     m("N08b-review-null-empty", [p(REVIEW, "MissingEvidenceKinds: request.MissingEvidenceKinds)", "MissingEvidenceKinds: request.MissingEvidenceKinds ?? [])")],

@@ -1,4 +1,4 @@
-using Bizigo.Ingest.Wal;
+using LogAnalyzer.Ingest.Wal;
 
 // T63 · WAL okuyucu — öldürülmüş sürecin ardından diskte KAÇ çerçeve kaldığını
 // sayar.

@@ -51,7 +51,7 @@ if phase == "final":
     manifest = json.loads(Path(request["ManifestPath"]).read_text())
     identities = []
     for line in (root / "received").read_bytes().splitlines():
-        match = re.search(rb'bizigo_run_id="([^"]+)" bizigo_seq=(\d+)', line)
+        match = re.search(rb'loganalyzer_run_id="([^"]+)" loganalyzer_seq=(\d+)', line)
         if match:
             identities.append({"RunId": match[1].decode(), "Sequence": int(match[2]),
                                "Digest": hashlib.sha256(line).hexdigest()})

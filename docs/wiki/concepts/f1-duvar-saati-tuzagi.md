@@ -1,7 +1,7 @@
 ---
 title: Duvar saati ölçmek istediğin şeyi ölçmez
 category: concepts
-tags: [test, surec, kavram, bizigo]
+tags: [test, surec, kavram, loganalyzer]
 aliases: [matchTimeout, zaman aşımı tuzağı, kararsız test]
 relationships:
   - target: "[[concepts/sessiz-yanlis-davranis]]"

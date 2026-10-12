@@ -85,7 +85,7 @@ güçlü — varışı değil **dayanıklılığı** kanıtlıyor.
   paket yakalama kapatırdı. Kapatmak istenirse `SharpPcap` ile v2 mümkün ve
   bedeli açık: libpcap/npcap kurulumu ve ayrıcalık.
 - **Vendor-nötr değil.** Dış araç herhangi bir SIEM'i ölçüyor; bu düzenek
-  Bizigo'nun ham arşivini ve `events` tablosunu biliyor. Bu bir eksiklik değil
+  LogAnalyzer'nun ham arşivini ve `events` tablosunu biliyor. Bu bir eksiklik değil
   bir **kapsam kararı**: benchmark aracı satmıyoruz.
 - **TLS yok, ve bu bir bulgu.** Collector'da TLS syslog dinleyicisi bugün **hiç
   yok** (`5140/tcp`, `5141/udp`, `4318/OTLP`). Yani TLS altında kapasite

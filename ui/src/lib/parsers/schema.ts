@@ -25,7 +25,7 @@ export interface SchemaKey {
 
 /** Kök anahtarlar — `ParserYamlLoader.RootKeys`. */
 export const ROOT_KEYS: readonly SchemaKey[] = [
-  { name: "apiVersion", hint: "Sabit: bizigo.dev/v1" },
+  { name: "apiVersion", hint: "Sabit: loganalyzer.dev/v1" },
   { name: "kind", hint: "Sabit: Parser" },
   { name: "metadata", hint: "Kimlik, sürüm, vendor, ürün" },
   { name: "match", hint: "Dispatcher ön filtresi — performans için, ayırt edicilik için değil" },

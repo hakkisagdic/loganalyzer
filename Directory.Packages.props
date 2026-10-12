@@ -24,13 +24,13 @@
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
 
     <!--
-      M13 — stdio kimliği. `bizigo mcp serve` bir belirteci ORTAMDAN alıyor ve
+      M13 — stdio kimliği. `loganalyzer mcp serve` bir belirteci ORTAMDAN alıyor ve
       doğrulaması gerekiyor; `AddJwtBearer` KULLANILAMIYOR çünkü ASP.NET
-      paylaşılan çatısı `Bizigo.Cli`'ye inince `Program` çakışması doğuruyor
-      (ölçüldü, gerekçe `Bizigo.Mcp.csproj`'da yazılı).
+      paylaşılan çatısı `LogAnalyzer.Cli`'ye inince `Program` çakışması doğuruyor
+      (ölçüldü, gerekçe `LogAnalyzer.Mcp.csproj`'da yazılı).
 
       Sürüm 8.19.2 SEÇİLMEDİ, ÖLÇÜLDÜ: `Microsoft.AspNetCore.Authentication.JwtBearer`
-      10.0.11 zaten bu sürümü çözüyor (`Bizigo.Api/obj/project.assets.json`).
+      10.0.11 zaten bu sürümü çözüyor (`LogAnalyzer.Api/obj/project.assets.json`).
       Yani API'nin belirteci doğruladığı kütüphaneyle stdio'nun doğruladığı
       kütüphane AYNI sürüm — ayrı bir sürüm, iki yüzeyin aynı belirteç
       hakkında farklı karar vermesi demek olurdu.
@@ -68,11 +68,11 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
 
     <!--
-      `bizigo mcp serve` günlükleri STDERR'e yazıyor: stdio taşımasında stdout
+      `loganalyzer mcp serve` günlükleri STDERR'e yazıyor: stdio taşımasında stdout
       protokolün kendisi ve oraya düşen tek bir satır JSON-RPC akışını bozuyor.
-      Konsol sağlayıcısı ASP.NET paylaşılan çatısında geliyor ama `Bizigo.Cli`
+      Konsol sağlayıcısı ASP.NET paylaşılan çatısında geliyor ama `LogAnalyzer.Cli`
       bir konsol uygulaması ve o çatıyı BİLEREK taşımıyor
-      (bkz. `Bizigo.Mcp.csproj`), dolayısıyla paket olarak gerekiyor.
+      (bkz. `LogAnalyzer.Mcp.csproj`), dolayısıyla paket olarak gerekiyor.
     -->
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.11" />
   </ItemGroup>
@@ -91,7 +91,7 @@
 
     <!--
       Cihaz config toplama (T26). Ürünün cihazlara SSH ile bağlanan tek
-      bağımlılığı; hangi derlemenin cihaza soket açabildiği `Bizigo.Devices`
+      bağımlılığı; hangi derlemenin cihaza soket açabildiği `LogAnalyzer.Devices`
       proje sınırında duruyor.
     -->
     <PackageVersion Include="SSH.NET" Version="2026.0.0" />

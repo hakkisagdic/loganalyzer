@@ -113,7 +113,7 @@ gün hiçbir şey kırılmazdı.
 | Ölçüm | Sonuç |
 | --- | --- |
 | `dotnet build` | 0 hata, 0 uyarı |
-| `dotnet test tests/Bizigo.UnitTests` | **1120 geçti / 0 düştü / 4 atlandı** |
+| `dotnet test tests/LogAnalyzer.UnitTests` | **1120 geçti / 0 düştü / 4 atlandı** |
 | `ModelBoundaryTests` + `ModelProviderTests` | 33/33 |
 
 ### Kırmızı yanabildiği ölçüldü — sekiz kusur, hepsi geri alındı

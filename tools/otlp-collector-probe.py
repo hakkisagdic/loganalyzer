@@ -125,7 +125,7 @@ def main():
         assert hashlib.sha256(compressed).hexdigest() == manifest["object_sha256"]
         saved = output / (item["envelope_id"] + ".zst")
         saved.write_bytes(compressed)
-        decoded = subprocess.check_output([helpers.DOTNET, str(ROOT / "sim/Bizigo.OtlpFixture/bin/Release/net10.0/Bizigo.OtlpFixture.dll"),
+        decoded = subprocess.check_output([helpers.DOTNET, str(ROOT / "sim/LogAnalyzer.OtlpFixture/bin/Release/net10.0/LogAnalyzer.OtlpFixture.dll"),
             "--read-archive", str(saved), str(manifest["envelope_length"])], cwd=ROOT)
         envelope = json.loads(decoded)
         payload = base64.b64decode(envelope["payload"])
@@ -139,7 +139,7 @@ def main():
         (output / (item["envelope_id"] + "-envelope.json")).write_bytes(decoded)
     basic = base64.b64encode((session["ch_user"] + ":" + session["ch_password"]).encode()).decode()
     def logs_delivered():
-        sql = "SELECT count() FROM bizigo.events WHERE body LIKE '%" + nonce + "%'"
+        sql = "SELECT count() FROM loganalyzer.events WHERE body LIKE '%" + nonce + "%'"
         status, body, _ = http(session["clickhouse"], sql.encode(), {"Authorization": "Basic " + basic})
         return status == 200 and int(body) >= 2
     wait_for(logs_delivered)

@@ -5,7 +5,7 @@ title: "T34 — Kanıt sağlayıcı sözleşmesi: boşluğun dört cinsi"
 
 # T34 — Kanıt sağlayıcı sözleşmesi
 
-`Bizigo.Evidence` projesi, `t34-kanit-sozlesmesi` dalı. Beş kanıt türü tanımlı,
+`LogAnalyzer.Evidence` projesi, `t34-kanit-sozlesmesi` dalı. Beş kanıt türü tanımlı,
 ikisi uygulanıyor.
 
 Bu belgenin asıl konusu tek bir tasarım kararı: **boş sonuç tek bir şey değil.**

@@ -30,10 +30,10 @@ import sys
 
 from kirmizi_olcumu import Kusur, olc
 
-PACER = "sim/Bizigo.Capacity/TokenBucketPacer.cs"
-HUKUM = "sim/Bizigo.Capacity/GeneratorAttainment.cs"
-PROFIL = "sim/Bizigo.Capacity/PaceProfile.cs"
-MANIFEST = "sim/Bizigo.Capacity/CapacityRunManifest.cs"
+PACER = "sim/LogAnalyzer.Capacity/TokenBucketPacer.cs"
+HUKUM = "sim/LogAnalyzer.Capacity/GeneratorAttainment.cs"
+PROFIL = "sim/LogAnalyzer.Capacity/PaceProfile.cs"
+MANIFEST = "sim/LogAnalyzer.Capacity/CapacityRunManifest.cs"
 
 KUSURLAR = [
     Kusur(

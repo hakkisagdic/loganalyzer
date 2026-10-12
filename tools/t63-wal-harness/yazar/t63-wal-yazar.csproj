@@ -3,9 +3,9 @@
   <!--
     T63 ÖLÇÜM KONAĞI — ürün kodu değil.
 
-    `Bizigo.sln`de KAYITLI DEĞİL, yani `dotnet build` kökte bunu derlemiyor ve
+    `LogAnalyzer.sln`de KAYITLI DEĞİL, yani `dotnet build` kökte bunu derlemiyor ve
     ana derlemeye bedeli yok. Ama depo İÇİNDE olmak zorunda: dışına kurulan bir
-    proje `Bizigo.Ingest`e referans verdiğinde onun kendi göreli
+    proje `LogAnalyzer.Ingest`e referans verdiğinde onun kendi göreli
     ProjectReference'ları yanlış çözülüyor ve MSB3202 ile düşüyor (ölçüldü).
   -->
 
@@ -22,7 +22,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../../src/Bizigo.Ingest/Bizigo.Ingest.csproj" />
+    <ProjectReference Include="../../../src/LogAnalyzer.Ingest/LogAnalyzer.Ingest.csproj" />
   </ItemGroup>
 
 </Project>

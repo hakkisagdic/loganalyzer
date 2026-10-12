@@ -31,7 +31,7 @@ KUSURLAR = [
         # indiriyor — "muafiyet yok" ile "muafiyet var, gerekçesi yazılmamış".
         # `AuditFields()` tam bunu yapıyor ve ORADA doğru; telde yanlış.
         ad="tel gerekçeyi boş dizeye çeviriyor",
-        dosya="src/Bizigo.Api/RcaRunEndpoints.cs",
+        dosya="src/LogAnalyzer.Api/RcaRunEndpoints.cs",
         bul="            run.ModelBoundaryOverrideReason,",
         koy="            run.ModelBoundaryOverrideReason ?? string.Empty,",
         kirmizi_bekleniyor=[
@@ -65,7 +65,7 @@ KUSURLAR = [
         # etkisiz" değil "ölçüm hiç yapılmadı" anlamına da geliyor — burada
         # ölçümü yalancı yapan şey ölçüm aracı değil BEKÇİNİN FIXTURE'IYDI.
         ad="sınır hâli telden düşüyor",
-        dosya="src/Bizigo.Api/RcaRunEndpoints.cs",
+        dosya="src/LogAnalyzer.Api/RcaRunEndpoints.cs",
         bul="            run.ModelBoundary.ToString().ToLowerInvariant(),",
         koy='            "verified",',
         kirmizi_bekleniyor=[
@@ -78,7 +78,7 @@ KUSURLAR = [
         # YAZMA yolu: damga kurulabiliyor, tel taşıyabiliyor, ama arada satıra
         # yazan satır yoksa kayıt boş kalıyor ve hiçbir şey kırmızı yanmıyor.
         ad="damga satıra hiç yazılmıyor",
-        dosya="src/Bizigo.Rca/RcaAdmission.cs",
+        dosya="src/LogAnalyzer.Rca/RcaAdmission.cs",
         bul="        run.ModelBoundaryOverrideReason = stamp.Reason;",
         koy="        // KIRMIZI: gerekçe satıra yazılmıyor",
         kirmizi_bekleniyor=["TryStart_damgayi_satira_yaziyor"],
@@ -92,7 +92,7 @@ KUSURLAR = [
         # davranış testi değil, tipin şeklini ölçen kapı — çünkü iddia da tipin
         # şekli hakkında.
         ad="damga tipine public yapıcı açılıyor",
-        dosya="src/Bizigo.Rca/RcaModelBoundaryStamp.cs",
+        dosya="src/LogAnalyzer.Rca/RcaModelBoundaryStamp.cs",
         bul="    private RcaModelBoundaryStamp(RcaModelBoundary boundary, string? reason)",
         koy="    public RcaModelBoundaryStamp(RcaModelBoundary boundary, string? reason)",
         kirmizi_bekleniyor=["Damganin_gecersiz_hali_tip_duzeyinde_ulasilamaz"],
@@ -109,7 +109,7 @@ KUSURLAR = [
         # olması gerekiyordu; ilk tasarımda `derleme_kirilmali=True` yazılmıştı
         # ve o hâlde ölçüm hiçbir şey ölçmeyecekti.
         ad="damga parametresi isteğe bağlı hâle geliyor",
-        dosya="src/Bizigo.Rca/RcaAdmission.cs",
+        dosya="src/LogAnalyzer.Rca/RcaAdmission.cs",
         bul="        RcaModelBoundaryStamp stamp,",
         koy="        RcaModelBoundaryStamp? stamp = null,",
         kirmizi_bekleniyor=["Damganin_gecersiz_hali_tip_duzeyinde_ulasilamaz"],

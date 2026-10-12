@@ -1,5 +1,5 @@
 {
-  "name": "bizigo-ui",
+  "name": "loganalyzer-ui",
   "version": "0.1.0",
   "engines": {
     "node": ">=22.6.0"

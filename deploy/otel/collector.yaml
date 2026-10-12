@@ -14,7 +14,7 @@ extensions:
   # Servis hesabının rolü YALNIZCA `ingest`: kimlik sızarsa veri yazılabilir,
   # OKUNAMAZ. Rol ayrımının tek sebebi bu.
   oauth2client:
-    client_id: bizigo-collector
+    client_id: loganalyzer-collector
     client_secret: ${env:COLLECTOR_CLIENT_SECRET}
     token_url: ${env:KEYCLOAK_TOKEN_URL}
     tls:
@@ -56,8 +56,8 @@ receivers:
     # Taşımayı ve tel kodlamasını tahmin etmek yerine söylüyoruz: semconv sürümle
     # değişiyor, bu öznitelikler bizim sözleşmemiz.
     attributes:
-      bizigo.transport: syslog-tcp
-      bizigo.wire_encoding: iso-8859-1
+      loganalyzer.transport: syslog-tcp
+      loganalyzer.wire_encoding: iso-8859-1
 
   syslog/udp:
     udp:
@@ -66,8 +66,8 @@ receivers:
       add_attributes: true
     protocol: none
     attributes:
-      bizigo.transport: syslog-udp
-      bizigo.wire_encoding: iso-8859-1
+      loganalyzer.transport: syslog-udp
+      loganalyzer.wire_encoding: iso-8859-1
 
   otlp:
     protocols:
@@ -86,8 +86,8 @@ processors:
     spike_limit_percentage: 15
 
 exporters:
-  otlp_http/bizigo:
-    endpoint: ${env:BIZIGO_ENDPOINT}
+  otlp_http/loganalyzer:
+    endpoint: ${env:LOGANALYZER_ENDPOINT}
     encoding: proto
     auth:
       authenticator: oauth2client
@@ -113,15 +113,15 @@ service:
     logs:
       receivers: [syslog/tcp, syslog/udp, otlp]
       processors: [memory_limiter, batch]
-      exporters: [otlp_http/bizigo]
+      exporters: [otlp_http/loganalyzer]
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [otlp_http/bizigo]
+      exporters: [otlp_http/loganalyzer]
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [otlp_http/bizigo]
+      exporters: [otlp_http/loganalyzer]
   telemetry:
     logs:
       level: warn

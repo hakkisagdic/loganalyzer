@@ -412,9 +412,9 @@ def _main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(description="Kapı 3: altın örneklere karşı doğru sonuç.")
     parser.add_argument("--clickhouse-url", default="http://localhost:8123")
-    parser.add_argument("--user", "--clickhouse-user", dest="user", default="bizigo")
-    parser.add_argument("--password", "--clickhouse-password", dest="password", default="bizigo")
-    parser.add_argument("--database", "--clickhouse-database", dest="database", default="bizigo")
+    parser.add_argument("--user", "--clickhouse-user", dest="user", default="loganalyzer")
+    parser.add_argument("--password", "--clickhouse-password", dest="password", default="loganalyzer")
+    parser.add_argument("--database", "--clickhouse-database", dest="database", default="loganalyzer")
     parser.add_argument("--output", type=Path, default=None)
     parser.add_argument("--expectations", type=Path, default=None)
     parser.add_argument(

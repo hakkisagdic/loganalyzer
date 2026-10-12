@@ -23,7 +23,7 @@ import styles from "./events.module.css";
  * </p>
  */
 
-export const STORAGE_KEY = "bizigo.saved-searches";
+export const STORAGE_KEY = "loganalyzer.saved-searches";
 
 export interface SavedSearch {
   readonly name: string;

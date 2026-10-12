@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# OpenAPI belgesini `Bizigo.Api`'den üretir ve TypeScript tiplerine çevirir.
+# OpenAPI belgesini `LogAnalyzer.Api`'den üretir ve TypeScript tiplerine çevirir.
 #
 # İki kip:
 #   ./generate-api-types.sh          → depodaki dosyaları günceller
@@ -18,7 +18,7 @@ set -euo pipefail
 ui_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 repo_root="$(cd "${ui_dir}/.." && pwd)"
 
-document="${ui_dir}/openapi/bizigo-api.json"
+document="${ui_dir}/openapi/loganalyzer-api.json"
 types="${ui_dir}/src/lib/api/schema.d.ts"
 
 check_mode=0
@@ -36,7 +36,7 @@ fi
 if [[ ${check_mode} -eq 1 ]]; then
   work="$(mktemp -d)"
   trap 'rm -rf "${work}"' EXIT
-  out_document="${work}/bizigo-api.json"
+  out_document="${work}/loganalyzer-api.json"
   out_types="${work}/schema.d.ts"
 else
   mkdir -p "$(dirname "${document}")" "$(dirname "${types}")"
@@ -44,15 +44,15 @@ else
   out_types="${types}"
 fi
 
-echo "→ OpenAPI belgesi üretiliyor (Bizigo.Api)"
+echo "→ OpenAPI belgesi üretiliyor (LogAnalyzer.Api)"
 # Üretim adımı artımlı: derleme çıktısı değişmediyse MSBuild onu atlıyor ve
 # hiçbir dosya yazılmıyor. Kapı için bu ölümcül — hedef dizin değişse bile
 # "zaten güncel" deyip geçerdi. Önbelleği silerek her koşumda üretmeye
 # zorluyoruz.
-rm -f "${repo_root}/src/Bizigo.Api/obj/Bizigo.Api.OpenApiFiles.cache"
+rm -f "${repo_root}/src/LogAnalyzer.Api/obj/LogAnalyzer.Api.OpenApiFiles.cache"
 # Belge üretimi uygulamayı gerçekten çalıştırıyor; Program.cs bunu giriş
 # derlemesinin adından anlayıp veritabanı göçlerini atlıyor.
-dotnet build "${repo_root}/src/Bizigo.Api" \
+dotnet build "${repo_root}/src/LogAnalyzer.Api" \
   --configuration Release \
   -p:OpenApiGenerateDocuments=true \
   -p:OpenApiDocumentsDirectory="$(dirname "${out_document}")" \
@@ -63,13 +63,13 @@ echo "→ TypeScript tipleri üretiliyor"
 npx --yes openapi-typescript "${out_document}" --output "${out_types}"
 
 if [[ ${check_mode} -eq 0 ]]; then
-  echo "✓ ui/openapi/bizigo-api.json ve ui/src/lib/api/schema.d.ts güncellendi."
+  echo "✓ ui/openapi/loganalyzer-api.json ve ui/src/lib/api/schema.d.ts güncellendi."
   exit 0
 fi
 
 failed=0
 
-if ! diff -u "${document}" "${out_document}" --label "depo/openapi/bizigo-api.json" --label "üretilen"; then
+if ! diff -u "${document}" "${out_document}" --label "depo/openapi/loganalyzer-api.json" --label "üretilen"; then
   failed=1
 fi
 

@@ -1,7 +1,7 @@
 ---
 title: Sessizlik alarmı — verinin yokluğunu ölçmek
 category: concepts
-tags: [log-analiz, mimari, kavram, bizigo]
+tags: [log-analiz, mimari, kavram, loganalyzer]
 aliases: [K32, susan cihaz, silence alarm]
 relationships:
   - target: "[[concepts/f2-kapsam-tek-kapi]]"

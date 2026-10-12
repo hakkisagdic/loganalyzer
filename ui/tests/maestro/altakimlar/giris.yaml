@@ -10,7 +10,7 @@
 # sinifinin tam ortasini atlar — kapsamin gercekten uygulandigini hicbir sey
 # gostermez. `analyst.core` `/network/core` claim'iyle geliyor ve gordugu her
 # satir ayni zamanda kapsam yolunun kaniti.
-appId: bizigo
+appId: loganalyzer
 ---
 # SECICILER METIN TABANLI, `id:` DEGIL — olculdu: Keycloak sayfasinda
 # `id="kc-login"` HTML'de duruyor ama Maestro'nun web surucusu onu bulmuyor
@@ -33,5 +33,5 @@ appId: bizigo
 
 # Giris sonrasi urune donus. Kabuk cizildiginde oturum gercekten kurulmustur.
 - extendedWaitUntil:
-    visible: "Bizigo Log Analyzer"
+    visible: "LogAnalyzer Log Analyzer"
     timeout: 90000

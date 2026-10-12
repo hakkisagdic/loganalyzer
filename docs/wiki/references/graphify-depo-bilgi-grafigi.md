@@ -1,12 +1,12 @@
 ---
 title: Graphify — depo bilgi grafiği
 category: references
-tags: [arac, mimari, kaynak-ozeti, bizigo]
+tags: [arac, mimari, kaynak-ozeti, loganalyzer]
 aliases: [graphify]
 relationships:
   - target: "[[skills/paralel-ajan-koordinasyonu]]"
     type: uses
-  - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
+  - target: "[[projects/loganalyzer-loganalyzer/loganalyzer-loganalyzer]]"
     type: related_to
 sources: [docs/graphify.md, CLAUDE.md, README.md]
 source_digest: "sha256-12/v1 CLAUDE.md=3927d9fc6d4a README.md=8c53a176a7e5 docs/graphify.md=5cc01d2e969c"

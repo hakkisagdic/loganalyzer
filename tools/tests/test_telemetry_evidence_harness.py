@@ -29,13 +29,13 @@ class EvidenceHarnessTests(unittest.TestCase):
         original = ["docker", "compose", "-p", "owned", "-f", "deploy/docker-compose.yml"]
         image_id = "sha256:" + "a" * 64
         info = {"Id": image_id, "Architecture": "arm64", "Os": "linux", "Config": {"Labels": {
-            "bizigo.fixture": "keycloak-s04", "bizigo.fixture.base": "quay.io/keycloak/keycloak:26.7.1"}}}
+            "loganalyzer.fixture": "keycloak-s04", "loganalyzer.fixture.base": "quay.io/keycloak/keycloak:26.7.1"}}}
         with tempfile.TemporaryDirectory() as folder, patch.dict(owner.os.environ, {}, clear=True), \
              patch.object(owner.subprocess, "check_output", return_value=json.dumps(info)) as inspect:
             extension = owner.EvidenceSession()
             self.assertEqual(extension.configure_compose(original, Path(folder)), original)
             inspect.assert_not_called()
-            with patch.dict(owner.os.environ, {"BIZIGO_TEST_KEYCLOAK_IMAGE": "bizigo-test/keycloak-s04:26.7.1"}):
+            with patch.dict(owner.os.environ, {"LOGANALYZER_TEST_KEYCLOAK_IMAGE": "loganalyzer-test/keycloak-s04:26.7.1"}):
                 command = extension.configure_compose(original, Path(folder))
             self.assertEqual(command[:-2], original)
             service = json.loads(Path(command[-1]).read_text())["services"]["keycloak"]
@@ -45,7 +45,7 @@ class EvidenceHarnessTests(unittest.TestCase):
 
     def test_optimized_override_rejects_unowned_image_without_docker(self):
         with tempfile.TemporaryDirectory() as folder, \
-             patch.dict(owner.os.environ, {"BIZIGO_TEST_KEYCLOAK_IMAGE": "quay.io/keycloak/keycloak:26.7.1"}), \
+             patch.dict(owner.os.environ, {"LOGANALYZER_TEST_KEYCLOAK_IMAGE": "quay.io/keycloak/keycloak:26.7.1"}), \
              patch.object(owner.subprocess, "check_output") as inspect:
             with self.assertRaises(ValueError): owner.EvidenceSession().configure_compose([], Path(folder))
             inspect.assert_not_called()
@@ -57,7 +57,7 @@ class EvidenceHarnessTests(unittest.TestCase):
         role = {"id": str(uuid.uuid4()), "name": "analyst"}
 
         def respond(request, **kwargs):
-            path = request.full_url.split("/admin/realms/bizigo", 1)[1]
+            path = request.full_url.split("/admin/realms/loganalyzer", 1)[1]
             method = request.get_method(); headers = {}; status = 200; payload = None
             if path == "/users?username=analyst.core&exact=true": payload = [{"id": core_id}]
             elif path == "/users/" + core_id + "/groups": payload = [{"id": group_id, "path": "/network/core"}]

@@ -17,7 +17,7 @@ import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-OWNED_PREFIXES = ("bizigo/", "bizigo-test/")
+OWNED_PREFIXES = ("loganalyzer/", "loganalyzer-test/")
 DIGEST_REGEX = re.compile(r"^[a-zA-Z0-9_\-\./]+@sha256:[a-fA-F0-9]{64}$")
 TAG_ONLY_REGEX = re.compile(r"^[a-zA-Z0-9_\-\./]+:[a-zA-Z0-9_\-\.]+$")
 
@@ -25,7 +25,7 @@ TAG_ONLY_REGEX = re.compile(r"^[a-zA-Z0-9_\-\./]+:[a-zA-Z0-9_\-\.]+$")
 def is_owned_image(image_name: str) -> bool:
     if not image_name:
         return False
-    return any(image_name.startswith(p) for p in OWNED_PREFIXES) or "bizigo" in image_name.split(":")[0].split("@")[0]
+    return any(image_name.startswith(p) for p in OWNED_PREFIXES) or "loganalyzer" in image_name.split(":")[0].split("@")[0]
 
 
 def parse_compose_images(compose_path: Path) -> dict:
@@ -155,9 +155,9 @@ def main():
 
     if args.test_mutations:
         sample_images = {
-            "api": "bizigo/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-            "ui": "bizigo/ui@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            "sidecar": "bizigo/sidecar@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            "api": "loganalyzer/api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "ui": "loganalyzer/ui@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "sidecar": "loganalyzer/sidecar@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
         }
         sample_manifest = {
             "api": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

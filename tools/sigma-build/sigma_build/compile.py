@@ -176,7 +176,7 @@ def current_header() -> RunHeader:
         # Sürüm etiketi kaynağın özetinden türüyor. Elle tutulan bir etiket,
         # pipeline değişip etiket değişmediğinde 269 dosyayı aynı ad altında
         # yeniden anlamlandırırdı (§4).
-        pipeline_version = f"bizigo-events-ocsf/{digest[:12]}"
+        pipeline_version = f"loganalyzer-events-ocsf/{digest[:12]}"
 
     pin = load_pin(root / CATALOG_DIR)
     pinned = _pinned_versions()
@@ -282,7 +282,7 @@ def collect_outcomes() -> list[RuleOutcome]:
 
     _assert_environment_matches_pin()
     pipeline = _load_pipeline()
-    backend = pipeline.bizigo_backend(mappings_path=repo_root() / MAPPINGS_DIR)
+    backend = pipeline.loganalyzer_backend(mappings_path=repo_root() / MAPPINGS_DIR)
 
     from sigma.collection import SigmaCollection  # noqa: PLC0415
 

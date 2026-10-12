@@ -96,7 +96,7 @@ async function signIn(): Promise<{ cookie: string; responses: string[] }> {
   responses.push(await serializeResponse(callbackResponse));
 
   return {
-    cookie: `bizigo.sid=${callbackResponse.cookies.get("bizigo.sid")!.value}`,
+    cookie: `loganalyzer.sid=${callbackResponse.cookies.get("loganalyzer.sid")!.value}`,
     responses,
   };
 }
@@ -119,7 +119,7 @@ describe("Redis deposuyla da token tarayıcıya ulaşmıyor", () => {
     rememberPending(state);
 
     const response = await callback(nextRequest(`/signin-oidc?code=kod-123&state=${state}`));
-    const cookie = response.cookies.get("bizigo.sid")!;
+    const cookie = response.cookies.get("loganalyzer.sid")!;
 
     expect(cookie.value).not.toContain(ACCESS_TOKEN);
     expect(cookie.value).not.toContain(".");

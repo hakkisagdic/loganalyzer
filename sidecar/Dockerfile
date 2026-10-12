@@ -36,8 +36,8 @@ WORKDIR /app
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    BIZIGO_MASKS_PATH=/app/masks/bizigo-masks.yaml \
-    BIZIGO_MAPPINGS_PATH=/app/mappings
+    LOGANALYZER_MASKS_PATH=/app/masks/loganalyzer-masks.yaml \
+    LOGANALYZER_MAPPINGS_PATH=/app/mappings
 
 COPY --from=builder /opt/venv /opt/venv
 

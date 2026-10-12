@@ -28,7 +28,7 @@ geçici çözümler kaldırıldı.
 | 5 | `map` dallanamıyor | 4 vendor → 8 parser | Ertelendi (F2) — `extends:` iş kalemi |
 | 6 | `expect` "alan yok" diyemiyor | Negatif alan testi yazılamıyor | Ertelendi (F2) |
 | 7 | `convert` "hiç alan yok"u başarısızlık sayıyor | Doğru ayrışmış satır düşüyor | ✅ **Kapandı** — alan yoksa adım başarılı |
-| 8 | Üst pattern setinde ReDoS + yaygın lookaround | Doğrusal motor pratikte devrede değil | Ayrı iş kalemi: lookaround'suz `bizigo-v1` temel seti |
+| 8 | Üst pattern setinde ReDoS + yaygın lookaround | Doğrusal motor pratikte devrede değil | Ayrı iş kalemi: lookaround'suz `loganalyzer-v1` temel seti |
 | 9 | `severity_num` tek kolon, iki ölçek | OCSF ve OTel görünümleri çelişiyor | ✅ **Kapandı** — `db/clickhouse/0004` ölçek çevrimi |
 | 10 | `matchTimeout` duvar saati ölçüyor | Yük altında doğrusal pattern bile düşüyor, satır sessizce `failed` | **Yeni** — aşağıda |
 
@@ -195,7 +195,7 @@ adım başarılıdır), ya da `require: any | all` seçeneği eklensin.
 
 ## 8. Üst pattern setinin durumu
 
-İki ayrı bulgu, ikisi de `bizigo parser lint` sayesinde görüldü.
+İki ayrı bulgu, ikisi de `loganalyzer parser lint` sayesinde görüldü.
 
 **8a — ReDoS.** Logstash `firewalls` setindeki `CISCO_REASON` son alternatifi
 `(?:%{WORD}\s*)*` yazıyor: iç içe sınırsız niceleyici, `(a+)+` ailesi. Linter
@@ -218,7 +218,7 @@ girmiyor; fiili savunma 50 ms `matchTimeout` + karantina.
 
 **Öneri:** karar yanlış değil ama gerekçesi güncellenmeli. Ek olarak
 düşünülebilir: lookaround'suz `IPV4`/`TIME` varyantları içeren kendi temel
-setimiz (`bizigo-v1`), doğrusal motorun gerçekten kullanılabildiği bir taban
+setimiz (`loganalyzer-v1`), doğrusal motorun gerçekten kullanılabildiği bir taban
 sağlar.
 
 ## 9. `severity_num` tek kolon, iki ölçek
@@ -279,7 +279,7 @@ gibi) ya da en azından satırı `failed` yerine `partial` + etiketle işaretle;
 baksın; yük altında oran bozulmaz, bozuk pattern'de bozulur.
 - `NonBacktracking` ile derlenen pattern'lerde zaman aşımına hiç gerek yok —
 doğrusal zaman garantisi zaten var. `CompiledGrok.IsLinearTime` doğruysa
-`Regex.InfiniteMatchTimeout` kullanılabilir; bu, madde 8'deki `bizigo-v1`
+`Regex.InfiniteMatchTimeout` kullanılabilir; bu, madde 8'deki `loganalyzer-v1`
 temel setinin değerini de artırır (lookaround'suz set = timeout'suz set).
 
 ## Motorun iyi çalıştığı yerler

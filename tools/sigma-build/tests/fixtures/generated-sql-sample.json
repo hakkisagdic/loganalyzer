@@ -2,7 +2,7 @@
   "_comment": "ÜRETİLMİŞ ÖRNEKLEM — T30 prototipinin 24 kuralı, prototip pipeline'ı ve pySigma 1.5.0 + pysigma-backend-clickhouse 1.1.1 ile derlendi. Kapı 1 testleri bu SQL'lere karşı koşuyor: gerçek backend çıktısı, ama test anında pySigma gerektirmiyor. Prototip atılabilir olduğu için çıktı buraya donduruldu; T31'in kalıcı pipeline'ı geldiğinde yenilenir.",
   "pysigma": "1.5.0",
   "backend": "pysigma-backend-clickhouse 1.1.1",
-  "pipeline": "prototypes/t30-sigma/bizigo_pipeline.py",
+  "pipeline": "prototypes/t30-sigma/loganalyzer_pipeline.py",
   "rules": [
     {
       "rule_file": "asa_acl_hit.yml",

@@ -16,7 +16,7 @@ yazılacak ve K35 kararı ona göre teyit edilecek.
 ## 1 · Sözleşme — değiştirilirse geçmiş eşleşmez
 
 `events.signature_hash` **maskelenmiş metnin kimliğidir**. Tanım tek yerde:
-`Bizigo.Parsing.Grok.SignatureHash.Of`.
+`LogAnalyzer.Parsing.Grok.SignatureHash.Of`.
 
 | Soru | Karar | Bunu değiştirmenin bedeli |
 | --- | --- | --- |
@@ -105,7 +105,7 @@ karşılaştırmaktı, ki F1'in dersi tam olarak onun geçersiz olduğunu söyl�
 
 ```bash
 export DOTNET_ROOT="$HOME/.dotnet"; export PATH="$HOME/.dotnet:$PATH"
-BIZIGO_HOTPATH_BENCH=1 dotnet test tests/Bizigo.UnitTests -c Release \
+LOGANALYZER_HOTPATH_BENCH=1 dotnet test tests/LogAnalyzer.UnitTests -c Release \
   --filter FullyQualifiedName~HotPathCostMeasurement \
   -l "console;verbosity=detailed"
 ```

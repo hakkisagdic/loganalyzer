@@ -25,7 +25,7 @@ from pathlib import Path
 KOK = Path(__file__).resolve().parent.parent
 YEDEK = KOK / ".m16-olcum-yedek"
 
-RAPOR = "src/Bizigo.Cli/RcaQuotaCommandHandlers.cs"
+RAPOR = "src/LogAnalyzer.Cli/RcaQuotaCommandHandlers.cs"
 
 
 @dataclass
@@ -169,7 +169,7 @@ def test_kos(filtre: str) -> int:
     `Failed:`) ve ayıklama düştüğünde sessizce sıfır üretirdi.
     """
     return kos([
-        "dotnet", "test", "tests/Bizigo.UnitTests", "--no-build", "--nologo", "--filter", filtre,
+        "dotnet", "test", "tests/LogAnalyzer.UnitTests", "--no-build", "--nologo", "--filter", filtre,
     ]).returncode
 
 

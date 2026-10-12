@@ -1,12 +1,12 @@
 ---
 title: Paralel ajan koordinasyonu
 category: skills
-tags: [surec, test, yordam, bizigo]
+tags: [surec, test, yordam, loganalyzer]
 aliases: [koordinatör protokolü, worktree düzeni]
 relationships:
   - target: "[[concepts/sessiz-yanlis-davranis]]"
     type: uses
-  - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
+  - target: "[[projects/loganalyzer-loganalyzer/loganalyzer-loganalyzer]]"
     type: related_to
 sources: [CLAUDE.md, README.md]
 source_digest: "sha256-12/v1 CLAUDE.md=3927d9fc6d4a README.md=8c53a176a7e5"
@@ -93,7 +93,7 @@ sınıfının rapor katmanındaki karşılığı. ^[inferred]
 **Önce yapısal değişiklik, sonra satır düzeyindekiler.** Bir ajan bir dosyayı
 yeniden yazdıysa onun dalı önce girer; tersi olursa aynı iş iki kez yapılır.
 
-**Üretilen dosyalar elle birleştirilmez.** `ui/openapi/bizigo-api.json` ve
+**Üretilen dosyalar elle birleştirilmez.** `ui/openapi/loganalyzer-api.json` ve
 `ui/src/lib/api/schema.d.ts` çakışırsa herhangi bir taraf alınır, sonra
 `npm run api:generate` ile kaynaktan yeniden üretilir.
 

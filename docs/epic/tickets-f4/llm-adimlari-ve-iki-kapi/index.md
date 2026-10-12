@@ -221,7 +221,7 @@ kusur enjeksiyonundan sonra "geri aldım" demek yetmiyor — geri almanın
 ### Bulunan bir vakum: bekçi boş küme üzerinde yeşil yanıyordu
 
 `RcaReportStatusGuardTests.Rca_belge_varliklari_statu_benzeri_kolon_tasimiyor`
-(T46) `RcaReport` ile başlayan tipleri `Bizigo.ControlPlane`'de arıyordu.
+(T46) `RcaReport` ile başlayan tipleri `LogAnalyzer.ControlPlane`'de arıyordu.
 **O derlemede öyle bir tip yoktu** — döngü boş küme üzerinde dönüyor, hiçbir
 iddia koşmuyor, test yeşil yanıyordu.
 
@@ -306,7 +306,7 @@ kırmızı yanıyor — artık gerçekten (§4).
 - **Prompt'un gerçekten işe yaradığı ölçülmedi.** Şekil tarifi ve kural
   cümleleri seçildi, sınanmadı; hangi düzeyin (`summary`/`masked`/`raw`) daha az
   cümle attırdığı T47'nin ölçümü.
-- **`AddBizigoScenarioPlugins` üretim grafiğine bağlanmadı** — aşağıda.
+- **`AddLogAnalyzerScenarioPlugins` üretim grafiğine bağlanmadı** — aşağıda.
 - **Entegrasyon testi yazılmadı.** Bu ticket'ın hiçbir kapısı konteyner
   istemiyor; birim paketinde tamamı ölçülüyor.
 
@@ -314,9 +314,9 @@ kırmızı yanıyor — artık gerçekten (§4).
 
 ## 9 · Tereddütler ve kesişmeler
 
-1. **`AddBizigoScenarioPlugins` `Program.cs`'te hiç çağrılmıyor.** T43'ten beri
-   yazılı ama `Bizigo.ScenarioPlugin` kompozisyon kökünün geçişli kapanışında
-   değildi; T44'ün `Bizigo.Rca → Bizigo.ScenarioPlugin` referansı onu kapanışa
+1. **`AddLogAnalyzerScenarioPlugins` `Program.cs`'te hiç çağrılmıyor.** T43'ten beri
+   yazılı ama `LogAnalyzer.ScenarioPlugin` kompozisyon kökünün geçişli kapanışında
+   değildi; T44'ün `LogAnalyzer.Rca → LogAnalyzer.ScenarioPlugin` referansı onu kapanışa
    soktu ve `ArchitectureTests`'in keşfi bir fazla bularak kırmızı yandı.
 
    Yani **senaryo kataloğu üretim DI grafiğine bağlı değil.** Bekçiyi ömür
@@ -324,7 +324,7 @@ kırmızı yanıyor — artık gerçekten (§4).
    kolunun işi. Listedeki satır okuyana "bağlanmış" gibi görünme riski taşıyor,
    o yüzden yorumda da yazılı.
 
-2. **`Bizigo.Rca.csproj`'a bir proje referansı eklendi** ve o proje T45/T46'nın
+2. **`LogAnalyzer.Rca.csproj`'a bir proje referansı eklendi** ve o proje T45/T46'nın
    alanı. Dosyanın şekli değişmedi, tek satır eklendi; koordinatöre bildirildi.
 
 3. **Cümle bölme noktalama tabanlı.** Kısaltma ve ondalık sayı yanlış

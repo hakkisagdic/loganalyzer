@@ -1,7 +1,7 @@
 ---
 title: Boşluk tek cins değildir
 category: concepts
-tags: [test, mimari, kavram, bizigo]
+tags: [test, mimari, kavram, loganalyzer]
 aliases: [yokluğun cinsleri, boş sonuç ayrımı, NeverFed]
 relationships:
   - target: "[[concepts/sessiz-yanlis-davranis]]"

@@ -57,7 +57,7 @@ def verify_raw(session, output, nonce):
         compressed = old.s3_get(session["s3"], manifest["object_key"])
         assert hashlib.sha256(compressed).hexdigest() == manifest["object_sha256"]
         archive = output / (item["envelope_id"] + ".zst"); archive.write_bytes(compressed)
-        decoded = subprocess.check_output([old.helpers.DOTNET, str(ROOT / "sim/Bizigo.OtlpFixture/bin/Release/net10.0/Bizigo.OtlpFixture.dll"),
+        decoded = subprocess.check_output([old.helpers.DOTNET, str(ROOT / "sim/LogAnalyzer.OtlpFixture/bin/Release/net10.0/LogAnalyzer.OtlpFixture.dll"),
             "--read-archive", str(archive), str(manifest["envelope_length"])], cwd=ROOT)
         envelope = json.loads(decoded); payload = base64.b64decode(envelope["payload"])
         sha = hashlib.sha256(payload).hexdigest()
@@ -152,7 +152,7 @@ def main():
                                   "baseline_ratio": "2", "threshold": "20", "minimum_samples": 5})
 
     def resource(owner):
-        return {"attributes": [{"key": "bizigo.source_key", "value": {"stringValue": names[owner]}},
+        return {"attributes": [{"key": "loganalyzer.source_key", "value": {"stringValue": names[owner]}},
             {"key": "service.name", "value": {"stringValue": "s04-service"}},
             {"key": "test.run", "value": {"stringValue": nonce}},
             {"key": "owner_group", "value": {"stringValue": "forged-admin"}}]}
@@ -262,12 +262,12 @@ def main():
     assert any(a["action"] == "telemetry.Traces.excluded-inputs" for a in audit)
     save("audit-rows", audit)
     save("bundle-persisted", persisted["bundle"])
-    model = subprocess.check_output([old.helpers.DOTNET, str(ROOT / "sim/Bizigo.OtlpFixture/bin/Release/net10.0/Bizigo.OtlpFixture.dll"),
+    model = subprocess.check_output([old.helpers.DOTNET, str(ROOT / "sim/LogAnalyzer.OtlpFixture/bin/Release/net10.0/LogAnalyzer.OtlpFixture.dll"),
         "--evidence-summary", str(output / "bundle-persisted.json")], cwd=ROOT)
     (output / "model-input.json").write_bytes(model)
     assert all(identity.encode() in model for identity in ("metrics.baseline", "metrics.threshold", "traces.error-propagation", "traces.service-dependency"))
     case_results["V2-G-review-live"] = {"status": "passed", "oracle": "nonempty schema3, PG/reopen/export"}
-    case_results["V2-G-close-matrix"] = {"status": "not_run", "integration": "GoldenReviewEvidenceKindsIntegrationTests; /tmp/bizigo-s04/db-oracles/oracles.trx"}
+    case_results["V2-G-close-matrix"] = {"status": "not_run", "integration": "GoldenReviewEvidenceKindsIntegrationTests; /tmp/loganalyzer-s04/db-oracles/oracles.trx"}
     case_results["V2-G-review-null-empty-quality"] = {"status": "not_run", "integration": "Golden_missing_kind_fixed_denominator_through_both_routes; Review_capture_unanswered_is_not_measured"}
     case_results["V2-E-fault-matrix"] = {"status": "not_run", "integration": "TelemetryApiIntegrationTests + MetricTraceEvidenceContractTests"}
     case_results["V2-M-full-numeric-matrix"] = {"status": "not_run", "integration": "MetricTraceEvidenceContractTests + MetricEvidenceProviderTests"}

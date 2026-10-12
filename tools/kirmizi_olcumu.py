@@ -182,7 +182,7 @@ def dotnet_test(ad: str) -> tuple[int, str]:
     filtre = f"FullyQualifiedName~{ad}" if ad else "FullyQualifiedName!~SidecarLive"
 
     sonuc = kos([
-        "dotnet", "test", "tests/Bizigo.UnitTests", "--nologo",
+        "dotnet", "test", "tests/LogAnalyzer.UnitTests", "--nologo",
         "--filter", filtre,
     ])
 

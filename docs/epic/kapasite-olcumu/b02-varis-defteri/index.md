@@ -189,21 +189,21 @@ doğruluyor, bu **bağı** doğrulamıyor.
 
 | Parça | Yer |
 | --- | --- |
-| Okuma + `LEDGER-LIMITED` tipi | `sim/Bizigo.Capacity/LedgerReading.cs` |
-| Defter ve hüküm | `sim/Bizigo.Capacity/ArrivalLedger.cs` |
-| Tel katmanı (iki platform ayrıştırıcısı) | `sim/Bizigo.Capacity/WireDropReader.cs` |
-| Collector katmanı (sergileme ayrıştırıcısı + fark) | `sim/Bizigo.Capacity/CollectorMetricsReader.cs` |
-| Birim ölçümleri (konteynersiz) | `tests/Bizigo.UnitTests/ArrivalLedgerTests.cs` — 27 test |
-| Gerçek yığın koşumu | `tests/Bizigo.IntegrationTests/ArrivalLedgerIntegrationTests.cs` — **yazıldı, koşturulmadı** |
+| Okuma + `LEDGER-LIMITED` tipi | `sim/LogAnalyzer.Capacity/LedgerReading.cs` |
+| Defter ve hüküm | `sim/LogAnalyzer.Capacity/ArrivalLedger.cs` |
+| Tel katmanı (iki platform ayrıştırıcısı) | `sim/LogAnalyzer.Capacity/WireDropReader.cs` |
+| Collector katmanı (sergileme ayrıştırıcısı + fark) | `sim/LogAnalyzer.Capacity/CollectorMetricsReader.cs` |
+| Birim ölçümleri (konteynersiz) | `tests/LogAnalyzer.UnitTests/ArrivalLedgerTests.cs` — 27 test |
+| Gerçek yığın koşumu | `tests/LogAnalyzer.IntegrationTests/ArrivalLedgerIntegrationTests.cs` — **yazıldı, koşturulmadı** |
 | Kırmızı ölçümü | `tools/b02-kirmizi-olcumu.py` — 10 kusur |
 
 **Yerleşim: `sim/`, ve hiçbir proje referansı yok.** İkisi de karar:
 
-- `sim/` altında, çünkü ürün değil — `Bizigo.Simulators` ile aynı gerekçe. Ayrı
+- `sim/` altında, çünkü ürün değil — `LogAnalyzer.Simulators` ile aynı gerekçe. Ayrı
   derleme, çünkü simülatör bir **sadakat** basıcısı (baytlar doğru mu), defter
   bir **muhasebe** aracı (satır kayboldu mu, nerede).
-- **Referanssız**, çünkü üçüncü katmanı burada üretmek `Bizigo.Storage.Raw` ve
-  `Bizigo.Storage.ClickHouse`'u buraya çekerdi ve defter **konteynersiz
+- **Referanssız**, çünkü üçüncü katmanı burada üretmek `LogAnalyzer.Storage.Raw` ve
+  `LogAnalyzer.Storage.ClickHouse`'u buraya çekerdi ve defter **konteynersiz
   sınanamaz** hâle gelirdi. Yerine bir **sonda** sözleşmesi var: ürün tarafını
   çağıran bağlıyor, defter yalnızca sayıyı ve *"ölçemedim"* hâlini biliyor.
   Bedeli açık ve entegrasyon testi onu ödüyor: sondanın gerçek okuyucularla
@@ -297,7 +297,7 @@ düzeltildiğinde bütün tur yeniden koşmuyor. Son adım (tam paket) süzgeçt
 | Ölçüm | Sonuç |
 | --- | --- |
 | `dotnet build` | 0 hata, 0 uyarı |
-| `dotnet test tests/Bizigo.UnitTests` (main birleştirildikten sonra) | **1654 geçti / 0 düştü / 4 atlandı** |
+| `dotnet test tests/LogAnalyzer.UnitTests` (main birleştirildikten sonra) | **1654 geçti / 0 düştü / 4 atlandı** |
 | `ArrivalLedgerTests` | 27/27 |
 | `EpicStatusTests` · `WikiSourceDigestTests` · `CiCoverageTests` · `ProductDiscoveryTests` · `ArchitectureTests` | 32/32 |
 | Kırmızı ölçümü | 10 kusur · **12/12 beklenen kırmızı** · 1 *"yeşil kalmalı"* tuttu |

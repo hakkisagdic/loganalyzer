@@ -1,7 +1,7 @@
 ---
 title: Gerekçesi kayıtta olmayan sabit
 category: concepts
-tags: [surec, mimari, kavram, bizigo]
+tags: [surec, mimari, kavram, loganalyzer]
 aliases: [sihirli sayı, ayarlanmamış eşik, kayıtta yok kalemi]
 relationships:
   - target: "[[concepts/olcum-kirmizi-yanamayan-sayi]]"

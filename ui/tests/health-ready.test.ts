@@ -276,13 +276,13 @@ describe("bağlanmışlık", () => {
 
 function sahteYapilandirma() {
   return {
-    issuer: "http://localhost:8180/realms/bizigo",
-    metadataUrl: "http://localhost:8180/realms/bizigo/.well-known/openid-configuration",
-    clientId: "bizigo-ui",
+    issuer: "http://localhost:8180/realms/loganalyzer",
+    metadataUrl: "http://localhost:8180/realms/loganalyzer/.well-known/openid-configuration",
+    clientId: "loganalyzer-ui",
     clientSecret: "sır",
     publicUrl: "http://localhost:3000",
     apiBaseUrl: "http://localhost:5080",
-    cookieName: "bizigo.sid",
+    cookieName: "loganalyzer.sid",
     sessionTtlSeconds: 60,
     sessionStore: "redis" as const,
     redisUrl: "redis://localhost:6379",

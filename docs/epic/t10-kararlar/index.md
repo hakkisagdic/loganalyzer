@@ -31,10 +31,10 @@ aynı API'yi kullanacak.
 > ⚠️ **Bu paragraf bir zamanlar sınıf yorumundaki tüketici listesini
 > alıntılıyordu** (*"REST uçları, CLI, replay okuma, F3'ün kanıt toplayıcısı ve
 > F4'ün MCP sunucusu"*) ve **M18'de ölçülünce liste üç yönde birden yanlış
-> çıktı**: `Bizigo.Cli` ile `Bizigo.Replay` bu arayüzü **hiç anmıyor** (veri
+> çıktı**: `LogAnalyzer.Cli` ile `LogAnalyzer.Replay` bu arayüzü **hiç anmıyor** (veri
 > erişimini `ClickHouseContext`/`EventWriter` ile doğrudan kuruyorlar),
-> `Bizigo.Alerting` tüketiyor ama sayılmamış, ve *"MCP sunucusu"* dediği şey
-> aslında `Bizigo.Mcp.Product` — **çekirdek değil**.
+> `LogAnalyzer.Alerting` tüketiyor ama sayılmamış, ve *"MCP sunucusu"* dediği şey
+> aslında `LogAnalyzer.Mcp.Product` — **çekirdek değil**.
 >
 > Liste sınıf yorumundan **silindi** ve yerine türetilen bir bekçi kondu
 > (`ScopedQueryConsumerTests`): tüketici kümesi **meta veriden** çıkarılıyor,
@@ -46,7 +46,7 @@ Kapının delinmemesi üç ayrı bekçiye bağlanmış:
 
 | Bekçi | Ne tutuyor |
 | --- | --- |
-| `ArchitectureTests` — `ClickHouse.Driver` yasağı | `Bizigo.Storage.ClickHouse` dışında hiçbir derleme sürücüye referans veremiyor |
+| `ArchitectureTests` — `ClickHouse.Driver` yasağı | `LogAnalyzer.Storage.ClickHouse` dışında hiçbir derleme sürücüye referans veremiyor |
 | `ApiSurfaceTests.Api_ham_nesne_deposuna_dogrudan_erisemez` / `..._olay_yazicisina_...` | API katmanının kapıyı atlayan kısayolları |
 | `ApiSurfaceTests.IScopedQuery_her_metodunda_kapsam_istiyor` | Kapsamsız bir metot imzasının arayüze eklenmesi |
 

@@ -1,7 +1,7 @@
 ---
 title: Kestirme besleme yolu canlı yolu ölçüsüz bırakır
 category: concepts
-tags: [log-analiz, veri-deposu, kavram, bizigo]
+tags: [log-analiz, veri-deposu, kavram, loganalyzer]
 aliases: [S02a, seed golden kestirmesi, kayıp satırlar]
 relationships:
   - target: "[[concepts/sessiz-yanlis-davranis]]"
@@ -38,7 +38,7 @@ simülatör fazının ilk gününde çıktı.
 ## Kestirme
 
 `docs/epic/fs-simulatorler/index.md` §1: boru hattını besleyen tek araç
-`bizigo seed golden`'dı ve o **doğrudan ClickHouse'a** yazıyordu — CLI'ın tek
+`loganalyzer seed golden`'dı ve o **doğrudan ClickHouse'a** yazıyordu — CLI'ın tek
 bağlantı seçeneği `--clickhouse`. Sonuç tek cümlede yazılı: kodlama tespiti,
 WAL, ham arşiv ve dispatcher kademeleri **ölçüm verisiyle hiç koşmuyordu**.
 

@@ -11,9 +11,9 @@ export const dynamic = "force-dynamic";
  * OIDC dönüş ucu.
  *
  * <p>
- * Yol <b>sabit</b>: Keycloak realm'inde `bizigo-ui` istemcisinin
+ * Yol <b>sabit</b>: Keycloak realm'inde `loganalyzer-ui` istemcisinin
  * `redirectUris` listesinde `http://localhost:3000/signin-oidc` birebir yazılı.
- * Buradaki dizin adı değişirse `deploy/keycloak/realm-bizigo.json` da
+ * Buradaki dizin adı değişirse `deploy/keycloak/realm-loganalyzer.json` da
  * değişmeli.
  * </p>
  *

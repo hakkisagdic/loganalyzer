@@ -27,7 +27,7 @@ pydantic==2.13.4
 # Redis persistence (K14: dosya değil).
 redis==6.4.0
 
-# Maskeleme sözlüğü (catalog/masks/bizigo-masks.yaml).
+# Maskeleme sözlüğü (catalog/masks/loganalyzer-masks.yaml).
 PyYAML==6.0.3
 
 # Sigma derlemesi — yalnızca /v1/sigma/compile. Sıcak yolda değil (F3 build-time).

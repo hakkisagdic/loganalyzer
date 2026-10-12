@@ -10,8 +10,8 @@ title: "T05 — parser motorunda alınan kararlar"
 > yazan gerekçeler kodun bugünkü hâlinden çıkarıldı; o an tartışılıp reddedilen
 > alternatifler kayıtta yok.
 
-Uygulanan yer: `src/Bizigo.Parsing/` (`Grok`, `Schema`, `Engine`, `Testing`) +
-`src/Bizigo.Cli/`. Yöneten kararlar: [K3](../mimari-kararlar/index.md) (deklaratif
+Uygulanan yer: `src/LogAnalyzer.Parsing/` (`Grok`, `Schema`, `Engine`, `Testing`) +
+`src/LogAnalyzer.Cli/`. Yöneten kararlar: [K3](../mimari-kararlar/index.md) (deklaratif
 YAML + grok birinci sınıf), K4 (çok dillilik), K15 (format "her adım tek iş"i
 zorlar).
 

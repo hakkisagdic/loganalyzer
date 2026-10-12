@@ -1,6 +1,6 @@
-# Bizigo LogAnalyzer Modernizasyon Analizi
+# LogAnalyzer LogAnalyzer Modernizasyon Analizi
 
-Bu belge, bizigo-loganalyzer projesinin kütüphane güncellemeleri, framework yükseltmeleri ve mimari iyileştirmeler için kapsamlı bir modernizasyon planı sunmaktadır.
+Bu belge, loganalyzer-loganalyzer projesinin kütüphane güncellemeleri, framework yükseltmeleri ve mimari iyileştirmeler için kapsamlı bir modernizasyon planı sunmaktadır.
 
 ---
 
@@ -162,7 +162,7 @@ Bu belge, bizigo-loganalyzer projesinin kütüphane güncellemeleri, framework y
 **Durum:** `drain3` PyPI'da güncel değil, upstream durgun.
 
 **Öneri:**
-- `logpai/Drain3` fork'u `bizigo` organizasyonu altına alınmalı
+- `logpai/Drain3` fork'u `loganalyzer` organizasyonu altına alınmalı
 - Düzenli bakım ve PyPI yayın süreci oluşturulmalı
 - Python 3.13+ uyumluluğu garanti edilmeli
 
@@ -182,7 +182,7 @@ Bu belge, bizigo-loganalyzer projesinin kütüphane güncellemeleri, framework y
 
 #### 5.2.1 OpenAPI Tip Güncelleme Otomasyonu
 
-**Mevcut Durum:** `ui/openapi/bizigo-api.json` ve `ui/src/lib/api/schema.d.ts` manuel güncelleme gerektiriyor.
+**Mevcut Durum:** `ui/openapi/loganalyzer-api.json` ve `ui/src/lib/api/schema.d.ts` manuel güncelleme gerektiriyor.
 
 **Öneri:** CI/CD pipeline'ına `npm run api:check` entegrasyonu, PR'lerde otomatik tip güncelleme uyarısı.
 

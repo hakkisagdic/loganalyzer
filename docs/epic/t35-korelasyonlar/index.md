@@ -101,7 +101,7 @@ Hepsi `init` — ölçüm sonrası tek yerden değişiyor.
 
 ### Baseline ölçüm aracı
 
-`BaselineWindowMeasurement` (entegrasyon, `BIZIGO_BASELINE_SWEEP=1`). Taban
+`BaselineWindowMeasurement` (entegrasyon, `LOGANALYZER_BASELINE_SWEEP=1`). Taban
 uzunluğunu 1 saatten 30 güne süpürüyor ve her biri için "ilk-görülen" oranını
 raporluyor.
 
@@ -110,7 +110,7 @@ penceredeki ayrı imzaların yüzde kaçı yeni. Farklı hacimli veri kümeleri
 arasında karşılaştırılabilir ve makinenin hızından bağımsız.
 
 ```bash
-BIZIGO_BASELINE_SWEEP=1 dotnet test tests/Bizigo.IntegrationTests -c Release \
+LOGANALYZER_BASELINE_SWEEP=1 dotnet test tests/LogAnalyzer.IntegrationTests -c Release \
   --filter FullyQualifiedName~BaselineWindowMeasurement -l "console;verbosity=detailed"
 ```
 

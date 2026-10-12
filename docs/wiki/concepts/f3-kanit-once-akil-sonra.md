@@ -1,7 +1,7 @@
 ---
 title: Kanıt önce, akıl sonra
 category: concepts
-tags: [mimari, log-analiz, kavram, bizigo]
+tags: [mimari, log-analiz, kavram, loganalyzer]
 aliases: [K22, deterministik rapor, kanıt paketi, RCA dürüstlüğü]
 relationships:
   - target: "[[concepts/f3-bosluk-tek-cins-degildir]]"

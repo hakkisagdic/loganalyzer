@@ -1,5 +1,5 @@
 ---
-title: "M04 — bizigo okuma araçları"
+title: "M04 — loganalyzer okuma araçları"
 kind: ticket
 status: 2
 ---
@@ -26,13 +26,13 @@ Plan `logs.search`'ü *"Log arama"* diye yazıyor, ucu adlandırmıyor. Ölçüm
 | `catalog.parsers` | `/v1/parsers` + `/v1/parsers/coverage` | — |
 
 > **`/v1/logs` log arama ucu DEĞİL.** `LogsEndpoint.MapOtlpLogs` — OTLP
-> **ingest** ucu, `RequireAuthorization(BizigoAuthPolicies.Ingest)` ile ve
+> **ingest** ucu, `RequireAuthorization(LogAnalyzerAuthPolicies.Ingest)` ile ve
 > rolü yalnızca yazma. Plandan kopyalayıp *"`logs.search` → `/v1/logs`"*
 > yazmak, aracı **yazma ucuna** bağlamak olurdu.
 
 ### Kapsam kapısı **derleyicide** — iyi haber
 
-`src/Bizigo.Query/IScopedQuery.cs` her metodunda `AccessScope` istiyor;
+`src/LogAnalyzer.Query/IScopedQuery.cs` her metodunda `AccessScope` istiyor;
 dosyanın kendi cümlesi: *"Her metot `AccessScope` istiyor; kapsamsız çağrı
 yazılamıyor."* Yani kapsam API katmanının bir alışkanlığı değil, arayüzün
 şartı. Süreç içi koşan bir MCP aracı bile **kapsamsız sorgu yazamaz**.
@@ -47,8 +47,8 @@ yazılamıyor."* Yani kapsam API katmanının bir alışkanlığı değil, aray�
 
 | Yer | Ne yapıyor |
 | --- | --- |
-| `src/Bizigo.Replay/ReplayEngine.cs:180` | `AccessScope.System("replay")` — sistem içi yazım |
-| `src/Bizigo.ControlPlane/AccessScopeResolver.cs:131` | Kimlik doğrulanmış principal `admin` rolündeyse tam kapsam. Kaynağın kendi yorumu: *"`admin` kapsam filtresinden muaf — ama bu **BİLİNÇLİ ve tek yerde**."* |
+| `src/LogAnalyzer.Replay/ReplayEngine.cs:180` | `AccessScope.System("replay")` — sistem içi yazım |
+| `src/LogAnalyzer.ControlPlane/AccessScopeResolver.cs:131` | Kimlik doğrulanmış principal `admin` rolündeyse tam kapsam. Kaynağın kendi yorumu: *"`admin` kapsam filtresinden muaf — ama bu **BİLİNÇLİ ve tek yerde**."* |
 
 Üç ayrı dosya da (`ChangeConnectorService`, `RcaScheduleWorker`,
 `ChangeWebhookEndpoints`) yorumlarında **neden `AccessScope.System` olmadığını**
@@ -75,7 +75,7 @@ kapsam alması bir kusur değil, resolver'ın bilinçli kararı — ve bir arac�
 ## 3 · Kabul kriterleri
 
 1. Altı araç ilan ediliyor, hepsi `McpSurface.Product`.
-2. **`bizigo` yüzeyinin derlemesi `AccessScope.System`'e hiç başvurmuyor.**
+2. **`loganalyzer` yüzeyinin derlemesi `AccessScope.System`'e hiç başvurmuyor.**
    Ölçülebilir bir kriter, tahmin değil: [T50](../../tickets-f3/kompozisyon-koku-bagi/index.md)'nin
    IL çağrı kapanışı bu sınıfı zaten yürüyor — `call`/`callvirt` operandları
    çözülüp o metoda başvuru aranıyor. Kapsam `AccessScopeResolver`'dan
@@ -126,7 +126,7 @@ bir testte iki ardışık sayfanın **farklı** olduğu görülüyor.
    ayrı uç yok. Karar M04'ün.
 2. **`AccessScope.System`'i kim daha çağırıyor?** Ürün kodunda iki çağıran
    ölçüldü (§1). `tests/` ve `tools/` altındakilere **bakmadım** — kriter 2
-   yalnızca `bizigo` yüzeyinin derlemesine baktığı için bugün gerekmedi, ama
+   yalnızca `loganalyzer` yüzeyinin derlemesine baktığı için bugün gerekmedi, ama
    kriterin şeklini değiştirebilecek bir şey çıkarsa oradan çıkar.
 3. **Çekirdeğin imzası kapsamı taşıyor mu?** [M02](../komut-cekirdegi/index.md)
    §7.4'ün açık sorusu burada patlıyor: bugünkü altı CLI komutunun hiçbiri

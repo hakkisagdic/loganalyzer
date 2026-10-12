@@ -6,10 +6,10 @@ import { readSessionId, resolveSession } from "@/lib/auth/session";
 import { SessionStoreUnavailableError, sessionStore } from "@/lib/auth/store";
 
 /**
- * Tarayıcı → Next → `Bizigo.Api` vekili.
+ * Tarayıcı → Next → `LogAnalyzer.Api` vekili.
  *
  * <p>
- * Tarayıcı `Bizigo.Api`'ye <b>doğrudan konuşmuyor</b>. İstek buraya oturum
+ * Tarayıcı `LogAnalyzer.Api`'ye <b>doğrudan konuşmuyor</b>. İstek buraya oturum
  * çereziyle geliyor, buradan API'ye <c>Authorization: Bearer</c> ile gidiyor.
  * Token bu fonksiyonun içinde doğuyor ve içinde ölüyor.
  * </p>

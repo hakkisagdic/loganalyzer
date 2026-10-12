@@ -65,7 +65,7 @@ flowchart LR
 | --- | --- | --- | --- |
 | Syslog ayrıştırma | Collector RFC modunda ayrıştırsın | Collector yalnızca çerçeveliyor (`protocol: none`), ayrıştırmanın tamamı YAML motorunda | OTel syslog receiver ham satırı koruyamıyor; ham arşiv+replay hedefiyle doğrudan çelişiyordu. Yan kazanç: replay'de birebir aynı kod koşuyor |
 | Grok | Hazır kütüphane | ~350 satır kendi derleyicimiz | `grok.net` PCRE.NET üstünde ve orada `NonBacktracking` karşılığı yok. Parser YAML'ı 50 kişilik kurumdan geliyor; dikkatsiz tek pattern ingest'i durdurur |
-| Pattern seti | Logstash `legacy` | `legacy` + `bizigo-v1` kaplaması | Upstream'in `IPV4`/`TIME`'ındaki lookaround her ağ pattern'ine bulaşıyordu; doğrusal motor fiilen hiç kullanılmıyordu |
+| Pattern seti | Logstash `legacy` | `legacy` + `loganalyzer-v1` kaplaması | Upstream'in `IPV4`/`TIME`'ındaki lookaround her ağ pattern'ine bulaşıyordu; doğrusal motor fiilen hiç kullanılmıyordu |
 | `POST /v1/parsers` | Uçtan parser yayınlama | Okuma + `POST /v1/parsers/try` | Yayın ucu, taslak→inceleme→yayın akışı olmadan kataloğu tek isteğin bozabileceği yere çevirirdi. O akış F2'nin |
 | RCA kanıt sağlayıcıları | F3 | F5 | "Kanıt kapsamı: hepsi" cevabı metrik+trace+topoloji getiriyor; her biri tek başına F1 büyüklüğünde. Sözleşme F3'te beşini de tanıyor, sağlayıcılar ertelendi |
 
@@ -143,7 +143,7 @@ doğru cevap değildi.
 
 | Ne | Neden |
 | --- | --- |
-| `bizigo replay` CLI komutu | CLI'nin tüm DI grafiğini (ClickHouse + Postgres + S3 + katalog) barındırması gerekiyordu; API ucu aynı yeteneği veriyor |
+| `loganalyzer replay` CLI komutu | CLI'nin tüm DI grafiğini (ClickHouse + Postgres + S3 + katalog) barındırması gerekiyordu; API ucu aynı yeteneği veriyor |
 | Uçtan parser yayınlama | Gözden geçirme akışı olmadan katalog kırılganlaşır — F2 |
 | Kataloğun geri kalanı (PAN-OS, Juniper, F5, HAProxy) | Motor dört vendor'la gerçek yükü gördü; kalanı F2'deki editörle daha ucuz |
 | `BASE10NUM`'un paylaşılan sette daraltılması | Atomik grup `YEAR`'daki gibi etkisiz **değil**: kaldırmak `%{NUMBER}\\.%{NUMBER}` davranışını **genişletiyor**. Bağlama özel çözüldü |
@@ -178,14 +178,14 @@ yanlış yere işaret ediyordu.
 | 5 | Ham okuma | Manifest mikrosaniye, ClickHouse `DateTime64(3)` | Kırpılan `ts` daima `ts_from`'dan küçük → tek olaylı nesne **hiç bulunamıyor**; 404 "henüz yüklenmemiş olabilir" diyerek yanlış yere yönlendiriyor |
 
 Ayrıca realm dosyası **iki kez** Keycloak'ı hiç başlatmadı (`_comment`,
-`postLogoutRedirectUris`), `admin.bizigo` `firstName`/`lastName` eksikliğinden
+`postLogoutRedirectUris`), `admin.loganalyzer` `firstName`/`lastName` eksikliğinden
 giriş yapamıyordu, ve `ClickHouseEventSink.DisposeAsync` atılmış semaforu
 kullanıp **açılış hatasının yerine geçiyordu**.
 
 ### En sessiz olan: denetim kimliği
 
 Realm JSON'unda `clientScopes` dizisi verildiği için Keycloak **yerleşik**
-**scope'ları hiç oluşturmuyor**; import sonrası realm'de yalnızca `bizigo-claims`
+**scope'ları hiç oluşturmuyor**; import sonrası realm'de yalnızca `loganalyzer-claims`
 ve `offline_access` vardı. İstemcilerin `defaultClientScopes` listesindeki
 `profile`/`email`/`roles` **sessizce düşmüştü**.
 
@@ -248,7 +248,7 @@ zamanı çözemeyen bir parser'ın düzeltilip `observed` → `parsed` geçişi 
 Geçmiş satırlar boş kalıyor: 'parsed' demek onları olduğundan güvenilir,
 'received' demek olmadığı kadar şüpheli gösterirdi.
 
-Parser etiketleri **`attrs['bizigo.tags']`** olarak iniyor. Tek anahtarda
+Parser etiketleri **`attrs['loganalyzer.tags']`** olarak iniyor. Tek anahtarda
 birleştiriliyor, etiket başına anahtar açılmıyor — `mapKeys` bloom filtresi anahtar
 kümesi üzerinde ve her etiketi ayrı anahtar yapmak o indeksi seyreltirdi.
 
@@ -303,4 +303,4 @@ Bu satırı kovalarken asıl açık bulundu ve **kapatıldı**: `ParseResult.Tag
 normalizasyonda hiçbir yere yazılmıyordu, yani `_asa_no_timestamp` etiketi
 ClickHouse'a ulaşmadan kayboluyordu ve aşağı akışta bir olayın zamanının gerçek
 mi gözlem zamanı mı olduğu anlaşılamıyordu. Artık hem `time_source` kolonu hem
-`attrs['bizigo.tags']` var (yukarıya bkz.).
+`attrs['loganalyzer.tags']` var (yukarıya bkz.).

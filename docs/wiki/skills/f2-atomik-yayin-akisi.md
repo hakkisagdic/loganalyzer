@@ -1,7 +1,7 @@
 ---
 title: Atomik yayın — çalışan motoru bozmadan değiştirmek
 category: skills
-tags: [log-analiz, mimari, yordam, bizigo]
+tags: [log-analiz, mimari, yordam, loganalyzer]
 aliases: [K33, parser yayın akışı, taslak-inceleme-yayın]
 relationships:
   - target: "[[concepts/f2-kapsam-tek-kapi]]"
@@ -10,7 +10,7 @@ relationships:
     type: uses
   - target: "[[skills/f2-ekran-tutarliligi]]"
     type: related_to
-  - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
+  - target: "[[projects/loganalyzer-loganalyzer/loganalyzer-loganalyzer]]"
     type: related_to
 sources:
   - docs/epic/f2-teknik-plan/index.md

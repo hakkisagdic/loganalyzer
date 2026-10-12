@@ -270,7 +270,7 @@ describe("çok dilli gövde", () => {
       actor: "أحمد",
       summary: "تم تحديث البرنامج الثابت للجهاز إلى الإصدار السابع",
       source: "github",
-      external_ref: "https://github.com/bizigo/network-config/actions/runs/1",
+      external_ref: "https://github.com/loganalyzer/network-config/actions/runs/1",
     },
     {
       change_id: "3",

@@ -22,7 +22,7 @@ import urllib.request
 import zlib
 
 REPO = Path(__file__).resolve().parents[1]
-DLL = REPO / "sim/Bizigo.OtlpFixture/bin/Release/net10.0/Bizigo.OtlpFixture.dll"
+DLL = REPO / "sim/LogAnalyzer.OtlpFixture/bin/Release/net10.0/LogAnalyzer.OtlpFixture.dll"
 DOTNET = str(Path.home() / ".dotnet/dotnet") if (Path.home() / ".dotnet/dotnet").exists() else "dotnet"
 PAYLOAD = b''' {"resourceMetrics":[{"resource":{"attributes":[{"key":"owner_group","value":{"stringValue":"admin"}}]},"scopeMetrics":[{"metrics":[{"name":"durable","gauge":{"dataPoints":[{"asInt":"42"}]}},{"name":"","gauge":{"dataPoints":[{"asInt":"99"}]}}]}]}]} '''
 
@@ -211,7 +211,7 @@ def main():
     args = parser.parse_args()
     subprocess.run(["bash", "tools/machine-resources.sh", "check"], cwd=REPO, check=True)
     assert DLL.exists(), "Build solution / fixture before smoke"
-    root = args.evidence_dir or Path(tempfile.mkdtemp(prefix="bizigo-otlp-smoke-"))
+    root = args.evidence_dir or Path(tempfile.mkdtemp(prefix="loganalyzer-otlp-smoke-"))
     root.mkdir(parents=True, exist_ok=True)
     assert not list(root.iterdir()), "evidence directory must be new"
     stages = ["fsync", "after-wal-before-ack", "archive-before-manifest", "before-rename", "after-rename"]

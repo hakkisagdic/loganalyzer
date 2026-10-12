@@ -125,7 +125,7 @@ arasındaki fark bu ticket'ın en pahalı bilgisi.
 
 | Tahmin | Çıktı mı | Ne gerekti |
 | --- | --- | --- |
-| API'yi servis adıyla bulmak | **Hayır** | `BIZIGO_API_URL` zaten var — compose girdisi |
+| API'yi servis adıyla bulmak | **Hayır** | `LOGANALYZER_API_URL` zaten var — compose girdisi |
 | Tarayıcı/sunucu taban URL ayrımı | **Hayır** (API için) | Ayrım zaten yapısal |
 | `redis-session` | **Hayır** | `BFF_SESSION_STORE` + `BFF_REDIS_URL` zaten var |
 | Keycloak yönlendirmesi | **Evet** | Turun tek kod değişikliği |

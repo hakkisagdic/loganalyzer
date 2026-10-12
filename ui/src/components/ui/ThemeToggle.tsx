@@ -6,7 +6,7 @@ import { Button } from "./Button";
 
 export type Theme = "light" | "dark";
 
-export const THEME_STORAGE_KEY = "bizigo.theme";
+export const THEME_STORAGE_KEY = "loganalyzer.theme";
 
 /**
  * Tema, sayfa boyanmadan ÖNCE uygulanmak zorunda.

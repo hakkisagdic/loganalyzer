@@ -20,9 +20,9 @@ class OperationalProxyHarnessTests(unittest.TestCase):
         model_port = harness.find_free_port()
         proxy_port = harness.find_free_port()
 
-        api_server = HTTPServer(("127.0.0.1", api_port), harness.make_handler("Bizigo.Api", is_stub=False))
-        mcp_server = HTTPServer(("127.0.0.1", mcp_port), harness.make_handler("Bizigo.Mcp", is_stub=False))
-        model_server = HTTPServer(("127.0.0.1", model_port), harness.make_handler("Bizigo.ModelStub", is_stub=True))
+        api_server = HTTPServer(("127.0.0.1", api_port), harness.make_handler("LogAnalyzer.Api", is_stub=False))
+        mcp_server = HTTPServer(("127.0.0.1", mcp_port), harness.make_handler("LogAnalyzer.Mcp", is_stub=False))
+        model_server = HTTPServer(("127.0.0.1", model_port), harness.make_handler("LogAnalyzer.ModelStub", is_stub=True))
 
         class ConfiguredProxy(harness.ReverseProxyHandler):
             pass
@@ -43,9 +43,9 @@ class OperationalProxyHarnessTests(unittest.TestCase):
             t.start()
 
         routes_info = {
-            "/api": {"listener": "Bizigo.Api", "is_stub": False},
-            "/mcp": {"listener": "Bizigo.Mcp", "is_stub": False},
-            "/model": {"listener": "Bizigo.ModelStub", "is_stub": True}
+            "/api": {"listener": "LogAnalyzer.Api", "is_stub": False},
+            "/mcp": {"listener": "LogAnalyzer.Mcp", "is_stub": False},
+            "/model": {"listener": "LogAnalyzer.ModelStub", "is_stub": True}
         }
 
         try:
@@ -56,7 +56,7 @@ class OperationalProxyHarnessTests(unittest.TestCase):
             # Verify deterministic stub tag
             model_info = next(r for r in receipts["reachability"] if r["route"] == "/model")
             self.assertTrue(model_info["deterministic_stub"])
-            self.assertEqual("Bizigo.ModelStub", model_info["listener"])
+            self.assertEqual("LogAnalyzer.ModelStub", model_info["listener"])
 
             # Verify oversized 413
             oversized = [n for n in receipts["negatives"] if n["test"] == "oversized_payload"]

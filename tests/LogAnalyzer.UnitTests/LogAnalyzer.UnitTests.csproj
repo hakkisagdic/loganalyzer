@@ -1,0 +1,84 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="NetArchTest.Rules" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+
+    <!--
+      MCP uyum kapısı (M01). Üçü de YALNIZCA burada: ürün yüzeyine girmiyorlar.
+
+      · `JsonSchema.Net` — ilan edilen şemayı meta-şemaya, örnek çağrının
+        çıktısını `outputSchema`'ya karşı doğruluyor. Kapının MCP SDK'sının
+        kendi doğrulamasına dayanması, ölçtüğü şeyi ölçen araca sormak olurdu.
+      · `Microsoft.AspNetCore.TestHost` — ikinci taşımanın el sıkışması.
+      · `Microsoft.ML.Tokenizers` + `.Data.O200kBase` — araç şemalarının bağlam
+        maliyeti, GERÇEK belirteç sayısı olarak. Sözlük pakete gömülü: ağ yok.
+    -->
+    <PackageReference Include="JsonSchema.Net" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+    <PackageReference Include="Microsoft.ML.Tokenizers" />
+    <PackageReference Include="Microsoft.ML.Tokenizers.Data.O200kBase" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\LogAnalyzer.Contracts\LogAnalyzer.Contracts.csproj" />
+    <!-- Fixture derlemesi ürün keşfi tarafından yüklenir; alias global Program çakışmasını önler. -->
+    <ProjectReference Include="../../sim/LogAnalyzer.OtlpFixture/LogAnalyzer.OtlpFixture.csproj" Aliases="OtlpFixture" />
+    <ProjectReference Include="..\..\src\LogAnalyzer.Parsing\LogAnalyzer.Parsing.csproj" />
+    <ProjectReference Include="..\..\src\LogAnalyzer.Normalization\LogAnalyzer.Normalization.csproj" />
+    <ProjectReference Include="..\..\src\LogAnalyzer.ControlPlane\LogAnalyzer.ControlPlane.csproj" />
+    <ProjectReference Include="..\..\src\LogAnalyzer.Query\LogAnalyzer.Query.csproj" />
+    <ProjectReference Include="..\..\src\LogAnalyzer.Ingest\LogAnalyzer.Ingest.csproj" />
+    <ProjectReference Include="..\..\src\LogAnalyzer.Storage.Raw\LogAnalyzer.Storage.Raw.csproj" />
+    <ProjectReference Include="..\..\src\LogAnalyzer.Storage.ClickHouse\LogAnalyzer.Storage.ClickHouse.csproj" />
+    <ProjectReference Include="..\..\src\LogAnalyzer.Api\LogAnalyzer.Api.csproj" />
+    <ProjectReference Include="..\..\src\LogAnalyzer.Replay\LogAnalyzer.Replay.csproj" />
+
+    <!--
+      İki sebeple burada:
+
+      · CliSmokeTests derlenmiş `loganalyzer` ikilisini koşturuyor — referans olmazsa
+        `dotnet test tests/LogAnalyzer.UnitTests` tek başına koştuğunda CLI
+        derlenmemiş olur ve testler sessizce atlanır.
+      · GoldenSeedTests (T39) yükleyicinin tiplerini DOĞRUDAN çağırıyor. Bu
+        yüzden `ReferenceOutputAssembly` artık false değil: zaman damgası
+        bekçisini süreç açmadan koşturmanın başka yolu yok ve bekçiyi kapı
+        arkasında bırakmak, ölçüm verisinin doğruluğunu ilk kez ClickHouse
+        koşumunda öğrenmek demekti.
+    -->
+    <ProjectReference Include="..\..\src\LogAnalyzer.Cli\LogAnalyzer.Cli.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\LogAnalyzer.Authoring\LogAnalyzer.Authoring.csproj" />
+    <ProjectReference Include="..\..\src\LogAnalyzer.Alerting\LogAnalyzer.Alerting.csproj" />
+    <ProjectReference Include="..\..\src\LogAnalyzer.Evidence\LogAnalyzer.Evidence.csproj" />
+    <ProjectReference Include="..\..\src\LogAnalyzer.Rca\LogAnalyzer.Rca.csproj" />
+    <ProjectReference Include="..\..\src\LogAnalyzer.ScenarioPlugin\LogAnalyzer.ScenarioPlugin.csproj" />
+
+    <!--
+      M02 — komut çekirdeği. `Fields/` ve `Seeding/` buraya taşındı;
+      testleri de çekirdeği gösteriyor. CLI referansı duruyor çünkü
+      `CliSmokeTests` derlenmiş ikiliyi koşturuyor.
+    -->
+    <ProjectReference Include="..\..\src\LogAnalyzer.Commands\LogAnalyzer.Commands.csproj" />
+    <ProjectReference Include="..\..\sim\LogAnalyzer.Simulators\LogAnalyzer.Simulators.csproj" />
+
+    <!--
+      B02 · varış defteri. Ayrıştırıcılar ve hüküm KONTEYNERSİZ sınanıyor;
+      defterin hiçbir proje referansı yok, o yüzden bu referans testlere yeni
+      bir bağımlılık getirmiyor.
+    -->
+    <ProjectReference Include="..\..\sim\LogAnalyzer.Capacity\LogAnalyzer.Capacity.csproj" />
+  </ItemGroup>
+
+</Project>

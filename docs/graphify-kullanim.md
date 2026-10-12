@@ -28,7 +28,7 @@ geçiyor" diye soruyor ve çalışma ağacına, yani **şu ana** bakıyor; `grap
 Aynı sembol üzerinde ikisini de koşturdum:
 
 ```
-$ graphify affected src/Bizigo.Contracts/AccessScope.cs | grep -c '^- '
+$ graphify affected src/LogAnalyzer.Contracts/AccessScope.cs | grep -c '^- '
 448
 $ git grep -l "AccessScope" | wc -l
 82
@@ -69,9 +69,9 @@ Gerçek çıktı (ilk beş):
 ```
 God nodes (most connected):
   1. AccessScope - 150 edges
-  2. Bizigo.Contracts - 129 edges
-  3. Bizigo.ControlPlane - 109 edges
-  4. Bizigo.UnitTests - 92 edges
+  2. LogAnalyzer.Contracts - 129 edges
+  3. LogAnalyzer.ControlPlane - 109 edges
+  4. LogAnalyzer.UnitTests - 92 edges
   5. ControlPlaneDbContext - 71 edges
 ```
 
@@ -82,8 +82,8 @@ bir uç varsa sözleşmeyi önceden çivile" maddesi tam burada devreye giriyor.
 ### 2.2 · Bir refactor'un etkisini ölçmek
 
 ```bash
-graphify affected src/Bizigo.Contracts/AccessScope.cs --depth 2
-graphify affected src/Bizigo.Contracts/AccessScope.cs --relation imports --depth 1
+graphify affected src/LogAnalyzer.Contracts/AccessScope.cs --depth 2
+graphify affected src/LogAnalyzer.Contracts/AccessScope.cs --relation imports --depth 1
 ```
 
 Varsayılan derinlik 2, ve varsayılan olarak 14 ilişki tipini birden ters yönde
@@ -97,16 +97,16 @@ dar listeyi kod okumak için kullan.
 
 Burada bir tuzak var ve ölçüldü: **dosya düğümü ile sembol düğümü aynı şey
 değil.** Dosya yolu verirsen dosya düğümünü alırsın, derecesi 2 çıkar
-(`--> AccessScope [contains]`, `--> Bizigo.Contracts [contains]`) ve "bunun
+(`--> AccessScope [contains]`, `--> LogAnalyzer.Contracts [contains]`) ve "bunun
 bağlantısı yokmuş" sanırsın. Sembol adını verince ise **belirsizlik** çıkıyor:
 
 ```
 $ graphify explain "AccessScope"
 Ambiguous: 'AccessScope' matches 2 nodes in different files.
-  src/Bizigo.Contracts/AccessScope.cs
-    id: src_bizigo_contracts_accessscope_bizigo_contracts_accessscope
-  src_bizigo_api_authenticationsetup_cs_accessscope
-    id: src_bizigo_api_authenticationsetup_cs_accessscope
+  src/LogAnalyzer.Contracts/AccessScope.cs
+    id: src_loganalyzer_contracts_accessscope_loganalyzer_contracts_accessscope
+  src_loganalyzer_api_authenticationsetup_cs_accessscope
+    id: src_loganalyzer_api_authenticationsetup_cs_accessscope
 Retry with the repo-relative path or the full node id.
 ```
 
@@ -114,19 +114,19 @@ Doğru hamle **tam düğüm id'siyle** tekrar sormak. Gerçek çıktı 51 satır
 aşağıda `...` ile elendi:
 
 ```
-$ graphify explain "src_bizigo_contracts_accessscope_bizigo_contracts_accessscope"
+$ graphify explain "src_loganalyzer_contracts_accessscope_loganalyzer_contracts_accessscope"
 Node: AccessScope
-  Source:    src/Bizigo.Contracts/AccessScope.cs L13
+  Source:    src/LogAnalyzer.Contracts/AccessScope.cs L13
   Degree:    150
   ...
 Connections (150):
-  --> .ForGroups() [method] [EXTRACTED] src/Bizigo.Contracts/AccessScope.cs:L53
-  <-- .From() [references] [EXTRACTED] src/Bizigo.Storage.ClickHouse/ScopePredicate.cs:L39
+  --> .ForGroups() [method] [EXTRACTED] src/LogAnalyzer.Contracts/AccessScope.cs:L53
+  <-- .From() [references] [EXTRACTED] src/LogAnalyzer.Storage.ClickHouse/ScopePredicate.cs:L39
   ...
   ... and 130 more
   Grouped by file:
-    <-- tests/Bizigo.UnitTests/EvidenceTestDoubles.cs: 18 connections
-    <-- src/Bizigo.Query/ScopedQuery.cs: 16 connections
+    <-- tests/LogAnalyzer.UnitTests/EvidenceTestDoubles.cs: 18 connections
+    <-- src/LogAnalyzer.Query/ScopedQuery.cs: 16 connections
     ...
 ```
 
@@ -289,7 +289,7 @@ sınıfı bu.
 
 ### 4.1 · Graf zamanda donmuş — ölçülmüş örnek
 
-`sim/Bizigo.Simulators/` projesi grafın derlendiği commit'ten sonra eklendi
+`sim/LogAnalyzer.Simulators/` projesi grafın derlendiği commit'ten sonra eklendi
 (`85343ff`):
 
 ```
@@ -298,9 +298,9 @@ No node matching 'SyslogEmitter' found.
 
 $ git grep -l "SyslogEmitter"
 docs/epic/fs-simulatorler/index.md
-sim/Bizigo.Simulators/Program.cs
-sim/Bizigo.Simulators/SyslogEmitter.cs
-tests/Bizigo.UnitTests/EventRetentionTests.cs
+sim/LogAnalyzer.Simulators/Program.cs
+sim/LogAnalyzer.Simulators/SyslogEmitter.cs
+tests/LogAnalyzer.UnitTests/EventRetentionTests.cs
 ```
 
 Graf "yok" dedi; sınıf altı dosyalık bir projenin göbeğinde duruyor.

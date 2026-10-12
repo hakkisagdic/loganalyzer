@@ -23,8 +23,8 @@ KOK = Path(__file__).resolve().parent.parent
 
 BEKCI = "ScopedQueryConsumerTests"
 
-TEST = KOK / "tests/Bizigo.UnitTests/ScopedQueryConsumerTests.cs"
-BELGE = KOK / "src/Bizigo.Query/IScopedQuery.cs"
+TEST = KOK / "tests/LogAnalyzer.UnitTests/ScopedQueryConsumerTests.cs"
+BELGE = KOK / "src/LogAnalyzer.Query/IScopedQuery.cs"
 
 
 @dataclass
@@ -43,7 +43,7 @@ KUSURLAR = [
     Kusur(
         ad="KIRMIZI-kume-kuculdu-Alerting-kapiyi-birakti",
         dosya=TEST,
-        eski='        // Alarm motoru: kural değerlendirmesi kapsamlı sayım yapıyor.\n        "Bizigo.Alerting",',
+        eski='        // Alarm motoru: kural değerlendirmesi kapsamlı sayım yapıyor.\n        "LogAnalyzer.Alerting",',
         yeni='        // KIRMIZI-kume-kuculdu: Alerting kapıyı kullanmayı bıraktı gibi davran.',
         not_="Beyandan bir ad düşerse türetilen küme fazla eleman taşır ve yanmalı. "
         "Bu, gerçekte bir katmanın kapıyı atlamaya başlamasının aynadaki hâli.",
@@ -51,8 +51,8 @@ KUSURLAR = [
     Kusur(
         ad="KIRMIZI-kume-buyudu-uydurma-tuketici",
         dosya=TEST,
-        eski='        "Bizigo.Mcp.Product",\n    ];',
-        yeni='        "Bizigo.Mcp.Product",\n        "Bizigo.Replay",  // KIRMIZI-kume-buyudu: tüketmiyor.\n    ];',
+        eski='        "LogAnalyzer.Mcp.Product",\n    ];',
+        yeni='        "LogAnalyzer.Mcp.Product",\n        "LogAnalyzer.Replay",  // KIRMIZI-kume-buyudu: tüketmiyor.\n    ];',
         not_="Beyan gerçekte tüketmeyen bir derlemeyi sayarsa yanmalı — yoksa "
         "beyan bir dilek listesi olur.",
     ),
@@ -95,7 +95,7 @@ KUSURLAR = [
         "                nameof(IScopedQuery),\n"
         "                StringComparison.Ordinal))",
         not_="M18'in İLK ölçümünün yaptığı hatanın kendisi: metinde adı bulmak. "
-        "Bu hâlde `Bizigo.Query` (tipi TANIMLAYAN) de kümeye girer ve yanmalı. "
+        "Bu hâlde `LogAnalyzer.Query` (tipi TANIMLAYAN) de kümeye girer ve yanmalı. "
         "Yani bekçi, kendisini yazan kişinin hatasına karşı da kapalı.",
     ),
     # ---- KEŞİF ----
@@ -125,7 +125,7 @@ KUSURLAR = [
 def kos(bekci: str) -> int:
     return subprocess.run(
         [
-            "dotnet", "test", "tests/Bizigo.UnitTests",
+            "dotnet", "test", "tests/LogAnalyzer.UnitTests",
             "--filter", f"FullyQualifiedName~{bekci}",
         ],
         cwd=KOK,

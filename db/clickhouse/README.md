@@ -8,4 +8,4 @@ değiştirilirse göç hata verir** (sürüklenme tespiti). Değişiklik yeni do
 
 Çalıştırma:
 
-    dotnet run --project src/Bizigo.Cli -- schema migrate db/clickhouse
+    dotnet run --project src/LogAnalyzer.Cli -- schema migrate db/clickhouse

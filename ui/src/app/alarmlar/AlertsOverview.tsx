@@ -94,7 +94,7 @@ export function AlertsOverview() {
    * aranıyor. Filtre aynı kalabalığı çözüyor ve listeyi bölmüyor —
    * varsayılan "hepsi", yani hiçbir şey saklanmıyor.
    */
-  const [source, setSource] = useState<"all" | "bizigo" | "sigma">("all");
+  const [source, setSource] = useState<"all" | "loganalyzer" | "sigma">("all");
 
   const load = useCallback(async (signal?: AbortSignal) => {
     setError(null);
@@ -160,7 +160,7 @@ export function AlertsOverview() {
       */}
       {rules.some((r) => r.source === "sigma") && rules.some((r) => r.source !== "sigma") ? (
         <div className={styles.toolbar} role="group" aria-label="Kaynak filtresi">
-          {(["all", "bizigo", "sigma"] as const).map((option) => (
+          {(["all", "loganalyzer", "sigma"] as const).map((option) => (
             <Button
               key={option}
               variant={source === option ? "primary" : "secondary"}

@@ -1,8 +1,8 @@
 {
   "_comment": "Kural setinin çivisi. Kurallar catalog/sigma/rules/ altında KOPYALI; CI ağa çıkmıyor, yalnızca bu dosyadaki özetlerin tuttuğunu doğruluyor. Yükseltme elle yapılıyor ve henüz yazılmadı: hangi kuralların kopyalanacağı T30'un kapsam ölçümüne bağlı.",
-  "source": "bizigo/prototip (prototypes/t30-sigma/rules)",
+  "source": "loganalyzer/prototip (prototypes/t30-sigma/rules)",
   "commit": "t30-ornekleminden-terfi",
-  "license": "MIT (bizigo)",
+  "license": "MIT (loganalyzer)",
   "rules": [
     {
       "path": "asa_acl_hit.yml",

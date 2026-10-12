@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    M02 — komut çekirdeği.
+
+    YÖN TEK VE ÇEKİRDEK HİÇBİR SUNUMA BAKMIYOR:
+
+        LogAnalyzer.Cli ──┐
+                     ├──> LogAnalyzer.Commands ──> LogAnalyzer.Parsing, LogAnalyzer.Storage.*
+        LogAnalyzer.Mcp ──┘
+
+    Ayrı bir proje olmasının iki gerekçesi ölçüldü:
+
+    · `LogAnalyzer.Cli`'nin derleme adı `loganalyzer` ve `LogAnalyzer.` önek kuralına uymuyor
+      (T50). Çekirdeği CLI'nin içine koymak `LogAnalyzer.Mcp -> loganalyzer` referansını
+      doğururdu: protokol katmanı bir SUNUM katmanına, üstelik MCP keşif
+      konvansiyonunun (`LogAnalyzer.*`) dışındaki bir derlemeye bağlanırdı.
+
+    · Planın kendi cümlesi "ortak çekirdek, İKİ sunum katmanı". Çekirdek
+      sunumlardan birinin içindeyse o katman ayrıcalıklı olur ve parite tek
+      yönlü hâle gelir — yani ölçülemez.
+
+    BU PROJEDE `Console` YASAK ve bir mimari test onu tutuyor. Gerekçe bir üslup
+    tercihi değil: MCP tarafında stdout PROTOKOLÜN KENDİSİ ve oraya düşen tek
+    bir satır JSON-RPC akışını bozuyor. İstemci bunu ayrıştırma hatası olarak
+    görür — yani arıza ürünü değil AYRIŞTIRICIYI işaret eder ve hatanın kaynağı
+    ile belirtisi farklı katmanlarda olur.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\LogAnalyzer.Contracts\LogAnalyzer.Contracts.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Parsing\LogAnalyzer.Parsing.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Storage.ClickHouse\LogAnalyzer.Storage.ClickHouse.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Alerting\LogAnalyzer.Alerting.csproj" />
+
+    <!-- `seed golden` boru hattının kendisinden geçiyor: kompozisyon ve
+         kodlama tespiti Ingest'in, ikinci kopyası yazılmadı. -->
+    <ProjectReference Include="..\LogAnalyzer.Ingest\LogAnalyzer.Ingest.csproj" />
+  </ItemGroup>
+
+</Project>

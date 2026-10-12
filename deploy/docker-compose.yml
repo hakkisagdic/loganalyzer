@@ -1,11 +1,11 @@
-# bizigo-loganalyzer — F1 geliştirme ortamı
+# loganalyzer-loganalyzer — F1 geliştirme ortamı
 #
 # Kullanım:  cd deploy && cp .env.example .env && docker compose up -d
 #
 # SÜRÜM SABİTLEME ZORUNLU (K25 riski): hiçbir imajda `latest` kullanılmaz.
 # RustFS 1.0-rc; beta/rc serisinde sürüm takibi yapılmaz, bilinçli yükseltilir.
 
-name: bizigo
+name: loganalyzer
 
 services:
 
@@ -16,9 +16,9 @@ services:
   clickhouse:
     image: clickhouse/clickhouse-server:26.7
     environment:
-      CLICKHOUSE_DB: bizigo
-      CLICKHOUSE_USER: ${CH_USER:-bizigo}
-      CLICKHOUSE_PASSWORD: ${CH_PASSWORD:-bizigo}
+      CLICKHOUSE_DB: loganalyzer
+      CLICKHOUSE_USER: ${CH_USER:-loganalyzer}
+      CLICKHOUSE_PASSWORD: ${CH_PASSWORD:-loganalyzer}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
     ports:
       - "${CH_HTTP_PORT:-8123}:8123"
@@ -36,7 +36,7 @@ services:
 
   # --------------------------------------------------------------------------
   # Kontrol düzlemi — PostgreSQL (K23)
-  # İki veritabanı: `bizigo` (envanter/katalog/audit) ve `keycloak`.
+  # İki veritabanı: `loganalyzer` (envanter/katalog/audit) ve `keycloak`.
   # --------------------------------------------------------------------------
   # Oturum deposu — Redis (B7)
   #
@@ -82,9 +82,9 @@ services:
   postgres:
     image: postgres:18-alpine
     environment:
-      POSTGRES_USER: ${PG_USER:-bizigo}
-      POSTGRES_PASSWORD: ${PG_PASSWORD:-bizigo}
-      POSTGRES_DB: bizigo
+      POSTGRES_USER: ${PG_USER:-loganalyzer}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-loganalyzer}
+      POSTGRES_DB: loganalyzer
     ports:
       - "${PG_PORT:-5432}:5432"
     volumes:
@@ -93,7 +93,7 @@ services:
       - postgres_data:/var/lib/postgresql
       - ./postgres/01-keycloak-db.sql:/docker-entrypoint-initdb.d/01-keycloak-db.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-bizigo} -d bizigo"]
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-loganalyzer} -d loganalyzer"]
       interval: 5s
       timeout: 3s
       retries: 30
@@ -124,8 +124,8 @@ services:
       RUSTFS_ADDRESS: 0.0.0.0:9000
       RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
       RUSTFS_CONSOLE_ENABLE: "true"
-      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-bizigoadmin}
-      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:-bizigoadmin}
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-loganalyzeradmin}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:-loganalyzeradmin}
       RUSTFS_OBS_LOGGER_LEVEL: warn
       # Tek düğüm/tek disk topolojisi için gerekli — yalnızca geliştirme ortamında.
       RUSTFS_UNSAFE_BYPASS_DISK_CHECK: "true"
@@ -157,8 +157,8 @@ services:
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: ${PG_USER:-bizigo}
-      KC_DB_PASSWORD: ${PG_PASSWORD:-bizigo}
+      KC_DB_USERNAME: ${PG_USER:-loganalyzer}
+      KC_DB_PASSWORD: ${PG_PASSWORD:-loganalyzer}
       KC_HEALTH_ENABLED: "true"
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD:-admin}
@@ -183,7 +183,7 @@ services:
     ports:
       - "${KC_PORT:-8180}:8080"
     volumes:
-      - ./keycloak/realm-bizigo.json:/opt/keycloak/data/import/realm-bizigo.json:ro
+      - ./keycloak/realm-loganalyzer.json:/opt/keycloak/data/import/realm-loganalyzer.json:ro
     depends_on:
       postgres: { condition: service_healthy }
     healthcheck:
@@ -225,9 +225,9 @@ services:
       # Keycloak hazır olmadan token alınamaz; collector açılışta ölmesin.
       keycloak: { condition: service_healthy }
     environment:
-      BIZIGO_ENDPOINT: ${BIZIGO_ENDPOINT:-http://host.docker.internal:5080}
-      COLLECTOR_CLIENT_SECRET: ${COLLECTOR_CLIENT_SECRET:-bizigo-collector-dev-secret}
-      KEYCLOAK_TOKEN_URL: ${KEYCLOAK_TOKEN_URL:-http://keycloak:8080/realms/bizigo/protocol/openid-connect/token}
+      LOGANALYZER_ENDPOINT: ${LOGANALYZER_ENDPOINT:-http://host.docker.internal:5080}
+      COLLECTOR_CLIENT_SECRET: ${COLLECTOR_CLIENT_SECRET:-loganalyzer-collector-dev-secret}
+      KEYCLOAK_TOKEN_URL: ${KEYCLOAK_TOKEN_URL:-http://keycloak:8080/realms/loganalyzer/protocol/openid-connect/token}
     ports:
       - "${SYSLOG_TCP_PORT:-5140}:5140"
       - "${SYSLOG_UDP_PORT:-5141}:5141/udp"
@@ -294,7 +294,7 @@ services:
       start_period: 10s
 
   # --------------------------------------------------------------------------
-  # Bizigo.Api — PROFİL ARKASINDA.
+  # LogAnalyzer.Api — PROFİL ARKASINDA.
   #
   # `docker compose up -d` bunu BAŞLATMIYOR ve bu bilinçli: README'nin anlattığı
   # geliştirme akışı API'yi makinede koşturuyor (sıcak yeniden yükleme) ve
@@ -305,15 +305,15 @@ services:
   #     docker compose --profile api up -d --wait
   #
   # Collector'ı da container'daki API'ye bakacak şekilde çevirmek için `.env`:
-  #     BIZIGO_ENDPOINT=http://api:8080
+  #     LOGANALYZER_ENDPOINT=http://api:8080
   # --------------------------------------------------------------------------
   api:
     profiles: ["api"]
     build:
       # Context repo kökü: imaja `src/`, `catalog/` ve `db/clickhouse/` giriyor.
-      # Gerekçesi src/Bizigo.Api/Dockerfile başlığında.
+      # Gerekçesi src/LogAnalyzer.Api/Dockerfile başlığında.
       context: ..
-      dockerfile: src/Bizigo.Api/Dockerfile
+      dockerfile: src/LogAnalyzer.Api/Dockerfile
     depends_on:
       clickhouse: { condition: service_healthy }
       postgres: { condition: service_healthy }
@@ -321,19 +321,19 @@ services:
       keycloak: { condition: service_healthy }
       sidecar: { condition: service_healthy }
     environment:
-      ConnectionStrings__ControlPlane: "Host=postgres;Port=5432;Database=bizigo;Username=${PG_USER:-bizigo};Password=${PG_PASSWORD:-bizigo}"
-      ConnectionStrings__ClickHouse: "Host=clickhouse;Port=8123;Database=bizigo;Username=${CH_USER:-bizigo};Password=${CH_PASSWORD:-bizigo}"
+      ConnectionStrings__ControlPlane: "Host=postgres;Port=5432;Database=loganalyzer;Username=${PG_USER:-loganalyzer};Password=${PG_PASSWORD:-loganalyzer}"
+      ConnectionStrings__ClickHouse: "Host=clickhouse;Port=8123;Database=loganalyzer;Username=${CH_USER:-loganalyzer};Password=${CH_PASSWORD:-loganalyzer}"
 
-      # Issuer DEĞİŞMİYOR: token'da `http://localhost:8180/realms/bizigo` yazıyor
+      # Issuer DEĞİŞMİYOR: token'da `http://localhost:8180/realms/loganalyzer` yazıyor
       # (Keycloak'ın KC_HOSTNAME'i öyle sabitliyor) ve güvendiğimiz şey o.
       # Değişen tek şey anahtarların NEREDEN indirileceği — container içinde
       # `localhost:8180` Keycloak değil, container'ın kendisi.
-      Auth__Authority: ${KC_ISSUER:-http://localhost:8180}/realms/bizigo
-      Auth__MetadataAddress: http://keycloak:8080/realms/bizigo/.well-known/openid-configuration
+      Auth__Authority: ${KC_ISSUER:-http://localhost:8180}/realms/loganalyzer
+      Auth__MetadataAddress: http://keycloak:8080/realms/loganalyzer/.well-known/openid-configuration
 
       RawStore__ServiceUrl: http://rustfs:9000
-      RawStore__AccessKey: ${S3_ACCESS_KEY:-bizigoadmin}
-      RawStore__SecretKey: ${S3_SECRET_KEY:-bizigoadmin}
+      RawStore__AccessKey: ${S3_ACCESS_KEY:-loganalyzeradmin}
+      RawStore__SecretKey: ${S3_SECRET_KEY:-loganalyzeradmin}
 
       Sidecar__BaseUrl: http://sidecar:8000
 
@@ -347,7 +347,7 @@ services:
       # WAL kalıcı: ack ham batch diske yazıldıktan sonra veriliyor. İmaj
       # katmanında kalsaydı konteyner yeniden yaratıldığında henüz arşive
       # geçmemiş batch'ler kaybolurdu.
-      - api_wal:/var/lib/bizigo/wal
+      - api_wal:/var/lib/loganalyzer/wal
     healthcheck:
       # aspnet imajında curl yok ve `/bin/sh` dash — `/dev/tcp` yalnızca bash'te
       # var, o yüzden kabuk açıkça bash.
@@ -355,7 +355,7 @@ services:
         - CMD
         - bash
         - -c
-        - "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && grep -q bizigo-loganalyzer <&3"
+        - "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && grep -q loganalyzer-loganalyzer <&3"
       interval: 10s
       timeout: 5s
       retries: 30
@@ -390,15 +390,15 @@ services:
       #
       # `api` servisindeki `Auth__Authority` / `Auth__MetadataAddress` ayrımının
       # birebir aynısı, bir katman yukarıda. Issuer DEĞİŞMİYOR: token'da
-      # `http://localhost:8180/realms/bizigo` yazıyor (Keycloak'ın KC_HOSTNAME'i
+      # `http://localhost:8180/realms/loganalyzer` yazıyor (Keycloak'ın KC_HOSTNAME'i
       # öyle sabitliyor) ve tarayıcı da giriş için oraya gidiyor.
-      KEYCLOAK_ISSUER: ${KC_ISSUER:-http://localhost:8180}/realms/bizigo
+      KEYCLOAK_ISSUER: ${KC_ISSUER:-http://localhost:8180}/realms/loganalyzer
       # Değişen tek şey keşif belgesinin NEREDEN indirileceği — container içinde
       # `localhost:8180` Keycloak değil, container'ın kendisi.
-      KEYCLOAK_METADATA_URL: http://keycloak:8080/realms/bizigo/.well-known/openid-configuration
-      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-bizigo-ui}
+      KEYCLOAK_METADATA_URL: http://keycloak:8080/realms/loganalyzer/.well-known/openid-configuration
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-loganalyzer-ui}
       # Realm dosyasındaki geliştirme değeri; üretimde gizli yöneticiden gelir.
-      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-bizigo-ui-dev-secret}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-loganalyzer-ui-dev-secret}
 
       # Dışarıdan görünen kök — TARAYICININ gördüğü adres. Dönüş adresi buradan
       # türüyor ve realm'deki `redirectUris` ile birebir eşleşmek zorunda:
@@ -408,9 +408,9 @@ services:
       # API'ye SUNUCUDAN SUNUCUYA. Tarayıcı buraya hiç konuşmuyor — her istek
       # BFF vekilinden (`/api/bff/...`) geçiyor — dolayısıyla servis adı
       # kullanmak tarayıcı tarafında hiçbir şeyi kırmıyor.
-      BIZIGO_API_URL: http://api:8080
+      LOGANALYZER_API_URL: http://api:8080
 
-      BFF_COOKIE_NAME: ${BFF_COOKIE_NAME:-bizigo.sid}
+      BFF_COOKIE_NAME: ${BFF_COOKIE_NAME:-loganalyzer.sid}
       BFF_SESSION_TTL_SECONDS: ${BFF_SESSION_TTL_SECONDS:-28800}
 
       # Redis, `memory` DEĞİL — ve bu container'lı hâlin makinedeki hâlden
@@ -473,7 +473,7 @@ services:
       # geldiğinde bu servis ölçeklenir, ama bugün beş container açmak S03'ün
       # sınadığı şeye hiçbir şey eklemezdi.
       SIM_PROFILE: ${SIM_PROFILE:-fw-ankara-01}
-      SIM_USERNAME: ${SIM_USERNAME:-bizigo-ro}
+      SIM_USERNAME: ${SIM_USERNAME:-loganalyzer-ro}
 
       # Parola compose dosyasında DEĞİL, ortamdan. Varsayılan yalnızca yerel
       # geliştirme içindir ve profil YAML'ındaki `credential_env` ile aynı

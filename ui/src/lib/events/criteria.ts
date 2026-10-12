@@ -13,7 +13,7 @@ import type { EventSearchBody } from "@/lib/api/client";
  * <p>
  * ⚠️ <b>"Bir arama" bu üründe iki yerde temsil ediliyor</b> ve ayrışmaları
  * hiçbir yerde kırmızı yanmıyor: buradaki <see cref="PARAM"/> kümesi ile alarm
- * kuralının gövdesindeki <c>AlertSearch</c> (<c>src/Bizigo.Alerting/</c>).
+ * kuralının gövdesindeki <c>AlertSearch</c> (<c>src/LogAnalyzer.Alerting/</c>).
  * Ekrandan kurulan bir alarm, ekranda görülen sonuçtan başkasını izlerse bu
  * sessiz bir hata olur.
  * </p>

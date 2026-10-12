@@ -36,7 +36,7 @@ export interface BffConfig {
   readonly clientSecret: string;
   /** Next uygulamasının dışarıdan görünen kökü. Yönlendirme adresleri buradan türüyor. */
   readonly publicUrl: string;
-  /** `Bizigo.Api`'nin sunucudan sunucuya adresi. Tarayıcı buraya hiç konuşmuyor. */
+  /** `LogAnalyzer.Api`'nin sunucudan sunucuya adresi. Tarayıcı buraya hiç konuşmuyor. */
   readonly apiBaseUrl: string;
   /** Oturum çerezinin adı. */
   readonly cookieName: string;
@@ -67,17 +67,17 @@ function required(name: string): string {
 
 export function readBffConfig(): BffConfig {
   const publicUrl = (process.env.BFF_PUBLIC_URL ?? "http://localhost:3000").replace(/\/+$/, "");
-  const issuer = (process.env.KEYCLOAK_ISSUER ?? "http://localhost:8180/realms/bizigo").replace(/\/+$/, "");
+  const issuer = (process.env.KEYCLOAK_ISSUER ?? "http://localhost:8180/realms/loganalyzer").replace(/\/+$/, "");
 
   return {
     issuer,
     metadataUrl:
       process.env.KEYCLOAK_METADATA_URL ?? `${issuer}/.well-known/openid-configuration`,
-    clientId: process.env.KEYCLOAK_CLIENT_ID ?? "bizigo-ui",
+    clientId: process.env.KEYCLOAK_CLIENT_ID ?? "loganalyzer-ui",
     clientSecret: required("KEYCLOAK_CLIENT_SECRET"),
     publicUrl,
-    apiBaseUrl: (process.env.BIZIGO_API_URL ?? "http://localhost:5080").replace(/\/+$/, ""),
-    cookieName: process.env.BFF_COOKIE_NAME ?? "bizigo.sid",
+    apiBaseUrl: (process.env.LOGANALYZER_API_URL ?? "http://localhost:5080").replace(/\/+$/, ""),
+    cookieName: process.env.BFF_COOKIE_NAME ?? "loganalyzer.sid",
     sessionTtlSeconds: Number(process.env.BFF_SESSION_TTL_SECONDS ?? 60 * 60 * 8),
     sessionStore: process.env.BFF_SESSION_STORE === "redis" ? "redis" : "memory",
     redisUrl: process.env.BFF_REDIS_URL,
@@ -86,7 +86,7 @@ export function readBffConfig(): BffConfig {
 
 /**
  * Keycloak realm'inde `redirectUris` içinde **birebir** bu adres yazılı
- * (`deploy/keycloak/realm-bizigo.json`). Yol değişirse orası da değişmeli.
+ * (`deploy/keycloak/realm-loganalyzer.json`). Yol değişirse orası da değişmeli.
  */
 export function redirectUri(config: BffConfig): string {
   return `${config.publicUrl}/signin-oidc`;

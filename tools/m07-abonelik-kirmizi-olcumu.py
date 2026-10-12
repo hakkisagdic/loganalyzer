@@ -22,9 +22,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from kirmizi_olcumu import Kusur, olc  # noqa: E402
 
-MCP = "src/Bizigo.Mcp"
-PROD = "src/Bizigo.Mcp.Product"
-RCA = "src/Bizigo.Rca"
+MCP = "src/LogAnalyzer.Mcp"
+PROD = "src/LogAnalyzer.Mcp.Product"
+RCA = "src/LogAnalyzer.Rca"
 
 KUSURLAR = [
     Kusur(
@@ -38,7 +38,7 @@ KUSURLAR = [
     ),
     Kusur(
         ad="2 · Yetenek taşımanın gönderebilmesinden koparılıyor",
-        dosya=f"{MCP}/BizigoMcpServer.cs",
+        dosya=f"{MCP}/LogAnalyzerMcpServer.cs",
         bul="            Subscribe = subscriptionsDeliverable\n"
             "                && resources.Any(static resource => resource.SupportsSubscription),",
         koy="            Subscribe = resources.Any(static resource => resource.SupportsSubscription), // KUSUR",

@@ -1,7 +1,7 @@
 ---
 title: Sigma derleme hattının üç kapısı
 category: skills
-tags: [test, veri-deposu, yordam, bizigo]
+tags: [test, veri-deposu, yordam, loganalyzer]
 aliases: [kapı 1 kapı 2 kapı 3, EXPLAIN kapısı, derlendi ama koşmuyor]
 relationships:
   - target: "[[concepts/f3-bosluk-tek-cins-degildir]]"

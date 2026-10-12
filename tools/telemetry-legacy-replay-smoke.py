@@ -10,7 +10,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 DOTNET = shutil.which("dotnet") or str(Path.home() / ".dotnet/dotnet")
-DLL = ROOT / "sim/Bizigo.OtlpFixture/bin/Release/net10.0/Bizigo.OtlpFixture.dll"
+DLL = ROOT / "sim/LogAnalyzer.OtlpFixture/bin/Release/net10.0/LogAnalyzer.OtlpFixture.dll"
 
 
 def main():

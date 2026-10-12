@@ -1,7 +1,7 @@
 ---
 title: Kapsam tek kapıdan geçer
 category: concepts
-tags: [guvenlik, mimari, kavram, bizigo]
+tags: [guvenlik, mimari, kavram, loganalyzer]
 aliases: [IScopedQuery, kapsam ayrışması, owner_group kapısı]
 relationships:
   - target: "[[concepts/f2-bff-deseni]]"

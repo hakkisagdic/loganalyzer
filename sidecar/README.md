@@ -6,7 +6,7 @@ Bilinmeyen format keşfinin altyapısı (T12 / K14, [F1 §9](../README.md)).
 > Ölürse ingest çalışmaya devam eder; yalnızca format keşfi devre dışı kalır.
 > Bakımsız bir kütüphaneye (Drain3) bağlanmayı kabul edilebilir kılan tek şey
 > bu. .NET tarafı buraya sert bağımlılık kurmaz — sınırlı kuyruk, devre kesici,
-> 2 sn zaman aşımı (`src/Bizigo.Ingest/Discovery/`).
+> 2 sn zaman aşımı (`src/LogAnalyzer.Ingest/Discovery/`).
 
 ## Uçlar
 
@@ -39,13 +39,13 @@ Kod küçük (~28 KB) ve MIT — gerekirse fork edilir.
 
 ## Maskeleme sözlüğü tek kaynaktır
 
-`catalog/masks/bizigo-masks.yaml` **iki tarafça birden** okunuyor:
+`catalog/masks/loganalyzer-masks.yaml` **iki tarafça birden** okunuyor:
 
 ```
-catalog/masks/bizigo-masks.yaml
+catalog/masks/loganalyzer-masks.yaml
         │
         ├─► sidecar/app/masks.py         → Drain3 MaskingInstruction
-        └─► src/Bizigo.Parsing/Grok/     → MaskCatalog (imza + grok köprüsü)
+        └─► src/LogAnalyzer.Parsing/Grok/     → MaskCatalog (imza + grok köprüsü)
               MaskCatalog.cs
 ```
 
@@ -70,7 +70,7 @@ iki motorda farklı davranırsa CI'da görülür.
 | Değişken | Varsayılan | Not |
 | --- | --- | --- |
 | `REDIS_URL` | `redis://localhost:6379/0` | Yoksa bellek içi devam eder, `/readyz` `degraded` der. |
-| `BIZIGO_MASKS_PATH` | `/app/masks/bizigo-masks.yaml` | Yoksa **açılış patlar** — sessiz kalması, keşfin neden çalışmadığını gizlerdi. |
+| `LOGANALYZER_MASKS_PATH` | `/app/masks/loganalyzer-masks.yaml` | Yoksa **açılış patlar** — sessiz kalması, keşfin neden çalışmadığını gizlerdi. |
 | `DRAIN_MAX_CLUSTERS` | `5000` | **Zorunlu, pozitif.** Sınırsız küme ağ loglarında bellek sızıntısı gibi davranıyor (K14). |
 | `DRAIN_SIM_TH` | `0.4` | |
 | `DRAIN_DEPTH` | `4` | |
@@ -89,7 +89,7 @@ uv pip install --python .venv/bin/python -r requirements-dev.txt
 .venv/bin/python -m pytest
 
 # Elle koşturmak (Redis olmadan da açılır):
-BIZIGO_MASKS_PATH=../catalog/masks/bizigo-masks.yaml \
+LOGANALYZER_MASKS_PATH=../catalog/masks/loganalyzer-masks.yaml \
   .venv/bin/python -m uvicorn app.main:app --port 8099
 ```
 

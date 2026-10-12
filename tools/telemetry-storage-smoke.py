@@ -43,7 +43,7 @@ class QuerySession:
         path = self.folder / "query-config.json"
         path.write_text(json.dumps(config)); path.chmod(0o600)
         self.log = (self.folder / f"query-{time.time_ns()}.log").open("wb")
-        self.child = subprocess.Popen([base.DOTNET, str(ROOT / "sim/Bizigo.OtlpFixture/bin/Release/net10.0/Bizigo.OtlpFixture.dll"),
+        self.child = subprocess.Popen([base.DOTNET, str(ROOT / "sim/LogAnalyzer.OtlpFixture/bin/Release/net10.0/LogAnalyzer.OtlpFixture.dll"),
                                       "--telemetry-query", str(path)], cwd=ROOT, env=self.environment,
                                      stdout=self.log, stderr=subprocess.STDOUT, start_new_session=True)
         (self.folder / "query.pid").write_text(str(self.child.pid))

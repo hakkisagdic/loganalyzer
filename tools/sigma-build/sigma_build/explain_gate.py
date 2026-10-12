@@ -214,9 +214,9 @@ def explain_sql(
     sql: str,
     *,
     url: str,
-    user: str = "bizigo",
-    password: str = "bizigo",
-    database: str = "bizigo",
+    user: str = "loganalyzer",
+    password: str = "loganalyzer",
+    database: str = "loganalyzer",
     timeout: float = 20.0,
     form: str = DEFAULT_EXPLAIN_FORM,
 ) -> GateVerdict:
@@ -365,9 +365,9 @@ def _main(argv: list[str] | None = None) -> int:
     parser.add_argument("--clickhouse-url", default="http://localhost:8123")
     # `--clickhouse-*` yazımı `--clickhouse-url`in yanında doğal duruyor ve elle
     # koşarken ilk denenen o oluyor; iki yazım da kabul ediliyor.
-    parser.add_argument("--user", "--clickhouse-user", dest="user", default="bizigo")
-    parser.add_argument("--password", "--clickhouse-password", dest="password", default="bizigo")
-    parser.add_argument("--database", "--clickhouse-database", dest="database", default="bizigo")
+    parser.add_argument("--user", "--clickhouse-user", dest="user", default="loganalyzer")
+    parser.add_argument("--password", "--clickhouse-password", dest="password", default="loganalyzer")
+    parser.add_argument("--database", "--clickhouse-database", dest="database", default="loganalyzer")
     parser.add_argument("--output", type=Path, default=None)
     parser.add_argument(
         "--explain-form",

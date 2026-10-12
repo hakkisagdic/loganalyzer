@@ -99,7 +99,7 @@ birden** düşürüyor.
 
 ## Bu ticket'ın açtığı kalem
 
-**`bizigo mcp serve --surface bizigo` bugün hiç ayağa kalkmıyor** — ayrı bir
+**`loganalyzer mcp serve --surface loganalyzer` bugün hiç ayağa kalkmıyor** — ayrı bir
 ticket. Ölçüldü: `AlertRulesTool` kurulamadığı için süreç `exit 1` veriyor,
 simülatör yüzeyi aynı ikiliyle `exit 0`. Sebep koordinatörün M02 merge'inde
 `ToolAssembliesFor(Product)`'a ürün derlemesini eklemesi ve stdio'nun servis

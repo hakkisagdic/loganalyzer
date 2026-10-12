@@ -331,7 +331,7 @@ o sayı 1. tereddütle aynı koşumdan gelir).
 `ModelBoundaryGate`'inden geçen gerçek bir loopback uç, gerçek
 `OpenAiCompatibleModelProvider` ve ürünün gerçek `SentenceBinder`'ı aynı
 koşumda çalışıyor. Varsayılan test koşumunda ağ yok; ölçüm yalnız
-`BIZIGO_RCA_LIVE_MODEL=1` ile açılıyor.
+`LOGANALYZER_RCA_LIVE_MODEL=1` ile açılıyor.
 
 Koşumda Mozilla AI'nin `TinyLlama-1.1B-Chat-v1.0.Q5_K_M.llamafile` modeli
 kullanıldı:

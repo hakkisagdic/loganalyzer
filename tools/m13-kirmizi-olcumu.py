@@ -27,8 +27,8 @@ from pathlib import Path
 KOK = Path(__file__).resolve().parent.parent
 YEDEK = KOK / ".m13-olcum-yedek"
 
-IDENTITY = "src/Bizigo.Cli/McpStdioIdentity.cs"
-SCOPE = "src/Bizigo.Mcp/McpCallerScope.cs"
+IDENTITY = "src/LogAnalyzer.Cli/McpStdioIdentity.cs"
+SCOPE = "src/LogAnalyzer.Mcp/McpCallerScope.cs"
 
 
 @dataclass
@@ -69,7 +69,7 @@ KUSURLAR = [
         ad="beklenen kitle API'nin kitlesine çevriliyor",
         dosya=IDENTITY,
         bul="            ValidAudience = settings.Resource,",
-        koy='            ValidAudience = "bizigo-api",   // KIRMIZI-B',
+        koy='            ValidAudience = "loganalyzer-api",   // KIRMIZI-B',
         kirmizi_bekleniyor=[KITLE],
         yesil_kalmali=[EKSIK, SURE, RET_YOK],
         not_="bayrak açık, DEĞER yanlış — bekçinin değeri de sınamasının gerekçesi",
@@ -92,7 +92,7 @@ KUSURLAR = [
         dosya=IDENTITY,
         bul="    public static string? ExpiryReason(DateTimeOffset expiresAt, DateTimeOffset now) =>",
         koy="    public static string? ExpiryReason(DateTimeOffset expiresAt, DateTimeOffset now) =>\n"
-            "        IsExpiredAt(expiresAt, now) ? Bizigo.Mcp.McpCallerScope.NoIdentityMessage : null;"
+            "        IsExpiredAt(expiresAt, now) ? LogAnalyzer.Mcp.McpCallerScope.NoIdentityMessage : null;"
             "   // KIRMIZI-D\n\n"
             "    public static string? OriginalExpiryReason(DateTimeOffset expiresAt, DateTimeOffset now) =>",
         kirmizi_bekleniyor=[SURE],
@@ -134,8 +134,8 @@ KUSURLAR = [
     Kusur(
         ad="belirteç değişkeni test istemcisinin değişkeniyle aynı yapılıyor",
         dosya=IDENTITY,
-        bul='    public const string TokenVariable = "BIZIGO_MCP_TOKEN";',
-        koy='    public const string TokenVariable = "BIZIGO_MCP_API_TOKEN";   // KIRMIZI-H',
+        bul='    public const string TokenVariable = "LOGANALYZER_MCP_TOKEN";',
+        koy='    public const string TokenVariable = "LOGANALYZER_MCP_API_TOKEN";   // KIRMIZI-H',
         kirmizi_bekleniyor=[AD_AYRI],
         yesil_kalmali=[KITLE, SURE],
         not_="M13'ün birinci şartı: ikisi farklı şey, aynı ada koymak bir sanmaktır",
@@ -215,7 +215,7 @@ def test_kos(filtre: str) -> int:
     aracının kendisi §7'nin sınıfına girerdi.
     """
     return kos([
-        "dotnet", "test", "tests/Bizigo.UnitTests", "--no-build", "--nologo", "--filter", filtre,
+        "dotnet", "test", "tests/LogAnalyzer.UnitTests", "--no-build", "--nologo", "--filter", filtre,
     ]).returncode
 
 

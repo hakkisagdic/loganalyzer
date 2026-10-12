@@ -1,0 +1,56 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\LogAnalyzer.Query\LogAnalyzer.Query.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Ingest\LogAnalyzer.Ingest.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Parsing\LogAnalyzer.Parsing.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Alerting\LogAnalyzer.Alerting.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Mcp\LogAnalyzer.Mcp.csproj" />
+
+    <!--
+      stdio yüzeyi de aynı araçları ilan etmeli. Bu satır olmadan
+      `loganalyzer mcp serve` ürün yüzeyinde SIFIR araç ilan ederdi ve arıza
+      hiçbir yerde hata vermezdi: keşif referans kapanışını yürüyor, ulaşamadığı
+      derlemeyi atlıyor, ve boş bir küme de geçerli bir küme.
+    -->
+    <ProjectReference Include="..\LogAnalyzer.Mcp.Product\LogAnalyzer.Mcp.Product.csproj" />
+
+    <!--
+      M02 — komut çekirdeği. CLI artık bir SUNUM katmanı: iş çekirdekte,
+      burada yalnızca konsola çizim ve çıkış kodu.
+    -->
+    <ProjectReference Include="..\LogAnalyzer.Commands\LogAnalyzer.Commands.csproj" />
+
+    <!--
+      Komut çekirdeğinin MCP SUNUMU. Referans ZORUNLU ve keşif mekaniği
+      yüzünden: `McpToolDiscovery.ProductAssemblies` kompozisyon kökünden
+      (bu derleme) başlayıp `LogAnalyzer.*` referanslarını geziyor. Buradan
+      referans verilmezse araçlar YÜKLENMİYOR ve uyum kapısı sıfır araç
+      görüp sessizce yeşil yanıyor.
+    -->
+    <ProjectReference Include="..\LogAnalyzer.Commands.Mcp\LogAnalyzer.Commands.Mcp.csproj" />
+    <ProjectReference Include="..\..\sim\LogAnalyzer.Simulators\LogAnalyzer.Simulators.csproj" />
+</ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+
+    <!--
+      M13 — stdio kimliği. `AddJwtBearer` KULLANILAMIYOR: ASP.NET paylaşılan
+      çatısı bu projeye inince üst-düzey ifadelerin ürettiği `Program` görünür
+      hâle geliyor ve `LogAnalyzer.Api`'nin `Program`'ıyla çakışıyor (ölçüldü,
+      gerekçe `LogAnalyzer.Mcp.csproj`'da). Bu iki paket ASP.NET taşımıyor ve
+      API'nin belirteci doğruladığı kütüphanenin AYNI sürümü (8.19.2).
+    -->
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>loganalyzer</AssemblyName>
+    <RootNamespace>LogAnalyzer.Cli</RootNamespace>
+  </PropertyGroup>
+
+</Project>

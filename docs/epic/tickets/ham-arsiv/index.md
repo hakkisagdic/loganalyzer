@@ -48,13 +48,13 @@ Ham nesneler RustFS'e yazılıyor, geri okunuyor, sha256 tutuyorScrub sha256 uyu
 
 | Parça | Nerede |
 | --- | --- |
-| S3 yazıcı | `src/Bizigo.Storage.Raw/IRawObjectStore.cs` — yalnızca S3 API |
+| S3 yazıcı | `src/LogAnalyzer.Storage.Raw/IRawObjectStore.cs` — yalnızca S3 API |
 | Nesne kurucu | `RawObjectBuilder.cs` — NDJSON + konumlar + ZSTD + sha256 |
 | Yükleyici | `RawArchiveUploader.cs` — yükle → geri oku → doğrula → manifest |
 | Scrub | `RawArchiveScrubber.cs` — en eski denetlenenden başlayarak örnekler |
 | Okuma yolu | `RawReader.cs` — kapsam kontrolü **indirmeden önce** |
-| WAL bağı | `src/Bizigo.Ingest/Wal/WalSegmentSource.cs` (yön: ingest → arşiv) |
-| Envanter çözümü | `src/Bizigo.ControlPlane/SourceDirectory.cs` |
+| WAL bağı | `src/LogAnalyzer.Ingest/Wal/WalSegmentSource.cs` (yön: ingest → arşiv) |
+| Envanter çözümü | `src/LogAnalyzer.ControlPlane/SourceDirectory.cs` |
 
 **Kapsam ayarlaması:** `owner_group` çözümlemesi biçimsel olarak T06'nın kalemi,
 ama nesne anahtarının parçası olduğu ve anahtar bir kez yazılıp değişmediği için

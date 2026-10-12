@@ -22,10 +22,10 @@ helper = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(helper)
 GREEN = "Known_inventory_without_payload_claim_remains_visible"
 CURRENT = "Single_and_CSV_current_source_writes_remain_functional"
-SINK = "src/Bizigo.Storage.ClickHouse/TelemetryWriter.cs"
-READER = "src/Bizigo.Storage.ClickHouse/TelemetryReader.cs"
-INGEST = "src/Bizigo.Ingest/Otlp/SignalIngest.cs"
-MATERIALIZE = "src/Bizigo.Ingest/Otlp/TelemetryMaterializer.cs"
+SINK = "src/LogAnalyzer.Storage.ClickHouse/TelemetryWriter.cs"
+READER = "src/LogAnalyzer.Storage.ClickHouse/TelemetryReader.cs"
+INGEST = "src/LogAnalyzer.Ingest/Otlp/SignalIngest.cs"
+MATERIALIZE = "src/LogAnalyzer.Ingest/Otlp/TelemetryMaterializer.cs"
 
 
 def patch(path, before, after, occurrence=None):
@@ -63,7 +63,7 @@ MUTANTS = [
         'catch (Exception ex) when (ReadFailure(ex, token)) { return new(TelemetryResultStatus.Failed, null, Failure(ex)); }',
         'catch (Exception ex) when (ReadFailure(ex, token)) { return new(TelemetryResultStatus.Empty, 0); }', 0)],
         "Failed_empty_never_fed_and_all_query_audit_outcomes_are_distinct"),
-    mutation("M08-audit-hook", [patch("src/Bizigo.Query/ScopedQuery.Telemetry.cs",
+    mutation("M08-audit-hook", [patch("src/LogAnalyzer.Query/ScopedQuery.Telemetry.cs",
         '''await _audit.RecordAsync(new AuditRecord(scope.Subject, "telemetry." + signal + "." + action,
                 signal.ToString(), Describe(scope, predicate), summary + ";outcome=" + outcome + ";partial=" + partial,
                 count, (int)Math.Min(watch.ElapsedMilliseconds, int.MaxValue), succeeded), auditBudget.Token);''',
@@ -72,9 +72,9 @@ MUTANTS = [
                 count, (int)Math.Min(watch.ElapsedMilliseconds, int.MaxValue), succeeded);
             await Task.CompletedTask;''')], "Failed_empty_never_fed_and_all_query_audit_outcomes_are_distinct"),
     *[mutation("M09-history-" + label, [
-        patch("src/Bizigo.ControlPlane/ControlPlaneDbContext.cs", "public override async Task<int> SaveChangesAsync(",
+        patch("src/LogAnalyzer.ControlPlane/ControlPlaneDbContext.cs", "public override async Task<int> SaveChangesAsync(",
             "public Task<int> SaveWithoutOwnershipAsync(CancellationToken token) => base.SaveChangesAsync(true, token);\n\n    public override async Task<int> SaveChangesAsync("),
-        patch("src/Bizigo.Api/SourcesEndpoints.cs", "try { await db.SaveChangesAsync(cancellationToken); }",
+        patch("src/LogAnalyzer.Api/SourcesEndpoints.cs", "try { await db.SaveChangesAsync(cancellationToken); }",
             "try { await db.SaveWithoutOwnershipAsync(cancellationToken); }", ordinal)],
         "Single_upsert_and_csv_commit_source_and_history_atomically", CURRENT)
       for ordinal, label in enumerate(("single", "csv"))],
@@ -118,16 +118,16 @@ def main():
             target = copy / name; target.parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(source, target)
             source_hashes[name] = hashlib.sha256(source.read_bytes()).hexdigest()
         (evidence / "source-sha256.json").write_text(json.dumps(source_hashes, indent=2))
-        env = os.environ | {"GIT_DIR": str(ROOT / ".git"), "GIT_WORK_TREE": str(copy), "BIZIGO_TELEMETRY_EVIDENCE": str(evidence / "db-artifacts")}
+        env = os.environ | {"GIT_DIR": str(ROOT / ".git"), "GIT_WORK_TREE": str(copy), "LOGANALYZER_TELEMETRY_EVIDENCE": str(evidence / "db-artifacts")}
         def build(label, project):
             helper.resources()
-            result = helper.execute([helper.DOTNET, "build", "tests/Bizigo." + project, "--configuration", "Release", "-m:1"], copy, env)
+            result = helper.execute([helper.DOTNET, "build", "tests/LogAnalyzer." + project, "--configuration", "Release", "-m:1"], copy, env)
             (evidence / (label + "-build.log")).write_text(result.stdout + result.stderr)
             assert result.returncode == 0, "compiler failure is not kill: " + label
         def tests(label, project, test_names):
             helper.resources(); folder = evidence / label; folder.mkdir(parents=True, exist_ok=True)
             trx = folder / "result.trx"
-            result = helper.execute([helper.DOTNET, "test", "tests/Bizigo." + project, "--configuration", "Release", "--no-build", "-m:1",
+            result = helper.execute([helper.DOTNET, "test", "tests/LogAnalyzer." + project, "--configuration", "Release", "--no-build", "-m:1",
                 "--filter", "|".join("FullyQualifiedName~" + n for n in test_names), "--logger", "trx;LogFileName=result.trx", "--results-directory", str(folder)], copy, env)
             (folder / "test.log").write_text(result.stdout + result.stderr)
             assert trx.exists(), "runner failure: missing TRX"

@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LogAnalyzer Lite | Incident Flight Recorder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased flex flex-col">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-30 px-6 py-3.5 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+        <i class="fa-solid fa-plane-arrival text-white text-lg"></i>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <h1 class="text-base font-bold tracking-tight text-white">LogAnalyzer <span class="text-indigo-400 font-medium text-xs uppercase px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/30">Lite</span></h1>
+          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Flight Recorder Canlı
+          </span>
+        </div>
+        <p class="text-xs text-slate-400">Hedef Odaklı Olay & Hata Uçuş Kaydedicisi (Zero Bloat In-Memory Ring Buffer)</p>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex items-center space-x-3">
+      <button onclick="triggerSimulate()" class="text-xs px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 flex items-center gap-1.5 transition">
+        <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Simüle Olay
+      </button>
+      <button onclick="purgeLogs()" class="text-xs px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 rounded-lg border border-rose-500/30 flex items-center gap-1.5 transition">
+        <i class="fa-solid fa-broom text-rose-400"></i> Süpür (Purge)
+      </button>
+      <button onclick="loadAll()" class="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg flex items-center gap-1.5 transition shadow">
+        <i class="fa-solid fa-rotate text-xs"></i> Yenile
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 p-6 space-y-6 max-w-7xl mx-auto w-full">
+
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+        <div class="flex justify-between items-center text-slate-400 text-xs">
+          <span>Toplam İstek</span>
+          <i class="fa-solid fa-satellite-dish text-indigo-400"></i>
+        </div>
+        <div class="text-2xl font-bold text-white mt-2" id="stat-total">0</div>
+        <div class="text-[11px] text-slate-500 mt-1">Gelen toplam telemetri</div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+        <div class="flex justify-between items-center text-slate-400 text-xs">
+          <span>Başarılı İstekler</span>
+          <i class="fa-solid fa-circle-check text-emerald-400"></i>
+        </div>
+        <div class="text-2xl font-bold text-emerald-400 mt-2" id="stat-success">0</div>
+        <div class="text-[11px] text-emerald-500/80 mt-1">Sadece sayaç (Diskte yer tutmaz)</div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+        <div class="flex justify-between items-center text-slate-400 text-xs">
+          <span>Aktif Incident'lar</span>
+          <i class="fa-solid fa-fire-flame-curved text-rose-400"></i>
+        </div>
+        <div class="text-2xl font-bold text-rose-400 mt-2" id="stat-incidents">0</div>
+        <div class="text-[11px] text-rose-500/80 mt-1">Uçuş kaydı tutulan hatalar</div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+        <div class="flex justify-between items-center text-slate-400 text-xs">
+          <span>Ortalama Süre</span>
+          <i class="fa-solid fa-stopwatch text-sky-400"></i>
+        </div>
+        <div class="text-2xl font-bold text-sky-400 mt-2" id="stat-duration">0 ms</div>
+        <div class="text-[11px] text-slate-500 mt-1">SLA Latency ortalaması</div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col justify-between">
+        <div class="flex justify-between items-center text-slate-400 text-xs">
+          <span>Süpürülen (Purged)</span>
+          <i class="fa-solid fa-trash-can text-amber-400"></i>
+        </div>
+        <div class="text-2xl font-bold text-amber-400 mt-2" id="stat-purged">0</div>
+        <div class="text-[11px] text-slate-500 mt-1">Hafızadan silinen eski olaylar</div>
+      </div>
+    </div>
+
+    <!-- Filters & Table -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl shadow-lg overflow-hidden">
+      <!-- Toolbar -->
+      <div class="p-4 border-b border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-3 bg-slate-900/50">
+        <div class="flex items-center space-x-2 w-full sm:w-auto">
+          <div class="relative w-full sm:w-72">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
+            <input type="text" id="search-input" onkeyup="filterIncidents()" placeholder="Tracking ID, Uç nokta veya Hata ara..."
+                   class="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+          </div>
+          <select id="level-select" onchange="filterIncidents()" class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+            <option value="">Tüm Seviyeler</option>
+            <option value="Fatal">Fatal / Kritik</option>
+            <option value="Error">Error / Hata</option>
+            <option value="Warning">Warning / Uyarı</option>
+          </select>
+        </div>
+
+        <div class="flex items-center space-x-2 text-xs text-slate-400">
+          <label class="flex items-center space-x-1.5 cursor-pointer">
+            <input type="checkbox" id="auto-refresh" checked class="rounded bg-slate-800 border-slate-700 text-indigo-500 focus:ring-0">
+            <span>Canlı Akış (3 sn)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Incidents Table -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-950/60 text-slate-400 uppercase tracking-wider text-[11px] border-b border-slate-800">
+            <tr>
+              <th class="py-3 px-4">Zaman</th>
+              <th class="py-3 px-4">Tracking ID</th>
+              <th class="py-3 px-4">Kaynak</th>
+              <th class="py-3 px-4">Uç Nokta</th>
+              <th class="py-3 px-4">Durum</th>
+              <th class="py-3 px-4">Süre</th>
+              <th class="py-3 px-4">Hata Mesajı</th>
+              <th class="py-3 px-4 text-right">Uçuş Kaydı</th>
+            </tr>
+          </thead>
+          <tbody id="incidents-tbody" class="divide-y divide-slate-800 text-slate-300">
+            <tr>
+              <td colspan="8" class="text-center py-8 text-slate-500">
+                <i class="fa-solid fa-spinner fa-spin mr-2"></i> Olaylar yükleniyor...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Incident Detail Modal (Flight Blackbox) -->
+  <div id="detail-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+        <div class="flex items-center space-x-3">
+          <div class="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold text-sm" id="modal-status-badge">
+            500
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <span id="modal-tracking-id">TRK-XXX</span>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700" id="modal-level">Error</span>
+            </h3>
+            <p class="text-xs text-slate-400" id="modal-endpoint-title">POST /api/v1/invoices</p>
+          </div>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 overflow-y-auto space-y-4 flex-1 text-xs font-mono">
+        <!-- Quick Meta -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] font-sans">
+          <div><span class="text-slate-500">Zaman:</span> <span id="modal-time" class="text-slate-200"></span></div>
+          <div><span class="text-slate-500">Süre:</span> <span id="modal-duration" class="text-slate-200"></span></div>
+          <div><span class="text-slate-500">Kaynak:</span> <span id="modal-source" class="text-slate-200"></span></div>
+          <div><span class="text-slate-500">Client IP:</span> <span id="modal-ip" class="text-slate-200"></span></div>
+        </div>
+
+        <!-- Error Message -->
+        <div class="bg-rose-950/20 border border-rose-900/50 rounded-xl p-3.5 text-rose-300">
+          <div class="text-[11px] font-bold uppercase text-rose-400 font-sans mb-1 flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-exclamation"></i> Yakalanan İstisna / Hata Mesajı
+          </div>
+          <div id="modal-error-message" class="text-xs break-all"></div>
+        </div>
+
+        <!-- Stack Trace if exists -->
+        <div id="modal-stack-container" class="space-y-1">
+          <div class="text-[11px] font-bold text-slate-400 font-sans">Yığın İzi (Stack Trace):</div>
+          <pre id="modal-stack-trace" class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-slate-400 text-[11px] overflow-x-auto whitespace-pre-wrap max-h-40"></pre>
+        </div>
+
+        <!-- Request / Response Tabs -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-1">
+            <div class="flex justify-between items-center">
+              <span class="text-[11px] font-bold text-slate-400 font-sans">Giriş Payload (Request Body)</span>
+              <button onclick="copyToClipboard('modal-request-payload')" class="text-[10px] text-indigo-400 hover:underline font-sans">Kopyala</button>
+            </div>
+            <pre id="modal-request-payload" class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-slate-300 text-[11px] overflow-x-auto max-h-56"></pre>
+          </div>
+          <div class="space-y-1">
+            <div class="flex justify-between items-center">
+              <span class="text-[11px] font-bold text-slate-400 font-sans">Çıkış Payload (Response Body)</span>
+              <button onclick="copyToClipboard('modal-response-payload')" class="text-[10px] text-indigo-400 hover:underline font-sans">Kopyala</button>
+            </div>
+            <pre id="modal-response-payload" class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-slate-300 text-[11px] overflow-x-auto max-h-56"></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-3 border-t border-slate-800 bg-slate-950/50 flex justify-between items-center text-xs">
+        <span class="text-slate-500">LogAnalyzer Incident Flight Recorder • Uçuş Kara Kutusu</span>
+        <button onclick="closeModal()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allIncidents = [];
+
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/v1/stats');
+        if (!res.ok) return;
+        const data = await res.json();
+        document.getElementById('stat-total').innerText = Number(data.totalIngested).toLocaleString();
+        document.getElementById('stat-success').innerText = Number(data.successfulRequests).toLocaleString();
+        document.getElementById('stat-incidents').innerText = Number(data.activeIncidents).toLocaleString();
+        document.getElementById('stat-duration').innerText = `${data.avgDurationMs} ms`;
+        document.getElementById('stat-purged').innerText = Number(data.purgedCount).toLocaleString();
+      } catch (err) {
+        console.error('Stats error:', err);
+      }
+    }
+
+    async function loadIncidents() {
+      try {
+        const res = await fetch('/api/v1/incidents?limit=100');
+        if (!res.ok) return;
+        allIncidents = await res.json();
+        renderIncidents(allIncidents);
+      } catch (err) {
+        console.error('Incidents error:', err);
+      }
+    }
+
+    function renderIncidents(list) {
+      const tbody = document.getElementById('incidents-tbody');
+      if (!list || list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-500"><i class="fa-solid fa-shield-halved text-emerald-400 mr-2"></i> Aktif incident yok. Sistem pürüzsüz çalışıyor.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map(item => {
+        const isFatal = item.httpStatus >= 500 || item.level === 'Fatal';
+        const badgeColor = isFatal ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : (item.httpStatus >= 400 ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30');
+        const timeStr = new Date(item.timestamp).toLocaleTimeString();
+
+        return `
+          <tr class="hover:bg-slate-800/40 transition">
+            <td class="py-2.5 px-4 font-mono text-[11px] text-slate-400">${timeStr}</td>
+            <td class="py-2.5 px-4 font-mono font-medium text-indigo-400">${item.trackingId || '-'}</td>
+            <td class="py-2.5 px-4 text-slate-300 font-sans">${item.source || '-'}</td>
+            <td class="py-2.5 px-4 font-mono text-slate-200">
+              <span class="text-slate-500 mr-1">${item.httpMethod || 'POST'}</span>${item.endpoint || '/'}
+            </td>
+            <td class="py-2.5 px-4">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${badgeColor}">${item.httpStatus}</span>
+            </td>
+            <td class="py-2.5 px-4 font-mono text-slate-400">${Math.round(item.durationMs)} ms</td>
+            <td class="py-2.5 px-4 max-w-xs truncate text-slate-300" title="${item.errorMessage || ''}">${item.errorMessage || '-'}</td>
+            <td class="py-2.5 px-4 text-right">
+              <button onclick="openDetail('${item.id}')" class="px-2.5 py-1 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded border border-indigo-500/30 transition text-[11px]">
+                <i class="fa-solid fa-magnifying-glass-chart mr-1"></i> Uçuş Kaydı
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterIncidents() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const level = document.getElementById('level-select').value;
+
+      const filtered = allIncidents.filter(i => {
+        const matchesLevel = !level || (i.level && i.level.toLowerCase() === level.toLowerCase());
+        const matchesSearch = !search ||
+          (i.trackingId && i.trackingId.toLowerCase().includes(search)) ||
+          (i.endpoint && i.endpoint.toLowerCase().includes(search)) ||
+          (i.errorMessage && i.errorMessage.toLowerCase().includes(search));
+        return matchesLevel && matchesSearch;
+      });
+
+      renderIncidents(filtered);
+    }
+
+    function openDetail(id) {
+      const item = allIncidents.find(x => x.id === id);
+      if (!item) return;
+
+      document.getElementById('modal-tracking-id').innerText = item.trackingId || item.id;
+      document.getElementById('modal-level').innerText = item.level || 'Error';
+      document.getElementById('modal-status-badge').innerText = item.httpStatus;
+      document.getElementById('modal-endpoint-title').innerText = `${item.httpMethod || 'POST'} ${item.endpoint || '/'}`;
+
+      document.getElementById('modal-time').innerText = new Date(item.timestamp).toLocaleString();
+      document.getElementById('modal-duration').innerText = `${item.durationMs} ms`;
+      document.getElementById('modal-source').innerText = item.source || '-';
+      document.getElementById('modal-ip').innerText = item.clientIp || '127.0.0.1';
+
+      document.getElementById('modal-error-message').innerText = item.errorMessage || 'Belirtilmedi';
+
+      const stackContainer = document.getElementById('modal-stack-container');
+      if (item.stackTrace) {
+        stackContainer.classList.remove('hidden');
+        document.getElementById('modal-stack-trace').innerText = item.stackTrace;
+      } else {
+        stackContainer.classList.add('hidden');
+      }
+
+      document.getElementById('modal-request-payload').innerText = formatJson(item.requestPayload);
+      document.getElementById('modal-response-payload').innerText = formatJson(item.responsePayload);
+
+      document.getElementById('detail-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('detail-modal').classList.add('hidden');
+    }
+
+    function formatJson(str) {
+      if (!str) return '(Boş / Kaydedilmedi)';
+      try {
+        const parsed = JSON.parse(str);
+        return JSON.stringify(parsed, null, 2);
+      } catch {
+        return str;
+      }
+    }
+
+    function copyToClipboard(elementId) {
+      const text = document.getElementById(elementId).innerText;
+      navigator.clipboard.writeText(text);
+      alert('Panoya kopyalandı!');
+    }
+
+    async function triggerSimulate() {
+      await fetch('/api/v1/demo/simulate-incident', { method: 'POST' });
+      await loadAll();
+    }
+
+    async function purgeLogs() {
+      if (!confirm('24 saatten eski veya başarılı tüm log sayaçları süpürülecek. Onaylıyor musunuz?')) return;
+      await fetch('/api/v1/logs/purge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keepLastHours: 1, resetStats: false })
+      });
+      await loadAll();
+    }
+
+    async function loadAll() {
+      await loadStats();
+      await loadIncidents();
+    }
+
+    // Auto-refresh interval
+    setInterval(() => {
+      if (document.getElementById('auto-refresh').checked) {
+        loadAll();
+      }
+    }, 3000);
+
+    // Initial load
+    loadAll();
+  </script>
+</body>
+</html>

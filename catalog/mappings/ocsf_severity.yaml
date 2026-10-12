@@ -13,7 +13,7 @@
 # OTel görünümü (`SeverityNumber`, 1–24) aynı kolondan okuyordu ve ölçek
 # çevrimi yoktu — OCSF Critical (5) OTel'de DEBUG çıkıyordu. T05
 # `db/clickhouse/0004_fix_otel_severity_scale.sql` ile çevrimi ekledi; ham OCSF
-# değeri `bizigo.ocsf_severity_id` olarak yanında taşınıyor.
+# değeri `loganalyzer.ocsf_severity_id` olarak yanında taşınıyor.
 
 # --- syslog severity rakamı ---
 "0": 6

@@ -17,7 +17,7 @@ Spesifikasyon: *"MCP servers **MUST** implement OAuth 2.0 Protected Resource
 Metadata"*, ve 401'de `WWW-Authenticate: Bearer resource_metadata="…"`
 dönmeli.
 
-`src/Bizigo.Mcp` ve `src/Bizigo.Api` altında arandı: `WWW-Authenticate` ·
+`src/LogAnalyzer.Mcp` ve `src/LogAnalyzer.Api` altında arandı: `WWW-Authenticate` ·
 `resource_metadata` · `oauth-protected-resource` dizgilerinin **hiçbiri
 geçmiyor**. `AddMcpServer()` çağrılıyor, `AddMcp()` / `McpAuthenticationOptions`
 çağrılmıyor. `/mcp` çıplak 401 dönüyor, yani istemci yetkilendirme sunucusunu
@@ -34,24 +34,24 @@ varsayılanı"* diyordu. **Ölçüm bunu çürüttü:**
 | Ölçüm | Değer |
 | --- | --- |
 | `AuthenticationSetup.cs` | `public string Audience { get; set; } = "account";` — **C# varsayılanı** |
-| `appsettings.json` `Auth:Audience` | **`bizigo-api`** |
+| `appsettings.json` `Auth:Audience` | **`loganalyzer-api`** |
 | `appsettings.Development.json` | `Audience` **yok** (ezmiyor) |
 | `AuthenticationSetup.cs` | `ValidateAudience = true`, `jwt.Audience = options.Audience` |
-| `realm-bizigo.json` | `bizigo-claims` scope'unda audience mapper: `included.client.audience: bizigo-api` |
+| `realm-loganalyzer.json` | `loganalyzer-claims` scope'unda audience mapper: `included.client.audience: loganalyzer-api` |
 
-Yani Keycloak `aud: bizigo-api` basıyor, API onu doğruluyor: **kitle bağlanması
+Yani Keycloak `aud: loganalyzer-api` basıyor, API onu doğruluyor: **kitle bağlanması
 uçtan uca çalışıyor.** *"Keycloak varsayılanı kullanıyoruz"* sevk edilen
 yapılandırma için doğru değil.
 
 **Ama MUST'ın özü ayakta ve şekli daha keskin:** RFC 8707 token'ın **o
 kaynağa** düzenlenmiş olmasını istiyor, ve **MCP sunucusunun kendine ait bir
-kaynak kimliği yok**. `/mcp` bugün `aud: bizigo-api` taşıyan bir token'ı kabul
+kaynak kimliği yok**. `/mcp` bugün `aud: loganalyzer-api` taşıyan bir token'ı kabul
 ediyorsa, **API için basılmış bir token MCP sunucusunda yeniden
 kullanılabilir** — kaynak bağlamanın engellemek istediği şey tam olarak bu.
 
 Öncül farkı ticket'ın işini değiştiriyor: *"audience'ı düzelt"* çalışan bir
 yapılandırmayı bozma riski taşırdı; *"MCP'ye ayrı kaynak kimliği ver"*
-`bizigo-api`'yi olduğu yerde bırakıyor ve BFF ile collector akışına dokunmuyor.
+`loganalyzer-api`'yi olduğu yerde bırakıyor ve BFF ile collector akışına dokunmuyor.
 
 ### Patlama yarıçapı — ölçüldü, ve bu ticket'ın asıl riski
 
@@ -90,10 +90,10 @@ değişikliği göze alıyor muyuz"*); geçmedi.
 
 ### Adlandırılmış iki şema
 
-- **`bizigo-mcp`** — meydan okumayı üretir (`WWW-Authenticate` +
+- **`loganalyzer-mcp`** — meydan okumayı üretir (`WWW-Authenticate` +
   `resource_metadata`), `/.well-known/oauth-protected-resource` belgesini
   sunar, ve **doğrulamayı iletir**.
-- **`bizigo-mcp-bearer`** — MCP'nin token doğrulayıcısı. Aynı issuer, aynı
+- **`loganalyzer-mcp-bearer`** — MCP'nin token doğrulayıcısı. Aynı issuer, aynı
   claim sözleşmesi, **farklı kitle**.
 
 Varsayılan şemalar **değişmedi**.
@@ -110,8 +110,8 @@ varsayılanda duruyor.
 
 ### Realm
 
-`bizigo-mcp` client scope'u eklendi, audience mapper'ıyla
-(`included.custom.audience`), ve `bizigo-ui`'ye **isteğe bağlı** bağlandı.
+`loganalyzer-mcp` client scope'u eklendi, audience mapper'ıyla
+(`included.custom.audience`), ve `loganalyzer-ui`'ye **isteğe bağlı** bağlandı.
 
 **İsteğe bağlı olması önlemin kendisi:** varsayılan olsaydı her token `aud`'una
 MCP kaynağını da alırdı ve API için basılmış bir token `/mcp`'de geçerdi — yani
@@ -146,8 +146,8 @@ API reddeder, görünen tek şey *"MCP çalışmıyor"* olur. T53'ün ölçtüğ
 
 | # | Kusur | Sonuç |
 | --- | --- | --- |
-| J | `DefaultChallengeScheme = bizigo-mcp` (SDK'nın yaygın örneği) | **KIRMIZI** — kriter 1 |
-| K | `bizigo-mcp-bearer` API'nin kitlesini doğrulasın | **KIRMIZI** — kriter 3 |
+| J | `DefaultChallengeScheme = loganalyzer-mcp` (SDK'nın yaygın örneği) | **KIRMIZI** — kriter 1 |
+| K | `loganalyzer-mcp-bearer` API'nin kitlesini doğrulasın | **KIRMIZI** — kriter 3 |
 
 İkisi de geri alındı; kusurun dosyada olduğu uygulandıktan sonra **iddia
 edildi**, geri alındıktan sonra kalıntı olmadığı ayrıca iddia edildi
@@ -164,7 +164,7 @@ Tam paket **8 kırmızı** verdi ve hiçbiri gürültü değildi:
    düzeltme**: harness artık üretimin gerçekten kullandığı şemayı ölçüyor.
 3. **`McpKeycloakIdentityTests.BuildHost`** `Audience`/`McpResource`
    vermiyordu, yani **sessizce `"account"` varsayılanına dayanıyormuş**. Canlı
-   Keycloak `aud: bizigo-api` bassaydı bu kurulum token'ı reddederdi ve sebebi
+   Keycloak `aud: loganalyzer-api` bassaydı bu kurulum token'ı reddederdi ve sebebi
    görünmezdi. Değerler açıkça yazıldı.
 
 Üçüncüsü kaldırılan varsayılanın neden kaldırılması gerektiğinin **kendi
@@ -183,8 +183,8 @@ kanıtı**: varsayılan, bir testin yanlış yapılandırıldığını gizliyord
   tek şey *"yanlış token geçmiyor"*. Kitle doğrulaması bir gün gevşerse her
   pozitif test yeşil kalır.
 
-İkincisi yeni bir env değişkeni istiyor: **`BIZIGO_MCP_API_TOKEN`** —
-`bizigo-mcp` scope'u **istenmeden** alınmış bir belirteç. Test iki token'ın
+İkincisi yeni bir env değişkeni istiyor: **`LOGANALYZER_MCP_API_TOKEN`** —
+`loganalyzer-mcp` scope'u **istenmeden** alınmış bir belirteç. Test iki token'ın
 aynı olmadığını ayrıca sınıyor; aynı olurlarsa ölçüm sessizce anlamsızlaşır.
 
 ## 7 · Bilinen sınırlar ve açık sorular
@@ -195,9 +195,9 @@ aynı olmadığını ayrıca sınıyor; aynı olurlarsa ölçüm sessizce anlams
    realm'in bastığı `aud` ile birebir aynı olmak zorunda ve kriter 7 bunu
    tutuyor.
 3. **`ScopesSupported` `openid` ilan ediyor.** Realm'de yalnızca
-   `bizigo-claims` client scope var; `openid profile email` canlıda
+   `loganalyzer-claims` client scope var; `openid profile email` canlıda
    `invalid_scope` alıyor (ölçüldü, `CLAUDE.md` §12). İstemciyi var olmayan bir
-   scope istemeye göndermemek için dar tutuldu — ama `bizigo-mcp`'nin de burada
+   scope istemeye göndermemek için dar tutuldu — ama `loganalyzer-mcp`'nin de burada
    ilan edilmesi gerekip gerekmediği **açık soru**.
 4. **`stdio` tarafı bu ticket'ın dışında.** RFC 9728 bir HTTP mekanizması;
    stdio'da kimlik ortamdan okunuyor ([M08](../kimlik-tasima/index.md)).

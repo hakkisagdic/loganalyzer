@@ -254,7 +254,7 @@ arkasında duran bir şey yok.
 olmaması"* yazmıştım; T32 ajanı statik olarak baktı ve **üçüncü bir olasılığı**
 gösterdi, ben de bağımsız olarak doğruladım:
 
-`bizigo_pipeline.py` iki liste tutuyor — `FIELD_MAP` (28 alan) ve
+`loganalyzer_pipeline.py` iki liste tutuyor — `FIELD_MAP` (28 alan) ve
 `UNMAPPED_FIELDS` (9 alan). Birincisi `FieldMappingTransformation`'a veriliyor,
 **ikincisi hiçbir yere.** `unmapped_expression()` tanımlı ve depo genelinde hiç
 çağrılmıyor. Yani `unmapped` dalı **yazıldı ama bağlanmadı**.

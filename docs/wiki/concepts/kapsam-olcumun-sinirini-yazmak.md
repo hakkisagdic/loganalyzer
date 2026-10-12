@@ -1,7 +1,7 @@
 ---
 title: Ölçümün sınırını yazmak
 category: concepts
-tags: [test, log-analiz, kavram, bizigo]
+tags: [test, log-analiz, kavram, loganalyzer]
 aliases: [ölçemedim ile sorun yok, sadakat seviyeleri, N1 N2 N3]
 relationships:
   - target: "[[concepts/sessiz-yanlis-davranis]]"

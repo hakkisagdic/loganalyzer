@@ -362,7 +362,7 @@ class TopologyProbeTransportTests(unittest.TestCase):
         self.assertEqual(span("child")["startTimeUnixNano"], "9007199254740993")
         attrs = payload["cross_child"]["resourceSpans"][0]["resource"]["attributes"]
         values = {a["key"]: a["value"]["stringValue"] for a in attrs}
-        self.assertEqual(values["bizigo.source_key"], sources["B"])
+        self.assertEqual(values["loganalyzer.source_key"], sources["B"])
         self.assertEqual(values["owner_group"], "forged-admin")
 
     def test_nano_clock_preserves_all_nine_digits(self):

@@ -127,8 +127,8 @@ sebebinin duvar saatiyle ilgisi olmamalı"* diyor. Sınır şöyle çizildi:
 
 Model yalnız bırakılmadı. `CapacityEmitter`, profil örneklerini gerçek TCP/UDP
 taşımasına basıyor; TCP'de bağlantı havuzu ve toplu yazma, UDP'de olay başına
-datagram kullanıyor. `raw` gövdeyi koruyor, `tagged` ise `bizigo_run_id`,
-`bizigo_seq` ve `bizigo_send_ns` ekliyor. Özet dizgiden değil, seçili kodlama
+datagram kullanıyor. `raw` gövdeyi koruyor, `tagged` ise `loganalyzer_run_id`,
+`loganalyzer_seq` ve `loganalyzer_send_ns` ekliyor. Özet dizgiden değil, seçili kodlama
 uygulandıktan sonraki **gerçek tel baytlarından** alınıyor.
 
 CLI yüzeyi beş profili de açıyor ve manifest yolunu zorunlu tutuyor. Hedefli

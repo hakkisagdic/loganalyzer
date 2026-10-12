@@ -1,6 +1,6 @@
 """Maskeleme sözlüğünün Python tarafı.
 
-Tek kaynak `catalog/masks/bizigo-masks.yaml` (K14 maskeleme sinerjisi).
+Tek kaynak `catalog/masks/loganalyzer-masks.yaml` (K14 maskeleme sinerjisi).
 Burada yapılan tek iş onu Drain3'ün `MaskingInstruction` listesine çevirmek —
 regex'ler burada **tanımlanmaz**, aksi halde .NET tarafıyla sessizce ayrışır.
 """
@@ -56,7 +56,7 @@ def load_masks(path: Path) -> MaskCatalog:
     if not path.is_file():
         raise FileNotFoundError(
             f"Maskeleme sözlüğü bulunamadı: {path}. "
-            "İmaja `catalog/masks/` kopyalanmamış olabilir (BIZIGO_MASKS_PATH)."
+            "İmaja `catalog/masks/` kopyalanmamış olabilir (LOGANALYZER_MASKS_PATH)."
         )
 
     document: Any = yaml.safe_load(path.read_text(encoding="utf-8"))

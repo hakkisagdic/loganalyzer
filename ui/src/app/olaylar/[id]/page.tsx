@@ -206,7 +206,7 @@ function Definition({ term, children }: { term: string; children: React.ReactNod
   );
 }
 
-/** `core` alanları + `attrs` haritası (`bizigo.tags`, `bizigo.dispatch_tier` dâhil). */
+/** `core` alanları + `attrs` haritası (`loganalyzer.tags`, `loganalyzer.dispatch_tier` dâhil). */
 function CoreView({ event }: { event: EventDetail["event"] }) {
   const attrs = Object.entries(event.attrs).sort(([a], [b]) => a.localeCompare(b, "en"));
 
@@ -249,7 +249,7 @@ function CoreView({ event }: { event: EventDetail["event"] }) {
 
       {attrs.length > 0 ? (
         <PairTable
-          caption="attrs — parser alanları, bizigo.tags ve bizigo.dispatch_tier dâhil"
+          caption="attrs — parser alanları, loganalyzer.tags ve loganalyzer.dispatch_tier dâhil"
           rows={attrs.map(([name, value]) => ({ name, value }))}
         />
       ) : (

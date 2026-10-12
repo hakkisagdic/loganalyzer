@@ -22,7 +22,7 @@ kararının **kendiliğinden** çıktığı bir olgu buluyor.
 
 ## 1 · Envanter — **11 uç komut, 7 grup**
 
-Taban `3ac1a8d` (M01). `src/Bizigo.Cli/Program.cs` yedi grup kaydediyor ve
+Taban `3ac1a8d` (M01). `src/LogAnalyzer.Cli/Program.cs` yedi grup kaydediyor ve
 gruplar toplam on bir **çalıştırılabilir** komut taşıyor. Grup düğümlerinin
 kendi eylemi yok; sayım uçlardan.
 
@@ -259,18 +259,18 @@ değil, uygulamanın neyi değiştirdiğini** yazıyor.
 
 | Katman | Nerede | Ne taşıyor |
 | --- | --- | --- |
-| Hesap | `Bizigo.Commands/Fields`, `/Seeding`, `Bizigo.Parsing` | Zaten saftı; **taşındı, yeniden yazılmadı** |
-| **Çekirdek** | `Bizigo.Commands` | `CommandOutcome<T>` · `CommandCatalog` · yedi komut ailesi |
-| Sunum · CLI | `Bizigo.Cli/*CommandHandlers.cs` | Konsol + çıkış kodu |
-| Sunum · MCP | `Bizigo.Commands.Mcp` | Yedi `BizigoMcpTool` |
+| Hesap | `LogAnalyzer.Commands/Fields`, `/Seeding`, `LogAnalyzer.Parsing` | Zaten saftı; **taşındı, yeniden yazılmadı** |
+| **Çekirdek** | `LogAnalyzer.Commands` | `CommandOutcome<T>` · `CommandCatalog` · yedi komut ailesi |
+| Sunum · CLI | `LogAnalyzer.Cli/*CommandHandlers.cs` | Konsol + çıkış kodu |
+| Sunum · MCP | `LogAnalyzer.Commands.Mcp` | Yedi `LogAnalyzerMcpTool` |
 
-**`Bizigo.Commands.Mcp` ayrı bir proje ve sebebi bir tercih değil bir mekanik:**
-`McpToolDiscovery.ProductAssemblies` yalnızca adı `Bizigo.` ile başlayan
-referansları geziyor. `Bizigo.Cli`'nin derleme adı **`bizigo`**, dolayısıyla
+**`LogAnalyzer.Commands.Mcp` ayrı bir proje ve sebebi bir tercih değil bir mekanik:**
+`McpToolDiscovery.ProductAssemblies` yalnızca adı `LogAnalyzer.` ile başlayan
+referansları geziyor. `LogAnalyzer.Cli`'nin derleme adı **`loganalyzer`**, dolayısıyla
 oraya yazılan bir araç **keşfe hiç görünmezdi** — ve kapı yanlış sebeple yeşil
 yanardı.
 
-### 7.2 · `sigma sync --dry-run` → `bizigo sigma plan`
+### 7.2 · `sigma sync --dry-run` → `loganalyzer sigma plan`
 
 Bayrak kendi komutu oldu; `SetAction` sayısı **11 → 12**, katalog 12 satır
 (7 araç + 5 muafiyet). Bayrak olarak kalsaydı MCP tarafında ilan edilebilecek

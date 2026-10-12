@@ -87,7 +87,7 @@ sözleşmesi bugün ağaçta ve **testli**, B01'in manifesti henüz yok. B01 yen
 şekil seçerse iki temsil doğar ve biri uydurmaya çalışır (§9).
 
 `ArrivalLedger` bir yük koşumundan **beş okuma + bir sayı** bekliyor.
-İmza `sim/Bizigo.Capacity/ArrivalLedger.cs`:
+İmza `sim/LogAnalyzer.Capacity/ArrivalLedger.cs`:
 
 | Alan | Tip | B01 neyi vermeli | Kim üretiyor |
 | --- | --- | --- | --- |

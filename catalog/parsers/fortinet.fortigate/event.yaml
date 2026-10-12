@@ -1,4 +1,4 @@
-apiVersion: bizigo.dev/v1
+apiVersion: loganalyzer.dev/v1
 kind: Parser
 metadata:
   id: fortinet.fortigate.event

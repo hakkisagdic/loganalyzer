@@ -83,7 +83,7 @@ def observed_exports(nonce, sources, namespace, start):
     cross = uuid.uuid5(uuid.UUID(nonce), "cross-owner-trace").hex
     def export(source, trace_id, span_id, parent):
         attributes = [{"key": k, "value": {"stringValue": v}} for k, v in {
-            "bizigo.source_key": source, "service.namespace": namespace, "service.name": "checkout",
+            "loganalyzer.source_key": source, "service.namespace": namespace, "service.name": "checkout",
             "test.run": nonce, "owner_group": "forged-admin"}.items()]
         span = {"traceId": trace_id, "spanId": span_id, "parentSpanId": parent,
                 "name": "topology-live", "kind": 2, "startTimeUnixNano": str(start),

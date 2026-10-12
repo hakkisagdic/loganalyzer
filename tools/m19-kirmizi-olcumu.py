@@ -22,8 +22,8 @@ KOK = Path(__file__).resolve().parent.parent
 
 BEKCI = "HttpTokenExpiryTests"
 
-AYAR = KOK / "src/Bizigo.Api/AuthenticationSetup.cs"
-TEST = KOK / "tests/Bizigo.UnitTests/HttpTokenExpiryTests.cs"
+AYAR = KOK / "src/LogAnalyzer.Api/AuthenticationSetup.cs"
+TEST = KOK / "tests/LogAnalyzer.UnitTests/HttpTokenExpiryTests.cs"
 
 
 @dataclass
@@ -103,7 +103,7 @@ KUSURLAR = [
 
 def kos(bekci: str) -> int:
     return subprocess.run(
-        ["dotnet", "test", "tests/Bizigo.UnitTests", "--filter", f"FullyQualifiedName~{bekci}"],
+        ["dotnet", "test", "tests/LogAnalyzer.UnitTests", "--filter", f"FullyQualifiedName~{bekci}"],
         cwd=KOK, capture_output=True, text=True,
     ).returncode
 

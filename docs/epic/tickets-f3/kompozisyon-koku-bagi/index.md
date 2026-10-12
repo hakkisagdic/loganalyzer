@@ -14,11 +14,11 @@ status: 2
 > var olan ama hiç bağlanmayan bir uç dosyası kapıya görünür, ürüne görünmez.
 
 **T44**, ondan bağımsız ve aynı gün, canlı örneğine çarptı:
-`AddBizigoScenarioPlugins` T43'ten beri yazılı duruyor ve hiçbir kompozisyon
+`AddLogAnalyzerScenarioPlugins` T43'ten beri yazılı duruyor ve hiçbir kompozisyon
 kökünden çağrılmıyor.
 
 Görülmesi de **tesadüftü**: T44 ilgisiz bir referans ekleyip
-`Bizigo.ScenarioPlugin`'i `ArchitectureTests`'in geçişli kapanışına sokunca
+`LogAnalyzer.ScenarioPlugin`'i `ArchitectureTests`'in geçişli kapanışına sokunca
 keşif bir fazla buldu ve elle tutulan beklenen küme kırmızı yandı. Referans
 eklenmeseydi kimse görmeyecekti — `CLAUDE.md` §7'nin kaydettiği cümle:
 *bir kusurun yalnızca tesadüfen görülebilir olması, kusurun kendisi kadar
@@ -37,10 +37,10 @@ uzantıyı hiç çağırmadığı bir dünyada yeşil yanar.
 
 | Yöntem | Görür | Göremez |
 | --- | --- | --- |
-| **Metin araması** (`Program.cs`'te `AddX()` aramak) | Doğrudan çağrılar | **Bir uzantının başka bir uzantının içinden çağrılması.** Bu deponun elle listesi tam olarak bu yüzden eksik kalmıştı: `AddBizigoDiscovery`, `AddBizigoIngest`'in içinden çağrılıyor. Ayrıca kaynak biçimine bağlı. |
+| **Metin araması** (`Program.cs`'te `AddX()` aramak) | Doğrudan çağrılar | **Bir uzantının başka bir uzantının içinden çağrılması.** Bu deponun elle listesi tam olarak bu yüzden eksik kalmıştı: `AddLogAnalyzerDiscovery`, `AddLogAnalyzerIngest`'in içinden çağrılıyor. Ayrıca kaynak biçimine bağlı. |
 | **Derlenmiş IL** (seçilen) | Koşullu çağrı, zincir, `if` içindeki kayıt — hepsi IL'de duruyor | Aşağıdaki üç madde |
 
-**Seçilen: IL.** Giriş noktalarından (`Bizigo.Api` ve CLI) başlayıp
+**Seçilen: IL.** Giriş noktalarından (`LogAnalyzer.Api` ve CLI) başlayıp
 `call` · `callvirt` · `newobj` · `ldftn` · `ldvirtftn` operandları çözülerek
 ürün derlemelerinin içinde geçişli bir çağrı grafiği kuruluyor.
 
@@ -72,21 +72,21 @@ değil, ölçüldü: takip kırıldığında kapanış 3385 metottan **6**'ya d�
 | Ürün projesi (`src/` + `sim/`) | **18** — hepsinin derlemesi yüklenebildi |
 | Keşfedilen kayıt/uç uzantısı | **33** |
 | Kompozisyon kökünün çağrı grafiğinde | **32** |
-| **Bağlı değil** | **1** — `ScenarioServiceCollectionExtensions.AddBizigoScenarioPlugins` |
+| **Bağlı değil** | **1** — `ScenarioServiceCollectionExtensions.AddLogAnalyzerScenarioPlugins` |
 | Çağrı grafiği büyüklüğü | 3385 metot |
 | Çözülemeyen IL metot tokenı | **0** |
 
 **Sorunun cevabı: tek örnek, desen değil.** Bugün ürüne bağlanmamış tek uzantı
-`AddBizigoScenarioPlugins`. Ama *bir örnek* ile *bir desen* arasındaki fark
+`AddLogAnalyzerScenarioPlugins`. Ama *bir örnek* ile *bir desen* arasındaki fark
 sayıda değil mekanizmada: onu görünmez kılan şey bir dikkatsizlik değil, hiçbir
 bekçinin bu soruyu sormamasıydı — ve o mekanizma 33 uzantının hepsi için
 geçerliydi.
 
-### Yan bulgu: CLI derlemesinin adı `Bizigo.Cli` değil
+### Yan bulgu: CLI derlemesinin adı `LogAnalyzer.Cli` değil
 
-`src/Bizigo.Cli/Bizigo.Cli.csproj` derlemeyi
-`<AssemblyName>bizigo</AssemblyName>` ile yeniden adlandırıyor. Bu yüzden
-**`Bizigo.` önekine bakan her yansıma keşfi CLI derlemesini hiç görmüyor** —
+`src/LogAnalyzer.Cli/LogAnalyzer.Cli.csproj` derlemeyi
+`<AssemblyName>loganalyzer</AssemblyName>` ile yeniden adlandırıyor. Bu yüzden
+**`LogAnalyzer.` önekine bakan her yansıma keşfi CLI derlemesini hiç görmüyor** —
 bu kapının ilk hâli de görmedi (kök bulunamadı diye kırmızı yandı), ve
 `ArchitectureTests.ProductAssemblies` de aynı öneke bakıyor.
 
@@ -96,7 +96,7 @@ listenin kılık değiştirmiş hâli.** Kapı bu yüzden derleme adı önekine 
 diskteki proje dosyalarına ve onların gerçek `<AssemblyName>`'ine bakıyor.
 
 **Ama kurbanı bugün yok, ve bunu iddia değil ölçü olarak yazıyorum:** 33
-uzantının derleme dağılımında `bizigo` **hiç geçmiyor** — CLI derlemesi tek bir
+uzantının derleme dağılımında `loganalyzer` **hiç geçmiyor** — CLI derlemesi tek bir
 `Add*`/`Map*` uzantısı bildirmiyor. Yani `ArchitectureTests`'in bu kör noktası
 gerçek ama şu an hiçbir şeyi kaçırmıyor.
 
@@ -104,7 +104,7 @@ gerçek ama şu an hiçbir şeyi kaçırmıyor.
 
 CLI kökünü listeden düşürmek **hiçbir şeyi değiştirmiyor** (ölçüm anındaki beş
 testin beşi de yeşil kaldı):
-CLI'den erişilen her uzantıya `Bizigo.Api`'den de erişiliyor. Kök listede
+CLI'den erişilen her uzantıya `LogAnalyzer.Api`'den de erişiliyor. Kök listede
 duruyor çünkü soru *"ürüne bağlı mı"* ve CLI ürünün bir parçası; ama bugün
 **iş görmediği** yazılı olmalı, yoksa bir sonraki kişi kökün bir şey
 kanıtladığını sanar.
@@ -116,12 +116,12 @@ okundu ve kusurun orada olduğu **iddia edildi** → koşuldu → geri alındı.
 
 | # | Kusur | Sonuç |
 | --- | --- | --- |
-| **Kontrol A** | Kusur yok — bugünkü depo, listeler boş | **KIRMIZI** — `Bu uzantı(lar) hiçbir kompozisyon kökünden çağrılmıyor: ScenarioServiceCollectionExtensions.AddBizigoScenarioPlugins` |
-| **Kontrol B** | Kusur yok — `AddBizigoDiscovery` (kökte birebir GEÇMİYOR, `AddBizigoIngest`'in içinden çağrılıyor) | **YEŞİL** — zincir takip ediliyor, yanlış pozitif yok |
-| G | Zincir takibini kapat (metin araması taklidi) | **KIRMIZI** — `AddBizigoDiscovery` dahil **12 uzantı** yanlış pozitif olarak düşüyor; `Kapi_zinciri_takip_ediyor` da kırmızı |
+| **Kontrol A** | Kusur yok — bugünkü depo, listeler boş | **KIRMIZI** — `Bu uzantı(lar) hiçbir kompozisyon kökünden çağrılmıyor: ScenarioServiceCollectionExtensions.AddLogAnalyzerScenarioPlugins` |
+| **Kontrol B** | Kusur yok — `AddLogAnalyzerDiscovery` (kökte birebir GEÇMİYOR, `AddLogAnalyzerIngest`'in içinden çağrılıyor) | **YEŞİL** — zincir takip ediliyor, yanlış pozitif yok |
+| G | Zincir takibini kapat (metin araması taklidi) | **KIRMIZI** — `AddLogAnalyzerDiscovery` dahil **12 uzantı** yanlış pozitif olarak düşüyor; `Kapi_zinciri_takip_ediyor` da kırmızı |
 | E | CLI kökünü düşür | **YEŞİL** — kök bugün atıl (§3) |
 | F | Async durum makinesi takibini kır | **KIRMIZI** — kapanış 3385 → 6 metot, 33/33 uzantı kopuk |
-| — | (ilk hâl, CLI kökü `Bizigo.Cli` adıyla aranırken) | **KIRMIZI** — `Giriş noktası bulunamayan kompozisyon kökü: Bizigo.Cli` |
+| — | (ilk hâl, CLI kökü `LogAnalyzer.Cli` adıyla aranırken) | **KIRMIZI** — `Giriş noktası bulunamayan kompozisyon kökü: LogAnalyzer.Cli` |
 
 **Kontrol satırları ölçütün kendisi ve tek başına hiçbiri yetmiyor.** A tek
 başına ölçülseydi her şeyi düşüren bir kapı da geçerdi; B tek başına ölçülseydi
@@ -129,7 +129,7 @@ hiçbir şeyi düşürmeyen bir kapı da geçerdi. İkisi birlikte kapının **d
 yerde** durduğunu gösteriyor.
 
 Ölçüt bu yüzden *"kompozisyon kökünden **erişilebiliyor mu**"*, *"`Program.cs`'te
-birebir geçiyor mu"* değil. İkincisi `AddBizigoDiscovery`'yi düşürürdü ve bu bir
+birebir geçiyor mu"* değil. İkincisi `AddLogAnalyzerDiscovery`'yi düşürürdü ve bu bir
 **yanlış pozitif** olurdu — bedeli bu depoda yazılı: insanlar yanlış pozitif
 veren bir bekçiyi susturmayı öğreniyor, ve susturulan bekçi olmayan bekçiden
 kötü. Zincir takibi bu yüzden `Kapi_zinciri_takip_ediyor` ile **çivilenmiş
@@ -155,7 +155,7 @@ açıklama kaldı ve o açıklama kapı hakkında bilgi oldu.
 
 **Dışında**
 
-- **Bulunan kopuk bağı bağlamak.** `AddBizigoScenarioPlugins`'i bağlamak
+- **Bulunan kopuk bağı bağlamak.** `AddLogAnalyzerScenarioPlugins`'i bağlamak
   T46/T47 kolunun kararı. T50 ölçer ve kapıyı kurar; bağlamak ayrı karar —
   T44 de kendi başına bağlamadı ve doğru yaptı.
 - `ui/` tarafı.
@@ -187,7 +187,7 @@ değil) · 18 ürün projesinin tamamının yüklenebildiği · CLI derlemesinin
 `Add*`/`Map*` uzantısı bildirmediği · CLI kökünün bugün atıl olduğu ·
 çözülemeyen IL tokenı kalmadığı.
 
-**Aramadım:** `ui/` tarafındaki bağlar · `AddBizigoScenarioPlugins`'in
+**Aramadım:** `ui/` tarafındaki bağlar · `AddLogAnalyzerScenarioPlugins`'in
 bağlanması gerekip gerekmediği (T46/T47'nin kararı, ölçmedim) · ölü kod
 içindeki çağrıların bu depoda gerçekten var olup olmadığı — kapı onları "bağlı"
 sayıyor ve **böyle bir örnek olup olmadığına bakmadım** · `ArchitectureTests`'in

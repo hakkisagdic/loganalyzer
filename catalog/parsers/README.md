@@ -83,9 +83,9 @@ motoru değil hayal gücümüzü test eder.
 ## CI kapıları
 
 ```sh
-bizigo parser lint catalog/parsers        # şema + ReDoS taraması
-bizigo parser test catalog/parsers        # gömülü `tests` bloğu
-bizigo parser coverage catalog/parsers    # altın örneklerin ok/partial/failed oranı
+loganalyzer parser lint catalog/parsers        # şema + ReDoS taraması
+loganalyzer parser test catalog/parsers        # gömülü `tests` bloğu
+loganalyzer parser coverage catalog/parsers    # altın örneklerin ok/partial/failed oranı
 ```
 
 Testsiz bir parser şema düzeyinde reddedilir — `tests` bloğu zorunludur.
@@ -97,4 +97,4 @@ bir vendor'ın satırı başka vendor'ın parser'ına düşüyorsa orada görün
 testler bunu gösteremez, çünkü orada kataloğun geri kalanı yoktur.
 
 Aynı kapılar birim test tarafında da tutuluyor:
-[`tests/Bizigo.UnitTests/VendorCatalogTests.cs`](../../tests/Bizigo.UnitTests/VendorCatalogTests.cs).
+[`tests/LogAnalyzer.UnitTests/VendorCatalogTests.cs`](../../tests/LogAnalyzer.UnitTests/VendorCatalogTests.cs).

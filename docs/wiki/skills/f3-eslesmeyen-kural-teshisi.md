@@ -1,7 +1,7 @@
 ---
 title: Eşleşmeyen kuralın teşhisi — üç eksen
 category: skills
-tags: [log-analiz, test, yordam, bizigo]
+tags: [log-analiz, test, yordam, loganalyzer]
 aliases: [üç eksen, alan kapsamı, explain_misses, vendor sözlüğü]
 relationships:
   - target: "[[skills/f3-sigma-derleme-kapilari]]"
@@ -46,8 +46,8 @@ var olan bir alanı örneklem eksikliği sanıp geçmek.
 | Eksen | Araç | Sorduğu | Cevaplayamadığı |
 | --- | --- | --- | --- |
 | **Metin** | `explain_misses.py` (T30) | Kuralın aradığı dizge örnek dosyalarda var mı; sözcük sınırında mı yoksa daha uzun bir sözcüğün içinde mi | Bilginin adreslenebilir olup olmadığı |
-| **Alan** | `bizigo fields coverage` (T39) | O bilgi bir **alan** olarak adreslenebiliyor mu, hangi adla | Kolonun hangi değerleri taşıyabildiği |
-| **Değer uzayı** | `bizigo fields values` (T39) | Kolon o değeri **hiç** taşıyabilir mi | Bugünkü örneklemde var mı |
+| **Alan** | `loganalyzer fields coverage` (T39) | O bilgi bir **alan** olarak adreslenebiliyor mu, hangi adla | Kolonun hangi değerleri taşıyabildiği |
+| **Değer uzayı** | `loganalyzer fields values` (T39) | Kolon o değeri **hiç** taşıyabilir mi | Bugünkü örneklemde var mı |
 
 İkisi/üçü ortak hiçbir varsayım paylaşmıyor ve tam bu yüzden birbirlerini
 tamamlıyorlar. `Reset-I` iki kez, iki bağımsız yöntemle bulundu: biri örnek

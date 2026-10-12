@@ -1,10 +1,10 @@
 ---
 title: Geçmiş biriktiren şey ertelenmez
 category: concepts
-tags: [mimari, surec, kavram, bizigo]
+tags: [mimari, surec, kavram, loganalyzer]
 aliases: [faz sıralaması, change_events, dilimleme mantığı]
 relationships:
-  - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
+  - target: "[[projects/loganalyzer-loganalyzer/loganalyzer-loganalyzer]]"
     type: part_of
   - target: "[[concepts/f1-sema-karari-bir-kez-verilir]]"
     type: related_to
@@ -77,7 +77,7 @@ geçmiş biriktirmiyor, hepsi sonradan aynı fiyata geliyor
 - **Kataloğun geri kalanı** (PAN-OS, Juniper, F5, HAProxy) — motor dört vendor'la
   gerçek yükü gördü; kalanı F2'deki editörle ve F4'teki keşif senaryosuyla çok
   daha ucuza gelecek.
-- **`bizigo replay` CLI komutu** — CLI'nin tüm DI grafiğini barındırması
+- **`loganalyzer replay` CLI komutu** — CLI'nin tüm DI grafiğini barındırması
   gerekiyordu, API ucu aynı yeteneği veriyor.
 
 ## Faz kaydırmak da bu ölçütle yapıldı

@@ -99,15 +99,15 @@ ediyor. Aynı şey üç yerde oldu:
 
 **Doğduğu gün eksik olan iki şey:**
 
-- **`AddBizigoAuthentication`** — `Program.cs`'te çağrılıyor, bekçide hiç yoktu.
+- **`AddLogAnalyzerAuthentication`** — `Program.cs`'te çağrılıyor, bekçide hiç yoktu.
 Yani **kimlik ve yetkilendirme grafiği kapsam doğrulamasından bir kez bile
 geçmemişti**. Bu, listenin eskimesi değil; hiç doğru olmamış olması.
-- **`AddBizigoDiscovery`** — `AddBizigoIngest`'in içinden çağrılıyor, dolayısıyla
+- **`AddLogAnalyzerDiscovery`** — `AddLogAnalyzerIngest`'in içinden çağrılıyor, dolayısıyla
 elle listeye girmesi hiç akla gelmezdi.
 
 Kapatılışı: keşif hem uzantılar hem **derlemeler** için yansımalı. Derleme
 listesini elle bırakmak deliği bir kat yukarı taşımak olurdu; kompozisyon
-kökünden başlanıp `Bizigo.*` referansları geçişli yükleniyor
+kökünden başlanıp `LogAnalyzer.*` referansları geçişli yükleniyor
 (`AppDomain.GetAssemblies()` yetmiyor — hiç dokunulmamış derleme yüklü olmaz).
 Tanınmayan bir imza **atlanmıyor, testi düşürüyor**: atlamak bekçiyi en sinsi
 biçimde körleştirirdi. Elle kalan tek şey artık *denetlenen* küme değil
@@ -142,7 +142,7 @@ Bu turda dört örnek çıktı.
 | Bekçi | Adının kurduğu iddia | Gövdesinin ölçtüğü | Nasıl bulundu |
 | --- | --- | --- | --- |
 | `ProducesContractTests` | `/v1/*` altındaki her uç sözleşmeli | **Listedeki** uçlar — 16 uç listede yoktu | Keşif yansımaya çevrilince |
-| Ömür bekçisi | Üretim DI grafiği kapsam doğrulamasından geçiyor | `AddBizigoAuthentication` **hariç** grafik | Keşif yansımaya çevrilince |
+| Ömür bekçisi | Üretim DI grafiği kapsam doğrulamasından geçiyor | `AddLogAnalyzerAuthentication` **hariç** grafik | Keşif yansımaya çevrilince |
 | `sigma_build` Kapı 2 | Tip uyuşmazlığı yakalanıyor | `EXPLAIN SYNTAX` yalnızca AST'yi yeniden yazıyor, **tip denetimi yapmıyor** — iki bilinen kırık sorguya da 200 | Kapının kendi `--self-test` kipi |
 | `Ayni_id_icin_en_yuksek_surum_kazaniyor` | Sürüm çözümlemesi | `specificity` **sıralaması** (iki farklı `id`) | Yeni test yazılırken |
 
@@ -333,7 +333,7 @@ koşum düzeninin sessizliği.** Üçü de aynı soruyu farklı katmanda soruyor
 | ~~D1~~ | ~~Tarayıcı giriş akışı canlı Keycloak'a karşı hiç koşulmadı~~ — **koşuldu ve geçti** 2026-08-20. Ayrıntı aşağıda. | — |
 | ~~D2~~ | ~~Entegrasyon testleri yerelde hiç koşulmadı~~ — **koşuldu**, 93/93 geçti (koordinatör, 2026-08-20). | — |
 | D3 | `SidecarLiveTests` atlanıyor (canlı sidecar gerekiyor) | koordinatör, T29 ölçümü |
-| **D4** | **Kimlik/yetkilendirme grafiği kapsam doğrulamasından hiç geçmemişti** — `AddBizigoAuthentication` ömür bekçisinin listesinde yoktu. Artık geçiyor (`5dcb786`), ama bugüne kadar geçmemiş olması D1'in bulduğu sınıfla aynı: doğrulanmamış bir katman, çalıştığı sanılan bir katman. | ✅ kapandı |
+| **D4** | **Kimlik/yetkilendirme grafiği kapsam doğrulamasından hiç geçmemişti** — `AddLogAnalyzerAuthentication` ömür bekçisinin listesinde yoktu. Artık geçiyor (`5dcb786`), ama bugüne kadar geçmemiş olması D1'in bulduğu sınıfla aynı: doğrulanmamış bir katman, çalıştığı sanılan bir katman. | ✅ kapandı |
 
 | **D5** | **Sigma kapsam ölçümü koştu ama sayısı kullanılamaz.** `match_ratio = %0`; sebebi eşleme değil **veri**: ClickHouse'daki 1M satır tek-vendor'lu sentetik benchmark verisi, altın örnek değil. Aracın ön kontrolü "boş mu" diye soruyordu, "doğru veri mi" diye değil — sonradan altın örnek sondası arayacak şekilde sertleştirildi. **Veriden bağımsız tek kullanılabilir sayı:** `compiled=24, runs=14` — on kural var olmayan kolonlara giden SQL üretiyor, ve bu kapsam daraltarak çözülmez. | koordinatör; altın örnek yükleyicisi yazılıyor |
 | ~~D6~~ | ~~Baseline pencere ölçümü de aynı sebeple bekliyor~~ — **koşuldu 2026-08-21.** Süpürme kendi verisini tohumluyor ve imzası iki eğri istiyor. Sonuç aşağıda: bağlayıcı taban **çıkmadı**, ve çıkmaması ölçümün teslim ettiği şey. | ✅ kapandı |
@@ -373,12 +373,12 @@ Fixture'ı yenilik üretecek şekilde büyütmek **reddedildi**: o zaman dirseğ
 
 ### D1'in sonucu — canlı Keycloak, 2026-08-20
 
-Keycloak 26.7.1 + Postgres + ClickHouse + RustFS ayağa kaldırıldı, `Bizigo.Api`
+Keycloak 26.7.1 + Postgres + ClickHouse + RustFS ayağa kaldırıldı, `LogAnalyzer.Api`
 ve Next BFF gerçekten koşturuldu, giriş akışı uçtan uca sürüldü
 (`analyst.core`). **Geçti.** Sonra hepsi kapatıldı.
 
 **Taşıyıcı kanıt — K31'in gerekçesi kaynağında doğrulandı.** Realm'in keşif
-belgesi `scopes_supported = ["openid", "offline_access", "bizigo-claims"]`
+belgesi `scopes_supported = ["openid", "offline_access", "loganalyzer-claims"]`
 diyor; `profile` ve `email` **yok**, çünkü realm dosyası `clientScopes`
 verdiği için Keycloak yerleşik scope'ları hiç oluşturmuyor. Üç istek yan yana
 koşuldu:
@@ -395,7 +395,7 @@ bunu görmezdi — akış hiç koşulmamıştı.
 
 **Ölçülen diğer şeyler:**
 
-- Giriş tamamlandı; oturum çerezi `bizigo.sid` **opak rastgele** değer taşıyor
+- Giriş tamamlandı; oturum çerezi `loganalyzer.sid` **opak rastgele** değer taşıyor
 (nokta yok, JWT/base64 JSON değil), `HttpOnly`, `SameSite=Lax`, `Secure` yok
 (adres `http`, doğru davranış).
 - **BFF'in (`localhost:3000`) hiçbir yanıtında token yok** — altı yanıtın
@@ -404,7 +404,7 @@ için tarandı: sıfır bulgu. Beş bulgunun tamamı Keycloak'ın kendi alanınd
 kendi çerezleri (`KC_RESTART`, `KEYCLOAK_IDENTITY`, `KEYCLOAK_SESSION`).
 - **Yukarı akışta token var:** `/api/bff/auth/me` gerçek kimliği döndürdü
 (`roles: ["analyst"]`, `idp_groups: ["/network/core"]`), yani vekil oturum
-anahtarını `Authorization` başlığına çeviriyor ve `bizigo-claims` scope'u
+anahtarını `Authorization` başlığına çeviriyor ve `loganalyzer-claims` scope'u
 rolleri ve grupları gerçekten taşıyor.
 - Sahte oturum çerezi → **401**.
 - K17'nin kapalı-başarısızlığı çalışıyor **ve sessiz değil**: `idp_group_mapping`

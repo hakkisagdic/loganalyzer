@@ -172,7 +172,7 @@ def _default_compiler():
 
     started = time.perf_counter()
     pipeline = _load_pipeline()
-    backend = pipeline.bizigo_backend(mappings_path=repo_root() / MAPPINGS_DIR)
+    backend = pipeline.loganalyzer_backend(mappings_path=repo_root() / MAPPINGS_DIR)
     from sigma.collection import SigmaCollection  # noqa: PLC0415
 
     setup_ms = (time.perf_counter() - started) * 1000

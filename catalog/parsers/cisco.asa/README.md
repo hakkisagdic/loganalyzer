@@ -54,5 +54,5 @@ RFC 5737 belge aralıklarına (`203.0.113.0/24`, `198.51.100.0/24`) taşındı, 
 adresler ve kullanıcı adları olduğu gibi bırakıldı.
 
 Bir satırda üst veri kümesinin maskeleme artığı vardı (`net:1192.168.2.2` —
-geçersiz oktet); düzeltildi. Bunu `bizigo parser coverage` yakaladı, gömülü
+geçersiz oktet); düzeltildi. Bunu `loganalyzer parser coverage` yakaladı, gömülü
 testler değil.

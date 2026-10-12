@@ -9,7 +9,7 @@ T36 kanıt paketini ve LLM'siz raporu yazdı; T37 onu ekrana ve export'a taşıy
 Bu belge, ekranı yazan kişinin **kodu okuyarak çıkarması gereken** şeyleri
 okumadan bilmesi için.
 
-Kod: `src/Bizigo.Evidence/`. Testler: `tests/Bizigo.UnitTests/Evidence*.cs`,
+Kod: `src/LogAnalyzer.Evidence/`. Testler: `tests/LogAnalyzer.UnitTests/Evidence*.cs`,
 `DeterministicReportTests.cs`. Karar gerekçeleri:
 [T36 kanıt paketi](../t36-kanit-paketi/index.md).
 
@@ -37,7 +37,7 @@ farklı ve ikincisi "sorun yok" diye okunuyor.
 
 ## 1 · Dört ayrım ve ekranda ne demeleri gerektiği
 
-`EvidenceStatus` (`src/Bizigo.Evidence/EvidenceContract.cs`) altı değer taşıyor;
+`EvidenceStatus` (`src/LogAnalyzer.Evidence/EvidenceContract.cs`) altı değer taşıyor;
 ekran açısından anlamlı gruplama şu:
 
 | Durum | Ne oldu | Ekranda | Bölüm |
@@ -72,7 +72,7 @@ bölümün sessizce kaybolması yanlış olur.
 
 ## 2 · `RankedEvidence` — nedir, **ne değildir**
 
-`src/Bizigo.Evidence/EvidenceRanking.cs`.
+`src/LogAnalyzer.Evidence/EvidenceRanking.cs`.
 
 ```
 Score = ClassRank + (Weight / dilimdeki_en_büyük_Weight)
@@ -156,7 +156,7 @@ var report = DeterministicReport.From(bundle);
 var markdown = report.ToMarkdown();
 ```
 
-`src/Bizigo.Evidence/DeterministicReport.cs`. Ticket'ın export maddesi
+`src/LogAnalyzer.Evidence/DeterministicReport.cs`. Ticket'ın export maddesi
 (*"Markdown ya da PDF"*) için Markdown tarafı yazılmış ve testli.
 
 Kabul kriteri şunu diyor: *"Export edilen rapor kendi kendine yeten bir belge:
@@ -189,7 +189,7 @@ işareti sık. Kendi biçimlendiricinizi yazarsanız aynı şeyi yapmanız gerek
 
 ## 5 · Paketi nereden alacaksınız
 
-Üç tip, hepsi DI'de kayıtlı (`AddBizigoEvidence`, scoped):
+Üç tip, hepsi DI'de kayıtlı (`AddLogAnalyzerEvidence`, scoped):
 
 | Tip | İşi |
 | --- | --- |
@@ -217,7 +217,7 @@ birlikte gelmeli ve alan seçimlerini ekranın ihtiyacı belirlemeli. Bu yüzden
 - **Domain tipini tel sözleşmesi yapmayın** (§8). `EvidenceBundle` ve
   `DeterministicReport` domain tipleri; onlara eklenen her alan kimse karar
   vermeden API'ye sızar. Ayrı `record` yazın. Aynı karar T27'de
-  `ReplayResponse` için verildi, `src/Bizigo.Api/ReplayResponses.cs` iyi bir
+  `ReplayResponse` için verildi, `src/LogAnalyzer.Api/ReplayResponses.cs` iyi bir
   örnek.
 - **JSON `snake_case`**, `JsonPropertyName` ile.
 

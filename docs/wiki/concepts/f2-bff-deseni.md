@@ -1,7 +1,7 @@
 ---
 title: BFF deseni — token tarayıcıya hiç ulaşmıyor
 category: concepts
-tags: [arayuz, guvenlik, mimari, kavram, bizigo]
+tags: [arayuz, guvenlik, mimari, kavram, loganalyzer]
 aliases: [K31, backend-for-frontend, oturum sunucuda]
 relationships:
   - target: "[[concepts/f2-kapsam-tek-kapi]]"
@@ -36,7 +36,7 @@ updated: 2026-08-24T17:45:00Z
 # BFF deseni — token tarayıcıya hiç ulaşmıyor
 
 F2'nin K31 kararı: **BFF Next.js sunucusunda**. OIDC akışı ve oturum çerezi
-Next'te duruyor, API'ye sunucudan sunucuya gidiliyor, ve `Bizigo.Api` **saf
+Next'te duruyor, API'ye sunucudan sunucuya gidiliyor, ve `LogAnalyzer.Api` **saf
 kaynak sunucusu** olarak kalıyor — yalnızca JWT bearer. Bedeli açıkça yazılı:
 Node dağıtıma giriyor (`docs/epic/f2-teknik-plan/index.md`, Kararlar tablosu).
 
@@ -91,7 +91,7 @@ desen ilk yazıldığında bir açık ucu vardı ve onu ancak doğrulama turu g�
 ## Ekranlar da desene uyuyor
 
 T15 sevk edildiğinde ekranın **tamamı sunucu bileşeni**: veri sunucuda
-çekiliyor, tarayıcı `Bizigo.Api`'yi hiç görmüyor, token sayfaya hiç geçmiyor.
+çekiliyor, tarayıcı `LogAnalyzer.Api`'yi hiç görmüyor, token sayfaya hiç geçmiyor.
 Yan etkisi bir bonus: filtre formu düz bir `GET` formu, "Sonraki sayfa" bir
 bağlantı — **JavaScript kapalıyken de çalışıyor**.
 
@@ -116,7 +116,7 @@ liste olurdu. ^[inferred]
 
 ## Kaynaklar
 
-- `docs/epic/f2-teknik-plan/index.md` — K31 ve "K31'in sonucu: `Bizigo.Api` sadeleşiyor"
+- `docs/epic/f2-teknik-plan/index.md` — K31 ve "K31'in sonucu: `LogAnalyzer.Api` sadeleşiyor"
 - `docs/epic/tickets-f2/nextjs-iskelet-bff/index.md` — T13 kapsam ve kabul kriterleri
 - `docs/epic/tickets-f2/openapi-tip-uretimi/index.md` — T14, 401/403/404 eşlemesi
 - `docs/epic/tickets-f2/log-arama-ekrani/index.md` — T15 "Sevk edilen": sunucu bileşeni

@@ -1,7 +1,7 @@
 ---
 title: Nerede kalındı — devir notlarının çizdiği durum
 category: references
-tags: [surec, log-analiz, kaynak-ozeti, bizigo]
+tags: [surec, log-analiz, kaynak-ozeti, loganalyzer]
 aliases: [devir notu, kota kesintisi, faz durumu]
 relationships:
   - target: "[[references/kapsam-feature-parity-matrisi]]"
@@ -10,7 +10,7 @@ relationships:
     type: related_to
   - target: "[[skills/kapsam-kapanacak-ile-kapanmayacagi-ayirmak]]"
     type: related_to
-  - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
+  - target: "[[projects/loganalyzer-loganalyzer/loganalyzer-loganalyzer]]"
     type: derived_from
 sources:
   - docs/epic/devir-notu-kota-kesintisi/index.md

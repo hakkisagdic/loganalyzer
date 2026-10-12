@@ -78,7 +78,7 @@ buraya derin bağlantı verebilir; parametre adları
 | `force=1` | kısa sorguda tam taramaya açık onay |
 
 Ekranın tamamı sunucu bileşeni ve veri sunucuda çekiliyor: tarayıcı
-`Bizigo.Api`'yi hiç görmüyor, erişim token'ı sayfaya hiç geçmiyor. Filtre formu
+`LogAnalyzer.Api`'yi hiç görmüyor, erişim token'ı sayfaya hiç geçmiyor. Filtre formu
 düz bir `GET` formu, "Sonraki sayfa" bir bağlantı — JavaScript kapalıyken de
 çalışıyor.
 

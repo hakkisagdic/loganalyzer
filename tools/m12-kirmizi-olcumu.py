@@ -31,7 +31,7 @@ from pathlib import Path
 KOK = Path(__file__).resolve().parent.parent
 YEDEK = KOK / ".m12-olcum-yedek"
 
-CLI = "src/Bizigo.Cli/McpCommandHandlers.cs"
+CLI = "src/LogAnalyzer.Cli/McpCommandHandlers.cs"
 
 
 @dataclass
@@ -94,7 +94,7 @@ KUSURLAR = [
         #
         # Bu hâl derleniyor ve bekçinin ölçtüğü şeyi ölçüyor: iki ayardan
         # YALNIZCA BİRİ kontrol ediliyor.
-        ad="eksik ayar kontrolü yarım: `BIZIGO_CONTROLPLANE` gözden kaçıyor",
+        ad="eksik ayar kontrolü yarım: `LOGANALYZER_CONTROLPLANE` gözden kaçıyor",
         dosya=CLI,
         bul="        if (string.IsNullOrWhiteSpace(controlPlane))\n        {\n            missing.Add(ControlPlaneVariable);\n        }",
         koy="        // KIRMIZI-D: ikinci ayar hiç kontrol edilmiyor",
@@ -180,7 +180,7 @@ def test_kos(filtre: str) -> int:
     `Failed:`) ve ayıklama düştüğünde sessizce sıfır üretirdi.
     """
     return kos([
-        "dotnet", "test", "tests/Bizigo.UnitTests", "--no-build", "--nologo", "--filter", filtre,
+        "dotnet", "test", "tests/LogAnalyzer.UnitTests", "--no-build", "--nologo", "--filter", filtre,
     ]).returncode
 
 

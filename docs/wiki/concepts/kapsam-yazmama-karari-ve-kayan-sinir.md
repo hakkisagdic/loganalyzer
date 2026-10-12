@@ -1,14 +1,14 @@
 ---
 title: Yazmama kararı ve kayan sınır
 category: concepts
-tags: [mimari, log-analiz, kavram, bizigo]
+tags: [mimari, log-analiz, kavram, loganalyzer]
 aliases: [kod bütçesi, yazmama kararları, ürünün sınırı]
 relationships:
   - target: "[[references/kapsam-feature-parity-matrisi]]"
     type: related_to
   - target: "[[references/kapsam-nerede-kalindi]]"
     type: related_to
-  - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
+  - target: "[[projects/loganalyzer-loganalyzer/loganalyzer-loganalyzer]]"
     type: derived_from
 sources:
   - docs/epic/pazar-arastirmasi-ve-feature-parity/index.md
@@ -96,7 +96,7 @@ Aynı biçimde:
   MikroTik, nginx (`fs-simulatorler` §6).
 - **"Çok dilli" tanımı** (madde 7) (a) şıkkına oturmuş, yani **mesaj
   gövdesinin dili**: `iso-8859-1` kodlaması, `bozuk-kodlama` senaryosu
-  ("Latin-1 baytlar UTF-8 iddiasıyla geliyor"), `bizigo.wire_encoding`. ^[inferred]
+  ("Latin-1 baytlar UTF-8 iddiasıyla geliyor"), `loganalyzer.wire_encoding`. ^[inferred]
 - **Multi-tenancy/RBAC** araştırmada `v2` idi; kapsam (`owner_group`,
   `idp_group_mapping`, K17) F1'den beri ürünün omurgasında —
   [[concepts/f1-kapsam-kaynaktan-gelir]].

@@ -41,7 +41,7 @@ türetiliyor. Dışarı kopyalanırsa ön kontrol "KURULUM sorunu" diye reddeder
 
     # Canlı koşum (T30 kabul kriteri):
     .venv/bin/python measure.py --clickhouse-url http://localhost:8123 \\
-        --clickhouse-user bizigo --clickhouse-password bizigo
+        --clickhouse-user loganalyzer --clickhouse-password loganalyzer
 
 Sidecar imajının içinden koşturuluyorsa yorumlayıcı **`/opt/venv/bin/python`**:
 çıplak `python` sistem yorumlayıcısıdır ve `yaml`'ı görmez. O hâlde araç
@@ -79,7 +79,7 @@ BACKEND_TABLE = "logs"
 #: Varsayılan `default` DEĞİL: `default`'a düşen bir ölçüm "böyle tablo yok"
 #: der ve bu, kurulum hatası mı yoksa veri eksikliği mi olduğu belirsiz bir
 #: hata. Doğru varsayılan, yığının gerçekten kullandığı ad.
-DEFAULT_DATABASE = "bizigo"
+DEFAULT_DATABASE = "loganalyzer"
 
 
 @dataclass
@@ -297,7 +297,7 @@ def compile_rules(with_pipeline: bool) -> dict[str, tuple[str, str]]:
 def _backend(with_pipeline: bool):
     """Ölçülen backend — pipeline'lı hâli **ürünün kendisi**.
 
-    Prototipin `bizigo_pipeline.py`'si artık ölçülmüyor. Ölçüm ürünü ölçmezse
+    Prototipin `loganalyzer_pipeline.py`'si artık ölçülmüyor. Ölçüm ürünü ölçmezse
     verdiği sayı ürün hakkında bir şey söylemez; T30'un ikinci koşumu
     `sidecar/app/sigma_pipeline.py`'ye karşı alınıyor.
     """
@@ -308,7 +308,7 @@ def _backend(with_pipeline: bool):
         # aynıysa eşleme ona hiç dokunmamış demektir.
         return ClickhouseBackend(processing_pipeline=None)
 
-    return _shipping().bizigo_backend(mappings_path=_repo_root() / "catalog" / "mappings")
+    return _shipping().loganalyzer_backend(mappings_path=_repo_root() / "catalog" / "mappings")
 
 
 def rewrite_table(sql: str, table: str) -> tuple[str, bool]:
@@ -342,7 +342,7 @@ def run_on_clickhouse(
     Veritabanı neden AÇIKÇA gönderiliyor
     ------------------------------------
     Eskiden gönderilmiyordu ve sorgular `default`'a gidiyordu. Canlı yığında
-    görünümler `bizigo` altında (deploy/docker-compose.yml `CLICKHOUSE_DB`),
+    görünümler `loganalyzer` altında (deploy/docker-compose.yml `CLICKHOUSE_DB`),
     yani ölçüm *"Unknown table expression identifier 'events_ocsf'"* ile
     düşüyordu. Koşabilmesi için `default`'a elle takma görünüm kurmak
     gerekmişti — ve o an ölçüm, birinin elle kurduğu bir duruma bağlanmış
@@ -394,7 +394,7 @@ def _repo_root() -> Path | None:
     here = Path(__file__).resolve()
 
     for parent in here.parents:
-        if (parent / "Bizigo.sln").exists():
+        if (parent / "LogAnalyzer.sln").exists():
             return parent
 
     return None
@@ -609,7 +609,7 @@ def preflight(
     if not probes:
         root = _repo_root()
         looked = (
-            f"kök `{root}` altında " if root else "depo kökü BULUNAMADI (`Bizigo.sln` yok), "
+            f"kök `{root}` altında " if root else "depo kökü BULUNAMADI (`LogAnalyzer.sln` yok), "
         )
         return Preflight(
             ok=False,
@@ -932,8 +932,8 @@ def measure(args: argparse.Namespace) -> Report:
 def main() -> int:
     parser = argparse.ArgumentParser(description="T30 Sigma eşleme maliyeti ölçümü")
     parser.add_argument("--clickhouse-url", default="", help="örn. http://localhost:8123")
-    parser.add_argument("--clickhouse-user", default="bizigo")
-    parser.add_argument("--clickhouse-password", default="bizigo")
+    parser.add_argument("--clickhouse-user", default="loganalyzer")
+    parser.add_argument("--clickhouse-password", default="loganalyzer")
     parser.add_argument(
         "--database",
         default=DEFAULT_DATABASE,

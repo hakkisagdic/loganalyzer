@@ -1,0 +1,270 @@
+{
+  "realm": "loganalyzer",
+  "enabled": true,
+  "displayName": "LogAnalyzer Log Analyzer",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 3600,
+  "roles": {
+    "realm": [
+      {
+        "name": "reader",
+        "description": "Yalnızca sorgular"
+      },
+      {
+        "name": "analyst",
+        "description": "Sorgular + kaydedilmiş sorgu/senaryo taslağı"
+      },
+      {
+        "name": "author",
+        "description": "Parser ve senaryo yayınlar"
+      },
+      {
+        "name": "admin",
+        "description": "Envanter, grup eşlemesi, sistem ayarları"
+      },
+      {
+        "name": "ingest",
+        "description": "Yalnızca /v1/logs yazar — okuma yetkisi yok"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "network",
+      "subGroups": [
+        {
+          "name": "core"
+        },
+        {
+          "name": "edge"
+        }
+      ]
+    },
+    {
+      "name": "platform"
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "loganalyzer-claims",
+      "description": "Ürünün beklediği dört claim (F1 §10.1.1). Dar tutulması bilinçli: Entra ID'ye geçiş kodda değişiklik gerektirmesin.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "roles-flat",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "groups-full-path",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "true",
+            "claim.name": "groups",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "audience-loganalyzer-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "loganalyzer-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "subject",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "consentRequired": false,
+          "config": {
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "username",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "username",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "loganalyzer-mcp",
+      "description": "M09 · MCP sunucusunun kaynak kimliği (RFC 8707). İSTEĞE BAĞLI olması şart: varsayılan olsaydı her token `aud`'una MCP kaynağını da alırdı ve API için basılmış bir token `/mcp`'de geçerdi — kaynak bağlamanın engellemek istediği şey tam olarak bu.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience-loganalyzer-mcp",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "http://localhost:5080/mcp",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "defaultDefaultClientScopes": [
+    "profile",
+    "email",
+    "roles",
+    "loganalyzer-claims"
+  ],
+  "clients": [
+    {
+      "clientId": "loganalyzer-ui",
+      "name": "LogAnalyzer UI (BFF)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "loganalyzer-ui-dev-secret",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*"
+      },
+      "redirectUris": [
+        "http://localhost:3000/signin-oidc"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ],
+      "defaultClientScopes": [
+        "loganalyzer-claims"
+      ],
+      "optionalClientScopes": [
+        "loganalyzer-mcp"
+      ]
+    },
+    {
+      "clientId": "loganalyzer-collector",
+      "name": "OTel Collector",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "loganalyzer-collector-dev-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "defaultClientScopes": [
+        "loganalyzer-claims"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-loganalyzer-collector",
+      "enabled": true,
+      "serviceAccountClientId": "loganalyzer-collector",
+      "realmRoles": [
+        "ingest"
+      ]
+    },
+    {
+      "username": "analyst.core",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "analyst.core@example.local",
+      "firstName": "Ayşe",
+      "lastName": "Çekirdek",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "analyst",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "analyst"
+      ],
+      "groups": [
+        "/network/core"
+      ]
+    },
+    {
+      "username": "analyst.edge",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "analyst.edge@example.local",
+      "firstName": "Barış",
+      "lastName": "Kenar",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "analyst",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "analyst"
+      ],
+      "groups": [
+        "/network/edge"
+      ]
+    },
+    {
+      "username": "admin.loganalyzer",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "admin@example.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "admin"
+      ],
+      "firstName": "LogAnalyzer",
+      "lastName": "Yönetici"
+    }
+  ]
+}

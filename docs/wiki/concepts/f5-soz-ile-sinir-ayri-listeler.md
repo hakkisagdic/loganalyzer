@@ -1,7 +1,7 @@
 ---
 title: Söz ile sınır aynı listede duramaz
 category: concepts
-tags: [mimari, kavram, surec, bizigo]
+tags: [mimari, kavram, surec, loganalyzer]
 aliases: [kalıcı muafiyet, out_of_scope, kapsam kararı ekranı, F5 muafiyet]
 relationships:
   - target: "[[concepts/f3-bosluk-tek-cins-degildir]]"

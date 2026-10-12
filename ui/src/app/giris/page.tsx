@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
  * Giriş sayfası.
  *
  * <p>
- * Parola alanı <b>yok</b> ve olmayacak: `bizigo-ui` istemcisinde
+ * Parola alanı <b>yok</b> ve olmayacak: `loganalyzer-ui` istemcisinde
  * `directAccessGrantsEnabled=false`, yani parola akışı Keycloak tarafında da
  * kapalı. Kimlik doğrulaması Keycloak'ın kendi sayfasında yapılıyor;
  * uygulamanın parolayı hiç görmemesi bilinçli.
@@ -35,7 +35,7 @@ export default async function LoginPage({
 
       <Card>
         <div className={styles.loginCard}>
-          <h1>Bizigo Log Analyzer</h1>
+          <h1>LogAnalyzer Log Analyzer</h1>
           <p>Devam etmek için kurumsal hesabınızla giriş yapın.</p>
 
           {params.hata ? <ErrorState title={params.hata} hint={params.ipucu} /> : null}

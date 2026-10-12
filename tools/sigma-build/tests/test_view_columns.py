@@ -316,7 +316,7 @@ def test_events_otel_son_tanimi_0004ten_geliyor():
     definition = view_definition("events_otel", MIGRATIONS)
     assert definition.source_file == "0004_fix_otel_severity_scale.sql"
     # `0004`'ün eklediği, `0003`'te olmayan kolon.
-    assert "bizigo.ocsf_severity_id" in definition.column_set
+    assert "loganalyzer.ocsf_severity_id" in definition.column_set
 
 
 def test_events_otel_multiif_tek_kolon_olarak_okunuyor():

@@ -10,7 +10,7 @@ title: "T06 — dispatcher ve envanterde alınan kararlar"
 > yazan gerekçeler kodun bugünkü hâlinden çıkarıldı; o an tartışılıp reddedilen
 > alternatifler kayıtta yok.
 
-Uygulanan yer: `src/Bizigo.Parsing/Dispatch/` + `src/Bizigo.ControlPlane/SourceDirectory.cs`.
+Uygulanan yer: `src/LogAnalyzer.Parsing/Dispatch/` + `src/LogAnalyzer.ControlPlane/SourceDirectory.cs`.
 Yöneten kararlar: [K17](../mimari-kararlar/index.md) (kapsam kaynak/cihaz grubu
 bazlı), K23 (kontrol düzlemi PostgreSQL).
 

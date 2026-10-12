@@ -22,8 +22,8 @@ KOK = Path(__file__).resolve().parent.parent
 
 BEKCI = "IngestGatewayTests"
 
-GECIT = KOK / "src/Bizigo.Ingest/Pipeline/IngestGateway.cs"
-SAYAC = KOK / "src/Bizigo.Ingest/Pipeline/IngestStats.cs"
+GECIT = KOK / "src/LogAnalyzer.Ingest/Pipeline/IngestGateway.cs"
+SAYAC = KOK / "src/LogAnalyzer.Ingest/Pipeline/IngestStats.cs"
 
 
 @dataclass
@@ -88,7 +88,7 @@ KUSURLAR = [
 
 def kos() -> int:
     return subprocess.run(
-        ["dotnet", "test", "tests/Bizigo.UnitTests", "--filter", f"FullyQualifiedName~{BEKCI}"],
+        ["dotnet", "test", "tests/LogAnalyzer.UnitTests", "--filter", f"FullyQualifiedName~{BEKCI}"],
         cwd=KOK, capture_output=True, text=True,
     ).returncode
 

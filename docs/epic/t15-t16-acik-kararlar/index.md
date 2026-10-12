@@ -26,7 +26,7 @@ notu doğru. Sunucu tarafı kayıtlı arama için bir sebep kalmadı.
 ### Kalan risk: "bir arama" iki yerde temsil ediliyor
 
 `ui/src/lib/events/criteria.ts` içindeki `PARAM` kümesi ile
-`src/Bizigo.Alerting/AlertSearch.cs` ayrışırsa, ekrandan kurulan alarm ekranda
+`src/LogAnalyzer.Alerting/AlertSearch.cs` ayrışırsa, ekrandan kurulan alarm ekranda
 görülen sonuçtan başkasını izler ve **hiçbir yerde kırmızı yanmaz**.
 
 Bugünkü karşılıklar `criteria.ts`'in başındaki tabloda yazılı. Özeti: tam metin,
@@ -59,7 +59,7 @@ yazılmış bir `Map*` listesinden** topluyordu. T21/T22/T24 indiğinde 16 uç k
 hiç görünmedi ve üç testin üçü de geçti — bir bekçinin en tehlikeli başarısızlık
 biçimi, çünkü yeşildi ve yeşilliği hiçbir şey ifade etmiyordu.
 
-Artık `Bizigo.Api` derlemesindeki her `IEndpointRouteBuilder` uzantısı
+Artık `LogAnalyzer.Api` derlemesindeki her `IEndpointRouteBuilder` uzantısı
 **yansımayla bulunup çağrılıyor**. Unutulacak bir liste yok. Beklenmeyen imzalı
 bir `Map*` sessizce atlanmıyor, açık bir hatayla düşüyor — aksi hâlde aynı delik
 başka kılıkta geri gelirdi.

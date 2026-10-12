@@ -1,7 +1,7 @@
 ---
 title: Deklaratif parser motoru yazmak
 category: skills
-tags: [log-analiz, mimari, yordam, bizigo]
+tags: [log-analiz, mimari, yordam, loganalyzer]
 aliases: [YAML parser, grok derleyici, dispatcher kademeleri, altın örnek]
 relationships:
   - target: "[[concepts/f1-duvar-saati-tuzagi]]"
@@ -10,7 +10,7 @@ relationships:
     type: related_to
   - target: "[[concepts/f1-ham-sadakat-zinciri]]"
     type: related_to
-  - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
+  - target: "[[projects/loganalyzer-loganalyzer/loganalyzer-loganalyzer]]"
     type: part_of
 sources:
   - docs/epic/mimari-kararlar/index.md
@@ -72,7 +72,7 @@ kullanıyor ve bunlara dokunan her ifade geri izlemeye düşüyor. Ağ cihazı l
 IP geçmeyen pattern neredeyse yok (`docs/epic/t08-motor-geri-beslemesi/index.md`
 §8b).
 
-Çözüm F1 kapanışında sevk edildi: `legacy` setinin üstüne **`bizigo-v1`
+Çözüm F1 kapanışında sevk edildi: `legacy` setinin üstüne **`loganalyzer-v1`
 kaplaması** — lookaround'suz `IPV4`/`TIME` varyantları. Zincir ölçülerek kapandı:
 GROK003 uyarısı **21 → 8 → 4 → 2 → 0**, ve kapsam boyunca altın örnek sonucu
 86/1/0 sabit kaldı (`docs/epic/f1-kapanis/index.md`).
@@ -181,7 +181,7 @@ sessiz olanlar ([[concepts/sessiz-yanlis-davranis]]):
 Etiketlerin ClickHouse'a ulaşması ayrı bir kalemdi ve F1 kapanışında düzeldi:
 `ParseResult.Tags` normalizasyonda hiçbir yere yazılmıyordu, yani
 `_asa_no_timestamp` etiketi **kayboluyordu**. Artık `time_source` kolonu
-(`parsed`/`observed`/`received`) ve `attrs['bizigo.tags']` var; `ReplayDiff`
+(`parsed`/`observed`/`received`) ve `attrs['loganalyzer.tags']` var; `ReplayDiff`
 `time_source`'u karşılaştırıyor — zamanı çözemeyen bir parser düzeltilince
 `observed → parsed` geçişi görülebiliyor.
 
@@ -193,4 +193,4 @@ Etiketlerin ClickHouse'a ulaşması ayrı bir kalemdi ve F1 kapanışında düze
 - `docs/epic/tickets/dispatcher-ve-envanter/index.md` — dört kademe, üç tasarım kararı
 - `docs/epic/tickets/vendor-katalogu/index.md` — altın örnek ölçütü, 4 → 8 sapması
 - `docs/epic/t08-motor-geri-beslemesi/index.md` — on eksik, motorun iyi çalıştığı yerler
-- `docs/epic/f1-kapanis/index.md` — `bizigo-v1` kaplaması, GROK003 zinciri, `time_source`
+- `docs/epic/f1-kapanis/index.md` — `loganalyzer-v1` kaplaması, GROK003 zinciri, `time_source`

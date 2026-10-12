@@ -51,7 +51,7 @@ görüyor; hiçbir filtre, URL veya doğrudan kimlik girişi bunu delmiyor.
   - Kuru koşu gerçek çalıştırmayla aynı sonucu veriyor (uçtan uca tek testte
 gösterilmedi).
 - **`Produces<T>` bekleme listesi (`Pending`) boşalmış olmalı.** T15'te kurulan
-bekçi (`tests/Bizigo.UnitTests/ProducesContractTests.cs`) her ürün ucunun yanıt
+bekçi (`tests/LogAnalyzer.UnitTests/ProducesContractTests.cs`) her ürün ucunun yanıt
 tipi bildirmesini zorluyor; bildirmeyenler **iki listeden** birinde duruyor.
   - **`Pending`** — "henüz tipsiz, ekran indikçe çıkacak". **Boşalmadan F2
     bitmiş sayılmıyor.** Bir satırı silmek uca `.Produces<T>()` eklemeden

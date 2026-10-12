@@ -39,7 +39,7 @@ describe("Keycloak ulaşılamazken", () => {
     expect(location.searchParams.get("hata")).toBeTruthy();
     // İpucu adresi söylemeli: "Keycloak'a ulaşılamıyor" tek başına hangi
     // adrese bakılacağını söylemiyor.
-    expect(location.searchParams.get("ipucu")).toContain("realms/bizigo");
+    expect(location.searchParams.get("ipucu")).toContain("realms/loganalyzer");
   });
 
   it("çıkış yine de yerel oturumu siliyor", async () => {
@@ -53,7 +53,7 @@ describe("Keycloak ulaşılamazken", () => {
     rememberPending(state);
 
     const callbackResponse = await callback(nextRequest(`/signin-oidc?code=k&state=${state}`));
-    const cookie = `bizigo.sid=${callbackResponse.cookies.get("bizigo.sid")!.value}`;
+    const cookie = `loganalyzer.sid=${callbackResponse.cookies.get("loganalyzer.sid")!.value}`;
 
     // Keşif belgesi giriş sırasında önbelleğe alındı; onu da düşürüyoruz ki
     // gerçekten yedek yola girelim. (Önbellek sıcakken çıkış adresi zaten
@@ -65,7 +65,7 @@ describe("Keycloak ulaşılamazken", () => {
     const response = await logout(nextRequest("/api/auth/logout", { method: "POST", cookie }));
     const body = (await response.json()) as { redirectTo: string };
 
-    expect(response.cookies.get("bizigo.sid")!.maxAge).toBe(0);
+    expect(response.cookies.get("loganalyzer.sid")!.maxAge).toBe(0);
     // Keycloak'a gidilemiyor; kullanıcı en azından giriş sayfasına düşüyor.
     expect(body.redirectTo).toBe("http://localhost:3000/giris");
 

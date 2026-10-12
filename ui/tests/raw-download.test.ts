@@ -68,7 +68,7 @@ async function signIn(): Promise<string> {
 
   const callbackResponse = await callback(nextRequest(`/signin-oidc?code=kod-123&state=${state}`));
 
-  return `bizigo.sid=${callbackResponse.cookies.get("bizigo.sid")!.value}`;
+  return `loganalyzer.sid=${callbackResponse.cookies.get("loganalyzer.sid")!.value}`;
 }
 
 function rawBody(): unknown {

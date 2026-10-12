@@ -55,7 +55,7 @@ export type JsonBody<TOperation> = TOperation extends {
  * bir güvence verirdi. Bir ekran belirli bir ucun gövdesine ihtiyaç duyduğunda
  * çözüm API tarafına <c>Produces&lt;T&gt;</c> eklemek — burada elle tip yazmak
  * değil. Hangi uçların açıkta kaldığı
- * <c>tests/Bizigo.UnitTests/ProducesContractTests.cs</c> içindeki izin
+ * <c>tests/LogAnalyzer.UnitTests/ProducesContractTests.cs</c> içindeki izin
  * listesinde duruyor.</p>
  */
 export type JsonResponse<TOperation> = TOperation extends {

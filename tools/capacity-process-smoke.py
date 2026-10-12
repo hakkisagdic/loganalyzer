@@ -18,7 +18,7 @@ import time
 
 ROOT = Path(__file__).resolve().parent.parent
 DOTNET = shutil.which("dotnet") or "dotnet"
-CLI = ROOT / "src/Bizigo.Cli/bin/Release/net10.0/bizigo.dll"
+CLI = ROOT / "src/LogAnalyzer.Cli/bin/Release/net10.0/loganalyzer.dll"
 HOST_PROJECT = ROOT / "tools/capacity/fixture-host"
 HOST = HOST_PROJECT / "bin/Release/net10.0/CapacityFixtureHost.dll"
 
@@ -105,7 +105,7 @@ def config(root, port, transport="tcp", mode="healthy"):
             "GeneratorLocation": "same", "Safety": {"SampleIntervalSeconds": .1,
                 "MaxSampleGapSeconds": 2, "ProbeTimeoutSeconds": .5, "ConsecutiveSamples": 2}},
         "Host": "127.0.0.1", "Port": port, "Transport": transport, "RepositoryRoot": str(ROOT),
-        "SimulatorDll": str(ROOT / "sim/Bizigo.Simulators/bin/Release/net10.0/Bizigo.Simulators.dll"),
+        "SimulatorDll": str(ROOT / "sim/LogAnalyzer.Simulators/bin/Release/net10.0/LogAnalyzer.Simulators.dll"),
         "Dotnet": DOTNET, "OutputDirectory": str(root / "runs"),
         "Probe": {"FileName": sys.executable, "Arguments": [str(ROOT / "tools/capacity/fixture-probe.py"), str(root), mode]},
     }

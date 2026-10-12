@@ -56,10 +56,10 @@ besleniyor — S07 olmadan F4'ün o tetikleyicisi test edilemez.
 
 ## Sonuç
 
-Üreteç `sim/Bizigo.Simulators/WebhookDeliveryFactory.cs`. Komut satırından:
+Üreteç `sim/LogAnalyzer.Simulators/WebhookDeliveryFactory.cs`. Komut satırından:
 
 ```bash
-dotnet run --project sim/Bizigo.Simulators -- \
+dotnet run --project sim/LogAnalyzer.Simulators -- \
     --profile fw-ankara-01 --webhook github \
     --url http://127.0.0.1:8080/v1/changes/webhooks/ci --secret anahtar --times 2
 ```
@@ -75,7 +75,7 @@ olan şey algoritma değil (HMAC-SHA256 tek bir şey), **biçim**: hangi başlı
 hangi önek, hex mi base64 mü, büyük harf mi küçük harf mi. Sağlayıcıların
 ayrıştığı yer tam olarak orası.
 2. **Gövdenin şekli sağlayıcıların yayımladığı yüke karşı sınanıyor**
-(`tests/Bizigo.UnitTests/Fixtures/webhooks`). Karşılaştırma yönü
+(`tests/LogAnalyzer.UnitTests/Fixtures/webhooks`). Karşılaştırma yönü
 **üreteç ⊆ gerçek**: üretecin uydurduğu bir alan kırmızı yanıyor.
 
 Ters yön (gerçek ⊆ üreteç) bilerek sınanmıyor — gerçek yükler üretecin hiç
@@ -89,8 +89,8 @@ anahtarlarını** üretmek zorunda.
 | --- | --- | --- |
 | GitHub | HMAC-SHA256, `sha256=` önekli **küçük harf** hex | `X-Hub-Signature-256` |
 | GitLab | **HMAC yok** — paylaşılan jeton düz metin | `X-Gitlab-Token` |
-| Jenkins | HMAC-SHA256 — sağlayıcının standardı yok, başlık bizim | `X-Bizigo-Signature` |
-| Generic | HMAC-SHA256 | `X-Bizigo-Signature` |
+| Jenkins | HMAC-SHA256 — sağlayıcının standardı yok, başlık bizim | `X-LogAnalyzer-Signature` |
+| Generic | HMAC-SHA256 | `X-LogAnalyzer-Signature` |
 
 GitLab'ın satırı bir eksiklik değil bir **olgu** ve görünür olması gerekiyordu:
 jeton gövdeye bakmadığı için GitLab'da gövde değişikliği imzayı düşürmüyor.
@@ -136,8 +136,8 @@ olmasaydı bir sonraki kişi de aynı yanılgıya düşerdi.
 > Aşağısı kararın o günkü hâli.
 
 **"İki POST → tek kayıt" gerçek Postgres'e karşı bir testte durmuyor.** Sebep
-yapısal: `Bizigo.IntegrationTests` **on altı** proje referansı taşıyor ve
-`src/` altındaki tek dışlanan proje `Bizigo.Api`. Yani dışlama bilinçli
+yapısal: `LogAnalyzer.IntegrationTests` **on altı** proje referansı taşıyor ve
+`src/` altındaki tek dışlanan proje `LogAnalyzer.Api`. Yani dışlama bilinçli
 görünüyor, ve `ChangeWebhookMapper`/`WebhookSignature` orada.
 
 Kabul kriteri yine de karşılanıyor, ama **iki parçada**:

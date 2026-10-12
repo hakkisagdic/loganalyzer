@@ -34,7 +34,7 @@ export function formatParseStatus(value: string): string {
 }
 
 /**
- * Parser'ın şikâyetleri — <c>attrs['bizigo.parse_issues']</c>.
+ * Parser'ın şikâyetleri — <c>attrs['loganalyzer.parse_issues']</c>.
  *
  * <p>Normalizasyon tek anahtarda birleştiriyor (<c>mapKeys</c> bloom filtresi
  * anahtar kümesi üzerinde); burada adım/mesaj çiftlerine geri açılıyor.</p>
@@ -44,7 +44,7 @@ export interface ParseIssue {
   readonly message: string;
 }
 
-export const PARSE_ISSUES_KEY = "bizigo.parse_issues";
+export const PARSE_ISSUES_KEY = "loganalyzer.parse_issues";
 
 export function readParseIssues(attrs: Record<string, string>): ParseIssue[] {
   const packed = attrs[PARSE_ISSUES_KEY];

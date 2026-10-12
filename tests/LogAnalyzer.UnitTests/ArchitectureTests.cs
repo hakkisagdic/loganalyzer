@@ -1,0 +1,435 @@
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using LogAnalyzer.Alerting;
+using LogAnalyzer.Api.Connectors;
+using LogAnalyzer.Api.Webhooks;
+using LogAnalyzer.Authoring;
+using LogAnalyzer.Contracts;
+using LogAnalyzer.ControlPlane;
+using LogAnalyzer.Evidence;
+using LogAnalyzer.Ingest;
+using LogAnalyzer.Normalization;
+using LogAnalyzer.Parsing;
+using LogAnalyzer.Query;
+using LogAnalyzer.Replay;
+using LogAnalyzer.ScenarioPlugin;
+using LogAnalyzer.Storage.ClickHouse;
+using LogAnalyzer.Storage.Raw;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using NetArchTest.Rules;
+
+namespace LogAnalyzer.UnitTests;
+
+/// <summary>
+/// Kapsam ayrımının (K17) derleme zamanı bekçisi.
+///
+/// Bu kurallar olmadan tek bir aceleci PR yeter: biri kolaylık olsun diye
+/// <c>LogAnalyzer.Api</c>'ye <c>ClickHouseConnection</c> açar, kapsam filtresi
+/// atlanır ve kimse fark etmez. Testin amacı insanı yakalamak değil, o yolu
+/// baştan kapatmak.
+/// </summary>
+public sealed class ArchitectureTests
+{
+    private const string ClickHouseDriverNamespace = "ClickHouse.Driver";
+
+    private static readonly Assembly[] AssembliesThatMustNotTouchTheDriver =
+    [
+        typeof(AccessScope).Assembly,          // LogAnalyzer.Contracts
+        typeof(IScopedQuery).Assembly,         // LogAnalyzer.Query
+        typeof(ControlPlaneDbContext).Assembly,// LogAnalyzer.ControlPlane
+        typeof(RawObjectKey).Assembly,         // LogAnalyzer.Storage.Raw
+        typeof(ParserMarker).Assembly,         // LogAnalyzer.Parsing
+        typeof(NormalizationMarker).Assembly,  // LogAnalyzer.Normalization
+        typeof(IngestMarker).Assembly,         // LogAnalyzer.Ingest
+
+        // RCA motoru ClickHouse'u DOĞRUDAN sorgulamıyor, sağlayıcılara soruyor
+        // (RCA özelliği §3) ve sağlayıcılar `IScopedQuery`den geçiyor. Kanıt
+        // yolu K17'nin en cazip kaçış deliği: bir korelasyon sorgusunu "tek
+        // seferlik" ham SQL olarak yazmak çok kolay, ve o sorgu kapsam
+        // filtresini taşımazsa bir ekip başka bir ekibin verisini kanıt olarak
+        // görür — üstelik rapor bunu doğru veri gibi sunar.
+        typeof(EvidenceMarker).Assembly,       // LogAnalyzer.Evidence
+
+        // Senaryo çekirdeği kanıt katmanının ÜSTÜNDE duruyor (T43). Kanıtı
+        // sağlayıcıdan alıyor, kendisi hiçbir şey sorgulamıyor; bir senaryo
+        // adımının "şu tabloyu da okuyayım" demesi tam olarak K17'nin
+        // kapatmak istediği yol.
+        typeof(ScenarioMarker).Assembly,       // LogAnalyzer.ScenarioPlugin
+    ];
+
+    [Fact]
+    public void Yalnizca_Storage_ClickHouse_surucuye_referans_verebilir()
+    {
+        foreach (var assembly in AssembliesThatMustNotTouchTheDriver)
+        {
+            var offenders = Types.InAssembly(assembly)
+                .That()
+                .HaveDependencyOn(ClickHouseDriverNamespace)
+                .GetTypes()
+                .Select(t => t.FullName)
+                .ToArray();
+
+            Assert.True(
+                offenders.Length == 0,
+                $"{assembly.GetName().Name} '{ClickHouseDriverNamespace}' bağımlılığı taşıyor: " +
+                string.Join(", ", offenders) +
+                ". Ham ClickHouse erişimi yalnızca LogAnalyzer.Storage.ClickHouse içinde olabilir " +
+                "(K17 / F1 §10.2).");
+        }
+    }
+
+    [Fact]
+    public void Api_dogrudan_ClickHouse_okuyucularina_erisemez()
+    {
+        // API katmanı EventReader/ChangeEventReader'ı doğrudan kullanamaz;
+        // IScopedQuery üzerinden geçmeli. Aksi halde denetim kaydı ve kapsam
+        // daraltması atlanabilir.
+        var apiAssembly = typeof(global::Program).Assembly;
+
+        var offenders = Types.InAssembly(apiAssembly)
+            .That()
+            .HaveDependencyOnAny(
+                typeof(EventReader).FullName!,
+                typeof(ChangeEventReader).FullName!,
+                typeof(TelemetryReader).FullName!)
+            .GetTypes()
+            .Select(t => t.FullName)
+            .ToArray();
+
+        Assert.True(
+            offenders.Length == 0,
+            "API katmanı okuyuculara doğrudan erişiyor: " + string.Join(", ", offenders) +
+            ". IScopedQuery kullanılmalı.");
+    }
+
+    /// <summary>
+    /// <b>Singleton bir servis, scoped bir servisi tutamaz.</b>
+    ///
+    /// <para>
+    /// T26'nın <c>DeviceConfigRunner</c>'ı tam bunu yapıyordu: singleton olarak
+    /// kaydedilmişti ve <c>IScopedQuery</c> alıyordu, o da
+    /// <c>ControlPlaneDbContext</c> taşıyor. Sonucu tek bir EF bağlamının
+    /// sürecin ömrü boyunca paylaşılması — EF bağlamı iş parçacığı güvenli
+    /// değil ve değişiklik izleyicisi hiç boşalmıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Sessizce yaşadı.</b> Üretimde <c>ValidateScopes</c> kapalı olduğu için
+    /// uygulama hatasız açılıyordu; kusuru ortaya çıkaran şey, T14'ün OpenAPI
+    /// belge üretiminin <c>Main</c>'i gerçekten çalıştırması oldu — ve o da
+    /// yalnızca birleştirme sırasında görüldü, T26 indikten sonra kimse tipleri
+    /// yeniden üretmediği için. Bu test o tesadüfü kaldırıyor: kapsam
+    /// doğrulaması artık birim testinde, her koşumda.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Uretim_DI_grafi_kapsam_dogrulamasindan_geciyor()
+    {
+        var builder = ProductionServices(out var registrars);
+
+        // Keşfin gerçekten iş gördüğü burada da sınanıyor: çağrılar bir yerde
+        // yutulsaydı grafik boş kalır ve test anlamsız yere geçerdi.
+        Assert.NotEmpty(registrars);
+        Assert.True(builder.Services.Count > 50, "Servis grafiği beklenmedik biçimde küçük.");
+
+        // `Build()` doğrulamayı kendisi koşuyor: Development ortamında
+        // `ValidateScopes` ve `ValidateOnBuild` açık. Hiçbir bağlantı
+        // kurulmuyor — yalnızca grafik inşa ediliyor.
+        var exception = Record.Exception(() => builder.Build());
+
+        Assert.True(
+            exception is null,
+            "Üretim servis grafiği kapsam doğrulamasından geçmiyor — büyük ihtimalle bir singleton "
+            + "scoped bir servisi tutuyor (captive dependency):\n" + exception?.Message);
+    }
+
+    /// <summary>
+    /// <b>Bekçinin kendisinin bekçisi.</b> Bugün bilinen kayıt uzantılarının
+    /// hepsi bulunuyor mu?
+    ///
+    /// <para>
+    /// Elle yazılmış olan artık <b>denetlenen küme</b> değil, <b>beklenen
+    /// küme</b>: keşif bunlardan azını bulursa bir katman sessizce doğrulama
+    /// dışında kalmış demektir, fazlasını bulursa yeni bir katman gelmiş ve
+    /// bilinçli olarak buraya yazılması gerekiyor. Aradaki fark önemli —
+    /// birincisi kapının neyi denetlediğini belirliyordu, bu ise kapının
+    /// gördüğünü <i>doğruluyor</i>.
+    /// </para>
+    ///
+    /// <para>
+    /// Liste yazılırken <c>AddLogAnalyzerAuthentication</c> ve
+    /// <c>AddLogAnalyzerDiscovery</c> elle tutulan sürümde <b>yoktu</b>: ilki
+    /// <c>Program.cs</c>'te çağrılıyor ama doğrulamaya hiç girmiyordu, ikincisi
+    /// <c>AddLogAnalyzerIngest</c>'in içinden çağrılıyor. Yani liste zaten iki
+    /// eksikti ve bunu kimse görmüyordu.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Kapsam_bekcisi_butun_kayit_uzantilarini_kendisi_buluyor()
+    {
+        ProductionServices(out var registrars);
+
+        Assert.Equal(
+            [
+                "AddLogAnalyzerAlerting", "AddLogAnalyzerAuthentication", "AddLogAnalyzerAuthoring",
+
+                // M02: komut araçlarının bağımlılıkları. `Program.cs` bunu
+                // GERÇEKTEN çağırıyor (stdio host'u da aynı uzantıyı çağırıyor
+                // — iki ayrı kayıt, bir aracın bir taşımada çalışıp diğerinde
+                // patlaması demekti).
+                "AddLogAnalyzerCommandTools",
+
+                "AddLogAnalyzerDataPlane", "AddLogAnalyzerDiscovery", "AddLogAnalyzerEvidence",
+                "AddLogAnalyzerIngest",
+
+                // M01: MCP. İKİ kayıt uzantısı var ve ayrılmaları bilinçli —
+                // `AddLogAnalyzerMcp` (LogAnalyzer.Api) HTTP taşımasını ekliyor,
+                // `AddLogAnalyzerMcpCore` (LogAnalyzer.Mcp) protokolü ve araç keşfini
+                // kuruyor, taşımasız. Taşımayı çekirdeğe koymak `LogAnalyzer.Cli`'yi
+                // ASP.NET paylaşılan çatısına sürüklüyordu (ölçüldü: birim test
+                // paketinde beş ayrı CS0433).
+                //
+                // İkisinin de burada olması gerekiyor: `AddLogAnalyzerMcp`'nin
+                // `AddLogAnalyzerMcpCore`'u çağırıyor olması, ikincisinin BAĞIMSIZ
+                // olarak da (stdio yolu) doğru bir grafik kurduğunu göstermiyor.
+                "AddLogAnalyzerMcp", "AddLogAnalyzerMcpCore",
+
+
+                // T42: model sağlayıcısı ve K6'nın kapısı. Uç burada
+                // DOĞRULANMIYOR — doğrulama ağ çözümlemesi yapıyor ve kayıt
+                // anına konsaydı DNS erişilemediğinde API'nin tamamı ayağa
+                // kalkmazdı. Kapı kullanım anında koşuyor.
+                "AddLogAnalyzerModelProvider",
+                "AddLogAnalyzerParsing", "AddLogAnalyzerRawArchive",
+                // T45: RCA tetikleyici kabul kapısı. Kuyruğun kendisi ve kota
+                // T46'da — bu uzantı şimdilik yalnızca kapıyı ve kota
+                // kancasının varsayılanını kaydediyor.
+                "AddLogAnalyzerRcaTriggers",
+
+                // M04: `loganalyzer` okuma araçları. Bu kayıt neredeyse hiçbir şey
+                // KAYDETMİYOR (yalnızca `TimeProvider`) ve asıl işi başka:
+                // araç derlemesini keşfin referans kapanışına SOKMAK.
+                //
+                // Gerekçe ölçüldü ve şu bekçiyi de doğrudan ilgilendiriyor:
+                // `ProductAssemblies` kompozisyon kökünden
+                // `GetReferencedAssemblies()` ile yürüyor, ve o tablo yalnızca
+                // GERÇEKTEN KULLANILAN referansları taşıyor. `csproj`'a
+                // `ProjectReference` yazmak yetmiyor — derleyici kodda hiç
+                // dokunulmayan referansı meta veriden düşürüyor. M04'te beş
+                // araç yazıldı, referans eklendi, çözüm 0 hata 0 uyarı
+                // derlendi, ve uyum kapısı YEŞİL kaldı: sunucu hâlâ tek araç
+                // ilan ediyordu. Ayrıntı `LogAnalyzerReadToolsSetup` belgesinde.
+                //
+                // Yani bu satırın buradaki varlığı bir formalite değil: bu
+                // bekçinin kendi keşfi de aynı kör noktayı taşıyor.
+                "AddLogAnalyzerReadTools",
+
+                "AddLogAnalyzerReplay",
+
+
+                // T44 ile GÖRÜNÜR OLDU, T44 ile yazılmadı: uzantı T43'ten beri
+                // duruyordu ama `LogAnalyzer.ScenarioPlugin` kompozisyon kökünün
+                // geçişli kapanışında değildi. T44'ün `LogAnalyzer.Rca →
+                // LogAnalyzer.ScenarioPlugin` referansı onu kapanışa soktu ve keşif
+                // bir fazla buldu — yani liste eksik değildi, KAPANIŞ eksikti.
+                //
+                // BİLİNMESİ GEREKEN: `Program.cs` bunu HÂLÂ ÇAĞIRMIYOR. Bu satır
+                // "üretimde kayıtlı" demek değil, "kapsam doğrulamasına girdi"
+                // demek — bekçi ömürleri sınıyor, bağlanmışlığı değil. Senaryo
+                // kataloğunu üretim grafiğine bağlamak koşum kolunun işi ve
+                // koordinatöre bildirildi; ikisi burada yazılmasaydı bir sonraki
+                // okuyan bu satırı bağlanmışlık kanıtı sanardı.
+                "AddLogAnalyzerScenarioPlugins",
+
+                // OTLP metric/trace worker ve decoder kayıtları da gerçek
+                // üretim kompozisyonunda kapsam doğrulamasına girer.
+                "AddLogAnalyzerTelemetry",
+
+                "AddChangeConnectors", "AddChangeWebhooks",
+                "AddControlPlane",
+
+                // Bizim yazdığımız bir uzantı DEĞİL: OpenAPI paketinin XML
+                // yorum desteği bunu `LogAnalyzer.Api` derlemesinin İÇİNE üretiyor
+                // (`Microsoft.AspNetCore.OpenApi.Generated`, tip adı bir içerik
+                // özetini taşıyor). Dışlamak yerine kabul ediliyor, çünkü
+                // `Program.cs` gerçekten `AddOpenApi()` çağırıyor — yani üretim
+                // grafiğinin parçası ve doğrulanması bir kayıp değil kazanç.
+                // Dışlama kuralı yazmak ise listeleri yeniden körleştirmenin
+                // yoluydu; burada dışlanan hiçbir şey yok.
+                "AddOpenApi",
+            ],
+            registrars.Select(static m => m.Name).ToArray());
+
+    }
+
+    /// <summary>
+    /// <c>LogAnalyzer.*</c> derlemelerindeki <b>bütün</b> <c>IServiceCollection</c>
+    /// uzantıları — yansımayla.
+    ///
+    /// <para>
+    /// Elle yazılmış bir liste yerine burayı kullanmanın tek sebebi var: bu
+    /// depoda aynı yapısal delik <b>üç kez</b> ısırdı. <c>Produces&lt;T&gt;</c>
+    /// kapısı uçları elle yazılmış bir <c>Map*</c> listesinden topluyordu ve 16
+    /// uç kapıya hiç görünmeden üç test yeşil yanıyordu; bu bekçi <c>Add*</c>
+    /// çağrılarını elle tutuyordu ve <c>AddLogAnalyzerEvidence</c> listede yokken
+    /// kanıt sağlayıcıları tam da bu doğrulamanın yakalaması gereken hatayı
+    /// taşıyordu. Elle tutulan liste er ya da geç bekçiyi kör ediyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Derlemeler de elle sayılmıyor: <b>kompozisyon kökünden</b>
+    /// (<c>LogAnalyzer.Api</c>) başlanıp <c>LogAnalyzer.*</c> referansları geçişli olarak
+    /// yükleniyor. Test projesinin referans listesinden gitmek yanlış olurdu —
+    /// o listede üretimde olmayan şeyler bulunabilir ve üretimde olan bir şey
+    /// eksik kalabilir.
+    /// </para>
+    /// </summary>
+    private static IReadOnlyList<MethodInfo> Registrars() =>
+        ProductDiscovery.ServiceRegistrars(ProductDiscovery.CompositionClosure);
+
+    /// <summary>
+    /// Kompozisyon kökünden geçişli olarak yüklenen <c>LogAnalyzer.*</c> derlemeleri.
+    ///
+    /// <para><c>AppDomain.GetAssemblies()</c> yeterli değil: bir derleme henüz
+    /// hiç dokunulmadıysa yüklü olmuyor ve keşif onu sessizce atlıyor —
+    /// kapatmaya çalıştığımız delik tam olarak bu.</para>
+    /// </summary>
+    private static IReadOnlyList<Assembly> ProductAssemblies() =>
+        ProductDiscovery.CompositionClosure;
+
+    /// <summary>
+    /// Keşfedilen her kayıt uzantısını çağırıp üretim grafiğini kuruyor.
+    /// </summary>
+    ///
+    /// <para>
+    /// <b>İmza çeşitliliği.</b> Uzantıların üç ayrı şekli var:
+    /// yalnızca <c>IServiceCollection</c> (<c>AddLogAnalyzerReplay</c>),
+    /// <c>+ IConfiguration</c> (çoğunluk), <c>+ string connectionString</c>
+    /// (<c>AddControlPlane</c>) ve <c>+ ClickHouseOptions</c>
+    /// (<c>AddLogAnalyzerDataPlane</c>). Argüman üretimi <b>tip başına</b> yapılıyor,
+    /// <c>string</c> ise ayrıca <b>parametre adına</b> bakıyor: adı
+    /// <c>connectionString</c> olmayan bir <c>string</c>'e bağlantı dizesi
+    /// vermek, testin sessizce yanlış bir şeyi kurması olurdu.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Tanınmayan imza atlanmıyor, testi düşürüyor.</b> Atlamak bu bekçiyi
+    /// yeniden kör ederdi — hem de en sinsi biçimde, çünkü keşif çalışıyor
+    /// görünürken bir katman doğrulama dışında kalırdı. Yeni bir şekil geldiğinde
+    /// doğru hareket burayı öğretmek.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Çağrı sırası ada göre</b>, <c>Program.cs</c>'teki sıra değil. Sıra
+    /// yalnızca <c>TryAdd</c> semantiğinde hangi kaydın kazandığını değiştiriyor
+    /// (<c>AddChangeConnectors</c> ↔ <c>AddChangeWebhooks</c>); ömür doğrulaması
+    /// <b>her</b> tanımlayıcıya bakıyor, dolayısıyla ikisi de denetleniyor.
+    /// Kompozisyon sırasının doğruluğu <c>Program.cs</c>'in işi ve orada
+    /// gerekçesiyle yazılı.
+    /// </para>
+    private static WebApplicationBuilder ProductionServices(out IReadOnlyList<MethodInfo> registrars)
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Development,
+            ContentRootPath = AppContext.BaseDirectory,
+        });
+
+        // Uygulamanın gerçekten okuduğu yapılandırma yerine asgari bir küme:
+        // amaç ayarları değil, servis grafiğinin ÖMÜRLERİNİ sınamak.
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:ControlPlane"] = "Host=localhost;Database=loganalyzer;Username=x;Password=y",
+            ["ConnectionStrings:ClickHouse"] = "Host=localhost;Port=8123;Database=loganalyzer",
+        });
+
+        registrars = Registrars();
+
+        foreach (var registrar in registrars)
+        {
+            var arguments = registrar.GetParameters()
+                .Select(p => ArgumentFor(p, builder))
+                .ToArray();
+
+            registrar.Invoke(null, arguments);
+        }
+
+        return builder;
+    }
+
+    private static object ArgumentFor(ParameterInfo parameter, WebApplicationBuilder builder)
+    {
+        if (parameter.ParameterType == typeof(IServiceCollection))
+        {
+            return builder.Services;
+        }
+
+        if (parameter.ParameterType == typeof(IConfiguration))
+        {
+            return builder.Configuration;
+        }
+
+        if (parameter.ParameterType == typeof(ClickHouseOptions))
+        {
+            return new ClickHouseOptions
+            {
+                ConnectionString = builder.Configuration.GetConnectionString("ClickHouse")!,
+            };
+        }
+
+        if (parameter.ParameterType == typeof(string) && parameter.Name == "connectionString")
+        {
+            return builder.Configuration.GetConnectionString("ControlPlane")!;
+        }
+
+        // M05: `AddLogAnalyzerMcpCore` artık ARAÇ DERLEMELERİNİ alıyor (`params
+        // Assembly[]`), kompozisyon kökünü değil. Kök yetmiyordu: derleyici,
+        // kodunda hiçbir tipine dokunulmayan `ProjectReference`'ı meta veriden
+        // buduyor ve araç derlemesi referans kapanışında HİÇ görünmüyordu.
+        //
+        // Doğru argüman üretimin beyan ettiği listenin kendisi.
+        if (parameter.ParameterType == typeof(Assembly[]))
+        {
+            return LogAnalyzer.Api.McpEndpoints.ToolAssemblies.ToArray();
+        }
+
+        // M01 (TARİHÎ): `AddLogAnalyzerMcpCore` kompozisyon kökünü ELLE alıyordu. Araçlar
+        // `LogAnalyzer.Mcp`'nin AŞAĞISINDA yaşıyor, yani referans oku ters yöne
+        // bakıyor ve o derlemeden onlara ulaşmak mümkün değil; `AppDomain`
+        // taraması ise bu deponun elediği yol (dokunulmamış derleme yüklü
+        // olmuyor, keşif onu sessizce atlıyor).
+        //
+        // Doğru argüman kompozisyon kökünün kendisi — üretimde `Program.cs`
+        // ne veriyorsa o.
+        if (parameter.ParameterType == typeof(Assembly))
+        {
+            return typeof(global::Program).Assembly;
+        }
+
+        throw new NotSupportedException(
+            $"Kayıt uzantısı '{parameter.Member.Name}' tanınmayan bir parametre taşıyor: "
+            + $"{parameter.ParameterType.Name} {parameter.Name}. "
+            + "Bu parametreyi `ArgumentFor` içinde tanıtın — ATLAMAYIN. Atlanan bir imza, "
+            + "o katmanı kapsam doğrulamasının dışında bırakır ve bekçi çalışıyor görünürken "
+            + "kör olur; bu deponun aynı hatayı üçüncü kez yapmaması için burası patlıyor.");
+    }
+
+    [Fact]
+    public void Contracts_hicbir_altyapiya_bagimli_olmamali()
+    {
+        var offenders = Types.InAssembly(typeof(AccessScope).Assembly)
+            .That()
+            .HaveDependencyOnAny("Microsoft.EntityFrameworkCore", "Amazon", ClickHouseDriverNamespace)
+            .GetTypes()
+            .Select(t => t.FullName)
+            .ToArray();
+
+        Assert.True(
+            offenders.Length == 0,
+            "LogAnalyzer.Contracts altyapı bağımlılığı taşıyor: " + string.Join(", ", offenders));
+    }
+}

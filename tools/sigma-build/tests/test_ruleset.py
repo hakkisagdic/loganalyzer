@@ -121,7 +121,7 @@ def test_civi_kaynagini_dogru_soyluyor():
     """
     pin = load_pin(REPO_CATALOG)
     assert "SigmaHQ" not in pin.source
-    assert "bizigo" in pin.source
+    assert "loganalyzer" in pin.source
     assert pin.is_pinned
     assert len(pin.rules) == 24
 

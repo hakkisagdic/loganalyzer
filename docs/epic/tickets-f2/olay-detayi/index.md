@@ -18,7 +18,7 @@ ekranda görünür hâle geliyor.
 ### İçinde
 
 - Çözümlenmiş alanlar: `core`, OCSF ve OTel görünümleri ayrı sekmelerde.
-- `attrs` haritası, `bizigo.tags` ve `bizigo.dispatch_tier` dahil.
+- `attrs` haritası, `loganalyzer.tags` ve `loganalyzer.dispatch_tier` dahil.
 - **`time_source` açıkça gösteriliyor** — `parsed` / `observed` / `received`.
 `observed` veya `received` ise kullanıcı bunu görmeden zaman üzerine akıl
 yürütmemeli.
@@ -76,7 +76,7 @@ Ticket "varsa `issues` listesi" istiyordu ama parser'ın şikâyetleri
 ve normalizasyonda düşüyordu. Yani sebepsiz bir `partial`, detay ekranında
 cevaplanamayan bir soru bırakıyordu — F1'in "sessiz bozulma" sınıfından.
 
-`EventNormalizer` artık sorunları `attrs['bizigo.parse_issues']` altına tek
+`EventNormalizer` artık sorunları `attrs['loganalyzer.parse_issues']` altına tek
 anahtarda yazıyor (etiketlerdeki gerekçenin aynısı: `mapKeys` bloom filtresi
 anahtar kümesi üzerinde). Yalnızca sorunlu satırlarda doğuyor. **Geçmiş satırlar**
 **boş kalıyor**; ekran bunu "ayrıntı kaydı yok" diye açıkça söylüyor, sessiz boş

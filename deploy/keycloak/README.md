@@ -1,6 +1,6 @@
 # Keycloak realm-as-code
 
-`realm-bizigo.json` **elle admin konsolundan değiştirilmez** — konsolda yapılan
+`realm-loganalyzer.json` **elle admin konsolundan değiştirilmez** — konsolda yapılan
 değişiklik bir sonraki `--import-realm` ile kaybolur. Dosyanın asıl değeri claim
 mapper'ları: hangi claim'lere ihtiyaç duyduğumuz belgeye değil **dosyaya** yazılı.
 Olmasaydı grup claim eşlemesi herkesin makinesinde farklı davranırdı ve sebebi
@@ -15,9 +15,9 @@ günlerce bulunamazdı. (K26 · F1 §10.1)
 
 ## Claim sözleşmesi
 
-**Tamamı `bizigo-claims` scope'unda — ve bu bir zorunluluk.** Realm dosyasında
+**Tamamı `loganalyzer-claims` scope'unda — ve bu bir zorunluluk.** Realm dosyasında
 `clientScopes` dizisi verildiği için Keycloak **yerleşik scope'ları hiç
-oluşturmuyor**: import sonrası realm'de yalnızca `bizigo-claims` ve
+oluşturmuyor**: import sonrası realm'de yalnızca `loganalyzer-claims` ve
 `offline_access` bulunuyor. İstemcilerin `defaultClientScopes` listesinde
 `profile`/`email`/`roles` yazsa bile bunlar var olmadığı için sessizce düşüyor.
 
@@ -37,7 +37,7 @@ olma sebebiyle tutarlı — claim sözleşmesi burada, tek yerde.
 | `groups` (`full.path=true`) | **Bilinçli.** Kapatılırsa iç içe gruplarda ad çakışması olur: `network/core` ile `platform/core` ayırt edilemez. Bedeli, claim'in başında eğik çizgi olması (`/network/core`) — `AccessScopeResolver` bunu normalize ediyor. |
 | `subject` (`sub`) | `basic` scope'u olmadığı için elle. Denetim kimliği bundan okunuyor. |
 | `username` (`preferred_username`) | `profile` scope'u olmadığı için elle. |
-| `audience-bizigo-api` (`aud`) | Servis hesabı token'ında `aud` hiç yoktu ve API doğrulaması onu reddediyordu. Paylaşılan scope'ta olması, UI ile collector'ın **aynı** sözleşmeyi tek yerden almasını sağlıyor. |
+| `audience-loganalyzer-api` (`aud`) | Servis hesabı token'ında `aud` hiç yoktu ve API doğrulaması onu reddediyordu. Paylaşılan scope'ta olması, UI ile collector'ın **aynı** sözleşmeyi tek yerden almasını sağlıyor. |
 
 ## Issuer sabit olmak zorunda
 
@@ -55,17 +55,17 @@ sonrası `docker compose restart otel-collector` gerekiyor.
 
 | Client | Yapılandırma | Neden |
 | --- | --- | --- |
-| `bizigo-ui` | `publicClient=false`, `standardFlow=true` | BFF deseni: authorization code + PKCE, gizli anahtar sunucuda. Token **tarayıcıda saklanmıyor** — BFF cookie veriyor. `directAccessGrantsEnabled=false`, yani parola akışı yok. **BFF K31 ile Next.js'te** (`ui/`); gizli anahtar `ui/.env.local` içinde, `Bizigo.Api` artık onu hiç görmüyor. |
-| `bizigo-collector` | servis hesabı, rol **yalnızca** `ingest` | Kimlik sızarsa veri **yazılabilir, okunamaz**. Rol ayrımının tek sebebi bu. Collector tarafında `oauth2clientauthextension` token'ı kendi alıp yeniliyor. |
+| `loganalyzer-ui` | `publicClient=false`, `standardFlow=true` | BFF deseni: authorization code + PKCE, gizli anahtar sunucuda. Token **tarayıcıda saklanmıyor** — BFF cookie veriyor. `directAccessGrantsEnabled=false`, yani parola akışı yok. **BFF K31 ile Next.js'te** (`ui/`); gizli anahtar `ui/.env.local` içinde, `LogAnalyzer.Api` artık onu hiç görmüyor. |
+| `loganalyzer-collector` | servis hesabı, rol **yalnızca** `ingest` | Kimlik sızarsa veri **yazılabilir, okunamaz**. Rol ayrımının tek sebebi bu. Collector tarafında `oauth2clientauthextension` token'ı kendi alıp yeniliyor. |
 
 Keycloak servis hesabı kullanıcısını `service-account-<clientId>` adıyla
 oluşturuyor; rolü realm dosyasında o ada bağlanıyor.
 
-> **Yalnızca `openid` kapsamı isteniyor.** `bizigo-ui` istemcisinin
-> `defaultClientScopes` listesinde tek bir giriş var: `bizigo-claims`. Yukarıda
+> **Yalnızca `openid` kapsamı isteniyor.** `loganalyzer-ui` istemcisinin
+> `defaultClientScopes` listesinde tek bir giriş var: `loganalyzer-claims`. Yukarıda
 > anlatıldığı gibi yerleşik scope'lar realm'de hiç oluşmuyor, dolayısıyla
 > yetkilendirme isteğine `profile` ya da `email` eklemek `invalid_scope` ile
-> düşer. İhtiyacımız olan claim'lerin tamamı zaten `bizigo-claims` içinde.
+> düşer. İhtiyacımız olan claim'lerin tamamı zaten `loganalyzer-claims` içinde.
 >
 > Dönüş adresi `redirectUris` içinde **birebir** yazılı:
 > `http://localhost:3000/signin-oidc`. Next tarafındaki yol
@@ -73,7 +73,7 @@ oluşturuyor; rolü realm dosyasında o ada bağlanıyor.
 >
 > **API'nin eski dönüş adresi listeden silindi.**
 > `http://localhost:5080/signin-oidc` ve `http://localhost:5080/*` (çıkış)
-> `Bizigo.Api`'nin OIDC işleyicisinden kalmaydı; K31 ile o işleyici kaldırıldı.
+> `LogAnalyzer.Api`'nin OIDC işleyicisinden kalmaydı; K31 ile o işleyici kaldırıldı.
 > Karşılığı olmayan bir `redirect_uri` yalnızca saldırı yüzeyi büyütüyor:
 > oraya yönlenen bir yetkilendirme kodu uygulamanın hiç görmediği bir uçta
 > açığa çıkar. `KeycloakRealmTests.Kaldirilmis_API_OIDC_donus_adresi_realm_de_yok`
@@ -88,7 +88,7 @@ kullanıcı var — tek kullanıcıyla kapsam filtresinin çalıştığı göste
 | --- | --- | --- |
 | `analyst.core` | `/network/core` | `analyst` |
 | `analyst.edge` | `/network/edge` | `analyst` |
-| `admin.bizigo` | — | `admin` |
+| `admin.loganalyzer` | — | `admin` |
 
 Parolalar yalnızca geliştirme içindir ve `.env` ile birlikte üretime taşınmaz.
 
@@ -96,7 +96,7 @@ Parolalar yalnızca geliştirme içindir ve `.env` ile birlikte üretime taşın
 
 Realm'in gerçekten yüklendiği, konteyner durumundan **değil** şu uçtan anlaşılır:
 
-    curl -sf http://localhost:8180/realms/bizigo/.well-known/openid-configuration
+    curl -sf http://localhost:8180/realms/loganalyzer/.well-known/openid-configuration
 
 Konteynerin `healthy` olması yetmiyor: sağlık kontrolü bootstrap sırasında da
 geçiyor ve import o sırada henüz bitmemiş oluyor.

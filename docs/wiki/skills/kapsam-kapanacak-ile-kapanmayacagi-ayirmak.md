@@ -1,7 +1,7 @@
 ---
 title: Kapanacak ile kapanmayacağı ayırmak
 category: skills
-tags: [surec, test, yordam, bizigo]
+tags: [surec, test, yordam, loganalyzer]
 aliases: [Pending Exempt ayrımı, borç listesi disiplini]
 relationships:
   - target: "[[concepts/elle-tutulan-liste-bekciyi-korlestirir]]"

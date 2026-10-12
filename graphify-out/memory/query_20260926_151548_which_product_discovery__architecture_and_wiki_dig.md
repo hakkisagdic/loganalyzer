@@ -11,7 +11,7 @@ source_nodes: ["ProductDiscovery", "ArchitectureTests", "CompositionRootTests", 
 
 ## Answer
 
-Expanded from graph vocabulary: product discovery fixture composition registration architecture telemetry wiki digest stamp. Traversal identified ProductDiscovery, ArchitectureTests, CompositionRootTests, WikiSourceDigestStamper. GitHub CI evidence established that the fixture assembly must be loadable in UnitTests, AddBizigoTelemetry must be in the architecture expected registrar set, and README-linked wiki source digests must be restamped.
+Expanded from graph vocabulary: product discovery fixture composition registration architecture telemetry wiki digest stamp. Traversal identified ProductDiscovery, ArchitectureTests, CompositionRootTests, WikiSourceDigestStamper. GitHub CI evidence established that the fixture assembly must be loadable in UnitTests, AddLogAnalyzerTelemetry must be in the architecture expected registrar set, and README-linked wiki source digests must be restamped.
 
 ## Outcome
 

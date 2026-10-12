@@ -1,7 +1,7 @@
 ---
 title: İki bağımsız eksen
 category: concepts
-tags: [test, log-analiz, kavram, bizigo]
+tags: [test, log-analiz, kavram, loganalyzer]
 aliases: [çapraz doğrulama, metin ekseni ve alan ekseni, ayrışma sayacı]
 relationships:
   - target: "[[concepts/olcum-sayi-kapsam-degil]]"
@@ -45,7 +45,7 @@ T30 ve T39 aynı soruyu soruyor: *bu Sigma kuralı neden hiçbir satır bulmadı
 | Araç | Eksen | Sorduğu |
 | --- | --- | --- |
 | `explain_misses.py` (T30) | **metin** | kuralın aradığı dizge örnek dosyalarda var mı, sözcük sınırında mı yoksa daha uzun bir sözcüğün içinde mi |
-| `bizigo fields coverage` (T39) | **alan** | o bilgi bir alan olarak adreslenebiliyor mu, hangi adla |
+| `loganalyzer fields coverage` (T39) | **alan** | o bilgi bir alan olarak adreslenebiliyor mu, hangi adla |
 
 T39'un ifadesi: *"İki araç farklı eksende bakıyor ve tam da bu yüzden birbirini
 tamamlıyorlar."* Metin ekseni `absent` kutusunu kapatıyor; alan ekseni kapanmayan

@@ -1,7 +1,7 @@
 ---
 title: "\"Konteyner gerekmiyor\" üç ayrı iddiadır"
 category: concepts
-tags: [surec, test, kavram, bizigo]
+tags: [surec, test, kavram, loganalyzer]
 aliases: [docker gerekmiyor, konteynersiz]
 relationships:
   - target: "[[skills/paralel-ajan-koordinasyonu]]"

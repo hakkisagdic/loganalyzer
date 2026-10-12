@@ -1,5 +1,5 @@
 # ============================================================================
-# Bizigo dashboard (Next.js + BFF) — T49
+# LogAnalyzer dashboard (Next.js + BFF) — T49
 #
 # Cevapladığı soru API'ninkiyle aynı: *yığının tamamı tek komutla kalkıyor mu*.
 # Bugüne kadar cevap "hayır"dı — API container'a girmişti, ekran girmemişti — ve
@@ -62,8 +62,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 # Kök olmayan kullanıcı: bu süreç oturum çerezi ve Keycloak istemci sırrı
 # taşıyor. API 10003 kullanıyor, uid çakışmasın diye bir sonraki numara.
-RUN addgroup --system --gid 10004 bizigo \
-    && adduser --system --uid 10004 --ingroup bizigo bizigo
+RUN addgroup --system --gid 10004 loganalyzer \
+    && adduser --system --uid 10004 --ingroup loganalyzer loganalyzer
 
 # `output: standalone` çıktısı: uygulamayı çalıştırmak için gereken
 # node_modules'ın izlenebilir kısmı zaten içinde. Geliştirme bağımlılıkları —
@@ -80,10 +80,10 @@ RUN addgroup --system --gid 10004 bizigo \
 # derlemesini "not found" ile düşürürdü — ve bu ancak imaj gerçekten
 # derlendiğinde görünen bir kırık olurdu. Bir gün `ui/public/` açılırsa bu
 # satır geri gelmeli.
-COPY --from=build --chown=bizigo:bizigo /app/.next/standalone ./
-COPY --from=build --chown=bizigo:bizigo /app/.next/static ./.next/static
+COPY --from=build --chown=loganalyzer:loganalyzer /app/.next/standalone ./
+COPY --from=build --chown=loganalyzer:loganalyzer /app/.next/static ./.next/static
 
-USER bizigo
+USER loganalyzer
 
 # Container içinde 3000; dışarı hangi portla çıkacağı compose'un kararı.
 # 3000 dışarıda da SABİT ve bu pazarlığa açık değil: realm dosyasındaki

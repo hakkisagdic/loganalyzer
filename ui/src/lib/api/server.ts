@@ -16,7 +16,7 @@ import {
 } from "./paths";
 
 /**
- * Sunucu tarafı `Bizigo.Api` istemcisi.
+ * Sunucu tarafı `LogAnalyzer.Api` istemcisi.
  *
  * <p>
  * Tarayıcıdaki istemciden (<c>client.ts</c>) tek farkı <b>nereye</b> bağlandığı:

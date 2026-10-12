@@ -124,7 +124,7 @@ test.beforeAll(() => {
  * Keycloak'ın kendi giriş sayfasından geçiyor.
  *
  * <p>
- * Parola uygulamaya hiç uğramıyor: <c>bizigo-ui</c> istemcisinde
+ * Parola uygulamaya hiç uğramıyor: <c>loganalyzer-ui</c> istemcisinde
  * <c>directAccessGrantsEnabled=false</c>, yani parola akışı Keycloak tarafında
  * da kapalı. Buradaki adımlar kullanıcının yaptığının aynısı.
  * </p>
@@ -233,7 +233,7 @@ for (const tema of THEMES) {
       // Çerezi olmayan ziyaretçi middleware ile /api/auth/login'e, oradan
       // Keycloak'a düşüyor. Aradaki her adım gerçek.
       await page.goto("/olaylar");
-      await page.waitForURL(/\/realms\/bizigo\/protocol\/openid-connect\/auth/, {
+      await page.waitForURL(/\/realms\/loganalyzer\/protocol\/openid-connect\/auth/, {
         timeout: 60_000,
       });
       await capture(page, "keycloak-giris", tema);

@@ -33,7 +33,7 @@ export const dynamic = "force-dynamic";
  * Log arama ekranı (T15) — ürünün en çok kullanılacak yeri.
  *
  * <p>
- * Veri <b>sunucuda</b> çekiliyor: tarayıcı <c>Bizigo.Api</c>'yi hiç görmüyor ve
+ * Veri <b>sunucuda</b> çekiliyor: tarayıcı <c>LogAnalyzer.Api</c>'yi hiç görmüyor ve
  * erişim token'ı bu dosyanın çalıştığı süreçten dışarı çıkmıyor. Sonuç HTML
  * olarak iniyor.
  * </p>

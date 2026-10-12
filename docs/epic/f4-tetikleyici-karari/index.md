@@ -44,7 +44,7 @@ Cevap: **sıfır**, ve sebebi sessiz olmaları değil.
 Beş korelasyon `IScopedQuery` üzerinde **sorgu yüzeyi** olarak duruyor
 (`GetFirstSeenSignaturesAsync`, `GetSignatureVolumeAsync`,
 `GetAttributeLiftAsync`, `GetPropagationAsync`) ve tek tüketicileri
-`Bizigo.Evidence/Providers/LogCorrelationProviders.cs`.
+`LogAnalyzer.Evidence/Providers/LogCorrelationProviders.cs`.
 
 `EvidenceCollector` **çekme** (pull) modelinde: bir RCA koşumu *"bu pencerede
 ne ilginç"* diye sorduğunda çalışıyor. Yani korelasyonlar bir **olay üretici**

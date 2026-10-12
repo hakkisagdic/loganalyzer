@@ -25,8 +25,8 @@ zorunlu kılıyor.
 
 | İlkel | Nerede | Ölçülen |
 | --- | --- | --- |
-| `RedactedPrompt` | `src/Bizigo.Contracts/Security/RedactedPrompt.cs` | `sealed partial class`, yapıcısı **`private`** (satır 131) — T41 kapıyı gerçekten derleyiciye bağlamış |
-| Ağ sınırı | `src/Bizigo.Rca/Models/` | `ModelDataBoundary` enum'ı · `ModelBoundaryGate` · `ModelBoundaryVerdict(ModelEndpoint?, string? Rejection)` · `ModelEndpointOptions.DataBoundary` varsayılanı **`Unspecified`** |
+| `RedactedPrompt` | `src/LogAnalyzer.Contracts/Security/RedactedPrompt.cs` | `sealed partial class`, yapıcısı **`private`** (satır 131) — T41 kapıyı gerçekten derleyiciye bağlamış |
+| Ağ sınırı | `src/LogAnalyzer.Rca/Models/` | `ModelDataBoundary` enum'ı · `ModelBoundaryGate` · `ModelBoundaryVerdict(ModelEndpoint?, string? Rejection)` · `ModelEndpointOptions.DataBoundary` varsayılanı **`Unspecified`** |
 
 **M01'in yüzey ayrımı aynı kalıbı zaten kullanıyor** (birleşmemiş dalından
 okundu, değişebilir): `McpSurface` enum'ında `Unspecified = 0` **reddediliyor**
@@ -60,7 +60,7 @@ alınmış.
 2. **Sunucu ağ sınırını beyan ediyor**, `Unspecified` reddediliyor — reddin
    `ModelBoundaryVerdict.Rejection` gibi **gerekçeli** olması, sessiz bir
    `false` değil.
-3. `bizigo-sim` yüzeyi için ayrım yazılı: kapı `sim.syslog.burst`'ün **bastığı
+3. `loganalyzer-sim` yüzeyi için ayrım yazılı: kapı `sim.syslog.burst`'ün **bastığı
    satırlara** değil, `sim.state`'in **döndürdüğü örneklere** bakıyor (plan §4).
    Ayrım yazılmazsa kapı ya gereksiz yere her şeyi maskeler ya hiçbir şeyi.
 4. **İki kapı da kırmızı yanabiliyor ve bu ölçüldü** (`CLAUDE.md` §6): bir
@@ -99,17 +99,17 @@ Bu ticket'ın sondaki yeri bir erteleme değil bir sıra.
    başına.** Belgenin sezgisi doğruydu — HTTP ile stdio farklı sınırlarda
    koşabiliyor, dolayısıyla tek bir sunucu-geneli ayar yanlış olurdu.
    HTTP `Mcp:DataBoundary` yapılandırmasından, stdio
-   `bizigo mcp serve --data-boundary`'den okuyor. Beyan `BizigoMcpServer.Apply`
+   `loganalyzer mcp serve --data-boundary`'den okuyor. Beyan `LogAnalyzerMcpServer.Apply`
    içinde tek bir kapıda birleşiyor, yani iki yol tek ölçütle sınanıyor.
 
 3. ~~**Açık soru:** `sim.*` araçları sınır beyanından muaf mı?~~
    **Cevaplandı: muaf değil, ama `External` onlarda geçiyor.** Beyan her yüzeyde
    zorunlu (`Unspecified` reddediliyor); reddedilen tek bileşim
-   `External` + `bizigo`. `bizigo-sim` ürün verisi değil simülatör durumu
+   `External` + `loganalyzer`. `loganalyzer-sim` ürün verisi değil simülatör durumu
    döndürüyor ve iki yüzeyin ayrı olmasının **sebebi** o risk ayrımı.
 
-   *Bu yol bugün ürün kurulumunda ulaşılamaz* — `BizigoMcpSetup` yalnızca ürün
-   yüzeyini kuruyor ve `bizigo-sim`'in HTTP'si M03'ün kararı. Bekçi yazıldı,
+   *Bu yol bugün ürün kurulumunda ulaşılamaz* — `LogAnalyzerMcpSetup` yalnızca ürün
+   yüzeyini kuruyor ve `loganalyzer-sim`'in HTTP'si M03'ün kararı. Bekçi yazıldı,
    yorumuna *"M03 gerçek bir yol açtığında orada da ölçülmeli"* yazıldı.
 
 4. ~~**Aramadım:** `RedactedPrompt` bugün kaç çağrı yerinden üretiliyor?~~
@@ -135,7 +135,7 @@ Bu ticket'ın sondaki yeri bir erteleme değil bir sıra.
    var: `content` (metin) ve `structuredContent` (serbest JSON). Kapı
    birincinin **imzasında** duruyor (`WithLogText(RedactedPrompt[])`);
    ikincide `McpToolResult.Structured<TPayload>` serbest bir nesne alıyor ve
-   `BizigoMcpTool.ToProtocol` onu hem `structuredContent` olarak hem de bir
+   `LogAnalyzerMcpTool.ToProtocol` onu hem `structuredContent` olarak hem de bir
    metin bloğu olarak gönderiyor. Yani bir aracın yükü içindeki `string` alan
    modele **kapıdan geçmeden** iniyor.
 

@@ -5,7 +5,7 @@ import { resetDiscoveryCache, useLocalJwks } from "@/lib/auth/oidc";
 import { peekLoginAttempt, resetSessionStore } from "@/lib/auth/store";
 
 /**
- * Sahte Keycloak + sahte `Bizigo.Api`.
+ * Sahte Keycloak + sahte `LogAnalyzer.Api`.
  *
  * <p>
  * Gerçek konteyner kaldırmıyoruz: BFF'in sınadığımız davranışları — token'ın
@@ -16,8 +16,8 @@ import { peekLoginAttempt, resetSessionStore } from "@/lib/auth/store";
  * </p>
  */
 
-export const ISSUER = "http://keycloak.test/realms/bizigo";
-export const CLIENT_ID = "bizigo-ui";
+export const ISSUER = "http://keycloak.test/realms/loganalyzer";
+export const CLIENT_ID = "loganalyzer-ui";
 export const CLIENT_SECRET = "test-secret";
 export const PUBLIC_URL = "http://localhost:3000";
 export const API_URL = "http://api.test";
@@ -36,7 +36,7 @@ export const RENEWED_ACCESS_TOKEN = "YENILENMIS-ACCESS-TOKEN-DA-ULASMAMALI";
 export interface FakeIdp {
   /** Keycloak'a giden istekler. */
   readonly tokenRequests: URLSearchParams[];
-  /** `Bizigo.Api`'ye giden istekler. */
+  /** `LogAnalyzer.Api`'ye giden istekler. */
   readonly apiRequests: { url: string; method: string; authorization: string | null; cookie: string | null }[];
   /** Bir sonraki token yanıtının erişim token'ı ömrü (saniye). */
   accessTokenLifetime: number;
@@ -57,8 +57,8 @@ export async function setupEnvironment(): Promise<void> {
   process.env.KEYCLOAK_CLIENT_ID = CLIENT_ID;
   process.env.KEYCLOAK_CLIENT_SECRET = CLIENT_SECRET;
   process.env.BFF_PUBLIC_URL = PUBLIC_URL;
-  process.env.BIZIGO_API_URL = API_URL;
-  process.env.BFF_COOKIE_NAME = "bizigo.sid";
+  process.env.LOGANALYZER_API_URL = API_URL;
+  process.env.BFF_COOKIE_NAME = "loganalyzer.sid";
   process.env.BFF_SESSION_TTL_SECONDS = "3600";
 
   const pair = await generateKeyPair("RS256", { extractable: true });

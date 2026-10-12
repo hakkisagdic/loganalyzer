@@ -47,8 +47,8 @@ const REPO_DIR = fileURLToPath(new URL("..", import.meta.url));
  *   <li><b>3000</b> — varsayılan UI portu. <c>E2E_UI_PORT</c> verilirse
  *       Playwright o host portunu kullanır; Keycloak istemcisinin aynı
  *       redirect URI/origin için hazırlanmış olması gerekir.</li>
- *   <li><b>5080</b> — <c>deploy/.env.example</c>'daki <c>BIZIGO_ENDPOINT</c> ve
- *       <c>ui/.env.example</c>'daki <c>BIZIGO_API_URL</c> bu portu yazıyor.
+ *   <li><b>5080</b> — <c>deploy/.env.example</c>'daki <c>LOGANALYZER_ENDPOINT</c> ve
+ *       <c>ui/.env.example</c>'daki <c>LOGANALYZER_API_URL</c> bu portu yazıyor.
  *       (Projenin <c>launchSettings.json</c>'ı 5058 diyor; o profil IDE içindir
  *       ve compose ile ayrışıyor — burada ortam değişkeniyle 5080'e sabitleniyor.)</li>
  *   <li><b>8180</b> — Keycloak'ın <c>KC_HOSTNAME</c>'i issuer'ı buraya
@@ -102,10 +102,10 @@ export const E2E_TARGET = process.env.E2E_TARGET === "container" ? "container" :
 /*
  * İçerik kökü MUTLAK olmak zorunda: göreli verilince ASP.NET Core onu çalışma
  * dizinine değil ikilinin kendi dizinine (`AppContext.BaseDirectory`) ekliyor ve
- * `<bin>/src/Bizigo.Api/bin/...` diye var olmayan bir yol çıkıyor. Ölçüldü —
+ * `<bin>/src/LogAnalyzer.Api/bin/...` diye var olmayan bir yol çıkıyor. Ölçüldü —
  * koşum tam bu yüzden `DirectoryNotFoundException` ile düştü.
  */
-const API_DIR = join(REPO_DIR, "src/Bizigo.Api/bin/Debug/net10.0");
+const API_DIR = join(REPO_DIR, "src/LogAnalyzer.Api/bin/Debug/net10.0");
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -178,7 +178,7 @@ export default defineConfig({
        * bu: çalışma dizini depo kökü (katalog ve maske yolları oradan
        * çözülüyor), içerik kökü bin dizini.
        */
-      command: `"${API_DIR}/Bizigo.Api" --contentRoot "${API_DIR}"`,
+      command: `"${API_DIR}/LogAnalyzer.Api" --contentRoot "${API_DIR}"`,
       cwd: REPO_DIR,
       port: API_PORT,
       // Yerelde zaten koşan bir API varsa ona bağlan; CI'da her koşum kendi
@@ -207,13 +207,13 @@ export default defineConfig({
       stdout: "pipe",
       stderr: "pipe",
       env: {
-        KEYCLOAK_ISSUER: `${KEYCLOAK_ORIGIN}/realms/bizigo`,
-        KEYCLOAK_CLIENT_ID: "bizigo-ui",
+        KEYCLOAK_ISSUER: `${KEYCLOAK_ORIGIN}/realms/loganalyzer`,
+        KEYCLOAK_CLIENT_ID: "loganalyzer-ui",
         // Realm dosyasındaki geliştirme değeri; üretimde gizli yöneticiden gelir.
-        KEYCLOAK_CLIENT_SECRET: "bizigo-ui-dev-secret",
+        KEYCLOAK_CLIENT_SECRET: "loganalyzer-ui-dev-secret",
         BFF_PUBLIC_URL: `http://localhost:${UI_PORT}`,
-        BIZIGO_API_URL: `http://localhost:${API_PORT}`,
-        BFF_COOKIE_NAME: "bizigo.sid",
+        LOGANALYZER_API_URL: `http://localhost:${API_PORT}`,
+        BFF_COOKIE_NAME: "loganalyzer.sid",
         BFF_SESSION_TTL_SECONDS: "28800",
         // Tek süreç, tek worker: bellek içi depo yeterli ve Redis'i koşulun
         // ön koşuluna eklemek gereksiz bir bağımlılık olurdu.

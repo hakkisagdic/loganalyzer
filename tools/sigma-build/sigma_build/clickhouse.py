@@ -19,9 +19,9 @@ def post_sql(
     sql: str,
     *,
     url: str,
-    user: str = "bizigo",
-    password: str = "bizigo",
-    database: str = "bizigo",
+    user: str = "loganalyzer",
+    password: str = "loganalyzer",
+    database: str = "loganalyzer",
     timeout: float = 20.0,
 ) -> tuple[bool, str]:
     """`(kabul_edildi, gövde)`. HTTP hatası gövdeyle döner, bağlantı hatası **atar**.

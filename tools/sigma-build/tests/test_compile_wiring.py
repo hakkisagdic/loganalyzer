@@ -43,7 +43,7 @@ def sahte_pipeline(*, hata: BaseException | None = None, sql: str = "SELECT * FR
             return [sql]
 
     module = types.SimpleNamespace(
-        bizigo_backend=lambda **kwargs: Backend(),
+        loganalyzer_backend=lambda **kwargs: Backend(),
         # T31 `schema_gaps`'i **sözlük** olarak veriyor: `{alan: {remedy, reason}}`.
         # Düz liste hâli remedy'yi bize tahmin ettiriyordu; artık beyan eden o.
         describe=lambda: {

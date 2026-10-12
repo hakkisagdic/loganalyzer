@@ -1,5 +1,5 @@
 ---
-title: "M05 — bizigo RCA araçları"
+title: "M05 — loganalyzer RCA araçları"
 kind: ticket
 status: 2
 ---
@@ -12,7 +12,7 @@ K22'nin (kanıt paketi **LLM'siz** okunabilir) alanında.
 
 ## 1 · Bugünkü hâl — ölçüldü
 
-`src/Bizigo.Api` içinde bugün duran RCA uçları:
+`src/LogAnalyzer.Api` içinde bugün duran RCA uçları:
 
 | Uç | Araç karşılığı |
 | --- | --- |
@@ -21,7 +21,7 @@ K22'nin (kanıt paketi **LLM'siz** okunabilir) alanında.
 | `GET /v1/rca/{id}` | `evidence.bundle` / rapor okuma |
 | `GET /v1/rca/quality` | — (araç karşılığı planda yok) |
 
-Ayrıca bu hafta girdi: `Bizigo.Rca/Reasoning/` altında `RcaReportStore` ·
+Ayrıca bu hafta girdi: `LogAnalyzer.Rca/Reasoning/` altında `RcaReportStore` ·
 `RcaReportDocument` · `ScenarioStepRunner` · `SentenceBinder` ve
 `RcaReportEntity` + iki EF göçü. Yani T44/T51'in yazma yolu **var**.
 
@@ -77,7 +77,7 @@ Ayrıca bu hafta girdi: `Bizigo.Rca/Reasoning/` altında `RcaReportStore` ·
 T61'in bekçisi bu ticket'ı `0`'dan çıkardı ve **`2` değil `1`** yazdı; ölçüm o
 temkinliliği doğruladı.
 
-**İlan edilen üç araçtan hiçbiri main'de yok.** `src/Bizigo.Mcp.Product/Tools/`
+**İlan edilen üç araçtan hiçbiri main'de yok.** `src/LogAnalyzer.Mcp.Product/Tools/`
 altında sekiz araç var ve `rca.*` olan tek şey `rca.quality` — o da M10'un işi,
 bu ticket'ın değil. Aranan üç ad (`rca.trigger`, `rca.runs`, `evidence.bundle`)
 depoda hiç geçmiyor.
@@ -86,7 +86,7 @@ M05'in dalından main'e giren şey **altyapı**:
 
 | Giren | Nerede |
 | --- | --- |
-| Araç derlemesi beyan modeli (`ToolAssemblies`, kök tarama yerine) | `BizigoMcpServer`, `McpEndpoints`, `McpCommandHandlers` |
+| Araç derlemesi beyan modeli (`ToolAssemblies`, kök tarama yerine) | `LogAnalyzerMcpServer`, `McpEndpoints`, `McpCommandHandlers` |
 | **Sunucudan türeyen** idempotency anahtarı | `McpIdempotency.KeyFor` + `McpIdempotencyTests` |
 | Ajan tetikli RCA'nın kendi kaynağı | `RcaTriggerSource` |
 
@@ -100,8 +100,8 @@ onu getirdi. Kalan iş üç aracın kendisi.
 
 Kriter 4'ün istediği şey (*"çıktı paketin kendisi, özeti değil"*) **karşılandı**;
 karşılayan şey bir araç değil [M07](../kaynaklar-ve-abonelik/index.md)'nin
-kaynağı: `src/Bizigo.Mcp.Product/Resources/EvidenceBundleResource.cs`,
-adres `bizigo://evidence-bundle/{id}`.
+kaynağı: `src/LogAnalyzer.Mcp.Product/Resources/EvidenceBundleResource.cs`,
+adres `loganalyzer://evidence-bundle/{id}`.
 
 Araç yazmak **koruma seviyesini düşürürdü**, ve ölçüt tek satır:
 
@@ -245,7 +245,7 @@ istediğini sanarak. Hata yok, sayaç yok, belirti yok.
 Belgenin ilk hâli *"aramadım, doğrulamadım"* diyordu. M05 koda baktı; ayrım
 plandakinden **hem daha zengin hem başka bir şekilde** duruyor.
 
-**Ölçülen (`src/Bizigo.ControlPlane/RcaTriggerEntities.cs`):**
+**Ölçülen (`src/LogAnalyzer.ControlPlane/RcaTriggerEntities.cs`):**
 
 | Enum | Değerler |
 | --- | --- |

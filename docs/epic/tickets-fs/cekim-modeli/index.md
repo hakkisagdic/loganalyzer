@@ -94,15 +94,15 @@ sonucu `Clean`'den geçiriyor, `ChangeConnectorScheduler` de kalıcılaştırmad
 önce aynı şeyi yapıyor ve yorumunda gerekçesi yazılı. İddia **doğruymuş** —
 ama doğru olduğu ancak şimdi ölçüldü.
 
-## Kalem 3 — `Bizigo.Api` referansının bedeli **yokmuş**
+## Kalem 3 — `LogAnalyzer.Api` referansının bedeli **yokmuş**
 
 S07'de bu referans eklenmemişti ve gerekçe ölçülmemiş bir varsayımdı:
-`Bizigo.IntegrationTests` on altı proje referansı taşıyor ve `src/` altındaki
-**tek dışlanan** proje `Bizigo.Api`'ydi. Dışlama *bilinçli görünüyordu*, ama
+`LogAnalyzer.IntegrationTests` on altı proje referansı taşıyor ve `src/` altındaki
+**tek dışlanan** proje `LogAnalyzer.Api`'ydi. Dışlama *bilinçli görünüyordu*, ama
 gerekçesi hiçbir yerde yazılı değildi.
 
 Ölçüldü: referans eklendi, bir sonda dosyası `typeof(Program)` yazdı, derleme
-**0 hata** verdi. `CS0433` yok. M01'in ölçümü `Bizigo.Mcp`'de alınmıştı ve
+**0 hata** verdi. `CS0433` yok. M01'in ölçümü `LogAnalyzer.Mcp`'de alınmıştı ve
 buraya taşınmıyor.
 
 **Ölçümün kendisi iki adımlı olmak zorunda kaldı** ve sebebi §6'nın yeni
@@ -181,16 +181,16 @@ bütçe bir ölçüt değil, oturum tıkandığında koşumu kilitlememek için 
 ### 3 · Hedef kimliği ad alanlı geliyor — **iddia yanlıştı, ürün doğruydu**
 
 `WebhookGeneratorDeliveryTests` çıplak `fw-ankara-01` bekliyordu; gelen
-`bizigo/fw-ankara-01` ve `net/fw-ankara-01` oldu.
+`loganalyzer/fw-ankara-01` ve `net/fw-ankara-01` oldu.
 
 Eşleme GitHub'ın `$.repository.full_name` ve GitLab'ın
 `$.project.path_with_namespace` alanlarını **kırpmadan** alıyor, ve gerçek
-yüklerde o alanlar **zaten ad alanlı** (`bizigo/network-config`,
+yüklerde o alanlar **zaten ad alanlı** (`loganalyzer/network-config`,
 `net/fw-config`). Yani üreteç sağlayıcıya sadık ve çıplak ad bekleyen iddia,
 **gerçek bir GitHub teslimatının da düşeceği** bir iddiaydı.
 
 S07'nin yönü burada da geçerli: *gerçek yük ne diyorsa o.* Aynı desenin
-üçüncü örneği — Jenkins idempotansı, `Bizigo.Api` referansı, ve şimdi bu.
+üçüncü örneği — Jenkins idempotansı, `LogAnalyzer.Api` referansı, ve şimdi bu.
 
 ### Ne öğrenildi
 

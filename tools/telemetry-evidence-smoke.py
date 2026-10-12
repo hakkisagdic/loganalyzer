@@ -24,21 +24,21 @@ spec.loader.exec_module(base)
 
 class EvidenceSession:
     def configure_compose(self, compose, folder):
-        reference = os.environ.get("BIZIGO_TEST_KEYCLOAK_IMAGE")
+        reference = os.environ.get("LOGANALYZER_TEST_KEYCLOAK_IMAGE")
         if not reference:
             return compose
-        if not reference.startswith("bizigo-test/keycloak-s04:"):
+        if not reference.startswith("loganalyzer-test/keycloak-s04:"):
             raise ValueError("only an explicitly owned Keycloak fixture image is allowed")
         info = json.loads(subprocess.check_output(
             ["docker", "image", "inspect", reference, "--format", "{{json .}}"], text=True, timeout=15))
-        if info.get("Config", {}).get("Labels", {}).get("bizigo.fixture") != "keycloak-s04":
+        if info.get("Config", {}).get("Labels", {}).get("loganalyzer.fixture") != "keycloak-s04":
             raise ValueError("Keycloak image missing fixture ownership label")
         image_id = info["Id"]
         if not image_id.startswith("sha256:") or len(image_id) != 71:
             raise ValueError("Keycloak immutable image ID missing")
         record = {"requested_tag": reference, "image_id": image_id, "repo_digests": info.get("RepoDigests", []),
                   "architecture": info["Architecture"], "os": info["Os"],
-                  "base": info["Config"]["Labels"].get("bizigo.fixture.base"),
+                  "base": info["Config"]["Labels"].get("loganalyzer.fixture.base"),
                   "cleanup": "session removes owned containers/volumes; Planner owns reusable fixture image"}
         (folder / "keycloak-image.json").write_text(json.dumps(record, indent=2))
         override = folder / "keycloak-optimized.json"
@@ -64,7 +64,7 @@ class EvidenceSession:
     def start(self, environment, folder, allocate_port):
         self.folder = folder
         authority = environment["Auth__Authority"]
-        issuer = authority.removesuffix("/realms/bizigo")
+        issuer = authority.removesuffix("/realms/loganalyzer")
         self.issuer = issuer
         request = urllib.parse.urlencode({"grant_type": "password", "client_id": "admin-cli",
                                          "username": "admin", "password": "fixture-admin"}).encode()
@@ -76,20 +76,20 @@ class EvidenceSession:
         self.secret = uuid.uuid4().hex
         client = {"clientId": self.client, "enabled": True, "protocol": "openid-connect", "publicClient": False,
                   "secret": self.secret, "directAccessGrantsEnabled": True, "standardFlowEnabled": False,
-                  "defaultClientScopes": ["bizigo-claims"]}
-        status, _, _ = base.http(issuer + "/admin/realms/bizigo/clients", json.dumps(client).encode(),
+                  "defaultClientScopes": ["loganalyzer-claims"]}
+        status, _, _ = base.http(issuer + "/admin/realms/loganalyzer/clients", json.dumps(client).encode(),
                                 {"Authorization": "Bearer " + admin_token, "Content-Type": "application/json"})
         assert status == 201, "fixture token client creation failed"
         with (folder / "fleet-apply.log").open("wb") as log:
-            subprocess.run([base.DOTNET, str(ROOT / "src/Bizigo.Cli/bin/Release/net10.0/bizigo.dll"),
+            subprocess.run([base.DOTNET, str(ROOT / "src/LogAnalyzer.Cli/bin/Release/net10.0/loganalyzer.dll"),
                 "fleet", "apply", str(ROOT / "catalog/simulators")], cwd=ROOT,
-                env=environment | {"BIZIGO_CONTROLPLANE": environment["ConnectionStrings__ControlPlane"]},
+                env=environment | {"LOGANALYZER_CONTROLPLANE": environment["ConnectionStrings__ControlPlane"]},
                 stdout=log, stderr=subprocess.STDOUT, check=True, timeout=60)
 
     def session(self):
         return {"evidence_client": {"id": self.client, "secret": self.secret},
                 "evidence_users": {"A": ["analyst.core", "analyst"], "B": ["analyst.edge", "analyst"],
-                                   "admin": ["admin.bizigo", "admin"]},
+                                   "admin": ["admin.loganalyzer", "admin"]},
                 "evidence_owners": {"A": "network/core", "B": "network/edge"},
                 "requires_initial_api_restart": True}
 
@@ -102,7 +102,7 @@ class EvidenceSession:
             query = "SELECT json_build_object('bundle',(SELECT payload FROM evidence_bundles WHERE id='" + bundle + "')," \
                 "'reviews',(SELECT coalesce(json_agg(r),'[]'::json) FROM golden_reviews r WHERE bundle_id='" + bundle + "')," \
                 "'audit',(SELECT coalesce(json_agg(a),'[]'::json) FROM audit_log a WHERE action LIKE 'telemetry.%'));"
-            raw = subprocess.check_output(self.compose + ["exec", "-T", "postgres", "psql", "-U", "bizigo", "-d", "bizigo", "-At", "-c", query], timeout=15)
+            raw = subprocess.check_output(self.compose + ["exec", "-T", "postgres", "psql", "-U", "loganalyzer", "-d", "loganalyzer", "-At", "-c", query], timeout=15)
             return {"persisted": json.loads(raw)}
         return False
 
@@ -117,7 +117,7 @@ class EvidenceSession:
             {"Content-Type": "application/x-www-form-urlencoded"})
         assert status == 200, "fixture identity administrator login failed"
         token = json.loads(raw)["access_token"]
-        endpoint = self.issuer + "/admin/realms/bizigo"
+        endpoint = self.issuer + "/admin/realms/loganalyzer"
 
         def call(path, body=None, method=None):
             request = urllib.request.Request(endpoint + path,

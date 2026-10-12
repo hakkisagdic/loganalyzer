@@ -180,7 +180,7 @@ describe("TTL tek yerden türüyor", () => {
 
     await store.set("abc", record({ expiresAt: Date.now() + 8 * HOUR }));
 
-    expect(redis.entries.get("bizigo:bff:session:abc")?.ttlSeconds).toBe(8 * 60 * 60);
+    expect(redis.entries.get("loganalyzer:bff:session:abc")?.ttlSeconds).toBe(8 * 60 * 60);
   });
 
   it("kısalan oturum kısalan TTL veriyor", async () => {
@@ -188,7 +188,7 @@ describe("TTL tek yerden türüyor", () => {
 
     await store.set("abc", record({ expiresAt: Date.now() + 90 * 1000 }));
 
-    expect(redis.entries.get("bizigo:bff:session:abc")?.ttlSeconds).toBe(90);
+    expect(redis.entries.get("loganalyzer:bff:session:abc")?.ttlSeconds).toBe(90);
   });
 
   it("süresi geçmiş kayıt yazılmıyor — siliniyor", async () => {
@@ -198,7 +198,7 @@ describe("TTL tek yerden türüyor", () => {
 
     await store.set("abc", record({ expiresAt: Date.now() - 1000 }));
 
-    expect(redis.entries.has("bizigo:bff:session:abc")).toBe(false);
+    expect(redis.entries.has("loganalyzer:bff:session:abc")).toBe(false);
   });
 });
 
@@ -315,17 +315,17 @@ describe("depo ulaşılamazken", () => {
 describe("depodaki değer çözülemezse", () => {
   it("bozuk JSON kaydı yok sayılıyor ve siliniyor", async () => {
     const store = new RedisSessionStore(redis);
-    redis.entries.set("bizigo:bff:session:abc", { value: "{bozuk", ttlSeconds: 60 });
+    redis.entries.set("loganalyzer:bff:session:abc", { value: "{bozuk", ttlSeconds: 60 });
 
     expect(await store.get("abc")).toBeUndefined();
-    expect(redis.entries.has("bizigo:bff:session:abc")).toBe(false);
+    expect(redis.entries.has("loganalyzer:bff:session:abc")).toBe(false);
   });
 
   it("alanları eksik kayıt yok sayılıyor", async () => {
     // Sürüm yükseltmesi ya da aynı öneki kullanan başka bir yazılım. Çözemediğimiz
     // bir kaydı kullanmaya çalışmak, tanımsız davranış demek.
     const store = new RedisSessionStore(redis);
-    redis.entries.set("bizigo:bff:session:abc", {
+    redis.entries.set("loganalyzer:bff:session:abc", {
       value: JSON.stringify({ accessToken: "A" }),
       ttlSeconds: 60,
     });

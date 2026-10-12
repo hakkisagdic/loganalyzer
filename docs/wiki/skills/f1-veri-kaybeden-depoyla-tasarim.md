@@ -1,7 +1,7 @@
 ---
 title: Veri kaybedebilen bir depoyla tasarım
 category: skills
-tags: [veri-deposu, test, yordam, bizigo]
+tags: [veri-deposu, test, yordam, loganalyzer]
 aliases: [RustFS beta, manifest koruması, arşiv scrub]
 relationships:
   - target: "[[concepts/sessiz-yanlis-davranis]]"
@@ -10,7 +10,7 @@ relationships:
     type: extends
   - target: "[[concepts/elle-tutulan-liste-bekciyi-korlestirir]]"
     type: related_to
-  - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
+  - target: "[[projects/loganalyzer-loganalyzer/loganalyzer-loganalyzer]]"
     type: part_of
 sources:
   - docs/epic/mimari-kararlar/index.md

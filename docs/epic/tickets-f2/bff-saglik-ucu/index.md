@@ -38,7 +38,7 @@ T49'un sağlık kontrolü kök sayfayı yokluyordu, ölçütü `< 500`. Kod yolu
 | Bağımlılık | Kırık olduğunda kullanıcı ne görüyor | Sonda ne diyor |
 | --- | --- | --- |
 | **Oturum deposu** (`redis-session`) | Giriş akışı oturumu yazamıyor; vekil `503` dönüyor | healthy |
-| **`Bizigo.Api`** | Ekran açılıyor, her veri isteği düşüyor | healthy |
+| **`LogAnalyzer.Api`** | Ekran açılıyor, her veri isteği düşüyor | healthy |
 | **Keycloak keşif belgesi** | Giriş düğmesi çalışmıyor; `discover()` fırlatıyor | healthy |
 
 Üçüncüsü container'da ayrıca **T49'un kendi kararına** bağlı: keşif belgesi

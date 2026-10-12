@@ -19,12 +19,12 @@ beslemesi.
 
 | # | Konu | Karar | Gerekçe |
 | --- | --- | --- | --- |
-| **K31** | BFF nerede | **Next.js sunucusu** | OIDC akışı ve oturum çerezi Next'te; API'ye sunucudan sunucuya. `Bizigo.Api` saf kaynak sunucusu olarak kalıyor (yalnızca JWT). Bedeli: Node dağıtıma giriyor |
+| **K31** | BFF nerede | **Next.js sunucusu** | OIDC akışı ve oturum çerezi Next'te; API'ye sunucudan sunucuya. `LogAnalyzer.Api` saf kaynak sunucusu olarak kalıyor (yalnızca JWT). Bedeli: Node dağıtıma giriyor |
 | **K32** | Alarm kapsamı | **Eşik + oran + sessizlik** | Sessizlik ağ tarafında en değerlisi: susan cihaz, gürültü yapan cihazdan tehlikeli. Sigma'nın SQL'i F3'te aynı motora takılıyor |
 | **K33** | Parser yayını | **Taslak → inceleme → yayın, üründe** | Editör yazmadan işe yaramaz. `ParserCatalog` sıcak yeniden yükleme zaten atomik; eksik olan taslak deposu ve onay |
 | **K34** | Change feed | **Üç kaynak birden, ekrandan yapılandırılabilir** | API/elle + CI/CD webhook + cihaz config fark tespiti. Üçüncüsü tek başına bir alt sistem — sıralaması aşağıda |
 
-### K31'in sonucu: `Bizigo.Api` sadeleşiyor
+### K31'in sonucu: `LogAnalyzer.Api` sadeleşiyor
 
 Cookie ve OIDC işleyicisi API'de duruyor (`AuthEndpoints`, `/auth/login`). BFF
 Next'e geçtiğine göre bunlar **API'den çıkmalı** — iki yerde oturum yönetimi,
@@ -40,7 +40,7 @@ API'de kalan: JWT bearer doğrulaması, `/auth/me` (BFF'in kimlik sorgusu için)
 flowchart TB
   B["Tarayıcı"] -->|oturum çerezi| N["Next.js — BFF + UI"]
   N -->|authorization code + PKCE| KC["Keycloak"]
-  N -->|Bearer JWT<br/>sunucudan sunucuya| API["Bizigo.Api"]
+  N -->|Bearer JWT<br/>sunucudan sunucuya| API["LogAnalyzer.Api"]
 
   API --> CH[("ClickHouse")]
   API --> PG[("Postgres<br/>kontrol düzlemi")]

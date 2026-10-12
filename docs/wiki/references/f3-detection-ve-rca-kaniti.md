@@ -1,7 +1,7 @@
 ---
 title: F3 — Detection ve RCA kanıtı
 category: references
-tags: [log-analiz, mimari, kaynak-ozeti, bizigo]
+tags: [log-analiz, mimari, kaynak-ozeti, loganalyzer]
 aliases: [F3, F3 fazı, detection fazı]
 relationships:
   - target: "[[concepts/f3-bosluk-tek-cins-degildir]]"
@@ -12,7 +12,7 @@ relationships:
     type: contains
   - target: "[[references/f2-kapanis]]"
     type: extends
-  - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
+  - target: "[[projects/loganalyzer-loganalyzer/loganalyzer-loganalyzer]]"
     type: derived_from
 sources:
   - docs/epic/f3-teknik-plan/index.md

@@ -35,7 +35,7 @@
         "LogRecordUID",
         "owner_group",
         "SeverityNumber",
-        "bizigo.ocsf_severity_id",
+        "loganalyzer.ocsf_severity_id",
         "Body",
         "host.name",
         "service.instance.id",

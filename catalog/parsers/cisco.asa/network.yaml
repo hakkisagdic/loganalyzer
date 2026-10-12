@@ -1,4 +1,4 @@
-apiVersion: bizigo.dev/v1
+apiVersion: loganalyzer.dev/v1
 kind: Parser
 metadata:
   id: cisco.asa.network
@@ -32,7 +32,7 @@ match:
 pattern_definitions:
   # ÜST SETİN ReDoS'u. Logstash'in `CISCO_REASON` tanımı son alternatif olarak
   # `(?:%{WORD}\s*)*` yazıyor — iç içe sınırsız niceleyici, yani `(a+)+` ailesi.
-  # `bizigo parser lint` bunu GROK001 HATASI olarak yakalıyor ve CI'yi kırıyor;
+  # `loganalyzer parser lint` bunu GROK001 HATASI olarak yakalıyor ve CI'yi kırıyor;
   # pattern kütüphanesi veri olarak sürümlendiği için (catalog/patterns/README)
   # dosyaya dokunmuyoruz, burada geçersiz kılıyoruz.
   #

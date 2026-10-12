@@ -104,7 +104,7 @@ describe("kayıtlı aramalarda saklanan şekil", () => {
   it("anahtar ürüne özel bir önek taşıyor", () => {
     // Aynı kaynağı paylaşan başka bir uygulama varsa çarpışmasın; ve depoyu
     // elle inceleyen biri neyin bize ait olduğunu görebilsin.
-    expect(STORAGE_KEY.startsWith("bizigo.")).toBe(true);
+    expect(STORAGE_KEY.startsWith("loganalyzer.")).toBe(true);
   });
 
   it("aynı ad iki kayıt bırakmıyor", () => {

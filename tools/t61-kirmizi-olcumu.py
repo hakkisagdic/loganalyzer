@@ -19,7 +19,7 @@ import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EPIC = os.path.join(ROOT, "docs", "epic")
-TESTS = os.path.join(ROOT, "tests", "Bizigo.UnitTests")
+TESTS = os.path.join(ROOT, "tests", "LogAnalyzer.UnitTests")
 
 ENV = dict(os.environ)
 ENV["DOTNET_ROOT"] = os.path.expanduser("~/.dotnet")

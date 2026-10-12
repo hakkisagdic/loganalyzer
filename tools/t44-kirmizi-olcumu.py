@@ -24,11 +24,11 @@ import sys
 KOK = pathlib.Path(__file__).resolve().parent.parent
 DOTNET = str(pathlib.Path.home() / ".dotnet" / "dotnet")
 
-BAGLAYICI = KOK / "src/Bizigo.Rca/Reasoning/SentenceBinder.cs"
-GORUS = KOK / "src/Bizigo.Rca/Reasoning/StepEvidenceView.cs"
-PROMPT = KOK / "src/Bizigo.Rca/Reasoning/ScenarioPromptBuilder.cs"
-BELGE = KOK / "src/Bizigo.Rca/Reasoning/RcaReportDocument.cs"
-DEPO = KOK / "src/Bizigo.Rca/Reasoning/RcaReportStore.cs"
+BAGLAYICI = KOK / "src/LogAnalyzer.Rca/Reasoning/SentenceBinder.cs"
+GORUS = KOK / "src/LogAnalyzer.Rca/Reasoning/StepEvidenceView.cs"
+PROMPT = KOK / "src/LogAnalyzer.Rca/Reasoning/ScenarioPromptBuilder.cs"
+BELGE = KOK / "src/LogAnalyzer.Rca/Reasoning/RcaReportDocument.cs"
+DEPO = KOK / "src/LogAnalyzer.Rca/Reasoning/RcaReportStore.cs"
 EKRAN = KOK / "ui/src/app/rca/[id]/ReportView.tsx"
 
 OLCUMLER = [
@@ -147,7 +147,7 @@ def kosum(filtre, runner="dotnet"):
         return vitest_kosum(filtre)
 
     sonuc = subprocess.run(
-        [DOTNET, "test", "tests/Bizigo.UnitTests", "--nologo", "-v", "q",
+        [DOTNET, "test", "tests/LogAnalyzer.UnitTests", "--nologo", "-v", "q",
          "--filter", f"FullyQualifiedName~{filtre}"],
         cwd=KOK, capture_output=True, text=True,
         env={**__import__("os").environ,

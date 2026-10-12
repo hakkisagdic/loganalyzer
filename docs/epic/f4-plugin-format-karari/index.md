@@ -47,7 +47,7 @@ RCA'dan farkı: **olay yok.** Konu bir zaman aralığı değil, bir **kapsam art
 ufuk**. Karşılaştırma pencere-vs-taban değil, uzun bir seri.
 
 ```yaml
-apiVersion: bizigo.dev/v1
+apiVersion: loganalyzer.dev/v1
 kind: Scenario
 metadata:
   id: builtin.capacity.trend
@@ -83,7 +83,7 @@ RCA'dan farkı: **konu bir varlık, bir zaman aralığı değil.** Girdi bir
 artifact'ına önerilen değişiklik**.
 
 ```yaml
-apiVersion: bizigo.dev/v1
+apiVersion: loganalyzer.dev/v1
 kind: Scenario
 metadata:
   id: builtin.parser.quality
@@ -214,7 +214,7 @@ bu tesadüf değil — motorun zorladığı tek şey o.
 ### 5.1 · Şimdi çivilenebilecek olan
 
 ```yaml
-apiVersion: bizigo.dev/v1
+apiVersion: loganalyzer.dev/v1
 kind: Scenario
 metadata: { id, version, owner }
 spec:

@@ -134,7 +134,7 @@ verilen kararın dördüncüsü.
 
 `20260905103042_AddRcaReports`:
 
-- **Tek bir yeni tablo yaratıyor** (`bizigo.rca_reports`) ve iki indeks.
+- **Tek bir yeni tablo yaratıyor** (`loganalyzer.rca_reports`) ve iki indeks.
 - **Hiçbir mevcut tabloya dokunmuyor.** `AddColumn` yok, `AlterColumn` yok,
   veri taşıma yok, varsayılanla geri doldurma yok.
 - `Down` tabloyu düşürüyor.
@@ -268,8 +268,8 @@ burada.
    ve bunu ancak gerçek bir veritabanı reddeder. Serileştirici her zaman geçerli
    JSON üretiyor, yani risk düşük — ama **ölçülmedi**, ve bu ikisi farklı
    şeyler.
-2. **`AddBizigoScenarioPlugins` hâlâ `Program.cs`'te çağrılmıyor** (T44'te
-   bildirildi). `RcaReportStore` `AddBizigoRcaTriggers` içine kaydedildi ve
+2. **`AddLogAnalyzerScenarioPlugins` hâlâ `Program.cs`'te çağrılmıyor** (T44'te
+   bildirildi). `RcaReportStore` `AddLogAnalyzerRcaTriggers` içine kaydedildi ve
    sebebi tam olarak bu: ayrı bir uzantı yazmak, çağrılmayı unutulabilecek
    ikinci bir satır üretirdi.
 3. **`unspecified` ekranda tanınmıyor** (§8). T47 enum'a değeri eklediğinde

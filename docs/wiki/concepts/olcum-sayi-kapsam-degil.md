@@ -1,7 +1,7 @@
 ---
 title: Sayı kapsamın yerine geçmez
 category: concepts
-tags: [test, surec, kavram, bizigo]
+tags: [test, surec, kavram, loganalyzer]
 aliases: [payda seçimi, test sayısı yanılgısı, kapsam oranı]
 relationships:
   - target: "[[concepts/elle-tutulan-liste-bekciyi-korlestirir]]"

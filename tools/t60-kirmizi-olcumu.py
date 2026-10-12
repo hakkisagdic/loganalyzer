@@ -39,9 +39,9 @@ class Kusur:
     yesil_kalmali: list[str] = field(default_factory=list)
 
 
-REDACTED = "src/Bizigo.Contracts/Security/RedactedPrompt.cs"
-CLASSIFIER = "src/Bizigo.Contracts/Security/ShadowTokenClassifier.cs"
-FIXTURES = "tests/Bizigo.UnitTests/RedactionFixtures.cs"
+REDACTED = "src/LogAnalyzer.Contracts/Security/RedactedPrompt.cs"
+CLASSIFIER = "src/LogAnalyzer.Contracts/Security/ShadowTokenClassifier.cs"
+FIXTURES = "tests/LogAnalyzer.UnitTests/RedactionFixtures.cs"
 
 KUSURLAR = [
     Kusur(
@@ -190,7 +190,7 @@ def test_kos(filtre: str) -> tuple[int, str]:
     düştüğünde sessizce sıfır üretirdi — ölçüm aracının kendisi §7'nin sınıfına
     girerdi.
     """
-    sonuc = kos(["dotnet", "test", "tests/Bizigo.UnitTests", "--nologo", "--filter", filtre])
+    sonuc = kos(["dotnet", "test", "tests/LogAnalyzer.UnitTests", "--nologo", "--filter", filtre])
     return sonuc.returncode, sonuc.stdout + sonuc.stderr
 
 

@@ -28,7 +28,7 @@ Granülerlik = 1 gün. Atomik; sorgu tarafında `FINAL` maliyeti yok.
 edilir. Eksik nesne varsa replay **sessizce kısa dönmez**, eksik aralığı bildirir
 ve kullanıcıya devam edip etmeyeceğini sorar.
 4. **`parse_generation`** — hangi satırın kaçıncı kuşaktan geldiği denetlenebilir.
-5. **CLI + API** — `bizigo replay --from … --to … --parser …@… [--dry-run]` ve
+5. **CLI + API** — `loganalyzer replay --from … --to … --parser …@… [--dry-run]` ve
 `POST /v1/replay`. İş durumu izlenebilir (kuyruk, ilerleme, hata).
 6. **Kaynak filtresi** — replay tüm partition yerine belirli `source_id`/`owner_group`
 ile sınırlanabilir; ama `REPLACE PARTITION` bölüm bütünlüğü gerektirdiği için
@@ -47,10 +47,10 @@ Otomatik replay tetikleme (parser yayınlanınca), tiering/lifecycle (v2).
 
 | Parça | Nerede |
 | --- | --- |
-| ClickHouse tarafı | `src/Bizigo.Storage.ClickHouse/ReplayStore.cs` — gölge tablo, `REPLACE PARTITION`, bölüm okuma |
-| Motor | `src/Bizigo.Replay/ReplayEngine.cs` |
-| Fark mantığı | `src/Bizigo.Replay/ReplayDiff.cs` (saf, veritabanısız sınanabilir) |
-| API | `src/Bizigo.Api/ReplayEndpoints.cs` — `POST /v1/replay` |
+| ClickHouse tarafı | `src/LogAnalyzer.Storage.ClickHouse/ReplayStore.cs` — gölge tablo, `REPLACE PARTITION`, bölüm okuma |
+| Motor | `src/LogAnalyzer.Replay/ReplayEngine.cs` |
+| Fark mantığı | `src/LogAnalyzer.Replay/ReplayDiff.cs` (saf, veritabanısız sınanabilir) |
+| API | `src/LogAnalyzer.Api/ReplayEndpoints.cs` — `POST /v1/replay` |
 
 **Dört tasarım noktası:**
 
@@ -75,7 +75,7 @@ ortadan kaldırırdı.
 kopyalanıyor. `Filtre_disi_satirlar_kopyalanmazsa_kayboluyor` testi tuzağı
 açıkça belgeliyor — kopyalanmayan satır `REPLACE PARTITION` ile siliniyor.
 
-**Yapılmayan: CLI komutu.** `bizigo replay` için CLI'nin tüm DI grafiğini
+**Yapılmayan: CLI komutu.** `loganalyzer replay` için CLI'nin tüm DI grafiğini
 (ClickHouse + Postgres + S3 + parser kataloğu) barındırması gerekiyor; şu an
 yalnızca `ParserToolbox` ve tek bağlantılı `migrate` var. API ucu aynı yeteneği
 veriyor, o yüzden CLI ertelendi.

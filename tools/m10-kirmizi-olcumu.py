@@ -51,10 +51,10 @@ from pathlib import Path
 KOK = Path(__file__).resolve().parent.parent
 YEDEK = KOK / ".m10-olcum-yedek"
 
-LOGS = "src/Bizigo.Mcp.Product/Tools/LogsGetTool.cs"
-MAINT = "src/Bizigo.Mcp.Product/Tools/AlertsMaintenanceTool.cs"
-QUAL = "src/Bizigo.Mcp.Product/Tools/RcaQualityTool.cs"
-SUPP = "src/Bizigo.Alerting/AlertSuppression.cs"
+LOGS = "src/LogAnalyzer.Mcp.Product/Tools/LogsGetTool.cs"
+MAINT = "src/LogAnalyzer.Mcp.Product/Tools/AlertsMaintenanceTool.cs"
+QUAL = "src/LogAnalyzer.Mcp.Product/Tools/RcaQualityTool.cs"
+SUPP = "src/LogAnalyzer.Alerting/AlertSuppression.cs"
 
 
 @dataclass
@@ -262,7 +262,7 @@ def test_kos(filtre: str) -> tuple[int, str]:
     üretirdi — yani ölçüm aracının kendisi §7'nin sınıfına girerdi.
     """
     sonuc = kos([
-        "dotnet", "test", "tests/Bizigo.UnitTests", "--no-build", "--nologo",
+        "dotnet", "test", "tests/LogAnalyzer.UnitTests", "--no-build", "--nologo",
         "--filter", filtre,
     ])
 

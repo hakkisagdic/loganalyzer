@@ -23,7 +23,7 @@ muafiyetsiz bir koşumdan **ayırt edilemiyor** — §7'nin tam sınıfı.
 ## Bugünkü hâl ölçüldü
 
 **Alan var ve doğru şekilde duruyor.** `ModelEndpoint.BoundaryOverrideReason`
-(`src/Bizigo.Rca/Models/ModelEndpoint.cs:72`) ve `AuditFields()` ikisini birden
+(`src/LogAnalyzer.Rca/Models/ModelEndpoint.cs:72`) ve `AuditFields()` ikisini birden
 veriyor:
 
 ```csharp
@@ -37,7 +37,7 @@ Yorumu da doğru: *"Kayda ve rapora giden tek satır — muafiyet gizlenmiyor."*
 (aynı sözlüğü genişletiyor) ve iki birim testi. Başka hiçbir yer.
 
 **Ve model katmanı ile koşum katmanı bugün main'de hiç bağlı değil.**
-`src/Bizigo.Rca/Models/*` ile `RcaAdmission` / `RcaRunLifecycle` /
+`src/LogAnalyzer.Rca/Models/*` ile `RcaAdmission` / `RcaRunLifecycle` /
 `RcaRunEndpoints` arasında tek bir referans yok. Yani "koşum kaydına bağla"
 denilen bağ, main'de var olmayan bir noktaya bağlanacak.
 

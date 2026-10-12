@@ -68,7 +68,7 @@ jobs:
 
       - name: Birim testleri
         run: >
-          dotnet test tests/Bizigo.UnitTests
+          dotnet test tests/LogAnalyzer.UnitTests
           --no-build --configuration Release
           --logger "trx;LogFileName=unit.trx"
           --results-directory TestResults
@@ -78,12 +78,12 @@ jobs:
       # şema düzeyinde reddedilir; bu adım kataloğun bütününü doğrular.
       - name: Parser kataloğu — lint
         run: >
-          dotnet run --project src/Bizigo.Cli --no-build --configuration Release --
+          dotnet run --project src/LogAnalyzer.Cli --no-build --configuration Release --
           parser lint catalog/parsers
 
       - name: Parser kataloğu — testler
         run: >
-          dotnet run --project src/Bizigo.Cli --no-build --configuration Release --
+          dotnet run --project src/LogAnalyzer.Cli --no-build --configuration Release --
           parser test catalog/parsers
 
       - uses: actions/upload-artifact@v4
@@ -157,7 +157,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # Tip kapısı OpenAPI belgesini `Bizigo.Api`'den üretiyor, yani burada da
+      # Tip kapısı OpenAPI belgesini `LogAnalyzer.Api`'den üretiyor, yani burada da
       # .NET gerekiyor. Kurulum gerekçesi diğer işlerdekiyle aynı.
       - name: .NET SDK kur
         run: |
@@ -219,7 +219,7 @@ jobs:
           bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"
           echo "$HOME/.dotnet" >> "$GITHUB_PATH"
       - name: Release build
-        run: dotnet build Bizigo.sln --configuration Release -m:1
+        run: dotnet build LogAnalyzer.sln --configuration Release -m:1
       - name: Capacity process smoke
         run: python3 tools/capacity-process-smoke.py
       - name: Capacity descendant lifecycle regressions
@@ -245,10 +245,10 @@ jobs:
           bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"
           echo "$HOME/.dotnet" >> "$GITHUB_PATH"
       - name: Release build
-        run: dotnet build Bizigo.sln --configuration Release -m:1
+        run: dotnet build LogAnalyzer.sln --configuration Release -m:1
       - name: OTLP unit evidence
         run: |
-          dotnet test tests/Bizigo.UnitTests --no-build -c Release --filter 'FullyQualifiedName~Otlp|FullyQualifiedName~Signal' --logger 'trx;LogFileName=otlp.trx' --results-directory TestResults -m:1
+          dotnet test tests/LogAnalyzer.UnitTests --no-build -c Release --filter 'FullyQualifiedName~Otlp|FullyQualifiedName~Signal' --logger 'trx;LogFileName=otlp.trx' --results-directory TestResults -m:1
           python3 tools/otlp-verify-trx.py TestResults/otlp.trx
       - name: Actual process durability
         run: python3 tools/otlp-durability-smoke.py --evidence-dir /tmp/otlp-crash-evidence
@@ -304,19 +304,19 @@ jobs:
       - name: Serial Release build
         run: |
           bash tools/machine-resources.sh check
-          dotnet build Bizigo.sln --configuration Release -m:1
+          dotnet build LogAnalyzer.sln --configuration Release -m:1
       - name: Ownership query and boundary units
         run: |
           bash tools/machine-resources.sh check
-          dotnet test tests/Bizigo.UnitTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~TelemetryStorage|FullyQualifiedName~TelemetryQuery|FullyQualifiedName~TelemetryScope|FullyQualifiedName~TelemetryOwnership|FullyQualifiedName~SourceCsvImport|FullyQualifiedName~ScopedQuery|FullyQualifiedName~ArchitectureTests' --logger 'trx;LogFileName=telemetry-unit.trx' --results-directory TestResults
+          dotnet test tests/LogAnalyzer.UnitTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~TelemetryStorage|FullyQualifiedName~TelemetryQuery|FullyQualifiedName~TelemetryScope|FullyQualifiedName~TelemetryOwnership|FullyQualifiedName~SourceCsvImport|FullyQualifiedName~ScopedQuery|FullyQualifiedName~ArchitectureTests' --logger 'trx;LogFileName=telemetry-unit.trx' --results-directory TestResults
           python3 tools/otlp-verify-trx.py TestResults/telemetry-unit.trx --require-class TelemetryStorageTests TelemetryQueryTests TelemetryScopeTests TelemetryOwnershipAdmissionTests ArchitectureTests ScopedQueryConsumerTests
           python3 -m unittest discover -s tools/tests -p 'test_telemetry_storage_harness.py'
       - name: Actual PostgreSQL and ClickHouse gates
         env:
-          BIZIGO_TELEMETRY_EVIDENCE: /tmp/telemetry-db-artifacts
+          LOGANALYZER_TELEMETRY_EVIDENCE: /tmp/telemetry-db-artifacts
         run: |
           bash tools/machine-resources.sh check
-          dotnet test tests/Bizigo.IntegrationTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~Telemetry|FullyQualifiedName~SourceOwnershipHistoryIntegrationTests' --logger 'trx;LogFileName=telemetry-db.trx' --results-directory TestResults
+          dotnet test tests/LogAnalyzer.IntegrationTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~Telemetry|FullyQualifiedName~SourceOwnershipHistoryIntegrationTests' --logger 'trx;LogFileName=telemetry-db.trx' --results-directory TestResults
           python3 tools/otlp-verify-trx.py TestResults/telemetry-db.trx --require-class TelemetryStorageIntegrationTests TelemetryScopeIntegrationTests TelemetryReplayIntegrationTests TelemetryQueryIntegrationTests SourceOwnershipHistoryIntegrationTests TelemetryMutationControlsIntegrationTests TelemetryBoundaryIntegrationTests TelemetryArchiveProcessIntegrationTests TelemetryTypedEdgeIntegrationTests OtlpTelemetryIntegrationTests
       - name: Eleven mutation families including both production history writers
         run: python3 tools/telemetry-storage-mutation-gate.py --evidence-dir /tmp/telemetry-db-mutants
@@ -371,15 +371,15 @@ jobs:
       - name: Serial Release build and UI dependencies
         run: |
           bash tools/machine-resources.sh check
-          dotnet build Bizigo.sln -c Release -m:1
+          dotnet build LogAnalyzer.sln -c Release -m:1
           bash tools/machine-resources.sh check
           npm --prefix ui ci
       - name: Evidence contract units and executable typed wire
         env:
-          BIZIGO_TELEMETRY_WIRE_EVIDENCE: /tmp/telemetry-wire-json
+          LOGANALYZER_TELEMETRY_WIRE_EVIDENCE: /tmp/telemetry-wire-json
         run: |
           bash tools/machine-resources.sh check
-          dotnet test tests/Bizigo.UnitTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~Telemetry|FullyQualifiedName~Evidence|FullyQualifiedName~Rca|FullyQualifiedName~GoldenReview|FullyQualifiedName~Architecture|FullyQualifiedName~ScopeCoverage|FullyQualifiedName~ConcurrentAudit' --logger 'trx;LogFileName=evidence-unit.trx' --results-directory TestResults
+          dotnet test tests/LogAnalyzer.UnitTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~Telemetry|FullyQualifiedName~Evidence|FullyQualifiedName~Rca|FullyQualifiedName~GoldenReview|FullyQualifiedName~Architecture|FullyQualifiedName~ScopeCoverage|FullyQualifiedName~ConcurrentAudit' --logger 'trx;LogFileName=evidence-unit.trx' --results-directory TestResults
           python3 tools/otlp-verify-trx.py TestResults/evidence-unit.trx --require-class MetricEvidenceProviderTests MetricEvidenceOracleTests TraceEvidenceProviderTests TraceEvidenceBudgetTests MetricTraceEvidenceContractTests GoldenReviewEvidenceKindsTests TelemetryReadContractTests ConcurrentAuditTests ArchitectureTests ScopeCoverageTests
           bash tools/machine-resources.sh check
           npm --prefix ui run typecheck
@@ -387,10 +387,10 @@ jobs:
           python3 -m unittest discover -s tools/tests -p 'test_*harness.py'
       - name: Actual capture and scope integration
         env:
-          BIZIGO_TELEMETRY_EVIDENCE: /tmp/evidence-db-artifacts
+          LOGANALYZER_TELEMETRY_EVIDENCE: /tmp/evidence-db-artifacts
         run: |
           bash tools/machine-resources.sh check
-          dotnet test tests/Bizigo.IntegrationTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~Telemetry|FullyQualifiedName~MetricTraceEvidence|FullyQualifiedName~GoldenReview|FullyQualifiedName~ScopeNegative|FullyQualifiedName~RawArchive|FullyQualifiedName~ReplayStore|FullyQualifiedName~TraceEvidenceBudgetIntegrationTests' --logger 'trx;LogFileName=evidence-db.trx' --results-directory TestResults
+          dotnet test tests/LogAnalyzer.IntegrationTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~Telemetry|FullyQualifiedName~MetricTraceEvidence|FullyQualifiedName~GoldenReview|FullyQualifiedName~ScopeNegative|FullyQualifiedName~RawArchive|FullyQualifiedName~ReplayStore|FullyQualifiedName~TraceEvidenceBudgetIntegrationTests' --logger 'trx;LogFileName=evidence-db.trx' --results-directory TestResults
           python3 tools/otlp-verify-trx.py TestResults/evidence-db.trx --require-class TelemetryApiIntegrationTests MetricTraceEvidenceIntegrationTests GoldenReviewEvidenceKindsIntegrationTests TelemetryEvidenceScopeIntegrationTests TelemetryScopeIntegrationTests TelemetryReplayIntegrationTests ScopeNegativeTests RawArchiveTests ReplayStoreTests TelemetryCancellationIntegrationTests GoldenReviewMigrationIntegrationTests TraceEvidenceBudgetIntegrationTests
       - name: Twenty-four compiled negative variants and positive controls
         run: |
@@ -398,13 +398,13 @@ jobs:
           python3 tools/telemetry-evidence-mutation-gate.py --evidence-dir /tmp/evidence-mutants
       - name: Production API Collector and two independent nonce probes
         env:
-          BIZIGO_TEST_KEYCLOAK_IMAGE: bizigo-test/keycloak-s04:26.7.1-ci
+          LOGANALYZER_TEST_KEYCLOAK_IMAGE: loganalyzer-test/keycloak-s04:26.7.1-ci
         run: |
           bash tools/machine-resources.sh check
           docker pull quay.io/keycloak/keycloak:26.7.1
           fixture_base=$(docker image inspect quay.io/keycloak/keycloak:26.7.1 --format '{{index .RepoDigests 0}}')
           test -n "$fixture_base"
-          docker build --build-arg KEYCLOAK_BASE="$fixture_base" -t "$BIZIGO_TEST_KEYCLOAK_IMAGE" tools/fixtures/keycloak-s04
+          docker build --build-arg KEYCLOAK_BASE="$fixture_base" -t "$LOGANALYZER_TEST_KEYCLOAK_IMAGE" tools/fixtures/keycloak-s04
           bash tools/machine-resources.sh check
           python3 tools/telemetry-evidence-smoke.py --serve --session-dir /tmp/evidence-session > /tmp/evidence-session.log 2>&1 &
           fixture_pid=$!
@@ -461,28 +461,28 @@ jobs:
       - name: Serial Release build and UI dependencies
         run: |
           bash tools/machine-resources.sh check
-          dotnet build Bizigo.sln -c Release -m:1
+          dotnet build LogAnalyzer.sln -c Release -m:1
           bash tools/machine-resources.sh check
           npm --prefix ui ci
       - name: Topology contract units and generated interface
         env:
-          BIZIGO_TOPOLOGY_WIRE_DIR: /tmp/topology-wire
+          LOGANALYZER_TOPOLOGY_WIRE_DIR: /tmp/topology-wire
         run: |
           bash tools/machine-resources.sh check
-          dotnet test tests/Bizigo.UnitTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~Topology|FullyQualifiedName~EvidenceBundleStoreTests|FullyQualifiedName~ScopeCoverageTests|FullyQualifiedName~SignalReplayReadinessTests|FullyQualifiedName~SignalArchiveBoundaryTests|FullyQualifiedName~SignalDurabilityTests|FullyQualifiedName~LegacySignalReplayTests' --logger 'trx;LogFileName=topology-unit.trx' --results-directory TestResults
+          dotnet test tests/LogAnalyzer.UnitTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~Topology|FullyQualifiedName~EvidenceBundleStoreTests|FullyQualifiedName~ScopeCoverageTests|FullyQualifiedName~SignalReplayReadinessTests|FullyQualifiedName~SignalArchiveBoundaryTests|FullyQualifiedName~SignalDurabilityTests|FullyQualifiedName~LegacySignalReplayTests' --logger 'trx;LogFileName=topology-unit.trx' --results-directory TestResults
           python3 tools/otlp-verify-trx.py TestResults/topology-unit.trx --require-class EvidenceBundleStoreTests LegacySignalReplayTests ScopeCoverageTests SignalArchiveBoundaryTests SignalDurabilityTests SignalReplayReadinessTests TopologyAdmissionTests TopologyAncestorScoringTests TopologyAuditTests TopologyConflictIsolationTests TopologyDeclaredEdgeTests TopologyEvidenceTests TopologyFeedScopeStateTests TopologyGeneratedWireFixtureTests TopologyGraphOrderingOracleTests TopologyGraphTests TopologyGroupedAncestorTests TopologyHistoryBoundaryTests TopologyIdentityTests TopologyNodeWriteWireTests TopologyObservationTests TopologyOutsideCountTests TopologyProductionProviderTests TopologyProvenanceCoexistenceTests TopologyProviderBudgetTests TopologyProviderRemovalTests TopologyProviderTests TopologyPublicationFenceTests TopologyRecoveryTests TopologyRegistryTests TopologyResponseBudgetTests TopologySourceTargetPageTests TopologyVisibilityTests TopologyWireTests
           bash tools/machine-resources.sh check
           npm --prefix ui run api:generate
           npm --prefix ui run typecheck
           node --experimental-strip-types ui/scripts/topology-wire-check.ts /tmp/topology-wire
-          git diff --exit-code -- ui/openapi/bizigo-api.json ui/src/lib/api/schema.d.ts
+          git diff --exit-code -- ui/openapi/loganalyzer-api.json ui/src/lib/api/schema.d.ts
           python3 -m unittest discover -s tools/tests -p 'test_topology*py'
       - name: Actual topology PG CH scope publication and eight process kills
         env:
-          BIZIGO_TELEMETRY_EVIDENCE: /tmp/topology-db-artifacts
+          LOGANALYZER_TELEMETRY_EVIDENCE: /tmp/topology-db-artifacts
         run: |
           bash tools/machine-resources.sh check
-          dotnet test tests/Bizigo.IntegrationTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~Topology|FullyQualifiedName~EvidenceBundleStorageTests.Topology_bundle_roundtrip_and_legacy|FullyQualifiedName~SourceOwnershipHistoryIntegrationTests' --logger 'trx;LogFileName=topology-db.trx' --results-directory TestResults
+          dotnet test tests/LogAnalyzer.IntegrationTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~Topology|FullyQualifiedName~EvidenceBundleStorageTests.Topology_bundle_roundtrip_and_legacy|FullyQualifiedName~SourceOwnershipHistoryIntegrationTests' --logger 'trx;LogFileName=topology-db.trx' --results-directory TestResults
           python3 tools/otlp-verify-trx.py TestResults/topology-db.trx --require-class EvidenceBundleStorageTests SourceOwnershipHistoryIntegrationTests SourceTopologyAttributeTests TopologyApiOracleIntegrationTests TopologyArchiveProcessIntegrationTests TopologyConflictIsolationIntegrationTests TopologyDeclaredIntegrationTests TopologyEdgeConcurrentOwnerOracleIntegrationTests TopologyEdgeDetailWindowOracleIntegrationTests TopologyEdgeMigrationOracleIntegrationTests TopologyExactCapturedExpiryIntegrationTests TopologyExactHttpNanoIntegrationTests TopologyFinalEvidenceOracleIntegrationTests TopologyFinalExpiryOracleIntegrationTests TopologyFinalRouteAndAuditOracleIntegrationTests TopologyFinalScopeOracleIntegrationTests TopologyGraphDatabaseIntegrationTests TopologyGraphIntegrationTests TopologyHistoricalDisplayOracleIntegrationTests TopologyHttpBudgetIntegrationTests TopologyIdentityIntegrationTests TopologyMappedSourceGroupOracleIntegrationTests TopologyMappingSqlIntegrationTests TopologyMutationOracleIntegrationTests TopologyProjectionIntegrationTests TopologyPublicationIntegrationTests TopologyQueryIntegrationTests TopologyRegistryIntegrationTests TopologyReplayIntegrationTests TopologyReplayNegativeIntegrationTests TopologyReplayProcessTests TopologyScopedArchitectureOracleTests
       - name: Twenty-six compiled variants with positive and restored controls
         run: |
@@ -493,13 +493,13 @@ jobs:
           python3 tools/topology-graph-mutation-check.py --plan tools/topology-graph-mutations.json --mode db --evidence-dir /tmp/topology-db-mutants
       - name: Production API Collector and two isolated nonce probes
         env:
-          BIZIGO_TEST_KEYCLOAK_IMAGE: bizigo-test/keycloak-s04:26.7.1-ci
+          LOGANALYZER_TEST_KEYCLOAK_IMAGE: loganalyzer-test/keycloak-s04:26.7.1-ci
         run: |
           bash tools/machine-resources.sh check
           docker pull quay.io/keycloak/keycloak:26.7.1
           fixture_base=$(docker image inspect quay.io/keycloak/keycloak:26.7.1 --format '{{index .RepoDigests 0}}')
           test -n "$fixture_base"
-          docker build --build-arg KEYCLOAK_BASE="$fixture_base" -t "$BIZIGO_TEST_KEYCLOAK_IMAGE" tools/fixtures/keycloak-s04
+          docker build --build-arg KEYCLOAK_BASE="$fixture_base" -t "$LOGANALYZER_TEST_KEYCLOAK_IMAGE" tools/fixtures/keycloak-s04
           bash tools/machine-resources.sh check
           python3 tools/topology-graph-smoke.py --serve --output /tmp/topology-session > /tmp/topology-session.log 2>&1 &
           fixture_pid=$!
@@ -662,9 +662,9 @@ jobs:
         ports:
           - 8123:8123
         env:
-          CLICKHOUSE_DB: bizigo
-          CLICKHOUSE_USER: bizigo
-          CLICKHOUSE_PASSWORD: bizigo
+          CLICKHOUSE_DB: loganalyzer
+          CLICKHOUSE_USER: loganalyzer
+          CLICKHOUSE_PASSWORD: loganalyzer
           CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
 
     steps:
@@ -691,8 +691,8 @@ jobs:
 
       - name: Şemayı uygula
         env:
-          BIZIGO_CLICKHOUSE: "Host=localhost;Port=8123;Database=bizigo;Username=bizigo;Password=bizigo"
-        run: dotnet run --project src/Bizigo.Cli --configuration Release -- schema migrate db/clickhouse
+          LOGANALYZER_CLICKHOUSE: "Host=localhost;Port=8123;Database=loganalyzer;Username=loganalyzer;Password=loganalyzer"
+        run: dotnet run --project src/LogAnalyzer.Cli --configuration Release -- schema migrate db/clickhouse
 
       - uses: actions/setup-python@v5
         with:
@@ -768,7 +768,7 @@ jobs:
 
       - name: Entegrasyon testleri
         run: >
-          dotnet test tests/Bizigo.IntegrationTests
+          dotnet test tests/LogAnalyzer.IntegrationTests
           --no-build --configuration Release
           --logger "trx;LogFileName=integration.trx"
           --results-directory TestResults
@@ -942,15 +942,15 @@ jobs:
           bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"
           echo "$HOME/.dotnet" >> "$GITHUB_PATH"
 
-      - name: Build Bizigo Release
+      - name: Build LogAnalyzer Release
         run: |
           bash tools/machine-resources.sh check
-          dotnet build Bizigo.sln -c Release -m:1
+          dotnet build LogAnalyzer.sln -c Release -m:1
 
       - name: Operational E2E test suite and single-TRX verifier
         run: |
           bash tools/machine-resources.sh check
-          dotnet test tests/Bizigo.IntegrationTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~OperationalE2EIntegrationTests' --logger 'trx;LogFileName=operational-e2e-report.trx' --results-directory TestResults
+          dotnet test tests/LogAnalyzer.IntegrationTests --no-build -c Release -m:1 --filter 'FullyQualifiedName~OperationalE2EIntegrationTests' --logger 'trx;LogFileName=operational-e2e-report.trx' --results-directory TestResults
           python3 tools/otlp-verify-trx.py TestResults/operational-e2e-report.trx --require-class OperationalE2EIntegrationTests
 
       - name: Operational image gate & digest pinning verification

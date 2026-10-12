@@ -6,7 +6,7 @@ status: 2
 
 # T55 — Keşif yükleminin üç kopyası ve keşfin iki kör noktası
 
-**Borç:** §9 · **Ödendiği yer:** `tests/Bizigo.UnitTests/ProductDiscovery.cs`
+**Borç:** §9 · **Ödendiği yer:** `tests/LogAnalyzer.UnitTests/ProductDiscovery.cs`
 
 ## Borç nasıl doğdu
 
@@ -30,8 +30,8 @@ Konsolidasyondan **önce** üç kümenin listesi çıkarıldı — sayı değil 
 
 Fark **iki yönlü** ve yalnızca biri delik:
 
-- **`bizigo` (CLI) kapanışta yok** — ticket bunu önek körlüğüne bağlıyordu.
-- **`Bizigo.Simulators` kapanışta yok** — ve bu **delik değil**. Simülatör
+- **`loganalyzer` (CLI) kapanışta yok** — ticket bunu önek körlüğüne bağlıyordu.
+- **`LogAnalyzer.Simulators` kapanışta yok** — ve bu **delik değil**. Simülatör
 üretim kompozisyonunun parçası değil; kapanışta görünmesi bir kusur olurdu.
 
 Yani üç kümeyi tek listeye indirmek kapsamı sessizce **daraltmakla** kalmaz,
@@ -45,11 +45,11 @@ Ortak yüzey adlandırılmış kapsamlar sunuyor; üç küme **birebir korundu**
 
 ## Ticket'ın nedensellik zinciri de yanlıştı
 
-Ticket: *"`Bizigo.` önekine bakan her yansıma keşfi CLI derlemesini hiç
+Ticket: *"`LogAnalyzer.` önekine bakan her yansıma keşfi CLI derlemesini hiç
 görmüyor — ve `ProductAssemblies` tam o öneke bakıyor."*
 
-Ölçüldü: **`src/` ve `sim/` altında hiçbir proje `Bizigo.Cli`'yi
-referanslamıyor.** `ProductAssemblies` `Bizigo.Api`'den başlayıp referansları
+Ölçüldü: **`src/` ve `sim/` altında hiçbir proje `LogAnalyzer.Cli`'yi
+referanslamıyor.** `ProductAssemblies` `LogAnalyzer.Api`'den başlayıp referansları
 yürüyor; CLI **ikinci bir kompozisyon kökü** ve o kapanıştan erişilebilir
 değil.
 
@@ -61,8 +61,8 @@ değil.
 
 ### 1 · Önek körlüğü — bilinen, bugün kurbanı yok
 
-`reference.Name.StartsWith("Bizigo.")` bir **konvansiyona** bakıyor.
-`Bizigo.Cli` onu `<AssemblyName>bizigo</AssemblyName>` ile zaten bozuyor.
+`reference.Name.StartsWith("LogAnalyzer.")` bir **konvansiyona** bakıyor.
+`LogAnalyzer.Cli` onu `<AssemblyName>loganalyzer</AssemblyName>` ile zaten bozuyor.
 Süzgeç artık **diskten** soruyor: *"bu ad, ürün projelerinden birinin gerçek
 derleme adı mı?"*
 
@@ -70,7 +70,7 @@ derleme adı mı?"*
 
 `Assembly.GetReferencedAssemblies()` **meta veriye yazılmış** referansları
 döndürüyor, ve derleyici kodda hiçbir tipine dokunulmayan referansı **meta
-veriden düşürüyor**. Yani `Bizigo.` önekli, `ProjectReference`'ı olan bir proje
+veriden düşürüyor**. Yani `LogAnalyzer.` önekli, `ProjectReference`'ı olan bir proje
 bile kapanışta **olmayabilir**.
 
 Bu ticket'ta hipotez olarak yazıldı ve **ölçülemedi**; ölçümü **M04'ün ajanı**
@@ -80,12 +80,12 @@ ilan ediyordu. `strings` ile bakıldığında derleme adı meta veride **hiç yo
 
 **Bu deponun ölçtüğü şey burada iki yönlü:** aynı olgunun diğer ucu
 `CompositionRootTests`'in belgesinde kayıtlı — T44 **ilgisiz** bir referans
-ekleyince `Bizigo.ScenarioPlugin` kapanışa girmiş ve keşif bir fazla bulmuştu.
+ekleyince `LogAnalyzer.ScenarioPlugin` kapanışa girmiş ve keşif bir fazla bulmuştu.
 Orada ilgisiz bir referans bir şeyi **görünür** yaptı, burada kullanılmayan bir
 referans bir şeyi **görünmez** bıraktı. İkisi de tesadüfen keşfedildi.
 
 **Bu ticket'ın kendi ölçümü ise farklı bir şey söylüyor ve ikisi çelişmiyor:**
-bugünkü grafikte **budama olmamış** — `Bizigo.Api`'nin meta veri kapanışı 16 ve
+bugünkü grafikte **budama olmamış** — `LogAnalyzer.Api`'nin meta veri kapanışı 16 ve
 diskten hesaplanan `ProjectReference` kapanışıyla birebir aynı. Yani mekanizma
 gerçek ama bugünkü kapanışta kurbanı yok; **doğruluğu tesadüfe bağlı**, çünkü
 bir proje kullanılmaz hâle geldiği gün sessizce düşer.
@@ -99,9 +99,9 @@ konmayan bir ürün projesi **hiçbir kapıya görünmez** ve görünmediği hi�
 yerde şikâyet üretmez.
 
 Beyan bir yoruma bırakılmadı: ölçüt **çözümün kendi proje listesi**.
-`Bizigo.sln` hangi projeleri derliyorsa, test projeleri dışındakilerin hepsi
+`LogAnalyzer.sln` hangi projeleri derliyorsa, test projeleri dışındakilerin hepsi
 beyan edilen alanların altında olmak zorunda. Aciliyeti bugün gerçek — M02
-`Bizigo.Commands` ve `Bizigo.Commands.Mcp`, M04 `Bizigo.Mcp.Product` getiriyor.
+`LogAnalyzer.Commands` ve `LogAnalyzer.Commands.Mcp`, M04 `LogAnalyzer.Mcp.Product` getiriyor.
 
 ## Ölçülen bekçiler
 
@@ -120,7 +120,7 @@ iddia kurulamıyordu, ve bir sonraki kişi düzeltmeyi gerekçesiz bir süsleme
 sanıp geri alabilirdi.
 
 Çözüm süzgeci **adlandırmak** oldu (`ProductDiscovery.IsProduct`) ve onu
-doğrudan sınamak: *`bizigo` bir ürün derlemesi, ve `Bizigo.` öneki onu
+doğrudan sınamak: *`loganalyzer` bir ürün derlemesi, ve `LogAnalyzer.` öneki onu
 reddederdi.* Kusur geri konduğunda artık **kırmızı yanıyor** — ölçüldü.
 
 ## Öncesi = sonrası
@@ -128,7 +128,7 @@ reddederdi.* Kusur geri konduğunda artık **kırmızı yanıyor** — ölçüld
 | | Önce | Sonra |
 | --- | --- | --- |
 | Kapanış | 16 | **16** (birebir aynı liste) |
-| Kök | 1 (`Bizigo.Api`) | **1** |
+| Kök | 1 (`LogAnalyzer.Api`) | **1** |
 | Bütün ürün | 18 | **18** (birebir aynı liste) |
 | Kayıt uzantısı toplamı | 33 | **33** (17 servis + 16 uç) |
 

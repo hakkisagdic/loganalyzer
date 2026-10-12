@@ -19,7 +19,7 @@ tamamlandı (§2: container gerektiren her şey onun tarafında).
 
 ### Birinci yarı: `kill -9` önce yalnız **taklit** ediliyordu
 
-`tests/Bizigo.UnitTests/WriteAheadLogTests.cs` bu kriteri kendi başlığında
+`tests/LogAnalyzer.UnitTests/WriteAheadLogTests.cs` bu kriteri kendi başlığında
 sahipleniyor (satır 9: *"T03 kabul kriteri: `kill -9` altında ack'lenmiş hiçbir
 olay kaybolmuyor"*). Ama satır 80 ne yaptığını **kendi yorumunda** yazıyor:
 
@@ -153,7 +153,7 @@ Bu, ölçümün kalbi. Kendi cümlemiz şunu gerektiriyor: *"hata log'u yok"* ka
 değil, sessizce duran bir boru hattı da hata basmaz. O yüzden okunacak şey bir
 **sayaç**, ve hangisi olduğu keyfî değil.
 
-`IngestStats` (`src/Bizigo.Ingest/Pipeline/IngestStats.cs`):
+`IngestStats` (`src/LogAnalyzer.Ingest/Pipeline/IngestStats.cs`):
 
 | Sayaç | Depo DURURKEN beklenen | Neden bu değer |
 | --- | --- | --- |

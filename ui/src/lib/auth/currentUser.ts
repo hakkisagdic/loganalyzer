@@ -71,7 +71,7 @@ export async function currentUser(): Promise<IdentityResult> {
     return {
       status: "error",
       message: "API'ye ulaşılamıyor.",
-      hint: `Bizigo.Api ${config.apiBaseUrl} adresinde çalışıyor mu?`,
+      hint: `LogAnalyzer.Api ${config.apiBaseUrl} adresinde çalışıyor mu?`,
     };
   }
 

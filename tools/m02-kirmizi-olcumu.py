@@ -26,10 +26,10 @@ import sys
 KOK = pathlib.Path(__file__).resolve().parent.parent
 DOTNET = str(pathlib.Path.home() / ".dotnet" / "dotnet")
 
-CEKIRDEK = KOK / "src/Bizigo.Commands/ParserCommands.cs"
-KATALOG = KOK / "src/Bizigo.Commands/CommandCatalog.cs"
-KATALOG_TESTI = KOK / "tests/Bizigo.UnitTests/CommandCatalogTests.cs"
-ARAC = KOK / "src/Bizigo.Commands.Mcp/CommandTool.cs"
+CEKIRDEK = KOK / "src/LogAnalyzer.Commands/ParserCommands.cs"
+KATALOG = KOK / "src/LogAnalyzer.Commands/CommandCatalog.cs"
+KATALOG_TESTI = KOK / "tests/LogAnalyzer.UnitTests/CommandCatalogTests.cs"
+ARAC = KOK / "src/LogAnalyzer.Commands.Mcp/CommandTool.cs"
 
 OLCUMLER = [
     {
@@ -95,7 +95,7 @@ def kosum(filtre):
     }
 
     sonuc = subprocess.run(
-        [DOTNET, "test", "tests/Bizigo.UnitTests", "--nologo", "-v", "q",
+        [DOTNET, "test", "tests/LogAnalyzer.UnitTests", "--nologo", "-v", "q",
          "--filter", f"FullyQualifiedName~{filtre}"],
         cwd=KOK, capture_output=True, text=True, env=ortam,
     )

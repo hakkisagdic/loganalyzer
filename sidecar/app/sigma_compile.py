@@ -42,7 +42,7 @@ def backend_name() -> str:
         return f"unavailable ({type(exc).__name__})"
     # Eşleme adı da rapor ediliyor: sağlık ucu "backend var" derken hangi
     # ŞEMAYA derlediğini söylemezse, pipeline'sız bir dağıtım fark edilmez.
-    return "sigma.backends.clickhouse.ClickhouseBackend + bizigo-events-ocsf"
+    return "sigma.backends.clickhouse.ClickhouseBackend + loganalyzer-events-ocsf"
 
 
 def compile_rule(
@@ -52,7 +52,7 @@ def compile_rule(
     full_log_column: str = "raw_data",
     mappings_path: str | None = None,
 ) -> CompiledRule:
-    """Sigma kuralını ClickHouse SQL'ine çevirir — **Bizigo eşlemesiyle**.
+    """Sigma kuralını ClickHouse SQL'ine çevirir — **LogAnalyzer eşlemesiyle**.
 
     `table_name`/`full_log_column` **bilinçli olarak dışarıdan** geliyor:
     backend'in varsayılanları `logs` ve `full_log`. Varsayılanla bırakılsaydı
@@ -76,7 +76,7 @@ def compile_rule(
     try:
         from sigma.collection import SigmaCollection
 
-        from .sigma_pipeline import bizigo_backend
+        from .sigma_pipeline import loganalyzer_backend
     except Exception as exc:  # noqa: BLE001
         raise SigmaBackendUnavailable(
             f"pySigma ClickHouse backend'i yüklenemedi: {exc}"
@@ -90,12 +90,12 @@ def compile_rule(
     # dağıtım, her kullanıcıya "kuralın bozuk" derdi ve kimse imaja bakmazdı.
     # Ölçüldü: CI'da tam olarak bu oldu.
     try:
-        backend = bizigo_backend(table=table_name, mappings_path=mappings_path)
+        backend = loganalyzer_backend(table=table_name, mappings_path=mappings_path)
     except OSError as exc:
         raise SigmaBackendUnavailable(
             f"Sigma değer sözlükleri okunamadı ({mappings_path or 'varsayılan yol'}): {exc}. "
             "Bu bir kurulum sorunu; imaj `catalog/mappings`'i taşımıyor ya da "
-            "`BIZIGO_MAPPINGS_PATH` yanlış."
+            "`LOGANALYZER_MAPPINGS_PATH` yanlış."
         ) from exc
 
     collection = SigmaCollection.from_yaml(rule_yaml)

@@ -1,7 +1,7 @@
 ---
 title: Kapsam kaynaktan gelir, tek kapıdan geçer
 category: concepts
-tags: [guvenlik, mimari, kavram, bizigo]
+tags: [guvenlik, mimari, kavram, loganalyzer]
 aliases: [owner_group, kapsam kapısı, IScopedQuery]
 relationships:
   - target: "[[concepts/sessiz-yanlis-davranis]]"
@@ -10,7 +10,7 @@ relationships:
     type: constrains
   - target: "[[concepts/f1-ham-sadakat-zinciri]]"
     type: related_to
-  - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
+  - target: "[[projects/loganalyzer-loganalyzer/loganalyzer-loganalyzer]]"
     type: part_of
 sources:
   - docs/epic/mimari-kararlar/index.md
@@ -80,7 +80,7 @@ Zorlama noktası ClickHouse row policy değil, sorgu API'si
 toplayıcısı ve F4'ün MCP sunucusu da aynı API'den geçecek, dolayısıyla kapı bir
 tane olmalı.
 
-Kapının kendisi bir bekçiyle korunuyor: **NetArchTest**, `Bizigo.Query.Internal`
+Kapının kendisi bir bekçiyle korunuyor: **NetArchTest**, `LogAnalyzer.Query.Internal`
 dışındaki hiçbir tipin `ClickHouse.Driver`'a referans vermesine izin vermiyor —
 yani ihlal derleme zamanında kırmızı yanıyor. Ticket bunun sebebini tek cümleyle
 yazmış: *bu kural olmadan kapsam ayrımı ilk aceleci PR'da delinir*
@@ -144,11 +144,11 @@ katmanındaki örneği: kapsam doğru çalışırken denetim sessizce boşalmı�
 
 Çözüm yerleşik scope'ları kopyalamak değil, ihtiyaç duyulan claim'leri kendi
 scope'umuza yazmak oldu — Keycloak sürümünden bağımsız. Bunun bugünkü izi
-`CLAUDE.md` §12'de duruyor: realm'de `bizigo-claims` var ve
+`CLAUDE.md` §12'de duruyor: realm'de `loganalyzer-claims` var ve
 `scope=openid profile email` canlıda `invalid_scope` alıyor.
 
-> ⚠️ Bu cümlenin *"realm'de **yalnızca** `bizigo-claims` var"* hâli bugün
-> yanlıştı: M09 ikinci bir client scope ekledi (`bizigo-mcp`, isteğe bağlı,
+> ⚠️ Bu cümlenin *"realm'de **yalnızca** `loganalyzer-claims` var"* hâli bugün
+> yanlıştı: M09 ikinci bir client scope ekledi (`loganalyzer-mcp`, isteğe bağlı,
 > RFC 8707 kaynak kimliği için). Aynı bayat iddia **iki** vault sayfasında
 > duruyordu; M17 birini düzeltti, ikincisi bu sayfaydı ve damgası düşene kadar
 > görünmedi. Bir iddianın tek yerde düzeltilmesi, düzeltildiği anlamına

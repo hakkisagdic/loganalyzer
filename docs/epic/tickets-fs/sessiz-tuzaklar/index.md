@@ -11,7 +11,7 @@ ve ikisine de sahipleri **bilerek dokunmadı** (§9).
 
 ## Kalem 1 · `appsettings.json`'da `"Rca"` iki kez
 
-`src/Bizigo.Api/appsettings.json` satır 76 (`Quota` + `Schedules`) ve satır 111
+`src/LogAnalyzer.Api/appsettings.json` satır 76 (`Quota` + `Schedules`) ve satır 111
 (`Model`). JSON yapılandırma sağlayıcısı **nesne** çakışmasını sessizce
 birleştiriyor, **yaprak** çakışmasında ise fırlatıyor.
 

@@ -3,10 +3,10 @@
 Taşıyıcı kısıt (K14): bu servis **SICAK YOLDA DEĞİL**. Ölürse ingest çalışmaya
 devam eder; yalnızca format keşfi devre dışı kalır. .NET tarafı buraya sert
 bağımlılık kurmaz — sınırlı kuyruk, devre kesici, 2 sn zaman aşımı
-(bkz. `src/Bizigo.Ingest/Discovery/`).
+(bkz. `src/LogAnalyzer.Ingest/Discovery/`).
 
 Bu dosyanın tek işi HTTP sözleşmesi (F1 §9). Mining durumu `miners.py`'de,
-maskeleme sözlüğü `catalog/masks/bizigo-masks.yaml`'de.
+maskeleme sözlüğü `catalog/masks/loganalyzer-masks.yaml`'de.
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ from .sigma_compile import (
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
-logger = logging.getLogger("bizigo.sidecar")
+logger = logging.getLogger("loganalyzer.sidecar")
 
 
 class SidecarState:
@@ -93,14 +93,14 @@ async def lifespan(app: FastAPI):
     state.registry.save_all()
 
 
-app = FastAPI(title="bizigo-sidecar", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="loganalyzer-sidecar", version="1.0.0", lifespan=lifespan)
 
 
 @app.middleware("http")
 async def api_version_header(request: Request, call_next):
     """Sürüm her yanıtta. İstemci `/healthz`'i beklemeden uyuşmazlığı görebilsin."""
     response = await call_next(request)
-    response.headers["X-Bizigo-Sidecar-Api"] = API_VERSION
+    response.headers["X-LogAnalyzer-Sidecar-Api"] = API_VERSION
     return response
 
 

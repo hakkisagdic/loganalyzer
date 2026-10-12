@@ -18,7 +18,7 @@ Katalog [[index]], bugünkü durum [[hot]], işlem kaydı [[log]], etiket sözl�
 
 ## 0 · Kapsam kararı — bu vault neye ait, neye ait değil
 
-**Bu vault yalnızca `bizigo-loganalyzer` deposuna ait ve geçicidir.**
+**Bu vault yalnızca `loganalyzer-loganalyzer` deposuna ait ve geçicidir.**
 
 - **Kaynağı tek bir depo.** Her sayfa bu deponun kendi belgelerinden
   (`docs/epic/`, `CLAUDE.md`, `README.md`, `docs/graphify.md`,
@@ -48,10 +48,10 @@ git clone --depth 1 https://github.com/ar9av/obsidian-wiki.git tools/obsidian-wi
 ## 2 · Profili aktif et
 
 Bu makinede **birden çok proje profili** var ve `~/.obsidian-wiki/config` bir
-sembolik bağ. Bizigo'ya geçmek:
+sembolik bağ. LogAnalyzer'ya geçmek:
 
 ```bash
-ln -sfn ~/.obsidian-wiki/config.bizigo ~/.obsidian-wiki/config
+ln -sfn ~/.obsidian-wiki/config.loganalyzer ~/.obsidian-wiki/config
 ```
 
 Geri dönmek (`dukkan-defteri` profili korunuyor, ezilmiyor):
@@ -82,7 +82,7 @@ değil** (`~/Library/Application Support/obsidian/obsidian.json` yok). İlk aç�
 3. Şu dizini seç:
 
 ```
-/Users/hakkisagdic/Projects/bizigo-loganalyzer/docs/wiki
+/Users/hakkisagdic/Projects/loganalyzer-loganalyzer/docs/wiki
 ```
 
 4. Obsidian "Trust author and enable plugins?" diye sorarsa — bu vault'ta
@@ -92,7 +92,7 @@ değil** (`~/Library/Application Support/obsidian/obsidian.json` yok). İlk aç�
 Kısayol (aynı işi yapar, vault'u kaydeder):
 
 ```bash
-open "obsidian://open?path=%2FUsers%2Fhakkisagdic%2FProjects%2Fbizigo-loganalyzer%2Fdocs%2Fwiki"
+open "obsidian://open?path=%2FUsers%2Fhakkisagdic%2FProjects%2Floganalyzer-loganalyzer%2Fdocs%2Fwiki"
 ```
 
 Açıldıktan sonra sol altta **Graph view** (`Ctrl/Cmd+G`) düğümlerin birbirine
@@ -112,7 +112,7 @@ Hiçbiri zorunlu değil; vault onlarsız da tam çalışıyor.
 
 ## Vault yolu — kapandı, ama neden yazılı kalıyor
 
-`~/.obsidian-wiki/config.bizigo` ve `tools/obsidian-wiki/.env` bir dönem
+`~/.obsidian-wiki/config.loganalyzer` ve `tools/obsidian-wiki/.env` bir dönem
 `.claude/worktrees/proje-ozeti-tanitim-353f6e/docs/wiki` yolunu taşıyordu.
 `CLAUDE.md` §4'e göre iş `main`'e girdikten sonra worktree siliniyor — o gün
 Obsidian olmayan bir vault açacaktı: hata yok, uyarı yok, sadece kaybolmuş bir
@@ -121,7 +121,7 @@ kasa. Bu deponun §7'de tarif ettiği sınıf.
 İkisi de artık kalıcı yolu gösteriyor:
 
 ```
-/Users/hakkisagdic/Projects/bizigo-loganalyzer/docs/wiki
+/Users/hakkisagdic/Projects/loganalyzer-loganalyzer/docs/wiki
 ```
 
 **Bölüm silinmedi çünkü tuzak tekrar kurulabilir.** Vault'u bir worktree'den
@@ -185,7 +185,7 @@ Biçim yola göre sıralı, kaynak **başına** bir kısa hash. Tek bir toplam h
 bilerek kullanılmadı: toplam hash "bir şey değişti" der, *hangi kaynağın*
 değiştiğini söyleyemez — bekçinin işe yaraması tam olarak o cümleye bağlı.
 
-Kod: `tests/Bizigo.UnitTests/WikiSourceDigest.cs` (hesap),
+Kod: `tests/LogAnalyzer.UnitTests/WikiSourceDigest.cs` (hesap),
 `WikiSourceDigestTests.cs` (bekçi), `WikiSourceDigestStamper.cs` (damgalayıcı).
 Denetlenen küme **taranıyor**, elle listeden gelmiyor
 ([[concepts/elle-tutulan-liste-bekciyi-korlestirir]]); elle kalan tek şey beş
@@ -203,12 +203,12 @@ Sıra **önce oku, sonra damgala**:
 2. **Yeniden damgala.**
 
    ```bash
-   BIZIGO_WIKI_STAMP=1 dotnet test tests/Bizigo.UnitTests      --filter FullyQualifiedName~WikiSourceDigestStamper
+   LOGANALYZER_WIKI_STAMP=1 dotnet test tests/LogAnalyzer.UnitTests      --filter FullyQualifiedName~WikiSourceDigestStamper
    ```
 
 3. **Değişkeni kaldırıp bekçiyi yeniden koştur.** Damgalayıcı ile bekçi aynı
    koşumda buluşamaz — buluşursa bekçi kendi çıktısını doğrular ve hiçbir şey
-   kanıtlamaz. Bu iki taraflı kapatıldı: `BIZIGO_WIKI_STAMP=1` ile koşulduğunda
+   kanıtlamaz. Bu iki taraflı kapatıldı: `LOGANALYZER_WIKI_STAMP=1` ile koşulduğunda
    bekçi kırmızı yanıyor.
 
 Ters sıra — önce damgalayıp sonra bakmak — damgayı bir kayıt olmaktan çıkarıp

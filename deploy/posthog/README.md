@@ -1,11 +1,11 @@
 # PostHog — kendi altyapımızda
 
-Ürün analitiği. Bizigo tarafındaki entegrasyon `ui/src/lib/telemetry/` altında;
+Ürün analitiği. LogAnalyzer tarafındaki entegrasyon `ui/src/lib/telemetry/` altında;
 bu dosya **sunucu tarafını** anlatıyor.
 
 ## Neden self-host
 
-Bizigo müşterinin log'unu okuyor. Ürünü değerlendiren güvenlik ekibinin ilk
+LogAnalyzer müşterinin log'unu okuyor. Ürünü değerlendiren güvenlik ekibinin ilk
 sorduğu şey "bu ekran dışarıya ne gönderiyor" oluyor ve "tarayıcı
 posthog.com'a gidiyor" cevabı satın almayı durduran cevap. İki kademeli
 savunmamız var:
@@ -58,7 +58,7 @@ Resmî hızlı yol (sabitleme yok, HEAD'i alır — üretim için önerilmez):
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/posthog/posthog/HEAD/bin/deploy-hobby)"
 ```
 
-## Bizigo'yu buna bağlamak
+## LogAnalyzer'yu buna bağlamak
 
 `ui/.env.local`:
 

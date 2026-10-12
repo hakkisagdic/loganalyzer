@@ -18,7 +18,7 @@ katalogun kendisi hakkında hangi kararlar kodda duruyor.
 
 ## 1 · Bugün ölçülen
 
-`bizigo parser coverage catalog/parsers` — bu belge yazılırken koşturuldu:
+`loganalyzer parser coverage catalog/parsers` — bu belge yazılırken koşturuldu:
 
 | | |
 | --- | --- |
@@ -107,7 +107,7 @@ aynı gerekçeyle var ve ekranda o cümle yazıyor.
 | --- | --- |
 | #5 `extends:` | Parser'lar arası kalıtım motor işi; tasarımı tek başına bir tartışma. T19 kapsamına **alınmadı** ve gerekçesi kayıtlı |
 | #10 `matchTimeout` | Öneriler yazıldı (ayrı statü, karantinanın orana bakması, doğrusal ifadede sonsuz timeout); hiçbiri uygulanmadı |
-| #8b `bizigo-v1` temel seti | Lookaround'suz `IPV4`/`TIME` varyantları — set var (`catalog/patterns/bizigo-v1`) ama gerçek katalog hâlâ legacy setine dayanıyor |
+| #8b `loganalyzer-v1` temel seti | Lookaround'suz `IPV4`/`TIME` varyantları — set var (`catalog/patterns/loganalyzer-v1`) ama gerçek katalog hâlâ legacy setine dayanıyor |
 | Kataloğun genişlemesi | PAN-OS, Juniper, F5, HAProxy F1'de bilerek dışarıda. F2'nin editörü (T19) ve F4'ün keşif senaryosu bunu ucuzlatacak — editör indi, keşif senaryosu inmedi |
 
 ## 6 · Bu ticket'ın gerçek çıktısı

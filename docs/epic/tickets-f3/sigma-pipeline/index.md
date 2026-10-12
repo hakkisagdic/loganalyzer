@@ -1,10 +1,10 @@
 ---
-title: "T31 — Bizigo ProcessingPipeline"
+title: "T31 — LogAnalyzer ProcessingPipeline"
 kind: ticket
 status: 2
 ---
 
-# T31 — Bizigo `ProcessingPipeline`
+# T31 — LogAnalyzer `ProcessingPipeline`
 
 **Bağımlılık:** T30 · **Sonraki:** T32
 

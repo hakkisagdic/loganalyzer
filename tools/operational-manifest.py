@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 CRITICAL_PATHS = [
     ".github/workflows/ci.yml",
-    "ui/openapi/bizigo-api.json",
+    "ui/openapi/loganalyzer-api.json",
     "ui/src/lib/api/schema.d.ts",
     "deploy/s08-image-manifest.json",
     "deploy/docker-compose.s08.yml",
@@ -108,10 +108,10 @@ def run_mutation_tests(manifest: dict = None):
     # 2. OpenAPI mutation
     openapi_mutated = json.loads(json.dumps(base))
     files = openapi_mutated.get("files") or openapi_mutated.get("entries")
-    if "ui/openapi/bizigo-api.json" in files:
-        files["ui/openapi/bizigo-api.json"] = "0" * 64
+    if "ui/openapi/loganalyzer-api.json" in files:
+        files["ui/openapi/loganalyzer-api.json"] = "0" * 64
         errs = verify_manifest(openapi_mutated)
-        assert any("ui/openapi/bizigo-api.json" in e for e in errs), "OpenAPI mutation should fail"
+        assert any("ui/openapi/loganalyzer-api.json" in e for e in errs), "OpenAPI mutation should fail"
 
     # 3. TS schema mutation
     ts_mutated = json.loads(json.dumps(base))

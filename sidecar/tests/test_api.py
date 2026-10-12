@@ -29,7 +29,7 @@ def test_healthz(client):
     response = client.get("/healthz")
 
     assert response.status_code == 200
-    assert response.headers["X-Bizigo-Sidecar-Api"] == "v1"
+    assert response.headers["X-LogAnalyzer-Sidecar-Api"] == "v1"
 
     body = response.json()
     assert body["api_version"] == "v1"
@@ -71,7 +71,7 @@ def test_mine_batch_ogreniyor(client):
 
 def test_mine_batch_masked_alani_yerel_imzayla_ayni(client):
     """`masked`, .NET'in yerel olarak hesapladığı imzanın aynısı olmalı."""
-    text = "job 6f9619ff-8b86-d011-b42d-00cf4fc964ff wrote /var/log/bizigo/ingest.log (0x1FE bytes)"
+    text = "job 6f9619ff-8b86-d011-b42d-00cf4fc964ff wrote /var/log/loganalyzer/ingest.log (0x1FE bytes)"
 
     body = client.post(
         "/v1/mine/batch",
@@ -175,7 +175,7 @@ def test_sigma_compile_clickhouse_sql_uretiyor(client):
     # hiçbir zaman koşamayacak bir sorguyu doğru gibi gösteriyordu ve test de
     # onu çiviliyordu.
     #
-    # Artık Bizigo pipeline'ı bağlı: adlar `events_ocsf` görünümünün
+    # Artık LogAnalyzer pipeline'ı bağlı: adlar `events_ocsf` görünümünün
     # kolonlarına eşleniyor ve üretilen SQL gerçekten koşabiliyor. Varsayılanı
     # değiştirmek şu an bedavaydı — ucun hiç tüketicisi yok.
     assert body["table"] == "events_ocsf"

@@ -52,7 +52,7 @@ export function AppShell({ username, children }: AppShellProps) {
 
       <header className={styles.header}>
         <Link className={styles.brand} href="/">
-          Bizigo Log Analyzer
+          LogAnalyzer Log Analyzer
         </Link>
 
         <nav className={styles.nav} aria-label="Ana gezinme">

@@ -32,7 +32,7 @@ ticket dosyalarını tek tek açmadan verebilmek.
 F5 sonrası tanıtım materyali var, henüz kapsamlandırılmadı.
 
 **FS neden bu tabloda ve neden numarasız:** ekip gerçek cihazlara erişmiyor,
-dolayısıyla `Bizigo.Devices` ve ingest'in canlı yolu bugüne kadar hiçbir yerde
+dolayısıyla `LogAnalyzer.Devices` ve ingest'in canlı yolu bugüne kadar hiçbir yerde
 koşmuyordu. Ayrı bir faz çünkü üç yüzeye dokunuyor; **paralel** çünkü F3'ün
 kritik yoluyla hiçbir bağı yok. Ticket'ları `S` önekli (S01…S07).
 

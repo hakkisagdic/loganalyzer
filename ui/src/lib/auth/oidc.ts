@@ -170,7 +170,7 @@ export async function pkcePair(): Promise<{ verifier: string; challenge: string 
  * <b>Yalnızca `openid` kapsamı isteniyor</b> — `profile`/`email` DEĞİL. Realm
  * dosyasında `clientScopes` dizisi verildiği için Keycloak yerleşik scope'ları
  * hiç oluşturmuyor; olmayan bir scope istemek `invalid_scope` ile düşer.
- * İhtiyacımız olan claim'lerin tamamı zaten `bizigo-claims` içinde ve o,
+ * İhtiyacımız olan claim'lerin tamamı zaten `loganalyzer-claims` içinde ve o,
  * istemcinin varsayılan scope'u (`deploy/keycloak/README.md` — claim sözleşmesi).
  * </p>
  */

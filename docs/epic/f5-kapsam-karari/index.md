@@ -44,7 +44,7 @@ F1, F2 ve FS kapandı; F3'te bir kalem, F4'te iki kalem sürüyor. O an geldi.
 `kalan-is-raporu` §2 bunu yazdı ve bu belgenin başlangıç noktasıydı. Ölçüldü:
 **doğru, ama tek başına okunduğunda olduğundan büyük bir şey söylüyor.**
 
-`EvidenceKind` (`src/Bizigo.Evidence/EvidenceContract.cs:18`) beş değer taşıyor.
+`EvidenceKind` (`src/LogAnalyzer.Evidence/EvidenceContract.cs:18`) beş değer taşıyor.
 Kayıtlı sağlayıcılar `EvidenceServiceCollectionExtensions.cs:36-46`'da yedi
 satır:
 
@@ -156,7 +156,7 @@ Bunlar tür bağımsız ve **ölçüldü**:
 | Soru | Ölçülen cevap |
 | --- | --- |
 | Collector | `metrics` hattı yok; eklenmesi ayar |
-| Ingest ucu | `LogsEndpoint.cs` **tek** ingest arayüzü (`/v1/logs`). `Bizigo.Ingest/Otlp/` altında **yalnızca** `OtlpLogsDecoder.cs` var |
+| Ingest ucu | `LogsEndpoint.cs` **tek** ingest arayüzü (`/v1/logs`). `LogAnalyzer.Ingest/Otlp/` altında **yalnızca** `OtlpLogsDecoder.cs` var |
 | Ham sadakat | `WalFrame`, `RawObjectKey`, `RawArchiveService` log-satırı şeklinde. **Karar gerekiyor:** metrik ham arşive girecek mi? Girmezse replay garantisi **türe göre değişen** bir garanti olur ve bu bugün hiçbir yerde yazılı değil |
 | Depolama | Yeni tablo + geri alınamaz `ORDER BY` + TTL. Kardinalite ölçülmedi (§7) |
 | Kapsam | Metrik `resource.attributes` ile geliyor; `SourceDirectory` bunu tanımıyor |
@@ -198,7 +198,7 @@ source_id · host · vendor · product · parser_id · proto · action · outcom
 ```
 
 **VLAN yok. Upstream yok. Firmware yok.** Envanterde de yoklar: `SourceEntity`
-(`src/Bizigo.ControlPlane/Entities.cs:11`) `SourceId`, `PeerAddress`,
+(`src/LogAnalyzer.ControlPlane/Entities.cs:11`) `SourceId`, `PeerAddress`,
 `Hostname`, `OwnerGroup`, `Vendor`, `Product`, `ParserId`, `Encoding`,
 `SourceClass`, `Enabled` ve iki zaman damgası taşıyor — **tek bir ilişki alanı
 yok**, ne üst düğüm ne site ne bağlantı.
@@ -240,7 +240,7 @@ merkezine koydu:
 Ölçüldü, ve **cevap ilk bakışta beklenenin tersi.**
 
 **Ölçüm 1 — RCA'yı ne doğurabiliyor.** `RcaTriggerSource`
-(`src/Bizigo.Contracts/RcaTriggerSource.cs`) **dört** değer taşıyor: `Alert`,
+(`src/LogAnalyzer.Contracts/RcaTriggerSource.cs`) **dört** değer taşıyor: `Alert`,
 `Manual`, `External`, `Schedule`. K20'nin saydığı beşinci — anomali zinciri —
 bilerek **yok**; tipin kendi belgesi *"bir kaynak değil bir devam kuralı"* diyor
 ve izi `RcaRunEntity.Depth > 0`. Yani **bir anomaliyi ilk kez tespit eden hiçbir
@@ -441,7 +441,7 @@ bir gerekçelendirme aracına dönüşür.
 
 ## 8 · Ölçtüklerim, aradıklarım, aramadıklarım
 
-**İlk bakılacak yer:** `src/Bizigo.Evidence/EvidenceContract.cs` ve
+**İlk bakılacak yer:** `src/LogAnalyzer.Evidence/EvidenceContract.cs` ve
 `EvidenceServiceCollectionExtensions.cs` — sözleşmenin tanıdığı ile kaydedilenin
 ayrıştığı tek yer orası.
 
@@ -464,7 +464,7 @@ ayrıştığı tek yer orası.
 **Aradım ve bulamadım (yani "yok" bir ölçüm, tahmin değil):**
 
 - Metrik/trace tablosu, migration'ı ya da decoder'ı — `db/clickhouse/` ve
-  `src/Bizigo.Ingest/Otlp/` tarandı.
+  `src/LogAnalyzer.Ingest/Otlp/` tarandı.
 - Collector'da `metrics` / `traces` hattı.
 - Envanterde herhangi bir ilişki/üst-düğüm/site/VLAN alanı.
 - Bir anomali dedektörü — `BackgroundService`/`IHostedService` uygulayan **10

@@ -22,8 +22,8 @@ Kaynak olarak sunulacak üç şeyin **verisi** bugün var:
 
 | Kaynak | Bugünkü karşılığı |
 | --- | --- |
-| Kanıt paketi belgesi | `GET /v1/rca/{id}`; `Bizigo.Evidence` tarafında paket deposu |
-| RCA raporu | `Bizigo.Rca/Reasoning/RcaReportStore` + `RcaReportDocument` (bu hafta T44/T51 ile girdi) |
+| Kanıt paketi belgesi | `GET /v1/rca/{id}`; `LogAnalyzer.Evidence` tarafında paket deposu |
+| RCA raporu | `LogAnalyzer.Rca/Reasoning/RcaReportStore` + `RcaReportDocument` (bu hafta T44/T51 ile girdi) |
 | Parser tanımı | `GET /v1/parsers`, `catalog/parsers/` |
 
 `rca.runs` durum kaynağı: `GET /v1/rca/runs` var (T46'nın üç yönlü ayrımı —
@@ -86,7 +86,7 @@ Plan §2'nin uyum tablosu *"Kaynaklar | URI şeması, abonelik, değişiklik
 bildirimi"* diyor ve şemayı **tarif etmiyor**. Karar M07'nin ve şu:
 
 ```
-bizigo://{tür}/{kimlik}
+loganalyzer://{tür}/{kimlik}
 ```
 
 | Tür | Kimlik | Gövde |
@@ -107,7 +107,7 @@ REST'in geçtiği aynı kapı.
 imzası bunu zorluyor (bir `EvidenceBundle` istiyor, `Guid` değil). Rapor
 kimliğine adreslemek, kapsamın kapıya nasıl geldiğini ikinci kez kurmak olurdu.
 
-**Şema `bizigo://`, `https://` değil.** Kasıtlı olarak **dolaşılamaz**:
+**Şema `loganalyzer://`, `https://` değil.** Kasıtlı olarak **dolaşılamaz**:
 `https://` bir adres, istemcinin ya da modelin onu *getirebileceği* izlenimini
 verir — oysa bu belgeler yalnızca kimliğin çözüldüğü MCP oturumundan okunabiliyor.
 
@@ -117,7 +117,7 @@ verir — oysa bu belgeler yalnızca kimliğin çözüldüğü MCP oturumundan o
    yalnızca araçları ilan ediyordu ve yorumda *"Kaynaklar M07'de"* yazılıydı.
    M07 onu keşfedilen kümeye bağladı. **Ve burada bir kusur ölçüldü:** yeteneği
    koşullu atamak **yetmiyor**. SDK, `ResourceCollection` **var olduğu için**
-   yeteneği kendisi ilan ediyor — boş olsa bile. Yani `bizigo-sim` el
+   yeteneği kendisi ilan ediyor — boş olsa bile. Yani `loganalyzer-sim` el
    sıkışmasında `ResourcesCapability { ListChanged = True }` çıkıyordu. İlan
    edilmemesi için koleksiyonun **hiç kurulmaması** gerekiyor.
 2. **Bildirim sıklığı bir bütçe kalemi mi?** Cevap §6.4'te: koşum
@@ -167,10 +167,10 @@ olmayan bir tip yazmaktır."* `rca.runs` M14 ile main'e girdi, önkoşul oluştu
 
 | Parça | Nerede |
 | --- | --- |
-| Abonelik hedefi kaynak | `RcaRunsResource` — `bizigo://rca-runs`, **şablonsuz** |
-| Yayın sözleşmesi | `Bizigo.Contracts` · `IRcaRunChangeListener` + `RcaRunChange` |
-| Yayın kanalı | `Bizigo.Mcp` · `McpResourceUpdates` (canlı sunucu defteri) |
-| Köprü | `Bizigo.Mcp.Product` · `McpRcaRunChangeListener` |
+| Abonelik hedefi kaynak | `RcaRunsResource` — `loganalyzer://rca-runs`, **şablonsuz** |
+| Yayın sözleşmesi | `LogAnalyzer.Contracts` · `IRcaRunChangeListener` + `RcaRunChange` |
+| Yayın kanalı | `LogAnalyzer.Mcp` · `McpResourceUpdates` (canlı sunucu defteri) |
+| Köprü | `LogAnalyzer.Mcp.Product` · `McpRcaRunChangeListener` |
 | Yayın noktaları | `RcaAdmission` · `AdmitAsync`, `AttachBundleAsync`, `StopAsync` |
 
 `rca-runs` gövdesi `rca.runs` aracının **kendi** `ExecuteScopedAsync`'inden
@@ -285,9 +285,9 @@ bir bayrak, bildirimler listeye hiç girmiyor.
 Tarihsel arıza:
 
 ```
-$ bizigo mcp serve --surface bizigo --data-boundary internal
-Unhandled exception: MCP ilkeli `Bizigo.Mcp.Product.Tools.AlertRulesTool`
-kurulamadı: Unable to resolve service for type 'Bizigo.Alerting.AlertRuleService'
+$ loganalyzer mcp serve --surface loganalyzer --data-boundary internal
+Unhandled exception: MCP ilkeli `LogAnalyzer.Mcp.Product.Tools.AlertRulesTool`
+kurulamadı: Unable to resolve service for type 'LogAnalyzer.Alerting.AlertRuleService'
 ```
 
 Kusur M12'de üretim servis uzantıları aynı grafa bağlanarak kapatıldı. Bu
@@ -295,10 +295,10 @@ turda canlı ClickHouse/Postgres fixture'ına karşı yeniden ölçüldü:
 grafikten çözülen `IScopedQuery` gerçek sorguyu, grafikten kurulan araç da
 gerçek kontrol düzlemi çağrısını tamamladı.
 
-**2 · `Bizigo.Mcp.Product` iki referans daha aldı.** `Bizigo.Evidence` ve
-`Bizigo.Rca`. Ölçülen maliyet: Evidence → Contracts + Query (Cli'de ikisi de
+**2 · `LogAnalyzer.Mcp.Product` iki referans daha aldı.** `LogAnalyzer.Evidence` ve
+`LogAnalyzer.Rca`. Ölçülen maliyet: Evidence → Contracts + Query (Cli'de ikisi de
 var), Rca → Contracts + ControlPlane + ScenarioPlugin + `Extensions.Http`. Yeni
-çatı yok. Alternatif (ayrı derleme, yalnızca `Bizigo.Api`'den referans) elendi:
+çatı yok. Alternatif (ayrı derleme, yalnızca `LogAnalyzer.Api`'den referans) elendi:
 o zaman stdio bu kaynakları hiç göremezdi, yani aynı yüzey iki taşımada farklı
 şey sunardı.
 

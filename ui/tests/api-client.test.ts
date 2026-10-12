@@ -113,7 +113,7 @@ describe("adres kurulumu", () => {
 
     await api.get("/v1/events/{id}", { path: { id: "a b/c" } });
 
-    // Mutlak API adresi istemcide YOK: tarayıcı Bizigo.Api'yi hiç görmüyor.
+    // Mutlak API adresi istemcide YOK: tarayıcı LogAnalyzer.Api'yi hiç görmüyor.
     expect(spy.mock.calls[0]?.[0]).toBe("/api/bff/v1/events/a%20b%2Fc");
   });
 

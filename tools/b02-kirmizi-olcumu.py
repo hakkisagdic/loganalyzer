@@ -36,11 +36,11 @@ class Kusur:
     yesil_kalmali: list[str] = field(default_factory=list)
 
 
-WIRE = "sim/Bizigo.Capacity/WireDropReader.cs"
-METRICS = "sim/Bizigo.Capacity/CollectorMetricsReader.cs"
-LEDGER = "sim/Bizigo.Capacity/ArrivalLedger.cs"
+WIRE = "sim/LogAnalyzer.Capacity/WireDropReader.cs"
+METRICS = "sim/LogAnalyzer.Capacity/CollectorMetricsReader.cs"
+LEDGER = "sim/LogAnalyzer.Capacity/ArrivalLedger.cs"
 COMPOSE = "deploy/docker-compose.yml"
-GATE = "tests/Bizigo.UnitTests/EpicStatusTests.cs"
+GATE = "tests/LogAnalyzer.UnitTests/EpicStatusTests.cs"
 STORY = "docs/epic/tickets-kapasite/index.md"
 
 KUSURLAR = [
@@ -238,7 +238,7 @@ def derle() -> tuple[bool, str]:
 def test_kos(filtre: str) -> int:
     """Filtreli koşum. Ölçüt ÇIKIŞ KODU: sayıları metinden ayıklamak yerel dile
     bağlı olurdu ve ayıklama düştüğünde sessizce sıfır üretirdi."""
-    return kos(["dotnet", "test", "tests/Bizigo.UnitTests", "--nologo", "--filter", filtre]).returncode
+    return kos(["dotnet", "test", "tests/LogAnalyzer.UnitTests", "--nologo", "--filter", filtre]).returncode
 
 
 def main() -> int:
@@ -300,7 +300,7 @@ def main() -> int:
     print("\n=== geri alındı; TAM PAKET yeniden koşuyor ===")
     print("(bu adım isteğe bağlı değil: T44'te kusuru yakalayan şey bir bekçi değil bu koşumdu)\n")
 
-    sonuc = kos(["dotnet", "test", "tests/Bizigo.UnitTests", "--nologo"])
+    sonuc = kos(["dotnet", "test", "tests/LogAnalyzer.UnitTests", "--nologo"])
     cikti = sonuc.stdout + sonuc.stderr
     print(next((s for s in cikti.splitlines() if "Başarısız:" in s or "Failed:" in s), "(özet okunamadı)"))
 

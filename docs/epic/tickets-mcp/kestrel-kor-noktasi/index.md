@@ -10,7 +10,7 @@ status: 2
 yüzeyinde bir kapıya çevirdi ve kapının **kör noktasını da yazdı**:
 
 > **HTTP taşımasında dinlenen adresi doğrulamıyor.** Kestrel'in nereye
-> bağlandığı `Bizigo.Api`'nin yapılandırması ve bu kapının göremediği yer.
+> bağlandığı `LogAnalyzer.Api`'nin yapılandırması ve bu kapının göremediği yer.
 > Kurum dışına açılmış bir dinleyici + `internal` beyanı, "yalan söyleyen
 > yönetici" hâlinin **kazara** olanı.
 
@@ -27,8 +27,8 @@ Kapının imzası `Require(McpBoundaryDeclaration, McpSurface)`. Dinleyici bilgi
 | --- | --- | --- |
 | Beyan var mı (`Unspecified` reddi) | **Görüyor** | `McpBoundaryDeclaration` yapıcısı `private`; tip beyansız var olamıyor |
 | Beyanın gerekçesi var mı (`Basis`) | **Görüyor** | aynı yapıcı; boş `Basis` reddediliyor |
-| Ürün yüzeyi `external` mi | **Görüyor** | `McpBoundaryGate.Require`, iki üretim çağrısı (`BizigoMcpServer.Apply:127`, `McpCommandHandlers:147`) |
-| Beyan hangi yapılandırmadan geldi | **Görüyor** | `BizigoMcpSetup.ReadBoundary`, anahtar `Mcp:DataBoundary` |
+| Ürün yüzeyi `external` mi | **Görüyor** | `McpBoundaryGate.Require`, iki üretim çağrısı (`LogAnalyzerMcpServer.Apply:127`, `McpCommandHandlers:147`) |
+| Beyan hangi yapılandırmadan geldi | **Görüyor** | `LogAnalyzerMcpSetup.ReadBoundary`, anahtar `Mcp:DataBoundary` |
 | **Sunucu hangi adresi dinliyor** | **GÖRMÜYOR** | `IServerAddressesFeature` deponun hiçbir yerinde geçmiyordu (`rg` → 0 eşleşme) |
 | Dinleyici dışa açık mı | **GÖRMÜYOR** | aynı sebep |
 
@@ -37,9 +37,9 @@ sorusunun cevabı:
 
 | Nerede | Bağlama | Sınıf |
 | --- | --- | --- |
-| `src/Bizigo.Api/Dockerfile:85` | `ASPNETCORE_URLS=http://0.0.0.0:8080` | **joker** |
+| `src/LogAnalyzer.Api/Dockerfile:85` | `ASPNETCORE_URLS=http://0.0.0.0:8080` | **joker** |
 | `deploy/docker-compose.yml:337` | `"${API_PORT:-5080}:8080"` publish | süreç dışı |
-| `src/Bizigo.Api/Properties/launchSettings.json` | `http://localhost:5058` | loopback |
+| `src/LogAnalyzer.Api/Properties/launchSettings.json` | `http://localhost:5058` | loopback |
 | `ui/playwright.config.ts:180` | `ASPNETCORE_URLS=http://localhost:5080` | loopback |
 | `tests/…/McpKeycloakIdentityTests` | `http://127.0.0.1:0` | loopback |
 
@@ -51,11 +51,11 @@ sorgulamıyor.
 ## 2 · Kararın merkezi: sıra sorunu
 
 `IServerAddressesFeature` **Kestrel bağlandıktan sonra** doluyor; M06'nın kapısı
-**kayıt anında** koşuyor (`AddBizigoMcpCore`). İki cevap vardı.
+**kayıt anında** koşuyor (`AddLogAnalyzerMcpCore`). İki cevap vardı.
 
 | Yol | Bedeli |
 | --- | --- |
-| **Kapıyı geciktir** (tek kapı) | Üç şeyi birden bozuyor. (1) M06 beyan reddini **bilerek** kurulum anına çekti — *"yanlış yapılandırılmış bir sunucu hiç başlamıyor, yarım başlamıyor"*; kapıyı kalkışa taşımak o kararı geri alır. (2) Kapı taşımadan bağımsız ve `Bizigo.Cli` de onu çağırıyor; stdio'da dinleyici adresi diye bir şey yok, yani ortak kapı ASP.NET'e bağlanırdı — `Bizigo.Mcp`'nin web çatısından uzak tutulması ölçülmüş bir karar (beş `CS0433`). (3) Çağrı yeri M07'nin dosyası. |
+| **Kapıyı geciktir** (tek kapı) | Üç şeyi birden bozuyor. (1) M06 beyan reddini **bilerek** kurulum anına çekti — *"yanlış yapılandırılmış bir sunucu hiç başlamıyor, yarım başlamıyor"*; kapıyı kalkışa taşımak o kararı geri alır. (2) Kapı taşımadan bağımsız ve `LogAnalyzer.Cli` de onu çağırıyor; stdio'da dinleyici adresi diye bir şey yok, yani ortak kapı ASP.NET'e bağlanırdı — `LogAnalyzer.Mcp`'nin web çatısından uzak tutulması ölçülmüş bir karar (beş `CS0433`). (3) Çağrı yeri M07'nin dosyası. |
 | **İkinci kapı** (seçilen) | Beyanın **dürüstlüğü** kurulum anında, **topolojisi** kalkışta sınanıyor. Bedeli iki yerde bakmak, ve bir kapının ne zaman koştuğunu bilmeyen okuyucunun ikisini tek sanması. |
 
 **Seçilen: ikinci kapı.** Gerekçe, iki sorunun **farklı bilgiye** ihtiyaç
@@ -170,7 +170,7 @@ kararın **yazılı bir gerekçesi olduğu**, doğru olduğu değil.
 kalkmıyor, aynı bağlama gerekçeyle kalkıyor (kontrol çifti).
 3. Muafiyet gerekçeli, sayısı sabitle çivili, ve **bağlamasına bağlı** — ✅ iki
 yönlü bekçi.
-4. Kapı üretimin kaydında **bağlı** — ✅ `AddBizigoMcp` onu kuruyor; T50'nin
+4. Kapı üretimin kaydında **bağlı** — ✅ `AddLogAnalyzerMcp` onu kuruyor; T50'nin
 *var olmak ile bağlı olmak* ayrımı.
 5. Kapının tutamadıkları sınıfın üstünde ve bu belgede yazılı — ✅ altı kalem.
 6. Bekçilerin kırmızı yanabildiği ölçüldü — ✅ yedi kusur,
@@ -205,13 +205,13 @@ yakamadı**:
 > `K6 kapısı sunucu kurulumundan çıkarılıyor` →
 > `Kurum_disi_beyan_sunucu_kurulumunda_reddediliyor`: **YEŞİL KALDI**
 
-Yani `BizigoMcpServer.Apply`'den `McpBoundaryGate.Require` satırı silindiğinde o
+Yani `LogAnalyzerMcpServer.Apply`'den `McpBoundaryGate.Require` satırı silindiğinde o
 test hâlâ geçiyor. Sebep ölçüldü — geçici bir testle, `Internal` beyanıyla (yani
 kapı sessizken) aynı çağrı yapıldı:
 
 ```
-InvalidOperationException — MCP aracı `Bizigo.Commands.Mcp.FieldsCoverageTool`
-kurulamadı: Unable to resolve service for type 'Bizigo.Commands.ParserToolbox'…
+InvalidOperationException — MCP aracı `LogAnalyzer.Commands.Mcp.FieldsCoverageTool`
+kurulamadı: Unable to resolve service for type 'LogAnalyzer.Commands.ParserToolbox'…
 ```
 
 Test boş bir `ServiceProvider` veriyor ve yalnızca **istisna tipini** sınıyor.
@@ -232,5 +232,5 @@ kalsaydı bir sonraki kişi aynı ölçümü ikinci kez yapardı.
 ## Bağımlılıklar
 
 M06 (kapının kendisi) ve T42 (adres sınıfı yüklemi). M07 ile **kesişiyor**:
-`BizigoMcpServer.Apply` M07'nin dosyası ve M11 ona dokunmadı — kapının ikinci
+`LogAnalyzerMcpServer.Apply` M07'nin dosyası ve M11 ona dokunmadı — kapının ikinci
 olmasının üçüncü gerekçesi bu.

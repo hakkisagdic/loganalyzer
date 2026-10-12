@@ -1,7 +1,7 @@
 ---
 title: Sessiz yanlış davranış
 category: concepts
-tags: [surec, test, kavram, bizigo]
+tags: [surec, test, kavram, loganalyzer]
 aliases: [sessiz hata, belirtisiz kusur]
 relationships:
   - target: "[[concepts/elle-tutulan-liste-bekciyi-korlestirir]]"

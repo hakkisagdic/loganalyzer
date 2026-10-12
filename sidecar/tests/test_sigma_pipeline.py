@@ -2,7 +2,7 @@
 
 **pySigma GEREKTİRMİYOR.** Bu bilinçli: eşleme tablolarının doğruluğu backend
 sürümünden bağımsız bir olgu ve CI'da backend kurulu olmadan da sınanmalı.
-`sigma_pipeline` pySigma'yı yalnızca `bizigo_pipeline()` içinde import ediyor,
+`sigma_pipeline` pySigma'yı yalnızca `loganalyzer_pipeline()` içinde import ediyor,
 dolayısıyla buradaki her şey saf Python.
 
 Ölçülen şey: bir Sigma alanının hangi **sınıfa** düştüğü.
@@ -239,7 +239,7 @@ def _sql(rule_name: str) -> str:
     pytest.importorskip("sigma.backends.clickhouse.clickhouse")
     from sigma.collection import SigmaCollection
 
-    backend = sp.bizigo_backend(mappings_path=CATALOG / "mappings")
+    backend = sp.loganalyzer_backend(mappings_path=CATALOG / "mappings")
     path = RULES / rule_name
 
     # Adı geçen kural yoksa bu bir ATLAMA sebebi değil, bir arıza: korpus
@@ -298,7 +298,7 @@ def test_ip_esitligi_indeksli_kolonda_kaliyor() -> None:
         "logsource:\n  category: firewall\n  product: fortigate\n"
         "detection:\n  selection:\n    srcip: '10.0.0.1'\n  condition: selection\nlevel: low\n"
     )
-    sql = sp.bizigo_backend(mappings_path=CATALOG / "mappings").convert(
+    sql = sp.loganalyzer_backend(mappings_path=CATALOG / "mappings").convert(
         SigmaCollection.from_yaml(rule)
     )[0]
 
@@ -352,7 +352,7 @@ def test_hic_taninmayan_alan_da_derlemeyi_dusuruyor() -> None:
     )
 
     with pytest.raises(SigmaTransformationError) as caught:
-        sp.bizigo_backend(mappings_path=CATALOG / "mappings").convert(
+        sp.loganalyzer_backend(mappings_path=CATALOG / "mappings").convert(
             SigmaCollection.from_yaml(rule)
         )
 
@@ -463,7 +463,7 @@ def test_routeros_action_kolonu_SESSIZCE_bos_donmuyor() -> None:
     )
 
     with pytest.raises(SigmaTransformationError) as caught:
-        sp.bizigo_backend(mappings_path=CATALOG / "mappings").convert(
+        sp.loganalyzer_backend(mappings_path=CATALOG / "mappings").convert(
             SigmaCollection.from_yaml(rule)
         )
 
@@ -486,7 +486,7 @@ def test_bekci_diger_vendorlarda_action_i_ENGELLEMIYOR() -> None:
         "logsource:\n  category: firewall\n  product: fortigate\n"
         "detection:\n  selection:\n    action: 'blocked'\n  condition: selection\nlevel: low\n"
     )
-    sql = sp.bizigo_backend(mappings_path=CATALOG / "mappings").convert(
+    sql = sp.loganalyzer_backend(mappings_path=CATALOG / "mappings").convert(
         SigmaCollection.from_yaml(rule)
     )[0]
 
@@ -521,7 +521,7 @@ def test_bilinmeyen_product_ta_bekci_YASAKLAMIYOR() -> None:
         "detection:\n  selection:\n    action: 'denied'\n    user_name: 'admin'\n"
         "  condition: selection\nlevel: low\n"
     )
-    sql = sp.bizigo_backend(mappings_path=CATALOG / "mappings").convert(
+    sql = sp.loganalyzer_backend(mappings_path=CATALOG / "mappings").convert(
         SigmaCollection.from_yaml(rule)
     )[0]
 
@@ -554,4 +554,4 @@ def test_sozlukler_okunamazsa_KURULUM_hatasi_kullanici_hatasi_degil() -> None:
     # Mesaj NEREYE bakılacağını söylüyor: "okunamadı" tek başına bir sonraki
     # kişiyi kuralın içinde arattırırdı.
     assert "kurulum sorunu" in str(caught.value)
-    assert "BIZIGO_MAPPINGS_PATH" in str(caught.value)
+    assert "LOGANALYZER_MAPPINGS_PATH" in str(caught.value)

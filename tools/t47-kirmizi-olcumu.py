@@ -23,7 +23,7 @@ import sys
 from kirmizi_olcumu import Kusur, olc, vitest_kosumu  # noqa: F401  (vitest bu ticket'ta kullanılmıyor)
 from kirmizi_olcumu import dotnet_kosumu
 
-BINDER = "src/Bizigo.Rca/Reasoning/SentenceBinder.cs"
+BINDER = "src/LogAnalyzer.Rca/Reasoning/SentenceBinder.cs"
 
 KUSURLAR = [
     Kusur(

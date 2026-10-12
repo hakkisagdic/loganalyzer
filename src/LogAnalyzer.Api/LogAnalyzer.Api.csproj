@@ -1,0 +1,74 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\LogAnalyzer.Query\LogAnalyzer.Query.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Devices\LogAnalyzer.Devices.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Ingest\LogAnalyzer.Ingest.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Replay\LogAnalyzer.Replay.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Authoring\LogAnalyzer.Authoring.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Alerting\LogAnalyzer.Alerting.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Evidence\LogAnalyzer.Evidence.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Rca\LogAnalyzer.Rca.csproj" />
+    <ProjectReference Include="..\LogAnalyzer.Mcp\LogAnalyzer.Mcp.csproj" />
+
+    <!--
+      M04'ün okuma araçları. Bu referans OLMAK ZORUNDA: `McpToolDiscovery`
+      kompozisyon kökünden başlayıp `LogAnalyzer.*` referanslarını geçişli olarak
+      yürüyor, yani referanslanmayan bir araç derlemesi keşfe HİÇ GÖRÜNMÜYOR —
+      ve sessizce görünmüyor, çünkü boş bir araç kümesi de geçerli bir kümedir.
+    -->
+    <ProjectReference Include="..\LogAnalyzer.Mcp.Product\LogAnalyzer.Mcp.Product.csproj" />
+
+    <!--
+      M02 — komut araçları. HTTP taşıması bu derlemeden sürülüyor ve keşif
+      kompozisyon kökü olarak BURAYI geziyor; referans olmazsa araçlar
+      stdio'da görünüp HTTP'de görünmezdi — aynı sunucunun iki farklı
+      araç kümesi.
+    -->
+    <ProjectReference Include="..\LogAnalyzer.Commands.Mcp\LogAnalyzer.Commands.Mcp.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- OpenAPI belgesi derleme zamanında dosyaya yazılıyor (T14). Varsayılan
+         KAPALI: her `dotnet build` bir yardımcı süreç başlatıp uygulamanın host
+         grafiğini kurar, bu da normal derlemeye saniyeler ekler. Üretim tek
+         yerden yapılıyor: `ui/scripts/generate-api-types.sh`. -->
+    <OpenApiGenerateDocuments Condition="'$(OpenApiGenerateDocuments)' == ''">false</OpenApiGenerateDocuments>
+    <OpenApiDocumentsDirectory>$(MSBuildThisFileDirectory)../../ui/openapi</OpenApiDocumentsDirectory>
+    <OpenApiGenerateDocumentsOptions>--file-name loganalyzer-api</OpenApiGenerateDocumentsOptions>
+  </PropertyGroup>
+
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="SharpZipLib" />
+
+    <!--
+      MCP'nin akışlanabilir HTTP taşıması. `LogAnalyzer.Mcp`'de DEĞİL: orada
+      olması `LogAnalyzer.Cli`'yi ASP.NET paylaşılan çatısına sürüklüyordu
+      (gerekçe ve ölçüm `LogAnalyzer.Mcp.csproj` yorumunda).
+    -->
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!--
+    Belge üretim aracı uygulamayı GERÇEKTEN çalıştırıyor ve uygulama, göreli
+    katalog yollarını (`catalog/...`, `db/clickhouse`) çözebilmek için çalışma
+    dizinini depo köküne alıyor (bkz. Program.cs). Aracın kendi dosya listesi
+    yolu ise göreli (`obj/...`) ve aynı süreçte, değişmiş çalışma dizininde
+    yazılmaya çalışılıyor — sonuç: belge üretiliyor ama adım DirectoryNotFound
+    ile düşüyor. Mutlak yola çevirmek ikisini birbirinden ayırıyor.
+  -->
+  <Target Name="LogAnalyzerMutlakOpenApiOnbellegi" BeforeTargets="GenerateOpenApiDocuments">
+    <PropertyGroup>
+      <_OpenApiDocumentsCache>$([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '$(BaseIntermediateOutputPath)', '$(MSBuildProjectName).OpenApiFiles.cache'))</_OpenApiDocumentsCache>
+    </PropertyGroup>
+  </Target>
+
+</Project>

@@ -624,7 +624,7 @@ Rapor **üretimi** senaryo plugin'i. Çekirdek olan: kuyruk, kanıt sağlayıcı
 rapor deposu, UI, export. K15'in "her adım tek iş" kısıtı burada da geçerli:
 
 ```yaml
-apiVersion: bizigo.dev/v1
+apiVersion: loganalyzer.dev/v1
 kind: Scenario
 metadata:
   id: builtin.rca.network

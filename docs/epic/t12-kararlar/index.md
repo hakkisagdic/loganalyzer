@@ -10,7 +10,7 @@ title: "T12 — sidecar ve şablon keşfinde alınan kararlar"
 > yazan gerekçeler kodun bugünkü hâlinden çıkarıldı; o an tartışılıp reddedilen
 > alternatifler kayıtta yok.
 
-Uygulanan yer: `src/Bizigo.Ingest/Discovery/` + `sidecar/`. Yöneten karar:
+Uygulanan yer: `src/LogAnalyzer.Ingest/Discovery/` + `sidecar/`. Yöneten karar:
 [K14](../mimari-kararlar/index.md) — şablon madenciliği **Python sidecar**
 (Drain3), port yazılmayacak.
 
@@ -81,7 +81,7 @@ sürümde olduğu doğrulanabilsin diye.
 
 | # | Ne | Durum |
 | --- | --- | --- |
-| D3 | `SidecarLiveTests` | **Hiç koşmadı.** `BIZIGO_SIDECAR_LIVE=1` + `sidecar/.venv` gerekiyor; CI'da ikisi de yok |
+| D3 | `SidecarLiveTests` | **Hiç koşmadı.** `LOGANALYZER_SIDECAR_LIVE=1` + `sidecar/.venv` gerekiyor; CI'da ikisi de yok |
 | — | `HotPathCostMeasurement` | Aynı şekilde atlanıyor |
 | — | Altı yapılandırma sabitinin gerekçesi | Kayıtta yok |
 

@@ -66,7 +66,7 @@ göster" diyebiliyor.
    referans verilmesini yasaklıyor.
 
 Üçüncüsü olmadan ilk ikisi kâğıt üstünde kalırdı: biri kolaylık olsun diye
-`Bizigo.Api`'de bir bağlantı açar, filtre atlanır ve kimse fark etmez. Testin
+`LogAnalyzer.Api`'de bir bağlantı açar, filtre atlanır ve kimse fark etmez. Testin
 yorumu bunu açıkça yazıyor: *"amacı insanı yakalamak değil, o yolu baştan
 kapatmak."*
 
@@ -121,7 +121,7 @@ uyarısına dönüştü.
 ### Eşleşmeyen kaynak reddedilmiyor
 
 `_unassigned` grubuna düşüyor, sağlık uyarısı üretiyor ve
-`bizigo.unassigned_source_key` ile hangi anahtarın eşleşmediği **saklanıyor**.
+`loganalyzer.unassigned_source_key` ile hangi anahtarın eşleşmediği **saklanıyor**.
 Gerekçe F1 §8'de: veri kaybı, eksik envanterden kötüdür.
 
 Kapsamı olan bir grup adı olduğu için `_unassigned` verisi de kapsam kapısından
@@ -186,7 +186,7 @@ Bu depoda elle beslenen bir listenin bekçiyi kör etmesi **üç kez** yaşandı
 | Nerede | Ne görünmez oldu |
 | --- | --- |
 | `ProducesContractTests` | Uçlar elle yazılmış `Map*` listesinden toplanıyordu; **16 uç kapıya hiç görünmedi ve üç test de yeşildi** |
-| Yaşam süresi bekçisi | `AddBizigoAuthentication` listede yoktu; kimlik/yetki grafiği **bir kez bile** kapsam doğrulamasından geçmemişti |
+| Yaşam süresi bekçisi | `AddLogAnalyzerAuthentication` listede yoktu; kimlik/yetki grafiği **bir kez bile** kapsam doğrulamasından geçmemişti |
 | `sigma_build` Kapı 2 | Tip denetimi hiç yapılmıyordu |
 
 Üçü de **yansımaya çevrilerek** çözüldü: denetlenen kümeyi keşfet, elle kalan

@@ -38,8 +38,8 @@ import { discover, resetDiscoveryCache } from "@/lib/auth/oidc";
  * </p>
  */
 
-const PUBLIC_ISSUER = "http://localhost:8180/realms/bizigo";
-const INTERNAL_METADATA = "http://keycloak:8080/realms/bizigo/.well-known/openid-configuration";
+const PUBLIC_ISSUER = "http://localhost:8180/realms/loganalyzer";
+const INTERNAL_METADATA = "http://keycloak:8080/realms/loganalyzer/.well-known/openid-configuration";
 
 /** Belgeyi kim indirdi — testin asıl gözlemi. */
 let fetched: string[];
@@ -58,10 +58,10 @@ let realFetch: typeof globalThis.fetch;
 function containerDocument(overrides: Record<string, unknown> = {}) {
   return {
     issuer: PUBLIC_ISSUER,
-    authorization_endpoint: "http://localhost:8180/realms/bizigo/protocol/openid-connect/auth",
-    token_endpoint: "http://keycloak:8080/realms/bizigo/protocol/openid-connect/token",
-    jwks_uri: "http://keycloak:8080/realms/bizigo/protocol/openid-connect/certs",
-    end_session_endpoint: "http://localhost:8180/realms/bizigo/protocol/openid-connect/logout",
+    authorization_endpoint: "http://localhost:8180/realms/loganalyzer/protocol/openid-connect/auth",
+    token_endpoint: "http://keycloak:8080/realms/loganalyzer/protocol/openid-connect/token",
+    jwks_uri: "http://keycloak:8080/realms/loganalyzer/protocol/openid-connect/certs",
+    end_session_endpoint: "http://localhost:8180/realms/loganalyzer/protocol/openid-connect/logout",
     ...overrides,
   };
 }
@@ -132,18 +132,18 @@ describe("ön kanal ve arka kanal ayrımı", () => {
     // yönlendirilirdi. İddia bizim tarafımızda duruyor.
     serve(
       containerDocument({
-        authorization_endpoint: "http://keycloak:8080/realms/bizigo/protocol/openid-connect/auth",
-        end_session_endpoint: "http://keycloak:8080/realms/bizigo/protocol/openid-connect/logout",
+        authorization_endpoint: "http://keycloak:8080/realms/loganalyzer/protocol/openid-connect/auth",
+        end_session_endpoint: "http://keycloak:8080/realms/loganalyzer/protocol/openid-connect/logout",
       }),
     );
 
     const document = await discover(readBffConfig());
 
     expect(document.authorization_endpoint).toBe(
-      "http://localhost:8180/realms/bizigo/protocol/openid-connect/auth",
+      "http://localhost:8180/realms/loganalyzer/protocol/openid-connect/auth",
     );
     expect(document.end_session_endpoint).toBe(
-      "http://localhost:8180/realms/bizigo/protocol/openid-connect/logout",
+      "http://localhost:8180/realms/loganalyzer/protocol/openid-connect/logout",
     );
   });
 
@@ -164,10 +164,10 @@ describe("ön kanal ve arka kanal ayrımı", () => {
     const document = await discover(readBffConfig());
 
     expect(document.token_endpoint).toBe(
-      "http://keycloak:8080/realms/bizigo/protocol/openid-connect/token",
+      "http://keycloak:8080/realms/loganalyzer/protocol/openid-connect/token",
     );
     expect(document.jwks_uri).toBe(
-      "http://keycloak:8080/realms/bizigo/protocol/openid-connect/certs",
+      "http://keycloak:8080/realms/loganalyzer/protocol/openid-connect/certs",
     );
   });
 
@@ -199,13 +199,13 @@ describe("issuer doğrulaması", () => {
    * <p>
    * Ölçülen tuzak: <c>KC_HOSTNAME</c> ayarlı değilse Keycloak issuer'ı isteğin
    * host'undan türetiyor. O hâlde iç adresten inen belge
-   * <c>http://keycloak:8080/realms/bizigo</c> derdi ve API'nin beklediğiyle
+   * <c>http://keycloak:8080/realms/loganalyzer</c> derdi ve API'nin beklediğiyle
    * uyuşmazdı — her istekte 401, sebebini söyleyen hiçbir mesaj yok.
    * </p>
    */
   it("Ic_adresten_farkli_issuer_gelirse_reddediliyor", async () => {
     process.env.KEYCLOAK_METADATA_URL = INTERNAL_METADATA;
-    serve(containerDocument({ issuer: "http://keycloak:8080/realms/bizigo" }));
+    serve(containerDocument({ issuer: "http://keycloak:8080/realms/loganalyzer" }));
 
     await expect(discover(readBffConfig())).rejects.toThrow(/issuer/i);
   });

@@ -28,10 +28,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Build
-        run: dotnet build Bizigo.sln -c Release -m:1
+        run: dotnet build LogAnalyzer.sln -c Release -m:1
       - name: Operational E2E test suite and single-TRX verifier
         run: |
-          dotnet test tests/Bizigo.IntegrationTests --logger 'trx;LogFileName=operational-e2e-report.trx'
+          dotnet test tests/LogAnalyzer.IntegrationTests --logger 'trx;LogFileName=operational-e2e-report.trx'
           python3 tools/otlp-verify-trx.py TestResults/operational-e2e-report.trx --require-class OperationalE2EIntegrationTests
       - name: Operational image gate
         run: python3 tools/operational-image-gate.py --compose deploy/docker-compose.s08.yml --manifest deploy/s08-image-manifest.json

@@ -39,7 +39,7 @@ tanımlı.
 toplama, F4 MCP) buradan geçer; `owner_group IN (...)` filtresi burada enjekte
 edilir. Kapsam listesi kullanıcının claim'lerinden `idp_group_mapping` üzerinden
 çözülür.
-6. **Mimari testler (NetArchTest)** — `Bizigo.Storage.ClickHouse` dışındaki hiçbir
+6. **Mimari testler (NetArchTest)** — `LogAnalyzer.Storage.ClickHouse` dışındaki hiçbir
 tip `ClickHouse.Driver`'a referans veremez. Bu kural olmadan kapsam ayrımı ilk
 aceleci PR'da delinir.
 

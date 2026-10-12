@@ -1,7 +1,7 @@
 ---
 title: Bekçiyi kırmızı yakmak
 category: skills
-tags: [test, surec, yordam, bizigo]
+tags: [test, surec, yordam, loganalyzer]
 aliases: [bekçi doğrulama yordamı, mutasyon turu, yanlış pozitif kontrolü]
 relationships:
   - target: "[[concepts/elle-tutulan-liste-bekciyi-korlestirir]]"

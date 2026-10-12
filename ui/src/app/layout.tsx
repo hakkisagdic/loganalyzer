@@ -7,7 +7,7 @@ import { themeBootstrapScript } from "@/components/ui/ThemeToggle";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Bizigo Log Analyzer",
+  title: "LogAnalyzer Log Analyzer",
   description: "Log toplama, normalleştirme ve sorgulama",
 };
 

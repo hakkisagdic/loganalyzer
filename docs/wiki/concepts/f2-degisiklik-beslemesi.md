@@ -1,7 +1,7 @@
 ---
 title: Değişiklik beslemesi — üç kaynak, üç ayrı büyüklük
 category: concepts
-tags: [mimari, guvenlik, kavram, bizigo]
+tags: [mimari, guvenlik, kavram, loganalyzer]
 aliases: [K34, change feed, change_events, cihaz config farkı]
 relationships:
   - target: "[[concepts/f2-kapsam-tek-kapi]]"
@@ -10,7 +10,7 @@ relationships:
     type: uses
   - target: "[[references/f2-kapanis]]"
     type: derived_from
-  - target: "[[projects/bizigo-loganalyzer/bizigo-loganalyzer]]"
+  - target: "[[projects/loganalyzer-loganalyzer/loganalyzer-loganalyzer]]"
     type: related_to
 sources:
   - docs/epic/f2-teknik-plan/index.md

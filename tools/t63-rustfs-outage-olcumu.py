@@ -36,13 +36,13 @@ from pathlib import Path
 
 
 KOK = Path(__file__).resolve().parent.parent
-API = "bizigo-api-1"
-RUSTFS = "bizigo-rustfs-1"
-POSTGRES = "bizigo-postgres-1"
+API = "loganalyzer-api-1"
+RUSTFS = "loganalyzer-rustfs-1"
+POSTGRES = "loganalyzer-postgres-1"
 
 API_ORIGIN = "http://127.0.0.1:5080"
 KEYCLOAK_TOKEN_URL = (
-    "http://127.0.0.1:8180/realms/bizigo/protocol/openid-connect/token"
+    "http://127.0.0.1:8180/realms/loganalyzer/protocol/openid-connect/token"
 )
 
 BATCH_SAYISI = 3
@@ -112,8 +112,8 @@ def http_json(url: str, *, method: str = "GET", body: object | bytes | None = No
 def belirtec() -> str:
     govde = urllib.parse.urlencode({
         "grant_type": "client_credentials",
-        "client_id": "bizigo-collector",
-        "client_secret": "bizigo-collector-dev-secret",
+        "client_id": "loganalyzer-collector",
+        "client_secret": "loganalyzer-collector-dev-secret",
     }).encode("ascii")
 
     durum, yuk = http_json(
@@ -147,7 +147,7 @@ def manifest_ozeti(segmentler: list[str]) -> ManifestOzeti:
     adlar = ", ".join("'" + segment.replace("'", "''") + "'" for segment in segmentler)
     ham = komut(
         "docker", "exec", POSTGRES,
-        "psql", "-U", "bizigo", "-d", "bizigo", "-Atc",
+        "psql", "-U", "loganalyzer", "-d", "loganalyzer", "-Atc",
         "select count(distinct wal_segment), count(*), count(verified_at), "
         "count(*) filter (where verified_at is null), coalesce(sum(event_count), 0) "
         "from raw_manifest where regexp_replace(wal_segment, '^.*/', '') "
@@ -216,7 +216,7 @@ def wal_baglama() -> tuple[str, str]:
     imaj = komut("docker", "inspect", "--format", "{{.Config.Image}}", API)
     volume = komut(
         "docker", "inspect", "--format",
-        "{{range .Mounts}}{{if eq .Destination \"/var/lib/bizigo/wal\"}}{{.Name}}{{end}}{{end}}",
+        "{{range .Mounts}}{{if eq .Destination \"/var/lib/loganalyzer/wal\"}}{{.Name}}{{end}}{{end}}",
         API,
     )
     if not volume:

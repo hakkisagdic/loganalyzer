@@ -52,7 +52,7 @@ sessizce bozuyor.
 
 ## Kabul kriterleri
 
-dotnet build sıfır uyarı (uyarılar hata) — 0 uyarı / 0 hataBirim testleri yeşil — 10/10 (SQL ifade ayırıcısı)Çözüm düzeni, CPM, .editorconfig, .gitignore, global.jsonEF Core Initial göçü üretildi; ClickHouse migration runner + sürüklenme tespiti yazıldıCI workflow'u yazıldı (build+birim / entegrasyon / compose doğrulaması olarak üç iş)docker compose config geçerli; imajların tamamı çekildi ve sürümleri sabitlendi⛔ docker compose up -d → yedi servis de healthy — engelli, bkz. §Engel⛔ Entegrasyon smoke testleri (Testcontainers) — aynı engel⛔ dotnet run --project src/Bizigo.Api göçleri uyguluyor — aynı engel
+dotnet build sıfır uyarı (uyarılar hata) — 0 uyarı / 0 hataBirim testleri yeşil — 10/10 (SQL ifade ayırıcısı)Çözüm düzeni, CPM, .editorconfig, .gitignore, global.jsonEF Core Initial göçü üretildi; ClickHouse migration runner + sürüklenme tespiti yazıldıCI workflow'u yazıldı (build+birim / entegrasyon / compose doğrulaması olarak üç iş)docker compose config geçerli; imajların tamamı çekildi ve sürümleri sabitlendi⛔ docker compose up -d → yedi servis de healthy — engelli, bkz. §Engel⛔ Entegrasyon smoke testleri (Testcontainers) — aynı engel⛔ dotnet run --project src/LogAnalyzer.Api göçleri uyguluyor — aynı engel
 
 ## Engel — Docker Desktop disk sınırı
 
@@ -94,6 +94,6 @@ RustFS ve OTel Collector sürümleri tam sabitlenir.
 - Keycloak `start-dev` **kullanılmaz** — `start --optimized` + Postgres + `--import-realm`
 ([F1 §10.1](../../f1-teknik-plan/index.md)). Realm dosyası T09'da doldurulur; bu
 ticket'ta minimum geçerli bir realm yeterli.
-- `Bizigo.Storage.ClickHouse` projesi **internal**: T02'de NetArchTest kuralı gelecek,
+- `LogAnalyzer.Storage.ClickHouse` projesi **internal**: T02'de NetArchTest kuralı gelecek,
 bu ticket'ta yalnızca proje referans grafiği doğru kurulur (kimse doğrudan
 referans vermez).

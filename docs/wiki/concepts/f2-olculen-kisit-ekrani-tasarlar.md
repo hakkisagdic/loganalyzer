@@ -1,7 +1,7 @@
 ---
 title: Ölçülen kısıt ekranı tasarlar
 category: concepts
-tags: [arayuz, veri-deposu, test, kavram, bizigo]
+tags: [arayuz, veri-deposu, test, kavram, loganalyzer]
 aliases: [kısa sorgu eşiği, keyset kısıtı, ölçüm ekrana iniyor]
 relationships:
   - target: "[[concepts/f2-kapsam-tek-kapi]]"

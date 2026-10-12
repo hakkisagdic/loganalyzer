@@ -1,7 +1,7 @@
 ---
 title: Şema kararı bir kez verilir
 category: concepts
-tags: [veri-deposu, log-analiz, kavram, bizigo]
+tags: [veri-deposu, log-analiz, kavram, loganalyzer]
 aliases: [ORDER BY kararı, sparseGrams eşiği, keyset sayfalama]
 relationships:
   - target: "[[concepts/f1-kapsam-kaynaktan-gelir]]"

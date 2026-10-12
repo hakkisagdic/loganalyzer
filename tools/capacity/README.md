@@ -4,8 +4,8 @@ From the repository root:
 
 ```sh
 bash tools/machine-resources.sh check
-dotnet build Bizigo.sln --configuration Release -m:1
-dotnet run --project src/Bizigo.Cli --no-build --configuration Release -- capacity auto --config tools/capacity/dry-run.json --dry-run
+dotnet build LogAnalyzer.sln --configuration Release -m:1
+dotnet run --project src/LogAnalyzer.Cli --no-build --configuration Release -- capacity auto --config tools/capacity/dry-run.json --dry-run
 ```
 
 Copy the example JSON and configure the target, profile, rate range, duration,
@@ -41,7 +41,7 @@ earlier rates passed.
 without a shell. The probe receives one JSON `CapacityProbeRequest` on stdin
 and must write exactly one `CapacityProbeResponse` JSON to stdout, exit 0,
 and write any diagnostics to stderr. Models are in
-`sim/Bizigo.Capacity/CapacityProcessRunner.cs` and `CapacityOptions.cs`.
+`sim/LogAnalyzer.Capacity/CapacityProcessRunner.cs` and `CapacityOptions.cs`.
 Enum names or their existing numeric representations are accepted. Unknown
 JSON members are rejected to detect configuration/schema mistakes.
 
@@ -135,9 +135,9 @@ bound; an unsuccessful teardown is reported as a measurement failure.
 
 ```sh
 bash tools/machine-resources.sh check
-dotnet test tests/Bizigo.UnitTests --configuration Release --filter 'FullyQualifiedName~Capacity|FullyQualifiedName~Generator|FullyQualifiedName~Arrival' -m:1
+dotnet test tests/LogAnalyzer.UnitTests --configuration Release --filter 'FullyQualifiedName~Capacity|FullyQualifiedName~Generator|FullyQualifiedName~Arrival' -m:1
 bash tools/machine-resources.sh check
-dotnet test tests/Bizigo.IntegrationTests --configuration Release --filter 'FullyQualifiedName~CapacityEmitter' -m:1
+dotnet test tests/LogAnalyzer.IntegrationTests --configuration Release --filter 'FullyQualifiedName~CapacityEmitter' -m:1
 bash tools/machine-resources.sh check
 python3 tools/capacity-process-smoke.py
 bash tools/machine-resources.sh check

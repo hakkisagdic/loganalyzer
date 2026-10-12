@@ -33,7 +33,7 @@ kurulacak olandan başka bir şeyi ölçmemeli.
 # Canlı: T30'un kabul kriteri. `deploy/` compose'u ayakta olmalı.
 .venv/bin/python measure.py \
   --clickhouse-url http://localhost:8123 \
-  --clickhouse-user bizigo --clickhouse-password bizigo \
+  --clickhouse-user loganalyzer --clickhouse-password loganalyzer \
   --json sonuc-canli.json
 ```
 

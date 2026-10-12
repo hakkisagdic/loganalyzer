@@ -60,9 +60,9 @@ import { fileURLToPath } from "node:url";
 const REPO = fileURLToPath(new URL("../../..", import.meta.url));
 const UI = fileURLToPath(new URL("../..", import.meta.url));
 
-const CLICKHOUSE = "Host=localhost;Port=8123;Database=bizigo;Username=bizigo;Password=bizigo";
+const CLICKHOUSE = "Host=localhost;Port=8123;Database=loganalyzer;Username=loganalyzer;Password=loganalyzer";
 
-const CONTROL_PLANE = "Host=localhost;Port=5432;Database=bizigo;Username=bizigo;Password=bizigo";
+const CONTROL_PLANE = "Host=localhost;Port=5432;Database=loganalyzer;Username=loganalyzer;Password=loganalyzer";
 
 /**
  * Analistin IdP grubu.
@@ -209,14 +209,14 @@ function build(): void {
   }
 
   // Tek çağrıda iki proje verilemiyor: MSBuild `MSB1008` ile reddediyor.
-  for (const project of ["src/Bizigo.Api", "src/Bizigo.Cli"]) {
+  for (const project of ["src/LogAnalyzer.Api", "src/LogAnalyzer.Cli"]) {
     process.stdout.write(`· ${project} derleniyor\n`);
     run(dotnet, ["build", project, "--configuration", "Debug"], REPO, env);
   }
 }
 
 /**
- * Ölçüm verisi — <c>bizigo seed golden</c>.
+ * Ölçüm verisi — <c>loganalyzer seed golden</c>.
  *
  * <p>
  * Doğrudan <c>INSERT</c> yok: satırlar üretimdeki yoldan geçiyor
@@ -232,15 +232,15 @@ function seed(): void {
     return;
   }
 
-  const bizigo = "src/Bizigo.Cli/bin/Debug/net10.0/bizigo";
-  const env = { DOTNET_ROOT: `${process.env.HOME}/.dotnet`, BIZIGO_CLICKHOUSE: CLICKHOUSE };
+  const loganalyzer = "src/LogAnalyzer.Cli/bin/Debug/net10.0/loganalyzer";
+  const env = { DOTNET_ROOT: `${process.env.HOME}/.dotnet`, LOGANALYZER_CLICKHOUSE: CLICKHOUSE };
 
   process.stdout.write("· ClickHouse göçleri\n");
-  run(bizigo, ["schema", "migrate", "db/clickhouse"], REPO, env);
+  run(loganalyzer, ["schema", "migrate", "db/clickhouse"], REPO, env);
 
   process.stdout.write("· altın örnekler yükleniyor\n");
   run(
-    bizigo,
+    loganalyzer,
     // GRUP FİLODAN (S05). Eskiden varsayılan `golden` grubuna yazıyordu ve
     // filo `network/core` üretiyor — ikisi ayrışsaydı analistin kapsamı
     // envanteri görür, OLAYLARI görmezdi: ekran boş, sebep görünmez.
@@ -301,8 +301,8 @@ async function scopeAndInventory(): Promise<void> {
     dotnet,
     [
       "ef", "database", "update",
-      "--project", "src/Bizigo.ControlPlane",
-      "--startup-project", "src/Bizigo.Api",
+      "--project", "src/LogAnalyzer.ControlPlane",
+      "--startup-project", "src/LogAnalyzer.Api",
     ],
     REPO,
     { ...env, ASPNETCORE_ENVIRONMENT: "Development" },
@@ -320,10 +320,10 @@ async function scopeAndInventory(): Promise<void> {
   // envanterde yok ve sessizlik alarmı sınanamıyor.
   process.stdout.write("· filo uygulanıyor (kapsam eşlemesi + kaynak envanteri)\n");
 
-  const bizigo = "src/Bizigo.Cli/bin/Debug/net10.0/bizigo";
-  run(bizigo, ["fleet", "apply", "catalog/simulators"], REPO, {
+  const loganalyzer = "src/LogAnalyzer.Cli/bin/Debug/net10.0/loganalyzer";
+  run(loganalyzer, ["fleet", "apply", "catalog/simulators"], REPO, {
     DOTNET_ROOT: `${process.env.HOME}/.dotnet`,
-    BIZIGO_CONTROLPLANE: CONTROL_PLANE,
+    LOGANALYZER_CONTROLPLANE: CONTROL_PLANE,
   });
 }
 

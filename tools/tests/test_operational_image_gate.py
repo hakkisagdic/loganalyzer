@@ -14,9 +14,9 @@ spec.loader.exec_module(gate)
 class OperationalImageGateTests(unittest.TestCase):
     def setUp(self):
         self.sample_images = {
-            "api": "bizigo/api@sha256:1111111111111111111111111111111111111111111111111111111111111111",
-            "ui": "bizigo/ui@sha256:2222222222222222222222222222222222222222222222222222222222222222",
-            "sidecar": "bizigo/sidecar@sha256:3333333333333333333333333333333333333333333333333333333333333333",
+            "api": "loganalyzer/api@sha256:1111111111111111111111111111111111111111111111111111111111111111",
+            "ui": "loganalyzer/ui@sha256:2222222222222222222222222222222222222222222222222222222222222222",
+            "sidecar": "loganalyzer/sidecar@sha256:3333333333333333333333333333333333333333333333333333333333333333",
             "postgres": "postgres:18-alpine"
         }
         self.sample_manifest = {
@@ -47,7 +47,7 @@ class OperationalImageGateTests(unittest.TestCase):
 version: '3.8'
 services:
   api:
-    image: bizigo/api@sha256:1111111111111111111111111111111111111111111111111111111111111111
+    image: loganalyzer/api@sha256:1111111111111111111111111111111111111111111111111111111111111111
     ports:
       - "8080:8080"
   postgres:
@@ -57,7 +57,7 @@ services:
             f.write(compose_content)
             f.flush()
             parsed = gate.parse_compose_images(Path(f.name))
-            self.assertEqual("bizigo/api@sha256:1111111111111111111111111111111111111111111111111111111111111111", parsed.get("api"))
+            self.assertEqual("loganalyzer/api@sha256:1111111111111111111111111111111111111111111111111111111111111111", parsed.get("api"))
             self.assertEqual("postgres:18-alpine", parsed.get("postgres"))
 
 

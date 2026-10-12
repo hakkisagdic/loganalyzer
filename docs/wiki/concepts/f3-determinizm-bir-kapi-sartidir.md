@@ -1,7 +1,7 @@
 ---
 title: Determinizm bir kapının ön şartıdır
 category: concepts
-tags: [test, veri-deposu, kavram, bizigo]
+tags: [test, veri-deposu, kavram, loganalyzer]
 aliases: [aynı girdi aynı çıktı, sürüklenme kapısı, içerik hash'i]
 relationships:
   - target: "[[concepts/sessiz-yanlis-davranis]]"

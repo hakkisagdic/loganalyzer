@@ -419,7 +419,7 @@ def test_veritabani_acikca_gonderiliyor() -> None:
     """**Bu ölçüm bir kez yalnızca birinin elle kurduğu görünüm sayesinde koştu.**
 
     Sorgular veritabanını göndermiyordu, dolayısıyla `default`'a gidiyorlardı.
-    Canlı yığında görünümler `bizigo` altında; ölçüm "Unknown table expression
+    Canlı yığında görünümler `loganalyzer` altında; ölçüm "Unknown table expression
     identifier 'events_ocsf'" ile düştü ve `default`'a elle takma görünüm
     kurularak geçildi.
 
@@ -460,7 +460,7 @@ def test_veritabani_acikca_gonderiliyor() -> None:
         measure.urllib.request.urlopen = original_open
 
     assert rows == 3 and not error
-    assert seen.get("X-ClickHouse-Database") == "bizigo", (
+    assert seen.get("X-ClickHouse-Database") == "loganalyzer", (
         f"veritabanı gönderilmedi: {seen}"
     )
 

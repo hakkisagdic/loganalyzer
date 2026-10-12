@@ -82,9 +82,9 @@ Ama T07 o kaynağı **hiçbir yere yazmıyordu** — bkz. §4.2.
 
 | Anahtar | Gerekçe |
 | --- | --- |
-| `bizigo.unassigned_source_key` | Envanterde olmayan kaynak sorguda görünür olmalı; `_unassigned` grubu tek başına "neden" sorusunu cevaplamıyor |
-| `bizigo.tags` | Parser'ın satır hakkında **söylediği** şey kayboluyordu: `cisco.asa` tarih taşımayan satırı `_asa_no_timestamp` ile işaretliyor ama etiket ClickHouse'a ulaşmadan düşüyordu |
-| `bizigo.parse_issues` | `parse_status=partial` tek başına "bir şey eksik" diyor ama hangi adımın neden takıldığını söylemiyor; sebepsiz bir `partial`, olay detayında (T16) cevaplanamayan bir soru bırakıyor |
+| `loganalyzer.unassigned_source_key` | Envanterde olmayan kaynak sorguda görünür olmalı; `_unassigned` grubu tek başına "neden" sorusunu cevaplamıyor |
+| `loganalyzer.tags` | Parser'ın satır hakkında **söylediği** şey kayboluyordu: `cisco.asa` tarih taşımayan satırı `_asa_no_timestamp` ile işaretliyor ama etiket ClickHouse'a ulaşmadan düşüyordu |
+| `loganalyzer.parse_issues` | `parse_status=partial` tek başına "bir şey eksik" diyor ama hangi adımın neden takıldığını söylemiyor; sebepsiz bir `partial`, olay detayında (T16) cevaplanamayan bir soru bırakıyor |
 
 İkisi de **tek anahtarda birleştiriliyor**, öğe başına anahtar açılmıyor, ve
 gerekçesi ikisinde de aynı: `mapKeys` bloom filtresi anahtar kümesi üzerinde ve

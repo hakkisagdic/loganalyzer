@@ -1,7 +1,7 @@
 ---
 title: Kırmızı yanamayan sayı
 category: concepts
-tags: [test, surec, kavram, bizigo]
+tags: [test, surec, kavram, loganalyzer]
 aliases: [eşiksiz ölçüm, sayaç-eşik-kapı merdiveni]
 relationships:
   - target: "[[concepts/sessiz-yanlis-davranis]]"

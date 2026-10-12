@@ -7,7 +7,7 @@
 set -eu
 
 : "${SIM_PROFILE:?SIM_PROFILE gerekli — hangi cihaz taklit edilecek}"
-: "${SIM_USERNAME:=bizigo-ro}"
+: "${SIM_USERNAME:=loganalyzer-ro}"
 : "${SIM_PASSWORD:?SIM_PASSWORD gerekli}"
 : "${SIM_SCENARIO:=}"
 : "${SIM_PAGING:=etkilesimli}"

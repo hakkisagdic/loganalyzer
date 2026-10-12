@@ -16,7 +16,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * </p>
  */
 export function middleware(request: NextRequest): NextResponse {
-  const cookieName = process.env.BFF_COOKIE_NAME ?? "bizigo.sid";
+  const cookieName = process.env.BFF_COOKIE_NAME ?? "loganalyzer.sid";
 
   if (request.cookies.has(cookieName)) {
     return NextResponse.next();

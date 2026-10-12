@@ -66,7 +66,7 @@ export interface RedisClient {
 }
 
 /** Anahtar öneki: aynı Redis'i paylaşan başka bir şey varsa çarpışmasın. */
-const KEY_PREFIX = "bizigo:bff:session:";
+const KEY_PREFIX = "loganalyzer:bff:session:";
 
 /**
  * Soğuk açılışta bağlantının kurulması için beklenen süre.

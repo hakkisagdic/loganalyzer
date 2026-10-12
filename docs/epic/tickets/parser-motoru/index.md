@@ -39,7 +39,7 @@ alınır ve sürümlenir. Kod değil.
 `on_failure: continue | fail | tag`. Yürütme sırası `pipeline` sırasıdır;
 koşul/döngü **yok**.
 5. **`parse_status`** — `ok / partial / failed`. Kısmi ayrıştırma meşru bir durum.
-6. **CLI** — `bizigo parser lint | test | try`. `try` en çok kullanılacak komut;
+6. **CLI** — `loganalyzer parser lint | test | try`. `try` en çok kullanılacak komut;
 F2'deki UI editörü bunun üstüne oturacak.
 7. **Test koşucusu** — YAML'ın gömülü `tests` bloğunu koşturur. **Testsiz parser**
 ** yayınlanamaz** — kalite için tek en ucuz kaldıraç.
@@ -51,7 +51,7 @@ ayrıştırır ve `core`'u doldurur), vendor parser'ları (T08).
 
 ## Kabul kriterleri
 
-bizigo parser try tek satır log + YAML ile alanları basıyorbizigo parser test gömülü testleri koşturuyor, başarısızlıkta anlamlı fark gösteriyorbizigo parser lint ReDoS riskli pattern'i yakalıyorProperty test: rastgele pattern → derlenir veya anlamlı hata verirReDoS corpus'u ile timeout doğrulaması; hiçbir girdi süreci kilitlemiyorLogstash pattern setinin tamamı hatasız yükleniyor
+loganalyzer parser try tek satır log + YAML ile alanları basıyorloganalyzer parser test gömülü testleri koşturuyor, başarısızlıkta anlamlı fark gösteriyorloganalyzer parser lint ReDoS riskli pattern'i yakalıyorProperty test: rastgele pattern → derlenir veya anlamlı hata verirReDoS corpus'u ile timeout doğrulaması; hiçbir girdi süreci kilitlemiyorLogstash pattern setinin tamamı hatasız yükleniyor
 
 ## Notlar
 
@@ -63,7 +63,7 @@ dikkatsiz tek pattern ingest'i durdurmaya yeter.
 
 ## Uygulama notları (kapanış)
 
-Uygulanan yer: `src/Bizigo.Parsing/` (Grok, Schema, Engine, Testing) + `src/Bizigo.Cli/`
+Uygulanan yer: `src/LogAnalyzer.Parsing/` (Grok, Schema, Engine, Testing) + `src/LogAnalyzer.Cli/`
 
 - `catalog/patterns/` + `catalog/mappings/`. Birim testleri **122/122**, derleme 0 uyarı.
 

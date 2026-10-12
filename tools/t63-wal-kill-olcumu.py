@@ -16,7 +16,7 @@ kodunu değiştirmeden mümkün. Kapalıyken bu ölçüm KIRMIZI yanmalı — ya
 ÜÇ KEZ ÖLÇÜM YAPILAMADI ve üçü de ölçümün kendisiyle ilgiliydi, ürünle değil:
   1. `AppendAsync` tek payload alıyor, liste değil (üretim de batch'i tek çerçeve
      yazıyor — `IngestGateway.cs:101`).
-  2. Depo DIŞINA kurulan konak, `Bizigo.Ingest`in göreli ProjectReference'larını
+  2. Depo DIŞINA kurulan konak, `LogAnalyzer.Ingest`in göreli ProjectReference'larını
      bozdu (MSB3202). Konak depo içinde olmak zorunda.
   3. C# kaynağını Python dizgesinden ÜRETMEK kaçış karakterlerini bozdu
      (CS1039). Çözüm: konak artık ÜRETİLMİYOR, `tools/t63-wal-harness/` altında
