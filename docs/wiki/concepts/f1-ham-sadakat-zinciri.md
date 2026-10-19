@@ -22,7 +22,7 @@ sources:
   - docs/epic/tickets/replay/index.md
   - docs/epic/tickets/iskelet-ve-ci/index.md
   - docs/epic/tickets/depolama-ve-kapsam-kapisi/index.md
-source_digest: "sha256-12/v1 docs/epic/f1-kapanis/index.md=93aa551b9c35 docs/epic/f1-teknik-plan/index.md=543a0c1a9b24 docs/epic/mimari-kararlar/index.md=8b897734c68f docs/epic/tickets/depolama-ve-kapsam-kapisi/index.md=7a1070c1c1da docs/epic/tickets/ham-arsiv/index.md=f7b6e1d7e3a0 docs/epic/tickets/ingest-boru-hatti/index.md=bc2d3270ace8 docs/epic/tickets/iskelet-ve-ci/index.md=b0acf06b322b docs/epic/tickets/normalizasyon/index.md=74d881911e1b docs/epic/tickets/replay/index.md=a6e378b9614b"
+source_digest: "sha256-12/v1 docs/epic/f1-kapanis/index.md=8a40816e0518 docs/epic/f1-teknik-plan/index.md=3ca404748fbc docs/epic/mimari-kararlar/index.md=c27efcea2f2a docs/epic/tickets/depolama-ve-kapsam-kapisi/index.md=48e3365e089e docs/epic/tickets/ham-arsiv/index.md=a8744b2c12b5 docs/epic/tickets/ingest-boru-hatti/index.md=d4d6f62f7e3c docs/epic/tickets/iskelet-ve-ci/index.md=019574607cf0 docs/epic/tickets/normalizasyon/index.md=2ffc86291dbe docs/epic/tickets/replay/index.md=2e4308ae5d19"
 summary: Cihazdan replay'e uzanan bayt zincirinin her halkası ayrı bir kararla tutuluyor; bir halka koparsa zincirin tamamı değersiz oluyor ve kopuş hiçbir belirti üretmiyor.
 provenance:
   extracted: 0.88

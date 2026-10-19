@@ -23,7 +23,7 @@ sources:
   - docs/epic/tickets-f2/f2-dogrulamasi/index.md
   - docs/epic/tickets-f2/openapi-tip-uretimi/index.md
   - docs/epic/f2-kapanis/index.md
-source_digest: "sha256-12/v1 docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/f2-teknik-plan/index.md=70c97eb131ab docs/epic/tickets-f2/alarm-motoru/index.md=6e126dd480f4 docs/epic/tickets-f2/change-connector/index.md=7155ed5a4924 docs/epic/tickets-f2/change-webhook/index.md=5e50834cbe21 docs/epic/tickets-f2/envanter-ekrani/index.md=89e5d842af30 docs/epic/tickets-f2/f2-dogrulamasi/index.md=87ed12f0cd0e docs/epic/tickets-f2/log-arama-ekrani/index.md=e4425034ae89 docs/epic/tickets-f2/olay-detayi/index.md=ac57c40a224b docs/epic/tickets-f2/openapi-tip-uretimi/index.md=56ec69775b3f"
+source_digest: "sha256-12/v1 docs/epic/f2-kapanis/index.md=373340ca64ab docs/epic/f2-teknik-plan/index.md=da7d52f34216 docs/epic/tickets-f2/alarm-motoru/index.md=6e126dd480f4 docs/epic/tickets-f2/change-connector/index.md=7155ed5a4924 docs/epic/tickets-f2/change-webhook/index.md=5e50834cbe21 docs/epic/tickets-f2/envanter-ekrani/index.md=d7efc0332536 docs/epic/tickets-f2/f2-dogrulamasi/index.md=8d3dba3a29d2 docs/epic/tickets-f2/log-arama-ekrani/index.md=9808f709d9ea docs/epic/tickets-f2/olay-detayi/index.md=111df43b64de docs/epic/tickets-f2/openapi-tip-uretimi/index.md=deda9ac996f3"
 summary: F2'nin yedi ekranı ve üç alt sistemi kapsamı kendi başına uygulamıyor; hepsi IScopedQuery'nin tek kapısından geçiyor. Tekrarlayan kusur şekli her zaman filtrenin ikinci bir kopyası.
 provenance:
   extracted: 0.85

@@ -9,7 +9,7 @@ relationships:
   - target: "[[skills/paralel-ajan-koordinasyonu]]"
     type: uses
 sources: [README.md, CLAUDE.md, docs/epic/f2-kapanis/index.md]
-source_digest: "sha256-12/v1 CLAUDE.md=3927d9fc6d4a README.md=8c53a176a7e5 docs/epic/f2-kapanis/index.md=c701d88f78fd"
+source_digest: "sha256-12/v1 CLAUDE.md=ca854bb3fb99 README.md=8eeb0b31e9d4 docs/epic/f2-kapanis/index.md=373340ca64ab"
 summary: Plugin tabanlı, çok formatlı ve çok dilli log analiz platformu. F1 (boru hattı) ve F2 (görünürlük) kapandı; F3 ölçüm ağırlıklı faz.
 provenance:
   extracted: 0.9
@@ -20,7 +20,7 @@ lifecycle: draft
 lifecycle_changed: 2026-08-24
 tier: core
 created: 2026-08-24T16:15:22Z
-updated: 2026-08-24T16:15:22Z
+updated: 2026-10-19T00:00:00Z
 ---
 
 # loganalyzer-loganalyzer
@@ -41,6 +41,14 @@ analizi.
   T24–T26 değişiklik beslemesi, T27 doğrulama, T28 UI/UX denetimi.
 
 Kapanış belgesi ve F3'e devredilenler: [[references/f2-kapanis]].
+
+- **LogAnalyzer Lite** — README'ye sonradan (d10673e) eklenen hafif mod: olay
+  kara kutusu; 4xx/5xx yanıtları ve istisnaları saklıyor, başarılı istekleri
+  yalnızca sayaç olarak tutuyor. Ayrı bir `net8.0` projesi
+  (`src/LogAnalyzer.Lite`, kendi `global.json`'u ve `Directory.Build.props`'u),
+  `deploy/docker-compose.lite.yml` ile kalkıyor. Core kompozisyonunun parçası
+  değil; birim test kapılarının ürün keşfinde **beyanlı tek istisna**
+  (`ProductDiscovery.StandaloneProducts`).
 
 ## Nasıl çalışılıyor
 
