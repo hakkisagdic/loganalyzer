@@ -1,4 +1,11 @@
+using System.Buffers.Binary;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
+using LogAnalyzer.ControlPlane.Migrations;
 using LogAnalyzer.Query;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 
 namespace LogAnalyzer.UnitTests;
 
@@ -132,13 +139,18 @@ public sealed class TopologyRepairMembershipBuilderTests
     [Fact]
     public void Canonical_empty_and_single_member_vectors_pin_framing_and_all_tuple_fields()
     {
+        // Vectors computed outside this code base from the documented framing
+        // (le32 len + "loganalyzer-topology-members-v2" + le32 2 + le32 count,
+        // then per member le64 seq + le32 64 + key + le32 64 + digest). The same
+        // script reproduces the pre-rename "bizigo-topology-members-v2" pair
+        // (38 / b6a5b92c…, 182 / e3c43322…), so only the magic changed here.
         var empty = TopologyRepairMembershipBuilder.Build([], 0, null);
-        Assert.Equal(38, empty.CanonicalByteLength);
-        Assert.Equal("b6a5b92ca43644af56ec18f4a3fb31b6d6e758c2e81a5ad35a832ae6abab3d5d",
+        Assert.Equal(43, empty.CanonicalByteLength);
+        Assert.Equal("f36882dea2e58a9d27d40c59a0bfc57e6a3f1457cc10848a2a760c25c1f64acf",
             empty.CanonicalSha256);
         var single = TopologyRepairMembershipBuilder.Build([Legacy(1, 'a', 'b')], 1, null);
-        Assert.Equal(182, single.CanonicalByteLength);
-        Assert.Equal("e3c433227139131fd6b2475c1fc82c2be0e019f36e276d33fca0669619b5e967",
+        Assert.Equal(187, single.CanonicalByteLength);
+        Assert.Equal("0888ee5bdbac35b22de7371acc11fd7082c55afcd01c2a951c6b67ad2a4ff847",
             single.CanonicalSha256);
         Assert.NotEqual(single.CanonicalSha256,
             TopologyRepairMembershipBuilder.Build([Legacy(1, 'c', 'b')], 1, null).CanonicalSha256);
@@ -147,6 +159,41 @@ public sealed class TopologyRepairMembershipBuilderTests
         Assert.NotEqual(single.CanonicalSha256,
             TopologyRepairMembershipBuilder.Build([Native(1, 'd'), Legacy(2, 'a', 'b')], 2, null)
                 .CanonicalSha256);
+    }
+
+    /// <summary>
+    /// The PG seal recomputes these bytes in <c>topology_repair_member_bytes</c>;
+    /// if its framing drifts from the C# candidate every repair ends in
+    /// <c>RepairIncomplete</c> while the unit vectors above stay green. Measured:
+    /// the bizigo -> loganalyzer rename left a hand-written <c>le32(26)</c> in
+    /// SQL and ~226 integration tests went red with no unit signal. The SQL is
+    /// read from the migration object itself, not from the source file.
+    /// </summary>
+    [Fact]
+    public void Sql_membership_framing_agrees_with_the_csharp_candidate()
+    {
+        var sql = string.Concat(new AddTopologyLegacyMembership().UpOperations
+            .OfType<SqlOperation>().Select(operation => operation.Sql));
+
+        var literal = Regex.Match(sql,
+            @"magic bytea := convert_to\('(?<magic>[^']+)', 'UTF8'\);");
+        Assert.True(literal.Success, "topology_repair_member_bytes no longer declares its magic literal.");
+        Assert.Contains("loganalyzer.topology_repair_le32(octet_length(magic))", sql, StringComparison.Ordinal);
+        Assert.DoesNotMatch(@"topology_repair_le32\(\d+\)\s*\|\|\s*convert_to\('", sql);
+
+        var magic = Encoding.UTF8.GetBytes(literal.Groups["magic"].Value);
+        var framed = new byte[4 + magic.Length + 4 + 4];
+        BinaryPrimitives.WriteInt32LittleEndian(framed, magic.Length);
+        magic.CopyTo(framed, 4);
+        BinaryPrimitives.WriteInt32LittleEndian(framed.AsSpan(4 + magic.Length), 2);
+        var empty = TopologyRepairMembershipBuilder.Build([], 0, null);
+        Assert.Equal(empty.CanonicalByteLength, framed.Length);
+        Assert.Equal(empty.CanonicalSha256, Convert.ToHexStringLower(SHA256.HashData(framed)));
+
+        var floor = Regex.Match(sql, @"canonical_byte_length BETWEEN (?<floor>\d+) AND");
+        Assert.True(floor.Success);
+        Assert.Equal(empty.CanonicalByteLength,
+            int.Parse(floor.Groups["floor"].Value, CultureInfo.InvariantCulture));
     }
 
     private static TopologyRepairMembershipPublication Native(long sequence, char key) =>
