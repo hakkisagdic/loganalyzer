@@ -204,7 +204,7 @@ public sealed class AlertRulesTool(AlertRuleService rules) : ProductReadTool
             // şey değil, ve kaynağın kendi yorumu sessiz bir "kapalı" rozetinin
             // listeyi çöp kutusuna çevirdiğini yazıyor.
             string.IsNullOrEmpty(rule.GatedReason) ? null : rule.GatedReason,
-            Snake(rule.Source.ToString()),
+            SourceName(rule.Source),
             rule.WindowSeconds,
             rule.IntervalSeconds,
             rule.Threshold,
@@ -219,6 +219,21 @@ public sealed class AlertRulesTool(AlertRuleService rules) : ProductReadTool
         /// </summary>
         private static string Snake(string pascal) =>
             JsonNamingPolicy.SnakeCaseLower.ConvertName(pascal);
+
+        /// <summary>
+        /// Kaynak <b>açık eşlemeyle</b> — <see cref="Snake"/> ile değil. Sözleşme
+        /// <c>outputSchema</c>'daki enum ve REST'in <c>GET /v1/alerts/rules</c>
+        /// değeri (<c>loganalyzer</c>/<c>sigma</c>); <c>AlertRuleSource.Bizigo</c> →
+        /// <c>LogAnalyzer</c> yeniden adlandırmasından sonra <c>Snake</c>
+        /// <c>log_analyzer</c> üretiyordu ve araç kendi şemasını sessizce
+        /// kırıyordu. Enum adı bir tel değeri değil; tanınmayan değer fırlatıyor.
+        /// </summary>
+        private static string SourceName(AlertRuleSource source) => source switch
+        {
+            AlertRuleSource.LogAnalyzer => "loganalyzer",
+            AlertRuleSource.Sigma => "sigma",
+            _ => throw new ArgumentOutOfRangeException(nameof(source), source, "Unmapped alert rule source."),
+        };
     }
 
     private sealed record Payload(
