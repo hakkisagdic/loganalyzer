@@ -540,8 +540,8 @@ public sealed class ProducesContractTests
                 // M01: MCP'nin akışlanabilir HTTP taşıması. `LogAnalyzer.Api` içinde
                 // duruyor ve bu liste bunun sebebi — kayıt `LogAnalyzer.Mcp`'de
                 // olsaydı MCP uçları bu kapıya HİÇ görünmezdi. Liste keşfin
-                // ORDINAL sırasında: `MapBizigoMcp` → `MapLogAnalyzerMcp`
-                // yeniden adlandırması onu `MapEvents`'ın arkasına taşıdı.
+                // ORDINAL sırasında: d10673e'deki ürün adı değişikliği (`B…` →
+                // `MapLogAnalyzerMcp`) onu `MapEvents`'ın arkasına taşıdı.
                 "MapLogAnalyzerMcp",
 
                 "MapNotificationChannels", "MapOtlpLogs", "MapOtlpTelemetry", "MapParserAuthoring", "MapParsers",

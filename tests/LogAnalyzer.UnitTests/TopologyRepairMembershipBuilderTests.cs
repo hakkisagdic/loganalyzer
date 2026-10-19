@@ -142,7 +142,7 @@ public sealed class TopologyRepairMembershipBuilderTests
         // Vectors computed outside this code base from the documented framing
         // (le32 len + "loganalyzer-topology-members-v2" + le32 2 + le32 count,
         // then per member le64 seq + le32 64 + key + le32 64 + digest). The same
-        // script reproduces the pre-rename "bizigo-topology-members-v2" pair
+        // script reproduces the pre-rename 26-byte magic pair
         // (38 / b6a5b92c…, 182 / e3c43322…), so only the magic changed here.
         var empty = TopologyRepairMembershipBuilder.Build([], 0, null);
         Assert.Equal(43, empty.CanonicalByteLength);
@@ -165,7 +165,7 @@ public sealed class TopologyRepairMembershipBuilderTests
     /// The PG seal recomputes these bytes in <c>topology_repair_member_bytes</c>;
     /// if its framing drifts from the C# candidate every repair ends in
     /// <c>RepairIncomplete</c> while the unit vectors above stay green. Measured:
-    /// the bizigo -> loganalyzer rename left a hand-written <c>le32(26)</c> in
+    /// the d10673e product rename left a hand-written <c>le32(26)</c> in
     /// SQL and ~226 integration tests went red with no unit signal. The SQL is
     /// read from the migration object itself, not from the source file.
     /// </summary>

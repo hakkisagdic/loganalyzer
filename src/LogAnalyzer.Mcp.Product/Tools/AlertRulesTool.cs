@@ -223,7 +223,7 @@ public sealed class AlertRulesTool(AlertRuleService rules) : ProductReadTool
         /// <summary>
         /// Kaynak <b>açık eşlemeyle</b> — <see cref="Snake"/> ile değil. Sözleşme
         /// <c>outputSchema</c>'daki enum ve REST'in <c>GET /v1/alerts/rules</c>
-        /// değeri (<c>loganalyzer</c>/<c>sigma</c>); <c>AlertRuleSource.Bizigo</c> →
+        /// değeri (<c>loganalyzer</c>/<c>sigma</c>); eski marka adlı enum üyesi →
         /// <c>LogAnalyzer</c> yeniden adlandırmasından sonra <c>Snake</c>
         /// <c>log_analyzer</c> üretiyordu ve araç kendi şemasını sessizce
         /// kırıyordu. Enum adı bir tel değeri değil; tanınmayan değer fırlatıyor.

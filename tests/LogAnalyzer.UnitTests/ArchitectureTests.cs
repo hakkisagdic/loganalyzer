@@ -175,9 +175,9 @@ public sealed class ArchitectureTests
 
         Assert.Equal(
             [
-                // Liste keşfin döndürdüğü ORDINAL sırada. `AddBizigo*` →
-                // `AddLogAnalyzer*` yeniden adlandırmasıyla `B` < `C` sırası
-                // `L` > `C` oldu ve bu üç kayıt başa geçti; küme aynı, yalnız
+                // Liste keşfin döndürdüğü ORDINAL sırada. d10673e'deki ürün adı
+                // değişikliğiyle önek `B` (< `C`) iken `AddLogAnalyzer*` (`L` > `C`)
+                // oldu ve bu üç kayıt başa geçti; küme aynı, yalnız
                 // sıra değişti (ölçüldü: ilk fark index 0'da `AddChangeConnectors`).
                 "AddChangeConnectors", "AddChangeWebhooks",
                 "AddControlPlane",

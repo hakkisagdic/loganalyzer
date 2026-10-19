@@ -92,7 +92,7 @@ public sealed class AddTopologyLegacyMembership : Migration
         DECLARE result bytea; item record; item_count integer := 0;
             -- Same literal as TopologyRepairMembershipBuilder.Magic. The length
             -- prefix is derived from it, never written by hand: a hand-written
-            -- 26 survived the bizigo -> loganalyzer rename and made every SQL
+            -- 26 survived the product rename (d10673e) and made every SQL
             -- member set diverge from the C# candidate.
             magic bytea := convert_to('loganalyzer-topology-members-v2', 'UTF8');
         BEGIN
