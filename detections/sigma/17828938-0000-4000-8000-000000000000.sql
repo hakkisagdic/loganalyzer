@@ -6,7 +6,7 @@
 -- kaynak     : catalog/sigma/rules/fortigate_denied_burst.yml
 -- kaynak sha : sha256:6f11b2771471d30de9d51874198d65ab49b8c2ffeb097686ea846210b1360b7e
 -- kural seti : t30-ornekleminden-terfi
--- pipeline   : loganalyzer-events-ocsf/fa56f2121e9b (sha256:fa56f2121e9bf35752eb2c65d4a68055f8e818f940100a42f1c1796c71ea46a5)
+-- pipeline   : loganalyzer-events-ocsf/62691bd7a021 (sha256:62691bd7a0219f80b311b848748f23c6525598217838ec3cd5d2b807c0342c6f)
 --
 -- Derleme tarihi bilerek yazılmadı: sürüklenme kapısı bayt karşılaştırıyor.
 -- Yeniden üretmek: tools/sigma-build içinde `python -m sigma_build.compile --write`
