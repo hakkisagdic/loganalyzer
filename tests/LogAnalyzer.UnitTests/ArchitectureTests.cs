@@ -175,6 +175,13 @@ public sealed class ArchitectureTests
 
         Assert.Equal(
             [
+                // Liste keşfin döndürdüğü ORDINAL sırada. `AddBizigo*` →
+                // `AddLogAnalyzer*` yeniden adlandırmasıyla `B` < `C` sırası
+                // `L` > `C` oldu ve bu üç kayıt başa geçti; küme aynı, yalnız
+                // sıra değişti (ölçüldü: ilk fark index 0'da `AddChangeConnectors`).
+                "AddChangeConnectors", "AddChangeWebhooks",
+                "AddControlPlane",
+
                 "AddLogAnalyzerAlerting", "AddLogAnalyzerAuthentication", "AddLogAnalyzerAuthoring",
 
                 // M02: komut araçlarının bağımlılıkları. `Program.cs` bunu
@@ -248,9 +255,6 @@ public sealed class ArchitectureTests
                 // OTLP metric/trace worker ve decoder kayıtları da gerçek
                 // üretim kompozisyonunda kapsam doğrulamasına girer.
                 "AddLogAnalyzerTelemetry",
-
-                "AddChangeConnectors", "AddChangeWebhooks",
-                "AddControlPlane",
 
                 // Bizim yazdığımız bir uzantı DEĞİL: OpenAPI paketinin XML
                 // yorum desteği bunu `LogAnalyzer.Api` derlemesinin İÇİNE üretiyor
