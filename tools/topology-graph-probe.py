@@ -233,6 +233,7 @@ class Probe:
             journal.write(json.dumps(record) + "\n")
         if code not in expected:
             raise AssertionError(f"{case}: {method} {path} returned {code}; see {name}-response.bin")
+        self.last_status = code
         if method == "GET" and code == 200 and len(raw) > 1024 * 1024:
             raise AssertionError("topology response exceeds accepted serialized UTF8 byte cap")
         if not raw:
@@ -442,6 +443,19 @@ class Probe:
         if code != 200:
             raise AssertionError("Collector rejected topology producer: " + label)
 
+    def read_converging(self, path, *, principal="A", case):
+        """One poll inside a convergence wait. While accepted envelopes are
+        still being published, a read whose publication moves underneath it
+        answers 409 SnapshotChanged, the API's documented "restart the read"
+        signal: that poll has simply not converged yet (None). Any other
+        status, or a 409 for another reason, still fails the probe."""
+        value = self.request(path, principal=principal, expected=(200, 409), case=case)
+        if self.last_status == 409:
+            if not isinstance(value, dict) or value.get("reason") != "SnapshotChanged":
+                raise AssertionError(f"{case}: 409 other than SnapshotChanged during convergence")
+            return None
+        return value
+
     def wait_for(self, operation, label):
         deadline = time.monotonic() + 45
         while True:
@@ -480,15 +494,22 @@ class Probe:
         # provenance filter either. Same observed window for all three.
         detail_query = "?" + urllib.parse.urlencode({**window_parameters, "evidencePageSize": "200"})
         path_query = "?" + urllib.parse.urlencode({**window_parameters, "limit": "200"})
-        def edges(principal="admin"):
-            value = self.request("/v1/topology/edges" + query, principal=principal, case="O02/B02-observed-read")
+        def edges(principal="admin", converging=False):
+            if converging:
+                value = self.read_converging("/v1/topology/edges" + query, principal=principal,
+                                             case="O02/B02-observed-read")
+                if value is None:
+                    return None
+            else:
+                value = self.request("/v1/topology/edges" + query, principal=principal, case="O02/B02-observed-read")
             assert_wire(value)
             if value["partial"] or value["cursor"] is not None:
                 raise AssertionError("small isolated observed fixture unexpectedly partial")
             return value["edges"]
         def own_pair(rows, end):
             return [e for e in rows if e["from_node_id"] == nodes["parent"]["id"] and e["to_node_id"] == nodes[end]["id"]]
-        self.wait_for(lambda: len(own_pair(edges(), "child")) == 1, "one observed parent→child edge")
+        self.wait_for(lambda: (rows := edges(converging=True)) is not None and len(own_pair(rows, "child")) == 1,
+                      "one observed parent→child edge")
         edge = own_pair(edges("A"), "child")[0]
         if edge["relation"] != "depends_on" or edge["provenance"] != "observed" or edge["directed"] is not True:
             raise AssertionError("observed direction/provenance changed")
@@ -507,7 +528,8 @@ class Probe:
         self.publish("child-http-retry", payloads["child"])
         self.publish("parent-http-retry", payloads["parent"])
         self.wait_for(lambda: count("child", 2) and count("parent", 2), "separate raw HTTP retries")
-        self.wait_for(lambda: len(self.request(detail_path, case="B03-raw-reference-convergence")["evidence"]) == 4,
+        self.wait_for(lambda: (detail := self.read_converging(detail_path, case="B03-raw-reference-convergence"))
+                      is not None and len(detail["evidence"]) == 4,
                       "bounded references for two separate parent/child raw occurrences")
         retried = self.request(detail_path, case="B03-separate-http-semantic-proof")
         assert_retry_proof(original, retried, own_pair(edges("A"), "child"))
@@ -532,7 +554,8 @@ class Probe:
         self.publish("cross-child-first", payloads["cross_child"])
         self.publish("cross-parent-later", payloads["cross_parent"])
         self.wait_for(lambda: count("B", 1) and count("parent", 3), "cross-owner raw trace")
-        self.wait_for(lambda: len(own_pair(edges(), "B")) == 1, "cross-owner projection")
+        self.wait_for(lambda: (rows := edges(converging=True)) is not None and len(own_pair(rows, "B")) == 1,
+                      "cross-owner projection")
         cross = own_pair(edges(), "B")[0]
         if cross["from_owner_group"] != self.session["evidence_owners"]["A"] or cross["to_owner_group"] != self.session["evidence_owners"]["B"]:
             raise AssertionError("physical dual-owner snapshot changed")
