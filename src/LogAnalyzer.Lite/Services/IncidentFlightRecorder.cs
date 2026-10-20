@@ -1,23 +1,46 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using LogAnalyzer.Lite.Models;
 
 namespace LogAnalyzer.Lite.Services;
 
-public class IncidentFlightRecorder
+/// <summary>
+/// Olay halka tamponu ve disk spool'u.
+///
+/// <para>
+/// <b>Spool tek bir arka plan döngüsünden yazılıyor</b> ve kapanışta son bir
+/// kez boşaltılıyor (<see cref="StopAsync"/>). Eski hâli her olay için ayrı
+/// bir <c>Task.Run</c> açıyordu; kapanış sırasında yarım kalan yazımın ya da
+/// son olayın kaybolmadığını söyleyen hiçbir şey yoktu.
+/// </para>
+///
+/// <para>
+/// <b>Boş depoya örnek olay eklenmiyor.</b> Eski hâli depo boşsa
+/// <c>TRK-INIT-*</c> adında sahte bir olay yazıyordu; birim yanlış
+/// bağlandığında "1 olay" görünüyor ve sessizce boş başlamayı
+/// maskeliyordu. Boş depo artık boş görünüyor ve açılışta kaç olay
+/// yüklendiği loglanıyor.
+/// </para>
+/// </summary>
+internal sealed class IncidentFlightRecorder : IHostedService, IDisposable
 {
-    private readonly AlertWebhookNotifier? _notifier;
+    public const string StorageFileName = "incidents-flight-recorder.json";
+
+    private const int MaxIncidents = 1000;
+
+    private static readonly JsonSerializerOptions StorageJson = new() { WriteIndented = true };
+
+    private readonly AlertWebhookNotifier _notifier;
+    private readonly LiteStorage _storage;
+    private readonly ILogger<IncidentFlightRecorder> _logger;
     private readonly ConcurrentQueue<IncidentRecord> _incidents = new();
-    private readonly int _maxIncidents;
     private readonly DateTime _startTime = DateTime.UtcNow;
-    private readonly string _storageFile;
     private readonly object _diskLock = new();
+
+    // En fazla bir bekleyen yazım: iki olay arka arkaya gelirse tek yazım yeter.
+    private readonly SemaphoreSlim _saveSignal = new(0, 1);
+    private readonly CancellationTokenSource _stopping = new();
+    private Task _saveLoop = Task.CompletedTask;
 
     private long _totalIngested;
     private long _successfulRequests;
@@ -26,34 +49,42 @@ public class IncidentFlightRecorder
     private double _totalDurationMs;
     private DateTime? _lastIncidentTime;
 
-    public IncidentFlightRecorder(int maxIncidents = 1000, string? storagePath = null, AlertWebhookNotifier? notifier = null)
+    public IncidentFlightRecorder(AlertWebhookNotifier notifier, LiteStorage storage, ILogger<IncidentFlightRecorder> logger)
     {
         _notifier = notifier;
-        _maxIncidents = maxIncidents;
-        var dir = storagePath ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
-        Directory.CreateDirectory(dir);
-        _storageFile = Path.Combine(dir, "incidents-flight-recorder.json");
+        _storage = storage;
+        _logger = logger;
 
         // Diskten mevcut kaydedilmiş olayları geri yükle (Persistence / Spool recovery)
         LoadFromDisk();
+    }
 
-        // Eğer kayıt yoksa örnek başlangıç incident'ı koy
-        if (_incidents.IsEmpty)
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        _saveLoop = Task.Run(() => SaveLoopAsync(_stopping.Token), CancellationToken.None);
+        return Task.CompletedTask;
+    }
+
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        await _stopping.CancelAsync();
+
+        try
         {
-            RecordIncident(new IncidentRecord
-            {
-                TrackingId = "TRK-INIT-" + Guid.NewGuid().ToString("N")[..8].ToUpperInvariant(),
-                Timestamp = DateTime.UtcNow,
-                Level = "Warning",
-                Source = "SystemBootstrap",
-                Endpoint = "/health",
-                HttpMethod = "GET",
-                HttpStatus = 200,
-                DurationMs = 12.4,
-                ErrorMessage = "LogAnalyzer Lite initialized with disk spooling enabled.",
-                Metadata = new Dictionary<string, string> { { "profile", "lite" }, { "spool", "active" } }
-            });
+            await _saveLoop.WaitAsync(cancellationToken);
         }
+        catch (OperationCanceledException)
+        {
+            // Döngü iptalle bitiyor; son boşaltma aşağıda.
+        }
+
+        SaveToDisk();
+    }
+
+    public void Dispose()
+    {
+        _stopping.Dispose();
+        _saveSignal.Dispose();
     }
 
     public IngestResponse Ingest(IngestRequest request)
@@ -124,16 +155,16 @@ public class IncidentFlightRecorder
         _incidents.Enqueue(incident);
 
         // Ring buffer limit
-        while (_incidents.Count > _maxIncidents && _incidents.TryDequeue(out _))
+        while (_incidents.Count > MaxIncidents && _incidents.TryDequeue(out _))
         {
             Interlocked.Increment(ref _purgedCount);
         }
 
-        // Arka planda diske spool et (asenkron debounced)
-        _ = Task.Run(SaveToDisk);
+        // Arka planda diske spool et (tek döngü, birleştirilmiş yazım)
+        ScheduleSave();
 
         // Slack / Discord Webhook alarm bildirimi
-        _notifier?.NotifyIncident(incident);
+        _notifier.NotifyIncident(incident);
     }
 
     public IReadOnlyList<IncidentRecord> GetIncidents(int limit = 50, string? search = null, string? level = null, string? source = null)
@@ -158,7 +189,7 @@ public class IncidentFlightRecorder
                 (i.ErrorMessage != null && i.ErrorMessage.Contains(search, StringComparison.OrdinalIgnoreCase)));
         }
 
-        return query.OrderByDescending(i => i.Timestamp).Take(limit).ToList();
+        return query.OrderByDescending(i => i.Timestamp).Take(Math.Clamp(limit, 0, MaxIncidents)).ToList();
     }
 
     public IncidentRecord? GetIncident(string idOrTrackingId)
@@ -220,6 +251,31 @@ public class IncidentFlightRecorder
         };
     }
 
+    private void ScheduleSave()
+    {
+        try
+        {
+            _saveSignal.Release();
+        }
+        catch (SemaphoreFullException)
+        {
+            // Zaten bekleyen bir yazım var; o yazım bu olayı da kapsayacak.
+        }
+        catch (ObjectDisposedException)
+        {
+            // Kapanış sonrası gelen olay; son boşaltma çoktan yapıldı.
+        }
+    }
+
+    private async Task SaveLoopAsync(CancellationToken stopping)
+    {
+        while (!stopping.IsCancellationRequested)
+        {
+            await _saveSignal.WaitAsync(stopping);
+            SaveToDisk();
+        }
+    }
+
     private void SaveToDisk()
     {
         try
@@ -227,38 +283,61 @@ public class IncidentFlightRecorder
             lock (_diskLock)
             {
                 var list = _incidents.ToArray();
-                var json = JsonSerializer.Serialize(list, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(_storageFile, json);
+                _storage.WriteAtomic(StorageFileName, JsonSerializer.Serialize(list, StorageJson));
             }
         }
-        catch
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            // Disk write failure shouldn't crash the server
+            // Sunucuyu düşürmüyor ama artık sessiz de değil.
+            _logger.LogError(error, "Incident spool could not be written to {File}.", StorageFileName);
         }
     }
 
     private void LoadFromDisk()
     {
+        string? json;
+
         try
         {
-            if (File.Exists(_storageFile))
-            {
-                var json = File.ReadAllText(_storageFile);
-                var items = JsonSerializer.Deserialize<List<IncidentRecord>>(json);
-                if (items != null)
-                {
-                    foreach (var item in items)
-                    {
-                        _incidents.Enqueue(item);
-                    }
-                    _errorCount = items.Count;
-                    _lastIncidentTime = items.OrderByDescending(x => x.Timestamp).FirstOrDefault()?.Timestamp;
-                }
-            }
+            json = _storage.ReadText(StorageFileName);
         }
-        catch
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            // Ignore load corruption gracefully
+            throw new InvalidOperationException($"Incident spool '{StorageFileName}' cannot be read.", error);
         }
+
+        if (json is null)
+        {
+            _logger.LogInformation("No incident spool found in the data directory; starting empty.");
+            return;
+        }
+
+        List<IncidentRecord>? items;
+
+        try
+        {
+            items = JsonSerializer.Deserialize<List<IncidentRecord>>(json);
+        }
+        catch (JsonException)
+        {
+            // Bozuk dosyanın üstüne yazmak veri kaybı; kenara alınıyor.
+            var quarantined = _storage.Quarantine(StorageFileName);
+            _logger.LogError("Incident spool could not be parsed; moved aside as {File}. Starting empty.", quarantined);
+            return;
+        }
+
+        if (items is null)
+        {
+            return;
+        }
+
+        foreach (var item in items)
+        {
+            _incidents.Enqueue(item);
+        }
+
+        _errorCount = items.Count;
+        _lastIncidentTime = items.OrderByDescending(x => x.Timestamp).FirstOrDefault()?.Timestamp;
+        _logger.LogInformation("Loaded {Count} incidents from the incident spool.", items.Count);
     }
 }
