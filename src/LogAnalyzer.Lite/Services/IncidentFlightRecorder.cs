@@ -41,6 +41,7 @@ internal sealed class IncidentFlightRecorder : IHostedService, IDisposable
     private readonly SemaphoreSlim _saveSignal = new(0, 1);
     private readonly CancellationTokenSource _stopping = new();
     private Task _saveLoop = Task.CompletedTask;
+    private int _stopRequested;
 
     private long _totalIngested;
     private long _successfulRequests;
@@ -65,17 +66,27 @@ internal sealed class IncidentFlightRecorder : IHostedService, IDisposable
         return Task.CompletedTask;
     }
 
+    /// <summary>
+    /// Döngüyü durdurur ve son boşaltmayı yapar. <b>İdempotent ve
+    /// <see cref="Dispose"/>'dan sonra da güvenli</b>: barındırıcı bu yöntemi
+    /// birden fazla kez çağırabiliyor ve sıra garanti değil (ölçüldü:
+    /// <c>WebApplicationFactory</c> kapanışında <c>RunAsync</c>'in kendi
+    /// durdur+at yolu fabrikanın <c>StopAsync</c>'iyle yarışıyor). İptal yalnızca
+    /// bir kez yapılıyor; son boşaltma her çağrıda — yazım kilitli ve aynı
+    /// içeriği yazıyor.
+    /// </summary>
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        await _stopping.CancelAsync();
-
-        try
+        if (TryRequestStop())
         {
-            await _saveLoop.WaitAsync(cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            // Döngü iptalle bitiyor; son boşaltma aşağıda.
+            try
+            {
+                await _saveLoop.WaitAsync(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // Döngü iptalle bitiyor; son boşaltma aşağıda.
+            }
         }
 
         SaveToDisk();
@@ -83,8 +94,30 @@ internal sealed class IncidentFlightRecorder : IHostedService, IDisposable
 
     public void Dispose()
     {
+        // StopAsync hiç çağrılmadıysa döngü asılı kalmasın.
+        TryRequestStop();
         _stopping.Dispose();
         _saveSignal.Dispose();
+    }
+
+    /// <returns>Durdurmayı bu çağrı istediyse <c>true</c>.</returns>
+    private bool TryRequestStop()
+    {
+        if (Interlocked.Exchange(ref _stopRequested, 1) != 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            _stopping.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Eşzamanlı bir Dispose kaynağı çoktan bıraktı; döngü de onunla bitti.
+        }
+
+        return true;
     }
 
     public IngestResponse Ingest(IngestRequest request)

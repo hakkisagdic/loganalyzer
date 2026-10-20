@@ -5,6 +5,7 @@ using System.Text.Json;
 using LogAnalyzer.Lite.Configuration;
 using LogAnalyzer.Lite.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace LogAnalyzer.Lite.Tests;
@@ -74,6 +75,33 @@ public sealed class StorageTests
         Assert.Equal(WebhookConfigTests.SlackUrl, Assert.Single(second.Webhooks.Requests).Uri.AbsoluteUri);
 
         Assert.Contains(second.Logs.Entries, e => e.Message.Contains("Loaded 2 incidents", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// <b>Kapanış sırası garanti değil.</b> Barındırıcı <c>StopAsync</c>'i birden
+    /// fazla kez ve <c>Dispose</c>'dan SONRA da çağırabiliyor: CI'da
+    /// <c>WebApplicationFactory</c> kapanırken <c>RunAsync</c>'in kendi
+    /// durdur+at yolu fabrikanın <c>StopAsync</c>'iyle yarıştı ve dört rastgele
+    /// test <c>ObjectDisposedException</c> ile düştü. Burada sıra zorlanıyor:
+    /// önce <c>Dispose</c>, sonra iki kez <c>StopAsync</c> — patlamamalı ve son
+    /// boşaltma olayı diske yazmalı.
+    /// </summary>
+    [Fact]
+    public async Task Dispose_sonrasi_tekrarlanan_StopAsync_patlamiyor_ve_spool_yaziliyor()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var dir = new TempDataDirectory();
+        await using var app = new LiteAppFactory(dir.DataPath);
+        (await app.CreateClient().SendAsync(Ingest.Error("TRK-STOP"), ct)).Dispose();
+
+        var recorder = app.Services.GetRequiredService<IncidentFlightRecorder>();
+        recorder.Dispose();
+        await recorder.StopAsync(ct);
+        await recorder.StopAsync(ct);
+
+        using var spool = JsonDocument.Parse(await File.ReadAllTextAsync(dir.File(IncidentFlightRecorder.StorageFileName), ct));
+        var only = Assert.Single(spool.RootElement.EnumerateArray());
+        Assert.Equal("TRK-STOP", only.GetProperty("trackingId").GetString());
     }
 
     [Fact]
