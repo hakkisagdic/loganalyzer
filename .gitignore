@@ -28,6 +28,8 @@ venv/
 # de yuttu; yerelde derlendiği için de fark edilmedi, CI'da patladı.
 /data/
 /deploy/.env
+# LogAnalyzer Lite yerel veri dizini (README: LITE_DATA_DIR=./.lite-data)
+/.lite-data/
 /.loganalyzer/
 *.wal
 

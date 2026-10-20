@@ -1,20 +1,34 @@
-version: '3.8'
+# LogAnalyzer Lite — YEREL kullanım.
+#
+# Üretim (Coolify) için docker-compose.coolify.lite.yml kullanılır; bu dosya
+# sabit container_name ve projeye bağlı (external olmayan) bir birim taşıyor,
+# yani başka bir proje adıyla kaldırıldığında BOŞ bir birimle başlar.
+# Geçiş kitabı: deploy/README.lite.md. `coolify` ağı yerelde yoksa:
+# `docker network create coolify`.
 
 services:
   loganalyzer-lite:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.lite
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
     image: loganalyzer-lite:latest
     container_name: loganalyzer-lite
     restart: unless-stopped
     ports:
-      - "5060:5060"
+      # Yalnızca yerel makine: 0.0.0.0 bağlaması BasicAuth'u ve Traefik'i
+      # atlayıp uygulamayı doğrudan ağa açıyordu.
+      - "127.0.0.1:5060:5060"
     volumes:
       - loganalyzer-data:/app/data
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ASPNETCORE_URLS=http://+:5060
+      - LITE_DATA_DIR=/app/data
+      - LITE_INGEST_TOKEN=${LITE_INGEST_TOKEN:-}
+      - LITE_ALLOWED_ORIGINS=${LITE_ALLOWED_ORIGINS:-}
+      - LITE_FRAME_ANCESTORS=${LITE_FRAME_ANCESTORS:-}
+      - LITE_ENABLE_DEMO=${LITE_ENABLE_DEMO:-false}
     networks:
       - coolify
 
