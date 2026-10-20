@@ -1,20 +1,20 @@
 {
   "contractSha256": "b9590c5192e324fd3a971a36d5026d967f1fac822ca68a8ea7b51dbca5b523ae",
   "sourceHashes": {
-    "src/LogAnalyzer.Contracts/TopologyIdentity.cs": "0948062f24c3e8a28c79c1b3553efefdef32fd0c6e42fa9ac9ed25e4a1c9d239",
-    "src/LogAnalyzer.ControlPlane/HistoricalTopologyBindings.cs": "c75d288056ce5fe37d0a8109a34e14a9fea0b8c2d13f2c5783505387cdf3d72f",
-    "src/LogAnalyzer.Storage.ClickHouse/TopologyObservation.cs": "0737191980cc046b0dd1474b2b8f31053f13eb466e803faa7cf398b28749c795",
-    "src/LogAnalyzer.Storage.ClickHouse/TopologyObservedProjector.cs": "a561e1607072da4361ae5e710996e39eb78b49d1c2c89c45a58278b1e3f9c2a9",
-    "src/LogAnalyzer.Contracts/TopologyExpiry.cs": "86b0b2e60cf724e3c21fb297c555281bef653ca0dd7377981e8a34659fa82c4f",
-    "src/LogAnalyzer.Query/TopologyGraphQueryService.cs": "08fa3939f9f621e64157a314beb794b08a97c837fa15875c7fac7f408f60d1bb",
-    "src/LogAnalyzer.Evidence/TopologyProviderBudget.cs": "403fb265a471a7d26c71e6e7a24cbdf030cbde3d6ff20aa27903715a2c42a98f",
-    "src/LogAnalyzer.Evidence/Providers/TopologyGraphProviders.cs": "96efa31e10d34a9dd59273df4984fda11f1e453358561727ab66871a5d9c24b1",
-    "src/LogAnalyzer.Evidence/EvidenceServiceCollectionExtensions.cs": "c640894ac53d255cdabcfb8f7a04f5fd5be987b37b5f02fdca309bfe663361f4",
-    "src/LogAnalyzer.ControlPlane/SourceOwnershipHistory.cs": "2c637a61d42e4efc0c7a74502be9e2bb487ddfd25c64f315c57769ef6692fd11",
-    "src/LogAnalyzer.Contracts/TopologyVisibility.cs": "d21c811d4a78f5188edc42ac13ac332f7ccf1881a67823b935ed488bd0e4abf4",
-    "src/LogAnalyzer.Api/TopologyReadCursorCodec.cs": "242585a872bab79c0e23d345226b68936c39f35508d7325ecac02273ba5eafce",
-    "src/LogAnalyzer.Query/ScopedQuery.Topology.cs": "c4ebd545fad520e0746b2b2ebd9931cca6819da1d9f54936bd0c5a1dbe80c3a0",
-    "src/LogAnalyzer.Query/TopologyPublicationFence.cs": "4531a18ad25954b0363c71f35216cfc3dfc7d085f8a54be15d4781048e967600"
+    "src/LogAnalyzer.Contracts/TopologyIdentity.cs": "3676d2605e2eda55e3a2b658f08fee039269fa1eb7159a0d77662ab88e834946",
+    "src/LogAnalyzer.ControlPlane/HistoricalTopologyBindings.cs": "0bed2f723a893df5a076568b639b2d0abc5b63930b9ab6d59ef53cfc072f256d",
+    "src/LogAnalyzer.Storage.ClickHouse/TopologyObservation.cs": "01bda8aeca2fa0413d431efa672709dc6e288e985986c0c66c8594f31b579d71",
+    "src/LogAnalyzer.Storage.ClickHouse/TopologyObservedProjector.cs": "b35cb8939f4da8308f3c97a6cef34dcb0de81eb97f9665ef263dfa0f0b9fb1ed",
+    "src/LogAnalyzer.Contracts/TopologyExpiry.cs": "9e4c32f7c935f8bd4610f3e8339137485d008879504caf5252ff7da5acd4a34e",
+    "src/LogAnalyzer.Query/TopologyGraphQueryService.cs": "9d26909236cee6eea2caddac0349a4554c919befbbfa0955e9c6cffce99107bb",
+    "src/LogAnalyzer.Evidence/TopologyProviderBudget.cs": "b3423a2aad5cdd989c9d92c7760497736133248825f28577905114ce0f36a012",
+    "src/LogAnalyzer.Evidence/Providers/TopologyGraphProviders.cs": "2bc37ea6082decbbfa01097fbf42fd0641b1d501539508568c8e6eb33943b823",
+    "src/LogAnalyzer.Evidence/EvidenceServiceCollectionExtensions.cs": "c89fde0dd3c5e7e60bf7331df118c7315baf2c386563c752700816273a323ab9",
+    "src/LogAnalyzer.ControlPlane/SourceOwnershipHistory.cs": "06263a24fdbcfe323200f23bda83f23044500a507e599d1db474e0717deb3078",
+    "src/LogAnalyzer.Contracts/TopologyVisibility.cs": "d0ec66d6d7b362a124fe2ef98b4c445a2998e86f273491699a25f96f91352b2e",
+    "src/LogAnalyzer.Api/TopologyReadCursorCodec.cs": "85b27c55b98fcf3eda5401898ac92f3719e8ddc5449088d63ccbbe68fc550ebc",
+    "src/LogAnalyzer.Query/ScopedQuery.Topology.cs": "5e9d89a31f025633d8677b9dc9324e70d416b4cb06c44fc90dbc60151d9896a3",
+    "src/LogAnalyzer.Query/TopologyPublicationFence.cs": "c0cfe8e176552b6d63a2b734b2bde63b24a43495a65ed64a4b6077b2276ae01c"
   },
   "restoreFilters": {
     "UnitTests": [
@@ -128,8 +128,8 @@
       "changes": [
         {
           "path": "src/LogAnalyzer.Storage.ClickHouse/TopologyObservation.cs",
-          "before": "var parts = new List<string> { \"topology-publication-v1\" };",
-          "after": "var parts = new List<string> { \"topology-publication-v1\", Guid.NewGuid().ToString(\"N\") };",
+          "before": "var parts = new List<string> { \"topology-publication-v4\" };",
+          "after": "var parts = new List<string> { \"topology-publication-v4\", Guid.NewGuid().ToString(\"N\") };",
           "occurrence": null
         }
       ]
@@ -142,8 +142,8 @@
       "changes": [
         {
           "path": "src/LogAnalyzer.Storage.ClickHouse/TopologyObservedProjector.cs",
-          "before": "var batch = manifest.Batch;\n            if (batch.Edges.Count != 0)",
-          "after": "var batch = manifest.Batch;\n            await (checkpoints ?? new NoTopologyProjectionCheckpoints()).ReachAsync(\"after-observed-db-before-publish\", token);\n            if (batch.Edges.Count != 0)",
+          "before": "var batch = manifest.Batch;",
+          "after": "var batch = manifest.Batch;\n            await (checkpoints ?? new NoTopologyProjectionCheckpoints()).ReachAsync(\"after-observed-db-before-publish\", token);",
           "occurrence": null
         }
       ]
@@ -156,8 +156,8 @@
       "changes": [
         {
           "path": "src/LogAnalyzer.Query/TopologyGraphQueryService.cs",
-          "before": "var active = snapshot.Edges.Where(edge => !edge.Deleted && edge.FirstSeenUnixNano <= readClockUnixNano\n            && (edge.EffectiveExpiry is null || TopologyExpiry.IsReadable(readClockUnixNano, edge.EffectiveExpiry.Value))\n            && (edge.Provenance != TopologyProvenance.Observed\n                || edge.LastSeenUnixNano >= window.From && edge.LastSeenUnixNano < window.To));",
-          "after": "var active = snapshot.Edges.Where(edge => !edge.Deleted && edge.FirstSeenUnixNano <= readClockUnixNano\n            && (edge.Provenance != TopologyProvenance.Observed\n                || edge.LastSeenUnixNano >= window.From && edge.LastSeenUnixNano < window.To));",
+          "before": "return !edge.Deleted && edge.FirstSeenUnixNano <= edgeClock\n                && (edge.EffectiveExpiry is null || TopologyExpiry.IsReadable(edgeClock, edge.EffectiveExpiry.Value))\n",
+          "after": "return !edge.Deleted && edge.FirstSeenUnixNano <= edgeClock\n",
           "occurrence": null
         }
       ]
@@ -219,8 +219,8 @@
       "changes": [
         {
           "path": "src/LogAnalyzer.Query/TopologyGraphQueryService.cs",
-          "before": "var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window)",
-          "after": "var edges = ActiveEdges(snapshot, query.ReadClockUnixNano, window)",
+          "before": "var edges = VisibleActiveEdges(snapshot, scope, query.ReadClockUnixNano, window,",
+          "after": "var edges = ActiveEdges(snapshot, query.ReadClockUnixNano, window,",
           "occurrence": 0
         }
       ]
@@ -401,8 +401,8 @@
       "changes": [
         {
           "path": "src/LogAnalyzer.Query/TopologyPublicationFence.cs",
-          "before": "|| cursor.ClickHouseWatermark != current.ClickHouseWatermark\n            || nowUnixNano >= deadline",
-          "after": "",
+          "before": "|| !SameRevision(cursor, current)\n            || nowUnixNano >= deadline)",
+          "after": "|| !SameRevision(cursor, current with { ClickHouseWatermark = cursor.ClickHouseWatermark }))",
           "occurrence": null
         }
       ]
@@ -429,6 +429,41 @@
       "oldSha256": "464986154adb49379c98108af2beb77e9bb2dc8e3c280a80d8a61d2b12e94f04",
       "newSha256": "0948062f24c3e8a28c79c1b3553efefdef32fd0c6e42fa9ac9ed25e4a1c9d239",
       "reason": "Merged c83aaeb introduces CanReadOwner unassigned gate. Mutant still removes only parent authorization; child unassigned guard remains. Named Dual_endpoint_predicate groups=B must fail false vs true. Origin of old anchor is E packet, not Q."
+    },
+    {
+      "id": "M07",
+      "path": "src/LogAnalyzer.Storage.ClickHouse/TopologyObservation.cs",
+      "oldSha256": "0737191980cc046b0dd1474b2b8f31053f13eb466e803faa7cf398b28749c795",
+      "newSha256": "01bda8aeca2fa0413d431efa672709dc6e288e985986c0c66c8594f31b579d71",
+      "reason": "The publication key prefix moved topology-publication-v1 -> v2 -> v3 -> v4 (d32b3be, ac3b84b, 5349ef3) before this plan was committed, so the v1 anchor no longer existed. Same mutant on the current prefix: a random part makes the publication key nondeterministic, so child-first and replayed reductions disagree (red asserts equal PublicationKey)."
+    },
+    {
+      "id": "M08",
+      "path": "src/LogAnalyzer.Storage.ClickHouse/TopologyObservedProjector.cs",
+      "oldSha256": "a561e1607072da4361ae5e710996e39eb78b49d1c2c89c45a58278b1e3f9c2a9",
+      "newSha256": "b35cb8939f4da8308f3c97a6cef34dcb0de81eb97f9665ef263dfa0f0b9fb1ed",
+      "reason": "fe8c014 put a comment block between `var batch = manifest.Batch;` and `if (batch.Edges.Count != 0)`, so the two-line anchor no longer matched. The unique first line is the same insertion point: the crash checkpoint fires before any observed row is written, so the red test sees 0 instead of 1 physical edge."
+    },
+    {
+      "id": "M09",
+      "path": "src/LogAnalyzer.Query/TopologyGraphQueryService.cs",
+      "oldSha256": "08fa3939f9f621e64157a314beb794b08a97c837fa15875c7fac7f408f60d1bb",
+      "newSha256": "9d26909236cee6eea2caddac0349a4554c919befbbfa0955e9c6cffce99107bb",
+      "reason": "e3d9b2e/1060b5e moved the predicate into ActiveEdges, which now evaluates each edge against a provenance-specific edgeClock (declared state clock vs expiry clock). Same mutant: drop the only logical-expiry (EffectiveExpiry/IsReadable) predicate, so a physical edge stays readable at and after its deadline."
+    },
+    {
+      "id": "M13",
+      "path": "src/LogAnalyzer.Query/TopologyGraphQueryService.cs",
+      "oldSha256": "08fa3939f9f621e64157a314beb794b08a97c837fa15875c7fac7f408f60d1bb",
+      "newSha256": "9d26909236cee6eea2caddac0349a4554c919befbbfa0955e9c6cffce99107bb",
+      "reason": "e3d9b2e/1060b5e added the declared-state and expiry clock arguments to VisibleActiveEdges, so the call now wraps; occurrence 0 is still PathAsync. Same mutant: the path query reads unscoped ActiveEdges with the same arguments, so a hidden bridge would become a claim."
+    },
+    {
+      "id": "M25",
+      "path": "src/LogAnalyzer.Query/TopologyPublicationFence.cs",
+      "oldSha256": "4531a18ad25954b0363c71f35216cfc3dfc7d085f8a54be15d4781048e967600",
+      "newSha256": "c0cfe8e176552b6d63a2b734b2bde63b24a43495a65ed64a4b6077b2276ae01c",
+      "reason": "d3fc66f folded the epoch/watermark comparison into SameRevision (which also checks the repair stamp and read mode). The original mutant deleted the watermark and TTL lines of the exact-nanosecond EnsureCurrent; the equivalent keeps every other SameRevision check but ignores the ClickHouse watermark and the deadline in that overload only."
     }
   ]
 }
