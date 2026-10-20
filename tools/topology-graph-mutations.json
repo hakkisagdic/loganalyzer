@@ -166,8 +166,8 @@
       "id": "M10",
       "project": "UnitTests",
       "red": "Cycle_selfloop_and_order",
-      "green": "Shortest_directed_paths",
-      "decisionOracle": "Cycle_selfloop_and_order asserts Unreachable with empty proof for R-to-Y across a cyclic, self-looping disconnected graph, plus 20 insertion-order path decisions; the watchdog is the outer safety net.",
+      "green": "Logical_expiry_hides_physical_edge_at_deadline",
+      "decisionOracle": "Cycle_selfloop_and_order first asserts the acyclic diamond R->D is R,A,C,D (first discovered predecessor wins; the mutant overwrites it with B and answers R,B,C,D), then Unreachable with empty proof for R-to-Y across the cyclic, self-looping, disconnected oracle graph, plus 20 insertion-order path decisions. The kill is that named assertion, never a timeout: on the cyclic graph the mutant does not terminate.",
       "changes": [
         {
           "path": "src/LogAnalyzer.Query/TopologyGraphQueryService.cs",
@@ -464,6 +464,13 @@
       "oldSha256": "4531a18ad25954b0363c71f35216cfc3dfc7d085f8a54be15d4781048e967600",
       "newSha256": "c0cfe8e176552b6d63a2b734b2bde63b24a43495a65ed64a4b6077b2276ae01c",
       "reason": "d3fc66f folded the epoch/watermark comparison into SameRevision (which also checks the repair stamp and read mode). The original mutant deleted the watermark and TTL lines of the exact-nanosecond EnsureCurrent; the equivalent keeps every other SameRevision check but ignores the ClickHouse watermark and the deadline in that overload only."
+    },
+    {
+      "id": "M10",
+      "path": "tests/LogAnalyzer.UnitTests/TopologyGraphTests.cs",
+      "oldSha256": "5bf4b91c8482ed82471e2acaa0b8584184e35939636682791cb6b92d4e8be471",
+      "newSha256": "39ea15a2a8fbdc4202434bef070c2c621dcc02f1b4e80cd26d1891b91c24f0c9",
+      "reason": "Never executed before (validate-only failed since c17831a). Run as committed, the mutant never terminates: without the visited check FindPath re-enqueues around C->C/D->A and rebuilds the path through the C self-loop forever, so both Cycle_selfloop_and_order and the old positive control Shortest_directed_paths (same cyclic graph) hung until the runner's 600 s subprocess timeout, which is a runner failure, not a kill. The red test now decides the mutant by assertion on an acyclic diamond before any cyclic query, and gains the documented R-to-Y Unreachable/empty-proof check. The positive control is a path query that terminates under the mutant (single-edge PathAsync, also M11's control). The mutation itself is unchanged."
     }
   ]
 }
