@@ -6,6 +6,10 @@
 #
 #  * Ana makine portu YOK: trafik Traefik'ten (loglar.<alan>, BasicAuth) ve
 #    iç ağdan (Gateway sink → http://loganalyzer-lite:5060) geliyor.
+#  * Traefik etiketi YOK ve Coolify'da domain ATANMAZ: loglar.<alan> route'u
+#    ve BasicAuth bu dosyanın dışında (Traefik dosya sağlayıcısı) tanımlı ve
+#    `loganalyzer-lite` takma adına gidiyor. Domain atamak ya da buraya router
+#    etiketi eklemek aynı Host kuralıyla BasicAuth'suz ikinci bir route açar.
 #  * container_name YOK: Coolify konteyner adını kendisi veriyor; sabit ad
 #    yeniden dağıtımda eskiyle çakışıyor.
 #  * Birim EXTERNAL ve adı birebir `loganalyzer-data`: Coolify proje önekli

@@ -90,6 +90,26 @@ public sealed partial class DeploymentContractTests
         Assert.Contains("loganalyzer-lite", aliases);
     }
 
+    /// <summary>
+    /// Traefik etiketi YOK. <c>loglar.&lt;alan&gt;</c>'ın route'u ve BasicAuth'u
+    /// bu dosyanın dışında (Traefik dosya sağlayıcısı) tanımlı ve
+    /// <c>loganalyzer-lite</c> takma adına gidiyor. Buraya eklenen bir router
+    /// aynı <c>Host</c> kuralıyla BasicAuth'suz ikinci bir route olur.
+    /// </summary>
+    [Fact]
+    public void Coolify_compose_traefik_etiketi_tasimiyor()
+    {
+        var keys = Child(CoolifyService(), "labels") switch
+        {
+            null => [],
+            YamlMappingNode mapping => mapping.Children.Keys.Select(Scalar).ToArray(),
+            YamlSequenceNode sequence => sequence.Children.Select(item => Scalar(item).Split('=', 2)[0]).ToArray(),
+            var other => throw new InvalidOperationException($"Beklenmeyen labels biçimi: {other.NodeType}"),
+        };
+
+        Assert.DoesNotContain(keys, key => key.Trim().StartsWith("traefik.", StringComparison.OrdinalIgnoreCase));
+    }
+
     [Fact]
     public void Coolify_compose_saglik_denetimi_health_ucunu_yokluyor()
     {
