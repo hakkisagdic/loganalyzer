@@ -472,8 +472,14 @@ class Probe:
         self.publish("parent-later", payloads["parent"])
         self.wait_for(lambda: count("parent", 1), "parent typed")
         as_of = iso_nano(max(time.time_ns(), start + 1000))
-        query = "?" + urllib.parse.urlencode({"asOf": as_of, "from": iso_nano(start - 1),
-            "to": iso_nano(start + 1000), "provenance": "observed", "limit": "200"})
+        window_parameters = {"asOf": as_of, "from": iso_nano(start - 1), "to": iso_nano(start + 1000)}
+        query = "?" + urllib.parse.urlencode({**window_parameters, "provenance": "observed", "limit": "200"})
+        # Each read route accepts only its own parameters and answers 400
+        # InvalidQuery for anything else: edge detail pages evidence with
+        # evidencePageSize and has no provenance filter; path has no
+        # provenance filter either. Same observed window for all three.
+        detail_query = "?" + urllib.parse.urlencode({**window_parameters, "evidencePageSize": "200"})
+        path_query = "?" + urllib.parse.urlencode({**window_parameters, "limit": "200"})
         def edges(principal="admin"):
             value = self.request("/v1/topology/edges" + query, principal=principal, case="O02/B02-observed-read")
             assert_wire(value)
@@ -488,11 +494,11 @@ class Probe:
             raise AssertionError("observed direction/provenance changed")
         if edge["from_owner_group"] != edge["to_owner_group"] or edge["to_owner_group"] != self.session["evidence_owners"]["A"]:
             raise AssertionError("forged payload owner affected admitted ownership")
-        detail_path = "/v1/topology/edges/" + edge["id"] + query
+        detail_path = "/v1/topology/edges/" + edge["id"] + detail_query
         original = self.request(detail_path, case="O03-proof")
         if len(original["evidence"]) != 2 or original["evidence_cursor"] is not None:
             raise AssertionError("one observed relation requires two distinct span references")
-        path_url = "/v1/topology/path" + query + "&" + urllib.parse.urlencode({
+        path_url = "/v1/topology/path" + path_query + "&" + urllib.parse.urlencode({
             "fromNode": nodes["parent"]["id"], "toNode": nodes["child"]["id"]})
         proof_nodes = [nodes["parent"]["id"], nodes["child"]["id"]]
         assert_path(self.request(path_url, case="B03-before-retry-semantic-path"), proof_nodes, [edge["id"]])
@@ -534,7 +540,7 @@ class Probe:
             visible = edges(principal)
             if any(e["id"] == cross["id"] for e in visible):
                 raise AssertionError("one endpoint authorization exposed a cross-owner edge")
-            self.request("/v1/topology/edges/" + cross["id"] + query, principal=principal,
+            self.request("/v1/topology/edges/" + cross["id"] + detail_query, principal=principal,
                 expected=(404,), case="B02-both-endpoints-required")
         # A fresh real subject isolates the production RCA debounce key between probes.
         report = self.request("/v1/rca/", method="POST", body={"from": iso_nano(start - 1_000_000_000),
