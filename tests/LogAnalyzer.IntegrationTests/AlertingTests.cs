@@ -34,7 +34,13 @@ public sealed class AlertingTests(DevStackFixture stack) : IAsyncLifetime
 {
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
-    private static readonly DateTimeOffset Now = new(2026, 8, 19, 12, 0, 0, TimeSpan.Zero);
+    /// <summary>
+    /// Sahte saatin durduğu an <see cref="EventTestClock"/>'tan, saati sabit
+    /// (12:00 UTC). Sabit bir tarih (eskiden 2026-08-19) <c>events</c>'in 90
+    /// günlük TTL'ine takılıp sessizce silinirdi ve susan kaynağın son olayı
+    /// tablodan kaybolurdu.
+    /// </summary>
+    private static readonly DateTimeOffset Now = EventTestClock.Day.AddHours(12);
 
     private ClickHouseContext _context = null!;
     private IDbContextFactory<ControlPlaneDbContext> _factory = null!;
@@ -430,7 +436,7 @@ public sealed class AlertingTests(DevStackFixture stack) : IAsyncLifetime
         Host = sourceId,
         Action = action,
         Body = $"{ownerGroup} grubuna ait satır",
-        RawRef = $"raw/{ownerGroup}/2026/08/19/12/default/",
+        RawRef = $"raw/{ownerGroup}/{EventTestClock.RawHour(ts)}/default/",
         SrcIp = IPAddress.IPv6Any,
         DstIp = IPAddress.IPv6Any,
     };

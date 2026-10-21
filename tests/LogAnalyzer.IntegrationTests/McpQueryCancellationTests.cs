@@ -97,7 +97,14 @@ public sealed class McpQueryCancellationTests(DevStackFixture stack) : IAsyncLif
     /// </summary>
     private static readonly TimeSpan CancellationDeadline = TimeSpan.FromSeconds(30);
 
-    private static readonly DateTimeOffset Start = new(2026, 9, 1, 0, 0, 0, TimeSpan.Zero);
+    /// <summary>
+    /// Tohumun başladığı an: test gününün gece yarısı (<see cref="EventTestClock"/>).
+    /// Sabit bir tarih (eskiden 2026-09-01) <c>events</c>'in 90 günlük TTL'ine
+    /// takılıp sessizce silinirdi ve tarama okuyacak satır bulamazdı. 400 bin
+    /// saniyelik yayılım (≈ 4,6 gün) <see cref="EventTestClock.Lead"/>'in içinde,
+    /// yani hiçbir satır duvar saatinin önüne düşmüyor.
+    /// </summary>
+    private static readonly DateTimeOffset Start = EventTestClock.Day;
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 

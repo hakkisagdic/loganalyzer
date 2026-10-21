@@ -53,7 +53,13 @@ public sealed class AlertChainTests(DevStackFixture stack) : IAsyncLifetime
 {
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
-    private static readonly DateTimeOffset Now = new(2026, 8, 19, 12, 0, 0, TimeSpan.Zero);
+    /// <summary>
+    /// Sahte saatin durduğu an <see cref="EventTestClock"/>'tan, saati sabit
+    /// (12:00 UTC). Sabit bir tarih (eskiden 2026-08-19) <c>events</c>'in 90
+    /// günlük TTL'ine takılıp sessizce silinirdi ve susan kaynağın son olayı
+    /// tablodan kaybolurdu.
+    /// </summary>
+    private static readonly DateTimeOffset Now = EventTestClock.Day.AddHours(12);
 
     private const string Core = "net-core";
     private const string Edge = "net-edge";
@@ -255,7 +261,7 @@ public sealed class AlertChainTests(DevStackFixture stack) : IAsyncLifetime
     /// <para>
     /// <c>LogEvent.IngestedAt</c>'in varsayılanı <c>DateTimeOffset.UtcNow</c>,
     /// yani <b>gerçek duvar saati</b>. Alan verilmeyince satırlar sahte
-    /// <c>Now</c>'dan (2026-08-19) günler sonrasına damgalandı,
+    /// <c>Now</c>'dan günler sonrasına damgalandı (<see cref="EventTestClock.Lead"/>),
     /// <c>since = now - seen</c> <b>negatif</b> çıktı, eşiğin altında kaldı ve
     /// kaynak "susmuş" sayılmadı — sonuç <c>Quiet</c>. Belirti tetiklenmenin
     /// hiç olmamasıydı; sebebi bir zaman damgasının yokluğuydu.

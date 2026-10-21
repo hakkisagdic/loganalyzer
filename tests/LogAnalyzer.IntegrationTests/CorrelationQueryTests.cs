@@ -24,7 +24,13 @@ namespace LogAnalyzer.IntegrationTests;
 [Collection(DevStackCollection.Name)]
 public sealed class CorrelationQueryTests(DevStackFixture stack) : IAsyncLifetime
 {
-    private static readonly DateTimeOffset Now = new(2026, 8, 20, 14, 0, 0, TimeSpan.Zero);
+    /// <summary>
+    /// Pencerenin başladığı an <see cref="EventTestClock"/>'tan, saati sabit
+    /// (14:00 UTC). Sabit bir tarih (eskiden 2026-08-20) <c>events</c>'in 90
+    /// günlük TTL'ine takılıp sessizce silinirdi; yedi günlük taban
+    /// <see cref="EventTestClock.MaxLookBack"/>'in içinde.
+    /// </summary>
+    private static readonly DateTimeOffset Now = EventTestClock.Day.AddHours(14);
 
     private ClickHouseContext _context = null!;
     private EventWriter _writer = null!;

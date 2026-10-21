@@ -28,7 +28,12 @@ namespace LogAnalyzer.IntegrationTests;
 public sealed class SignatureHashStorageTests(DevStackFixture stack) : IAsyncLifetime
 {
     private static readonly MaskCatalog Masks = MaskCatalog.LoadFromFile(RepoPath("catalog/masks/loganalyzer-masks.yaml"));
-    private static readonly DateTimeOffset Base = new(2026, 8, 20, 8, 0, 0, TimeSpan.Zero);
+    /// <summary>
+    /// Olayların anı <see cref="EventTestClock"/>'tan, saati sabit (08:00 UTC).
+    /// Sabit bir tarih (eskiden 2026-08-20) <c>events</c>'in 90 günlük TTL'ine
+    /// takılıp sessizce silinirdi.
+    /// </summary>
+    private static readonly DateTimeOffset Base = EventTestClock.Day.AddHours(8);
 
     private ClickHouseContext _context = null!;
     private EventWriter _writer = null!;

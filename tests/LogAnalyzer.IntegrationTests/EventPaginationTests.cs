@@ -39,7 +39,12 @@ public sealed class EventPaginationTests(DevStackFixture stack) : IAsyncLifetime
     private const int PageSize = 200;
     private const int DeepPage = 50;
 
-    private static readonly DateTimeOffset Start = new(2026, 8, 17, 0, 0, 0, TimeSpan.Zero);
+    /// <summary>
+    /// Tohumun başladığı an: test gününün gece yarısı (<see cref="EventTestClock"/>).
+    /// Sabit bir tarih (eskiden 2026-08-17) <c>events</c>'in 90 günlük TTL'ine
+    /// takılıp sessizce silinirdi; 24 bin saniyelik yayılım tek günün içinde.
+    /// </summary>
+    private static readonly DateTimeOffset Start = EventTestClock.Day;
 
     private ClickHouseContext _context = null!;
     private EventReader _reader = null!;
@@ -102,7 +107,7 @@ public sealed class EventPaginationTests(DevStackFixture stack) : IAsyncLifetime
             SrcIp = IPAddress.IPv6Any,
             DstIp = IPAddress.IPv6Any,
             Body = string.Create(CultureInfo.InvariantCulture, $"bağlantı kabul edildi #{index}"),
-            RawRef = "raw/net-core/2026/08/17/00/firewall/",
+            RawRef = $"raw/net-core/{EventTestClock.RawHour(Start)}/firewall/",
         };
     }
 

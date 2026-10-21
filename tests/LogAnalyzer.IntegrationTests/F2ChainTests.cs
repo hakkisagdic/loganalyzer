@@ -58,9 +58,13 @@ namespace LogAnalyzer.IntegrationTests;
 [Collection(DevStackCollection.Name)]
 public sealed class F2ChainTests(DevStackFixture stack) : IAsyncLifetime
 {
-    /// <summary>Mikrosaniye bileşeni kasıtlı — K29'un kırpılma tuzağı zincirde de var.</summary>
+    /// <summary>
+    /// Mikrosaniye bileşeni kasıtlı — K29'un kırpılma tuzağı zincirde de var.
+    /// Gün <see cref="EventTestClock"/>'tan: sabit bir tarih (eskiden
+    /// 2026-08-17) <c>events</c>'in 90 günlük TTL'ine takılıp sessizce silinirdi.
+    /// </summary>
     private static readonly DateTimeOffset Observed =
-        new DateTimeOffset(2026, 8, 17, 9, 30, 15, TimeSpan.Zero) + TimeSpan.FromTicks(7_431_002);
+        EventTestClock.Day + new TimeSpan(9, 30, 15) + TimeSpan.FromTicks(7_431_002);
 
     private const string Core = "net-core";
     private const string Edge = "net-edge";

@@ -961,13 +961,29 @@ public sealed class TopologyProductionProviderTests
     {
         var query = Ready();
         using var caller = new CancellationTokenSource();
+        var cancelClock = new Stopwatch();
         var inFlight = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var tokenObserved = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var tokenObserved = new TaskCompletionSource<TimeSpan>(TaskCreationOptions.RunContinuationsAsynchronously);
         query.TopologyEdgeResponse = async (_, _, _, token) =>
         {
-            using var registration = token.Register(() => tokenObserved.TrySetResult(true));
+            // One callback records the observation AND releases the read, so the
+            // read cannot finish before its cancellation has been recorded.
+            //
+            // The former shape (an observer registration plus
+            // `Task.Delay(Infinite, token)`) lost the observation on a loaded
+            // runner although the token fired at once: token callbacks run in
+            // reverse registration order, so the delay's callback ran first and
+            // resumed this read on a pool thread, whose `using` disposal then
+            // unregistered the observer before the cancelling thread reached it.
+            // The 1 s wait below timed out with nothing late (CI run 39566265360).
+            var released = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var registration = token.Register(() =>
+            {
+                tokenObserved.TrySetResult(cancelClock.Elapsed);
+                released.TrySetCanceled(token);
+            });
             inFlight.TrySetResult(true);
-            await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            await released.Task;
             throw new InvalidOperationException("Cancellation must leave the proof read.");
         };
         var services = new ServiceCollection();
@@ -977,14 +993,19 @@ public sealed class TopologyProductionProviderTests
         using var provider = services.BuildServiceProvider();
         var gathering = provider.GetRequiredService<TopologyCommonAncestorProvider>().GatherAsync(
             Window, Scope, GatherBudget.Default, caller.Token);
+        // Both latencies are stamped where they happen (the token callback, the
+        // provider task's completion), not when this test thread is next
+        // scheduled, so runner load on the observing side is not measured.
+        var completed = gathering.ContinueWith(_ => cancelClock.Elapsed, CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         await inFlight.Task.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
-        var cancelClock = Stopwatch.StartNew();
+        cancelClock.Start();
         caller.Cancel();
-        await tokenObserved.Task.WaitAsync(TimeSpan.FromSeconds(1), TestContext.Current.CancellationToken);
-        var tokenObservedAfter = cancelClock.Elapsed;
+        var tokenObservedAfter = await tokenObserved.Task.WaitAsync(TimeSpan.FromSeconds(1),
+            TestContext.Current.CancellationToken);
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             gathering.WaitAsync(TimeSpan.FromSeconds(2), TestContext.Current.CancellationToken));
-        var completedAfter = cancelClock.Elapsed;
+        var completedAfter = await completed;
         Assert.True(tokenObservedAfter <= TimeSpan.FromSeconds(1),
             $"Ancestor query token observed cancellation after {tokenObservedAfter}.");
         Assert.True(completedAfter <= TimeSpan.FromSeconds(2),
