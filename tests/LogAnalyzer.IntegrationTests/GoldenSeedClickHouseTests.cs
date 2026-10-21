@@ -4,6 +4,7 @@ using LogAnalyzer.Contracts;
 using LogAnalyzer.Parsing.Dispatch;
 using LogAnalyzer.Parsing.Engine;
 using LogAnalyzer.Parsing.Grok;
+using LogAnalyzer.Parsing.Samples;
 using LogAnalyzer.Storage.ClickHouse;
 
 namespace LogAnalyzer.IntegrationTests;
@@ -52,7 +53,21 @@ public sealed class GoldenSeedClickHouseTests(DevStackFixture stack) : IAsyncLif
     /// <summary>Yükleyicinin dokunmaması gereken "ürün verisi"nin temsilcisi.</summary>
     private const string ForeignGroup = "net-core";
 
-    private static readonly DateTimeOffset Anchor = new(2026, 8, 20, 12, 0, 0, TimeSpan.Zero);
+    /// <summary>
+    /// Çapa <b>şimdi</b> — ürünün kuralı (<see cref="SampleClock.Anchor"/>),
+    /// CLI'ın <c>seed golden</c> varsayılanıyla aynı tanım.
+    ///
+    /// <para>
+    /// Sabit bir çapa (eskiden 2026-08-20) burada bir saatli bombaydı:
+    /// <c>events</c>'teki <c>TTL ts + 90 gün</c>'ü ClickHouse <b>kendi</b>
+    /// saatiyle uyguluyor, yani duvar saati ilerledikçe 30 günlük yayılımın en
+    /// eski günleri hata vermeden silindi ve ayrı gün sayısı her gün bir
+    /// düştü (CI koşumu 39566265360: 29 gün). Çapa her test örneğinde bir kez
+    /// alınıyor; tohumlama, yabancı satırlar ve son-pencere sorgusu aynı anı
+    /// paylaşıyor.
+    /// </para>
+    /// </summary>
+    private readonly DateTimeOffset _anchor = SampleClock.Anchor();
 
     private ClickHouseContext _context = null!;
 
@@ -126,7 +141,7 @@ public sealed class GoldenSeedClickHouseTests(DevStackFixture stack) : IAsyncLif
         var recent = await ScalarAsync(string.Create(
             CultureInfo.InvariantCulture,
             $"SELECT count() FROM events WHERE owner_group = '{SeedGroup}' " +
-            $"AND ts >= toDateTime64('{Anchor.AddMinutes(-45):yyyy-MM-dd HH:mm:ss}', 3, 'UTC')"));
+            $"AND ts >= toDateTime64('{_anchor.AddMinutes(-45):yyyy-MM-dd HH:mm:ss}', 3, 'UTC')"));
 
         Assert.True(recent > 0, "Son 45 dakikada hiç satır yok — baseline ölçümü hiç başlamaz.");
     }
@@ -142,7 +157,7 @@ public sealed class GoldenSeedClickHouseTests(DevStackFixture stack) : IAsyncLif
     public async Task Temizleme_yalnizca_kendi_grubunu_siliyor()
     {
         var writer = new EventWriter(_context);
-        await writer.WriteEventsAsync([Foreign(), Foreign()], TestContext.Current.CancellationToken);
+        await writer.WriteEventsAsync([Foreign(_anchor), Foreign(_anchor)], TestContext.Current.CancellationToken);
 
         await SeedAsync();
 
@@ -203,7 +218,21 @@ public sealed class GoldenSeedClickHouseTests(DevStackFixture stack) : IAsyncLif
         var plan = GoldenSamplePlan.Build(
             seeder.Signatures(samples),
             GoldenSampleSeeder.Vendors(samples),
-            new SeedPlanOptions(Anchor, TimeSpan.FromDays(30), TotalEvents: 4_000, ZipfExponent: 2.0, Seed: 39));
+            new SeedPlanOptions(_anchor, TimeSpan.FromDays(30), TotalEvents: 4_000, ZipfExponent: 2.0, Seed: 39));
+
+        // TTL kapısı — CLI'ın yazmadan önce sorduğu soru (SeedCommandHandlers),
+        // ama ClickHouse'un TTL'i uyguladığı saate göre: çapaya değil şimdiye.
+        // Süresi dolmuş satırı ClickHouse hata vermeden kabul edip siliyor; bu
+        // kapı olmadan aynı kusur aşağıda "29 gün" gibi bir sayı olarak, yani
+        // sebebini söylemeden görünüyor.
+        var retention = EventRetention.Read(RepoPath(Path.Combine("db", "clickhouse")));
+        var now = TimeProvider.System.GetUtcNow();
+        var expired = plan.Count(occurrence => !SampleClock.Survives(occurrence.At, now, retention));
+        Assert.True(expired == 0, string.Create(
+            CultureInfo.InvariantCulture,
+            $"Planın {expired}/{plan.Count} satırı TTL dışında (saklama {retention.TotalDays:0} gün, " +
+            $"en eski yazılabilir an {SampleClock.EarliestWritable(now, retention):yyyy-MM-dd HH:mm}Z); " +
+            $"ClickHouse bunları sessizce siler."));
 
         var writer = new EventWriter(_context);
 
@@ -264,11 +293,11 @@ public sealed class GoldenSeedClickHouseTests(DevStackFixture stack) : IAsyncLif
         return raw.Length == 0 ? 0 : long.Parse(raw, CultureInfo.InvariantCulture);
     }
 
-    private static LogEvent Foreign() => new()
+    private static LogEvent Foreign(DateTimeOffset at) => new()
     {
         EventId = Guid.NewGuid(),
-        Timestamp = Anchor,
-        IngestedAt = Anchor,
+        Timestamp = at,
+        IngestedAt = at,
         TimeSource = TimeSources.Received,
         OwnerGroup = ForeignGroup,
         SourceId = "benchmark",
