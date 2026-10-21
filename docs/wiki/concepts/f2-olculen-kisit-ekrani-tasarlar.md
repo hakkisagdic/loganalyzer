@@ -17,7 +17,7 @@ sources:
   - docs/epic/tickets-f2/log-arama-ekrani/index.md
   - docs/epic/tickets-f2/envanter-ekrani/index.md
   - docs/epic/f2-kapanis/index.md
-source_digest: "sha256-12/v1 docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/f2-teknik-plan/index.md=70c97eb131ab docs/epic/tickets-f2/envanter-ekrani/index.md=89e5d842af30 docs/epic/tickets-f2/log-arama-ekrani/index.md=e4425034ae89"
+source_digest: "sha256-12/v1 docs/epic/f2-kapanis/index.md=373340ca64ab docs/epic/f2-teknik-plan/index.md=da7d52f34216 docs/epic/tickets-f2/envanter-ekrani/index.md=d7efc0332536 docs/epic/tickets-f2/log-arama-ekrani/index.md=9808f709d9ea"
 summary: F1'de ölçülen iki sayı (tam metin eşiği ~11 karakter, keyset'in owner_group+source_id kısıtı) arama ekranının tasarımını doğrudan belirledi. Ekran ölçümü gizlemiyor, kullanıcıya sayıyla söylüyor.
 provenance:
   extracted: 0.85

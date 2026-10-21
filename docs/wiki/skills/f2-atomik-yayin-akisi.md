@@ -18,7 +18,7 @@ sources:
   - docs/epic/tickets-f2/parser-editoru/index.md
   - docs/epic/tickets-f2/katalog-ekrani/index.md
   - docs/epic/f2-kapanis/index.md
-source_digest: "sha256-12/v1 docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/f2-teknik-plan/index.md=70c97eb131ab docs/epic/tickets-f2/katalog-ekrani/index.md=e9f77ef3d17c docs/epic/tickets-f2/parser-editoru/index.md=b67acb46e9be docs/epic/tickets-f2/parser-yayin-akisi/index.md=1addd87ba7bf"
+source_digest: "sha256-12/v1 docs/epic/f2-kapanis/index.md=373340ca64ab docs/epic/f2-teknik-plan/index.md=da7d52f34216 docs/epic/tickets-f2/katalog-ekrani/index.md=e9f77ef3d17c docs/epic/tickets-f2/parser-editoru/index.md=b67acb46e9be docs/epic/tickets-f2/parser-yayin-akisi/index.md=1addd87ba7bf"
 summary: Parser'ı üründe yazıp yayınlama akışının yordamı — zorunlu kapılar, atomik referans değişimi, tek adımda geri alma ve kataloğun ikiye çıkan kaynağı.
 provenance:
   extracted: 0.85

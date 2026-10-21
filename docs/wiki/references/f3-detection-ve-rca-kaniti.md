@@ -23,7 +23,7 @@ sources:
   - docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md
   - docs/epic/tickets-f4/entropi-terfi-karari/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=3927d9fc6d4a docs/epic/f3-teknik-plan/index.md=af05d3fc9852 docs/epic/f3-yol-haritasi/index.md=473574f06a4f docs/epic/rca-raporu-ozelligi/index.md=1da27ea79668 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=24d493dc4d88 docs/epic/tickets-f4/entropi-terfi-karari/index.md=16d40c7f9036 docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=575e48c5afe3"
+source_digest: "sha256-12/v1 CLAUDE.md=ca854bb3fb99 docs/epic/f3-teknik-plan/index.md=0c24a97ec428 docs/epic/f3-yol-haritasi/index.md=8cbe67f7a909 docs/epic/rca-raporu-ozelligi/index.md=490258855d58 docs/epic/sigma-clickhouse-arastirmasi/index.md=8715e251b522 docs/epic/tickets-f3/index.md=51355f2751e2 docs/epic/tickets-f4/entropi-terfi-karari/index.md=668b0c3bd032 docs/epic/tickets-f4/prompt-redaksiyon-tabani/index.md=1a3efecff839"
 summary: F3'ün iki kolu (Sigma detection ve RCA kanıtı), planı yarı yarıya değiştiren template_id bulgusu, on ürün ticket'ının durumu, sonradan eklenen üç kapı ticket'ı, ve fazın sayılarının neden bağlayıcı olmadığı.
 provenance:
   extracted: 0.85

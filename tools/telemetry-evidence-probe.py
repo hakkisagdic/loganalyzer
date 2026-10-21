@@ -36,14 +36,27 @@ def journal(output, number, path, owner, body, status, raw, case):
     (output / f"http-{number:04}-response.bin").write_bytes(raw)
 
 
-def verify_raw(session, output, nonce):
-    root = Path(session["signals"])
+def processed_for(root, nonce):
     processed = []
     for path in (root / "processed").glob("*.json"):
         item = json.loads(path.read_text())
         if any(any(a.get("key") == "test.run" and a.get("value", {}).get("stringValue") == nonce
                    for a in leaf["resource"].get("attributes", [])) for leaf in item["leaves"]):
             processed.append(item)
+    return processed
+
+
+def verify_raw(session, output, nonce):
+    root = Path(session["signals"])
+    # SignalIngest writes typed rows first and the processed checkpoint after
+    # them, so a complete REST count does not yet prove the checkpoint file
+    # exists: the second probe once saw Traces but not yet Metrics. Wait for
+    # the checkpoint itself (bounded); the exact signal set is asserted below.
+    try:
+        wait_for(lambda: {item["signal"] for item in processed_for(root, nonce)} >= {"Metrics", "Traces"}, timeout=60)
+    except RuntimeError:
+        pass
+    processed = processed_for(root, nonce)
     actual_signals = {item["signal"] for item in processed}
     assert actual_signals == {"Metrics", "Traces"}, (
         f"processed signals: {sorted(actual_signals)}, "

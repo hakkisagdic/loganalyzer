@@ -141,7 +141,16 @@ public sealed class TelemetryBoundaryIntegrationTests(DevStackFixture stack)
         Assert.Equal("legacy-owner-unknown", row.Owner.Reason); Assert.Equal(legacy.PayloadSha256, row.PayloadSha256);
         Assert.Equal(legacy.EnvelopeId.ToString("N") + "/" + legacy.AcceptedKeys[0], row.LogicalId);
         var upgraded = await ingest.Archive.ReadAsync(Assert.Single(ingest.Archive.Manifests()), Ct);
-        Assert.Equal(2, upgraded.Version); Assert.Equal(raw, upgraded.Payload); Assert.NotNull(upgraded.OwnerBindingsSha256);
+        // v1 is upgraded straight to the CURRENT envelope (v3 since topology
+        // admission, 0c7fb7c): the payload and its SHA stay byte-identical, the
+        // owner decision is the durable legacy unknown, and the topology decision
+        // is the explicit LegacyTopologyUnknown, never a current-inventory guess.
+        Assert.Equal(RawSignalEnvelope.CurrentVersion, upgraded.Version); Assert.Equal(raw, upgraded.Payload);
+        Assert.Equal(legacy.PayloadSha256, upgraded.PayloadSha256); Assert.NotNull(upgraded.OwnerBindingsSha256);
+        Assert.NotEmpty(upgraded.TopologyBindings!);
+        Assert.All(upgraded.OwnerBindings!, binding => Assert.Equal("legacy-owner-unknown", binding.Reason));
+        Assert.All(upgraded.TopologyBindings!, binding => Assert.Equal("LegacyTopologyUnknown", binding.Reason));
+        upgraded.Validate();
         await f.SourceAsync("legacy", "B", f.Clock.GetUtcNow().AddSeconds(1)); await ingest.ReplayArchiveAsync(Ct);
         Assert.Empty((await f.Query.SearchTelemetryAsync(query, AccessScope.ForGroups("B", ["B"]), Ct)).Records);
         Assert.Single((await f.Query.SearchTelemetryAsync(query, AccessScope.ForGroups("unknown", ["_unassigned"]), Ct)).Records);

@@ -23,7 +23,7 @@ sources:
   - docs/epic/t27-ad-govde-kesfi/index.md
   - docs/epic/t29-sicak-yol-olcumu/index.md
   - CLAUDE.md
-source_digest: "sha256-12/v1 CLAUDE.md=3927d9fc6d4a docs/epic/t02-kararlar/index.md=b3cf84aad7ba docs/epic/t05-kararlar/index.md=fa28e6db349e docs/epic/t06-kararlar/index.md=3a34fdcba4c4 docs/epic/t07-kararlar/index.md=f945b43c4277 docs/epic/t08-motor-geri-beslemesi/index.md=5ce87e36f831 docs/epic/t11-kararlar/index.md=65a7f0937a84 docs/epic/t12-kararlar/index.md=454710cef295 docs/epic/t27-ad-govde-kesfi/index.md=e14d05d8d833 docs/epic/t29-sicak-yol-olcumu/index.md=f5c754a8042f"
+source_digest: "sha256-12/v1 CLAUDE.md=ca854bb3fb99 docs/epic/t02-kararlar/index.md=54166da147ca docs/epic/t05-kararlar/index.md=64afc32a295a docs/epic/t06-kararlar/index.md=bae3945f3c62 docs/epic/t07-kararlar/index.md=93e270276b26 docs/epic/t08-motor-geri-beslemesi/index.md=9e3eaa81dd49 docs/epic/t11-kararlar/index.md=65a7f0937a84 docs/epic/t12-kararlar/index.md=0ff78fd646e0 docs/epic/t27-ad-govde-kesfi/index.md=e14d05d8d833 docs/epic/t29-sicak-yol-olcumu/index.md=5fbef38717c4"
 summary: Ölçülen ama hiçbir eşikle karşılaştırılmayan sayı, ölçülmemiş sayıdan yalnızca biraz iyi. Sayaç, eşik ve kapı üç ayrı karardır ve her biri ayrı ayrı verilmek zorunda.
 provenance:
   extracted: 0.85

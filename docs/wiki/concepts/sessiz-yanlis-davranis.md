@@ -11,7 +11,7 @@ relationships:
   - target: "[[skills/paralel-ajan-koordinasyonu]]"
     type: related_to
 sources: [CLAUDE.md, docs/epic/f2-kapanis/index.md]
-source_digest: "sha256-12/v1 CLAUDE.md=3927d9fc6d4a docs/epic/f2-kapanis/index.md=c701d88f78fd"
+source_digest: "sha256-12/v1 CLAUDE.md=ca854bb3fb99 docs/epic/f2-kapanis/index.md=373340ca64ab"
 summary: Bu depoda en pahalı hata sınıfı; hata, sayaç ve belirti üretmeden yanlış sonuç veren davranış. Ölçülmeyen şey çalışıyor sayılmaz.
 provenance:
   extracted: 0.85

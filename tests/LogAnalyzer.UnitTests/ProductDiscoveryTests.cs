@@ -139,6 +139,90 @@ public sealed class ProductDiscoveryTests
             "\n\nBirim test projesine referans ekleyin — görülemeyen bir derleme sessizce boş sayılır.");
     }
 
+    /// <summary>
+    /// <b>Bağımsız ürün istisnası yalnızca <c>LogAnalyzer.Lite</c>'ı kapsıyor</b>
+    /// ve keşif onu gerçekten istisna olarak işliyor.
+    ///
+    /// <para>
+    /// İstisna listesi <see cref="Her_urun_derlemesi_yuklenebiliyor"/>'u
+    /// susturmanın en kısa yolu, o yüzden çivili: ikinci bir giriş eklemek bu
+    /// testi de değiştirmeyi gerektiriyor (§8'in "iki ayrı bilinçli hareket"
+    /// kuralı). Bayat giriş de yanıyor — beyan edilip keşfin hiç görmediği bir
+    /// proje, istisnanın neyi koruduğunu okunmaz kılar.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Bagimsiz_urun_istisnasi_yalnizca_Lite_icin()
+    {
+        var declared = ProductDiscovery.StandaloneProducts.Keys.Order(StringComparer.Ordinal).ToArray();
+
+        Assert.Equal(["LogAnalyzer.Lite"], declared);
+        Assert.All(ProductDiscovery.StandaloneProducts.Values,
+            static reason => Assert.False(string.IsNullOrWhiteSpace(reason)));
+
+        Assert.Equal(declared, ProductDiscovery.AllProducts.Standalone);
+        Assert.DoesNotContain(ProductDiscovery.AllProducts.Assemblies,
+            static a => ProductDiscovery.StandaloneProducts.ContainsKey(a.GetName().Name!));
+    }
+
+    /// <summary>
+    /// <b>Beyan edilen bağımsız ürün GERÇEKTEN bağımsız</b> — diskten ölçülüyor.
+    ///
+    /// <para>
+    /// Üç koşul, her biri istisnanın bir kör noktasını kapatıyor: (1) kendi
+    /// <c>global.json</c>'u ve kök props'u içe aktarmayan kendi
+    /// <c>Directory.Build.props</c>'u var — yani ayrı bir derleme; (2) hiçbir
+    /// ürün/simülatör/test projesi ona referans vermiyor — yani Core
+    /// kompozisyonunun parçası değil; (3) <c>Add*</c>/<c>Map*</c> uzantısı
+    /// tanımlamıyor — olsaydı kapılar onu göremezdi ve istisna bir kör nokta
+    /// olurdu. Üçüncüsü metin taraması (derleme yüklenemiyor); yanlış pozitif
+    /// kırmızı yakar, sessiz bir yeşil üretmez.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void Bagimsiz_urun_gercekten_bagimsiz()
+    {
+        var projectFiles = ProductDiscovery.ProductAreas.Append("tests")
+            .Select(static area => Path.Combine(RepositoryLayout.Root, area))
+            .Where(Directory.Exists)
+            .SelectMany(static dir => Directory.EnumerateFiles(dir, "*.csproj", SearchOption.AllDirectories))
+            .Where(static file => !IsBuildOutput(file))
+            .ToArray();
+
+        foreach (var name in ProductDiscovery.StandaloneProducts.Keys)
+        {
+            var project = Assert.Single(ProductDiscovery.Projects, p => p.Project == name);
+            var directory = Path.GetDirectoryName(project.File)!;
+
+            Assert.True(File.Exists(Path.Combine(directory, "global.json")),
+                $"{name} kendi global.json'una sahip değil — bağımsız bir derleme değil.");
+            var props = Path.Combine(directory, "Directory.Build.props");
+            Assert.True(File.Exists(props), $"{name} kendi Directory.Build.props'una sahip değil.");
+            Assert.DoesNotContain("<Import", File.ReadAllText(props), StringComparison.Ordinal);
+
+            var referencing = projectFiles
+                .Where(file => !string.Equals(file, project.File, StringComparison.Ordinal))
+                .Where(file => File.ReadAllText(file).Contains(name + ".csproj", StringComparison.Ordinal))
+                .ToArray();
+            Assert.True(referencing.Length == 0,
+                $"{name} bağımsız beyan edilmiş ama şu projeler ona referans veriyor: " +
+                string.Join(", ", referencing) + " — artık kompozisyonun parçası; istisnadan çıkarın.");
+
+            var registrars = Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories)
+                .Where(static file => !IsBuildOutput(file))
+                .Where(static file => Regex.IsMatch(File.ReadAllText(file),
+                    @"\bthis\s+(IServiceCollection|IEndpointRouteBuilder)\b"))
+                .ToArray();
+            Assert.True(registrars.Length == 0,
+                $"{name} kayıt uzantısı tanımlıyor ({string.Join(", ", registrars)}); keşif onu " +
+                "yükleyemediği için kapılar bu uzantıları göremez.");
+        }
+    }
+
+    private static bool IsBuildOutput(string path) =>
+        path.Split(Path.DirectorySeparatorChar) is var parts
+        && (parts.Contains("bin", StringComparer.Ordinal) || parts.Contains("obj", StringComparer.Ordinal));
+
     // ------------------------------------------------- kapsamların İLİŞKİSİ
 
     /// <summary>

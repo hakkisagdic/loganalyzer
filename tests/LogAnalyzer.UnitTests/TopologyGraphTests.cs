@@ -83,6 +83,18 @@ public sealed class TopologyGraphTests
     [Fact]
     public async Task Cycle_selfloop_and_order()
     {
+        // Visited-set decision first, on an acyclic diamond: the first discovered
+        // predecessor must win, so R->D is R,A,C,D. A traversal that lets the
+        // later B->C discovery overwrite it answers R,B,C,D here, by assertion,
+        // before the cyclic graph below could keep it looping forever.
+        var diamond = await Query([Edge("ra", R, A), Edge("rb", R, B), Edge("ac", A, C), Edge("bc", B, C),
+            Edge("cd", C, D)]).PathAsync(new(R, D, 1000), ScopeA, Ct);
+        Assert.Equal([R, A, C, D], diamond.Nodes); Assert.Equal(["ra", "ac", "cd"], diamond.EdgeIds);
+        // Cycles and the self-loop are explored once; a disconnected target is
+        // a clean Unreachable with no proof.
+        var disconnected = await Query(OracleEdges()).PathAsync(new(R, Y, 1000), ScopeA, Ct);
+        Assert.Equal(TopologyGraphResultStatus.Unreachable, disconnected.Status);
+        Assert.Empty(disconnected.Nodes); Assert.Empty(disconnected.EdgeIds);
         var expected = await Query(OracleEdges()).PathAsync(new(R, D, 1000), ScopeA, Ct);
         for (var seed = 0; seed < 20; seed++)
         {

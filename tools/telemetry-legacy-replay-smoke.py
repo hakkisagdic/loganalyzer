@@ -54,10 +54,14 @@ def main():
             assert hashlib.sha256((case / "objects" / current["object_key"]).read_bytes()).hexdigest() == current["object_sha256"]
         code, stdout = run("replay")
         assert code == 0, "supported restart replay failed"
-        result = json.loads(stdout.strip().splitlines()[-1]); owner, = result["owners"]
-        assert result["version"] == 2 and result["payload_sha256"] == before["payload_sha256"]
+        result = json.loads(stdout.strip().splitlines()[-1]); owner, = result["owners"]; topology, = result["topology"]
+        # The restored archive must hold the CURRENT envelope (v3 since topology
+        # admission); a pinned 2 went stale silently when v3 arrived.
+        assert result["version"] == result["current_version"] and result["payload_sha256"] == before["payload_sha256"]
         assert owner["source_id"] == expected and owner["owner_group"] == "_unassigned"
         assert owner["reason"] == "legacy-owner-unknown"
+        assert topology["leaf_key"] == owner["leaf_key"] and topology["source_id"] == owner["source_id"]
+        assert topology["reason"] == "LegacyTopologyUnknown" and topology["node_id"] is None
         assert run("replay")[0] == 0
         assert len(list((case / "state/processed").glob("*.json"))) == 1
         results.append({"stage": stage, "first": first, "second": second, "source": expected, "status": "PASS"})

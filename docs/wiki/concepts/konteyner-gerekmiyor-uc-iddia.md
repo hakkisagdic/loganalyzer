@@ -15,7 +15,7 @@ relationships:
   - target: "[[concepts/sessiz-yanlis-davranis]]"
     type: uses
 sources: [CLAUDE.md]
-source_digest: "sha256-12/v1 CLAUDE.md=3927d9fc6d4a"
+source_digest: "sha256-12/v1 CLAUDE.md=ca854bb3fb99"
 summary: Bu depoda üç ayrı sayfa aynı cümleyi kuruyor ve üçü farklı soruya cevap veriyor. Üçüncüsü yeni doğdu; ayrılmazsa biri diğerinden yanlış bir hak çıkarıyor.
 provenance:
   extracted: 0.55
