@@ -69,7 +69,13 @@ public sealed class SigmaRuleChainTests(DevStackFixture stack) : IAsyncLifetime
 {
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
-    private static readonly DateTimeOffset Now = new(2026, 8, 19, 12, 0, 0, TimeSpan.Zero);
+    /// <summary>
+    /// Sahte saatin durduğu an <see cref="EventTestClock"/>'tan, saati sabit
+    /// (12:00 UTC). Sabit bir tarih (eskiden 2026-08-19) <c>events</c>'in 90
+    /// günlük TTL'ine takılıp sessizce silinirdi ve kuralın aradığı olaylar
+    /// tablodan kaybolurdu.
+    /// </summary>
+    private static readonly DateTimeOffset Now = EventTestClock.Day.AddHours(12);
 
     private const string Group = "net-core";
     private const string SigmaId = "03702803-0000-4000-8000-000000000000";

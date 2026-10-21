@@ -18,8 +18,13 @@ namespace LogAnalyzer.IntegrationTests;
 [Collection(DevStackCollection.Name)]
 public sealed class ReplayStoreTests(DevStackFixture stack) : IAsyncLifetime
 {
-    private static readonly DateTimeOffset Day = new(2026, 8, 17, 10, 0, 0, TimeSpan.Zero);
-    private const string Partition = "20260817";
+    /// <summary>
+    /// Olayların günü ve bölümü <see cref="EventTestClock"/>'tan. Sabit bir tarih
+    /// (eskiden 2026-08-17) <c>events</c>'in 90 günlük TTL'ine takılıp sessizce
+    /// silinirdi.
+    /// </summary>
+    private static readonly DateTimeOffset Day = EventTestClock.Day.AddHours(10);
+    private static readonly string Partition = EventTestClock.Partition(Day);
 
     private ClickHouseContext _context = null!;
     private EventWriter _writer = null!;
@@ -103,7 +108,7 @@ public sealed class ReplayStoreTests(DevStackFixture stack) : IAsyncLifetime
         var original = Event("net-core", "accept");
         await _writer.WriteEventsAsync([original], TestContext.Current.CancellationToken);
 
-        const string shadow = "events_replay_20260817";
+        var shadow = "events_replay_" + Partition;
         await _replay.CreateShadowAsync(shadow, TestContext.Current.CancellationToken);
 
         var replacement = original with { Action = "deny", ParseGeneration = 2 };

@@ -59,7 +59,12 @@ namespace LogAnalyzer.IntegrationTests;
 [Collection(DevStackCollection.Name)]
 public sealed class McpProductToolChainTests(DevStackFixture stack) : IAsyncLifetime
 {
-    private static readonly DateTimeOffset Now = new(2026, 9, 5, 15, 0, 0, TimeSpan.Zero);
+    /// <summary>
+    /// Testlerin anı <see cref="EventTestClock"/>'tan, saati sabit (15:00 UTC).
+    /// Sabit bir tarih (eskiden 2026-09-05) <c>events</c>'in 90 günlük TTL'ine
+    /// takılıp sessizce silinirdi ve <c>logs.get</c> olayı bulamazdı.
+    /// </summary>
+    private static readonly DateTimeOffset Now = EventTestClock.Day.AddHours(15);
 
     /// <summary>
     /// Olayın gövdesindeki sır — <b>tanınabilir</b> ve redaksiyon kapısının C
@@ -420,7 +425,7 @@ public sealed class McpProductToolChainTests(DevStackFixture stack) : IAsyncLife
         ParseStatus = ParseStatus.Ok,
         EncodingDetected = "utf-8",
         Body = $"devname=FG100 action=deny set psksecret {Secret}",
-        RawRef = $"raw/{ownerGroup}/2026/09/05/15/default/",
+        RawRef = $"raw/{ownerGroup}/{EventTestClock.RawHour(Now)}/default/",
         SrcIp = IPAddress.IPv6Any,
         DstIp = IPAddress.IPv6Any,
     };
