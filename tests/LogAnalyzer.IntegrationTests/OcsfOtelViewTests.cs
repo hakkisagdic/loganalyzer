@@ -18,6 +18,14 @@ namespace LogAnalyzer.IntegrationTests;
 [Collection(DevStackCollection.Name)]
 public sealed class OcsfOtelViewTests(DevStackFixture stack) : IAsyncLifetime
 {
+    /// <summary>
+    /// Testlerin olay anı. Takvimden değil <see cref="EventTestClock"/>'tan:
+    /// <c>events</c>'teki 90 günlük TTL'i ClickHouse kendi saatiyle uyguluyor ve
+    /// sabit bir tarih (eskiden 2026-08-16 12:30) doksan gün sonra sessizce
+    /// silinen satır demekti.
+    /// </summary>
+    private static readonly DateTimeOffset At = EventTestClock.Day.AddHours(12).AddMinutes(30);
+
     private ClickHouseContext _context = null!;
     private EventWriter _writer = null!;
 
@@ -81,7 +89,7 @@ public sealed class OcsfOtelViewTests(DevStackFixture stack) : IAsyncLifetime
             ["ocsf.disposition_id"] = "2",
         },
         Body = "bağlantı kabul edildi",
-        RawRef = "raw/network/core/2026/08/16/12/firewall/",
+        RawRef = $"raw/network/core/{EventTestClock.RawHour(ts)}/firewall/",
     };
 
     private Task<string> ScalarAsync(string sql) => stack.QueryScalarAsync(
@@ -93,8 +101,7 @@ public sealed class OcsfOtelViewTests(DevStackFixture stack) : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task Ayni_olay_hem_OCSF_hem_OTel_gorunumunden_okunuyor()
     {
-        var ts = new DateTimeOffset(2026, 8, 16, 12, 30, 0, TimeSpan.Zero);
-        await _writer.WriteEventsAsync([Sample(ts)], TestContext.Current.CancellationToken);
+        await _writer.WriteEventsAsync([Sample(At)], TestContext.Current.CancellationToken);
 
         var ocsfClass = await ScalarAsync("SELECT class_uid FROM events_ocsf LIMIT 1");
         var ocsfProto = await ScalarAsync("SELECT connection_info_protocol_name FROM events_ocsf LIMIT 1");
@@ -112,7 +119,7 @@ public sealed class OcsfOtelViewTests(DevStackFixture stack) : IAsyncLifetime
     public async Task Kolona_yazilmayan_OCSF_alani_attrs_uzerinden_gorunuyor()
     {
         await _writer.WriteEventsAsync(
-            [Sample(new DateTimeOffset(2026, 8, 16, 12, 30, 0, TimeSpan.Zero))],
+            [Sample(At)],
             TestContext.Current.CancellationToken);
 
         // Yeni bir OCSF alanı eklemek şema göçü değil, YAML değişikliği olmalı.
@@ -125,10 +132,8 @@ public sealed class OcsfOtelViewTests(DevStackFixture stack) : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task IPv4_ve_IPv6_ayni_kolondan_sorgulanabiliyor()
     {
-        var ts = new DateTimeOffset(2026, 8, 16, 12, 30, 0, TimeSpan.Zero);
-
-        var v6 = Sample(ts.AddSeconds(1)) with { SrcIp = IPAddress.Parse("2001:db8::1") };
-        await _writer.WriteEventsAsync([Sample(ts), v6], TestContext.Current.CancellationToken);
+        var v6 = Sample(At.AddSeconds(1)) with { SrcIp = IPAddress.Parse("2001:db8::1") };
+        await _writer.WriteEventsAsync([Sample(At), v6], TestContext.Current.CancellationToken);
 
         var v4Count = await ScalarAsync(
             "SELECT count() FROM events WHERE src_ip = toIPv6('::ffff:10.1.2.3')");
@@ -143,10 +148,11 @@ public sealed class OcsfOtelViewTests(DevStackFixture stack) : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task Farkli_saat_dilimlerindeki_olaylar_UTC_de_dogru_siralaniyor()
     {
-        // Aynı anı gösteren iki damga, farklı ofsetlerle. UTC'ye çevrilmezse
-        // sıralama cihazın saat dilimine göre değişirdi.
-        var istanbul = new DateTimeOffset(2026, 8, 16, 15, 0, 0, TimeSpan.FromHours(3));
-        var london = new DateTimeOffset(2026, 8, 16, 13, 30, 0, TimeSpan.FromHours(1));
+        // İki damga, farklı ofsetlerle. Duvar saati değerleri (15:00 ve 13:30)
+        // UTC sırasının TERSİ: UTC'ye çevrilmezse sıralama cihazın saat
+        // dilimine göre değişirdi.
+        var istanbul = EventTestClock.Day.AddHours(12).ToOffset(TimeSpan.FromHours(3));
+        var london = EventTestClock.Day.AddHours(12).AddMinutes(30).ToOffset(TimeSpan.FromHours(1));
 
         await _writer.WriteEventsAsync(
             [Sample(istanbul) with { Host = "istanbul" }, Sample(london) with { Host = "london" }],
@@ -164,7 +170,7 @@ public sealed class OcsfOtelViewTests(DevStackFixture stack) : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task Turetme_maliyeti_olculuyor()
     {
-        var ts = new DateTimeOffset(2026, 8, 16, 12, 0, 0, TimeSpan.Zero);
+        var ts = EventTestClock.Day.AddHours(12);
         var events = Enumerable.Range(0, 20_000)
             .Select(i => Sample(ts.AddMilliseconds(i)))
             .ToArray();
@@ -203,9 +209,8 @@ public sealed class OcsfOtelViewTests(DevStackFixture stack) : IAsyncLifetime
         // Aynı kolon iki farklı ölçekle okunuyordu (T08 geri beslemesi, madde 9):
         // OCSF Critical (5) OTel'de DEBUG anlamına geliyordu. Sessiz sınıftan bir
         // hata — sorgu çalışıyor, sayı dönüyor, yalnızca anlamı yanlış.
-        var ts = new DateTimeOffset(2026, 8, 16, 12, 30, 0, TimeSpan.Zero);
         await _writer.WriteEventsAsync(
-            [Sample(ts) with { SeverityNum = 5 }],
+            [Sample(At) with { SeverityNum = 5 }],
             TestContext.Current.CancellationToken);
 
         Assert.Equal("5", await ScalarAsync("SELECT severity_id FROM events_ocsf LIMIT 1"));
@@ -224,7 +229,7 @@ public sealed class OcsfOtelViewTests(DevStackFixture stack) : IAsyncLifetime
     {
         // "Belirtilmemiş" ile "düşük" aynı şey değil; 0 → 0.
         await _writer.WriteEventsAsync(
-            [Sample(new DateTimeOffset(2026, 8, 16, 12, 30, 0, TimeSpan.Zero)) with { SeverityNum = 0 }],
+            [Sample(At) with { SeverityNum = 0 }],
             TestContext.Current.CancellationToken);
 
         Assert.Equal("0", await ScalarAsync("SELECT SeverityNumber FROM events_otel LIMIT 1"));
@@ -235,7 +240,7 @@ public sealed class OcsfOtelViewTests(DevStackFixture stack) : IAsyncLifetime
     public async Task Gorunumler_owner_group_kolonunu_tasiyor()
     {
         await _writer.WriteEventsAsync(
-            [Sample(new DateTimeOffset(2026, 8, 16, 12, 30, 0, TimeSpan.Zero))],
+            [Sample(At)],
             TestContext.Current.CancellationToken);
 
         // Kapsam filtresi görünümde DEĞİL; kolonu taşıması yeterli, filtreyi

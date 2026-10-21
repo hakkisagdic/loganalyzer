@@ -22,7 +22,13 @@ namespace LogAnalyzer.IntegrationTests;
 [Collection(DevStackCollection.Name)]
 public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
 {
-    private static readonly DateTimeOffset Now = new(2026, 8, 17, 10, 0, 0, TimeSpan.Zero);
+    /// <summary>
+    /// Testlerin anı <see cref="EventTestClock"/>'tan, saati sabit (10:00 UTC).
+    /// Sabit bir tarih (eskiden 2026-08-17) <c>events</c>'in 90 günlük TTL'ine
+    /// takılıp sessizce silinirdi; en derin geri bakış (korelasyon tabanı,
+    /// <c>Now - 10 gün</c>) <see cref="EventTestClock.MaxLookBack"/>'in içinde.
+    /// </summary>
+    private static readonly DateTimeOffset Now = EventTestClock.Day.AddHours(10);
 
     private ClickHouseContext _context = null!;
     private IDbContextFactory<ControlPlaneDbContext> _factory = null!;
@@ -89,7 +95,7 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
         SourceId = sourceId,
         Host = sourceId,
         Body = $"{ownerGroup} grubuna ait satır",
-        RawRef = $"raw/{ownerGroup}/2026/08/17/10/default/",
+        RawRef = $"raw/{ownerGroup}/{EventTestClock.RawHour(Now)}/default/",
         SrcIp = IPAddress.IPv6Any,
         DstIp = IPAddress.IPv6Any,
     };
@@ -157,7 +163,7 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
         SourceId = sourceId,
         Host = sourceId,
         Body = $"{ownerGroup} korelasyon satırı {signature:X}",
-        RawRef = $"raw/{ownerGroup}/2026/08/14/10/default/",
+        RawRef = $"raw/{ownerGroup}/{EventTestClock.RawHour(at)}/default/",
         SrcIp = IPAddress.IPv6Any,
         DstIp = IPAddress.IPv6Any,
         SignatureHash = signature,
@@ -182,7 +188,7 @@ public sealed class ScopeNegativeTests(DevStackFixture stack) : IAsyncLifetime
         SourceId = sourceId,
         Host = sourceId,
         Body = $"{ownerGroup} bozulmus satir",
-        RawRef = $"raw/{ownerGroup}/2026/08/14/10/default/",
+        RawRef = $"raw/{ownerGroup}/{EventTestClock.RawHour(at)}/default/",
         SrcIp = IPAddress.IPv6Any,
         DstIp = IPAddress.IPv6Any,
         ParseStatus = ParseStatus.Failed,

@@ -87,7 +87,19 @@ namespace LogAnalyzer.IntegrationTests;
 [Collection(DevStackCollection.Name)]
 public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
 {
-    private static readonly DateTimeOffset Day = new(2026, 8, 17, 10, 0, 0, TimeSpan.Zero);
+    /// <summary>
+    /// Testin günü <see cref="EventTestClock"/>'tan, saati sabit (10:00 UTC).
+    /// Sabit bir tarih (eskiden 2026-08-17) <c>events</c>'in 90 günlük TTL'ine
+    /// takılıp sessizce silinirdi. Replay iddiaları iki bölüme bakıyor:
+    /// <see cref="ClosedPartition"/> (D) ve <see cref="OpenPartition"/> (D+1).
+    /// </summary>
+    private static readonly DateTimeOffset Day = EventTestClock.Day.AddHours(10);
+
+    /// <summary>Kapalı bölüm (D) — replay'in yeniden yazdığı gün.</summary>
+    private static readonly string ClosedPartition = EventTestClock.Partition(Day);
+
+    /// <summary>Açık bölüm (D+1) — motorun saatine göre hâlâ yazılan gün.</summary>
+    private static readonly string OpenPartition = EventTestClock.Partition(Day.AddDays(1));
 
     private const string Core = "network/core";
     private const string Edge = "network/edge";
@@ -236,7 +248,7 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
                 Event(Core, "deny") with
                 {
                     Body = Encoding.UTF8.GetString(wire),
-                    RawRef = "raw/network/core/2026/08/17/10/firewall/",
+                    RawRef = $"raw/network/core/{EventTestClock.RawHour(Day)}/firewall/",
                 },
             ],
             Token);
@@ -494,8 +506,8 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
     /// </para>
     ///
     /// <para>
-    /// <b>Açık bölüm testin içinde.</b> Aralık iki günü kapsıyor: 17 Ağustos
-    /// kapalı, 18 Ağustos motorun saatine göre <b>hâlâ yazılan</b> bölüm.
+    /// <b>Açık bölüm testin içinde.</b> Aralık iki günü kapsıyor: D (test günü)
+    /// kapalı, D+1 motorun saatine göre <b>hâlâ yazılan</b> bölüm.
     /// Varsayılan davranış onu dışarıda bırakıyor ve test bunun içinde koşuyor —
     /// yalnızca kapalı bölümü sınayan bir test, zaten güvenli olan yolu sınardı.
     /// </para>
@@ -506,10 +518,10 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
     {
         var (engine, records, pinnedVersion) = await BuildReplayAsync();
 
-        // 17 Ağustos'un iki kaydı ClickHouse'a ESKİ hâliyle yazılıyor: biri
+        // D gününün iki kaydı ClickHouse'a ESKİ hâliyle yazılıyor: biri
         // `failed` (parser satırı hiç tanımamıştı), biri yanlış `action` ile
         // `ok`. Üçüncü kayıt tabloda YOK — ilk işlemede kaybedilmiş satır.
-        // Dördüncü kayıt 18 Ağustos'ta, yani açık bölümde.
+        // Dördüncü kayıt D+1'de, yani açık bölümde.
         await _writer.WriteEventsAsync(
             [
                 Stale(records[0], ParseStatus.Failed, action: string.Empty),
@@ -537,8 +549,8 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
         // Açık bölüm raporda GÖRÜNÜYOR — sessizce kısalma değil, bildirilen bir
         // karar. Bu satır düşerse replay canlı ingest'i sessizce silmeye geri
         // dönmüş demektir.
-        Assert.Equal(["20260818"], dry.SkippedOpenPartitions);
-        Assert.Equal(["20260817"], dry.Partitions);
+        Assert.Equal([OpenPartition], dry.SkippedOpenPartitions);
+        Assert.Equal([ClosedPartition], dry.Partitions);
         Assert.False(dry.Applied);
 
         Assert.Equal(2, dry.Changed);
@@ -569,10 +581,10 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
 
         // Açık bölüm hâlâ atlanıyor ve satırı DEĞİŞMEDEN duruyor: replay ona
         // dokunmadıysa canlı ingest'in yazdığı da yerinde kalmış olmalı.
-        Assert.Equal(["20260818"], after.SkippedOpenPartitions);
+        Assert.Equal([OpenPartition], after.SkippedOpenPartitions);
 
         var untouched = await ScalarAsync(
-            "SELECT action FROM events WHERE toYYYYMMDD(ts) = 20260818 LIMIT 1");
+            $"SELECT action FROM events WHERE toYYYYMMDD(ts) = {OpenPartition} LIMIT 1");
 
         Assert.Equal("eski", untouched);
 
@@ -583,14 +595,14 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
         // Karşılaştırma sayıyla değil ADLA (`Enum8('ok' = 1, …)`): sayı yazmak,
         // enum sırası değiştiği gün sessizce başka bir durumu sayardı.
         var stillFailed = await ScalarAsync(
-            "SELECT count() FROM events WHERE toYYYYMMDD(ts) = 20260817 AND parse_status = 'failed'");
+            $"SELECT count() FROM events WHERE toYYYYMMDD(ts) = {ClosedPartition} AND parse_status = 'failed'");
 
         Assert.Equal("0", stillFailed);
 
         // Üç satır da yeni parser'ın sonucunu taşıyor: ikisi düzeltilmiş, biri
         // arşivden geri kazanılmış (`NewRows`).
         var replayed = await ScalarAsync(
-            "SELECT count() FROM events WHERE toYYYYMMDD(ts) = 20260817 "
+            $"SELECT count() FROM events WHERE toYYYYMMDD(ts) = {ClosedPartition} "
             + "AND parse_status = 'ok' AND action = 'login' AND parser_version = '1.0.0'");
 
         Assert.Equal("3", replayed);
@@ -601,8 +613,8 @@ public sealed class F2FlowTests(DevStackFixture stack) : IAsyncLifetime
     /// yüklüyor.
     ///
     /// <para>
-    /// <b>Saat sahte, veri gerçek.</b> Motor 18 Ağustos 00:30'da duruyor, yani
-    /// 20260818 açık bölüm. Gerçek saatle koşmak, testin hangi bölümün açık
+    /// <b>Saat sahte, veri gerçek.</b> Motor D+1 10:30'da duruyor, yani
+    /// D+1 açık bölüm. Gerçek saatle koşmak, testin hangi bölümün açık
     /// olduğunu takvime bırakması demekti — bu deponun iki kez ödediği "testin
     /// geçme sebebi duvar saati" hatası.
     /// </para>

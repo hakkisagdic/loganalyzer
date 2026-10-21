@@ -4,6 +4,7 @@ using LogAnalyzer.ControlPlane;
 using LogAnalyzer.Normalization;
 using LogAnalyzer.Parsing.Dispatch;
 using LogAnalyzer.Parsing.Engine;
+using LogAnalyzer.Parsing.Samples;
 using LogAnalyzer.Storage.ClickHouse;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
@@ -75,9 +76,30 @@ namespace LogAnalyzer.IntegrationTests;
 [Collection(DevStackCollection.Name)]
 public sealed class EventRetentionChainTests(DevStackFixture stack) : IAsyncLifetime
 {
-    // Sabit an: testin geçme sebebi duvar saati olmamalı (§6). Pencere
-    // içi/dışı ayrımı bu andan türetiliyor.
-    private static readonly DateTimeOffset Now = new(2026, 8, 21, 12, 0, 0, TimeSpan.Zero);
+    /// <summary>
+    /// Sink'in sahte saatinin durduğu an: <b>şimdi</b>, test örneği başına bir
+    /// kez (<see cref="SampleClock.Anchor"/>). Pencere içi/dışı ayrımı bu andan
+    /// türetiliyor.
+    ///
+    /// <para>
+    /// Sabit bir an (eskiden 2026-08-21 12:00) burada bir saatli bombaydı ve
+    /// testin <b>kendi iddiasını</b> bozuyordu: sink pencereyi o sabit ana göre,
+    /// ClickHouse TTL'i <b>kendi</b> saatine göre uyguluyor. 2026-11-19
+    /// 11:00Z'den sonra "yeni" satırlar da ClickHouse'un gözünde süresi dolmuş
+    /// olacaktı — sink 3 yazdım derken tabloda 0 satır. Ölçülen şey sink ile
+    /// tablonun aynı şeyi söylemesi olduğu için iki saat aynı olmak zorunda;
+    /// sink'in üretimdeki saati de zaten sistem saati.
+    /// </para>
+    ///
+    /// <para>
+    /// Duvar saati sonuca girmiyor (§6): "eski" satır pencerenin bir gün
+    /// dışında, "yeni" satır bir saat içinde. Sink'in saati ile ClickHouse'un
+    /// saati arasında koşum süresi kadar fark var, iki pay da onu katlarca
+    /// aşıyor. Bu yüzden <see cref="EventTestClock"/> burada kullanılmıyor:
+    /// bir hafta geride duran bir sink saati ölçüme kendisi karışırdı.
+    /// </para>
+    /// </summary>
+    private readonly DateTimeOffset _now = SampleClock.Anchor();
 
     private readonly EventSinkOptions _options = new();
 
@@ -100,7 +122,7 @@ public sealed class EventRetentionChainTests(DevStackFixture stack) : IAsyncLife
             BaselineWindowMeasurement.RepoPath("db/clickhouse"),
             TestContext.Current.CancellationToken);
 
-        var time = new FakeTimeProvider(Now);
+        var time = new FakeTimeProvider(_now);
 
         _sink = new ClickHouseEventSink(
             new EventWriter(_context),
@@ -131,8 +153,8 @@ public sealed class EventRetentionChainTests(DevStackFixture stack) : IAsyncLife
     [Fact]
     public async Task Sinkin_muhasebesi_tablonun_gercegiyle_ayni()
     {
-        var eski = Now - _options.EventRetention - TimeSpan.FromDays(1);
-        var yeni = Now - TimeSpan.FromHours(1);
+        var eski = _now - _options.EventRetention - TimeSpan.FromDays(1);
+        var yeni = _now - TimeSpan.FromHours(1);
 
         await _sink.HandleAsync(
             [Olay(eski), Olay(yeni), Olay(eski), Olay(yeni), Olay(yeni)],
@@ -174,8 +196,8 @@ public sealed class EventRetentionChainTests(DevStackFixture stack) : IAsyncLife
     private ParsedEvent Olay(DateTimeOffset timestamp) => new(
         new RawRecord
         {
-            EventId = Guid.CreateVersion7(Now),
-            ReceivedAt = Now,
+            EventId = Guid.CreateVersion7(_now),
+            ReceivedAt = _now,
             SourceKey = "10.1.1.1",
             OwnerGroup = Group,
             SourceId = "s02a",
