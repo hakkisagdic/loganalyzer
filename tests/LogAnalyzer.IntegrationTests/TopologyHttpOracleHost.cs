@@ -82,7 +82,21 @@ internal sealed class TopologyHttpOracleHost : IAsyncDisposable
         host.App.Use(async (context, next) =>
         {
             using var observation = context.RequestAborted.Register(() => host.CancellationObserved.TrySetResult());
-            await next(context);
+            try
+            {
+                await next(context);
+            }
+            finally
+            {
+                // Token callbacks run in reverse registration order: the
+                // pipeline's own (later) registrations run first and can finish
+                // the request — disposing `observation` above — before the
+                // aborting thread reaches this observer, which is then dropped
+                // although the abort was seen. A pipeline that unwinds under an
+                // aborted request has observed it, so record that here too.
+                if (context.RequestAborted.IsCancellationRequested)
+                    host.CancellationObserved.TrySetResult();
+            }
         });
         host.App.UseAuthentication(); host.App.UseAuthorization();
         host.App.MapTopologyReads(); host.App.MapTopologyWrites(); host.App.MapOpenApi();
