@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    LogAnalyzer Lite'ın güvenlik ve kalıcılık kapıları.
+
+    Kök Directory.Build.props'u devralıyor (net10.0, uyarı = hata, analizörler);
+    Lite'ın kendisi bağımsız kalıyor. Konteyner, ağ ya da gerçek sağlayıcı
+    gerektirmiyor: webhook çağrıları sahte bir birincil işleyiciye gidiyor,
+    veri dizini her testte geçici bir dizin.
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\LogAnalyzer.Lite\LogAnalyzer.Lite.csproj" />
+  </ItemGroup>
+
+</Project>

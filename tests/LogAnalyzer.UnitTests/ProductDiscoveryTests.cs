@@ -200,8 +200,13 @@ public sealed class ProductDiscoveryTests
             Assert.True(File.Exists(props), $"{name} kendi Directory.Build.props'una sahip değil.");
             Assert.DoesNotContain("<Import", File.ReadAllText(props), StringComparison.Ordinal);
 
+            // Ürünün kendi test projesi (tests/<ad>.Tests) onu sınamak için
+            // referans vermek zorunda; kompozisyona katılmak sayılmaz. Başka
+            // hiçbir proje referans veremez.
+            var ownTests = Path.Combine(RepositoryLayout.Root, "tests", name + ".Tests", name + ".Tests.csproj");
             var referencing = projectFiles
                 .Where(file => !string.Equals(file, project.File, StringComparison.Ordinal))
+                .Where(file => !string.Equals(Path.GetFullPath(file), Path.GetFullPath(ownTests), StringComparison.Ordinal))
                 .Where(file => File.ReadAllText(file).Contains(name + ".csproj", StringComparison.Ordinal))
                 .ToArray();
             Assert.True(referencing.Length == 0,

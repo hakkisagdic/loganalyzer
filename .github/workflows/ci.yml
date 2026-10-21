@@ -92,6 +92,78 @@ jobs:
           name: unit-test-results
           path: TestResults/
 
+  # LogAnalyzer Lite bağımsız bir uygulama (kendi imajı, kendi SDK
+  # sabitlemesi) ve üretimde iç ağa + BasicAuth arkasına açık. Kapıları:
+  # ingest belirteci, yönetim eylemlerinin CSRF kapısı, webhook izin listesi,
+  # CORS/çerçeveleme, kalıcılık ve dağıtım dosyalarının sözleşmesi.
+  lite:
+    name: LogAnalyzer Lite — güvenlik kapıları ve imaj
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      # Kurulum gerekçesi `build` işindekiyle aynı (codeload kesintileri).
+      - name: .NET SDK kur
+        run: |
+          curl -fsSL --retry 5 --retry-all-errors https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --jsonfile global.json --install-dir "$HOME/.dotnet"
+          echo "$HOME/.dotnet" >> "$GITHUB_PATH"
+
+      # Arayüzün satır içi betiği kapanmamış bir şablon dizgesi yüzünden
+      # tamamen ölüydü ve bunu gören hiçbir kapı yoktu. Node runner'da hazır.
+      - name: Lite arayüz betiği ayrıştırılabiliyor mu
+        run: node --check src/LogAnalyzer.Lite/wwwroot/app.js
+
+      - name: Lite testleri
+        run: >
+          dotnet test tests/LogAnalyzer.Lite.Tests
+          --configuration Release
+          --logger "trx;LogFileName=lite.trx"
+          --results-directory TestResults
+
+      - name: Lite compose dosyaları geçerli mi
+        run: |
+          docker compose -f deploy/docker-compose.lite.yml config --quiet
+          docker compose -f deploy/docker-compose.coolify.lite.yml config --quiet
+
+      # Yalnızca derleme; imaj hiçbir yere itilmiyor.
+      - name: Lite imajı derleniyor mu
+        run: docker build -f deploy/Dockerfile.lite --build-arg GIT_SHA=${{ github.sha }} -t loganalyzer-lite:ci .
+
+      # İmajın kendi HEALTHCHECK komutu çalışıyor mu, süreç root mu, ve
+      # /health derlenen commit'i söylüyor mu. Birim yok, port yok, ağ yok.
+      - name: Lite imajı root olmadan sağlıklı açılıyor mu
+        run: |
+          docker run -d --name lite-ci-smoke --health-interval=2s --health-start-period=5s loganalyzer-lite:ci
+          for attempt in $(seq 1 45); do
+            if [ "$(docker inspect -f '{{.State.Health.Status}}' lite-ci-smoke)" = healthy ]; then
+              break
+            fi
+            sleep 2
+          done
+          if [ "$(docker inspect -f '{{.State.Health.Status}}' lite-ci-smoke)" != healthy ]; then
+            docker logs lite-ci-smoke
+            exit 1
+          fi
+          uid=$(docker exec lite-ci-smoke id -u)
+          echo "uid=$uid"
+          test "$uid" != 0
+          docker exec lite-ci-smoke wget -qO- http://127.0.0.1:5060/health | grep -q '"commit":"${{ github.sha }}"'
+          test "$(docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' loganalyzer-lite:ci)" = "${{ github.sha }}"
+
+      - name: Lite duman konteynerini ve imajını kaldır
+        if: always()
+        run: |
+          if docker ps -a --format '{{.Names}}' | grep -qx lite-ci-smoke; then docker rm -f lite-ci-smoke; fi
+          if docker image inspect loganalyzer-lite:ci > /dev/null 2>&1; then docker image rm loganalyzer-lite:ci; fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lite-test-results
+          path: TestResults/
+
   compose-lint:
     name: Compose dosyası ayrıştırılabiliyor mu
     runs-on: ubuntu-latest
@@ -141,7 +213,8 @@ jobs:
       - name: Tekrarlanan anahtar var mı
         run: >
           yamllint -d '{rules: {key-duplicates: enable}}'
-          deploy/docker-compose.yml .github/workflows/ catalog/sigma/rules/
+          deploy/docker-compose.yml deploy/docker-compose.lite.yml deploy/docker-compose.coolify.lite.yml
+          .github/workflows/ catalog/sigma/rules/
 
       # T63 gibi canlı ölçüm araçlarının dış sistemleri CI'da kaldırılmaz;
       # ancak hangi WAL/manifest'in bu koşuma ait olduğunu ayıran saf kapı
