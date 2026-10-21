@@ -18,7 +18,7 @@ sources:
   - docs/epic/tickets-f2/change-connector/index.md
   - docs/epic/tickets-f2/change-config-diff/index.md
   - docs/epic/f2-kapanis/index.md
-source_digest: "sha256-12/v1 docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/f2-teknik-plan/index.md=70c97eb131ab docs/epic/tickets-f2/change-config-diff/index.md=f1936ded8c04 docs/epic/tickets-f2/change-connector/index.md=7155ed5a4924 docs/epic/tickets-f2/change-webhook/index.md=5e50834cbe21"
+source_digest: "sha256-12/v1 docs/epic/f2-kapanis/index.md=373340ca64ab docs/epic/f2-teknik-plan/index.md=da7d52f34216 docs/epic/tickets-f2/change-config-diff/index.md=f1936ded8c04 docs/epic/tickets-f2/change-connector/index.md=7155ed5a4924 docs/epic/tickets-f2/change-webhook/index.md=5e50834cbe21"
 summary: K34 üç kaynağı da istedi ama kapsamı daraltmak yerine sıraladı, çünkü üçüncüsü diğer ikisinin toplamından büyük. Değeri bugün değil F3'te görünüyor ve geçmişe dönük üretilemiyor.
 provenance:
   extracted: 0.85

@@ -9,6 +9,7 @@ Enforces that stale outputs or mismatched files fail verification.
 import argparse
 import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -31,6 +32,13 @@ def file_sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def _git_files(*directories: str) -> set:
+    listed = subprocess.run(
+        ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", *directories],
+        cwd=ROOT, check=True, capture_output=True).stdout.decode("utf-8")
+    return {name for name in listed.split("\0") if name}
+
+
 def compute_manifest() -> dict:
     hashes = {}
 
@@ -40,22 +48,23 @@ def compute_manifest() -> dict:
         if p.exists():
             hashes[cp] = file_sha256(p)
 
-    # Scanned directories
-    for directory in ("src", "sim", "db", "deploy", "tools"):
-        d = ROOT / directory
-        if not d.exists():
+    # Scanned directories. Git decides membership, not the filesystem: a walk
+    # also hashed gitignored local content (the cloned tools/obsidian-wiki,
+    # build output), so a manifest generated on one machine could never
+    # verify on a clean CI checkout. Untracked files that are not ignored stay
+    # in, so a file about to be committed is not reported as unknown.
+    for name in sorted(_git_files("src", "sim", "db", "deploy", "tools")):
+        path = ROOT / name
+        if not path.is_file():
             continue
-        for path in sorted(d.rglob("*")):
-            if not path.is_file():
-                continue
-            relative = path.relative_to(ROOT)
-            parts = relative.parts
-            if any(p in ("obj", "bin", "__pycache__", "node_modules", ".git") for p in parts):
-                continue
-            if "freeze-manifest" in path.name:
-                continue
-            if path.suffix in (".cs", ".csproj", ".json", ".yaml", ".yml", ".sql", ".py", ".sh"):
-                hashes[str(relative)] = file_sha256(path)
+        relative = path.relative_to(ROOT)
+        parts = relative.parts
+        if any(p in ("obj", "bin", "__pycache__", "node_modules", ".git") for p in parts):
+            continue
+        if "freeze-manifest" in path.name:
+            continue
+        if path.suffix in (".cs", ".csproj", ".json", ".yaml", ".yml", ".sql", ".py", ".sh"):
+            hashes[relative.as_posix()] = file_sha256(path)
 
     # Compute overall bundle digest
     hasher = hashlib.sha256()

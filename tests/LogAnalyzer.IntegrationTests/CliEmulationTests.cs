@@ -414,8 +414,13 @@ public sealed class CliEmulationTests : IAsyncLifetime
                 Vendor = target.Vendor,
                 Host = target.Host,
 
-                // Konteynerin yayımlamadığı bir port: bağlantı reddediliyor.
-                Port = target.Port + 1,
+                // Hiçbir şeyin dinlemediği ayrıcalıklı bir port: bağlantı
+                // reddediliyor. `target.Port + 1` kapalı DEĞİLDİ: Docker host
+                // portlarını sırayla dağıtıyor, bir sonraki port çoğu zaman
+                // aynı kimlik bilgileriyle açılmış başka bir emülatör
+                // konteyneriydi ve sonuç CommandRejected çıkıyordu (CI koşumu
+                // 39510905015). Docker'ın rastgele portları 1024'ün üstünde.
+                Port = 1,
                 Username = target.Username,
                 Credential = target.Credential,
                 Timeout = TimeSpan.FromSeconds(10),

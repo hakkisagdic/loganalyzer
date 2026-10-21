@@ -48,7 +48,8 @@ public sealed class AddTopologyLegacyMembership : Migration
             pending_conversion_digest varchar(64) CHECK (pending_conversion_digest ~ '^[0-9a-f]{64}$'),
             pending_payload_sha256 varchar(64) CHECK (pending_payload_sha256 ~ '^[0-9a-f]{64}$'),
             member_count integer NOT NULL CHECK (member_count BETWEEN 0 AND 4096),
-            canonical_byte_length integer NOT NULL CHECK (canonical_byte_length BETWEEN 38 AND 1048576),
+            -- 43 = empty set: le32 magic length + 31-byte magic + le32 version + le32 count.
+            canonical_byte_length integer NOT NULL CHECK (canonical_byte_length BETWEEN 43 AND 1048576),
             canonical_sha256 varchar(64) NOT NULL CHECK (canonical_sha256 ~ '^[0-9a-f]{64}$'),
             sealed_at timestamptz,
             created_at timestamptz NOT NULL DEFAULT now(),
@@ -89,9 +90,14 @@ public sealed class AddTopologyLegacyMembership : Migration
         CREATE FUNCTION loganalyzer.topology_repair_member_bytes(target uuid) RETURNS bytea
         LANGUAGE plpgsql STABLE AS $$
         DECLARE result bytea; item record; item_count integer := 0;
+            -- Same literal as TopologyRepairMembershipBuilder.Magic. The length
+            -- prefix is derived from it, never written by hand: a hand-written
+            -- 26 survived the product rename (d10673e) and made every SQL
+            -- member set diverge from the C# candidate.
+            magic bytea := convert_to('loganalyzer-topology-members-v2', 'UTF8');
         BEGIN
-            result := loganalyzer.topology_repair_le32(26)
-                   || convert_to('loganalyzer-topology-members-v2', 'UTF8')
+            result := loganalyzer.topology_repair_le32(octet_length(magic))
+                   || magic
                    || loganalyzer.topology_repair_le32(2);
             SELECT count(*) INTO item_count FROM loganalyzer.topology_repair_members WHERE member_set_id = target;
             IF item_count > 4096 THEN RAISE EXCEPTION 'topology member cap exceeded'; END IF;

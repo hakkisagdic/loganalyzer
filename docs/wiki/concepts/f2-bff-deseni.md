@@ -19,7 +19,7 @@ sources:
   - docs/epic/tickets-f2/log-arama-ekrani/index.md
   - docs/epic/tickets-f2/f2-dogrulamasi/index.md
   - docs/epic/f2-kapanis/index.md
-source_digest: "sha256-12/v1 docs/epic/f2-kapanis/index.md=c701d88f78fd docs/epic/f2-teknik-plan/index.md=70c97eb131ab docs/epic/tickets-f2/f2-dogrulamasi/index.md=87ed12f0cd0e docs/epic/tickets-f2/log-arama-ekrani/index.md=e4425034ae89 docs/epic/tickets-f2/nextjs-iskelet-bff/index.md=c49270b469fb docs/epic/tickets-f2/openapi-tip-uretimi/index.md=56ec69775b3f"
+source_digest: "sha256-12/v1 docs/epic/f2-kapanis/index.md=373340ca64ab docs/epic/f2-teknik-plan/index.md=da7d52f34216 docs/epic/tickets-f2/f2-dogrulamasi/index.md=8d3dba3a29d2 docs/epic/tickets-f2/log-arama-ekrani/index.md=9808f709d9ea docs/epic/tickets-f2/nextjs-iskelet-bff/index.md=c6a92f9a0860 docs/epic/tickets-f2/openapi-tip-uretimi/index.md=deda9ac996f3"
 summary: K31 oturumu Next.js sunucusuna taşıdı; erişim token'ı tarayıcıya hiç geçmiyor ve bunun tek kanıtı yanıtın her baytını tarayan bekçi. Kararın gerekçesi canlı Keycloak'ta kaynağında doğrulandı.
 provenance:
   extracted: 0.85

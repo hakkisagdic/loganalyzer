@@ -212,12 +212,10 @@ public sealed class DiscordChannel(IHttpClientFactory clients, AlertingOptions o
 
         if (message.Lines.Count > 0)
         {
-            var summaries = string.Join("
-", message.Lines.Take(5).Select(l => "• " + l.Summary));
+            var summaries = string.Join("\n", message.Lines.Take(5).Select(l => "• " + l.Summary));
             if (message.Lines.Count > 5)
             {
-                summaries += "
-... ve " + (message.Lines.Count - 5) + " tetiklenme daha.";
+                summaries += "\n... ve " + (message.Lines.Count - 5) + " tetiklenme daha.";
             }
             fields.Add(new { name = "Olay Ozeti", value = summaries, inline = false });
         }
@@ -225,7 +223,7 @@ public sealed class DiscordChannel(IHttpClientFactory clients, AlertingOptions o
         var embed = new Dictionary<string, object>(StringComparer.Ordinal)
         {
             ["title"] = message.Title,
-            ["description"] = "**Zaman Araligi:** " + message.WindowFrom.ToString("yyyy-MM-dd HH:mm:ss") + " - " + message.WindowTo.ToString("yyyy-MM-dd HH:mm:ss") + " UTC",
+            ["description"] = "**Zaman Araligi:** " + FormatUtc(message.WindowFrom) + " - " + FormatUtc(message.WindowTo) + " UTC",
             ["color"] = 15158332,
             ["fields"] = fields,
             ["footer"] = new { text = "LogAnalyzer Observability Platform" },
@@ -245,4 +243,7 @@ public sealed class DiscordChannel(IHttpClientFactory clients, AlertingOptions o
 
         return Json(JsonSerializer.Serialize(payload));
     }
+
+    private static string FormatUtc(DateTimeOffset value) =>
+        value.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
 }

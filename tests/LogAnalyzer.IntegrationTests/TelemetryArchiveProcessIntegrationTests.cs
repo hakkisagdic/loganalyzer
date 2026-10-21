@@ -39,6 +39,15 @@ public sealed class TelemetryArchiveProcessIntegrationTests(DevStackFixture stac
         await f.SourceAsync("archive-unknown", "B", f.Clock.GetUtcNow().AddSeconds(1));
         await f.Db.TelemetryOwnerClaims.ExecuteDeleteAsync(token);
         using var fresh = await DevStackSetup.ClickHouseAsync(stack, token);
+        // Same fresh-store boundary as TopologyArchiveProcessIntegrationTests:
+        // the shared PG still held a Ready repair certificate bound to the
+        // fixture's CH database, so the child's startup repair answered
+        // RepairIncomplete ("ready-certificate-invalid") for the distinct fresh
+        // database, SignalIngestService never passed its readiness gate and the
+        // 90 s readiness budget below expired (TaskCanceledException, CI run
+        // 37597645726). Resetting only derived publication state lets the
+        // child's real startup repair bind the fresh target; nothing is certified here.
+        await DevStackSetup.ResetTopologyPublicationForFreshStoreAsync(f.Factory, token);
         var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start();
         var port = ((IPEndPoint)listener.LocalEndpoint).Port; listener.Stop();
         var tokens = new Dictionary<string, string> { ["restore-A"] = "A", ["restore-B"] = "B", ["restore-U"] = "_unassigned", ["restore-admin"] = "admin" };

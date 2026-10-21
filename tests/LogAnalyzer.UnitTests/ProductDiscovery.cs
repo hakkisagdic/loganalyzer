@@ -22,9 +22,16 @@ internal sealed record ProductProject(string Project, string AssemblyName, strin
 /// atlanmıyorlar</b>: yüklenemeyen bir derleme, keşfin çalıştığı ama bir
 /// katmanı hiç görmediği hâl.
 /// </param>
+/// <param name="Standalone">
+/// <see cref="ProductDiscovery.StandaloneProducts"/>'ta beyan edildiği için
+/// <b>yüklenmeye hiç çalışılmayan</b> projeler. <see cref="Unloadable"/>'dan
+/// ayrı tutuluyor: beyanlı bir istisna ile beklenmeyen bir yükleme hatası aynı
+/// listeye düşerse ikincisi birincisinin arkasına saklanır.
+/// </param>
 internal sealed record ProductSurface(
     IReadOnlyList<Assembly> Assemblies,
-    IReadOnlyList<string> Unloadable);
+    IReadOnlyList<string> Unloadable,
+    IReadOnlyList<string> Standalone);
 
 /// <summary>
 /// <b>Ürün keşfi — tek kaynak</b> (T55).
@@ -84,6 +91,40 @@ internal static class ProductDiscovery
     /// </para>
     /// </summary>
     internal static readonly string[] ProductAreas = ["src", "sim"];
+
+    /// <summary>
+    /// <b>Bağımsız ürünler — keşfin TEK beyanlı istisnası.</b> Proje adı →
+    /// gerekçe.
+    ///
+    /// <para>
+    /// <c>LogAnalyzer.Lite</c> çözümde ve <c>src/</c> altında, ama Core'un
+    /// kompozisyonunun parçası değil: kendi <c>Directory.Build.props</c>'u ve
+    /// <c>global.json</c>'u olan, <c>net8.0</c> hedefleyen ayrı bir ürün. Birim
+    /// test projesi (<c>net10.0</c>) ona referans veremez — Lite'ın üst düzey
+    /// <c>Program</c>'ı <c>LogAnalyzer.Api</c>'ninkiyle çakışır (CS0433, §6) —
+    /// ve referans verilmediği için <c>Assembly.Load</c> onu bulamıyor.
+    /// Ölçüldü: bu istisna yokken <c>Her_urun_derlemesi_yuklenebiliyor</c> ve
+    /// <c>Kapi_kapsamini_beyan_ediyor</c> <c>FileNotFoundException</c> ile
+    /// kırmızıydı (CI 2026-10-07'den beri, konu #21).
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Yükleme hatalarını genel olarak yutmak REDDEDİLDİ.</b> Yüklenemeyen
+    /// her derleme hâlâ <see cref="ProductSurface.Unloadable"/>'a düşüyor ve
+    /// kapıları kırıyor; istisna yalnızca burada ADIYLA yazılan projeye
+    /// uygulanıyor. Liste <c>ProductDiscoveryTests</c>'te çivili ve her girişin
+    /// gerçekten bağımsız olduğu (kendi SDK/props beyanı, hiçbir projeden
+    /// referans yok, kayıt uzantısı yok) diskten ölçülüyor — yani bir kütüphane
+    /// "referans eklemek zahmetli" diye buraya sızamaz.
+    /// </para>
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<string, string> StandaloneProducts =
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["LogAnalyzer.Lite"] =
+                "net8.0 incident flight recorder with its own Directory.Build.props and global.json; " +
+                "not referenced by the Core composition and declares no Add*/Map* extension.",
+        };
 
     /// <summary>
     /// <b>Kompozisyon kökü</b> — üretim host'unun derlemesi.
@@ -222,9 +263,16 @@ internal static class ProductDiscovery
     {
         var assemblies = new List<Assembly>();
         var unloadable = new List<string>();
+        var standalone = new List<string>();
 
         foreach (var project in Projects)
         {
+            if (StandaloneProducts.ContainsKey(project.Project))
+            {
+                standalone.Add(project.Project);
+                continue;
+            }
+
             try
             {
                 assemblies.Add(Assembly.Load(new AssemblyName(project.AssemblyName)));
@@ -238,7 +286,8 @@ internal static class ProductDiscovery
         return new ProductSurface(
             [.. assemblies.DistinctBy(static a => a.GetName().Name, StringComparer.Ordinal)
                 .OrderBy(static a => a.GetName().Name, StringComparer.Ordinal)],
-            unloadable);
+            unloadable,
+            [.. standalone.Order(StringComparer.Ordinal)]);
     }
 
     /// <summary>

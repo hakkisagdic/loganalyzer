@@ -44,8 +44,12 @@ internal static class LegacyReplayHost
             Options.Create(new RawStoreOptions()), NullLogger<WriteAheadLog>.Instance, new KillAt(stage));
         await ingest.RecoverAsync(default); await ingest.ReplayArchiveAsync(default);
         var restored = await ingest.Archive.ReadAsync(ingest.Archive.Manifests().Single(), default);
-        Console.WriteLine(JsonSerializer.Serialize(new { version = restored.Version, restored.EnvelopeId,
-            restored.PayloadSha256, owners = restored.OwnerBindings }, RawSignalCodec.Json));
+        // `current_version` is the contract constant, `version` what the archive
+        // actually holds after replay: the smoke asserts they are equal instead
+        // of pinning a number that silently went stale when v3 arrived.
+        Console.WriteLine(JsonSerializer.Serialize(new { version = restored.Version,
+            current_version = RawSignalEnvelope.CurrentVersion, restored.EnvelopeId, restored.PayloadSha256,
+            owners = restored.OwnerBindings, topology = restored.TopologyBindings }, RawSignalCodec.Json));
     }
 
     private static void Kill()

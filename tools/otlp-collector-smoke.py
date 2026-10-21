@@ -256,8 +256,14 @@ def main(extension=None):
         path.write_text(json.dumps(session, indent=2)); path.chmod(0o600)
         print(f"READY production API + {IMAGE}: {path}", flush=True)
         while not stopped.wait(1):
-            if state["api"] is not None and state["api"].poll() is not None:
-                raise RuntimeError("production API exited unexpectedly")
+            # /restart, /replay and /backpressure stop the API on purpose while
+            # holding this lock. Checking outside it raced with stop_api()
+            # between SIGKILL and clearing state["api"]: an intentional stop
+            # looked like a crash and the finally block tore the stack down
+            # under a running replay ("Connection refused", CI run 39510905015).
+            with lock:
+                if state["api"] is not None and state["api"].poll() is not None:
+                    raise RuntimeError("production API exited unexpectedly")
     finally:
         try:
             if extension is not None and callable(getattr(type(extension), "cleanup", None)):
