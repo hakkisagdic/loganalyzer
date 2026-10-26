@@ -1,0 +1,57 @@
+# LogAnalyzer Lite — Coolify "Docker Compose" kaynağı.
+#
+# Bu dosya üretimin sözleşmesi; tests/LogAnalyzer.Lite.Tests içindeki
+# DeploymentContractTests her maddesini sınıyor. Değiştirmeden önce
+# deploy/README.lite.md'deki geçiş kitabını okuyun.
+#
+#  * Ana makine portu YOK: trafik Traefik'ten (loglar.<alan>, BasicAuth) ve
+#    iç ağdan (Gateway sink → http://loganalyzer-lite:5060) geliyor.
+#  * Traefik etiketi YOK ve Coolify'da domain ATANMAZ: loglar.<alan> route'u
+#    ve BasicAuth bu dosyanın dışında (Traefik dosya sağlayıcısı) tanımlı ve
+#    `loganalyzer-lite` takma adına gidiyor. Domain atamak ya da buraya router
+#    etiketi eklemek aynı Host kuralıyla BasicAuth'suz ikinci bir route açar.
+#  * container_name YOK: Coolify konteyner adını kendisi veriyor; sabit ad
+#    yeniden dağıtımda eskiyle çakışıyor.
+#  * Birim EXTERNAL ve adı birebir `loganalyzer-data`: Coolify proje önekli
+#    yeni bir birim yaratırsa uygulama sessizce BOŞ başlar.
+#  * `coolify` ağında `loganalyzer-lite` takma adı: Gateway sink'inin
+#    adresi değişmiyor.
+#  * Ortam değişkenleri yalnızca yer tutucu; değerler Coolify'da tanımlanır.
+services:
+  loganalyzer-lite:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.lite
+      args:
+        # Coolify, "Include Source Commit in Build" açıkken SOURCE_COMMIT'i veriyor.
+        GIT_SHA: ${SOURCE_COMMIT:-unknown}
+    restart: unless-stopped
+    expose:
+      - "5060"
+    volumes:
+      - loganalyzer-data:/app/data
+    environment:
+      LITE_DATA_DIR: /app/data
+      LITE_INGEST_TOKEN: ${LITE_INGEST_TOKEN:-}
+      LITE_ALLOWED_ORIGINS: ${LITE_ALLOWED_ORIGINS:-}
+      LITE_FRAME_ANCESTORS: ${LITE_FRAME_ANCESTORS:-}
+      LITE_ENABLE_DEMO: ${LITE_ENABLE_DEMO:-false}
+    networks:
+      coolify:
+        aliases:
+          - loganalyzer-lite
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5060/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  loganalyzer-data:
+    external: true
+    name: loganalyzer-data
+
+networks:
+  coolify:
+    external: true

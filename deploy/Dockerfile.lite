@@ -1,22 +1,51 @@
+# LogAnalyzer Lite — tek konteynerlik olay kaydedicisi.
+#
+# Derleme bağlamı depo kökü:  docker build -f deploy/Dockerfile.lite --build-arg GIT_SHA=$(git rev-parse HEAD) .
+# Coolify'da GIT_SHA, compose dosyasındaki SOURCE_COMMIT'ten geliyor.
+
 # --- Build Stage ---
-FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
+ARG GIT_SHA=unknown
 WORKDIR /source
 
-COPY src/LogAnalyzer.Lite/LogAnalyzer.Lite.csproj src/LogAnalyzer.Lite/
+# Directory.Build.props hedef çatıyı taşıyor; restore'dan önce gelmeli.
+COPY src/LogAnalyzer.Lite/LogAnalyzer.Lite.csproj src/LogAnalyzer.Lite/Directory.Build.props src/LogAnalyzer.Lite/
 RUN dotnet restore src/LogAnalyzer.Lite/LogAnalyzer.Lite.csproj
 
 COPY src/LogAnalyzer.Lite/ src/LogAnalyzer.Lite/
-RUN dotnet publish src/LogAnalyzer.Lite/LogAnalyzer.Lite.csproj -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish src/LogAnalyzer.Lite/LogAnalyzer.Lite.csproj -c Release -o /app/publish --no-restore \
+    /p:UseAppHost=false /p:SourceRevisionId=${GIT_SHA}
 
 # --- Runtime Stage ---
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS runtime
+ARG GIT_SHA=unknown
+LABEL org.opencontainers.image.title="LogAnalyzer Lite" \
+      org.opencontainers.image.description="Incident flight recorder" \
+      org.opencontainers.image.revision="${GIT_SHA}"
+
 WORKDIR /app
+
+# Uygulama dosyaları root'a ait ve salt okunur kalıyor; süreç yalnızca veri
+# dizinine yazabiliyor.
 COPY --from=build /app/publish .
 
-RUN mkdir -p /app/data && chmod 777 /app/data
+# Veri dizini imajın `app` kullanıcısına (UID $APP_UID) ait ve 0700. Eski hâli
+# root + chmod 777 idi. Yeni bir adlandırılmış birim ilk bağlandığında bu
+# sahipliği ve kipi imajdan kopyalıyor.
+RUN mkdir -p /app/data \
+    && chown "$APP_UID:$APP_UID" /app/data \
+    && chmod 0700 /app/data
 VOLUME ["/app/data"]
 
-ENV ASPNETCORE_URLS=http://+:5060
+ENV ASPNETCORE_HTTP_PORTS=5060 \
+    LITE_DATA_DIR=/app/data \
+    GIT_SHA=${GIT_SHA}
 EXPOSE 5060
+
+USER $APP_UID
+
+# busybox wget alpine'da hazır; ek paket gerekmiyor.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD wget -q -O /dev/null http://127.0.0.1:5060/health || exit 1
 
 ENTRYPOINT ["dotnet", "LogAnalyzer.Lite.dll"]
