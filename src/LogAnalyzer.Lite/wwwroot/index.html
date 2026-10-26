@@ -121,6 +121,12 @@
             <option value="Fatal">Fatal / Kritik</option>
             <option value="Error">Error / Hata</option>
             <option value="Warning">Warning / Uyarı</option>
+            <option value="Info">Info / Başarılı</option>
+          </select>
+          <select id="direction-select" onchange="filterIncidents()" class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+            <option value="">Gelen + Giden</option>
+            <option value="Inbound">Inbound (Gelen)</option>
+            <option value="Outbound">Outbound (Giden)</option>
           </select>
         </div>
 
@@ -318,7 +324,7 @@
 
     async function loadStats() {
       try {
-        const res = await fetch(`${basePath}/api/v1/stats');
+        const res = await fetch(`${basePath}/api/v1/stats`, { headers: { 'X-Requested-With': 'loganalyzer-lite' } });
         if (!res.ok) return;
         const data = await res.json();
         document.getElementById('stat-total').innerText = Number(data.totalIngested).toLocaleString();
@@ -333,7 +339,7 @@
 
     async function loadIncidents() {
       try {
-        const res = await fetch(`${basePath}/api/v1/incidents?limit=100');
+        const res = await fetch(`${basePath}/api/v1/events?limit=200`, { headers: { 'X-Requested-With': 'loganalyzer-lite' } });
         if (!res.ok) return;
         allIncidents = await res.json();
         renderIncidents(allIncidents);
@@ -380,14 +386,19 @@
     function filterIncidents() {
       const search = document.getElementById('search-input').value.toLowerCase();
       const level = document.getElementById('level-select').value;
+      const dirEl = document.getElementById('direction-select');
+      const direction = dirEl ? dirEl.value : '';
 
       const filtered = allIncidents.filter(i => {
         const matchesLevel = !level || (i.level && i.level.toLowerCase() === level.toLowerCase());
+        const matchesDir = !direction || ((i.direction || 'Inbound').toLowerCase() === direction.toLowerCase());
         const matchesSearch = !search ||
           (i.trackingId && i.trackingId.toLowerCase().includes(search)) ||
+          (i.correlationId && i.correlationId.toLowerCase().includes(search)) ||
           (i.endpoint && i.endpoint.toLowerCase().includes(search)) ||
+          (i.provider && i.provider.toLowerCase().includes(search)) ||
           (i.errorMessage && i.errorMessage.toLowerCase().includes(search));
-        return matchesLevel && matchesSearch;
+        return matchesLevel && matchesDir && matchesSearch;
       });
 
       renderIncidents(filtered);
@@ -446,7 +457,7 @@
     
     async function openAlertModal() {
       try {
-        const res = await fetch(`${basePath}/api/v1/alerts/config`);
+        const res = await fetch(`${basePath}/api/v1/alerts/config`, { headers: { 'X-Requested-With': 'loganalyzer-lite' } });
         if (res.ok) {
           const cfg = await res.json();
           document.getElementById('cfg-enabled').checked = cfg.enabled ?? true;
@@ -480,7 +491,7 @@
       try {
         const res = await fetch(`${basePath}/api/v1/alerts/config`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'loganalyzer-lite' },
           body: JSON.stringify(cfg)
         });
         if (res.ok) {
@@ -503,7 +514,7 @@
       try {
         const res = await fetch(`${basePath}/api/v1/alerts/test`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'loganalyzer-lite' },
           body: JSON.stringify({ target: target })
         });
         const data = await res.json();
@@ -525,15 +536,15 @@
     }
 
     async function triggerSimulate() {
-      await fetch(`${basePath}/api/v1/demo/simulate-incident', { method: 'POST' });
+      await fetch(`${basePath}/api/v1/demo/simulate-incident`, { method: 'POST', headers: { 'X-Requested-With': 'loganalyzer-lite' } });
       await loadAll();
     }
 
     async function purgeLogs() {
       if (!confirm('24 saatten eski veya başarılı tüm log sayaçları süpürülecek. Onaylıyor musunuz?')) return;
-      await fetch(`${basePath}/api/v1/logs/purge', {
+      await fetch(`${basePath}/api/v1/logs/purge`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'loganalyzer-lite' },
         body: JSON.stringify({ keepLastHours: 1, resetStats: false })
       });
       await loadAll();

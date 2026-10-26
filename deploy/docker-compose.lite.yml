@@ -15,6 +15,11 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:5060
+      - LITE_DATA_DIR=/app/data
+      - LITE_INGEST_TOKEN=${LITE_INGEST_TOKEN:-}
+      - LITE_ADMIN_TOKEN=${LITE_ADMIN_TOKEN:-}
+      - LITE_MAX_EVENTS=${LITE_MAX_EVENTS:-10000}
+      - LITE_RETENTION_HOURS=${LITE_RETENTION_HOURS:-168}
     networks:
       - coolify
 
