@@ -147,8 +147,16 @@ curl -s -o /dev/null -w '%{http_code}\n' https://loglar.<alan>/api/v1/stats   # 
 **2. Coolify kaynağını hazırla ama Deploy ETME.** Kaynak türü Docker Compose,
 dosya `deploy/docker-compose.coolify.lite.yml`. Kaynakta şunlar ayarlanır:
 
+- **Base Directory `/deploy`, Docker Compose Location `/docker-compose.coolify.lite.yml`.**
+  Coolify 4.3.23 derleme bağlamını (`context: ..`) compose dosyasının dizinine
+  göre değil Base Directory'ye göre çözüyor. Base Directory `/` iken derleme
+  `lstat /artifacts/deploy: no such file or directory` ile düşer.
 - "Include Source Commit in Build" açık.
-- Ortam değişkenleri Coolify'da tanımlı.
+- Ortam değişkenleri Coolify'da tanımlı. Coolify compose'daki `${VAR:-}` yer
+  tutucularından boş değerli değişkenler yaratır; değer girmek için mevcut
+  değişkeni güncelleyin (API'de `PATCH /applications/{uuid}/envs`), yenisini
+  eklemeye çalışmak 409 döner. `LITE_INGEST_TOKEN` boş kalırsa ingest
+  belirteçsiz kabul edilir.
 - **Domains alanı boş.**
 - Auto Deploy, geçiş bitene kadar kapalı. Eski konteyner çalışırken başlayan
   bir kopya aynı takma adı paylaşır. `VOL_SRC` zaten `loganalyzer-data` ise
@@ -228,11 +236,19 @@ NEW=$(docker ps --filter "label=com.docker.compose.service=loganalyzer-lite" --f
 date -u +%FT%TZ                                              # kesinti sonu
 docker exec "$NEW" wget -qO- http://127.0.0.1:5060/health     # commit = dağıtılan SHA
 docker exec "$NEW" id -u                                      # 1654
+docker inspect "$NEW" --format '{{range .Mounts}}{{.Name}} -> {{.Destination}}{{"\n"}}{{end}}'
 docker logs "$NEW" 2>&1 | grep -E 'incidents from the incident spool|No incident spool|could not be parsed|not an allowed'
 docker exec "$NEW" wget -qO- http://127.0.0.1:5060/api/v1/alerts/config \
   | python3 -c 'import json,sys; c=json.load(sys.stdin); print({"enabled": c.get("enabled"), "slack": c.get("slackConfigured"), "discord": c.get("discordConfigured"), "minLevel": c.get("minLevel")})'
 ```
 
+- **Birim adını denetleyin.** Coolify 4.3.23 `external: true, name: loganalyzer-data`
+  bildirimini yok sayıp `<kaynak-uuid>_loganalyzer-data` adlı yeni bir birim
+  bağladı ve uygulama `No incident spool found` ile boş açıldı. Böyle olursa
+  yeni konteyneri durdurun, bağlanan birimin içeriğini ayrı bir birime yedekleyin,
+  durmuş kaynak birimi `cp -a` ile bağlanan birime kopyalayın, 7. adımdaki
+  sahiplik komutunu bu birimde çalıştırın ve konteyneri başlatın. Sonraki
+  dağıtımlar aynı önekli birimi kullanır; asıl kaynak birim yedek olarak kalır.
 - Log satırı `Loaded N incidents from the incident spool.` olmalı; `N`, 4.
   adımdaki sayıyla **aynı** olmalı. Yeni sürüm boş depoya örnek olay eklemez
   ve spool'u ingest başlamadan önce yükler.
@@ -283,3 +299,23 @@ eski konteyner root olarak çalışır. Veri gerekirse
 `loganalyzer-lite-pre-rollout` konteyneri ve yedek birim, yeni kaynak bir süre
 kararlı çalıştıktan sonra **ayrı bir kararla** kaldırılır. Bu, kitabın
 parçası değildir.
+
+## Canlı geçiş kaydı — 26 Ekim 2026
+
+- Coolify kaynağı `0sov3xf4bqkbv8pxbctzijpx` (proje `loganalyzer`, ortam
+  `production`), domain yok, imaj commit'i `47ee2e5`, `uid 1654`. Auto Deploy açık;
+  depoya imzalı push webhook'u kuruldu (diğer uygulamalarla aynı yol), ilk ping 200.
+- İlk deneme Coolify kuyruğu (aynı anda tek derleme) yüzünden geri alındı:
+  07:19–07:40 UTC kesinti, eski konteyner geri açıldı. İkinci deneme 08:54–09:10
+  UTC. Base Directory düzeltildi; önekli birim boş açılınca veri kopyalandı.
+- Veri: `Loaded 1000 incidents` (taban 1000), yeniden başlatmadan sonra da 1000.
+  Canlı birim `0sov3xf4bqkbv8pxbctzijpx_loganalyzer-data`. Yedekler:
+  `loganalyzer-data` (eski asıl birim, dokunulmadı), `loganalyzer-data-pre-coolify-20261026`,
+  `loganalyzer-data-pre-coolify-20261026b`, `loganalyzer-data-coolify-empty-start-20261026`.
+- Eski konteynerler durmuş ve `restart=no`: `loganalyzer-lite-pre-coolify-20261026`,
+  `loganalyzer-lite-pre-rollout`. Kaldırma ayrı karardır.
+- `LITE_INGEST_TOKEN` Gateway'deki `LOGANALYZER_INGEST_TOKEN` ile aynı (değerler
+  belgede yok). Belirteçsiz ve yanlış belirteçli ingest 401; Gateway'in gerçek bir
+  404 olayı belirteçle kaydedildi. `loglar.<alan>` kimliksiz 401 (BasicAuth
+  korunuyor), konteynerde router etiketi yok.
+
