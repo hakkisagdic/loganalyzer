@@ -18,7 +18,7 @@ namespace LogAnalyzer.Cli;
 /// <param name="BatchRows">Tek <c>INSERT</c>'e giden satır sayısı.</param>
 /// <param name="Replace">Grubun mevcut satırlarını silip yeniden yaz.</param>
 /// <param name="DryRun">ClickHouse'a hiç dokunma; üret, doğrula, raporla.</param>
-internal sealed record SeedGoldenRequest(
+public sealed record SeedGoldenRequest(
     string Catalog,
     string MaskFile,
     string Migrations,
@@ -39,13 +39,31 @@ internal sealed record SeedGoldenRequest(
 /// geliyor.
 /// </para>
 /// </summary>
-internal static class SeedCommandHandlers
+/// <remarks>
+/// <b><c>public</c>, ve sebebi ölçülmüş bir kısıt:</b> TTL kapısının saati
+/// birim testinde <c>FakeTimeProvider</c> ile sürülebilmeli, ama
+/// <c>LogAnalyzer.Cli</c>'ye <c>InternalsVisibleTo</c> eklemek üst-düzey
+/// ifadelerin ürettiği <c>Program</c> tipini test derlemesine görünür yapıyor
+/// ve <c>LogAnalyzer.Api</c>'nin <c>Program</c>'ıyla çakışıyor (M12, CS0433).
+/// Emsal <see cref="RcaQuotaCommandHandlers"/>.
+/// </remarks>
+public static class SeedCommandHandlers
 {
+    /// <param name="request">Yükleme isteği.</param>
+    /// <param name="toolbox">Parser derleyicisi.</param>
+    /// <param name="timeProvider">
+    /// TTL kapısının saati — üretimde <see cref="TimeProvider.System"/>.
+    /// <b>Çapa bu saatin yerine geçemez</b>: bkz. <see cref="ExpiredRowsError"/>.
+    /// </param>
+    /// <param name="cancellationToken">İptal.</param>
     public static async Task<int> Golden(
         SeedGoldenRequest request,
         ParserToolbox toolbox,
+        TimeProvider timeProvider,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(timeProvider);
+
         var samples = GoldenSampleSeeder.ReadSamples(request.Catalog);
 
         if (samples.Count == 0)
@@ -91,20 +109,14 @@ internal static class SeedCommandHandlers
         // kabul ediyor, satır sayısını dönüyor, sonra siliyor. Yani yükleyici
         // "yazdım" diyor ve tabloda hiçbir şey yok. Sonradan sormanın yolu yok,
         // çünkü ortada bir hata yok.
+        //
+        // Saat ŞİMDİ, çapa değil — gerekçe ExpiredRowsError'da.
         var retention = EventRetention.Read(request.Migrations);
-        var earliest = SampleClock.EarliestWritable(request.Plan.Anchor, retention);
-        var expired = plan.Count(occurrence => occurrence.At < earliest);
+        var ttlError = ExpiredRowsError(plan, timeProvider.GetUtcNow(), retention);
 
-        if (expired > 0)
+        if (ttlError is not null)
         {
-            Console.Error.WriteLine(string.Create(
-                CultureInfo.InvariantCulture,
-                $"""
-                 hata   Planlanan {plan.Count} satırın {expired} tanesi saklama süresinin DIŞINDA
-                        (TTL {retention.TotalDays:0} gün, en eski yazılabilir an {earliest:yyyy-MM-dd HH:mm}Z).
-                        ClickHouse bunları hata vermeden kabul edip siler; yükleyici
-                        "yazdım" der ve tabloda hiçbir şey olmaz. --span-days'i küçültün.
-                 """));
+            Console.Error.WriteLine(ttlError);
             return 1;
         }
 
@@ -196,6 +208,56 @@ internal static class SeedCommandHandlers
         Console.WriteLine();
         Report(report, written: true);
         return 0;
+    }
+
+    /// <summary>
+    /// TTL kapısının <b>saf</b> hâli: plandaki satırlardan ClickHouse'un
+    /// sileceği varsa hata cümlesi, yoksa <see langword="null"/>.
+    ///
+    /// <para>
+    /// <b>Saat çapa değil, şimdi.</b> ClickHouse <c>TTL ts + N DAY</c>'i
+    /// <b>kendi</b> saatine göre uyguluyor; satırın kalıp kalmayacağını
+    /// <c>--anchor</c> değil sunucunun şimdisi belirliyor. Kapı çapaya göre
+    /// ölçtüğünde iki yönde de yanılıyordu: geçmiş bir çapa, ClickHouse'un hata
+    /// vermeden sileceği satırları geçiriyordu (kapının önlemek için var olduğu
+    /// kayıp), gelecek bir çapa ise tabloda kalacak satırları reddediyordu.
+    /// Yerel saat sunucunun saatine vekil; ikisi arasındaki kayma ölçülmüyor.
+    /// </para>
+    ///
+    /// <para>
+    /// Sınır <see cref="SampleClock.Survives"/>'ın kuralı: tam
+    /// <c>şimdi − saklama</c> anındaki satır <b>kalıyor</b>, bir saniye öncesi
+    /// kalmıyor. Kural orada tek yerde; burada ikinci kez yazılmıyor.
+    /// </para>
+    /// </summary>
+    /// <param name="plan">Yazılacak satırlar.</param>
+    /// <param name="now">ClickHouse'un TTL'i uyguladığı saat — <b>çapa değil</b>.</param>
+    /// <param name="retention"><c>events</c> saklama süresi (göç dosyasından).</param>
+    public static string? ExpiredRowsError(
+        IReadOnlyList<PlannedOccurrence> plan,
+        DateTimeOffset now,
+        TimeSpan retention)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+
+        var expired = plan.Count(occurrence => !SampleClock.Survives(occurrence.At, now, retention));
+
+        if (expired == 0)
+        {
+            return null;
+        }
+
+        var earliest = SampleClock.EarliestWritable(now, retention);
+
+        return string.Create(
+            CultureInfo.InvariantCulture,
+            $"""
+             hata   Planlanan {plan.Count} satırın {expired} tanesi saklama süresinin DIŞINDA
+                    (TTL {retention.TotalDays:0} gün, en eski yazılabilir an {earliest:yyyy-MM-dd HH:mm:ss}Z).
+                    ClickHouse bunları hata vermeden kabul edip siler; yükleyici
+                    "yazdım" der ve tabloda hiçbir şey olmaz. --span-days'i küçültün
+                    ya da --anchor'ı şimdiye yaklaştırın.
+             """);
     }
 
     private static void Describe(

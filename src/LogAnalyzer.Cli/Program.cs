@@ -319,9 +319,12 @@ seedGoldenCommand.SetAction((parse, cancellationToken) =>
         Replace: parse.GetValue(replaceOption),
         DryRun: parse.GetValue(dryRunOption));
 
+    // TTL kapısının saati ayrıca veriliyor: çapa `--anchor` ile geçmişe ya da
+    // geleceğe çekilebiliyor, ClickHouse'un TTL'i ise her zaman şimdiye göre.
     return SeedCommandHandlers.Golden(
         request,
         Toolbox(parse.GetValue(patternsOption), parse.GetValue(mappingsOption)),
+        TimeProvider.System,
         cancellationToken);
 });
 
