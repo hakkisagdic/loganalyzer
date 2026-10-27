@@ -60,8 +60,14 @@ public sealed class SampleClockTests
         Assert.True(SampleClock.Survives(now - TimeSpan.FromDays(89), now, retention));
         Assert.False(SampleClock.Survives(now - TimeSpan.FromDays(91), now, retention));
 
-        // Sınır dahil: tam 90 gün önce yazılan satır henüz silinmiyor.
-        Assert.True(SampleClock.Survives(now - retention, now, retention));
+        // Sınır HARİÇ — ClickHouse'un kuralı: `ttl <= current_time` süresi
+        // dolmuş demek (ITTLAlgorithm::isTTLExpired). Tam 90 gün önceki saniye
+        // siliniyor, bir sonraki kalıyor; aynı saniyenin kesirli bir anı da
+        // `toDateTime` ile aşağı yuvarlandığı için siliniyor.
+        Assert.False(SampleClock.Survives(now - retention, now, retention));
+        Assert.False(SampleClock.Survives(now - retention + TimeSpan.FromMilliseconds(999), now, retention));
+        Assert.True(SampleClock.Survives(now - retention + TimeSpan.FromSeconds(1), now, retention));
+        Assert.Equal(now - retention + TimeSpan.FromSeconds(1), SampleClock.EarliestWritable(now, retention));
     }
 
     /// <summary>

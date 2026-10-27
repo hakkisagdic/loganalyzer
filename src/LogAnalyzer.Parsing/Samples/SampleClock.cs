@@ -77,11 +77,22 @@ public static class SampleClock
     /// satırı belirliyor ve buraya ikinci kez yazmak, şema değiştiği gün ikisinin
     /// sessizce ayrışması demek olurdu. Çağıran onu kaynaktan okuyup veriyor.
     /// </para>
+    ///
+    /// <para>
+    /// <b>Sınır ClickHouse'un kuralı, ve o kural dışlayıcı.</b> Şema
+    /// <c>TTL toDateTime(ts) + INTERVAL N DAY</c> diyor; ClickHouse bir satırı
+    /// <c>ttl &lt;= current_time</c> olduğunda süresi dolmuş sayıyor
+    /// (<c>ITTLAlgorithm::isTTLExpired</c>), ve hem <c>toDateTime</c> hem
+    /// <c>current_time</c> tam saniye. Yani tam <c>şimdi − N gün</c> saniyesindeki
+    /// satır <b>siliniyor</b>; kalan en eski saniye ondan bir sonraki. Kesirli
+    /// bir an da aynı cevabı alıyor: <c>toDateTime</c> onu aşağı yuvarlıyor,
+    /// dolayısıyla bu saniyenin altındaki her an sınırın dışında.
+    /// </para>
     /// </summary>
     public static DateTimeOffset EarliestWritable(DateTimeOffset now, TimeSpan retention)
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(retention, TimeSpan.Zero);
-        return Truncate(now) - retention;
+        return Truncate(now) - retention + TimeSpan.FromSeconds(1);
     }
 
     /// <summary>
