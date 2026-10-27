@@ -4,6 +4,7 @@ using LogAnalyzer.Commands;
 using LogAnalyzer.Commands.Seeding;
 using LogAnalyzer.Parsing.Dispatch;
 using LogAnalyzer.Parsing.Grok;
+using LogAnalyzer.Parsing.Samples;
 using Microsoft.Extensions.Time.Testing;
 
 namespace LogAnalyzer.UnitTests;
@@ -22,16 +23,35 @@ namespace LogAnalyzer.UnitTests;
 /// </para>
 ///
 /// <para>
-/// Saat <see cref="FakeTimeProvider"/>; hiçbir test duvar saatine bakmıyor.
-/// Kuru koşum ClickHouse'a dokunmuyor, gerçek yazım yolu ise
-/// <see cref="Unreachable"/>'a bağlanmaya çalışırdı: orada <c>1</c> dönmesi
-/// kapının <b>bağlantıdan önce</b> durduğunu gösteriyor.
+/// <b>Kapının saati</b> tamamen <see cref="FakeTimeProvider"/>; her sahte saat
+/// <see cref="Anchor"/>'a <b>göreli</b> kuruluyor, yani hangi vakanın kırmızı
+/// hangisinin yeşil olduğu testin koştuğu tarihten bağımsız. Kuru koşum
+/// ClickHouse'a dokunmuyor, gerçek yazım yolu ise <see cref="Unreachable"/>'a
+/// bağlanmaya çalışırdı: orada <c>1</c> dönmesi kapının <b>bağlantıdan önce</b>
+/// durduğunu gösteriyor.
+/// </para>
+///
+/// <para>
+/// <b>Çapanın kendisi ise gerçek saatten geliyor, ve sebebi kapı değil.</b>
+/// <c>0</c> bekleyen vakalar kuru koşumun tamamını yürüyor
+/// (<c>RunAsync → Compose → Verify</c>) ve syslog damgası yıl taşımıyor:
+/// <c>StepExecutors.TryParseSyslog</c> yılı <c>DateTimeOffset.UtcNow</c>'dan
+/// çıkarıyor, sahte saat oraya ulaşmıyor. Sabit bir çapa (önceki hâli
+/// 2026-08-20) gerçek saat ondan bir yıl uzaklaşınca MikroTik/Cisco satırlarını
+/// bir yıl kaydırıyor, <c>Verify</c> fırlatıyor ve testler kod değişmeden
+/// kırmızıya dönüyordu. Çapa şimdi olunca satırlar hep son bir yılın içinde.
+/// Aynı borç <see cref="GoldenSeedTests"/>'in sabit çapasında duruyor; kalıcı
+/// çözüm ayrıştırıcıya saat vermek.
 /// </para>
 /// </summary>
 public sealed class SeedTtlGateTests
 {
-    /// <summary>Yayılımın sağ ucu — sabit; "şimdi"yi sahte saat belirliyor.</summary>
-    private static readonly DateTimeOffset Anchor = new(2026, 8, 20, 12, 0, 0, TimeSpan.Zero);
+    /// <summary>
+    /// Yayılımın sağ ucu: sınıf yüklenirken gerçek şimdi, tam saniye — ürünün
+    /// varsayılan çapası. Kapının gördüğü "şimdi"yi her vakada buna göreli bir
+    /// sahte saat belirliyor; neden gerçek saat olduğu sınıf özetinde.
+    /// </summary>
+    private static readonly DateTimeOffset Anchor = SampleClock.Anchor();
 
     private static readonly string Migrations = Path.Combine(RepositoryLayout.Root, "db", "clickhouse");
 
@@ -114,14 +134,14 @@ public sealed class SeedTtlGateTests
 
     /// <summary>
     /// <b>Sınır anı.</b> Saat, planın en eski satırı tam <c>şimdi − saklama</c>
-    /// anına denk gelecek şekilde kuruluyor: o satır kalıyor
-    /// (<c>SampleClock.Survives</c>, <c>&gt;=</c>). Bir
-    /// saniye sonra aynı satırın süresi dolmuş.
+    /// saniyesine denk gelecek şekilde kuruluyor: ClickHouse o satırı siliyor
+    /// (<c>ttl &lt;= current_time</c>, bkz. <c>SampleClock.EarliestWritable</c>),
+    /// kapı da reddetmeli. Saat bir saniye geride olsaydı aynı satır kalırdı.
     /// </summary>
     [Theory]
-    [InlineData(0, 0)]
-    [InlineData(1, 1)]
-    public async Task Sinir_aninda_en_eski_satir_kaliyor_bir_saniye_sonra_kalmiyor(
+    [InlineData(-1, 0)]
+    [InlineData(0, 1)]
+    public async Task Sinir_saniyesindeki_en_eski_satir_reddediliyor_bir_saniye_oncesi_geciyor(
         int secondsPastBoundary,
         int expectedExit)
     {
@@ -144,11 +164,12 @@ public sealed class SeedTtlGateTests
     public void Hata_cumlesi_simdiden_turetilen_en_eski_ani_basiyor()
     {
         var now = Anchor + TimeSpan.FromDays(45);
-        var earliest = now - Retention;
+        var boundary = now - Retention;
+        var earliest = boundary + TimeSpan.FromSeconds(1);
 
         IReadOnlyList<PlannedOccurrence> plan =
         [
-            new(0, 0, earliest - TimeSpan.FromSeconds(1)),
+            new(0, 0, boundary),
             new(0, 1, earliest),
             new(0, 2, Anchor),
         ];
@@ -162,7 +183,7 @@ public sealed class SeedTtlGateTests
             error,
             StringComparison.Ordinal);
 
-        // Sınırdaki satır tek başına geçiyor.
+        // En eski yazılabilir saniyedeki satır tek başına geçiyor.
         Assert.Null(SeedCommandHandlers.ExpiredRowsError([plan[1], plan[2]], now, Retention));
     }
 

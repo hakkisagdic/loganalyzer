@@ -225,9 +225,18 @@ public static class SeedCommandHandlers
     /// </para>
     ///
     /// <para>
-    /// Sınır <see cref="SampleClock.Survives"/>'ın kuralı: tam
-    /// <c>şimdi − saklama</c> anındaki satır <b>kalıyor</b>, bir saniye öncesi
-    /// kalmıyor. Kural orada tek yerde; burada ikinci kez yazılmıyor.
+    /// Sınır <see cref="SampleClock.Survives"/>'ın kuralı, o da ClickHouse'un:
+    /// tam <c>şimdi − saklama</c> saniyesindeki satır <b>siliniyor</b>
+    /// (<c>ttl &lt;= current_time</c>), bir saniye sonrası kalıyor. Kural orada
+    /// tek yerde; burada ikinci kez yazılmıyor.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Bilinen sınır:</b> kapı tek bir anda ölçüyor; <c>--replace</c>'in
+    /// silmesi ve toplu yazımlar ondan sonra geliyor. Sınıra saniyeler kalan bir
+    /// satır kapıdan geçip yazıldıktan kısa süre sonra TTL'e takılabilir. Pratikte
+    /// oraya ancak elle seçilmiş bir <c>--anchor</c>/<c>--span-days</c> ile
+    /// ulaşılıyor; bir pay eklemek ayrı bir karar.
     /// </para>
     /// </summary>
     /// <param name="plan">Yazılacak satırlar.</param>
