@@ -1,0 +1,58 @@
+{
+  "gates": {
+    "dotnet-build": {
+      "run": "dotnet build --nologo -v q",
+      "expect": "exit_zero",
+      "timeout": 1200,
+      "inputs": [
+        "**"
+      ]
+    },
+    "dotnet-test": {
+      "run": "dotnet test --nologo",
+      "expect": "exit_zero",
+      "timeout": 2400,
+      "serialise": true,
+      "inputs": [
+        "**"
+      ]
+    },
+    "ui-typecheck": {
+      "run": "cd ui && npm run typecheck",
+      "expect": "exit_zero",
+      "timeout": 600,
+      "inputs": [
+        "ui/**"
+      ]
+    },
+    "ui-test": {
+      "run": "cd ui && npm run test",
+      "expect": "exit_zero",
+      "timeout": 2400,
+      "serialise": true,
+      "inputs": [
+        "ui/**"
+      ]
+    },
+    "diff-check": {
+      "run": "git diff --check",
+      "expect": "exit_zero",
+      "timeout": 60
+    }
+  },
+  "profiles": {
+    "quick": [
+      "dotnet-build",
+      "ui-typecheck",
+      "diff-check"
+    ],
+    "full": [
+      "dotnet-build",
+      "dotnet-test",
+      "ui-typecheck",
+      "ui-test",
+      "diff-check"
+    ]
+  },
+  "default_profile": "quick"
+}

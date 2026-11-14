@@ -1,0 +1,23 @@
+{
+  "at": 1793798229,
+  "wrote": [
+    ".polyctl-project",
+    ".polyctl/board.md",
+    ".polyctl/backlog.md",
+    ".polyctl/authority.md",
+    ".polyctl/gates.json",
+    ".polyctl/decisions/.gitkeep",
+    "semantic-review/.gitkeep",
+    "agent-mail/README.md",
+    ".gitignore (+8)",
+    ".polyctl/PLAYBOOK.md",
+    ".claude/skills/polyctl/SKILL.md",
+    ".kiro/steering/polyctl-playbook.md"
+  ],
+  "mcp": [
+    "claude-code",
+    "kiro"
+  ],
+  "gitignore": true,
+  "pre_push": []
+}
